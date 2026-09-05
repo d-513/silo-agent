@@ -1,1 +1,10 @@
 .directory
+data/
+web/node_modules/
+web/dist/
+*.exe
+/silo
+/silo-worker
+.env
+silo.yaml
+bin

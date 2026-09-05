@@ -1,0 +1,27 @@
+# Silo dock — iron bar, launchers only.
+panel_items = L
+panel_size = 100% 40
+panel_margin = 0 0
+panel_padding = 10 4 12
+panel_background_id = 1
+panel_position = bottom center horizontal
+panel_dock = 0
+panel_layer = top
+panel_monitor = all
+autohide = 0
+strut_policy = follow_size
+
+rounded = 0
+border_width = 0
+background_color = #1E2126 100
+border_color = #1E2126 0
+
+launcher_padding = 8 2 12
+launcher_background_id = 0
+launcher_icon_size = 26
+launcher_icon_theme = Adwaita
+launcher_icon_as_theme = 1
+launcher_tooltip = 1
+launcher_item_app = /usr/local/share/applications/silo-files.desktop
+launcher_item_app = /usr/local/share/applications/silo-term.desktop
+launcher_item_app = /usr/local/share/applications/silo-web.desktop

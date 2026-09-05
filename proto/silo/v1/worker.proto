@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+service BotWorker {
+  rpc Commands(stream CmdEvent) returns (stream Cmd);
+  rpc GetSecret(SecretReq) returns (SecretRes);
+  rpc VNC(stream Frame) returns (stream Frame);
+}
+
+message Cmd {
+  string id = 1;
+  string run_id = 9;
+  oneof body {
+    TerminalCmd terminal = 2;
+    ExecPythonCmd exec_python = 3;
+    FileReadCmd file_read = 4;
+    FileWriteCmd file_write = 5;
+    FilePatchCmd file_patch = 6;
+    GrepCmd grep = 7;
+    CancelCmd cancel = 8;
+    DirListCmd dir_list = 10;
+    BrowseFileCmd browse_file = 11;
+  }
+}
+
+message TerminalCmd {
+  string command = 1;
+}
+
+message ExecPythonCmd {
+  string code = 1;
+}
+
+message FileReadCmd {
+  string path = 1;
+}
+
+message FileWriteCmd {
+  string path = 1;
+  string content = 2;
+}
+
+message FilePatchCmd {
+  string path = 1;
+  string old_text = 2;
+  string new_text = 3;
+}
+
+message GrepCmd {
+  string pattern = 1;
+  string path = 2;
+}
+
+message CancelCmd {
+  string cmd_id = 1;
+}
+
+message DirListCmd {
+  string path = 1;
+}
+
+message BrowseFileCmd {
+  string path = 1;
+}
+
+message CmdEvent {
+  string id = 1;
+  oneof body {
+    Heartbeat heartbeat = 2;
+    OutputChunk chunk = 3;
+    CmdDone done = 4;
+    CmdError error = 5;
+  }
+}
+
+message Heartbeat {}
+
+message OutputChunk {
+  string text = 1;
+}
+
+message CmdDone {
+  string result = 1;
+}
+
+message CmdError {
+  string message = 1;
+}
+
+message SecretReq {
+  string name = 1;
+  string run_id = 2;
+}
+
+message SecretRes {
+  string value = 1;
+  string error = 2;
+}
+
+message Frame {
+  bytes data = 1;
+}

@@ -1,0 +1,287 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+service UI {
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+  rpc SignOut(SignOutRequest) returns (SignOutResponse);
+  rpc Me(MeRequest) returns (MeResponse);
+
+  rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
+  rpc CreateBot(CreateBotRequest) returns (Bot);
+  rpc GetBot(GetBotRequest) returns (Bot);
+  rpc StartBot(GetBotRequest) returns (Bot);
+  rpc StopBot(GetBotRequest) returns (Bot);
+  rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
+
+  rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
+  rpc CreateChat(CreateChatRequest) returns (Chat);
+  rpc RenameChat(RenameChatRequest) returns (Chat);
+  rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
+
+  rpc Send(SendRequest) returns (SendResponse);
+  rpc StreamRun(StreamRunRequest) returns (stream RunEvent);
+
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
+  rpc AddSecret(AddSecretRequest) returns (SecretMeta);
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+
+  rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse);
+  rpc DecideApproval(DecideApprovalRequest) returns (Approval);
+
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc SetRule(SetRuleRequest) returns (Rule);
+
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+
+  rpc GetSettings(GetSettingsRequest) returns (Settings);
+  rpc PutSettings(PutSettingsRequest) returns (Settings);
+
+  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
+}
+
+message SignInRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message SignInResponse {
+  User user = 1;
+  bool created = 2;
+}
+
+message SignOutRequest {}
+
+message SignOutResponse {}
+
+message MeRequest {}
+
+message MeResponse {
+  User user = 1;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+}
+
+message Bot {
+  string id = 1;
+  string name = 2;
+  string status = 3;
+  string last_task = 4;
+  int32 crest = 5;
+  bool worker_connected = 6;
+}
+
+message ListBotsRequest {}
+
+message ListBotsResponse {
+  repeated Bot bots = 1;
+}
+
+message CreateBotRequest {
+  string name = 1;
+  int32 crest = 2;
+}
+
+message GetBotRequest {
+  string id = 1;
+}
+
+message DeleteBotResponse {}
+
+message Chat {
+  string id = 1;
+  string bot_id = 2;
+  string title = 3;
+  string updated_at = 4;
+}
+
+message ListChatsRequest {
+  string bot_id = 1;
+}
+
+message ListChatsResponse {
+  repeated Chat chats = 1;
+}
+
+message CreateChatRequest {
+  string bot_id = 1;
+}
+
+message RenameChatRequest {
+  string bot_id = 1;
+  string id = 2;
+  string title = 3;
+}
+
+message DeleteChatRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteChatResponse {}
+
+message SendRequest {
+  string bot_id = 1;
+  string text = 2;
+  string chat_id = 3;
+}
+
+message SendResponse {
+  string run_id = 1;
+  string chat_id = 2;
+}
+
+message StreamRunRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string after_event_id = 3;
+}
+
+message RunEvent {
+  string run_id = 1;
+  string kind = 2;
+  string body = 3;
+  string tool = 4;
+  string chat_id = 5;
+  string id = 6;
+}
+
+message SecretMeta {
+  string id = 1;
+  string name = 2;
+  string created_at = 3;
+  string last_used_at = 4;
+}
+
+message ListSecretsRequest {
+  string bot_id = 1;
+}
+
+message ListSecretsResponse {
+  repeated SecretMeta secrets = 1;
+}
+
+message AddSecretRequest {
+  string bot_id = 1;
+  string name = 2;
+  string value = 3;
+}
+
+message DeleteSecretRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteSecretResponse {}
+
+message Approval {
+  string id = 1;
+  string bot_id = 2;
+  string run_id = 3;
+  string connector = 4;
+  string action = 5;
+  string args_json = 6;
+  string status = 7;
+}
+
+message ListApprovalsRequest {
+  string bot_id = 1;
+}
+
+message ListApprovalsResponse {
+  repeated Approval approvals = 1;
+}
+
+message DecideApprovalRequest {
+  string id = 1;
+  string decision = 2;
+}
+
+message Rule {
+  string id = 1;
+  string bot_id = 2;
+  string connector = 3;
+  string action = 4;
+  string decision = 5;
+}
+
+message ListRulesRequest {
+  string bot_id = 1;
+}
+
+message ListRulesResponse {
+  repeated Rule rules = 1;
+}
+
+message SetRuleRequest {
+  string bot_id = 1;
+  string connector = 2;
+  string action = 3;
+  string decision = 4;
+}
+
+message FileEntry {
+  string name = 1;
+  string path = 2;
+  bool dir = 3;
+  int64 size = 4;
+  string modified = 5;
+}
+
+message ListFilesRequest {
+  string bot_id = 1;
+  string path = 2;
+}
+
+message ListFilesResponse {
+  repeated FileEntry entries = 1;
+}
+
+message ReadFileRequest {
+  string bot_id = 1;
+  string path = 2;
+}
+
+message ReadFileResponse {
+  string name = 1;
+  string content = 2;
+  bool binary = 3;
+  bool truncated = 4;
+  int64 size = 5;
+}
+
+message Settings {
+  string model = 1;
+  bool has_api_key = 2;
+  string api_key = 3;
+}
+
+message GetSettingsRequest {}
+
+message PutSettingsRequest {
+  string model = 1;
+  string api_key = 2;
+}
+
+message AuditRow {
+  string id = 1;
+  string at = 2;
+  string bot_id = 3;
+  string bot_name = 4;
+  int32 crest = 5;
+  string actor = 6;
+  string action = 7;
+  string decision = 8;
+}
+
+message ListAuditRequest {}
+
+message ListAuditResponse {
+  repeated AuditRow rows = 1;
+}

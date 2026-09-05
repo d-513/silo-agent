@@ -20,12 +20,12 @@ Control Plane owns policy, the agent loop, LLM calls, and secrets. The Bot is a 
 | Local tools bus | HTTP/JSON over a Unix socket | Python↔Worker, same container, never leaves the Bot |
 | DB | SQLite + GORM, WAL mode | single-node v1; no repository layer; sqlc only if GORM hurts |
 | Auth | session cookies now | OIDC later creates the same `User`/`Session` rows — no plugin framework |
-| Operator config | Koanf: defaults → YAML → env | listen addr, sqlite path, docker host. **Not** editable in the UI |
-| Product settings | DB rows, admin UI | models, feature flags, Firecrawl key, etc. Do not overlap with operator config |
-| Desktop | X11 (Xvfb + openbox or xfce) | not Wayland |
-| Remote desktop | KasmVNC or TigerVNC+noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
-| Process supervisor in Bot | s6-overlay | Xvfb, WM, Chromium, VNC, worker |
-| Web extract/search | Firecrawl, **on the CP** | API key never enters the container |
+| Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, **OpenRouter API key**. **Not** editable in the UI |
+| Product settings | DB rows, admin UI | models. Do not overlap with operator config |
+| Desktop | X11 (Xvfb + Openbox + Thunar) | not Wayland |
+| Remote desktop | x11vnc + noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
+| Process supervisor in Bot | fail-fast `start.sh` | any of Xvfb/Openbox/tint2/x11vnc/worker dying exits the container; Docker `unless-stopped` recreates the stack |
+| Web extract/search | not in v1 | keep provider keys off the Bot |
 
 Python is not a ConnectRPC citizen. Generated `tools` never see `SILO_CP_URL` or `SILO_BOT_TOKEN`.
 
@@ -39,7 +39,7 @@ Control Plane                          Docker API (any host): create/start/stop/
   │                                    inject SILO_CP_URL, SILO_BOT_TOKEN, SILO_BOT_ID
   │
   │  ConnectRPC  (Worker dials out, bot token)
-  │  commands · results · connector/secret RPCs · VNC bytes
+  │  commands · results · GetSecret · VNC bytes
   ▼
 Go Worker
   │  HTTP/JSON  unix:///var/run/silo/worker.sock
@@ -53,26 +53,19 @@ There is no third path. No `docker exec`, no `docker cp`, no socket mount into t
 
 ### CP ↔ Worker (ConnectRPC)
 
-Worker-facing service, auth: `Authorization: Bearer <bot-token>` on every call. One HTTP/2 connection, **several concurrent RPCs** — do not funnel everything through a single synchronous request. `exec_python` stays open while Python calls a connector; that connector call is a *separate* RPC. A single in-flight command stream would deadlock on approval.
+Worker-facing service, auth: `Authorization: Bearer <bot-token>` on every call. One HTTP/2 connection, **several concurrent RPCs** — do not funnel everything through a single synchronous request. `exec_python` stays open while Python calls `GetSecret`; that call is a *separate* RPC. Commands carry `run_id` so parallel runs stay correlated.
 
 ```
 service BotWorker {
-  // Held for the life of the container. CP pushes work; Worker streams output.
   rpc Commands(stream CmdEvent) returns (stream Cmd);
-
-  // Worker-initiated, block until allow | deny | approved.
-  // Nested inside an in-flight Commands item (e.g. exec_python).
-  rpc CallConnector(ConnectorReq) returns (ConnectorRes);
   rpc GetSecret(SecretReq) returns (SecretRes);
-
-  // Local VNC/Kasm bytes ↔ CP, which pipes to the user's browser.
   rpc VNC(stream Frame) returns (stream Frame);
 }
 ```
 
-Exact message shapes can wait; the concurrency model cannot. Approvals: `CallConnector` / `GetSecret` do not return until the security engine decides. The Python HTTP request simply blocks. Heartbeat on `Commands` so a long approval does not look like a dead Worker.
+Approvals: `GetSecret` does not return until the security engine decides. The Python HTTP request simply blocks. Heartbeat on `Commands` so a long approval does not look like a dead Worker. The VNC RPC waits until a browser viewer attaches, then the Worker dials local x11vnc.
 
-When the Worker spawns Python or a shell, it **strips** `SILO_BOT_TOKEN` and `SILO_CP_URL` from the child env. Children get `SILO_WORKER_SOCK=/var/run/silo/worker.sock` only.
+When the Worker spawns Python or a shell, it **strips** `SILO_BOT_TOKEN` and `SILO_CP_URL` from the child env. Children get `SILO_WORKER_SOCK=/var/run/silo/worker.sock` and `SILO_RUN_ID` for the current run.
 
 ### Python ↔ Worker (local bus)
 
@@ -84,36 +77,22 @@ This hop is same-container only. It must not know the CP exists.
 
 ```python
 # silo_runtime — the only file that knows the socket
-def call(connector: str, action: str, args: dict) -> dict: ...
 def get_secret(name: str) -> str: ...
-```
-
-Generated wrappers are discovery + docs:
-
-```python
-# /opt/tools/gmail/send.py
-"""Send an email. Args: to, subject, body."""
-from silo_runtime import call
-def send(to: str, subject: str, body: str):
-    return call("gmail", "send", {"to": to, "subject": subject, "body": body})
 ```
 
 Local HTTP surface (Worker listens, nothing else):
 
 | Method | Path | Body | Result |
 |---|---|---|---|
-| `POST` | `/v1/connector/call` | `{connector, action, args}` | `{result}` or `{error}` |
-| `POST` | `/v1/secrets/get` | `{name}` | `{value}` or `{error}` |
+| `POST` | `/v1/secrets/get` | `{name, run_id?}` | `{value}` or `{error}` |
 
 No local auth. The container is the trust boundary; the CP security engine is the gate. Debug: `curl --unix-socket /var/run/silo/worker.sock http://localhost/v1/...`.
 
-Worker on receive: translate to `CallConnector` / `GetSecret`, wait, JSON the result back. Register any returned secret value with the **masker** before writing it to the socket.
-
-`python` connectors (cloned repo, pinned SHA) still go through `silo_runtime.get_secret` for credentials. They do not get env-injected tokens by default.
+Worker on receive: translate to `GetSecret`, wait, JSON the result back. Register any returned secret value with the **masker** before writing it to the socket.
 
 ### Why this split
 
-ConnectRPC is the untrusted-network protocol: auth, multiplexing, VNC, remote Docker. The Unix socket is a 2-method localhost bus so generated Python stays a few lines the model can read without seeing URLs, tokens, or proto stubs. Putting a Python Connect client in `/opt/tools` would teach every run how to speak to the CP the moment someone leaks a token into the env.
+ConnectRPC is the untrusted-network protocol: auth, multiplexing, VNC, remote Docker. The Unix socket is a localhost bus so Python stays a few lines the model can read without seeing URLs, tokens, or proto stubs. Putting a Python Connect client in `/opt/tools` would teach every run how to speak to the CP the moment someone leaks a token into the env.
 
 ## Secret sanitization
 
@@ -144,22 +123,13 @@ First-class tools the model sees stay small: `exec_python`, `terminal`, files (`
 
 Pushed on `Commands`. `/workspace` is the agent's artifact dir (volume on the *Docker host*, not necessarily the CP host).
 
-### Web (Firecrawl)
+### Web / connectors (later)
 
-CP-side. A `Cmd` the Worker does not execute locally; or a CP-only tool that never leaves the plane. No Firecrawl key in the Bot.
-
-### Connectors
-
-Defined in the UI.
-
-- `generated-mcp` — CP holds the MCP server + its secrets; Worker writes `/opt/tools/...` wrappers. The actual call runs **on the CP** after `CallConnector` + security engine.
-- `python` — git URL + **pinned commit** + which user-secrets it may request. Worker clones. Runtime still uses `silo_runtime`.
-
-Security engine: per bot, per connector, per action — auto-allow, deny, or pause for a human. Audit every decision.
+Not shipped in v1. Keep provider keys off the Bot. Secret access today is `silo_runtime.get_secret` → `GetSecret` with the security engine (allow / deny / ask).
 
 ### Chromium
 
-One headed Chromium on `DISPLAY=:1`, s6-started, persistent `--user-data-dir`, `--remote-debugging-port=9222`. Playwright/CDP **attaches**. Same window as VNC. Python may use `localhost:9222` with no Worker hop — CDP has no secret. No 20-tool browser MCP.
+Not started with the desktop. The dock **Web** item (or `chromium` with the flags in `silo-web.desktop`) launches a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/bot/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. Playwright/CDP attaches when it is running. Python may use `localhost:9222` with no Worker hop — CDP has no secret.
 
 ### Computer use (later)
 

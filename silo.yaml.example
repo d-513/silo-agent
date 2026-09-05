@@ -1,0 +1,14 @@
+http_addr: ":8080"
+data_dir: ./data
+docker_host: unix:///run/user/1000/podman/podman.sock
+cp_url: http://host.containers.internal:8080
+bot_image: localhost/silo-bot:v1
+
+# First admin only. Wipe data/ to recreate. Not OpenRouter.
+bootstrap:
+  email: admin@local
+  password: change-me
+
+# Operator config. Env wins: SILO_OPENROUTER__API_KEY
+openrouter:
+  api_key: ""

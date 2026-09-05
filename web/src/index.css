@@ -1,0 +1,82 @@
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-plaster: #f3f0e8;
+  --color-folio: #fffcf7;
+  --color-cloth: #ede9df;
+  --color-linen: #e4e0d6;
+  --color-thread: #c9c3b6;
+  --color-thread-2: #ddd8ce;
+  --color-iron: #1e2126;
+  --color-stone: #5f5e58;
+  --color-bindery: #2a3f5f;
+  --color-bindery-deep: #1a2a42;
+  --color-bindery-pale: #d7dee8;
+  --color-pine: #3d6f6a;
+  --color-carmine: #a33b4a;
+  --color-hatch: #1e2126;
+  --color-matte: #12141a;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--color-plaster);
+  color: var(--color-iron);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+button {
+  cursor: pointer;
+}
+
+@keyframes lamp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.lamp-working {
+  animation: lamp-pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp-working {
+    animation: none;
+  }
+  button {
+    transition: none;
+  }
+  button:active {
+    transform: none;
+  }
+}
+
+.silo-hatch {
+  min-height: 0;
+}
+.silo-hatch > div {
+  width: 100% !important;
+  height: 100% !important;
+  background: var(--color-matte) !important;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}

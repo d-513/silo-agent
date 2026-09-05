@@ -1,6 +1,6 @@
 ---
 name: Silo
-description: Daylight archive for isolated Bots. Plaster, iron type, bindery blue. Each Bot is a folio with a stamped crest; its desktop is a dark hatch set into the page.
+description: Daylight archive for isolated Bots. Plaster, iron type, bindery blue. Each Bot is a folio with a picked crest; its desktop is a dark hatch set into the page.
 colors:
   surface: '#F3F0E8'
   surface-dim: '#E4E0D6'
@@ -117,17 +117,17 @@ Desktop web app. Light by default. A clerk’s desk looking into sealed machines
 
 The previous pass was a warm kiln (lamp black + ochre). That is retired. No orange, amber, gold, rust, or “safety yellow” anywhere.
 
-Attach `docs/design/silo-bot-crests.png` in Stitch as the Bot icon reference. Dark stamps on plaster.
+Bot crests are flat colored shapes with two small dots, picked on New Bot.
 
 ## 1. Visual Theme & Atmosphere
 
 An archive in daylight. The page is plaster — a cool paper, slightly toothy, never white-hot. Type is iron. The one structural color is **bindery blue**, the ink a bookbinder uses on cloth: deep, dry, a little grey. It is for primary actions, the active rail, and focus. It is not a sky and not a neon link.
 
-Each Bot is a **folio**: a crest (a stamp, not a face), a name, a short last line, a 7px lamp. Open a folio and the live desktop appears as a **hatch** — a dark rectangle set into the plaster, like a night window in a light room. That contrast is the product. The Bot’s machine is the only darkness on the page.
+Each Bot is a **folio**: a crest (a simple colored shape with two dots), a name, a short last line, a 7px lamp. Open a folio and the live desktop appears as a **hatch** — a dark rectangle set into the plaster, like a night window in a light room. That contrast is the product. The Bot’s machine is the only darkness on the page.
 
 When a Bot needs a human, a **carmine ribbon** marks the folio (2px left edge + lamp). Carmine is a wax-seal red, used nowhere else except Deny. Working is pine, a quiet green, lamp only.
 
-No glass, no glow, no gradient, no purple, no orange. No robot mascots. Personality is the crest and the name.
+No glass, no glow, no gradient, no purple, no orange. No 3D robots. Personality is the crest and the name.
 
 ## 2. Color Palette & Roles
 
@@ -152,15 +152,16 @@ No glass, no glow, no gradient, no purple, no orange. No robot mascots. Personal
 
 ### Functional States
 
-- **Idle** — Stone lamp, no fill.
-- **Working** — **Pine** (`#3D6F6A`), small pulse on the lamp only (1.5s, opacity 1 → 0.45).
+- **Online** — **Pine** (`#3D6F6A`) lamp, no pulse. Worker is up. Never label this Idle.
+- **Working** — Pine lamp, small pulse (1.5s, opacity 1 → 0.45).
 - **Needs you** — **Carmine** (`#A33B4A`) lamp + 2px carmine ribbon on the folio’s left edge.
 - **Stopped** — Thread lamp, Stone name.
+- The rail lamp is a pip on the crest corner (cloth ring), not on the account initial.
 - **Deny / error** — Carmine fill, plaster label. Same red as the ribbon, never orange.
 - **MCP badge** — Slate (`#5C6B7A`) cloth chip.
 - **Python badge** — Pine cloth chip.
 
-Crests use only: iron, plaster, bindery, pine, carmine, slate. See the attached sheet.
+Crests are a filled shape plus two small dots — a mark, not a face. Eight shapes. Fills are a rainbow: plaster, brown, carmine, orange, yellow, green, pine, bindery, purple, pink, stone, iron. Palette colors where they already sit on the wheel; plain hues for the rest. Light fills get a thread stroke.
 
 ## 3. Typography Rules
 
@@ -187,6 +188,8 @@ Weights 400–550. No black, no ultra.
 
 Height 36px. Radius 6px. Primary: bindery fill, plaster label. Secondary: Folio fill, Thread border, iron label. Ghost: Stone label, iron on hover. Deny: carmine fill, plaster label — approval slip only.
 
+Start, Stop, and Send nest a 20px square glyph on the right (play/power, stop-square, arrow). Press `scale(0.98)`. Focus is 1px bindery, no glow.
+
 No pills. Rail icons are 40px hits with tooltips.
 
 ### Folio cards (Bots)
@@ -194,7 +197,7 @@ No pills. Rail icons are 40px hits with tooltips.
 Not dashboard tiles.
 
 - Folio fill, 10px radius, 1px Thread.
-- Left: 56px crest (dark stamp, 14px radius).
+- Left: 56px crest (the shape, no plate).
 - Name, one-line last task in Stone, 7px lamp.
 - Hover: border to `#B9B3A6`. No shadow, no lift.
 - Needs you: 2px carmine ribbon on the left edge only.
@@ -203,9 +206,9 @@ Empty archive: outline of a crest, display line “No Bots yet”, one bindery b
 
 ### Navigation
 
-64px rail, Cloth, Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Items: **Bots**, **Admin**. Bottom: user initial in a 28px iron-on-linen circle.
+64px rail, Cloth, Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Then **Bots**, a scrollable stack of 28px crests (one per Bot), **+** for New Bot, **Admin**. Bottom: user initial in a 28px iron-on-linen circle. No names in the rail; `title` tooltips only.
 
-Active: Bindery Pale well, 2px bindery bar on the left of the icon. Icons 20px, 1.75 stroke, iron.
+Active home/Admin: Bindery Pale well, 2px bindery bar on the left of the icon. Active crest: same well + bar. Needs you: 2px carmine ribbon instead of the bindery bar, plus the lamp. Icons 20px, 1.75 stroke, iron. Crest lamp is 7px on the shape.
 
 ### Inputs
 
@@ -215,9 +218,9 @@ Secret values never render. `••••••••` in mono. No eye. No copy.
 
 ### Bot crests
 
-Generated from the Bot’s name (stable hash → mark + two colors from the closed set). Maker’s stamps. Reference: `docs/design/silo-bot-crests.png`.
+Picked on New Bot: one of eight silhouettes (circle, blob, squircle, pill, triangle, hex, cloud, drop) and a rainbow of fills. Same two small dots on every shape. Packed as `color * 8 + shape` in the `crest` int.
 
-Sizes: 28 / 56 / 72. The lamp is never a substitute for the crest. “New crest” is a text button on New Bot, not a slot machine.
+Sizes: 20 / 28 / 56 / 88. The lamp is never a substitute for the crest. No generate / upload.
 
 ### The hatch (desktop)
 
@@ -241,9 +244,9 @@ A 400px Folio panel from the right, Thread on the left. Paper, not a modal dim-t
 
 No `confirm()`. No toast.
 
-### Thread (run)
+### Thread (chat)
 
-Left column. Not a marketing chat.
+The Chat tab. Not a marketing chat.
 
 - User: iron, no bubble, 4px bindery bar on the left.
 - Assistant: Stone-to-iron, no bubble.
@@ -252,7 +255,7 @@ Left column. Not a marketing chat.
 
 ### Status lamp
 
-7px circle. Color = state. Working is the only pulse.
+7px circle on the crest corner (cloth ring), never on the account initial. Color = state. Online is pine, solid. Working is the only pulse.
 
 ## 5. Layout Principles
 
@@ -264,7 +267,7 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot run:** header 56px (crest, name, lamp, tabs). Body: thread 400–440 | hatch `1fr`. Tabs: `Run`, `Desktop`, `Connectors`, `Secrets`, `Rules`. `Desktop` gives the hatch the full main column.
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start/Stop). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Secrets`, `Rules`. The hatch lives only on `Desktop`, full main column.
 
 **Settings / admin:** header + one 720–800px column. Lists.
 
@@ -332,7 +335,7 @@ No hero, no marketing line, no gradient, no orange.
 **2 · Bots**
 
 ```
-Desktop web, 1440 wide. 64px left rail on cloth (Silo mark, Bots active, Admin, user initial at bottom).
+Desktop web, 1440 wide. 64px left rail on cloth (Silo mark, Bots active, crest stack, +, Admin, user initial at bottom).
 Main plaster: header “Bots” left, primary “New Bot” right.
 Stone subtitle: “Machines you can open.”
 A 3-column grid of folio cards. Six Bots. Use the attached crests. Each has a name, one-line last task, 7px lamp.
@@ -353,32 +356,30 @@ No KPI row. No search. No orange. The hatch is not on this screen.
 ```
 Same shell. Main column 560px on plaster.
 Title: New Bot.
-A 72px crest preview (kettle mark from the sheet) and a text button “New crest”.
+An 88px crest preview, then a folio picker: 4×2 shapes, a row of color dots. Bindery ring on the active shape and color.
 Field: Name (placeholder “Scout”).
 Stone hint: “A Bot is its own machine. It does not share files with the others.”
 Primary: Create Bot. Ghost: Cancel.
 No model picker, no tags, no orange.
 ```
 
-**4 · Bot · Run**
+**4 · Bot · Chat**
 
 ```
-Same shell. Header 56px: fox crest, “Scout”, pine lamp, “Working”, tabs (Run active, Desktop, Connectors, Secrets, Rules).
-Body split: left thread 420px on plaster; right a dark iron hatch.
+Same shell. Header 56px: fox crest, “Scout”, pine lamp, “Working”, tabs (Chat active, Desktop, Secrets, Rules), Stop.
+Body split: left 240px chats list on cloth; thread on plaster. No hatch on this tab.
 
 Thread:
 - User: “Log into the vendor site and download last month’s invoice.”
 - Tool row: browser_snapshot · running
 - Assistant: “The login page is up. There’s a captcha. I need you on the desktop.”
 - Composer: “Ask this Bot…”
-
-Hatch: iron bezel, top strip “Scout · Desktop · Working” in plaster-on-iron. Inside: a real Chrome window on a vendor login with a captcha — a night window in a light room, not a website card.
 ```
 
-**5 · Bot · Run · Needs you**
+**5 · Bot · Chat · Needs you**
 
 ```
-Same Scout run screen.
+Same Scout chat screen.
 A 400px folio slip from the right. Plaster/folio, not a black overlay.
 Header: crest, Scout, “Needs you” in carmine.
 Mono: secrets.get
@@ -386,7 +387,7 @@ Cloth block:
   name: vendor_password
 Stone: “Run #1842 is waiting.”
 Buttons: Allow once (bindery), Always allow this action (secondary), Deny (carmine).
-Thread and hatch stay visible, slightly dimmed. No orange.
+Thread stays visible, slightly dimmed. No orange.
 ```
 
 **6 · Bot · Desktop**
@@ -470,6 +471,6 @@ If Stitch adds KPI cards, a warm accent, or a sky-blue hover, remove them.
 - Purple, cyan, electric green.
 - Inter, Geist, Space Grotesk. Plex only.
 - Glass, blur, drop shadows, gradient text.
-- Avatar faces, 3D robots.
+- 3D robots, illustrated mascots. Two-dot eyes on a flat shape are the crest, not a face library.
 - Showing a secret.
 - A marketing landing page.

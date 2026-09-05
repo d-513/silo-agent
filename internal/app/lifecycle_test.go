@@ -1,0 +1,252 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/db"
+	"silo.agent/internal/dockerx"
+)
+
+func memDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	gdb, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.AutoMigrate(
+		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
+		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Setting{}, &db.Audit{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	return gdb
+}
+
+type fakeHost struct {
+	mu         sync.Mutex
+	inspect    map[string]dockerx.State
+	inspectErr error
+	creates    atomic.Int32
+	drops      atomic.Int32
+}
+
+func (f *fakeHost) Inspect(_ context.Context, id string) (dockerx.State, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.inspectErr != nil {
+		return dockerx.State{}, f.inspectErr
+	}
+	if st, ok := f.inspect[id]; ok {
+		return st, nil
+	}
+	return dockerx.State{}, dockerx.ErrNotFound
+}
+
+func (f *fakeHost) Create(_ context.Context, botID, _ string) (string, error) {
+	f.creates.Add(1)
+	id := "cid-" + botID
+	f.mu.Lock()
+	if f.inspect == nil {
+		f.inspect = map[string]dockerx.State{}
+	}
+	st := dockerx.State{ID: id, Running: true}
+	f.inspect[id] = st
+	f.inspect[dockerx.Name(botID)] = st
+	f.mu.Unlock()
+	return id, nil
+}
+
+func (f *fakeHost) Start(context.Context, string) error { return nil }
+func (f *fakeHost) Stop(context.Context, string) error  { return nil }
+func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
+
+func testApp(t *testing.T, d dockerx.Host) *App {
+	t.Helper()
+	if d == nil {
+		d = &fakeHost{}
+	}
+	return New(nil, memDB(t), d)
+}
+
+func TestDeriveStatus(t *testing.T) {
+	cases := []struct {
+		conn, run bool
+		db, want  string
+	}{
+		{true, true, "working", "working"},
+		{true, true, "needs_you", "needs_you"},
+		{true, true, "starting", "online"},
+		{true, false, "stopped", "online"},
+		{false, true, "idle", "starting"},
+		{true, true, "idle", "online"},
+		{false, false, "starting", "stopped"},
+		{false, false, "working", "stopped"},
+	}
+	for _, c := range cases {
+		if got := DeriveStatus(c.conn, c.run, c.db); got != c.want {
+			t.Fatalf("conn=%v run=%v db=%s got %s want %s", c.conn, c.run, c.db, got, c.want)
+		}
+	}
+}
+
+func TestLiveInspectErrorPreservesContainer(t *testing.T) {
+	h := &fakeHost{inspectErr: errors.New("podman busy"), inspect: map[string]dockerx.State{}}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", ContainerID: "abc", Status: "online"}
+	a.DB.Create(b)
+	if !a.live(context.Background(), b) {
+		t.Fatal("expected live on inspect error")
+	}
+	if h.drops.Load() != 0 {
+		t.Fatal("dropped on transient error")
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.ContainerID != "abc" {
+		t.Fatalf("cleared id %q", b.ContainerID)
+	}
+}
+
+func TestLiveNotFoundClears(t *testing.T) {
+	a := testApp(t, &fakeHost{})
+	b := &db.Bot{ID: "bot1", ContainerID: "gone", Status: "online"}
+	a.DB.Create(b)
+	if a.live(context.Background(), b) {
+		t.Fatal("expected gone")
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.ContainerID != "" {
+		t.Fatalf("id %q", b.ContainerID)
+	}
+}
+
+func TestEnsureRunningSerial(t *testing.T) {
+	h := &fakeHost{}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", Status: "stopped"}
+	a.DB.Create(b)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var row db.Bot
+			a.DB.First(&row, "id = ?", "bot1")
+			if err := a.ensureRunning(context.Background(), &row); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if h.creates.Load() != 1 {
+		t.Fatalf("creates %d", h.creates.Load())
+	}
+}
+
+func TestRecoverOrphans(t *testing.T) {
+	gdb := memDB(t)
+	gdb.Create(&db.Run{ID: "r1", BotID: "b", Status: "running"})
+	gdb.Create(&db.Approval{ID: "a1", BotID: "b", Status: "pending"})
+	New(nil, gdb, &fakeHost{})
+	var r db.Run
+	gdb.First(&r, "id = ?", "r1")
+	if r.Status != "interrupted" {
+		t.Fatalf("run %s", r.Status)
+	}
+	var ap db.Approval
+	gdb.First(&ap, "id = ?", "a1")
+	if ap.Status != "interrupted" {
+		t.Fatalf("approval %s", ap.Status)
+	}
+}
+
+func TestRunOfCmd(t *testing.T) {
+	a := testApp(t, nil)
+	a.mu.Lock()
+	a.cmdRun["c1"] = "r1"
+	a.mu.Unlock()
+	if a.runOfCmd("c1") != "r1" || a.runOfCmd("x") != "" {
+		t.Fatal("cmd map")
+	}
+}
+
+func TestEventsAfter(t *testing.T) {
+	rows := []db.RunEvent{{ID: "a"}, {ID: "b"}, {ID: "c"}}
+	got := eventsAfter(rows, "a")
+	if len(got) != 2 || got[0].ID != "b" || got[1].ID != "c" {
+		t.Fatalf("%+v", got)
+	}
+	if len(eventsAfter(rows, "")) != 3 {
+		t.Fatal("empty after")
+	}
+}
+
+func TestBusOverflowCloses(t *testing.T) {
+	b := newBus()
+	ch, unsub := b.Subscribe("bot")
+	defer unsub()
+	for i := 0; i < 300; i++ {
+		b.Publish("bot", &v1.RunEvent{Id: "e"})
+	}
+	drained := 0
+	for range ch {
+		drained++
+	}
+	if drained == 0 {
+		t.Fatal("expected some events then close")
+	}
+}
+
+func TestRecomputeStatusParallelRuns(t *testing.T) {
+	a := testApp(t, nil)
+	a.DB.Create(&db.Bot{ID: "b1", Status: "idle"})
+	a.DB.Create(&db.Run{ID: "r1", BotID: "b1", Status: "running"})
+	a.DB.Create(&db.Run{ID: "r2", BotID: "b1", Status: "running"})
+	a.finish("b1", "c", "r1", "done")
+	var bot db.Bot
+	a.DB.First(&bot, "id = ?", "b1")
+	if bot.Status != "working" {
+		t.Fatalf("status %s", bot.Status)
+	}
+	a.finish("b1", "c", "r2", "done")
+	a.DB.First(&bot, "id = ?", "b1")
+	if bot.Status != "idle" {
+		t.Fatalf("status %s", bot.Status)
+	}
+}
+
+func TestApprovalWaiterRemoved(t *testing.T) {
+	a := testApp(t, nil)
+	ch := make(chan string, 1)
+	a.mu.Lock()
+	a.approvals["ap"] = &waiter{ch: ch, botID: "b1"}
+	a.mu.Unlock()
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	a.DB.Create(&db.User{ID: "u", Email: "a@b.c"})
+	a.dropWaiter("ap")
+	a.mu.Lock()
+	_, ok := a.approvals["ap"]
+	a.mu.Unlock()
+	if ok {
+		t.Fatal("waiter remains")
+	}
+}
+
+func TestEmitPersists(t *testing.T) {
+	a := testApp(t, nil)
+	a.emit("b", "c", "r", "chunk", "hi", "")
+	var n int64
+	a.DB.Model(&db.RunEvent{}).Count(&n)
+	if n != 1 {
+		t.Fatalf("events %d", n)
+	}
+}

@@ -1,0 +1,2 @@
+feh --bg-fill /opt/silo/wallpaper.png &
+tint2 &
