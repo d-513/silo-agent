@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -64,11 +66,19 @@ func main() {
 	go w.vncLoop(client)
 
 	for {
-		if err := w.commands(client); err != nil {
+		err := w.commands(client)
+		if err != nil {
 			log.Printf("commands: %v", err)
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(reconnectWait(err))
 	}
+}
+
+func reconnectWait(err error) time.Duration {
+	if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
+		return 15 * time.Second
+	}
+	return 2 * time.Second
 }
 
 type tokenI struct{ tok string }
@@ -205,17 +215,30 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 			return "", err
 		}
 		s := string(raw)
-		if !strings.Contains(s, b.FilePatch.GetOldText()) {
+		old := b.FilePatch.GetOldText()
+		n := strings.Count(s, old)
+		if n == 0 {
 			return "", errors.New("old_text not found")
 		}
-		s = strings.Replace(s, b.FilePatch.GetOldText(), b.FilePatch.GetNewText(), 1)
+		if n > 1 {
+			return "", fmt.Errorf("old_text matches %d times; make it unique", n)
+		}
+		s = strings.Replace(s, old, b.FilePatch.GetNewText(), 1)
 		return "ok", os.WriteFile(p, []byte(s), 0o644)
 	case *v1.Cmd_Grep:
 		path := b.Grep.GetPath()
 		if path == "" {
 			path = "."
 		}
-		return w.shell(ctx, cmd.GetRunId(), "grep -R -n -- "+shellQuote(b.Grep.GetPattern())+" "+shellQuote(path), chunk)
+		q := "grep -R -n"
+		if inc := b.Grep.GetInclude(); inc != "" {
+			q += " --include=" + shellQuote(inc)
+		}
+		q += " -- " + shellQuote(b.Grep.GetPattern()) + " " + shellQuote(path)
+		if max := b.Grep.GetMaxHits(); max > 0 {
+			q += fmt.Sprintf(" | head -n %d", max)
+		}
+		return w.shell(ctx, cmd.GetRunId(), q, chunk)
 	case *v1.Cmd_Cancel:
 		w.cancelJob(b.Cancel.GetCmdId())
 		return "ok", nil
@@ -223,6 +246,12 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.listDir(b.DirList.GetPath())
 	case *v1.Cmd_BrowseFile:
 		return w.browseFile(b.BrowseFile.GetPath())
+	case *v1.Cmd_Mkdir:
+		return w.mkdir(b.Mkdir.GetPath())
+	case *v1.Cmd_Remove:
+		return w.remove(b.Remove.GetPath())
+	case *v1.Cmd_PutFile:
+		return w.putFile(b.PutFile.GetPath(), b.PutFile.GetData())
 	default:
 		return "", errors.New("unknown cmd")
 	}
@@ -244,7 +273,7 @@ func (w *worker) resolve(p string) (string, error) {
 	return full, nil
 }
 
-const browseLimit = 512 * 1024
+const browseLimit = 2 << 20
 
 type dirEnt struct {
 	Name     string `json:"name"`
@@ -257,6 +286,7 @@ type dirEnt struct {
 type fileView struct {
 	Name      string `json:"name"`
 	Content   string `json:"content"`
+	Data      string `json:"data"`
 	Binary    bool   `json:"binary"`
 	Truncated bool   `json:"truncated"`
 	Size      int64  `json:"size"`
@@ -334,7 +364,12 @@ func (w *worker) browseFile(p string) (string, error) {
 	if n > browseLimit {
 		raw = raw[:browseLimit]
 	}
-	view := fileView{Name: filepath.Base(full), Size: st.Size(), Truncated: trunc}
+	view := fileView{
+		Name:      filepath.Base(full),
+		Size:      st.Size(),
+		Truncated: trunc,
+		Data:      base64.StdEncoding.EncodeToString(raw),
+	}
 	if bytes.IndexByte(raw, 0) >= 0 {
 		view.Binary = true
 	} else {
@@ -345,6 +380,48 @@ func (w *worker) browseFile(p string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func (w *worker) mkdir(p string) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "", errors.New("path required")
+	}
+	full, err := w.resolve(p)
+	if err != nil {
+		return "", err
+	}
+	return "ok", os.MkdirAll(full, 0o755)
+}
+
+func (w *worker) remove(p string) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "", errors.New("cannot remove workspace root")
+	}
+	full, err := w.resolve(p)
+	if err != nil {
+		return "", err
+	}
+	if full == w.workspace {
+		return "", errors.New("cannot remove workspace root")
+	}
+	return "ok", os.RemoveAll(full)
+}
+
+func (w *worker) putFile(p string, data []byte) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "", errors.New("path required")
+	}
+	if len(data) > browseLimit {
+		return "", fmt.Errorf("file too large (%d bytes, max %d)", len(data), browseLimit)
+	}
+	full, err := w.resolve(p)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return "", err
+	}
+	return "ok", os.WriteFile(full, data, 0o644)
 }
 
 func (w *worker) childEnv(runID string) []string {
@@ -440,10 +517,15 @@ func (w *worker) getSecret(ctx context.Context, name, runID string) (string, err
 
 func (w *worker) vncLoop(client silov1connect.BotWorkerClient) {
 	for {
-		if err := w.vncOnce(client); err != nil {
+		err := w.vncOnce(client)
+		if err != nil {
 			log.Printf("vnc: %v", err)
 		}
-		time.Sleep(300 * time.Millisecond)
+		d := 300 * time.Millisecond
+		if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
+			d = 15 * time.Second
+		}
+		time.Sleep(d)
 	}
 }
 

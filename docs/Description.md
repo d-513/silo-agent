@@ -115,7 +115,7 @@ The model can still exfiltrate a secret it already holds. We do not try to stop 
 
 **The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
 
-First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), maybe `browser_snapshot`. Connectors are discovered on disk.
+First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. Connectors are discovered on disk.
 
 ## Tools
 

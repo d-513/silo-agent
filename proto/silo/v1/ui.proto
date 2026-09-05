@@ -11,7 +11,9 @@ service UI {
 
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
+  rpc UpdateBot(UpdateBotRequest) returns (Bot);
   rpc GetBot(GetBotRequest) returns (Bot);
+  rpc GetContainer(GetBotRequest) returns (Container);
   rpc StartBot(GetBotRequest) returns (Bot);
   rpc StopBot(GetBotRequest) returns (Bot);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
@@ -36,6 +38,9 @@ service UI {
 
   rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  rpc Mkdir(MkdirRequest) returns (FileOpResponse);
+  rpc RemoveFile(RemoveFileRequest) returns (FileOpResponse);
+  rpc PutFile(PutFileRequest) returns (FileOpResponse);
 
   rpc GetSettings(GetSettingsRequest) returns (Settings);
   rpc PutSettings(PutSettingsRequest) returns (Settings);
@@ -75,6 +80,9 @@ message Bot {
   string last_task = 4;
   int32 crest = 5;
   bool worker_connected = 6;
+  string description = 7;
+  string soul = 8;
+  string memory = 9;
 }
 
 message ListBotsRequest {}
@@ -86,10 +94,26 @@ message ListBotsResponse {
 message CreateBotRequest {
   string name = 1;
   int32 crest = 2;
+  string description = 3;
+}
+
+message UpdateBotRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string soul = 4;
+  string memory = 5;
 }
 
 message GetBotRequest {
   string id = 1;
+}
+
+message Container {
+  bool running = 1;
+  double cpu_percent = 2;
+  int64 mem_used = 3;
+  int64 mem_limit = 4;
 }
 
 message DeleteBotResponse {}
@@ -180,6 +204,11 @@ message DeleteSecretRequest {
 
 message DeleteSecretResponse {}
 
+message ApprovalField {
+  string label = 1;
+  string value = 2;
+}
+
 message Approval {
   string id = 1;
   string bot_id = 2;
@@ -188,6 +217,9 @@ message Approval {
   string action = 5;
   string args_json = 6;
   string status = 7;
+  string title = 8;
+  string summary = 9;
+  repeated ApprovalField fields = 10;
 }
 
 message ListApprovalsRequest {
@@ -254,7 +286,26 @@ message ReadFileResponse {
   bool binary = 3;
   bool truncated = 4;
   int64 size = 5;
+  bytes data = 6;
 }
+
+message MkdirRequest {
+  string bot_id = 1;
+  string path = 2;
+}
+
+message RemoveFileRequest {
+  string bot_id = 1;
+  string path = 2;
+}
+
+message PutFileRequest {
+  string bot_id = 1;
+  string path = 2;
+  bytes data = 3;
+}
+
+message FileOpResponse {}
 
 message Settings {
   string model = 1;

@@ -2,13 +2,29 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"connectrpc.com/connect"
+	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/masker"
 )
+
+func TestReconnectWaitUnauth(t *testing.T) {
+	if reconnectWait(nil) != 2*time.Second {
+		t.Fatal("ok")
+	}
+	if reconnectWait(errors.New("x")) != 2*time.Second {
+		t.Fatal("other")
+	}
+	if reconnectWait(connect.NewError(connect.CodeUnauthenticated, nil)) != 15*time.Second {
+		t.Fatal("unauth")
+	}
+}
 
 func TestCancelJob(t *testing.T) {
 	w := &worker{pending: map[string]*job{}, mask: masker.New()}
@@ -60,6 +76,26 @@ func TestSendSerializes(t *testing.T) {
 	<-done
 }
 
+func TestPatchUnique(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("aa x aa"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{workspace: dir}
+	_, err := w.exec(context.Background(), &v1.Cmd{Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{
+		Path: "f.txt", OldText: "aa", NewText: "bb",
+	}}}, func(string) {})
+	if err == nil || !strings.Contains(err.Error(), "2 times") {
+		t.Fatalf("got %v", err)
+	}
+	out, err := w.exec(context.Background(), &v1.Cmd{Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{
+		Path: "f.txt", OldText: "aa x aa", NewText: "ok",
+	}}}, func(string) {})
+	if err != nil || out != "ok" {
+		t.Fatalf("%q %v", out, err)
+	}
+}
+
 func TestListDirAndBrowse(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("hi"), 0o644); err != nil {
@@ -83,7 +119,34 @@ func TestListDirAndBrowse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(view, `"content":"hi"`) {
+	if !strings.Contains(view, `"content":"hi"`) || !strings.Contains(view, `"data":`) {
 		t.Fatal(view)
+	}
+}
+
+func TestFsMkdirPutRemove(t *testing.T) {
+	dir := t.TempDir()
+	w := &worker{workspace: dir}
+	if _, err := w.mkdir("a/b"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.putFile("a/b/n.txt", []byte("ok")); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "a/b/n.txt"))
+	if err != nil || string(raw) != "ok" {
+		t.Fatalf("%q %v", raw, err)
+	}
+	if _, err := w.remove(""); err == nil {
+		t.Fatal("removed root")
+	}
+	if _, err := w.remove("a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a")); !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if _, err := w.mkdir("../x"); err == nil {
+		t.Fatal("escaped")
 	}
 }

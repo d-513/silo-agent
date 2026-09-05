@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file silo/v1/ui.proto.
  */
 export const file_silo_v1_ui: GenFile = /*@__PURE__*/
-  fileDesc("ChBzaWxvL3YxL3VpLnByb3RvEgdzaWxvLnYxIjAKDVNpZ25JblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiPgoOU2lnbkluUmVzcG9uc2USGwoEdXNlchgBIAEoCzINLnNpbG8udjEuVXNlchIPCgdjcmVhdGVkGAIgASgIIhAKDlNpZ25PdXRSZXF1ZXN0IhEKD1NpZ25PdXRSZXNwb25zZSILCglNZVJlcXVlc3QiKQoKTWVSZXNwb25zZRIbCgR1c2VyGAEgASgLMg0uc2lsby52MS5Vc2VyIiEKBFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkiawoDQm90EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhEKCWxhc3RfdGFzaxgEIAEoCRINCgVjcmVzdBgFIAEoBRIYChB3b3JrZXJfY29ubmVjdGVkGAYgASgIIhEKD0xpc3RCb3RzUmVxdWVzdCIuChBMaXN0Qm90c1Jlc3BvbnNlEhoKBGJvdHMYASADKAsyDC5zaWxvLnYxLkJvdCIvChBDcmVhdGVCb3RSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFY3Jlc3QYAiABKAUiGwoNR2V0Qm90UmVxdWVzdBIKCgJpZBgBIAEoCSITChFEZWxldGVCb3RSZXNwb25zZSJFCgRDaGF0EgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRISCgp1cGRhdGVkX2F0GAQgASgJIiIKEExpc3RDaGF0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjEKEUxpc3RDaGF0c1Jlc3BvbnNlEhwKBWNoYXRzGAEgAygLMg0uc2lsby52MS5DaGF0IiMKEUNyZWF0ZUNoYXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI+ChFSZW5hbWVDaGF0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSCgoCaWQYAiABKAkSDQoFdGl0bGUYAyABKAkiLwoRRGVsZXRlQ2hhdFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhQKEkRlbGV0ZUNoYXRSZXNwb25zZSI8CgtTZW5kUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdjaGF0X2lkGAMgASgJIi8KDFNlbmRSZXNwb25zZRIOCgZydW5faWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSJLChBTdHJlYW1SdW5SZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIPCgdjaGF0X2lkGAIgASgJEhYKDmFmdGVyX2V2ZW50X2lkGAMgASgJImEKCFJ1bkV2ZW50Eg4KBnJ1bl9pZBgBIAEoCRIMCgRraW5kGAIgASgJEgwKBGJvZHkYAyABKAkSDAoEdG9vbBgEIAEoCRIPCgdjaGF0X2lkGAUgASgJEgoKAmlkGAYgASgJIlAKClNlY3JldE1ldGESCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgpjcmVhdGVkX2F0GAMgASgJEhQKDGxhc3RfdXNlZF9hdBgEIAEoCSIkChJMaXN0U2VjcmV0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjsKE0xpc3RTZWNyZXRzUmVzcG9uc2USJAoHc2VjcmV0cxgBIAMoCzITLnNpbG8udjEuU2VjcmV0TWV0YSI/ChBBZGRTZWNyZXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXZhbHVlGAMgASgJIjEKE0RlbGV0ZVNlY3JldFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhYKFERlbGV0ZVNlY3JldFJlc3BvbnNlInwKCEFwcHJvdmFsEgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRIOCgZydW5faWQYAyABKAkSEQoJY29ubmVjdG9yGAQgASgJEg4KBmFjdGlvbhgFIAEoCRIRCglhcmdzX2pzb24YBiABKAkSDgoGc3RhdHVzGAcgASgJIiYKFExpc3RBcHByb3ZhbHNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI9ChVMaXN0QXBwcm92YWxzUmVzcG9uc2USJAoJYXBwcm92YWxzGAEgAygLMhEuc2lsby52MS5BcHByb3ZhbCI1ChVEZWNpZGVBcHByb3ZhbFJlcXVlc3QSCgoCaWQYASABKAkSEAoIZGVjaXNpb24YAiABKAkiVwoEUnVsZRIKCgJpZBgBIAEoCRIOCgZib3RfaWQYAiABKAkSEQoJY29ubmVjdG9yGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIQCghkZWNpc2lvbhgFIAEoCSIiChBMaXN0UnVsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSIxChFMaXN0UnVsZXNSZXNwb25zZRIcCgVydWxlcxgBIAMoCzINLnNpbG8udjEuUnVsZSJVCg5TZXRSdWxlUmVxdWVzdBIOCgZib3RfaWQYASABKAkSEQoJY29ubmVjdG9yGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIQCghkZWNpc2lvbhgEIAEoCSJUCglGaWxlRW50cnkSDAoEbmFtZRgBIAEoCRIMCgRwYXRoGAIgASgJEgsKA2RpchgDIAEoCBIMCgRzaXplGAQgASgDEhAKCG1vZGlmaWVkGAUgASgJIjAKEExpc3RGaWxlc1JlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkiOAoRTGlzdEZpbGVzUmVzcG9uc2USIwoHZW50cmllcxgBIAMoCzISLnNpbG8udjEuRmlsZUVudHJ5Ii8KD1JlYWRGaWxlUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEcGF0aBgCIAEoCSJiChBSZWFkRmlsZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDwoHY29udGVudBgCIAEoCRIOCgZiaW5hcnkYAyABKAgSEQoJdHJ1bmNhdGVkGAQgASgIEgwKBHNpemUYBSABKAMiPwoIU2V0dGluZ3MSDQoFbW9kZWwYASABKAkSEwoLaGFzX2FwaV9rZXkYAiABKAgSDwoHYXBpX2tleRgDIAEoCSIUChJHZXRTZXR0aW5nc1JlcXVlc3QiNAoSUHV0U2V0dGluZ3NSZXF1ZXN0Eg0KBW1vZGVsGAEgASgJEg8KB2FwaV9rZXkYAiABKAkihAEKCEF1ZGl0Um93EgoKAmlkGAEgASgJEgoKAmF0GAIgASgJEg4KBmJvdF9pZBgDIAEoCRIQCghib3RfbmFtZRgEIAEoCRINCgVjcmVzdBgFIAEoBRINCgVhY3RvchgGIAEoCRIOCgZhY3Rpb24YByABKAkSEAoIZGVjaXNpb24YCCABKAkiEgoQTGlzdEF1ZGl0UmVxdWVzdCI0ChFMaXN0QXVkaXRSZXNwb25zZRIfCgRyb3dzGAEgAygLMhEuc2lsby52MS5BdWRpdFJvdzKNDQoCVUkSOQoGU2lnbkluEhYuc2lsby52MS5TaWduSW5SZXF1ZXN0Ghcuc2lsby52MS5TaWduSW5SZXNwb25zZRI8CgdTaWduT3V0Ehcuc2lsby52MS5TaWduT3V0UmVxdWVzdBoYLnNpbG8udjEuU2lnbk91dFJlc3BvbnNlEi0KAk1lEhIuc2lsby52MS5NZVJlcXVlc3QaEy5zaWxvLnYxLk1lUmVzcG9uc2USPwoITGlzdEJvdHMSGC5zaWxvLnYxLkxpc3RCb3RzUmVxdWVzdBoZLnNpbG8udjEuTGlzdEJvdHNSZXNwb25zZRI0CglDcmVhdGVCb3QSGS5zaWxvLnYxLkNyZWF0ZUJvdFJlcXVlc3QaDC5zaWxvLnYxLkJvdBIuCgZHZXRCb3QSFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaDC5zaWxvLnYxLkJvdBIwCghTdGFydEJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoMLnNpbG8udjEuQm90Ei8KB1N0b3BCb3QSFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaDC5zaWxvLnYxLkJvdBI/CglEZWxldGVCb3QSFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaGi5zaWxvLnYxLkRlbGV0ZUJvdFJlc3BvbnNlEkIKCUxpc3RDaGF0cxIZLnNpbG8udjEuTGlzdENoYXRzUmVxdWVzdBoaLnNpbG8udjEuTGlzdENoYXRzUmVzcG9uc2USNwoKQ3JlYXRlQ2hhdBIaLnNpbG8udjEuQ3JlYXRlQ2hhdFJlcXVlc3QaDS5zaWxvLnYxLkNoYXQSNwoKUmVuYW1lQ2hhdBIaLnNpbG8udjEuUmVuYW1lQ2hhdFJlcXVlc3QaDS5zaWxvLnYxLkNoYXQSRQoKRGVsZXRlQ2hhdBIaLnNpbG8udjEuRGVsZXRlQ2hhdFJlcXVlc3QaGy5zaWxvLnYxLkRlbGV0ZUNoYXRSZXNwb25zZRIzCgRTZW5kEhQuc2lsby52MS5TZW5kUmVxdWVzdBoVLnNpbG8udjEuU2VuZFJlc3BvbnNlEjsKCVN0cmVhbVJ1bhIZLnNpbG8udjEuU3RyZWFtUnVuUmVxdWVzdBoRLnNpbG8udjEuUnVuRXZlbnQwARJICgtMaXN0U2VjcmV0cxIbLnNpbG8udjEuTGlzdFNlY3JldHNSZXF1ZXN0Ghwuc2lsby52MS5MaXN0U2VjcmV0c1Jlc3BvbnNlEjsKCUFkZFNlY3JldBIZLnNpbG8udjEuQWRkU2VjcmV0UmVxdWVzdBoTLnNpbG8udjEuU2VjcmV0TWV0YRJLCgxEZWxldGVTZWNyZXQSHC5zaWxvLnYxLkRlbGV0ZVNlY3JldFJlcXVlc3QaHS5zaWxvLnYxLkRlbGV0ZVNlY3JldFJlc3BvbnNlEk4KDUxpc3RBcHByb3ZhbHMSHS5zaWxvLnYxLkxpc3RBcHByb3ZhbHNSZXF1ZXN0Gh4uc2lsby52MS5MaXN0QXBwcm92YWxzUmVzcG9uc2USQwoORGVjaWRlQXBwcm92YWwSHi5zaWxvLnYxLkRlY2lkZUFwcHJvdmFsUmVxdWVzdBoRLnNpbG8udjEuQXBwcm92YWwSQgoJTGlzdFJ1bGVzEhkuc2lsby52MS5MaXN0UnVsZXNSZXF1ZXN0Ghouc2lsby52MS5MaXN0UnVsZXNSZXNwb25zZRIxCgdTZXRSdWxlEhcuc2lsby52MS5TZXRSdWxlUmVxdWVzdBoNLnNpbG8udjEuUnVsZRJCCglMaXN0RmlsZXMSGS5zaWxvLnYxLkxpc3RGaWxlc1JlcXVlc3QaGi5zaWxvLnYxLkxpc3RGaWxlc1Jlc3BvbnNlEj8KCFJlYWRGaWxlEhguc2lsby52MS5SZWFkRmlsZVJlcXVlc3QaGS5zaWxvLnYxLlJlYWRGaWxlUmVzcG9uc2USPQoLR2V0U2V0dGluZ3MSGy5zaWxvLnYxLkdldFNldHRpbmdzUmVxdWVzdBoRLnNpbG8udjEuU2V0dGluZ3MSPQoLUHV0U2V0dGluZ3MSGy5zaWxvLnYxLlB1dFNldHRpbmdzUmVxdWVzdBoRLnNpbG8udjEuU2V0dGluZ3MSQgoJTGlzdEF1ZGl0Ehkuc2lsby52MS5MaXN0QXVkaXRSZXF1ZXN0Ghouc2lsby52MS5MaXN0QXVkaXRSZXNwb25zZUIfWh1zaWxvLmFnZW50L2dlbi9zaWxvL3YxO3NpbG92MWIGcHJvdG8z");
+  fileDesc("ChBzaWxvL3YxL3VpLnByb3RvEgdzaWxvLnYxIjAKDVNpZ25JblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiPgoOU2lnbkluUmVzcG9uc2USGwoEdXNlchgBIAEoCzINLnNpbG8udjEuVXNlchIPCgdjcmVhdGVkGAIgASgIIhAKDlNpZ25PdXRSZXF1ZXN0IhEKD1NpZ25PdXRSZXNwb25zZSILCglNZVJlcXVlc3QiKQoKTWVSZXNwb25zZRIbCgR1c2VyGAEgASgLMg0uc2lsby52MS5Vc2VyIiEKBFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkingEKA0JvdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIRCglsYXN0X3Rhc2sYBCABKAkSDQoFY3Jlc3QYBSABKAUSGAoQd29ya2VyX2Nvbm5lY3RlZBgGIAEoCBITCgtkZXNjcmlwdGlvbhgHIAEoCRIMCgRzb3VsGAggASgJEg4KBm1lbW9yeRgJIAEoCSIRCg9MaXN0Qm90c1JlcXVlc3QiLgoQTGlzdEJvdHNSZXNwb25zZRIaCgRib3RzGAEgAygLMgwuc2lsby52MS5Cb3QiRAoQQ3JlYXRlQm90UmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWNyZXN0GAIgASgFEhMKC2Rlc2NyaXB0aW9uGAMgASgJIl8KEFVwZGF0ZUJvdFJlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRzb3VsGAQgASgJEg4KBm1lbW9yeRgFIAEoCSIbCg1HZXRCb3RSZXF1ZXN0EgoKAmlkGAEgASgJIlYKCUNvbnRhaW5lchIPCgdydW5uaW5nGAEgASgIEhMKC2NwdV9wZXJjZW50GAIgASgBEhAKCG1lbV91c2VkGAMgASgDEhEKCW1lbV9saW1pdBgEIAEoAyITChFEZWxldGVCb3RSZXNwb25zZSJFCgRDaGF0EgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRISCgp1cGRhdGVkX2F0GAQgASgJIiIKEExpc3RDaGF0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjEKEUxpc3RDaGF0c1Jlc3BvbnNlEhwKBWNoYXRzGAEgAygLMg0uc2lsby52MS5DaGF0IiMKEUNyZWF0ZUNoYXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI+ChFSZW5hbWVDaGF0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSCgoCaWQYAiABKAkSDQoFdGl0bGUYAyABKAkiLwoRRGVsZXRlQ2hhdFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhQKEkRlbGV0ZUNoYXRSZXNwb25zZSI8CgtTZW5kUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdjaGF0X2lkGAMgASgJIi8KDFNlbmRSZXNwb25zZRIOCgZydW5faWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSJLChBTdHJlYW1SdW5SZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIPCgdjaGF0X2lkGAIgASgJEhYKDmFmdGVyX2V2ZW50X2lkGAMgASgJImEKCFJ1bkV2ZW50Eg4KBnJ1bl9pZBgBIAEoCRIMCgRraW5kGAIgASgJEgwKBGJvZHkYAyABKAkSDAoEdG9vbBgEIAEoCRIPCgdjaGF0X2lkGAUgASgJEgoKAmlkGAYgASgJIlAKClNlY3JldE1ldGESCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRISCgpjcmVhdGVkX2F0GAMgASgJEhQKDGxhc3RfdXNlZF9hdBgEIAEoCSIkChJMaXN0U2VjcmV0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjsKE0xpc3RTZWNyZXRzUmVzcG9uc2USJAoHc2VjcmV0cxgBIAMoCzITLnNpbG8udjEuU2VjcmV0TWV0YSI/ChBBZGRTZWNyZXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXZhbHVlGAMgASgJIjEKE0RlbGV0ZVNlY3JldFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhYKFERlbGV0ZVNlY3JldFJlc3BvbnNlIi0KDUFwcHJvdmFsRmllbGQSDQoFbGFiZWwYASABKAkSDQoFdmFsdWUYAiABKAkixAEKCEFwcHJvdmFsEgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRIOCgZydW5faWQYAyABKAkSEQoJY29ubmVjdG9yGAQgASgJEg4KBmFjdGlvbhgFIAEoCRIRCglhcmdzX2pzb24YBiABKAkSDgoGc3RhdHVzGAcgASgJEg0KBXRpdGxlGAggASgJEg8KB3N1bW1hcnkYCSABKAkSJgoGZmllbGRzGAogAygLMhYuc2lsby52MS5BcHByb3ZhbEZpZWxkIiYKFExpc3RBcHByb3ZhbHNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI9ChVMaXN0QXBwcm92YWxzUmVzcG9uc2USJAoJYXBwcm92YWxzGAEgAygLMhEuc2lsby52MS5BcHByb3ZhbCI1ChVEZWNpZGVBcHByb3ZhbFJlcXVlc3QSCgoCaWQYASABKAkSEAoIZGVjaXNpb24YAiABKAkiVwoEUnVsZRIKCgJpZBgBIAEoCRIOCgZib3RfaWQYAiABKAkSEQoJY29ubmVjdG9yGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIQCghkZWNpc2lvbhgFIAEoCSIiChBMaXN0UnVsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSIxChFMaXN0UnVsZXNSZXNwb25zZRIcCgVydWxlcxgBIAMoCzINLnNpbG8udjEuUnVsZSJVCg5TZXRSdWxlUmVxdWVzdBIOCgZib3RfaWQYASABKAkSEQoJY29ubmVjdG9yGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIQCghkZWNpc2lvbhgEIAEoCSJUCglGaWxlRW50cnkSDAoEbmFtZRgBIAEoCRIMCgRwYXRoGAIgASgJEgsKA2RpchgDIAEoCBIMCgRzaXplGAQgASgDEhAKCG1vZGlmaWVkGAUgASgJIjAKEExpc3RGaWxlc1JlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkiOAoRTGlzdEZpbGVzUmVzcG9uc2USIwoHZW50cmllcxgBIAMoCzISLnNpbG8udjEuRmlsZUVudHJ5Ii8KD1JlYWRGaWxlUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEcGF0aBgCIAEoCSJwChBSZWFkRmlsZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDwoHY29udGVudBgCIAEoCRIOCgZiaW5hcnkYAyABKAgSEQoJdHJ1bmNhdGVkGAQgASgIEgwKBHNpemUYBSABKAMSDAoEZGF0YRgGIAEoDCIsCgxNa2RpclJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkiMQoRUmVtb3ZlRmlsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkiPAoOUHV0RmlsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkSDAoEZGF0YRgDIAEoDCIQCg5GaWxlT3BSZXNwb25zZSI/CghTZXR0aW5ncxINCgVtb2RlbBgBIAEoCRITCgtoYXNfYXBpX2tleRgCIAEoCBIPCgdhcGlfa2V5GAMgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCI0ChJQdXRTZXR0aW5nc1JlcXVlc3QSDQoFbW9kZWwYASABKAkSDwoHYXBpX2tleRgCIAEoCSKEAQoIQXVkaXRSb3cSCgoCaWQYASABKAkSCgoCYXQYAiABKAkSDgoGYm90X2lkGAMgASgJEhAKCGJvdF9uYW1lGAQgASgJEg0KBWNyZXN0GAUgASgFEg0KBWFjdG9yGAYgASgJEg4KBmFjdGlvbhgHIAEoCRIQCghkZWNpc2lvbhgIIAEoCSISChBMaXN0QXVkaXRSZXF1ZXN0IjQKEUxpc3RBdWRpdFJlc3BvbnNlEh8KBHJvd3MYASADKAsyES5zaWxvLnYxLkF1ZGl0Um93MrgPCgJVSRI5CgZTaWduSW4SFi5zaWxvLnYxLlNpZ25JblJlcXVlc3QaFy5zaWxvLnYxLlNpZ25JblJlc3BvbnNlEjwKB1NpZ25PdXQSFy5zaWxvLnYxLlNpZ25PdXRSZXF1ZXN0Ghguc2lsby52MS5TaWduT3V0UmVzcG9uc2USLQoCTWUSEi5zaWxvLnYxLk1lUmVxdWVzdBoTLnNpbG8udjEuTWVSZXNwb25zZRI/CghMaXN0Qm90cxIYLnNpbG8udjEuTGlzdEJvdHNSZXF1ZXN0Ghkuc2lsby52MS5MaXN0Qm90c1Jlc3BvbnNlEjQKCUNyZWF0ZUJvdBIZLnNpbG8udjEuQ3JlYXRlQm90UmVxdWVzdBoMLnNpbG8udjEuQm90EjQKCVVwZGF0ZUJvdBIZLnNpbG8udjEuVXBkYXRlQm90UmVxdWVzdBoMLnNpbG8udjEuQm90Ei4KBkdldEJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoMLnNpbG8udjEuQm90EjoKDEdldENvbnRhaW5lchIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoSLnNpbG8udjEuQ29udGFpbmVyEjAKCFN0YXJ0Qm90EhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSLwoHU3RvcEJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoMLnNpbG8udjEuQm90Ej8KCURlbGV0ZUJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoaLnNpbG8udjEuRGVsZXRlQm90UmVzcG9uc2USQgoJTGlzdENoYXRzEhkuc2lsby52MS5MaXN0Q2hhdHNSZXF1ZXN0Ghouc2lsby52MS5MaXN0Q2hhdHNSZXNwb25zZRI3CgpDcmVhdGVDaGF0Ehouc2lsby52MS5DcmVhdGVDaGF0UmVxdWVzdBoNLnNpbG8udjEuQ2hhdBI3CgpSZW5hbWVDaGF0Ehouc2lsby52MS5SZW5hbWVDaGF0UmVxdWVzdBoNLnNpbG8udjEuQ2hhdBJFCgpEZWxldGVDaGF0Ehouc2lsby52MS5EZWxldGVDaGF0UmVxdWVzdBobLnNpbG8udjEuRGVsZXRlQ2hhdFJlc3BvbnNlEjMKBFNlbmQSFC5zaWxvLnYxLlNlbmRSZXF1ZXN0GhUuc2lsby52MS5TZW5kUmVzcG9uc2USOwoJU3RyZWFtUnVuEhkuc2lsby52MS5TdHJlYW1SdW5SZXF1ZXN0GhEuc2lsby52MS5SdW5FdmVudDABEkgKC0xpc3RTZWNyZXRzEhsuc2lsby52MS5MaXN0U2VjcmV0c1JlcXVlc3QaHC5zaWxvLnYxLkxpc3RTZWNyZXRzUmVzcG9uc2USOwoJQWRkU2VjcmV0Ehkuc2lsby52MS5BZGRTZWNyZXRSZXF1ZXN0GhMuc2lsby52MS5TZWNyZXRNZXRhEksKDERlbGV0ZVNlY3JldBIcLnNpbG8udjEuRGVsZXRlU2VjcmV0UmVxdWVzdBodLnNpbG8udjEuRGVsZXRlU2VjcmV0UmVzcG9uc2USTgoNTGlzdEFwcHJvdmFscxIdLnNpbG8udjEuTGlzdEFwcHJvdmFsc1JlcXVlc3QaHi5zaWxvLnYxLkxpc3RBcHByb3ZhbHNSZXNwb25zZRJDCg5EZWNpZGVBcHByb3ZhbBIeLnNpbG8udjEuRGVjaWRlQXBwcm92YWxSZXF1ZXN0GhEuc2lsby52MS5BcHByb3ZhbBJCCglMaXN0UnVsZXMSGS5zaWxvLnYxLkxpc3RSdWxlc1JlcXVlc3QaGi5zaWxvLnYxLkxpc3RSdWxlc1Jlc3BvbnNlEjEKB1NldFJ1bGUSFy5zaWxvLnYxLlNldFJ1bGVSZXF1ZXN0Gg0uc2lsby52MS5SdWxlEkIKCUxpc3RGaWxlcxIZLnNpbG8udjEuTGlzdEZpbGVzUmVxdWVzdBoaLnNpbG8udjEuTGlzdEZpbGVzUmVzcG9uc2USPwoIUmVhZEZpbGUSGC5zaWxvLnYxLlJlYWRGaWxlUmVxdWVzdBoZLnNpbG8udjEuUmVhZEZpbGVSZXNwb25zZRI3CgVNa2RpchIVLnNpbG8udjEuTWtkaXJSZXF1ZXN0Ghcuc2lsby52MS5GaWxlT3BSZXNwb25zZRJBCgpSZW1vdmVGaWxlEhouc2lsby52MS5SZW1vdmVGaWxlUmVxdWVzdBoXLnNpbG8udjEuRmlsZU9wUmVzcG9uc2USOwoHUHV0RmlsZRIXLnNpbG8udjEuUHV0RmlsZVJlcXVlc3QaFy5zaWxvLnYxLkZpbGVPcFJlc3BvbnNlEj0KC0dldFNldHRpbmdzEhsuc2lsby52MS5HZXRTZXR0aW5nc1JlcXVlc3QaES5zaWxvLnYxLlNldHRpbmdzEj0KC1B1dFNldHRpbmdzEhsuc2lsby52MS5QdXRTZXR0aW5nc1JlcXVlc3QaES5zaWxvLnYxLlNldHRpbmdzEkIKCUxpc3RBdWRpdBIZLnNpbG8udjEuTGlzdEF1ZGl0UmVxdWVzdBoaLnNpbG8udjEuTGlzdEF1ZGl0UmVzcG9uc2VCH1odc2lsby5hZ2VudC9nZW4vc2lsby92MTtzaWxvdjFiBnByb3RvMw");
 
 /**
  * @generated from message silo.v1.SignInRequest
@@ -167,6 +167,21 @@ export type Bot = Message<"silo.v1.Bot"> & {
    * @generated from field: bool worker_connected = 6;
    */
   workerConnected: boolean;
+
+  /**
+   * @generated from field: string description = 7;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string soul = 8;
+   */
+  soul: string;
+
+  /**
+   * @generated from field: string memory = 9;
+   */
+  memory: string;
 };
 
 /**
@@ -219,6 +234,11 @@ export type CreateBotRequest = Message<"silo.v1.CreateBotRequest"> & {
    * @generated from field: int32 crest = 2;
    */
   crest: number;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
 };
 
 /**
@@ -227,6 +247,43 @@ export type CreateBotRequest = Message<"silo.v1.CreateBotRequest"> & {
  */
 export const CreateBotRequestSchema: GenMessage<CreateBotRequest> = /*@__PURE__*/
   messageDesc(file_silo_v1_ui, 10);
+
+/**
+ * @generated from message silo.v1.UpdateBotRequest
+ */
+export type UpdateBotRequest = Message<"silo.v1.UpdateBotRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string soul = 4;
+   */
+  soul: string;
+
+  /**
+   * @generated from field: string memory = 5;
+   */
+  memory: string;
+};
+
+/**
+ * Describes the message silo.v1.UpdateBotRequest.
+ * Use `create(UpdateBotRequestSchema)` to create a new message.
+ */
+export const UpdateBotRequestSchema: GenMessage<UpdateBotRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 11);
 
 /**
  * @generated from message silo.v1.GetBotRequest
@@ -243,7 +300,39 @@ export type GetBotRequest = Message<"silo.v1.GetBotRequest"> & {
  * Use `create(GetBotRequestSchema)` to create a new message.
  */
 export const GetBotRequestSchema: GenMessage<GetBotRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 11);
+  messageDesc(file_silo_v1_ui, 12);
+
+/**
+ * @generated from message silo.v1.Container
+ */
+export type Container = Message<"silo.v1.Container"> & {
+  /**
+   * @generated from field: bool running = 1;
+   */
+  running: boolean;
+
+  /**
+   * @generated from field: double cpu_percent = 2;
+   */
+  cpuPercent: number;
+
+  /**
+   * @generated from field: int64 mem_used = 3;
+   */
+  memUsed: bigint;
+
+  /**
+   * @generated from field: int64 mem_limit = 4;
+   */
+  memLimit: bigint;
+};
+
+/**
+ * Describes the message silo.v1.Container.
+ * Use `create(ContainerSchema)` to create a new message.
+ */
+export const ContainerSchema: GenMessage<Container> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 13);
 
 /**
  * @generated from message silo.v1.DeleteBotResponse
@@ -256,7 +345,7 @@ export type DeleteBotResponse = Message<"silo.v1.DeleteBotResponse"> & {
  * Use `create(DeleteBotResponseSchema)` to create a new message.
  */
 export const DeleteBotResponseSchema: GenMessage<DeleteBotResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 12);
+  messageDesc(file_silo_v1_ui, 14);
 
 /**
  * @generated from message silo.v1.Chat
@@ -288,7 +377,7 @@ export type Chat = Message<"silo.v1.Chat"> & {
  * Use `create(ChatSchema)` to create a new message.
  */
 export const ChatSchema: GenMessage<Chat> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 13);
+  messageDesc(file_silo_v1_ui, 15);
 
 /**
  * @generated from message silo.v1.ListChatsRequest
@@ -305,7 +394,7 @@ export type ListChatsRequest = Message<"silo.v1.ListChatsRequest"> & {
  * Use `create(ListChatsRequestSchema)` to create a new message.
  */
 export const ListChatsRequestSchema: GenMessage<ListChatsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 14);
+  messageDesc(file_silo_v1_ui, 16);
 
 /**
  * @generated from message silo.v1.ListChatsResponse
@@ -322,7 +411,7 @@ export type ListChatsResponse = Message<"silo.v1.ListChatsResponse"> & {
  * Use `create(ListChatsResponseSchema)` to create a new message.
  */
 export const ListChatsResponseSchema: GenMessage<ListChatsResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 15);
+  messageDesc(file_silo_v1_ui, 17);
 
 /**
  * @generated from message silo.v1.CreateChatRequest
@@ -339,7 +428,7 @@ export type CreateChatRequest = Message<"silo.v1.CreateChatRequest"> & {
  * Use `create(CreateChatRequestSchema)` to create a new message.
  */
 export const CreateChatRequestSchema: GenMessage<CreateChatRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 16);
+  messageDesc(file_silo_v1_ui, 18);
 
 /**
  * @generated from message silo.v1.RenameChatRequest
@@ -366,7 +455,7 @@ export type RenameChatRequest = Message<"silo.v1.RenameChatRequest"> & {
  * Use `create(RenameChatRequestSchema)` to create a new message.
  */
 export const RenameChatRequestSchema: GenMessage<RenameChatRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 17);
+  messageDesc(file_silo_v1_ui, 19);
 
 /**
  * @generated from message silo.v1.DeleteChatRequest
@@ -388,7 +477,7 @@ export type DeleteChatRequest = Message<"silo.v1.DeleteChatRequest"> & {
  * Use `create(DeleteChatRequestSchema)` to create a new message.
  */
 export const DeleteChatRequestSchema: GenMessage<DeleteChatRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 18);
+  messageDesc(file_silo_v1_ui, 20);
 
 /**
  * @generated from message silo.v1.DeleteChatResponse
@@ -401,7 +490,7 @@ export type DeleteChatResponse = Message<"silo.v1.DeleteChatResponse"> & {
  * Use `create(DeleteChatResponseSchema)` to create a new message.
  */
 export const DeleteChatResponseSchema: GenMessage<DeleteChatResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 19);
+  messageDesc(file_silo_v1_ui, 21);
 
 /**
  * @generated from message silo.v1.SendRequest
@@ -428,7 +517,7 @@ export type SendRequest = Message<"silo.v1.SendRequest"> & {
  * Use `create(SendRequestSchema)` to create a new message.
  */
 export const SendRequestSchema: GenMessage<SendRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 20);
+  messageDesc(file_silo_v1_ui, 22);
 
 /**
  * @generated from message silo.v1.SendResponse
@@ -450,7 +539,7 @@ export type SendResponse = Message<"silo.v1.SendResponse"> & {
  * Use `create(SendResponseSchema)` to create a new message.
  */
 export const SendResponseSchema: GenMessage<SendResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 21);
+  messageDesc(file_silo_v1_ui, 23);
 
 /**
  * @generated from message silo.v1.StreamRunRequest
@@ -477,7 +566,7 @@ export type StreamRunRequest = Message<"silo.v1.StreamRunRequest"> & {
  * Use `create(StreamRunRequestSchema)` to create a new message.
  */
 export const StreamRunRequestSchema: GenMessage<StreamRunRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 22);
+  messageDesc(file_silo_v1_ui, 24);
 
 /**
  * @generated from message silo.v1.RunEvent
@@ -519,7 +608,7 @@ export type RunEvent = Message<"silo.v1.RunEvent"> & {
  * Use `create(RunEventSchema)` to create a new message.
  */
 export const RunEventSchema: GenMessage<RunEvent> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 23);
+  messageDesc(file_silo_v1_ui, 25);
 
 /**
  * @generated from message silo.v1.SecretMeta
@@ -551,7 +640,7 @@ export type SecretMeta = Message<"silo.v1.SecretMeta"> & {
  * Use `create(SecretMetaSchema)` to create a new message.
  */
 export const SecretMetaSchema: GenMessage<SecretMeta> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 24);
+  messageDesc(file_silo_v1_ui, 26);
 
 /**
  * @generated from message silo.v1.ListSecretsRequest
@@ -568,7 +657,7 @@ export type ListSecretsRequest = Message<"silo.v1.ListSecretsRequest"> & {
  * Use `create(ListSecretsRequestSchema)` to create a new message.
  */
 export const ListSecretsRequestSchema: GenMessage<ListSecretsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 25);
+  messageDesc(file_silo_v1_ui, 27);
 
 /**
  * @generated from message silo.v1.ListSecretsResponse
@@ -585,7 +674,7 @@ export type ListSecretsResponse = Message<"silo.v1.ListSecretsResponse"> & {
  * Use `create(ListSecretsResponseSchema)` to create a new message.
  */
 export const ListSecretsResponseSchema: GenMessage<ListSecretsResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 26);
+  messageDesc(file_silo_v1_ui, 28);
 
 /**
  * @generated from message silo.v1.AddSecretRequest
@@ -612,7 +701,7 @@ export type AddSecretRequest = Message<"silo.v1.AddSecretRequest"> & {
  * Use `create(AddSecretRequestSchema)` to create a new message.
  */
 export const AddSecretRequestSchema: GenMessage<AddSecretRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 27);
+  messageDesc(file_silo_v1_ui, 29);
 
 /**
  * @generated from message silo.v1.DeleteSecretRequest
@@ -634,7 +723,7 @@ export type DeleteSecretRequest = Message<"silo.v1.DeleteSecretRequest"> & {
  * Use `create(DeleteSecretRequestSchema)` to create a new message.
  */
 export const DeleteSecretRequestSchema: GenMessage<DeleteSecretRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 28);
+  messageDesc(file_silo_v1_ui, 30);
 
 /**
  * @generated from message silo.v1.DeleteSecretResponse
@@ -647,7 +736,29 @@ export type DeleteSecretResponse = Message<"silo.v1.DeleteSecretResponse"> & {
  * Use `create(DeleteSecretResponseSchema)` to create a new message.
  */
 export const DeleteSecretResponseSchema: GenMessage<DeleteSecretResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 29);
+  messageDesc(file_silo_v1_ui, 31);
+
+/**
+ * @generated from message silo.v1.ApprovalField
+ */
+export type ApprovalField = Message<"silo.v1.ApprovalField"> & {
+  /**
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * @generated from field: string value = 2;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message silo.v1.ApprovalField.
+ * Use `create(ApprovalFieldSchema)` to create a new message.
+ */
+export const ApprovalFieldSchema: GenMessage<ApprovalField> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 32);
 
 /**
  * @generated from message silo.v1.Approval
@@ -687,6 +798,21 @@ export type Approval = Message<"silo.v1.Approval"> & {
    * @generated from field: string status = 7;
    */
   status: string;
+
+  /**
+   * @generated from field: string title = 8;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string summary = 9;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: repeated silo.v1.ApprovalField fields = 10;
+   */
+  fields: ApprovalField[];
 };
 
 /**
@@ -694,7 +820,7 @@ export type Approval = Message<"silo.v1.Approval"> & {
  * Use `create(ApprovalSchema)` to create a new message.
  */
 export const ApprovalSchema: GenMessage<Approval> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 30);
+  messageDesc(file_silo_v1_ui, 33);
 
 /**
  * @generated from message silo.v1.ListApprovalsRequest
@@ -711,7 +837,7 @@ export type ListApprovalsRequest = Message<"silo.v1.ListApprovalsRequest"> & {
  * Use `create(ListApprovalsRequestSchema)` to create a new message.
  */
 export const ListApprovalsRequestSchema: GenMessage<ListApprovalsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 31);
+  messageDesc(file_silo_v1_ui, 34);
 
 /**
  * @generated from message silo.v1.ListApprovalsResponse
@@ -728,7 +854,7 @@ export type ListApprovalsResponse = Message<"silo.v1.ListApprovalsResponse"> & {
  * Use `create(ListApprovalsResponseSchema)` to create a new message.
  */
 export const ListApprovalsResponseSchema: GenMessage<ListApprovalsResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 32);
+  messageDesc(file_silo_v1_ui, 35);
 
 /**
  * @generated from message silo.v1.DecideApprovalRequest
@@ -750,7 +876,7 @@ export type DecideApprovalRequest = Message<"silo.v1.DecideApprovalRequest"> & {
  * Use `create(DecideApprovalRequestSchema)` to create a new message.
  */
 export const DecideApprovalRequestSchema: GenMessage<DecideApprovalRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 33);
+  messageDesc(file_silo_v1_ui, 36);
 
 /**
  * @generated from message silo.v1.Rule
@@ -787,7 +913,7 @@ export type Rule = Message<"silo.v1.Rule"> & {
  * Use `create(RuleSchema)` to create a new message.
  */
 export const RuleSchema: GenMessage<Rule> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 34);
+  messageDesc(file_silo_v1_ui, 37);
 
 /**
  * @generated from message silo.v1.ListRulesRequest
@@ -804,7 +930,7 @@ export type ListRulesRequest = Message<"silo.v1.ListRulesRequest"> & {
  * Use `create(ListRulesRequestSchema)` to create a new message.
  */
 export const ListRulesRequestSchema: GenMessage<ListRulesRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 35);
+  messageDesc(file_silo_v1_ui, 38);
 
 /**
  * @generated from message silo.v1.ListRulesResponse
@@ -821,7 +947,7 @@ export type ListRulesResponse = Message<"silo.v1.ListRulesResponse"> & {
  * Use `create(ListRulesResponseSchema)` to create a new message.
  */
 export const ListRulesResponseSchema: GenMessage<ListRulesResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 36);
+  messageDesc(file_silo_v1_ui, 39);
 
 /**
  * @generated from message silo.v1.SetRuleRequest
@@ -853,7 +979,7 @@ export type SetRuleRequest = Message<"silo.v1.SetRuleRequest"> & {
  * Use `create(SetRuleRequestSchema)` to create a new message.
  */
 export const SetRuleRequestSchema: GenMessage<SetRuleRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 37);
+  messageDesc(file_silo_v1_ui, 40);
 
 /**
  * @generated from message silo.v1.FileEntry
@@ -890,7 +1016,7 @@ export type FileEntry = Message<"silo.v1.FileEntry"> & {
  * Use `create(FileEntrySchema)` to create a new message.
  */
 export const FileEntrySchema: GenMessage<FileEntry> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 38);
+  messageDesc(file_silo_v1_ui, 41);
 
 /**
  * @generated from message silo.v1.ListFilesRequest
@@ -912,7 +1038,7 @@ export type ListFilesRequest = Message<"silo.v1.ListFilesRequest"> & {
  * Use `create(ListFilesRequestSchema)` to create a new message.
  */
 export const ListFilesRequestSchema: GenMessage<ListFilesRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 39);
+  messageDesc(file_silo_v1_ui, 42);
 
 /**
  * @generated from message silo.v1.ListFilesResponse
@@ -929,7 +1055,7 @@ export type ListFilesResponse = Message<"silo.v1.ListFilesResponse"> & {
  * Use `create(ListFilesResponseSchema)` to create a new message.
  */
 export const ListFilesResponseSchema: GenMessage<ListFilesResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 40);
+  messageDesc(file_silo_v1_ui, 43);
 
 /**
  * @generated from message silo.v1.ReadFileRequest
@@ -951,7 +1077,7 @@ export type ReadFileRequest = Message<"silo.v1.ReadFileRequest"> & {
  * Use `create(ReadFileRequestSchema)` to create a new message.
  */
 export const ReadFileRequestSchema: GenMessage<ReadFileRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 41);
+  messageDesc(file_silo_v1_ui, 44);
 
 /**
  * @generated from message silo.v1.ReadFileResponse
@@ -981,6 +1107,11 @@ export type ReadFileResponse = Message<"silo.v1.ReadFileResponse"> & {
    * @generated from field: int64 size = 5;
    */
   size: bigint;
+
+  /**
+   * @generated from field: bytes data = 6;
+   */
+  data: Uint8Array;
 };
 
 /**
@@ -988,7 +1119,91 @@ export type ReadFileResponse = Message<"silo.v1.ReadFileResponse"> & {
  * Use `create(ReadFileResponseSchema)` to create a new message.
  */
 export const ReadFileResponseSchema: GenMessage<ReadFileResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 42);
+  messageDesc(file_silo_v1_ui, 45);
+
+/**
+ * @generated from message silo.v1.MkdirRequest
+ */
+export type MkdirRequest = Message<"silo.v1.MkdirRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message silo.v1.MkdirRequest.
+ * Use `create(MkdirRequestSchema)` to create a new message.
+ */
+export const MkdirRequestSchema: GenMessage<MkdirRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 46);
+
+/**
+ * @generated from message silo.v1.RemoveFileRequest
+ */
+export type RemoveFileRequest = Message<"silo.v1.RemoveFileRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message silo.v1.RemoveFileRequest.
+ * Use `create(RemoveFileRequestSchema)` to create a new message.
+ */
+export const RemoveFileRequestSchema: GenMessage<RemoveFileRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 47);
+
+/**
+ * @generated from message silo.v1.PutFileRequest
+ */
+export type PutFileRequest = Message<"silo.v1.PutFileRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * @generated from field: bytes data = 3;
+   */
+  data: Uint8Array;
+};
+
+/**
+ * Describes the message silo.v1.PutFileRequest.
+ * Use `create(PutFileRequestSchema)` to create a new message.
+ */
+export const PutFileRequestSchema: GenMessage<PutFileRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 48);
+
+/**
+ * @generated from message silo.v1.FileOpResponse
+ */
+export type FileOpResponse = Message<"silo.v1.FileOpResponse"> & {
+};
+
+/**
+ * Describes the message silo.v1.FileOpResponse.
+ * Use `create(FileOpResponseSchema)` to create a new message.
+ */
+export const FileOpResponseSchema: GenMessage<FileOpResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 49);
 
 /**
  * @generated from message silo.v1.Settings
@@ -1015,7 +1230,7 @@ export type Settings = Message<"silo.v1.Settings"> & {
  * Use `create(SettingsSchema)` to create a new message.
  */
 export const SettingsSchema: GenMessage<Settings> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 43);
+  messageDesc(file_silo_v1_ui, 50);
 
 /**
  * @generated from message silo.v1.GetSettingsRequest
@@ -1028,7 +1243,7 @@ export type GetSettingsRequest = Message<"silo.v1.GetSettingsRequest"> & {
  * Use `create(GetSettingsRequestSchema)` to create a new message.
  */
 export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 44);
+  messageDesc(file_silo_v1_ui, 51);
 
 /**
  * @generated from message silo.v1.PutSettingsRequest
@@ -1050,7 +1265,7 @@ export type PutSettingsRequest = Message<"silo.v1.PutSettingsRequest"> & {
  * Use `create(PutSettingsRequestSchema)` to create a new message.
  */
 export const PutSettingsRequestSchema: GenMessage<PutSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 45);
+  messageDesc(file_silo_v1_ui, 52);
 
 /**
  * @generated from message silo.v1.AuditRow
@@ -1102,7 +1317,7 @@ export type AuditRow = Message<"silo.v1.AuditRow"> & {
  * Use `create(AuditRowSchema)` to create a new message.
  */
 export const AuditRowSchema: GenMessage<AuditRow> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 46);
+  messageDesc(file_silo_v1_ui, 53);
 
 /**
  * @generated from message silo.v1.ListAuditRequest
@@ -1115,7 +1330,7 @@ export type ListAuditRequest = Message<"silo.v1.ListAuditRequest"> & {
  * Use `create(ListAuditRequestSchema)` to create a new message.
  */
 export const ListAuditRequestSchema: GenMessage<ListAuditRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 47);
+  messageDesc(file_silo_v1_ui, 54);
 
 /**
  * @generated from message silo.v1.ListAuditResponse
@@ -1132,7 +1347,7 @@ export type ListAuditResponse = Message<"silo.v1.ListAuditResponse"> & {
  * Use `create(ListAuditResponseSchema)` to create a new message.
  */
 export const ListAuditResponseSchema: GenMessage<ListAuditResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_ui, 48);
+  messageDesc(file_silo_v1_ui, 55);
 
 /**
  * @generated from service silo.v1.UI
@@ -1179,12 +1394,28 @@ export const UI: GenService<{
     output: typeof BotSchema;
   },
   /**
+   * @generated from rpc silo.v1.UI.UpdateBot
+   */
+  updateBot: {
+    methodKind: "unary";
+    input: typeof UpdateBotRequestSchema;
+    output: typeof BotSchema;
+  },
+  /**
    * @generated from rpc silo.v1.UI.GetBot
    */
   getBot: {
     methodKind: "unary";
     input: typeof GetBotRequestSchema;
     output: typeof BotSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.GetContainer
+   */
+  getContainer: {
+    methodKind: "unary";
+    input: typeof GetBotRequestSchema;
+    output: typeof ContainerSchema;
   },
   /**
    * @generated from rpc silo.v1.UI.StartBot
@@ -1329,6 +1560,30 @@ export const UI: GenService<{
     methodKind: "unary";
     input: typeof ReadFileRequestSchema;
     output: typeof ReadFileResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.Mkdir
+   */
+  mkdir: {
+    methodKind: "unary";
+    input: typeof MkdirRequestSchema;
+    output: typeof FileOpResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.RemoveFile
+   */
+  removeFile: {
+    methodKind: "unary";
+    input: typeof RemoveFileRequestSchema;
+    output: typeof FileOpResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.PutFile
+   */
+  putFile: {
+    methodKind: "unary";
+    input: typeof PutFileRequestSchema;
+    output: typeof FileOpResponseSchema;
   },
   /**
    * @generated from rpc silo.v1.UI.GetSettings

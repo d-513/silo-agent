@@ -60,6 +60,15 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 		return b.ContainerID != ""
 	}
 	if st.Running {
+		if h, err := a.Docker.EnvTokenHash(ctx, st.ID); err == nil && h != "" && h != b.TokenHash {
+			a.Docker.Drop(ctx, b.ID, st.ID)
+			b.ContainerID = ""
+			if b.Status != "stopped" {
+				b.Status = "stopped"
+			}
+			a.DB.Save(b)
+			return false
+		}
 		if b.ContainerID != st.ID {
 			b.ContainerID = st.ID
 			a.DB.Save(b)
@@ -101,10 +110,8 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 	}
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	token := ids.Token()
-	b.TokenHash = ids.Hash(token)
 	cid, err := a.Docker.Create(ctx, b.ID, token)
 	if err != nil {
-		b.ContainerID = ""
 		b.Status = "stopped"
 		b.LastTask = err.Error()
 		a.DB.Save(b)
@@ -119,6 +126,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 		return err
 	}
 	a.Mask(b.ID).Add(token)
+	b.TokenHash = ids.Hash(token)
 	b.ContainerID = cid
 	b.Status = "starting"
 	return a.DB.Save(b).Error

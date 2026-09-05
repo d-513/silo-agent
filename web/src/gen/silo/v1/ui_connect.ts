@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, Bot, Chat, CreateBotRequest, CreateChatRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteSecretRequest, DeleteSecretResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StreamRunRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, Bot, Chat, Container, CreateBotRequest, CreateChatRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteSecretRequest, DeleteSecretResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StreamRunRequest, UpdateBotRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -58,12 +58,30 @@ export const UI = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc silo.v1.UI.UpdateBot
+     */
+    updateBot: {
+      name: "UpdateBot",
+      I: UpdateBotRequest,
+      O: Bot,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc silo.v1.UI.GetBot
      */
     getBot: {
       name: "GetBot",
       I: GetBotRequest,
       O: Bot,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.GetContainer
+     */
+    getContainer: {
+      name: "GetContainer",
+      I: GetBotRequest,
+      O: Container,
       kind: MethodKind.Unary,
     },
     /**
@@ -226,6 +244,33 @@ export const UI = {
       name: "ReadFile",
       I: ReadFileRequest,
       O: ReadFileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.Mkdir
+     */
+    mkdir: {
+      name: "Mkdir",
+      I: MkdirRequest,
+      O: FileOpResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RemoveFile
+     */
+    removeFile: {
+      name: "RemoveFile",
+      I: RemoveFileRequest,
+      O: FileOpResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.PutFile
+     */
+    putFile: {
+      name: "PutFile",
+      I: PutFileRequest,
+      O: FileOpResponse,
       kind: MethodKind.Unary,
     },
     /**

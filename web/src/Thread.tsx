@@ -1,102 +1,111 @@
-import { ChatCircle } from "@phosphor-icons/react";
-import { useEffect, useRef } from "react";
+import {
+  CaretRight,
+  ChatCircle,
+  CircleNotch,
+  Code,
+  File,
+  GitDiff,
+  MagnifyingGlass,
+  Notebook,
+  PencilSimple,
+  Terminal,
+  User,
+} from "@phosphor-icons/react";
+import hljs from "highlight.js/lib/core";
+import bash from "highlight.js/lib/languages/bash";
+import diff from "highlight.js/lib/languages/diff";
+import go from "highlight.js/lib/languages/go";
+import javascript from "highlight.js/lib/languages/javascript";
+import json from "highlight.js/lib/languages/json";
+import markdown from "highlight.js/lib/languages/markdown";
+import python from "highlight.js/lib/languages/python";
+import typescript from "highlight.js/lib/languages/typescript";
+import xml from "highlight.js/lib/languages/xml";
+import yaml from "highlight.js/lib/languages/yaml";
+import { useEffect, useRef, useState, type JSX, type ReactNode } from "react";
+import Markdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import remarkGfm from "remark-gfm";
+import { foldEvents, type Ev } from "./fold";
 
-export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string };
+export type { Ev };
 
-type Block =
-  | { key: string; type: "user"; text: string }
-  | { key: string; type: "assistant"; text: string; streaming?: boolean }
-  | { key: string; type: "thinking"; text: string }
-  | { key: string; type: "tool"; name: string; args: string; result?: string; running?: boolean; runId?: string }
-  | { key: string; type: "error"; text: string };
+const hlLangs = {
+  python,
+  bash,
+  json,
+  typescript,
+  javascript,
+  go,
+  xml,
+  html: xml,
+  markdown,
+  diff,
+  yaml,
+};
 
-const staleKey = /openrouter api key|set openrouter|silo_openrouter|api key in admin/i;
+for (const [name, fn] of Object.entries(hlLangs)) {
+  hljs.registerLanguage(name, fn);
+}
 
-export function foldEvents(events: Ev[]): Block[] {
-  const out: Block[] = [];
-  let i = 0;
-  const push = (b: Block) => {
-    out.push(b);
-  };
-  for (const ev of events) {
-    if (ev.kind === "done") continue;
-    if (ev.kind === "error" && staleKey.test(ev.body)) continue;
-    const key = `${ev.kind}-${i++}`;
-    if (ev.kind === "user") {
-      push({ key, type: "user", text: ev.body });
+const mdHighlight: [[typeof rehypeHighlight, { languages: typeof hlLangs }]] = [
+  [rehypeHighlight, { languages: hlLangs }],
+];
+
+function unescapeJsonTail(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') break;
+    if (c === "\\" && i + 1 < s.length) {
+      const n = s[++i];
+      if (n === "n") out += "\n";
+      else if (n === "t") out += "\t";
+      else if (n === "r") out += "\r";
+      else if (n === '"' || n === "\\" || n === "/") out += n;
+      else if (n === "u" && i + 4 < s.length) {
+        out += String.fromCharCode(parseInt(s.slice(i + 1, i + 5), 16));
+        i += 4;
+      } else out += n;
       continue;
     }
-    if (ev.kind === "thinking_chunk") {
-      const last = out[out.length - 1];
-      if (last?.type === "thinking") {
-        last.text += ev.body;
-      } else {
-        push({ key, type: "thinking", text: ev.body });
-      }
-      continue;
-    }
-    if (ev.kind === "thinking") {
-      const last = out[out.length - 1];
-      if (last?.type === "thinking") {
-        last.text = ev.body || last.text;
-      } else {
-        push({ key, type: "thinking", text: ev.body });
-      }
-      continue;
-    }
-    if (ev.kind === "chunk") {
-      const last = out[out.length - 1];
-      if (last?.type === "assistant") {
-        last.text += ev.body;
-        last.streaming = true;
-      } else {
-        push({ key, type: "assistant", text: ev.body, streaming: true });
-      }
-      continue;
-    }
-    if (ev.kind === "assistant") {
-      const last = out[out.length - 1];
-      if (last?.type === "assistant" && last.streaming) {
-        last.text = ev.body || last.text;
-        last.streaming = false;
-      } else if (ev.body.trim()) {
-        push({ key, type: "assistant", text: ev.body });
-      }
-      continue;
-    }
-    if (ev.kind === "tool") {
-      push({ key, type: "tool", name: ev.tool || "tool", args: ev.body, running: true, runId: ev.runId });
-      continue;
-    }
-    if (ev.kind === "tool_chunk") {
-      for (let j = out.length - 1; j >= 0; j--) {
-        const b = out[j];
-        if (b.type === "tool" && b.running && (!ev.runId || b.runId === ev.runId)) {
-          b.result = (b.result || "") + ev.body;
-          break;
-        }
-      }
-      continue;
-    }
-    if (ev.kind === "tool_result") {
-      for (let j = out.length - 1; j >= 0; j--) {
-        const b = out[j];
-        if (b.type === "tool" && b.running && (b.name === ev.tool || !ev.tool) && (!ev.runId || b.runId === ev.runId)) {
-          b.result = ev.body;
-          b.running = false;
-          break;
-        }
-      }
-      continue;
-    }
-    if (ev.kind === "error") {
-      push({ key, type: "error", text: ev.body });
-    }
+    out += c;
   }
   return out;
 }
 
-function prettyArgs(raw: string) {
+function extractStringField(raw: string, key: string): string | undefined {
+  for (const needle of [`"${key}": "`, `"${key}":"`]) {
+    const i = raw.indexOf(needle);
+    if (i >= 0) return unescapeJsonTail(raw.slice(i + needle.length));
+  }
+}
+
+function parseToolArgs(raw: string): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  } catch {
+    /* stream */
+  }
+  const out: Record<string, unknown> = {};
+  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "append"]) {
+    const v = extractStringField(raw, key);
+    if (v !== undefined) out[key] = v;
+  }
+  for (const key of ["offset", "limit", "max_hits"]) {
+    const m = raw.match(new RegExp(`"${key}":\\s*(-?\\d+)`));
+    if (m) out[key] = Number(m[1]);
+  }
+  return out;
+}
+
+function asStr(v: unknown): string {
+  return typeof v === "string" ? v : v == null ? "" : String(v);
+}
+
+function prettyJson(raw: string) {
   try {
     return JSON.stringify(JSON.parse(raw), null, 2);
   } catch {
@@ -104,15 +113,219 @@ function prettyArgs(raw: string) {
   }
 }
 
-function toolLabel(name: string) {
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function highlight(code: string, lang?: string) {
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+    } catch {
+      /* plain */
+    }
+  }
+  return escapeHtml(code);
+}
+
+function langFromPath(path: string) {
+  const ext = path.split(".").pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    py: "python",
+    sh: "bash",
+    bash: "bash",
+    json: "json",
+    ts: "typescript",
+    tsx: "typescript",
+    js: "javascript",
+    jsx: "javascript",
+    go: "go",
+    html: "xml",
+    htm: "xml",
+    xml: "xml",
+    svg: "xml",
+    md: "markdown",
+    markdown: "markdown",
+    diff: "diff",
+    patch: "diff",
+    yml: "yaml",
+    yaml: "yaml",
+  };
+  return ext ? map[ext] : undefined;
+}
+
+function resultLang(s: string) {
+  const t = s.trim();
+  if (t.startsWith("{") || t.startsWith("[")) {
+    try {
+      JSON.parse(t);
+      return "json";
+    } catch {
+      /* not json */
+    }
+  }
+  if (/^(def |class |import |from |Traceback)/m.test(t)) return "python";
+  if (/^(\$ |#!\/)/.test(t)) return "bash";
+  return langFromPath(t.split("\n")[0] ?? "") || undefined;
+}
+
+function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+  return (
+    <pre className="whitespace-pre-wrap break-words rounded bg-cloth p-3 font-mono text-[13px] leading-5">
+      <code className="hljs whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
+    </pre>
+  );
+}
+
+function toolMeta(name: string) {
   switch (name) {
     case "exec_python":
-      return "Python";
+      return { label: "Python", Icon: Code };
+    case "patch":
+      return { label: "patch", Icon: GitDiff };
+    case "write":
+      return { label: "write", Icon: PencilSimple };
+    case "read":
+      return { label: "read", Icon: File };
+    case "grep":
+      return { label: "grep", Icon: MagnifyingGlass };
     case "terminal":
-      return "terminal";
+      return { label: "terminal", Icon: Terminal };
+    case "soul":
+      return { label: "SOUL", Icon: User };
+    case "memory":
+      return { label: "MEMORY", Icon: Notebook };
     default:
-      return name;
+      return { label: name, Icon: Code };
   }
+}
+
+function ToolInput({ name, args, running }: { name: string; args: string; running?: boolean }) {
+  if (!args) return null;
+  const a = parseToolArgs(args);
+  const path = asStr(a.path);
+  const command = asStr(a.command);
+  const content = asStr(a.content);
+  const code = asStr(a.code);
+  const pattern = asStr(a.pattern);
+  const include = asStr(a.include);
+  const oldText = asStr(a.old_text);
+  const newText = asStr(a.new_text);
+  const append = asStr(a.append);
+  const offset = a.offset;
+  const limit = a.limit;
+
+  let body: JSX.Element | null = null;
+  if (name === "exec_python" && code) {
+    body = <CodeBlock code={code} lang="python" />;
+  } else if (name === "terminal" && command) {
+    body = <CodeBlock code={command} lang="bash" />;
+  } else if (name === "patch" && (path || oldText || newText)) {
+    const lines = [
+      ...(oldText ? oldText.split("\n").map((l) => `-${l}`) : []),
+      ...(newText ? newText.split("\n").map((l) => `+${l}`) : []),
+    ].join("\n");
+    body = (
+      <div className="space-y-2">
+        {path ? <div className="font-mono text-[13px]">{path}</div> : null}
+        {oldText || newText ? <CodeBlock code={lines} lang="diff" /> : null}
+      </div>
+    );
+  } else if (name === "write" && (path || content)) {
+    body = (
+      <div className="space-y-2">
+        {path ? <div className="font-mono text-[13px]">{path}</div> : null}
+        {content ? <CodeBlock code={content} lang={langFromPath(path)} /> : null}
+      </div>
+    );
+  } else if (name === "read" && (path || offset != null || limit != null)) {
+    body = (
+      <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
+        {path ? <div>{path}</div> : null}
+        {offset != null ? <div className="text-stone">offset {asStr(offset)}</div> : null}
+        {limit != null ? <div className="text-stone">limit {asStr(limit)}</div> : null}
+      </div>
+    );
+  } else if ((name === "soul" || name === "memory") && (content || append || oldText || newText)) {
+    if (oldText || newText) {
+      const lines = [
+        ...(oldText ? oldText.split("\n").map((l) => `-${l}`) : []),
+        ...(newText ? newText.split("\n").map((l) => `+${l}`) : []),
+      ].join("\n");
+      body = <CodeBlock code={lines} lang="diff" />;
+    } else {
+      body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
+    }
+  } else if (name === "grep" && (pattern || path || include)) {
+    body = (
+      <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
+        {pattern ? <div>{pattern}</div> : null}
+        {path ? <div className="text-stone">{path}</div> : null}
+        {include ? <div className="text-stone">{include}</div> : null}
+      </div>
+    );
+  } else if (path || command) {
+    body = (
+      <div className="space-y-2">
+        {path ? <div className="font-mono text-[13px]">{path}</div> : null}
+        {command ? <CodeBlock code={command} lang="bash" /> : null}
+      </div>
+    );
+  }
+
+  if (body) return body;
+  if (running && !Object.keys(a).length) return null;
+  const text = Object.keys(a).length ? JSON.stringify(a, null, 2) : prettyJson(args);
+  if (!text) return null;
+  return <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{text}</pre>;
+}
+
+function ToolResult({ text }: { text: string }) {
+  const sliced = text.length > 4000 ? `${text.slice(0, 4000)}…` : text;
+  const lang = resultLang(sliced);
+  const inner = lang ? (
+    <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-5 text-stone">
+      <code className="hljs" dangerouslySetInnerHTML={{ __html: highlight(sliced, lang) }} />
+    </pre>
+  ) : (
+    <pre className="whitespace-pre-wrap font-mono text-[13px] text-stone">{sliced}</pre>
+  );
+  const long = sliced.length > 800 || sliced.split("\n").length > 16;
+  if (!long) return inner;
+  return (
+    <details>
+      <summary className="cursor-pointer text-[12px] font-medium tracking-wide text-stone">Result</summary>
+      <div className="mt-2">{inner}</div>
+    </details>
+  );
+}
+
+function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className="group max-w-[50%]"
+      open={open}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+    >
+      <summary className="flex cursor-pointer items-center gap-2 rounded bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
+        <CaretRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+        {summary}
+      </summary>
+      <div className="mt-2 space-y-2">{children}</div>
+    </details>
+  );
+}
+
+function Md({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <div className="silo-md">
+      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={mdHighlight}>
+        {text}
+      </Markdown>
+    </div>
+  );
 }
 
 export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) {
@@ -121,6 +334,11 @@ export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
   }, [events, sending]);
+  const working =
+    sending &&
+    !blocks.some(
+      (b) => (b.type === "assistant" && b.streaming) || (b.type === "thinking" && b.streaming) || (b.type === "tool" && b.running),
+    );
   return (
     <div className="flex-1 space-y-4 overflow-auto p-4">
       {blocks.length === 0 && !sending && (
@@ -132,43 +350,53 @@ export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) 
       {blocks.map((b) => {
         if (b.type === "user") {
           return (
-            <div key={b.key} className="border-l-4 border-bindery pl-3">
+            <div key={b.key} className="max-w-[42rem] whitespace-pre-wrap rounded-[10px] border-l-4 border-bindery bg-folio px-3 py-2">
               {b.text}
             </div>
           );
         }
         if (b.type === "thinking") {
+          if (b.streaming && sending) {
+            return (
+              <div key={b.key} className="space-y-2 text-stone">
+                <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide">
+                  <CircleNotch size={14} className="animate-spin" />
+                  Thinking
+                </div>
+                {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px]">{b.text}</div> : null}
+              </div>
+            );
+          }
           return (
             <details key={b.key} className="text-stone">
-              <summary className="cursor-pointer text-[12px] font-medium tracking-wide">Thinking</summary>
-              <div className="mt-2 whitespace-pre-wrap font-mono text-[13px] text-stone">{b.text}</div>
+              <summary className="cursor-pointer text-[12px] font-medium tracking-wide">Thought</summary>
+              <div className="mt-2 whitespace-pre-wrap font-mono text-[13px]">{b.text}</div>
             </details>
           );
         }
         if (b.type === "tool") {
+          const { label, Icon } = toolMeta(b.name);
           return (
-            <details key={b.key} className="group">
-              <summary className="flex cursor-pointer items-center gap-3 text-[12px] font-medium tracking-wide text-stone">
-                <span className="h-px flex-1 bg-thread-2" />
-                <span className="font-mono">
-                  {b.running ? "Using" : "Used"} {toolLabel(b.name)}
-                </span>
-                <span className="h-px flex-1 bg-thread-2" />
-              </summary>
-              <div className="mt-2 space-y-2 rounded bg-cloth p-3 font-mono text-[13px]">
-                {b.args && <pre className="whitespace-pre-wrap">{prettyArgs(b.args)}</pre>}
-                {b.result && (
-                  <pre className="whitespace-pre-wrap border-t border-thread-2 pt-2 text-stone">{b.result.slice(0, 4000)}</pre>
-                )}
-              </div>
-            </details>
+            <ToolFold
+              key={b.key}
+              summary={
+                <>
+                  <Icon size={14} />
+                  {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                  {b.running ? "Using" : "Used"} {label}
+                </>
+              }
+            >
+              <ToolInput name={b.name} args={b.args} running={b.running} />
+              {b.result ? <ToolResult text={b.result} /> : null}
+            </ToolFold>
           );
         }
         if (b.type === "assistant") {
           return (
-            <div key={b.key} className="whitespace-pre-wrap">
-              {b.text}
-              {b.streaming && <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-iron align-middle" />}
+            <div key={b.key}>
+              <Md text={b.text} />
+              {b.streaming ? <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-iron align-middle" /> : null}
             </div>
           );
         }
@@ -178,9 +406,12 @@ export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) 
           </div>
         );
       })}
-      {sending && blocks.every((b) => b.type !== "assistant" || !b.streaming) && (
-        <div className="text-stone">Working…</div>
-      )}
+      {working ? (
+        <div className="flex items-center gap-2 text-stone">
+          <CircleNotch size={14} className="animate-spin" />
+          Working…
+        </div>
+      ) : null}
       <div ref={end} />
     </div>
   );

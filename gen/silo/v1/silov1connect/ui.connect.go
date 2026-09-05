@@ -43,8 +43,12 @@ const (
 	UIListBotsProcedure = "/silo.v1.UI/ListBots"
 	// UICreateBotProcedure is the fully-qualified name of the UI's CreateBot RPC.
 	UICreateBotProcedure = "/silo.v1.UI/CreateBot"
+	// UIUpdateBotProcedure is the fully-qualified name of the UI's UpdateBot RPC.
+	UIUpdateBotProcedure = "/silo.v1.UI/UpdateBot"
 	// UIGetBotProcedure is the fully-qualified name of the UI's GetBot RPC.
 	UIGetBotProcedure = "/silo.v1.UI/GetBot"
+	// UIGetContainerProcedure is the fully-qualified name of the UI's GetContainer RPC.
+	UIGetContainerProcedure = "/silo.v1.UI/GetContainer"
 	// UIStartBotProcedure is the fully-qualified name of the UI's StartBot RPC.
 	UIStartBotProcedure = "/silo.v1.UI/StartBot"
 	// UIStopBotProcedure is the fully-qualified name of the UI's StopBot RPC.
@@ -81,6 +85,12 @@ const (
 	UIListFilesProcedure = "/silo.v1.UI/ListFiles"
 	// UIReadFileProcedure is the fully-qualified name of the UI's ReadFile RPC.
 	UIReadFileProcedure = "/silo.v1.UI/ReadFile"
+	// UIMkdirProcedure is the fully-qualified name of the UI's Mkdir RPC.
+	UIMkdirProcedure = "/silo.v1.UI/Mkdir"
+	// UIRemoveFileProcedure is the fully-qualified name of the UI's RemoveFile RPC.
+	UIRemoveFileProcedure = "/silo.v1.UI/RemoveFile"
+	// UIPutFileProcedure is the fully-qualified name of the UI's PutFile RPC.
+	UIPutFileProcedure = "/silo.v1.UI/PutFile"
 	// UIGetSettingsProcedure is the fully-qualified name of the UI's GetSettings RPC.
 	UIGetSettingsProcedure = "/silo.v1.UI/GetSettings"
 	// UIPutSettingsProcedure is the fully-qualified name of the UI's PutSettings RPC.
@@ -96,7 +106,9 @@ type UIClient interface {
 	Me(context.Context, *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
+	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
 	GetBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	GetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error)
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
@@ -115,6 +127,9 @@ type UIClient interface {
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
+	RemoveFile(context.Context, *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error)
+	PutFile(context.Context, *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
@@ -161,10 +176,22 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("CreateBot")),
 			connect.WithClientOptions(opts...),
 		),
+		updateBot: connect.NewClient[v1.UpdateBotRequest, v1.Bot](
+			httpClient,
+			baseURL+UIUpdateBotProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateBot")),
+			connect.WithClientOptions(opts...),
+		),
 		getBot: connect.NewClient[v1.GetBotRequest, v1.Bot](
 			httpClient,
 			baseURL+UIGetBotProcedure,
 			connect.WithSchema(uIMethods.ByName("GetBot")),
+			connect.WithClientOptions(opts...),
+		),
+		getContainer: connect.NewClient[v1.GetBotRequest, v1.Container](
+			httpClient,
+			baseURL+UIGetContainerProcedure,
+			connect.WithSchema(uIMethods.ByName("GetContainer")),
 			connect.WithClientOptions(opts...),
 		),
 		startBot: connect.NewClient[v1.GetBotRequest, v1.Bot](
@@ -275,6 +302,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ReadFile")),
 			connect.WithClientOptions(opts...),
 		),
+		mkdir: connect.NewClient[v1.MkdirRequest, v1.FileOpResponse](
+			httpClient,
+			baseURL+UIMkdirProcedure,
+			connect.WithSchema(uIMethods.ByName("Mkdir")),
+			connect.WithClientOptions(opts...),
+		),
+		removeFile: connect.NewClient[v1.RemoveFileRequest, v1.FileOpResponse](
+			httpClient,
+			baseURL+UIRemoveFileProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveFile")),
+			connect.WithClientOptions(opts...),
+		),
+		putFile: connect.NewClient[v1.PutFileRequest, v1.FileOpResponse](
+			httpClient,
+			baseURL+UIPutFileProcedure,
+			connect.WithSchema(uIMethods.ByName("PutFile")),
+			connect.WithClientOptions(opts...),
+		),
 		getSettings: connect.NewClient[v1.GetSettingsRequest, v1.Settings](
 			httpClient,
 			baseURL+UIGetSettingsProcedure,
@@ -303,7 +348,9 @@ type uIClient struct {
 	me             *connect.Client[v1.MeRequest, v1.MeResponse]
 	listBots       *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBot      *connect.Client[v1.CreateBotRequest, v1.Bot]
+	updateBot      *connect.Client[v1.UpdateBotRequest, v1.Bot]
 	getBot         *connect.Client[v1.GetBotRequest, v1.Bot]
+	getContainer   *connect.Client[v1.GetBotRequest, v1.Container]
 	startBot       *connect.Client[v1.GetBotRequest, v1.Bot]
 	stopBot        *connect.Client[v1.GetBotRequest, v1.Bot]
 	deleteBot      *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
@@ -322,6 +369,9 @@ type uIClient struct {
 	setRule        *connect.Client[v1.SetRuleRequest, v1.Rule]
 	listFiles      *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
 	readFile       *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
+	mkdir          *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
+	removeFile     *connect.Client[v1.RemoveFileRequest, v1.FileOpResponse]
+	putFile        *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
 	getSettings    *connect.Client[v1.GetSettingsRequest, v1.Settings]
 	putSettings    *connect.Client[v1.PutSettingsRequest, v1.Settings]
 	listAudit      *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
@@ -352,9 +402,19 @@ func (c *uIClient) CreateBot(ctx context.Context, req *connect.Request[v1.Create
 	return c.createBot.CallUnary(ctx, req)
 }
 
+// UpdateBot calls silo.v1.UI.UpdateBot.
+func (c *uIClient) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error) {
+	return c.updateBot.CallUnary(ctx, req)
+}
+
 // GetBot calls silo.v1.UI.GetBot.
 func (c *uIClient) GetBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return c.getBot.CallUnary(ctx, req)
+}
+
+// GetContainer calls silo.v1.UI.GetContainer.
+func (c *uIClient) GetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error) {
+	return c.getContainer.CallUnary(ctx, req)
 }
 
 // StartBot calls silo.v1.UI.StartBot.
@@ -447,6 +507,21 @@ func (c *uIClient) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFil
 	return c.readFile.CallUnary(ctx, req)
 }
 
+// Mkdir calls silo.v1.UI.Mkdir.
+func (c *uIClient) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return c.mkdir.CallUnary(ctx, req)
+}
+
+// RemoveFile calls silo.v1.UI.RemoveFile.
+func (c *uIClient) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return c.removeFile.CallUnary(ctx, req)
+}
+
+// PutFile calls silo.v1.UI.PutFile.
+func (c *uIClient) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return c.putFile.CallUnary(ctx, req)
+}
+
 // GetSettings calls silo.v1.UI.GetSettings.
 func (c *uIClient) GetSettings(ctx context.Context, req *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {
 	return c.getSettings.CallUnary(ctx, req)
@@ -469,7 +544,9 @@ type UIHandler interface {
 	Me(context.Context, *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
+	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
 	GetBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	GetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error)
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
@@ -488,6 +565,9 @@ type UIHandler interface {
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
+	RemoveFile(context.Context, *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error)
+	PutFile(context.Context, *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
@@ -530,10 +610,22 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("CreateBot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIUpdateBotHandler := connect.NewUnaryHandler(
+		UIUpdateBotProcedure,
+		svc.UpdateBot,
+		connect.WithSchema(uIMethods.ByName("UpdateBot")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIGetBotHandler := connect.NewUnaryHandler(
 		UIGetBotProcedure,
 		svc.GetBot,
 		connect.WithSchema(uIMethods.ByName("GetBot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetContainerHandler := connect.NewUnaryHandler(
+		UIGetContainerProcedure,
+		svc.GetContainer,
+		connect.WithSchema(uIMethods.ByName("GetContainer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIStartBotHandler := connect.NewUnaryHandler(
@@ -644,6 +736,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ReadFile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIMkdirHandler := connect.NewUnaryHandler(
+		UIMkdirProcedure,
+		svc.Mkdir,
+		connect.WithSchema(uIMethods.ByName("Mkdir")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveFileHandler := connect.NewUnaryHandler(
+		UIRemoveFileProcedure,
+		svc.RemoveFile,
+		connect.WithSchema(uIMethods.ByName("RemoveFile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPutFileHandler := connect.NewUnaryHandler(
+		UIPutFileProcedure,
+		svc.PutFile,
+		connect.WithSchema(uIMethods.ByName("PutFile")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIGetSettingsHandler := connect.NewUnaryHandler(
 		UIGetSettingsProcedure,
 		svc.GetSettings,
@@ -674,8 +784,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListBotsHandler.ServeHTTP(w, r)
 		case UICreateBotProcedure:
 			uICreateBotHandler.ServeHTTP(w, r)
+		case UIUpdateBotProcedure:
+			uIUpdateBotHandler.ServeHTTP(w, r)
 		case UIGetBotProcedure:
 			uIGetBotHandler.ServeHTTP(w, r)
+		case UIGetContainerProcedure:
+			uIGetContainerHandler.ServeHTTP(w, r)
 		case UIStartBotProcedure:
 			uIStartBotHandler.ServeHTTP(w, r)
 		case UIStopBotProcedure:
@@ -712,6 +826,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListFilesHandler.ServeHTTP(w, r)
 		case UIReadFileProcedure:
 			uIReadFileHandler.ServeHTTP(w, r)
+		case UIMkdirProcedure:
+			uIMkdirHandler.ServeHTTP(w, r)
+		case UIRemoveFileProcedure:
+			uIRemoveFileHandler.ServeHTTP(w, r)
+		case UIPutFileProcedure:
+			uIPutFileHandler.ServeHTTP(w, r)
 		case UIGetSettingsProcedure:
 			uIGetSettingsHandler.ServeHTTP(w, r)
 		case UIPutSettingsProcedure:
@@ -747,8 +867,16 @@ func (UnimplementedUIHandler) CreateBot(context.Context, *connect.Request[v1.Cre
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateBot is not implemented"))
 }
 
+func (UnimplementedUIHandler) UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateBot is not implemented"))
+}
+
 func (UnimplementedUIHandler) GetBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetBot is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetContainer is not implemented"))
 }
 
 func (UnimplementedUIHandler) StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
@@ -821,6 +949,18 @@ func (UnimplementedUIHandler) ListFiles(context.Context, *connect.Request[v1.Lis
 
 func (UnimplementedUIHandler) ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ReadFile is not implemented"))
+}
+
+func (UnimplementedUIHandler) Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Mkdir is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveFile(context.Context, *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveFile is not implemented"))
+}
+
+func (UnimplementedUIHandler) PutFile(context.Context, *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PutFile is not implemented"))
 }
 
 func (UnimplementedUIHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {

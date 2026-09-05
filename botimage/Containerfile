@@ -11,7 +11,7 @@ COPY botimage/openbox/autostart /opt/silo/openbox/autostart
 COPY botimage/tint2/tint2rc /opt/silo/tint2/tint2rc
 COPY botimage/apps/ /opt/silo/desktop/
 COPY botimage/wallpaper.png /opt/silo/wallpaper.png
-COPY botimage/gtk-3.0/settings.ini /opt/silo/gtk-3.0/settings.ini
+COPY botimage/gtk-3.0/ /opt/silo/gtk-3.0/
 COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker \
     && mkdir -p /workspace /var/run/silo /home/bot/chrome-profile \

@@ -36,6 +36,8 @@ type fakeHost struct {
 	mu         sync.Mutex
 	inspect    map[string]dockerx.State
 	inspectErr error
+	createErr  error
+	envHash    map[string]string
 	creates    atomic.Int32
 	drops      atomic.Int32
 }
@@ -54,6 +56,9 @@ func (f *fakeHost) Inspect(_ context.Context, id string) (dockerx.State, error) 
 
 func (f *fakeHost) Create(_ context.Context, botID, _ string) (string, error) {
 	f.creates.Add(1)
+	if f.createErr != nil {
+		return "", f.createErr
+	}
 	id := "cid-" + botID
 	f.mu.Lock()
 	if f.inspect == nil {
@@ -66,6 +71,25 @@ func (f *fakeHost) Create(_ context.Context, botID, _ string) (string, error) {
 	return id, nil
 }
 
+func (f *fakeHost) EnvTokenHash(_ context.Context, id string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.envHash == nil {
+		return "", nil
+	}
+	return f.envHash[id], nil
+}
+
+func (f *fakeHost) Stats(_ context.Context, id string) (dockerx.Stats, error) {
+	st, err := f.Inspect(context.Background(), id)
+	if err != nil {
+		return dockerx.Stats{}, err
+	}
+	if !st.Running {
+		return dockerx.Stats{}, nil
+	}
+	return dockerx.Stats{CPUPercent: 1.5, MemUsed: 100 << 20, MemLimit: 1 << 30}, nil
+}
 func (f *fakeHost) Start(context.Context, string) error { return nil }
 func (f *fakeHost) Stop(context.Context, string) error  { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
@@ -149,6 +173,41 @@ func TestEnsureRunningSerial(t *testing.T) {
 	wg.Wait()
 	if h.creates.Load() != 1 {
 		t.Fatalf("creates %d", h.creates.Load())
+	}
+}
+
+func TestEnsureCreateFailKeepsHash(t *testing.T) {
+	h := &fakeHost{createErr: errors.New("name in use")}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", TokenHash: "old", Status: "stopped"}
+	a.DB.Create(b)
+	if err := a.ensureRunning(context.Background(), b); err == nil {
+		t.Fatal("expected create error")
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.TokenHash != "old" {
+		t.Fatalf("rotated hash on failed create: %q", b.TokenHash)
+	}
+}
+
+func TestLiveStaleTokenDrops(t *testing.T) {
+	name := dockerx.Name("bot1")
+	h := &fakeHost{
+		inspect: map[string]dockerx.State{name: {ID: "cid-old", Running: true}, "cid-old": {ID: "cid-old", Running: true}},
+		envHash: map[string]string{"cid-old": "box-hash"},
+	}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", TokenHash: "db-hash", ContainerID: "cid-old", Status: "stopped"}
+	a.DB.Create(b)
+	if a.live(context.Background(), b) {
+		t.Fatal("expected stale box dropped")
+	}
+	if h.drops.Load() != 1 {
+		t.Fatalf("drops %d", h.drops.Load())
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.ContainerID != "" {
+		t.Fatalf("kept id %q", b.ContainerID)
 	}
 }
 

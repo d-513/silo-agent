@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 
@@ -73,6 +74,7 @@ func (a *App) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFileRequ
 	var row struct {
 		Name      string `json:"name"`
 		Content   string `json:"content"`
+		Data      string `json:"data"`
 		Binary    bool   `json:"binary"`
 		Truncated bool   `json:"truncated"`
 		Size      int64  `json:"size"`
@@ -80,11 +82,76 @@ func (a *App) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFileRequ
 	if err := json.Unmarshal([]byte(raw), &row); err != nil {
 		return nil, err
 	}
+	data, err := decodeFileData(row.Data)
+	if err != nil {
+		return nil, err
+	}
+	content := a.Mask(b.ID).Apply(row.Content)
+	if !row.Binary && len(data) > 0 {
+		data = []byte(a.Mask(b.ID).Apply(string(data)))
+	}
 	return connect.NewResponse(&v1.ReadFileResponse{
 		Name:      row.Name,
-		Content:   a.Mask(b.ID).Apply(row.Content),
+		Content:   content,
 		Binary:    row.Binary,
 		Truncated: row.Truncated,
 		Size:      row.Size,
+		Data:      data,
 	}), nil
+}
+
+func decodeFileData(s string) ([]byte, error) {
+	if s == "" {
+		return nil, nil
+	}
+	return base64.StdEncoding.DecodeString(s)
+}
+
+func (a *App) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	path := req.Msg.GetPath()
+	if path == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
+	}
+	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_Mkdir{Mkdir: &v1.MkdirCmd{Path: path}}}); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.FileOpResponse{}), nil
+}
+
+func (a *App) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	path := req.Msg.GetPath()
+	if path == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
+	}
+	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_Remove{Remove: &v1.RemoveCmd{Path: path}}}); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.FileOpResponse{}), nil
+}
+
+func (a *App) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	path := req.Msg.GetPath()
+	if path == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
+	}
+	data := req.Msg.GetData()
+	if len(data) > 2<<20 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file too large (max 2 MB)"))
+	}
+	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }

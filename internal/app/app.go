@@ -281,8 +281,11 @@ func (a *App) botFromToken(h string) (*db.Bot, string, error) {
 		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 	var b db.Bot
-	if err := a.DB.First(&b, "token_hash = ?", ids.Hash(tok)).Error; err != nil {
+	if err := a.DB.Where("token_hash = ?", ids.Hash(tok)).Limit(1).Find(&b).Error; err != nil {
 		return nil, "", err
+	}
+	if b.ID == "" {
+		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 	return &b, tok, nil
 }

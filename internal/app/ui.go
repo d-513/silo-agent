@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -13,6 +14,7 @@ import (
 	"silo.agent/internal/auth"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
 )
 
@@ -62,6 +64,9 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		LastTask:        b.LastTask,
 		Crest:           int32(b.Crest),
 		WorkerConnected: connected,
+		Description:     b.Description,
+		Soul:            b.Soul,
+		Memory:          b.Memory,
 	}
 }
 
@@ -89,7 +94,10 @@ func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsReques
 	}
 	out := &v1.ListBotsResponse{}
 	for i := range bots {
-		out.Bots = append(out.Bots, a.viewBot(ctx, &bots[i]))
+		p := a.viewBot(ctx, &bots[i])
+		p.Soul = ""
+		p.Memory = ""
+		out.Bots = append(out.Bots, p)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -106,12 +114,14 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		crest = ids.Crest(name, id)
 	}
 	b := db.Bot{
-		ID:        id,
-		UserID:    u.ID,
-		Name:      name,
-		Status:    "stopped",
-		Crest:     crest,
-		CreatedAt: time.Now(),
+		ID:          id,
+		UserID:      u.ID,
+		Name:        name,
+		Description: clipDesc(req.Msg.GetDescription()),
+		Soul:        defaultSoul,
+		Status:      "stopped",
+		Crest:       crest,
+		CreatedAt:   time.Now(),
 	}
 	if err := a.DB.Create(&b).Error; err != nil {
 		return nil, err
@@ -124,12 +134,56 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	return connect.NewResponse(a.viewBot(ctx, &b)), nil
 }
 
+func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if name := strings.TrimSpace(req.Msg.GetName()); name != "" {
+		b.Name = name
+	}
+	b.Description = clipDesc(req.Msg.GetDescription())
+	b.Soul = req.Msg.GetSoul()
+	b.Memory = req.Msg.GetMemory()
+	if err := a.DB.Save(b).Error; err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(a.viewBot(ctx, b)), nil
+}
+
 func (a *App) GetBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	b, err := a.ownBot(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
+}
+
+func (a *App) GetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	running := a.live(ctx, b)
+	out := &v1.Container{Running: running}
+	if !running {
+		return connect.NewResponse(out), nil
+	}
+	id := b.ContainerID
+	if id == "" {
+		id = dockerx.Name(b.ID)
+	}
+	st, err := a.Docker.Stats(ctx, id)
+	if err != nil {
+		if dockerx.IsNotFound(err) {
+			return connect.NewResponse(out), nil
+		}
+		return nil, err
+	}
+	out.CpuPercent = st.CPUPercent
+	out.MemUsed = st.MemUsed
+	out.MemLimit = st.MemLimit
+	return connect.NewResponse(out), nil
 }
 
 func (a *App) StartBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
@@ -280,7 +334,7 @@ func (a *App) settings() *v1.Settings {
 
 func (a *App) getSetting(k string) string {
 	var s db.Setting
-	if err := a.DB.First(&s, "key = ?", k).Error; err != nil {
+	if err := a.DB.Where("key = ?", k).Limit(1).Find(&s).Error; err != nil {
 		return ""
 	}
 	return s.Value
@@ -303,6 +357,16 @@ func (a *App) ListAudit(_ context.Context, _ *connect.Request[v1.ListAuditReques
 		})
 	}
 	return connect.NewResponse(out), nil
+}
+
+const descMax = 400
+
+func clipDesc(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) > descMax {
+		return s[:descMax]
+	}
+	return s
 }
 
 func eventsAfter(rows []db.RunEvent, after string) []db.RunEvent {

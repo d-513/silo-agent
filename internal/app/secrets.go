@@ -11,6 +11,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/security"
 )
 
 func (a *App) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {
@@ -72,10 +73,16 @@ func (a *App) ListApprovals(ctx context.Context, req *connect.Request[v1.ListApp
 }
 
 func protoApproval(r *db.Approval) *v1.Approval {
-	return &v1.Approval{
+	p := security.Describe(r.Connector, r.Action, r.ArgsJSON)
+	out := &v1.Approval{
 		Id: r.ID, BotId: r.BotID, RunId: r.RunID,
 		Connector: r.Connector, Action: r.Action, ArgsJson: r.ArgsJSON, Status: r.Status,
+		Title: p.Title, Summary: p.Summary,
 	}
+	for _, f := range p.Fields {
+		out.Fields = append(out.Fields, &v1.ApprovalField{Label: f.Label, Value: f.Value})
+	}
+	return out
 }
 
 func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error) {
@@ -86,9 +93,9 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	if _, err := a.ownBot(ctx, row.BotID); err != nil {
 		return nil, err
 	}
-	dec := req.Msg.GetDecision()
-	if dec != "allow" && dec != "deny" && dec != "always" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("decision must be allow, deny, or always"))
+	dec := security.Vote(req.Msg.GetDecision())
+	if dec == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("decision must be allow_once, always, or deny"))
 	}
 	row.Status = dec
 	a.DB.Save(&row)

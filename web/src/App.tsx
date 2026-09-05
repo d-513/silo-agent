@@ -1,14 +1,15 @@
-import { ArrowUp, ChatCircle, Folder, GearSix, Key, ListChecks, Monitor, Plus, Power, SquaresFour, Stop, Trash } from "@phosphor-icons/react";
+import { ArrowUp, ChatCircle, Cube, Folder, GearSix, Key, ListChecks, Monitor, Plus, Power, SlidersHorizontal, SquaresFour, Trash } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
+import { ApprovalSlip } from "./Approval";
 import { FilesPane } from "./Files";
 import { Thread, type Ev } from "./Thread";
-import type { Approval, AuditRow, Bot, Chat, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
+import type { Approval, AuditRow, Bot, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "secrets", "rules"] as const;
+const tabs = ["run", "desktop", "files", "secrets", "rules", "container", "settings"] as const;
 type Tab = (typeof tabs)[number];
 
 function fail(e: unknown) {
@@ -41,6 +42,8 @@ const tabMeta: Record<Tab, { label: string; icon: typeof ChatCircle }> = {
   files: { label: "Files", icon: Folder },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
+  container: { label: "Container", icon: Cube },
+  settings: { label: "Settings", icon: SlidersHorizontal },
 };
 
 function randomCrest() {
@@ -278,7 +281,8 @@ function BotsPage() {
               <Crest index={b.crest} size={56} />
               <div className="min-w-0">
                 <div className="text-[16px] font-medium">{b.name}</div>
-                <div className="truncate text-stone">{b.lastTask || "No runs this week"}</div>
+                {b.description && <div className="truncate text-stone">{b.description}</div>}
+                <div className="truncate text-[13px] text-stone">{b.lastTask || "No runs this week"}</div>
                 <div className="mt-1 flex items-center gap-2 text-[12px] font-medium">
                   <span className={`inline-block h-[7px] w-[7px] rounded-full ${lampClass(b.status)}`} />
                   <span className={statusWord(b.status)}>{statusLabel(b.status)}</span>
@@ -296,6 +300,7 @@ function NewBotPage() {
   const nav = useNavigate();
   const { refresh } = useBots();
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [crest, setCrest] = useState(randomCrest);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -305,7 +310,7 @@ function NewBotPage() {
     setBusy(true);
     setErr("");
     try {
-      const b = await ui.createBot({ name: name.trim(), crest });
+      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim() });
       refresh();
       nav(`/bots/${b.id}/run`);
     } catch (ex) {
@@ -330,6 +335,13 @@ function NewBotPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
+        />
+        <label className="mb-1 mt-4 block text-[12px] font-medium text-stone">Description</label>
+        <textarea
+          className="mb-2 min-h-[72px] w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          placeholder="What this machine is for"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
         <p className="mb-6 text-stone">A Bot is its own machine. It does not share files with the others.</p>
         {err && <p className="mb-3 text-carmine">{err}</p>}
@@ -477,6 +489,193 @@ function HatchPane({
       <div className="min-h-0 flex-1 bg-matte p-2">
         <Hatch botId={bot.id} live visible={visible} />
       </div>
+    </div>
+  );
+}
+
+function n64(v: bigint | number | undefined) {
+  if (typeof v === "bigint") return Number(v);
+  return v ?? 0;
+}
+
+function fmtBytes(n: number) {
+  if (n <= 0) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let x = n;
+  while (x >= 1024 && i < u.length - 1) {
+    x /= 1024;
+    i++;
+  }
+  return `${x < 10 && i > 0 ? x.toFixed(1) : Math.round(x)} ${u[i]}`;
+}
+
+function Meter({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-linen">
+      <div className="h-full bg-bindery" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function ContainerPane({
+  bot,
+  onStart,
+  onStop,
+}: {
+  bot: Bot;
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  const [box, setBox] = useState<Container | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let dead = false;
+    const load = () => {
+      ui.getContainer({ id: bot.id })
+        .then((c) => {
+          if (!dead) {
+            setBox(c);
+            setErr("");
+          }
+        })
+        .catch((e) => {
+          if (!dead) setErr(fail(e));
+        });
+    };
+    load();
+    const t = setInterval(load, 2000);
+    return () => {
+      dead = true;
+      clearInterval(t);
+    };
+  }, [bot.id]);
+  const mem = n64(box?.memUsed);
+  const cap = n64(box?.memLimit);
+  const cpu = box?.cpuPercent ?? 0;
+  return (
+    <div className="mx-auto w-[760px] p-7">
+      <h2 className="text-[22px] font-medium">Container</h2>
+      <p className="mb-6 text-stone">This Bot’s machine. Usage from Docker.</p>
+      {err && <p className="mb-4 text-carmine">{err}</p>}
+      <div className="mb-6 flex items-center gap-3">
+        <span className={`inline-block h-[7px] w-[7px] rounded-full ${lampClass(bot.status)}`} />
+        <span className={`text-[12px] font-medium ${statusWord(bot.status)}`}>{statusLabel(bot.status)}</span>
+      </div>
+      <div className="mb-6 grid max-w-[560px] gap-4">
+        <div className="rounded-[10px] border border-thread bg-folio p-4">
+          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">CPU</div>
+          <div className="mb-2 font-mono text-[20px] font-medium tracking-tight">
+            {box?.running ? `${cpu.toFixed(1)}%` : "—"}
+          </div>
+          <Meter value={box?.running ? cpu : 0} max={100} />
+        </div>
+        <div className="rounded-[10px] border border-thread bg-folio p-4">
+          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">RAM</div>
+          <div className="mb-2 font-mono text-[20px] font-medium tracking-tight">
+            {box?.running ? `${fmtBytes(mem)}${cap ? ` / ${fmtBytes(cap)}` : ""}` : "—"}
+          </div>
+          <Meter value={mem} max={cap} />
+        </div>
+      </div>
+      {bot.workerConnected ? (
+        <Btn kind="secondary" onClick={onStop} icon={<Power size={12} />}>
+          Stop Bot
+        </Btn>
+      ) : (
+        <Btn kind="primary" onClick={onStart} disabled={bot.status === "starting"} icon={<Power size={12} />}>
+          {bot.status === "starting" ? "Starting…" : "Start Bot"}
+        </Btn>
+      )}
+    </div>
+  );
+}
+
+function SettingsPane({
+  bot,
+  onSaved,
+  onError,
+}: {
+  bot: Bot;
+  onSaved: (b: Bot) => void;
+  onError: (s: string) => void;
+}) {
+  const [name, setName] = useState(bot.name);
+  const [description, setDescription] = useState(bot.description);
+  const [soul, setSoul] = useState(bot.soul);
+  const [memory, setMemory] = useState(bot.memory);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    setName(bot.name);
+    setDescription(bot.description);
+    setSoul(bot.soul);
+    setMemory(bot.memory);
+  }, [bot.id]);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    setSaved(false);
+    onError("");
+    try {
+      const next = await ui.updateBot({
+        id: bot.id,
+        name: name.trim(),
+        description: description.trim(),
+        soul,
+        memory,
+      });
+      onSaved(next);
+      setSoul(next.soul);
+      setMemory(next.memory);
+      setSaved(true);
+    } catch (ex) {
+      onError(fail(ex));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="mx-auto w-[760px] p-7">
+      <h2 className="text-[22px] font-medium">Settings</h2>
+      <p className="mb-6 text-stone">This Bot only. SOUL and MEMORY are also in the prompt — the Bot can edit them.</p>
+      <form onSubmit={save} className="max-w-[560px]">
+        <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
+        <input
+          className="mb-4 h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
+        <textarea
+          className="mb-6 min-h-[72px] w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          placeholder="What this machine is for"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <label className="mb-1 block text-[12px] font-medium text-stone">SOUL</label>
+        <p className="mb-1 text-[12px] text-stone">Identity, tone, hard rules.</p>
+        <textarea
+          className="mb-6 min-h-[160px] w-full rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] outline-none focus:border-bindery"
+          value={soul}
+          onChange={(e) => setSoul(e.target.value)}
+        />
+        <label className="mb-1 block text-[12px] font-medium text-stone">MEMORY</label>
+        <p className="mb-1 text-[12px] text-stone">Lasting facts. Over 8000 characters the Bot is told to compact.</p>
+        <textarea
+          className="mb-6 min-h-[160px] w-full rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] outline-none focus:border-bindery"
+          value={memory}
+          onChange={(e) => setMemory(e.target.value)}
+        />
+        <div className="flex items-center gap-3">
+          <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
+            {busy ? "Saving…" : "Save"}
+          </Btn>
+          {saved && <span className="text-stone">Saved</span>}
+        </div>
+      </form>
     </div>
   );
 }
@@ -723,12 +922,12 @@ function BotPage() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           {bot.workerConnected ? (
-            <Btn kind="secondary" onClick={stop} icon={<Stop size={12} weight="fill" />}>
-              Stop
+            <Btn kind="ghost" title="Stop this Bot's machine" onClick={stop} icon={<Power size={12} />}>
+              Stop Bot
             </Btn>
           ) : (
-            <Btn kind="primary" onClick={start} disabled={bot.status === "starting"} icon={<Power size={12} />}>
-              {bot.status === "starting" ? "Starting…" : "Start"}
+            <Btn kind="primary" title="Start this Bot's machine" onClick={start} disabled={bot.status === "starting"} icon={<Power size={12} />}>
+              {bot.status === "starting" ? "Starting…" : "Start Bot"}
             </Btn>
           )}
         </div>
@@ -840,6 +1039,17 @@ function BotPage() {
             </form>
           </div>
         )}
+        {tab === "container" && <ContainerPane bot={bot} onStart={start} onStop={stop} />}
+        {tab === "settings" && (
+          <SettingsPane
+            bot={bot}
+            onSaved={(next) => {
+              setBot(next);
+              refresh();
+            }}
+            onError={setActErr}
+          />
+        )}
         {tab === "rules" && (
           <div className="mx-auto w-[760px] p-7">
             <h2 className="mb-4 text-[22px] font-medium">Rules</h2>
@@ -884,48 +1094,14 @@ function BotPage() {
           </div>
         )}
         {pending[0] && (
-          <aside className="absolute top-0 right-0 z-10 flex h-full w-[400px] flex-col border-l border-thread bg-folio p-5">
-            <div className="mb-2 flex items-center gap-2">
-              <Crest index={bot.crest} size={28} />
-              <span className="font-medium">{bot.name}</span>
-              <span className="text-carmine">Needs you</span>
-            </div>
-            <div className="mb-2 font-mono">
-              {pending[0].connector}.{pending[0].action}
-            </div>
-            <pre className="mb-4 whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{pending[0].argsJson}</pre>
-            <p className="mb-4 text-stone">Run is waiting.</p>
-            <Btn
-              kind="primary"
-              className="mb-2 w-full justify-center"
-              onClick={async () => {
-                await ui.decideApproval({ id: pending[0].id, decision: "allow_once" });
-                setPending((xs) => xs.slice(1));
-              }}
-            >
-              Allow once
-            </Btn>
-            <Btn
-              kind="secondary"
-              className="mb-2 w-full justify-center"
-              onClick={async () => {
-                await ui.decideApproval({ id: pending[0].id, decision: "always" });
-                setPending((xs) => xs.slice(1));
-              }}
-            >
-              Always allow this action
-            </Btn>
-            <Btn
-              kind="deny"
-              className="w-full justify-center"
-              onClick={async () => {
-                await ui.decideApproval({ id: pending[0].id, decision: "deny" });
-                setPending((xs) => xs.slice(1));
-              }}
-            >
-              Deny
-            </Btn>
-          </aside>
+          <ApprovalSlip
+            bot={bot}
+            approval={pending[0]}
+            onDecide={async (decision) => {
+              await ui.decideApproval({ id: pending[0].id, decision });
+              setPending((xs) => xs.slice(1));
+            }}
+          />
         )}
       </div>
     </div>

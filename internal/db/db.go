@@ -28,6 +28,9 @@ type Bot struct {
 	ID          string `gorm:"primaryKey"`
 	UserID      string `gorm:"index"`
 	Name        string
+	Description string
+	Soul        string
+	Memory      string
 	TokenHash   string `gorm:"uniqueIndex"`
 	ContainerID string
 	Status      string

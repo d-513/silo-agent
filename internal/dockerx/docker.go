@@ -2,16 +2,19 @@ package dockerx
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
 	"silo.agent/internal/config"
+	"silo.agent/internal/ids"
 )
 
 func Name(botID string) string { return "silo-" + botID }
@@ -27,8 +30,16 @@ type State struct {
 	Running bool
 }
 
+type Stats struct {
+	CPUPercent float64
+	MemUsed    int64
+	MemLimit   int64
+}
+
 type Host interface {
 	Inspect(ctx context.Context, id string) (State, error)
+	Stats(ctx context.Context, id string) (Stats, error)
+	EnvTokenHash(ctx context.Context, id string) (string, error)
 	Create(ctx context.Context, botID, token string) (string, error)
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string) error
@@ -65,6 +76,72 @@ func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
 	}
 	run := c.State != nil && c.State.Running
 	return State{ID: c.ID, Running: run}, nil
+}
+
+func cpuPct(s container.StatsResponse) float64 {
+	cpuDelta := float64(s.CPUStats.CPUUsage.TotalUsage - s.PreCPUStats.CPUUsage.TotalUsage)
+	sysDelta := float64(s.CPUStats.SystemUsage - s.PreCPUStats.SystemUsage)
+	n := float64(s.CPUStats.OnlineCPUs)
+	if n == 0 {
+		n = float64(len(s.CPUStats.CPUUsage.PercpuUsage))
+	}
+	if cpuDelta > 0 && sysDelta > 0 && n > 0 {
+		return (cpuDelta / sysDelta) * n * 100
+	}
+	return 0
+}
+
+func (e *Engine) EnvTokenHash(ctx context.Context, id string) (string, error) {
+	if id == "" {
+		return "", ErrNotFound
+	}
+	c, err := e.cli.ContainerInspect(ctx, id)
+	if err != nil {
+		if cerrdefs.IsNotFound(err) {
+			return "", fmt.Errorf("%w: %s", ErrNotFound, id)
+		}
+		return "", err
+	}
+	if c.Config == nil {
+		return "", nil
+	}
+	for _, e := range c.Config.Env {
+		if v, ok := strings.CutPrefix(e, "SILO_BOT_TOKEN="); ok {
+			return ids.Hash(v), nil
+		}
+	}
+	return "", nil
+}
+
+func memUsed(s container.StatsResponse) int64 {
+	used := s.MemoryStats.Usage
+	if s.MemoryStats.Stats != nil {
+		if v, ok := s.MemoryStats.Stats["inactive_file"]; ok && used > v {
+			used -= v
+		} else if v, ok := s.MemoryStats.Stats["cache"]; ok && used > v {
+			used -= v
+		}
+	}
+	return int64(used)
+}
+
+func (e *Engine) Stats(ctx context.Context, id string) (Stats, error) {
+	if id == "" {
+		return Stats{}, ErrNotFound
+	}
+	r, err := e.cli.ContainerStatsOneShot(ctx, id)
+	if err != nil {
+		if cerrdefs.IsNotFound(err) {
+			return Stats{}, fmt.Errorf("%w: %s", ErrNotFound, id)
+		}
+		return Stats{}, err
+	}
+	defer r.Body.Close()
+	var s container.StatsResponse
+	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+		return Stats{}, err
+	}
+	return Stats{CPUPercent: cpuPct(s), MemUsed: memUsed(s), MemLimit: int64(s.MemoryStats.Limit)}, nil
 }
 
 func (e *Engine) Create(ctx context.Context, botID, token string) (string, error) {

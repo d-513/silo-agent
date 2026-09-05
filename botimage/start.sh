@@ -8,6 +8,7 @@ cp /opt/silo/desktop/silo-*.desktop /usr/local/share/applications/ 2>/dev/null |
 cp /opt/silo/openbox/autostart /home/bot/.config/openbox/autostart
 cp /opt/silo/tint2/tint2rc /home/bot/.config/tint2/tint2rc
 cp /opt/silo/gtk-3.0/settings.ini /home/bot/.config/gtk-3.0/settings.ini
+cp /opt/silo/gtk-3.0/bookmarks /home/bot/.config/gtk-3.0/bookmarks
 cp /opt/silo/thunar/thunarrc /home/bot/.config/Thunar/thunarrc
 
 children=()

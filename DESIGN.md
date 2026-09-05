@@ -188,7 +188,7 @@ Weights 400–550. No black, no ultra.
 
 Height 36px. Radius 6px. Primary: bindery fill, plaster label. Secondary: Folio fill, Thread border, iron label. Ghost: Stone label, iron on hover. Deny: carmine fill, plaster label — approval slip only.
 
-Start, Stop, and Send nest a 20px square glyph on the right (play/power, stop-square, arrow). Press `scale(0.98)`. Focus is 1px bindery, no glow.
+Start Bot / Stop Bot and Send nest a 20px square glyph on the right (power for the machine, arrow for Send). Never a media stop-square on the header — that reads as abort-the-reply. Header Stop Bot is ghost. Press `scale(0.98)`. Focus is 1px bindery, no glow.
 
 No pills. Rail icons are 40px hits with tooltips.
 
@@ -198,7 +198,7 @@ Not dashboard tiles.
 
 - Folio fill, 10px radius, 1px Thread.
 - Left: 56px crest (the shape, no plate).
-- Name, one-line last task in Stone, 7px lamp.
+- Name, optional one-line description in Stone, last task in Stone, 7px lamp.
 - Hover: border to `#B9B3A6`. No shadow, no lift.
 - Needs you: 2px carmine ribbon on the left edge only.
 
@@ -237,10 +237,10 @@ The VNC surface is a dark window in a light room.
 A 400px Folio panel from the right, Thread on the left. Paper, not a modal dim-to-black.
 
 - Crest, Bot name, `Needs you` in carmine
-- Action in mono: `secrets.get`
-- Args on Cloth, mono, secrets already `***`
+- Title from the security catalog (`Read a secret`), not `secrets.get`
+- One Stone sentence, then labeled fields on Cloth (Secret → `TEST`). No raw JSON.
 - **Allow once** (bindery), **Always allow this action** (secondary), **Deny** (carmine)
-- Stone: “Run #1842 is waiting.”
+- Stone: “This run is paused until you choose.”
 
 No `confirm()`. No toast.
 
@@ -248,9 +248,10 @@ No `confirm()`. No toast.
 
 The Chat tab. Not a marketing chat.
 
-- User: iron, no bubble, 4px bindery bar on the left.
-- Assistant: Stone-to-iron, no bubble.
-- Tool lines: mono, Cloth row.
+- User: folio well, 4px bindery bar on the left. The product’s “bubble” — left spine, not iMessage.
+- Assistant: iron, no well. Markdown (headings, lists, tables, fenced code).
+- Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
+- Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view.
 - Composer: Cloth well, placeholder “Ask this Bot…”, bindery send.
 
 ### Status lamp
@@ -267,9 +268,9 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start/Stop). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Secrets`, `Rules`. The hatch lives only on `Desktop`, full main column.
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Files`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives only on `Desktop`, full main column. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Settings is a 760px column (name + description now; more later).
 
-**Settings / admin:** header + one 720–800px column. Lists.
+**Settings / admin:** header + one 720–800px column. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
 
 ### Whitespace Strategy
 
@@ -305,7 +306,8 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 |---|---|---|
 | 1 | Sign in | Session. Email + password. |
 | 2 | Bots | Home. Every folio the user can open. |
-| 3 | New Bot | Name, crest preview, create. |
+| 3 | New Bot | Name, description, crest preview, create. |
+| 13 | Bot · Settings | Name and description. More knobs later. |
 | 4 | Bot · Run | Thread + dark hatch. Default. |
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
 | 6 | Bot · Desktop | Hatch full-bleed. |
@@ -357,7 +359,7 @@ No KPI row. No search. No orange. The hatch is not on this screen.
 Same shell. Main column 560px on plaster.
 Title: New Bot.
 An 88px crest preview, then a folio picker: 4×2 shapes, a row of color dots. Bindery ring on the active shape and color.
-Field: Name (placeholder “Scout”).
+Field: Name (placeholder “Scout”). Description (placeholder “What this machine is for”).
 Stone hint: “A Bot is its own machine. It does not share files with the others.”
 Primary: Create Bot. Ghost: Cancel.
 No model picker, no tags, no orange.
@@ -382,10 +384,10 @@ Thread:
 Same Scout chat screen.
 A 400px folio slip from the right. Plaster/folio, not a black overlay.
 Header: crest, Scout, “Needs you” in carmine.
-Mono: secrets.get
-Cloth block:
-  name: vendor_password
-Stone: “Run #1842 is waiting.”
+Title: Read a secret
+Stone: This Bot wants the stored secret “vendor_password”. The value is not shown here.
+Cloth fields: Secret → vendor_password
+Stone: This run is paused until you choose.
 Buttons: Allow once (bindery), Always allow this action (secondary), Deny (carmine).
 Thread stays visible, slightly dimmed. No orange.
 ```

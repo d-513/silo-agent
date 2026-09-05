@@ -13,6 +13,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/security"
 )
 
 func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEvent, v1.Cmd]) error {
@@ -84,7 +85,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	if err := a.DB.First(&sec, "bot_id = ? AND name = ?", bot.ID, name).Error; err != nil {
 		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil
 	}
-	decision := a.ruleDecision(bot.ID, "secrets", "get")
+	decision := security.Rule(a.ruleDecision(bot.ID, "secrets", "get"))
 	runID := req.Msg.GetRunId()
 	switch decision {
 	case "deny":
@@ -118,7 +119,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 			return connect.NewResponse(&v1.SecretRes{Error: "canceled"}), nil
 		case dec = <-ch:
 		}
-		if dec == "deny" || dec == "canceled" {
+		if !security.Granted(dec) {
 			return connect.NewResponse(&v1.SecretRes{Error: "denied"}), nil
 		}
 		now := time.Now()

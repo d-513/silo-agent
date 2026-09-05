@@ -43,16 +43,20 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "read",
-		Description: openai.String("Read a file relative to /workspace."),
+		Description: openai.String("Read a workspace file. Returns numbered lines. Use offset (1-based line) and limit to read a slice — do not dump large files."),
 		Parameters: openai.FunctionParameters{
-			"type":       "object",
-			"properties": map[string]any{"path": map[string]any{"type": "string"}},
-			"required":   []string{"path"},
+			"type": "object",
+			"properties": map[string]any{
+				"path":   map[string]any{"type": "string"},
+				"offset": map[string]any{"type": "integer", "description": "1-based start line"},
+				"limit":  map[string]any{"type": "integer", "description": "max lines to return"},
+			},
+			"required": []string{"path"},
 		},
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "write",
-		Description: openai.String("Write a file relative to /workspace."),
+		Description: openai.String("Write a file relative to /workspace. Prefer patch for existing files."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -64,7 +68,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "patch",
-		Description: openai.String("Replace old_text with new_text in a file."),
+		Description: openai.String("Replace exactly one occurrence of old_text with new_text. old_text must match once; if it matches several times, add surrounding lines."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -77,14 +81,40 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "grep",
-		Description: openai.String("Search workspace files."),
+		Description: openai.String("Search workspace files. Prefer include (e.g. *.py) over a full-tree scan. Results are capped."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
-				"pattern": map[string]any{"type": "string"},
-				"path":    map[string]any{"type": "string"},
+				"pattern":  map[string]any{"type": "string"},
+				"path":     map[string]any{"type": "string"},
+				"include":  map[string]any{"type": "string", "description": "glob such as *.py or *.md"},
+				"max_hits": map[string]any{"type": "integer"},
 			},
 			"required": []string{"pattern"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "soul",
+		Description: openai.String("Update this Bot's SOUL (identity, tone, hard rules). Already in the system prompt — do not read a file. Pass content to replace, or old_text/new_text to patch one unique snippet."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"content":  map[string]any{"type": "string"},
+				"old_text": map[string]any{"type": "string"},
+				"new_text": map[string]any{"type": "string"},
+			},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "memory",
+		Description: openai.String("Update this Bot's MEMORY (lasting facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"append":   map[string]any{"type": "string"},
+				"old_text": map[string]any{"type": "string"},
+				"new_text": map[string]any{"type": "string"},
+			},
 		},
 	}),
 }
@@ -122,8 +152,12 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	a.emit(botID, chatID, runID, "user", userText, "")
 	a.touchChatTitle(chatID, userText)
 
-	sys := openai.SystemMessage(prompts.System)
-	msgs := []openai.ChatCompletionMessageParamUnion{sys}
+	var bot db.Bot
+	sysText := prompts.System
+	if a.DB.First(&bot, "id = ?", botID).Error == nil {
+		sysText = buildSystem(&bot)
+	}
+	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
 
 	for i := 0; i < 12; i++ {
@@ -135,6 +169,11 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 		stream := client.Chat.Completions.NewStreaming(ctx, params)
 		acc := openai.ChatCompletionAccumulator{}
 		var think strings.Builder
+		type toolDelta struct {
+			name    string
+			started bool
+		}
+		openTools := map[int64]*toolDelta{}
 		for stream.Next() {
 			chunk := stream.Current()
 			acc.AddChunk(chunk)
@@ -148,6 +187,23 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			if r := reasoningDelta(d.RawJSON()); r != "" {
 				think.WriteString(r)
 				a.emit(botID, chatID, runID, "thinking_chunk", r, "")
+			}
+			for _, tc := range d.ToolCalls {
+				st := openTools[tc.Index]
+				if st == nil {
+					st = &toolDelta{}
+					openTools[tc.Index] = st
+				}
+				if tc.Function.Name != "" {
+					st.name = tc.Function.Name
+				}
+				if st.name != "" && !st.started {
+					a.emit(botID, chatID, runID, "tool", "", st.name)
+					st.started = true
+				}
+				if tc.Function.Arguments != "" {
+					a.emit(botID, chatID, runID, "tool_args_chunk", tc.Function.Arguments, st.name)
+				}
 			}
 		}
 		if err := stream.Err(); err != nil {
@@ -173,7 +229,6 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 		msgs = append(msgs, msg.ToParam())
 		for _, tc := range msg.ToolCalls {
 			fn := tc.Function
-			a.emit(botID, chatID, runID, "tool", fn.Arguments, fn.Name)
 			out, err := a.execTool(ctx, botID, runID, fn.Name, fn.Arguments)
 			if err != nil {
 				out = "error: " + err.Error()
@@ -184,6 +239,12 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			}
 			a.emit(botID, chatID, runID, "tool_result", out, fn.Name)
 			msgs = append(msgs, openai.ToolMessage(out, tc.ID))
+			if fn.Name == "soul" || fn.Name == "memory" {
+				var row db.Bot
+				if a.DB.First(&row, "id = ?", botID).Error == nil {
+					msgs[0] = openai.SystemMessage(buildSystem(&row))
+				}
+			}
 		}
 	}
 	a.emit(botID, chatID, runID, "error", "tool loop limit", "")
@@ -239,6 +300,13 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 			if len(pending) == 0 {
 				return
 			}
+			for len(results) < len(pending) {
+				id := pending[len(results)].OfFunction.ID
+				if id == "" {
+					id = "call_missing"
+				}
+				results = append(results, openai.ToolMessage("error: interrupted", id))
+			}
 			msgs = append(msgs, openai.ChatCompletionMessageParamUnion{
 				OfAssistant: &openai.ChatCompletionAssistantMessageParam{ToolCalls: pending},
 			})
@@ -258,6 +326,21 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 					msgs = append(msgs, openai.AssistantMessage(ev.Body))
 				}
 			case "tool":
+				if n := len(pending); n > 0 && pending[n-1].OfFunction != nil {
+					last := pending[n-1].OfFunction
+					same := last.Function.Name == ev.Tool || last.Function.Name == "" || ev.Tool == ""
+					incomplete := last.Function.Arguments == "" || !jsonLooksComplete(last.Function.Arguments)
+					if same && (ev.Body == "" || incomplete || ev.Body == last.Function.Arguments) {
+						if ev.Body != "" {
+							last.Function.Arguments = ev.Body
+						}
+						if ev.Tool != "" {
+							last.Function.Name = ev.Tool
+						}
+						lastCall = last.ID
+						continue
+					}
+				}
 				id := "call_" + ev.ID
 				lastCall = id
 				pending = append(pending, openai.ChatCompletionMessageToolCallUnionParam{
@@ -268,6 +351,10 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 						},
 					},
 				})
+			case "tool_args_chunk":
+				if n := len(pending); n > 0 && pending[n-1].OfFunction != nil {
+					pending[n-1].OfFunction.Function.Arguments += ev.Body
+				}
 			case "tool_result":
 				id := lastCall
 				if id == "" {
@@ -295,6 +382,9 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		v, _ := args[k].(string)
 		return v
 	}
+	if name == "soul" || name == "memory" {
+		return a.execDoc(botID, name, args)
+	}
 	id := ids.New()
 	var cmd *v1.Cmd
 	switch name {
@@ -303,13 +393,21 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	case "exec_python":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: str("code")}}}
 	case "read":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileRead{FileRead: &v1.FileReadCmd{Path: str("path")}}}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileRead{FileRead: &v1.FileReadCmd{
+			Path: str("path"), Offset: int32(num(args, "offset")), Limit: int32(num(args, "limit")),
+		}}}
 	case "write":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileWrite{FileWrite: &v1.FileWriteCmd{Path: str("path"), Content: str("content")}}}
 	case "patch":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{Path: str("path"), OldText: str("old_text"), NewText: str("new_text")}}}
 	case "grep":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Grep{Grep: &v1.GrepCmd{Pattern: str("pattern"), Path: str("path")}}}
+		max := int32(num(args, "max_hits"))
+		if max <= 0 {
+			max = 80
+		}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Grep{Grep: &v1.GrepCmd{
+			Pattern: str("pattern"), Path: str("path"), Include: str("include"), MaxHits: max,
+		}}}
 	default:
 		return "", fmt.Errorf("unknown tool %s", name)
 	}
@@ -322,5 +420,85 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		delete(a.cmdRun, id)
 		a.mu.Unlock()
 	}()
-	return a.Hub.Exec(ctx, botID, cmd)
+	out, err := a.Hub.Exec(ctx, botID, cmd)
+	if err != nil {
+		return "", err
+	}
+	switch name {
+	case "read":
+		return formatRead(out, num(args, "offset"), num(args, "limit")), nil
+	case "grep":
+		max := num(args, "max_hits")
+		if max <= 0 {
+			max = 80
+		}
+		return capHits(out, max), nil
+	default:
+		return out, nil
+	}
+}
+
+func jsonLooksComplete(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	var v any
+	return json.Unmarshal([]byte(s), &v) == nil
+}
+
+func num(args map[string]any, k string) int {
+	switch v := args[k].(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case json.Number:
+		n, _ := v.Int64()
+		return int(n)
+	default:
+		return 0
+	}
+}
+
+func formatRead(raw string, offset, limit int) string {
+	raw = strings.TrimRight(raw, "\n")
+	if raw == "" {
+		return ""
+	}
+	lines := strings.Split(raw, "\n")
+	start := 0
+	if offset > 1 {
+		start = offset - 1
+	}
+	if start > len(lines) {
+		start = len(lines)
+	}
+	end := len(lines)
+	if limit > 0 && start+limit < end {
+		end = start + limit
+	}
+	width := len(fmt.Sprintf("%d", max(end, 1)))
+	var b strings.Builder
+	for i := start; i < end; i++ {
+		fmt.Fprintf(&b, "%*d|%s\n", width, i+1, lines[i])
+	}
+	if start > 0 || end < len(lines) {
+		fmt.Fprintf(&b, "… lines %d–%d of %d\n", start+1, end, len(lines))
+	}
+	return b.String()
+}
+
+func capHits(s string, n int) string {
+	if n <= 0 {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) <= n {
+		return s
+	}
+	return strings.Join(lines[:n], "\n") + fmt.Sprintf("\n…%d more hits", len(lines)-n)
 }
