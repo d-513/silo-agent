@@ -144,16 +144,19 @@ func (a *App) dropWaiter(id string) {
 	a.mu.Unlock()
 }
 
-func (a *App) VNC(ctx context.Context, stream *connect.BidiStream[v1.Frame, v1.Frame]) error {
-	bot := currentBot(ctx)
-	var sess *hub.Session
+func (a *App) waitSession(botID string) *hub.Session {
 	for i := 0; i < 80; i++ {
-		sess = a.Hub.Get(bot.ID)
-		if sess != nil {
-			break
+		if s := a.Hub.Get(botID); s != nil {
+			return s
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	return nil
+}
+
+func (a *App) VNC(ctx context.Context, stream *connect.BidiStream[v1.Frame, v1.Frame]) error {
+	bot := currentBot(ctx)
+	sess := a.waitSession(bot.ID)
 	if sess == nil {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("no command session"))
 	}
@@ -212,6 +215,75 @@ func (a *App) VNC(ctx context.Context, stream *connect.BidiStream[v1.Frame, v1.F
 					continue
 				}
 				if err := stream.Send(&v1.Frame{Data: b}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+}
+
+func (a *App) Console(ctx context.Context, stream *connect.BidiStream[v1.ConsoleIO, v1.ConsoleIO]) error {
+	bot := currentBot(ctx)
+	sess := a.waitSession(bot.ID)
+	if sess == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("no command session"))
+	}
+	log.Printf("console worker waiting bot=%s", bot.ID)
+	errc := make(chan error, 1)
+	go func() {
+		for {
+			fr, err := stream.Receive()
+			if err != nil {
+				errc <- err
+				return
+			}
+			if len(fr.GetData()) == 0 && fr.GetRows() == 0 && fr.GetCols() == 0 {
+				continue
+			}
+			if err := sess.PushConsole(ctx, hub.ConsoleMsg{Data: fr.GetData(), Rows: fr.GetRows(), Cols: fr.GetCols()}); err != nil {
+				errc <- err
+				return
+			}
+		}
+	}()
+	for {
+		if err := sess.WaitConsole(ctx); err != nil {
+			return err
+		}
+		gone := sess.ConsoleGone()
+		select {
+		case <-gone:
+			continue
+		default:
+		}
+		_, toWorker := sess.ConsolePipes()
+		if !sess.HasConsole() {
+			continue
+		}
+		if err := stream.Send(&v1.ConsoleIO{}); err != nil {
+			return err
+		}
+		log.Printf("console worker stream bot=%s viewer", bot.ID)
+		gone = sess.ConsoleGone()
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-sess.Done():
+				return hub.ErrClosed
+			case <-gone:
+				return nil
+			case err := <-errc:
+				if errors.Is(err, io.EOF) {
+					return nil
+				}
+				return err
+			case m := <-toWorker:
+				msg := &v1.ConsoleIO{Data: m.Data, Rows: m.Rows, Cols: m.Cols}
+				if len(msg.Data) == 0 && msg.Rows == 0 && msg.Cols == 0 {
+					continue
+				}
+				if err := stream.Send(msg); err != nil {
 					return err
 				}
 			}

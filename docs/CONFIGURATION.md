@@ -63,4 +63,4 @@ API keys, listen address, Docker host, and `cp_url` stay in YAML / env. Admin wi
 
 - Bot tokens, container IDs, chats, secrets: SQLite under `data_dir`
 - Session cookie: issued at sign-in. A missing session row is a stale cookie, not a server fault
-- Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/healthz` to `http_addr`
+- Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz` to `http_addr`

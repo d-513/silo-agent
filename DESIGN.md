@@ -228,9 +228,9 @@ The VNC surface is a dark window in a light room.
 
 - Outer: iron (`#1E2126`), 10px radius.
 - 8px inner matte `#12141A`.
-- Top strip 32px, iron: crest 20px, name, `Desktop`, 6px lamp, spacer, status in mono (plaster at 80%).
-- Framebuffer fills the rest.
-- Worker down: Cloth well on the plaster (not a fake hatch), Stone sentence “Desktop not connected”, secondary “Start Bot”.
+- Top strip 32px, iron: crest 20px, name, `Desktop` or `Console`, 6px lamp, spacer, status in mono (plaster at 80%).
+- Framebuffer or the PTY fills the rest. Console uses IBM Plex Mono on the matte.
+- Worker down: Cloth well on the plaster (not a fake hatch), Stone sentence “Desktop not connected” / “Console not connected”, secondary “Start Bot”.
 
 ### Approval slip
 
@@ -269,7 +269,7 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives only on `Desktop`, full main column. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach from the Admin catalog (image, name, description, OAuth). Settings is a 760px column (name + description now; more later).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach from the Admin catalog (image, name, description, OAuth). Settings is a 760px column (name + description now; more later).
 
 **Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
 
@@ -311,7 +311,7 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 13 | Bot · Settings | Name and description. More knobs later. |
 | 4 | Bot · Run | Thread + dark hatch. Default. |
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
-| 6 | Bot · Desktop | Hatch full-bleed. |
+| 6 | Bot · Desktop | Hatch full-bleed. Caret on the tab opens Console. |
 | 7 | Bot · Connectors | Attach catalog MCP connectors. |
 | 8 | Admin · Connectors | Site catalog. HTTP MCP, OAuth or none. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |

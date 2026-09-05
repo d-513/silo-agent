@@ -185,6 +185,39 @@ func TestFsMkdirPutRemove(t *testing.T) {
 	}
 }
 
+func TestStartPTYInWorkspace(t *testing.T) {
+	dir := t.TempDir()
+	w := &worker{workspace: dir}
+	ptmx, cmd, err := w.startPTY(24, 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = ptmx.Close()
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_, _ = cmd.Process.Wait()
+		}
+	}()
+	if _, err := ptmx.Write([]byte("pwd\n")); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	var got []byte
+	tmp := make([]byte, 1024)
+	for time.Now().Before(deadline) {
+		_ = ptmx.SetReadDeadline(time.Now().Add(80 * time.Millisecond))
+		n, _ := ptmx.Read(tmp)
+		if n > 0 {
+			got = append(got, tmp[:n]...)
+			if strings.Contains(string(got), dir) {
+				return
+			}
+		}
+	}
+	t.Fatalf("pwd not in output: %q", got)
+}
+
 func TestSyncTools(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("SILO_TOOLS_DIR", dir)

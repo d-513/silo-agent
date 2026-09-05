@@ -75,6 +75,14 @@ button {
   height: 100% !important;
   background: var(--color-matte) !important;
 }
+.silo-console .xterm,
+.silo-console .xterm-screen,
+.silo-console .xterm-viewport {
+  height: 100%;
+}
+.silo-console .xterm-viewport {
+  overflow-y: auto;
+}
 
 details > summary {
   list-style: none;

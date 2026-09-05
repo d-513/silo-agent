@@ -6,14 +6,14 @@ Silo is three processes you run locally, plus one container image for Bots.
 browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-worker)
                 │                    │
                 └── /silo.v1.UI ─────┘
-                └── /vnc (websocket)
+                └── /vnc /console (websocket)
 ```
 
-| Piece | Command | Role |
-|---|---|---|
-| Control Plane | `./bin/silo` | Users, chats, agent loop, Docker, VNC proxy |
-| Frontend | `pnpm dev` in `web/` | UI on http://127.0.0.1:5173 |
-| Bot image | `localhost/silo-bot:v1` | X11 desktop + `silo-worker` (Chromium on the dock, not autostart) |
+| Piece         | Command                 | Role                                                              |
+| ------------- | ----------------------- | ----------------------------------------------------------------- |
+| Control Plane | `./bin/silo`            | Users, chats, agent loop, Docker, VNC + console proxy             |
+| Frontend      | `pnpm dev` in `web/`    | UI on http://127.0.0.1:5173                                       |
+| Bot image     | `localhost/silo-bot:v1` | X11 desktop + `silo-worker` (Chromium on the dock, not autostart) |
 
 Architecture: `docs/Description.md`. UI: `DESIGN.md`. Agent prompt: `internal/prompts/SYSTEM.md`.
 
@@ -79,20 +79,20 @@ cd web && pnpm dev
 
 Open http://127.0.0.1:5173 and sign in with `bootstrap.email` / `bootstrap.password`.
 
-Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/healthz`, `/oauth`, and `/connectors` to `:8080`. Do not point the browser at the CP unless you are serving a production frontend build.
+Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`, `/oauth`, and `/connectors` to `:8080`. Do not point the browser at the CP unless you are serving a production frontend build.
 
 `cp_url` (`http://host.containers.internal:8080` by default) is what the **container** uses to dial the CP. The create path adds `host.containers.internal:host-gateway`. If the worker never connects, that URL is not reachable from the Bot.
 
 ## After you change…
 
-| What | Then |
-|---|---|
-| Go (CP only) | `go build -o bin/silo ./cmd/silo` and restart `./bin/silo` |
-| `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d |
-| Go (worker) | rebuild `bin/silo-worker`, rebuild the image, recreate the Bot container |
-| `botimage/*` | rebuild the image, recreate the Bot container |
-| `proto/**` | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
-| `web/**` | Vite reloads. `pnpm build` is the production bundle only |
+| What                         | Then                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| Go (CP only)                 | `go build -o bin/silo ./cmd/silo` and restart `./bin/silo`                            |
+| `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                             |
+| Go (worker)                  | rebuild `bin/silo-worker`, rebuild the image, recreate the Bot container              |
+| `botimage/*`                 | rebuild the image, recreate the Bot container                                         |
+| `proto/**`                   | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
+| `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 
 A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, `podman rm -f silo-<botId>`, then Start (or delete and create the Bot). After a host reboot or a manual `podman rm`, the ID in SQLite is stale; `GetBot` / `StartBot` recover by name (`silo-<id>`).
 
@@ -122,6 +122,7 @@ data/               SQLite + per-bot volumes (gitignored)
 
 - **Worker never connects** — `cp_url` from inside the container, `DOCKER_HOST` on the CP, image tag mismatch.
 - **Desktop black / “Opening desktop…”** — worker must be connected (pine **online**). The hatch waits for the RFB `connect` event; it no longer tears down a silent socket every 4s. Sign in again if the CP log shows `sessions` record not found (stale cookie → VNC 401). After a worker rebuild, Stop, `podman rm -f silo-<id>`, Start. Killing x11vnc inside the Bot should recycle the whole container.
+- **Console blank / “Opening console…”** — same worker hop as VNC (`/console` websocket). Old images have no Console RPC; rebuild `silo-worker`, rebuild the image, recreate the box. The shell starts in `/workspace`.
 - **“OpenRouter key missing”** — `silo.yaml` or `SILO_OPENROUTER__API_KEY`, then restart the CP. Not Admin.
 - **Old desktop (no dock / black root)** — image was not rebuilt, or the old container was not removed. Desktop is Thunar + wallpaper.
 - **Proto / TS types missing** — you edited `.proto` and skipped `buf generate`.

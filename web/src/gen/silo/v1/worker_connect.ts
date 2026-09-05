@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Cmd, CmdEvent, Frame, SecretReq, SecretRes, ToolReq, ToolRes } from "./worker_pb.js";
+import { Cmd, CmdEvent, ConsoleIO, Frame, SecretReq, SecretRes, ToolReq, ToolRes } from "./worker_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,6 +46,15 @@ export const BotWorker = {
       name: "VNC",
       I: Frame,
       O: Frame,
+      kind: MethodKind.BiDiStreaming,
+    },
+    /**
+     * @generated from rpc silo.v1.BotWorker.Console
+     */
+    console: {
+      name: "Console",
+      I: ConsoleIO,
+      O: ConsoleIO,
       kind: MethodKind.BiDiStreaming,
     },
   }

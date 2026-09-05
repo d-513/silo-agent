@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/creack/pty"
 	"golang.org/x/net/http2"
 
 	v1 "silo.agent/gen/silo/v1"
@@ -66,6 +67,7 @@ func main() {
 	ensureToolsDir()
 	go serveLocal(sock, w)
 	go w.vncLoop(client)
+	go w.consoleLoop(client)
 
 	for {
 		err := w.commands(client)
@@ -645,6 +647,97 @@ func (w *worker) vncOnce(client silov1connect.BotWorkerClient) error {
 			continue
 		}
 		if _, err := conn.Write(fr.GetData()); err != nil {
+			return err
+		}
+	}
+}
+
+func (w *worker) consoleLoop(client silov1connect.BotWorkerClient) {
+	for {
+		err := w.consoleOnce(client)
+		if err != nil {
+			log.Printf("console: %v", err)
+		}
+		d := 300 * time.Millisecond
+		if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
+			d = 15 * time.Second
+		}
+		time.Sleep(d)
+	}
+}
+
+func (w *worker) startPTY(rows, cols uint16) (*os.File, *exec.Cmd, error) {
+	if rows == 0 {
+		rows = 24
+	}
+	if cols == 0 {
+		cols = 80
+	}
+	shell := "/bin/bash"
+	if _, err := os.Stat(shell); err != nil {
+		shell = "/bin/sh"
+	}
+	c := exec.Command(shell)
+	c.Dir = w.workspace
+	c.Env = append(w.childEnv(""), "TERM=xterm-256color")
+	ptmx, err := pty.StartWithSize(c, &pty.Winsize{Rows: rows, Cols: cols})
+	return ptmx, c, err
+}
+
+func (w *worker) consoleOnce(client silov1connect.BotWorkerClient) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	st := client.Console(ctx)
+	if err := st.Send(&v1.ConsoleIO{}); err != nil {
+		return err
+	}
+	first, err := st.Receive()
+	if err != nil {
+		return err
+	}
+	ptmx, cmd, err := w.startPTY(uint16(first.GetRows()), uint16(first.GetCols()))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = ptmx.Close()
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_, _ = cmd.Process.Wait()
+		}
+	}()
+	if len(first.GetData()) > 0 {
+		if _, err := ptmx.Write(first.GetData()); err != nil {
+			return err
+		}
+	}
+	go func() {
+		defer cancel()
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if err != nil {
+				return
+			}
+			data := make([]byte, n)
+			copy(data, buf[:n])
+			if err := st.Send(&v1.ConsoleIO{Data: data}); err != nil {
+				return
+			}
+		}
+	}()
+	for {
+		fr, err := st.Receive()
+		if err != nil {
+			return err
+		}
+		if fr.GetRows() > 0 && fr.GetCols() > 0 {
+			_ = pty.Setsize(ptmx, &pty.Winsize{Rows: uint16(fr.GetRows()), Cols: uint16(fr.GetCols())})
+		}
+		if len(fr.GetData()) == 0 {
+			continue
+		}
+		if _, err := ptmx.Write(fr.GetData()); err != nil {
 			return err
 		}
 	}

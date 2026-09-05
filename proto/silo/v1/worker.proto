@@ -9,6 +9,7 @@ service BotWorker {
   rpc GetSecret(SecretReq) returns (SecretRes);
   rpc CallTool(ToolReq) returns (ToolRes);
   rpc VNC(stream Frame) returns (stream Frame);
+  rpc Console(stream ConsoleIO) returns (stream ConsoleIO);
 }
 
 message Cmd {
@@ -147,4 +148,10 @@ message SecretRes {
 
 message Frame {
   bytes data = 1;
+}
+
+message ConsoleIO {
+  bytes data = 1;
+  int32 rows = 2;
+  int32 cols = 3;
 }

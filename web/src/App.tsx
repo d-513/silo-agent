@@ -1,10 +1,11 @@
-import { ArrowUp, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Trash, User, Wrench } from "@phosphor-icons/react";
+import { ArrowUp, CaretDown, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
 import { ApprovalSlip } from "./Approval";
+import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
 import { Thread, type Ev } from "./Thread";
 import { AdminLayout, AccountPage, AdminSettings } from "./Admin";
@@ -13,7 +14,12 @@ import { BotConnectors } from "./BotConnectors";
 import type { Approval, Bot, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
 
 const tabs = ["run", "desktop", "files", "connectors", "secrets", "rules", "container", "settings"] as const;
-type Tab = (typeof tabs)[number];
+type NavTab = (typeof tabs)[number];
+type Tab = NavTab | "console";
+
+function isNavTab(s: string | undefined): s is NavTab {
+  return !!s && (tabs as readonly string[]).includes(s);
+}
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -39,7 +45,7 @@ function statusLabel(status: string) {
   return status.replaceAll("_", " ");
 }
 
-const tabMeta: Record<Tab, { label: string; icon: typeof ChatCircle }> = {
+const tabMeta: Record<NavTab, { label: string; icon: typeof ChatCircle }> = {
   run: { label: "Chat", icon: ChatCircle },
   desktop: { label: "Desktop", icon: Monitor },
   files: { label: "Files", icon: Folder },
@@ -471,19 +477,22 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
   );
 }
 
-function HatchPane({
+function MachinePane({
   bot,
   onStart,
   visible,
+  kind,
 }: {
   bot: Bot;
   onStart: () => void;
   visible: boolean;
+  kind: "desktop" | "console";
 }) {
+  const label = kind === "console" ? "Console" : "Desktop";
   if (!bot.workerConnected) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-start justify-center rounded-[10px] bg-cloth px-6">
-        <p className="mb-3 text-stone">Desktop not connected</p>
+        <p className="mb-3 text-stone">{label} not connected</p>
         <Btn kind="secondary" onClick={onStart} disabled={bot.status === "starting"} icon={<Power size={12} />}>
           {bot.status === "starting" ? "Starting…" : "Start Bot"}
         </Btn>
@@ -495,13 +504,63 @@ function HatchPane({
       <div className="flex h-8 shrink-0 items-center gap-2 px-3 text-[13px] text-plaster/80">
         <Crest index={bot.crest} size={20} />
         <span>{bot.name}</span>
-        <span className="text-plaster/50">Desktop</span>
+        <span className="text-plaster/50">{label}</span>
         <span className={`inline-block h-1.5 w-1.5 rounded-full ${lampClass(bot.status)}`} />
         <span className="ml-auto font-mono text-[12px] text-plaster/80">{statusLabel(bot.status)}</span>
       </div>
       <div className="min-h-0 flex-1 bg-matte p-2">
-        <Hatch botId={bot.id} live visible={visible} />
+        {kind === "console" ? <ConsoleTerm botId={bot.id} live visible={visible} /> : <Hatch botId={bot.id} live visible={visible} />}
       </div>
+    </div>
+  );
+}
+
+function MachineNav({ id, tab }: { id: string; tab: Tab }) {
+  const onMachine = tab === "desktop" || tab === "console";
+  const label = tab === "console" ? "Console" : "Desktop";
+  const Icon = tab === "console" ? TerminalWindow : Monitor;
+  const href = tab === "console" ? `/bots/${id}/console` : `/bots/${id}/desktop`;
+  return (
+    <div className="relative flex items-stretch">
+      <NavLink
+        to={href}
+        className={`flex items-center gap-1.5 border-b-2 px-3 text-[14px] ${
+          onMachine ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"
+        }`}
+      >
+        <Icon size={16} />
+        {label}
+      </NavLink>
+      <details key={tab} className="relative">
+        <summary
+          title="Desktop or Console"
+          className={`flex h-full cursor-pointer items-center border-b-2 px-1 ${
+            onMachine ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"
+          }`}
+        >
+          <CaretDown size={12} />
+        </summary>
+        <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded border border-thread bg-folio py-1">
+          <Link
+            to={`/bots/${id}/desktop`}
+            className={`flex items-center gap-2 px-3 py-1.5 text-[14px] hover:bg-linen ${
+              tab === "desktop" ? "bg-bindery-pale text-iron" : "text-iron"
+            }`}
+          >
+            <Monitor size={16} />
+            Desktop
+          </Link>
+          <Link
+            to={`/bots/${id}/console`}
+            className={`flex items-center gap-2 px-3 py-1.5 text-[14px] hover:bg-linen ${
+              tab === "console" ? "bg-bindery-pale text-iron" : "text-iron"
+            }`}
+          >
+            <TerminalWindow size={16} />
+            Console
+          </Link>
+        </div>
+      </details>
     </div>
   );
 }
@@ -700,7 +759,7 @@ function BotPage() {
   const parts = (splat ?? "").split("/").filter(Boolean);
   const tabParam = parts[0];
   const chatId = tabParam === "run" ? parts[1] : undefined;
-  const tab: Tab = chatId ? "run" : tabs.includes(tabParam as Tab) ? (tabParam as Tab) : "run";
+  const tab: Tab = chatId ? "run" : tabParam === "console" ? "console" : isNavTab(tabParam) ? tabParam : "run";
   const [bot, setBot] = useState<Bot | null>(null);
   const [loadErr, setLoadErr] = useState("");
   const [text, setText] = useState("");
@@ -714,12 +773,15 @@ function BotPage() {
   const [secVal, setSecVal] = useState("");
   const [actErr, setActErr] = useState("");
   const [keepDesk, setKeepDesk] = useState(tab === "desktop");
+  const [keepCon, setKeepCon] = useState(tab === "console");
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
+    setKeepCon(tab === "console");
   }, [id]);
   useEffect(() => {
     if (tab === "desktop") setKeepDesk(true);
+    if (tab === "console") setKeepCon(true);
   }, [tab]);
 
   useEffect(() => {
@@ -824,7 +886,7 @@ function BotPage() {
 
   if (!id) return <Navigate to="/" />;
   if (!tabParam) return <Navigate to={`/bots/${id}/run`} replace />;
-  if (!chatId && tabParam && !tabs.includes(tabParam as Tab)) return <Navigate to={`/bots/${id}/run`} replace />;
+  if (!chatId && tabParam && tabParam !== "console" && !isNavTab(tabParam)) return <Navigate to={`/bots/${id}/run`} replace />;
   if (loadErr) {
     return (
       <div className="p-7">
@@ -916,6 +978,7 @@ function BotPage() {
         <span className={`text-[12px] font-medium ${statusWord(bot.status)}`}>{statusLabel(bot.status)}</span>
         <nav className="ml-4 flex h-full items-stretch gap-1">
           {tabs.map((t) => {
+            if (t === "desktop") return <MachineNav key="desktop" id={id} tab={tab} />;
             const { label, icon: Icon } = tabMeta[t];
             return (
               <NavLink
@@ -1002,8 +1065,14 @@ function BotPage() {
         )}
         {tab === "desktop" || keepDesk ? (
           <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "desktop" ? "flex" : "hidden"}`}>
-            <HatchPane bot={bot} onStart={start} visible={tab === "desktop"} />
+            <MachinePane bot={bot} onStart={start} visible={tab === "desktop"} kind="desktop" />
             <p className="mt-2 text-stone">Same browser the Bot uses. You can type and click.</p>
+          </section>
+        ) : null}
+        {tab === "console" || keepCon ? (
+          <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "console" ? "flex" : "hidden"}`}>
+            <MachinePane bot={bot} onStart={start} visible={tab === "console"} kind="console" />
+            <p className="mt-2 text-stone">A shell on this Bot, started in /workspace.</p>
           </section>
         ) : null}
         {tab === "files" && (

@@ -18,6 +18,13 @@ type Result struct {
 	Err error
 }
 
+// ConsoleMsg is one console websocket payload: PTY bytes and/or a resize.
+type ConsoleMsg struct {
+	Data []byte
+	Rows int32
+	Cols int32
+}
+
 type Session struct {
 	BotID string
 	Send  chan *v1.Cmd
@@ -26,24 +33,32 @@ type Session struct {
 	// ToWorker: RFB input from the browser. Worker stream sends this to x11vnc.
 	ToWorker chan []byte
 
-	mu     sync.Mutex
-	wait   map[string]chan Result
-	viewOn chan struct{}
-	leave  chan struct{}
-	viewID uint64
-	dead   chan struct{}
-	once   sync.Once
+	mu           sync.Mutex
+	wait         map[string]chan Result
+	viewOn       chan struct{}
+	leave        chan struct{}
+	viewID       uint64
+	conOn        chan struct{}
+	conLeave     chan struct{}
+	conID        uint64
+	conToBrowser chan ConsoleMsg
+	conToWorker  chan ConsoleMsg
+	dead         chan struct{}
+	once         sync.Once
 }
 
 func newSession(botID string) *Session {
 	return &Session{
-		BotID:     botID,
-		Send:      make(chan *v1.Cmd, 8),
-		ToBrowser: make(chan []byte, 64),
-		ToWorker:  make(chan []byte, 64),
-		wait:      map[string]chan Result{},
-		viewOn:    make(chan struct{}, 1),
-		dead:      make(chan struct{}),
+		BotID:        botID,
+		Send:         make(chan *v1.Cmd, 8),
+		ToBrowser:    make(chan []byte, 64),
+		ToWorker:     make(chan []byte, 64),
+		wait:         map[string]chan Result{},
+		viewOn:       make(chan struct{}, 1),
+		conOn:        make(chan struct{}, 1),
+		conToBrowser: make(chan ConsoleMsg, 64),
+		conToWorker:  make(chan ConsoleMsg, 64),
+		dead:         make(chan struct{}),
 	}
 }
 
@@ -57,6 +72,10 @@ func (s *Session) close() {
 		if s.leave != nil {
 			close(s.leave)
 			s.leave = nil
+		}
+		if s.conLeave != nil {
+			close(s.conLeave)
+			s.conLeave = nil
 		}
 		s.mu.Unlock()
 	})
@@ -232,6 +251,94 @@ func (s *Session) ViewerGone() <-chan struct{} {
 		return ch
 	}
 	return s.leave
+}
+
+func (s *Session) BeginConsole() (id uint64, toBrowser <-chan ConsoleMsg, toWorker chan ConsoleMsg) {
+	s.mu.Lock()
+	if s.conLeave != nil {
+		close(s.conLeave)
+	}
+	s.conToBrowser = make(chan ConsoleMsg, 64)
+	s.conToWorker = make(chan ConsoleMsg, 64)
+	s.conLeave = make(chan struct{})
+	s.conID++
+	id = s.conID
+	toBrowser = s.conToBrowser
+	toWorker = s.conToWorker
+	s.mu.Unlock()
+	select {
+	case s.conOn <- struct{}{}:
+	default:
+	}
+	return id, toBrowser, toWorker
+}
+
+func (s *Session) PushConsole(ctx context.Context, m ConsoleMsg) error {
+	s.mu.Lock()
+	ch := s.conToBrowser
+	leave := s.conLeave
+	s.mu.Unlock()
+	if leave == nil {
+		return nil
+	}
+	select {
+	case ch <- m:
+		return nil
+	case <-leave:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.dead:
+		return ErrClosed
+	}
+}
+
+func (s *Session) ConsolePipes() (toBrowser chan ConsoleMsg, toWorker chan ConsoleMsg) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.conToBrowser, s.conToWorker
+}
+
+func (s *Session) EndConsole(id uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if id == 0 || id != s.conID || s.conLeave == nil {
+		return
+	}
+	close(s.conLeave)
+	s.conLeave = nil
+}
+
+func (s *Session) HasConsole() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.conLeave != nil
+}
+
+func (s *Session) WaitConsole(ctx context.Context) error {
+	for {
+		if s.HasConsole() {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-s.dead:
+			return ErrClosed
+		case <-s.conOn:
+		}
+	}
+}
+
+func (s *Session) ConsoleGone() <-chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conLeave == nil {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return s.conLeave
 }
 
 func (h *Hub) Exec(ctx context.Context, botID string, cmd *v1.Cmd) (string, error) {

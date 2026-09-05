@@ -319,6 +319,7 @@ func (a *App) Handler() http.Handler {
 	mux.Handle(wkPath, wkH)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
+	mux.HandleFunc("/console", a.handleConsole)
 	mux.HandleFunc("/oauth/callback", a.handleOAuthCallback)
 	mux.HandleFunc("/connectors/", a.handleConnectorImage)
 	log.Printf("mounted %s %s", uiPath, wkPath)

@@ -33,13 +33,13 @@ Python is not a ConnectRPC citizen. Generated `tools` never see `SILO_CP_URL` or
 
 ```
 Browser
-  │  ConnectRPC (session) + VNC websocket (session)
+  │  ConnectRPC (session) + VNC / console websocket (session)
   ▼
 Control Plane                          Docker API (any host): create/start/stop/inspect only
   │                                    inject SILO_CP_URL, SILO_BOT_TOKEN, SILO_BOT_ID
   │
   │  ConnectRPC  (Worker dials out, bot token)
-  │  commands · results · GetSecret · VNC bytes
+  │  commands · results · GetSecret · VNC bytes · console PTY
   ▼
 Go Worker
   │  HTTP/JSON  unix:///var/run/silo/worker.sock
@@ -59,11 +59,13 @@ Worker-facing service, auth: `Authorization: Bearer <bot-token>` on every call. 
 service BotWorker {
   rpc Commands(stream CmdEvent) returns (stream Cmd);
   rpc GetSecret(SecretReq) returns (SecretRes);
+  rpc CallTool(ToolReq) returns (ToolRes);
   rpc VNC(stream Frame) returns (stream Frame);
+  rpc Console(stream ConsoleIO) returns (stream ConsoleIO);
 }
 ```
 
-Approvals: `GetSecret` does not return until the security engine decides. The Python HTTP request simply blocks. Heartbeat on `Commands` so a long approval does not look like a dead Worker. The VNC RPC waits until a browser viewer attaches, then the Worker dials local x11vnc.
+Approvals: `GetSecret` does not return until the security engine decides. The Python HTTP request simply blocks. Heartbeat on `Commands` so a long approval does not look like a dead Worker. The VNC RPC waits until a browser viewer attaches, then the Worker dials local x11vnc. Console is the same wait-then-pipe, but the Worker opens a PTY (`bash` in `/workspace`) instead of x11vnc. Resize is rows/cols on `ConsoleIO`. Do not `docker exec` / `podman exec` for this — a remote Docker host has no such path.
 
 When the Worker spawns Python or a shell, it **strips** `SILO_BOT_TOKEN` and `SILO_CP_URL` from the child env. Children get `SILO_WORKER_SOCK=/var/run/silo/worker.sock` and `SILO_RUN_ID` for the current run.
 

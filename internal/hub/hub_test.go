@@ -149,6 +149,50 @@ func TestDetachWakesWaitViewer(t *testing.T) {
 	}
 }
 
+func TestConsoleIsolatedFromVNC(t *testing.T) {
+	s := New().Attach("bot")
+	_, vncB, vncW := s.BeginViewer()
+	_, conB, conW := s.BeginConsole()
+	ctx := context.Background()
+	if err := s.PushBrowser(ctx, []byte("rfb")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.PushConsole(ctx, ConsoleMsg{Data: []byte("pty")}); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(<-vncB); got != "rfb" {
+		t.Fatalf("vnc: %q", got)
+	}
+	if got := string((<-conB).Data); got != "pty" {
+		t.Fatalf("con: %q", got)
+	}
+	conW <- ConsoleMsg{Rows: 24, Cols: 80}
+	select {
+	case <-vncW:
+		t.Fatal("resize leaked onto VNC")
+	default:
+	}
+	msg := <-conW
+	if msg.Rows != 24 || msg.Cols != 80 {
+		t.Fatalf("resize %+v", msg)
+	}
+	old, _, _ := s.BeginConsole()
+	cur, newB, _ := s.BeginConsole()
+	s.EndConsole(old)
+	if !s.HasConsole() {
+		t.Fatal("latest console dropped")
+	}
+	select {
+	case <-newB:
+		t.Fatal("new console saw leftover")
+	default:
+	}
+	s.EndConsole(cur)
+	if s.HasConsole() {
+		t.Fatal("console still on")
+	}
+}
+
 func TestFailAllOnDisconnect(t *testing.T) {
 	h := New()
 	s := h.Attach("bot")

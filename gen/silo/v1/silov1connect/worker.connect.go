@@ -41,6 +41,8 @@ const (
 	BotWorkerCallToolProcedure = "/silo.v1.BotWorker/CallTool"
 	// BotWorkerVNCProcedure is the fully-qualified name of the BotWorker's VNC RPC.
 	BotWorkerVNCProcedure = "/silo.v1.BotWorker/VNC"
+	// BotWorkerConsoleProcedure is the fully-qualified name of the BotWorker's Console RPC.
+	BotWorkerConsoleProcedure = "/silo.v1.BotWorker/Console"
 )
 
 // BotWorkerClient is a client for the silo.v1.BotWorker service.
@@ -49,6 +51,7 @@ type BotWorkerClient interface {
 	GetSecret(context.Context, *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error)
 	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context) *connect.BidiStreamForClient[v1.Frame, v1.Frame]
+	Console(context.Context) *connect.BidiStreamForClient[v1.ConsoleIO, v1.ConsoleIO]
 }
 
 // NewBotWorkerClient constructs a client for the silo.v1.BotWorker service. By default, it uses the
@@ -86,6 +89,12 @@ func NewBotWorkerClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(botWorkerMethods.ByName("VNC")),
 			connect.WithClientOptions(opts...),
 		),
+		console: connect.NewClient[v1.ConsoleIO, v1.ConsoleIO](
+			httpClient,
+			baseURL+BotWorkerConsoleProcedure,
+			connect.WithSchema(botWorkerMethods.ByName("Console")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -95,6 +104,7 @@ type botWorkerClient struct {
 	getSecret *connect.Client[v1.SecretReq, v1.SecretRes]
 	callTool  *connect.Client[v1.ToolReq, v1.ToolRes]
 	vNC       *connect.Client[v1.Frame, v1.Frame]
+	console   *connect.Client[v1.ConsoleIO, v1.ConsoleIO]
 }
 
 // Commands calls silo.v1.BotWorker.Commands.
@@ -117,12 +127,18 @@ func (c *botWorkerClient) VNC(ctx context.Context) *connect.BidiStreamForClient[
 	return c.vNC.CallBidiStream(ctx)
 }
 
+// Console calls silo.v1.BotWorker.Console.
+func (c *botWorkerClient) Console(ctx context.Context) *connect.BidiStreamForClient[v1.ConsoleIO, v1.ConsoleIO] {
+	return c.console.CallBidiStream(ctx)
+}
+
 // BotWorkerHandler is an implementation of the silo.v1.BotWorker service.
 type BotWorkerHandler interface {
 	Commands(context.Context, *connect.BidiStream[v1.CmdEvent, v1.Cmd]) error
 	GetSecret(context.Context, *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error)
 	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context, *connect.BidiStream[v1.Frame, v1.Frame]) error
+	Console(context.Context, *connect.BidiStream[v1.ConsoleIO, v1.ConsoleIO]) error
 }
 
 // NewBotWorkerHandler builds an HTTP handler from the service implementation. It returns the path
@@ -156,6 +172,12 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(botWorkerMethods.ByName("VNC")),
 		connect.WithHandlerOptions(opts...),
 	)
+	botWorkerConsoleHandler := connect.NewBidiStreamHandler(
+		BotWorkerConsoleProcedure,
+		svc.Console,
+		connect.WithSchema(botWorkerMethods.ByName("Console")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.BotWorker/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BotWorkerCommandsProcedure:
@@ -166,6 +188,8 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 			botWorkerCallToolHandler.ServeHTTP(w, r)
 		case BotWorkerVNCProcedure:
 			botWorkerVNCHandler.ServeHTTP(w, r)
+		case BotWorkerConsoleProcedure:
+			botWorkerConsoleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -189,4 +213,8 @@ func (UnimplementedBotWorkerHandler) CallTool(context.Context, *connect.Request[
 
 func (UnimplementedBotWorkerHandler) VNC(context.Context, *connect.BidiStream[v1.Frame, v1.Frame]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.VNC is not implemented"))
+}
+
+func (UnimplementedBotWorkerHandler) Console(context.Context, *connect.BidiStream[v1.ConsoleIO, v1.ConsoleIO]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.Console is not implemented"))
 }
