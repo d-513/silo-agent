@@ -79,7 +79,7 @@ cd web && pnpm dev
 
 Open http://127.0.0.1:5173 and sign in with `bootstrap.email` / `bootstrap.password`.
 
-Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, and `/healthz` to `:8080`. Do not point the browser at the CP unless you are serving a production frontend build.
+Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/healthz`, `/oauth`, and `/connectors` to `:8080`. Do not point the browser at the CP unless you are serving a production frontend build.
 
 `cp_url` (`http://host.containers.internal:8080` by default) is what the **container** uses to dial the CP. The create path adds `host.containers.internal:host-gateway`. If the worker never connects, that URL is not reachable from the Bot.
 

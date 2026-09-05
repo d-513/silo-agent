@@ -39,6 +39,7 @@ type Cmd struct {
 	//	*Cmd_Mkdir
 	//	*Cmd_Remove
 	//	*Cmd_PutFile
+	//	*Cmd_SyncTools
 	Body          isCmd_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -203,6 +204,15 @@ func (x *Cmd) GetPutFile() *PutFileCmd {
 	return nil
 }
 
+func (x *Cmd) GetSyncTools() *SyncToolsCmd {
+	if x != nil {
+		if x, ok := x.Body.(*Cmd_SyncTools); ok {
+			return x.SyncTools
+		}
+	}
+	return nil
+}
+
 type isCmd_Body interface {
 	isCmd_Body()
 }
@@ -255,6 +265,10 @@ type Cmd_PutFile struct {
 	PutFile *PutFileCmd `protobuf:"bytes,14,opt,name=put_file,json=putFile,proto3,oneof"`
 }
 
+type Cmd_SyncTools struct {
+	SyncTools *SyncToolsCmd `protobuf:"bytes,15,opt,name=sync_tools,json=syncTools,proto3,oneof"`
+}
+
 func (*Cmd_Terminal) isCmd_Body() {}
 
 func (*Cmd_ExecPython) isCmd_Body() {}
@@ -279,6 +293,240 @@ func (*Cmd_Remove) isCmd_Body() {}
 
 func (*Cmd_PutFile) isCmd_Body() {}
 
+func (*Cmd_SyncTools) isCmd_Body() {}
+
+type ToolStub struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Connector      string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
+	Action         string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	Description    string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	ArgsSchemaJson string                 `protobuf:"bytes,4,opt,name=args_schema_json,json=argsSchemaJson,proto3" json:"args_schema_json,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ToolStub) Reset() {
+	*x = ToolStub{}
+	mi := &file_silo_v1_worker_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolStub) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolStub) ProtoMessage() {}
+
+func (x *ToolStub) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_worker_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolStub.ProtoReflect.Descriptor instead.
+func (*ToolStub) Descriptor() ([]byte, []int) {
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ToolStub) GetConnector() string {
+	if x != nil {
+		return x.Connector
+	}
+	return ""
+}
+
+func (x *ToolStub) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ToolStub) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ToolStub) GetArgsSchemaJson() string {
+	if x != nil {
+		return x.ArgsSchemaJson
+	}
+	return ""
+}
+
+type SyncToolsCmd struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stubs         []*ToolStub            `protobuf:"bytes,1,rep,name=stubs,proto3" json:"stubs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncToolsCmd) Reset() {
+	*x = SyncToolsCmd{}
+	mi := &file_silo_v1_worker_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncToolsCmd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncToolsCmd) ProtoMessage() {}
+
+func (x *SyncToolsCmd) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_worker_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncToolsCmd.ProtoReflect.Descriptor instead.
+func (*SyncToolsCmd) Descriptor() ([]byte, []int) {
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SyncToolsCmd) GetStubs() []*ToolStub {
+	if x != nil {
+		return x.Stubs
+	}
+	return nil
+}
+
+type ToolReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Connector     string                 `protobuf:"bytes,1,opt,name=connector,proto3" json:"connector,omitempty"`
+	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	ArgsJson      string                 `protobuf:"bytes,3,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	RunId         string                 `protobuf:"bytes,4,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolReq) Reset() {
+	*x = ToolReq{}
+	mi := &file_silo_v1_worker_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolReq) ProtoMessage() {}
+
+func (x *ToolReq) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_worker_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolReq.ProtoReflect.Descriptor instead.
+func (*ToolReq) Descriptor() ([]byte, []int) {
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ToolReq) GetConnector() string {
+	if x != nil {
+		return x.Connector
+	}
+	return ""
+}
+
+func (x *ToolReq) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ToolReq) GetArgsJson() string {
+	if x != nil {
+		return x.ArgsJson
+	}
+	return ""
+}
+
+func (x *ToolReq) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type ToolRes struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ResultJson    string                 `protobuf:"bytes,1,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolRes) Reset() {
+	*x = ToolRes{}
+	mi := &file_silo_v1_worker_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolRes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolRes) ProtoMessage() {}
+
+func (x *ToolRes) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_worker_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolRes.ProtoReflect.Descriptor instead.
+func (*ToolRes) Descriptor() ([]byte, []int) {
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ToolRes) GetResultJson() string {
+	if x != nil {
+		return x.ResultJson
+	}
+	return ""
+}
+
+func (x *ToolRes) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type TerminalCmd struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
@@ -288,7 +536,7 @@ type TerminalCmd struct {
 
 func (x *TerminalCmd) Reset() {
 	*x = TerminalCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[1]
+	mi := &file_silo_v1_worker_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -300,7 +548,7 @@ func (x *TerminalCmd) String() string {
 func (*TerminalCmd) ProtoMessage() {}
 
 func (x *TerminalCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[1]
+	mi := &file_silo_v1_worker_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -313,7 +561,7 @@ func (x *TerminalCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminalCmd.ProtoReflect.Descriptor instead.
 func (*TerminalCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{1}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TerminalCmd) GetCommand() string {
@@ -332,7 +580,7 @@ type ExecPythonCmd struct {
 
 func (x *ExecPythonCmd) Reset() {
 	*x = ExecPythonCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[2]
+	mi := &file_silo_v1_worker_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -344,7 +592,7 @@ func (x *ExecPythonCmd) String() string {
 func (*ExecPythonCmd) ProtoMessage() {}
 
 func (x *ExecPythonCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[2]
+	mi := &file_silo_v1_worker_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -357,7 +605,7 @@ func (x *ExecPythonCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecPythonCmd.ProtoReflect.Descriptor instead.
 func (*ExecPythonCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{2}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ExecPythonCmd) GetCode() string {
@@ -378,7 +626,7 @@ type FileReadCmd struct {
 
 func (x *FileReadCmd) Reset() {
 	*x = FileReadCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[3]
+	mi := &file_silo_v1_worker_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -390,7 +638,7 @@ func (x *FileReadCmd) String() string {
 func (*FileReadCmd) ProtoMessage() {}
 
 func (x *FileReadCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[3]
+	mi := &file_silo_v1_worker_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -403,7 +651,7 @@ func (x *FileReadCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileReadCmd.ProtoReflect.Descriptor instead.
 func (*FileReadCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{3}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FileReadCmd) GetPath() string {
@@ -437,7 +685,7 @@ type FileWriteCmd struct {
 
 func (x *FileWriteCmd) Reset() {
 	*x = FileWriteCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[4]
+	mi := &file_silo_v1_worker_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -449,7 +697,7 @@ func (x *FileWriteCmd) String() string {
 func (*FileWriteCmd) ProtoMessage() {}
 
 func (x *FileWriteCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[4]
+	mi := &file_silo_v1_worker_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -462,7 +710,7 @@ func (x *FileWriteCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileWriteCmd.ProtoReflect.Descriptor instead.
 func (*FileWriteCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{4}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *FileWriteCmd) GetPath() string {
@@ -490,7 +738,7 @@ type FilePatchCmd struct {
 
 func (x *FilePatchCmd) Reset() {
 	*x = FilePatchCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[5]
+	mi := &file_silo_v1_worker_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +750,7 @@ func (x *FilePatchCmd) String() string {
 func (*FilePatchCmd) ProtoMessage() {}
 
 func (x *FilePatchCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[5]
+	mi := &file_silo_v1_worker_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +763,7 @@ func (x *FilePatchCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilePatchCmd.ProtoReflect.Descriptor instead.
 func (*FilePatchCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{5}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *FilePatchCmd) GetPath() string {
@@ -551,7 +799,7 @@ type GrepCmd struct {
 
 func (x *GrepCmd) Reset() {
 	*x = GrepCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[6]
+	mi := &file_silo_v1_worker_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -563,7 +811,7 @@ func (x *GrepCmd) String() string {
 func (*GrepCmd) ProtoMessage() {}
 
 func (x *GrepCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[6]
+	mi := &file_silo_v1_worker_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -576,7 +824,7 @@ func (x *GrepCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrepCmd.ProtoReflect.Descriptor instead.
 func (*GrepCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{6}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GrepCmd) GetPattern() string {
@@ -616,7 +864,7 @@ type CancelCmd struct {
 
 func (x *CancelCmd) Reset() {
 	*x = CancelCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[7]
+	mi := &file_silo_v1_worker_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -628,7 +876,7 @@ func (x *CancelCmd) String() string {
 func (*CancelCmd) ProtoMessage() {}
 
 func (x *CancelCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[7]
+	mi := &file_silo_v1_worker_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,7 +889,7 @@ func (x *CancelCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelCmd.ProtoReflect.Descriptor instead.
 func (*CancelCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{7}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CancelCmd) GetCmdId() string {
@@ -660,7 +908,7 @@ type DirListCmd struct {
 
 func (x *DirListCmd) Reset() {
 	*x = DirListCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[8]
+	mi := &file_silo_v1_worker_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -672,7 +920,7 @@ func (x *DirListCmd) String() string {
 func (*DirListCmd) ProtoMessage() {}
 
 func (x *DirListCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[8]
+	mi := &file_silo_v1_worker_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -685,7 +933,7 @@ func (x *DirListCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirListCmd.ProtoReflect.Descriptor instead.
 func (*DirListCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{8}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DirListCmd) GetPath() string {
@@ -704,7 +952,7 @@ type BrowseFileCmd struct {
 
 func (x *BrowseFileCmd) Reset() {
 	*x = BrowseFileCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[9]
+	mi := &file_silo_v1_worker_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -716,7 +964,7 @@ func (x *BrowseFileCmd) String() string {
 func (*BrowseFileCmd) ProtoMessage() {}
 
 func (x *BrowseFileCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[9]
+	mi := &file_silo_v1_worker_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -729,7 +977,7 @@ func (x *BrowseFileCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowseFileCmd.ProtoReflect.Descriptor instead.
 func (*BrowseFileCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{9}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *BrowseFileCmd) GetPath() string {
@@ -748,7 +996,7 @@ type MkdirCmd struct {
 
 func (x *MkdirCmd) Reset() {
 	*x = MkdirCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[10]
+	mi := &file_silo_v1_worker_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -760,7 +1008,7 @@ func (x *MkdirCmd) String() string {
 func (*MkdirCmd) ProtoMessage() {}
 
 func (x *MkdirCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[10]
+	mi := &file_silo_v1_worker_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -773,7 +1021,7 @@ func (x *MkdirCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MkdirCmd.ProtoReflect.Descriptor instead.
 func (*MkdirCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{10}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MkdirCmd) GetPath() string {
@@ -792,7 +1040,7 @@ type RemoveCmd struct {
 
 func (x *RemoveCmd) Reset() {
 	*x = RemoveCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[11]
+	mi := &file_silo_v1_worker_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +1052,7 @@ func (x *RemoveCmd) String() string {
 func (*RemoveCmd) ProtoMessage() {}
 
 func (x *RemoveCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[11]
+	mi := &file_silo_v1_worker_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +1065,7 @@ func (x *RemoveCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveCmd.ProtoReflect.Descriptor instead.
 func (*RemoveCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{11}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RemoveCmd) GetPath() string {
@@ -837,7 +1085,7 @@ type PutFileCmd struct {
 
 func (x *PutFileCmd) Reset() {
 	*x = PutFileCmd{}
-	mi := &file_silo_v1_worker_proto_msgTypes[12]
+	mi := &file_silo_v1_worker_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -849,7 +1097,7 @@ func (x *PutFileCmd) String() string {
 func (*PutFileCmd) ProtoMessage() {}
 
 func (x *PutFileCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[12]
+	mi := &file_silo_v1_worker_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -862,7 +1110,7 @@ func (x *PutFileCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutFileCmd.ProtoReflect.Descriptor instead.
 func (*PutFileCmd) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{12}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PutFileCmd) GetPath() string {
@@ -895,7 +1143,7 @@ type CmdEvent struct {
 
 func (x *CmdEvent) Reset() {
 	*x = CmdEvent{}
-	mi := &file_silo_v1_worker_proto_msgTypes[13]
+	mi := &file_silo_v1_worker_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -907,7 +1155,7 @@ func (x *CmdEvent) String() string {
 func (*CmdEvent) ProtoMessage() {}
 
 func (x *CmdEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[13]
+	mi := &file_silo_v1_worker_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -920,7 +1168,7 @@ func (x *CmdEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CmdEvent.ProtoReflect.Descriptor instead.
 func (*CmdEvent) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{13}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CmdEvent) GetId() string {
@@ -1009,7 +1257,7 @@ type Heartbeat struct {
 
 func (x *Heartbeat) Reset() {
 	*x = Heartbeat{}
-	mi := &file_silo_v1_worker_proto_msgTypes[14]
+	mi := &file_silo_v1_worker_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1021,7 +1269,7 @@ func (x *Heartbeat) String() string {
 func (*Heartbeat) ProtoMessage() {}
 
 func (x *Heartbeat) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[14]
+	mi := &file_silo_v1_worker_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1034,7 +1282,7 @@ func (x *Heartbeat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Heartbeat.ProtoReflect.Descriptor instead.
 func (*Heartbeat) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{14}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{18}
 }
 
 type OutputChunk struct {
@@ -1046,7 +1294,7 @@ type OutputChunk struct {
 
 func (x *OutputChunk) Reset() {
 	*x = OutputChunk{}
-	mi := &file_silo_v1_worker_proto_msgTypes[15]
+	mi := &file_silo_v1_worker_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1058,7 +1306,7 @@ func (x *OutputChunk) String() string {
 func (*OutputChunk) ProtoMessage() {}
 
 func (x *OutputChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[15]
+	mi := &file_silo_v1_worker_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1071,7 +1319,7 @@ func (x *OutputChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutputChunk.ProtoReflect.Descriptor instead.
 func (*OutputChunk) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{15}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *OutputChunk) GetText() string {
@@ -1090,7 +1338,7 @@ type CmdDone struct {
 
 func (x *CmdDone) Reset() {
 	*x = CmdDone{}
-	mi := &file_silo_v1_worker_proto_msgTypes[16]
+	mi := &file_silo_v1_worker_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1102,7 +1350,7 @@ func (x *CmdDone) String() string {
 func (*CmdDone) ProtoMessage() {}
 
 func (x *CmdDone) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[16]
+	mi := &file_silo_v1_worker_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1115,7 +1363,7 @@ func (x *CmdDone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CmdDone.ProtoReflect.Descriptor instead.
 func (*CmdDone) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{16}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CmdDone) GetResult() string {
@@ -1134,7 +1382,7 @@ type CmdError struct {
 
 func (x *CmdError) Reset() {
 	*x = CmdError{}
-	mi := &file_silo_v1_worker_proto_msgTypes[17]
+	mi := &file_silo_v1_worker_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1146,7 +1394,7 @@ func (x *CmdError) String() string {
 func (*CmdError) ProtoMessage() {}
 
 func (x *CmdError) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[17]
+	mi := &file_silo_v1_worker_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1159,7 +1407,7 @@ func (x *CmdError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CmdError.ProtoReflect.Descriptor instead.
 func (*CmdError) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{17}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CmdError) GetMessage() string {
@@ -1179,7 +1427,7 @@ type SecretReq struct {
 
 func (x *SecretReq) Reset() {
 	*x = SecretReq{}
-	mi := &file_silo_v1_worker_proto_msgTypes[18]
+	mi := &file_silo_v1_worker_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1191,7 +1439,7 @@ func (x *SecretReq) String() string {
 func (*SecretReq) ProtoMessage() {}
 
 func (x *SecretReq) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[18]
+	mi := &file_silo_v1_worker_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,7 +1452,7 @@ func (x *SecretReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretReq.ProtoReflect.Descriptor instead.
 func (*SecretReq) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{18}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SecretReq) GetName() string {
@@ -1231,7 +1479,7 @@ type SecretRes struct {
 
 func (x *SecretRes) Reset() {
 	*x = SecretRes{}
-	mi := &file_silo_v1_worker_proto_msgTypes[19]
+	mi := &file_silo_v1_worker_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1243,7 +1491,7 @@ func (x *SecretRes) String() string {
 func (*SecretRes) ProtoMessage() {}
 
 func (x *SecretRes) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[19]
+	mi := &file_silo_v1_worker_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1256,7 +1504,7 @@ func (x *SecretRes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretRes.ProtoReflect.Descriptor instead.
 func (*SecretRes) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{19}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SecretRes) GetValue() string {
@@ -1282,7 +1530,7 @@ type Frame struct {
 
 func (x *Frame) Reset() {
 	*x = Frame{}
-	mi := &file_silo_v1_worker_proto_msgTypes[20]
+	mi := &file_silo_v1_worker_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1294,7 +1542,7 @@ func (x *Frame) String() string {
 func (*Frame) ProtoMessage() {}
 
 func (x *Frame) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_worker_proto_msgTypes[20]
+	mi := &file_silo_v1_worker_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1307,7 +1555,7 @@ func (x *Frame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Frame.ProtoReflect.Descriptor instead.
 func (*Frame) Descriptor() ([]byte, []int) {
-	return file_silo_v1_worker_proto_rawDescGZIP(), []int{20}
+	return file_silo_v1_worker_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Frame) GetData() []byte {
@@ -1321,7 +1569,7 @@ var File_silo_v1_worker_proto protoreflect.FileDescriptor
 
 const file_silo_v1_worker_proto_rawDesc = "" +
 	"\n" +
-	"\x14silo/v1/worker.proto\x12\asilo.v1\"\x96\x05\n" +
+	"\x14silo/v1/worker.proto\x12\asilo.v1\"\xce\x05\n" +
 	"\x03Cmd\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06run_id\x18\t \x01(\tR\x05runId\x122\n" +
@@ -1341,8 +1589,26 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"browseFile\x12)\n" +
 	"\x05mkdir\x18\f \x01(\v2\x11.silo.v1.MkdirCmdH\x00R\x05mkdir\x12,\n" +
 	"\x06remove\x18\r \x01(\v2\x12.silo.v1.RemoveCmdH\x00R\x06remove\x120\n" +
-	"\bput_file\x18\x0e \x01(\v2\x13.silo.v1.PutFileCmdH\x00R\aputFileB\x06\n" +
-	"\x04body\"'\n" +
+	"\bput_file\x18\x0e \x01(\v2\x13.silo.v1.PutFileCmdH\x00R\aputFile\x126\n" +
+	"\n" +
+	"sync_tools\x18\x0f \x01(\v2\x15.silo.v1.SyncToolsCmdH\x00R\tsyncToolsB\x06\n" +
+	"\x04body\"\x8c\x01\n" +
+	"\bToolStub\x12\x1c\n" +
+	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12(\n" +
+	"\x10args_schema_json\x18\x04 \x01(\tR\x0eargsSchemaJson\"7\n" +
+	"\fSyncToolsCmd\x12'\n" +
+	"\x05stubs\x18\x01 \x03(\v2\x11.silo.v1.ToolStubR\x05stubs\"s\n" +
+	"\aToolReq\x12\x1c\n" +
+	"\tconnector\x18\x01 \x01(\tR\tconnector\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1b\n" +
+	"\targs_json\x18\x03 \x01(\tR\bargsJson\x12\x15\n" +
+	"\x06run_id\x18\x04 \x01(\tR\x05runId\"@\n" +
+	"\aToolRes\x12\x1f\n" +
+	"\vresult_json\x18\x01 \x01(\tR\n" +
+	"resultJson\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"'\n" +
 	"\vTerminalCmd\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\"#\n" +
 	"\rExecPythonCmd\x12\x12\n" +
@@ -1399,10 +1665,11 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\"\x1b\n" +
 	"\x05Frame\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data2\x9c\x01\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data2\xcc\x01\n" +
 	"\tBotWorker\x12/\n" +
 	"\bCommands\x12\x11.silo.v1.CmdEvent\x1a\f.silo.v1.Cmd(\x010\x01\x123\n" +
-	"\tGetSecret\x12\x12.silo.v1.SecretReq\x1a\x12.silo.v1.SecretRes\x12)\n" +
+	"\tGetSecret\x12\x12.silo.v1.SecretReq\x1a\x12.silo.v1.SecretRes\x12.\n" +
+	"\bCallTool\x12\x10.silo.v1.ToolReq\x1a\x10.silo.v1.ToolRes\x12)\n" +
 	"\x03VNC\x12\x0e.silo.v1.Frame\x1a\x0e.silo.v1.Frame(\x010\x01B\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
 
 var (
@@ -1417,58 +1684,66 @@ func file_silo_v1_worker_proto_rawDescGZIP() []byte {
 	return file_silo_v1_worker_proto_rawDescData
 }
 
-var file_silo_v1_worker_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_silo_v1_worker_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_silo_v1_worker_proto_goTypes = []any{
 	(*Cmd)(nil),           // 0: silo.v1.Cmd
-	(*TerminalCmd)(nil),   // 1: silo.v1.TerminalCmd
-	(*ExecPythonCmd)(nil), // 2: silo.v1.ExecPythonCmd
-	(*FileReadCmd)(nil),   // 3: silo.v1.FileReadCmd
-	(*FileWriteCmd)(nil),  // 4: silo.v1.FileWriteCmd
-	(*FilePatchCmd)(nil),  // 5: silo.v1.FilePatchCmd
-	(*GrepCmd)(nil),       // 6: silo.v1.GrepCmd
-	(*CancelCmd)(nil),     // 7: silo.v1.CancelCmd
-	(*DirListCmd)(nil),    // 8: silo.v1.DirListCmd
-	(*BrowseFileCmd)(nil), // 9: silo.v1.BrowseFileCmd
-	(*MkdirCmd)(nil),      // 10: silo.v1.MkdirCmd
-	(*RemoveCmd)(nil),     // 11: silo.v1.RemoveCmd
-	(*PutFileCmd)(nil),    // 12: silo.v1.PutFileCmd
-	(*CmdEvent)(nil),      // 13: silo.v1.CmdEvent
-	(*Heartbeat)(nil),     // 14: silo.v1.Heartbeat
-	(*OutputChunk)(nil),   // 15: silo.v1.OutputChunk
-	(*CmdDone)(nil),       // 16: silo.v1.CmdDone
-	(*CmdError)(nil),      // 17: silo.v1.CmdError
-	(*SecretReq)(nil),     // 18: silo.v1.SecretReq
-	(*SecretRes)(nil),     // 19: silo.v1.SecretRes
-	(*Frame)(nil),         // 20: silo.v1.Frame
+	(*ToolStub)(nil),      // 1: silo.v1.ToolStub
+	(*SyncToolsCmd)(nil),  // 2: silo.v1.SyncToolsCmd
+	(*ToolReq)(nil),       // 3: silo.v1.ToolReq
+	(*ToolRes)(nil),       // 4: silo.v1.ToolRes
+	(*TerminalCmd)(nil),   // 5: silo.v1.TerminalCmd
+	(*ExecPythonCmd)(nil), // 6: silo.v1.ExecPythonCmd
+	(*FileReadCmd)(nil),   // 7: silo.v1.FileReadCmd
+	(*FileWriteCmd)(nil),  // 8: silo.v1.FileWriteCmd
+	(*FilePatchCmd)(nil),  // 9: silo.v1.FilePatchCmd
+	(*GrepCmd)(nil),       // 10: silo.v1.GrepCmd
+	(*CancelCmd)(nil),     // 11: silo.v1.CancelCmd
+	(*DirListCmd)(nil),    // 12: silo.v1.DirListCmd
+	(*BrowseFileCmd)(nil), // 13: silo.v1.BrowseFileCmd
+	(*MkdirCmd)(nil),      // 14: silo.v1.MkdirCmd
+	(*RemoveCmd)(nil),     // 15: silo.v1.RemoveCmd
+	(*PutFileCmd)(nil),    // 16: silo.v1.PutFileCmd
+	(*CmdEvent)(nil),      // 17: silo.v1.CmdEvent
+	(*Heartbeat)(nil),     // 18: silo.v1.Heartbeat
+	(*OutputChunk)(nil),   // 19: silo.v1.OutputChunk
+	(*CmdDone)(nil),       // 20: silo.v1.CmdDone
+	(*CmdError)(nil),      // 21: silo.v1.CmdError
+	(*SecretReq)(nil),     // 22: silo.v1.SecretReq
+	(*SecretRes)(nil),     // 23: silo.v1.SecretRes
+	(*Frame)(nil),         // 24: silo.v1.Frame
 }
 var file_silo_v1_worker_proto_depIdxs = []int32{
-	1,  // 0: silo.v1.Cmd.terminal:type_name -> silo.v1.TerminalCmd
-	2,  // 1: silo.v1.Cmd.exec_python:type_name -> silo.v1.ExecPythonCmd
-	3,  // 2: silo.v1.Cmd.file_read:type_name -> silo.v1.FileReadCmd
-	4,  // 3: silo.v1.Cmd.file_write:type_name -> silo.v1.FileWriteCmd
-	5,  // 4: silo.v1.Cmd.file_patch:type_name -> silo.v1.FilePatchCmd
-	6,  // 5: silo.v1.Cmd.grep:type_name -> silo.v1.GrepCmd
-	7,  // 6: silo.v1.Cmd.cancel:type_name -> silo.v1.CancelCmd
-	8,  // 7: silo.v1.Cmd.dir_list:type_name -> silo.v1.DirListCmd
-	9,  // 8: silo.v1.Cmd.browse_file:type_name -> silo.v1.BrowseFileCmd
-	10, // 9: silo.v1.Cmd.mkdir:type_name -> silo.v1.MkdirCmd
-	11, // 10: silo.v1.Cmd.remove:type_name -> silo.v1.RemoveCmd
-	12, // 11: silo.v1.Cmd.put_file:type_name -> silo.v1.PutFileCmd
-	14, // 12: silo.v1.CmdEvent.heartbeat:type_name -> silo.v1.Heartbeat
-	15, // 13: silo.v1.CmdEvent.chunk:type_name -> silo.v1.OutputChunk
-	16, // 14: silo.v1.CmdEvent.done:type_name -> silo.v1.CmdDone
-	17, // 15: silo.v1.CmdEvent.error:type_name -> silo.v1.CmdError
-	13, // 16: silo.v1.BotWorker.Commands:input_type -> silo.v1.CmdEvent
-	18, // 17: silo.v1.BotWorker.GetSecret:input_type -> silo.v1.SecretReq
-	20, // 18: silo.v1.BotWorker.VNC:input_type -> silo.v1.Frame
-	0,  // 19: silo.v1.BotWorker.Commands:output_type -> silo.v1.Cmd
-	19, // 20: silo.v1.BotWorker.GetSecret:output_type -> silo.v1.SecretRes
-	20, // 21: silo.v1.BotWorker.VNC:output_type -> silo.v1.Frame
-	19, // [19:22] is the sub-list for method output_type
-	16, // [16:19] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	5,  // 0: silo.v1.Cmd.terminal:type_name -> silo.v1.TerminalCmd
+	6,  // 1: silo.v1.Cmd.exec_python:type_name -> silo.v1.ExecPythonCmd
+	7,  // 2: silo.v1.Cmd.file_read:type_name -> silo.v1.FileReadCmd
+	8,  // 3: silo.v1.Cmd.file_write:type_name -> silo.v1.FileWriteCmd
+	9,  // 4: silo.v1.Cmd.file_patch:type_name -> silo.v1.FilePatchCmd
+	10, // 5: silo.v1.Cmd.grep:type_name -> silo.v1.GrepCmd
+	11, // 6: silo.v1.Cmd.cancel:type_name -> silo.v1.CancelCmd
+	12, // 7: silo.v1.Cmd.dir_list:type_name -> silo.v1.DirListCmd
+	13, // 8: silo.v1.Cmd.browse_file:type_name -> silo.v1.BrowseFileCmd
+	14, // 9: silo.v1.Cmd.mkdir:type_name -> silo.v1.MkdirCmd
+	15, // 10: silo.v1.Cmd.remove:type_name -> silo.v1.RemoveCmd
+	16, // 11: silo.v1.Cmd.put_file:type_name -> silo.v1.PutFileCmd
+	2,  // 12: silo.v1.Cmd.sync_tools:type_name -> silo.v1.SyncToolsCmd
+	1,  // 13: silo.v1.SyncToolsCmd.stubs:type_name -> silo.v1.ToolStub
+	18, // 14: silo.v1.CmdEvent.heartbeat:type_name -> silo.v1.Heartbeat
+	19, // 15: silo.v1.CmdEvent.chunk:type_name -> silo.v1.OutputChunk
+	20, // 16: silo.v1.CmdEvent.done:type_name -> silo.v1.CmdDone
+	21, // 17: silo.v1.CmdEvent.error:type_name -> silo.v1.CmdError
+	17, // 18: silo.v1.BotWorker.Commands:input_type -> silo.v1.CmdEvent
+	22, // 19: silo.v1.BotWorker.GetSecret:input_type -> silo.v1.SecretReq
+	3,  // 20: silo.v1.BotWorker.CallTool:input_type -> silo.v1.ToolReq
+	24, // 21: silo.v1.BotWorker.VNC:input_type -> silo.v1.Frame
+	0,  // 22: silo.v1.BotWorker.Commands:output_type -> silo.v1.Cmd
+	23, // 23: silo.v1.BotWorker.GetSecret:output_type -> silo.v1.SecretRes
+	4,  // 24: silo.v1.BotWorker.CallTool:output_type -> silo.v1.ToolRes
+	24, // 25: silo.v1.BotWorker.VNC:output_type -> silo.v1.Frame
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_worker_proto_init() }
@@ -1489,8 +1764,9 @@ func file_silo_v1_worker_proto_init() {
 		(*Cmd_Mkdir)(nil),
 		(*Cmd_Remove)(nil),
 		(*Cmd_PutFile)(nil),
+		(*Cmd_SyncTools)(nil),
 	}
-	file_silo_v1_worker_proto_msgTypes[13].OneofWrappers = []any{
+	file_silo_v1_worker_proto_msgTypes[17].OneofWrappers = []any{
 		(*CmdEvent_Heartbeat)(nil),
 		(*CmdEvent_Chunk)(nil),
 		(*CmdEvent_Done)(nil),
@@ -1502,7 +1778,7 @@ func file_silo_v1_worker_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_worker_proto_rawDesc), len(file_silo_v1_worker_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -25,6 +25,9 @@ func main() {
 	if err := auth.EnsureBootstrap(gdb, cfg.Bootstrap.Email, cfg.Bootstrap.Password); err != nil {
 		log.Fatal(err)
 	}
+	if err := auth.EnsureAdmin(gdb); err != nil {
+		log.Fatal(err)
+	}
 	eng, err := dockerx.New(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -32,8 +35,7 @@ func main() {
 	a := app.New(cfg, gdb, eng)
 	log.Printf("silo listening %s docker=%s cp_url=%s", cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
 	h2s := &http2.Server{}
-	err = app.ListenAndServe(cfg, h2c.NewHandler(a.Handler(), h2s))
-	a.Shutdown()
+	err = app.ListenAndServe(cfg, h2c.NewHandler(a.Handler(), h2s), a.Shutdown)
 	if err != nil {
 		log.Fatal(err)
 	}

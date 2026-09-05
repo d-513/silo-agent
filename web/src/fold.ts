@@ -1,6 +1,8 @@
 export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string };
 
-export type ToolBlock = { key: string; type: "tool"; name: string; args: string; result?: string; running?: boolean; runId?: string };
+export type NestedCall = { key: string; title: string; name: string; result?: string; running?: boolean };
+
+export type ToolBlock = { key: string; type: "tool"; name: string; args: string; result?: string; running?: boolean; runId?: string; calls?: NestedCall[] };
 
 export type Block =
   | { key: string; type: "user"; text: string }
@@ -146,6 +148,36 @@ export function foldEvents(events: Ev[]): Block[] {
           b.running = false;
           break;
         }
+      }
+      continue;
+    }
+    if (e.kind === "call") {
+      closeThinking(out);
+      const item: NestedCall = { key, title: e.body || e.tool || "call", name: e.tool, running: true };
+      const t = lastRunning(out, (b) => runOk(b, e.runId));
+      if (t) {
+        t.calls = t.calls || [];
+        t.calls.push(item);
+      } else {
+        push({ key, type: "tool", name: "call", args: "", running: true, runId: e.runId, calls: [item] });
+      }
+      continue;
+    }
+    if (e.kind === "call_result") {
+      closeThinking(out);
+      for (let j = out.length - 1; j >= 0; j--) {
+        const b = out[j];
+        if (b.type !== "tool" || (e.runId && b.runId && b.runId !== e.runId)) continue;
+        const cs = b.calls;
+        if (!cs?.length) continue;
+        for (let k = cs.length - 1; k >= 0; k--) {
+          if (cs[k].running && (cs[k].name === e.tool || !e.tool)) {
+            cs[k].result = e.body;
+            cs[k].running = false;
+            break;
+          }
+        }
+        break;
       }
       continue;
     }

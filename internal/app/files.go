@@ -35,7 +35,7 @@ func (a *App) ListFiles(ctx context.Context, req *connect.Request[v1.ListFilesRe
 	if err != nil {
 		return nil, err
 	}
-	raw, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: req.Msg.GetPath()}}})
+	raw, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: relWorkspace(req.Msg.GetPath())}}})
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (a *App) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFileRequ
 	if err != nil {
 		return nil, err
 	}
-	path := req.Msg.GetPath()
+	path := relWorkspace(req.Msg.GetPath())
 	if path == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}
@@ -112,7 +112,7 @@ func (a *App) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirRequest]) 
 	if err != nil {
 		return nil, err
 	}
-	path := req.Msg.GetPath()
+	path := relWorkspace(req.Msg.GetPath())
 	if path == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}
@@ -127,7 +127,7 @@ func (a *App) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFile
 	if err != nil {
 		return nil, err
 	}
-	path := req.Msg.GetPath()
+	path := relWorkspace(req.Msg.GetPath())
 	if path == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}
@@ -142,7 +142,7 @@ func (a *App) PutFile(ctx context.Context, req *connect.Request[v1.PutFileReques
 	if err != nil {
 		return nil, err
 	}
-	path := req.Msg.GetPath()
+	path := relWorkspace(req.Msg.GetPath())
 	if path == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}

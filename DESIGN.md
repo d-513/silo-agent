@@ -206,7 +206,7 @@ Empty archive: outline of a crest, display line “No Bots yet”, one bindery b
 
 ### Navigation
 
-64px rail, Cloth, Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Then **Bots**, a scrollable stack of 28px crests (one per Bot), **+** for New Bot, **Admin**. Bottom: user initial in a 28px iron-on-linen circle. No names in the rail; `title` tooltips only.
+64px rail, Cloth, Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Then **Bots**, a scrollable stack of 28px crests (one per Bot), **+** for New Bot. Bottom: **wrench** Admin (admins only), **user** Account, **sign-out**. No names in the rail; `title` tooltips only.
 
 Active home/Admin: Bindery Pale well, 2px bindery bar on the left of the icon. Active crest: same well + bar. Needs you: 2px carmine ribbon instead of the bindery bar, plus the lamp. Icons 20px, 1.75 stroke, iron. Crest lamp is 7px on the shape.
 
@@ -251,7 +251,8 @@ The Chat tab. Not a marketing chat.
 - User: folio well, 4px bindery bar on the left. The product’s “bubble” — left spine, not iMessage.
 - Assistant: iron, no well. Markdown (headings, lists, tables, fenced code).
 - Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
-- Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view.
+- Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
+- `present`: the file itself is the output in a folio well with a thread border (same preview as Files — markdown, image, PDF, code). Not collapsed. The model does not retype it.
 - Composer: Cloth well, placeholder “Ask this Bot…”, bindery send.
 
 ### Status lamp
@@ -268,9 +269,9 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Files`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives only on `Desktop`, full main column. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Settings is a 760px column (name + description now; more later).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop`, `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives only on `Desktop`, full main column. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach from the Admin catalog (image, name, description, OAuth). Settings is a 760px column (name + description now; more later).
 
-**Settings / admin:** header + one 720–800px column. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
+**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
 
 ### Whitespace Strategy
 
@@ -311,11 +312,11 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 4 | Bot · Run | Thread + dark hatch. Default. |
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
 | 6 | Bot · Desktop | Hatch full-bleed. |
-| 7 | Bot · Connectors | MCP and Python on this Bot. |
-| 8 | New connector | Type, name, MCP or git SHA. |
+| 7 | Bot · Connectors | Attach catalog MCP connectors. |
+| 8 | Admin · Connectors | Site catalog. HTTP MCP, OAuth or none. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |
 | 10 | Bot · Rules | Allow / ask / deny per action. |
-| 11 | Admin | Product settings. Not operator YAML. |
+| 11 | Admin · Settings | Product settings. Not operator YAML. |
 | 12 | Audit | Who allowed what. |
 
 ### Screen prompts
@@ -405,7 +406,7 @@ Chrome mid-task inside. Stone caption under the hatch, left: “Same browser the
 
 ```
 Same shell, Scout, tab Connectors.
-Column 760px. “Connectors” and primary “Add connector”.
+Column 760px. “Connectors” and primary “Add connector”. Each row has ghost Refresh (re-list tools) and Remove.
 Two list rows on folio:
 1) gmail — slate chip “MCP” — “3 auto · 1 ask” — last call 2h ago
 2) imap_home — pine chip “Python” — “Ask every time” — commit 9f2a1c0 in mono
@@ -417,7 +418,7 @@ Hairline hover only. No card carnival.
 ```
 Same shell. Title: Add connector. Column 560px.
 Segmented: MCP | Python. MCP selected.
-Fields: Name, Server command (mono), key/value env rows with “Uses secret…” (values hidden).
+Fields: Name, URL (mono), Auth None|OAuth, Default Allow|Ask|Deny, extra headers (values hidden).
 Primary: Add connector. Ghost: Cancel.
 ```
 
@@ -439,7 +440,7 @@ Same shell, tab Rules. Column 760px.
 Table: Connector, Action (mono), Decision, Then.
 gmail / send / Ask; gmail / list / Allow; secrets / get / Ask; imap_home / * / Deny.
 Decision is a select: Allow / Ask / Deny.
-Stone: “Ask pauses the run and opens the slip.”
+Stone: “Ask pauses the run and opens the slip. Catalog default applies until you set a rule.”
 ```
 
 **11 · Admin**

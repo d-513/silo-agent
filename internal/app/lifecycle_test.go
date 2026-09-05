@@ -26,6 +26,7 @@ func memDB(t *testing.T) *gorm.DB {
 	if err := gdb.AutoMigrate(
 		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
 		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Setting{}, &db.Audit{},
+		&db.Connector{}, &db.BotConnector{},
 	); err != nil {
 		t.Fatal(err)
 	}

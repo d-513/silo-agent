@@ -15,7 +15,8 @@ COPY botimage/gtk-3.0/ /opt/silo/gtk-3.0/
 COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker \
     && mkdir -p /workspace /var/run/silo /home/bot/chrome-profile \
-        /usr/local/share/applications \
+        /usr/local/share/applications /opt/silo/tools \
+    && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/
 ENV DISPLAY=:1 \
     SILO_WORKSPACE=/workspace \

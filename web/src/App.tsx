@@ -1,4 +1,4 @@
-import { ArrowUp, ChatCircle, Cube, Folder, GearSix, Key, ListChecks, Monitor, Plus, Power, SlidersHorizontal, SquaresFour, Trash } from "@phosphor-icons/react";
+import { ArrowUp, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Trash, User, Wrench } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
@@ -7,9 +7,12 @@ import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest
 import { ApprovalSlip } from "./Approval";
 import { FilesPane } from "./Files";
 import { Thread, type Ev } from "./Thread";
-import type { Approval, AuditRow, Bot, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
+import { AdminLayout, AccountPage, AdminSettings } from "./Admin";
+import { AdminConnectors } from "./AdminConnectors";
+import { BotConnectors } from "./BotConnectors";
+import type { Approval, Bot, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "secrets", "rules", "container", "settings"] as const;
+const tabs = ["run", "desktop", "files", "connectors", "secrets", "rules", "container", "settings"] as const;
 type Tab = (typeof tabs)[number];
 
 function fail(e: unknown) {
@@ -40,6 +43,7 @@ const tabMeta: Record<Tab, { label: string; icon: typeof ChatCircle }> = {
   run: { label: "Chat", icon: ChatCircle },
   desktop: { label: "Desktop", icon: Monitor },
   files: { label: "Files", icon: Folder },
+  connectors: { label: "Connectors", icon: Plugs },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
   container: { label: "Container", icon: Cube },
@@ -61,7 +65,8 @@ function SiloMark() {
 
 const AuthCtx = createContext<{
   email: string;
-  setEmail: (e: string | null) => void;
+  admin: boolean;
+  setSession: (s: { email: string; admin: boolean } | null) => void;
 } | null>(null);
 
 function useAuth() {
@@ -107,8 +112,8 @@ function railHit(active: boolean, extra = "") {
   } ${extra}`;
 }
 
-function Rail({ page }: { page: "bots" | "admin" }) {
-  const { email, setEmail } = useAuth();
+function Rail({ page }: { page: "bots" | "admin" | "account" }) {
+  const { admin, setSession } = useAuth();
   const { bots } = useBots();
   const loc = useLocation();
   const botMatch = loc.pathname.match(/^\/bots\/([^/]+)/);
@@ -151,26 +156,34 @@ function Rail({ page }: { page: "bots" | "admin" }) {
           {loc.pathname === "/new" && <span className="absolute top-1 bottom-1 left-0 w-0.5 bg-bindery" />}
           <Plus size={20} weight="regular" />
         </Link>
-        <Link to="/admin" title="Admin" className={railHit(page === "admin") + " mt-1 mb-2"}>
-          {page === "admin" && <span className="absolute top-1 bottom-1 left-0 w-0.5 bg-bindery" />}
-          <GearSix size={20} weight="regular" />
-        </Link>
       </nav>
-      <button
-        title="Sign out"
-        className="mb-4 flex h-7 w-7 items-center justify-center rounded-full bg-linen text-[11px] font-medium hover:bg-bindery-pale"
-        onClick={async () => {
-          await ui.signOut({});
-          setEmail(null);
-        }}
-      >
-        {(email[0] || "?").toUpperCase()}
-      </button>
+      <div className="mb-4 flex flex-col items-center gap-1">
+        {admin && (
+          <Link to="/admin" title="Admin" className={railHit(page === "admin")}>
+            {page === "admin" && <span className="absolute top-1 bottom-1 left-0 w-0.5 bg-bindery" />}
+            <Wrench size={20} weight="regular" />
+          </Link>
+        )}
+        <Link to="/account" title="Account" className={railHit(page === "account")}>
+          {page === "account" && <span className="absolute top-1 bottom-1 left-0 w-0.5 bg-bindery" />}
+          <User size={20} weight="regular" />
+        </Link>
+        <button
+          title="Sign out"
+          className={railHit(false)}
+          onClick={async () => {
+            await ui.signOut({});
+            setSession(null);
+          }}
+        >
+          <SignOut size={20} weight="regular" />
+        </button>
+      </div>
     </aside>
   );
 }
 
-function Shell({ page, fill, children }: { page: "bots" | "admin"; fill?: boolean; children: ReactNode }) {
+function Shell({ page, fill, children }: { page: "bots" | "admin" | "account"; fill?: boolean; children: ReactNode }) {
   return (
     <div className="flex h-dvh overflow-hidden">
       <Rail page={page} />
@@ -181,7 +194,7 @@ function Shell({ page, fill, children }: { page: "bots" | "admin"; fill?: boolea
 
 function SignIn() {
   const nav = useNavigate();
-  const { setEmail } = useAuth();
+  const { setSession } = useAuth();
   const [email, setEm] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
@@ -190,7 +203,7 @@ function SignIn() {
     setErr("");
     try {
       const r = await ui.signIn({ email, password });
-      setEmail(r.user?.email ?? email);
+      setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
       nav("/");
     } catch (ex) {
       setErr(fail(ex));
@@ -971,7 +984,7 @@ function BotPage() {
               </div>
             </aside>
             <section className="flex min-w-0 flex-1 flex-col">
-              <Thread events={events} sending={sending} />
+              <Thread botId={id!} events={events} sending={sending} />
               <form onSubmit={send} className="flex gap-2 border-t border-thread-2 p-3">
                 <input
                   className="min-w-0 flex-1 rounded bg-cloth px-3 py-2 outline-none focus:border-bindery focus:ring-1 focus:ring-bindery"
@@ -996,6 +1009,11 @@ function BotPage() {
         {tab === "files" && (
           <section className="flex min-h-0 min-w-0 flex-1 flex-col">
             <FilesPane bot={bot} onStart={start} />
+          </section>
+        )}
+        {tab === "connectors" && id && (
+          <section className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <BotConnectors botId={id} />
           </section>
         )}
         {tab === "secrets" && (
@@ -1054,7 +1072,7 @@ function BotPage() {
           <div className="mx-auto w-[760px] p-7">
             <h2 className="mb-4 text-[22px] font-medium">Rules</h2>
             {rules.length === 0 ? (
-              <p className="mb-3 text-stone">No rules yet. Ask pauses the run and opens the slip.</p>
+              <p className="mb-3 text-stone">No rules yet. The catalog default applies; Ask pauses the run and opens the slip.</p>
             ) : (
               <>
                 <table className="w-full text-left">
@@ -1088,7 +1106,7 @@ function BotPage() {
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-3 text-stone">Ask pauses the run and opens the slip.</p>
+                <p className="mt-3 text-stone">Ask pauses the run and opens the slip. Catalog default applies until you set a rule.</p>
               </>
             )}
           </div>
@@ -1108,66 +1126,14 @@ function BotPage() {
   );
 }
 
-function AdminPage() {
-  const [model, setModel] = useState("");
-  const [audit, setAudit] = useState<AuditRow[]>([]);
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    ui.getSettings({}).then((x) => {
-      setModel(x.model);
-    });
-    ui.listAudit({}).then((x) => setAudit(x.rows));
-  }, []);
-  return (
-    <div className="mx-auto w-[640px] p-7">
-      <h1 className="mb-6 text-[22px] font-medium">Admin</h1>
-      <div className="mb-2 text-[11px] font-medium tracking-wide text-stone">Model</div>
-      <input className="mb-4 h-9 w-full rounded border border-thread bg-folio px-3" value={model} onChange={(e) => setModel(e.target.value)} />
-      <Btn
-        kind="primary"
-        onClick={async () => {
-          await ui.putSettings({ model });
-          setSaved(true);
-        }}
-      >
-        Save
-      </Btn>
-      {saved && <span className="ml-3 text-stone">Saved</span>}
-      <h2 className="mt-10 mb-3 text-[22px] font-medium">Audit</h2>
-      {audit.length === 0 ? (
-        <p className="text-stone">No decisions yet.</p>
-      ) : (
-        <table className="w-full text-left text-[13px]">
-          <thead className="bg-cloth text-stone">
-            <tr>
-              <th className="p-2">When</th>
-              <th className="p-2">Bot</th>
-              <th className="p-2">Actor</th>
-              <th className="p-2">Action</th>
-              <th className="p-2">Decision</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audit.map((r) => (
-              <tr key={r.id} className="border-b border-thread-2">
-                <td className="p-2">{r.at}</td>
-                <td className="flex items-center gap-2 p-2">
-                  <Crest index={r.crest} size={20} />
-                  {r.botName}
-                </td>
-                <td className="p-2">{r.actor}</td>
-                <td className="p-2 font-mono">{r.action}</td>
-                <td className="p-2">{r.decision}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
+function AdminGate() {
+  const { admin } = useAuth();
+  if (!admin) return <Navigate to="/" replace />;
+  return <AdminLayout />;
 }
 
 function Authed() {
+  const { email } = useAuth();
   return (
     <BotsProvider>
       <Routes>
@@ -1199,7 +1165,19 @@ function Authed() {
           path="/admin"
           element={
             <Shell page="admin">
-              <AdminPage />
+              <AdminGate />
+            </Shell>
+          }
+        >
+          <Route index element={<Navigate to="settings" replace />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="connectors/*" element={<AdminConnectors />} />
+        </Route>
+        <Route
+          path="/account"
+          element={
+            <Shell page="account">
+              <AccountPage email={email} />
             </Shell>
           }
         />
@@ -1211,16 +1189,16 @@ function Authed() {
 }
 
 export default function App() {
-  const [email, setEmail] = useState<string | null | undefined>(undefined);
+  const [session, setSession] = useState<{ email: string; admin: boolean } | null | undefined>(undefined);
   useEffect(() => {
     ui.me({})
-      .then((r) => setEmail(r.user?.email ?? null))
-      .catch(() => setEmail(null));
+      .then((r) => setSession(r.user ? { email: r.user.email, admin: r.user.admin } : null))
+      .catch(() => setSession(null));
   }, []);
-  if (email === undefined) return null;
+  if (session === undefined) return null;
   return (
-    <AuthCtx.Provider value={{ email: email ?? "", setEmail }}>
-      {email === null ? (
+    <AuthCtx.Provider value={{ email: session?.email ?? "", admin: session?.admin ?? false, setSession }}>
+      {session === null ? (
         <Routes>
           <Route path="/signin" element={<SignIn />} />
           <Route path="*" element={<Navigate to="/signin" />} />

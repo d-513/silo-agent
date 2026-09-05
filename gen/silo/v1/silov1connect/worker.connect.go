@@ -37,6 +37,8 @@ const (
 	BotWorkerCommandsProcedure = "/silo.v1.BotWorker/Commands"
 	// BotWorkerGetSecretProcedure is the fully-qualified name of the BotWorker's GetSecret RPC.
 	BotWorkerGetSecretProcedure = "/silo.v1.BotWorker/GetSecret"
+	// BotWorkerCallToolProcedure is the fully-qualified name of the BotWorker's CallTool RPC.
+	BotWorkerCallToolProcedure = "/silo.v1.BotWorker/CallTool"
 	// BotWorkerVNCProcedure is the fully-qualified name of the BotWorker's VNC RPC.
 	BotWorkerVNCProcedure = "/silo.v1.BotWorker/VNC"
 )
@@ -45,6 +47,7 @@ const (
 type BotWorkerClient interface {
 	Commands(context.Context) *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd]
 	GetSecret(context.Context, *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error)
+	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context) *connect.BidiStreamForClient[v1.Frame, v1.Frame]
 }
 
@@ -71,6 +74,12 @@ func NewBotWorkerClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(botWorkerMethods.ByName("GetSecret")),
 			connect.WithClientOptions(opts...),
 		),
+		callTool: connect.NewClient[v1.ToolReq, v1.ToolRes](
+			httpClient,
+			baseURL+BotWorkerCallToolProcedure,
+			connect.WithSchema(botWorkerMethods.ByName("CallTool")),
+			connect.WithClientOptions(opts...),
+		),
 		vNC: connect.NewClient[v1.Frame, v1.Frame](
 			httpClient,
 			baseURL+BotWorkerVNCProcedure,
@@ -84,6 +93,7 @@ func NewBotWorkerClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 type botWorkerClient struct {
 	commands  *connect.Client[v1.CmdEvent, v1.Cmd]
 	getSecret *connect.Client[v1.SecretReq, v1.SecretRes]
+	callTool  *connect.Client[v1.ToolReq, v1.ToolRes]
 	vNC       *connect.Client[v1.Frame, v1.Frame]
 }
 
@@ -97,6 +107,11 @@ func (c *botWorkerClient) GetSecret(ctx context.Context, req *connect.Request[v1
 	return c.getSecret.CallUnary(ctx, req)
 }
 
+// CallTool calls silo.v1.BotWorker.CallTool.
+func (c *botWorkerClient) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error) {
+	return c.callTool.CallUnary(ctx, req)
+}
+
 // VNC calls silo.v1.BotWorker.VNC.
 func (c *botWorkerClient) VNC(ctx context.Context) *connect.BidiStreamForClient[v1.Frame, v1.Frame] {
 	return c.vNC.CallBidiStream(ctx)
@@ -106,6 +121,7 @@ func (c *botWorkerClient) VNC(ctx context.Context) *connect.BidiStreamForClient[
 type BotWorkerHandler interface {
 	Commands(context.Context, *connect.BidiStream[v1.CmdEvent, v1.Cmd]) error
 	GetSecret(context.Context, *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error)
+	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context, *connect.BidiStream[v1.Frame, v1.Frame]) error
 }
 
@@ -128,6 +144,12 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(botWorkerMethods.ByName("GetSecret")),
 		connect.WithHandlerOptions(opts...),
 	)
+	botWorkerCallToolHandler := connect.NewUnaryHandler(
+		BotWorkerCallToolProcedure,
+		svc.CallTool,
+		connect.WithSchema(botWorkerMethods.ByName("CallTool")),
+		connect.WithHandlerOptions(opts...),
+	)
 	botWorkerVNCHandler := connect.NewBidiStreamHandler(
 		BotWorkerVNCProcedure,
 		svc.VNC,
@@ -140,6 +162,8 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 			botWorkerCommandsHandler.ServeHTTP(w, r)
 		case BotWorkerGetSecretProcedure:
 			botWorkerGetSecretHandler.ServeHTTP(w, r)
+		case BotWorkerCallToolProcedure:
+			botWorkerCallToolHandler.ServeHTTP(w, r)
 		case BotWorkerVNCProcedure:
 			botWorkerVNCHandler.ServeHTTP(w, r)
 		default:
@@ -157,6 +181,10 @@ func (UnimplementedBotWorkerHandler) Commands(context.Context, *connect.BidiStre
 
 func (UnimplementedBotWorkerHandler) GetSecret(context.Context, *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.GetSecret is not implemented"))
+}
+
+func (UnimplementedBotWorkerHandler) CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.CallTool is not implemented"))
 }
 
 func (UnimplementedBotWorkerHandler) VNC(context.Context, *connect.BidiStream[v1.Frame, v1.Frame]) error {

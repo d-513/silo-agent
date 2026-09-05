@@ -41,14 +41,14 @@ func TestApplySoulPatch(t *testing.T) {
 }
 
 func TestBuildSystemInjects(t *testing.T) {
-	s := buildSystem(&db.Bot{Name: "Scout", Description: "Mail", Soul: "Be brief.", Memory: "Inbox is IMAP."})
+	s := buildSystem(&db.Bot{Name: "Scout", Description: "Mail", Soul: "Be brief.", Memory: "Inbox is IMAP."}, "")
 	for _, want := range []string{"Scout", "Mail", "## SOUL", "Be brief.", "## MEMORY", "Inbox is IMAP."} {
 		if !strings.Contains(s, want) {
 			t.Fatal(want)
 		}
 	}
 	fat := strings.Repeat("m", memoryMax+10)
-	over := buildSystem(&db.Bot{Memory: fat})
+	over := buildSystem(&db.Bot{Memory: fat}, "")
 	if !strings.Contains(over, "Compact it") {
 		t.Fatal(over[len(over)-200:])
 	}

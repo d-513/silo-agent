@@ -4,10 +4,12 @@ import {
   CircleNotch,
   Code,
   File,
+  FrameCorners,
   GitDiff,
   MagnifyingGlass,
   Notebook,
   PencilSimple,
+  Plugs,
   Terminal,
   User,
 } from "@phosphor-icons/react";
@@ -26,6 +28,8 @@ import { useEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import { ui } from "./api";
+import { FilePreview } from "./FilePreview";
 import { foldEvents, type Ev } from "./fold";
 
 export type { Ev };
@@ -195,6 +199,8 @@ function toolMeta(name: string) {
       return { label: "SOUL", Icon: User };
     case "memory":
       return { label: "MEMORY", Icon: Notebook };
+    case "present":
+      return { label: "present", Icon: FrameCorners };
     default:
       return { label: name, Icon: Code };
   }
@@ -256,6 +262,8 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
     } else {
       body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
     }
+  } else if (name === "present" && path) {
+    body = <div className="font-mono text-[13px]">{path}</div>;
   } else if (name === "grep" && (pattern || path || include)) {
     body = (
       <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
@@ -328,7 +336,50 @@ function Md({ text }: { text: string }) {
   );
 }
 
-export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) {
+function fail(e: unknown) {
+  const m = e instanceof Error ? e.message : "failed";
+  return m.replace(/^\[[^\]]+\]\s*/, "");
+}
+
+function PresentFile({ botId, path }: { botId: string; path: string }) {
+  const [file, setFile] = useState<{ name: string; content: string; data?: Uint8Array; binary: boolean; truncated: boolean } | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let dead = false;
+    ui.readFile({ botId, path })
+      .then((r) => {
+        if (!dead) {
+          setFile({ name: r.name, content: r.content, data: r.data, binary: r.binary, truncated: r.truncated });
+        }
+      })
+      .catch((ex) => {
+        if (!dead) setErr(fail(ex));
+      });
+    return () => {
+      dead = true;
+    };
+  }, [botId, path]);
+  const name = file?.name || path.split("/").filter(Boolean).pop() || path;
+  return (
+    <div className="max-w-[50rem] space-y-2 rounded-[10px] border border-thread bg-folio p-3">
+      <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-stone">
+        <FrameCorners size={14} />
+        {name}
+      </div>
+      {file?.truncated ? <p className="text-[12px] text-stone">Showing the first 2 MB.</p> : null}
+      {err ? <p className="text-carmine">{err}</p> : null}
+      {!file && !err ? (
+        <div className="flex items-center gap-2 text-stone">
+          <CircleNotch size={14} className="animate-spin" />
+          Opening…
+        </div>
+      ) : null}
+      {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
+    </div>
+  );
+}
+
+export function Thread({ botId, events, sending }: { botId: string; events: Ev[]; sending: boolean }) {
   const end = useRef<HTMLDivElement>(null);
   const blocks = foldEvents(events);
   useEffect(() => {
@@ -375,10 +426,15 @@ export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) 
           );
         }
         if (b.type === "tool") {
+          const path = asStr(parseToolArgs(b.args).path);
+          if (b.name === "present" && !b.running && b.result && !b.result.startsWith("error:") && path) {
+            return <PresentFile key={b.key} botId={botId} path={path} />;
+          }
           const { label, Icon } = toolMeta(b.name);
-          return (
+          const python =
+            b.name === "call" ? null : (
             <ToolFold
-              key={b.key}
+              key={b.calls?.length ? `${b.key}-py` : b.key}
               summary={
                 <>
                   <Icon size={14} />
@@ -390,6 +446,26 @@ export function Thread({ events, sending }: { events: Ev[]; sending: boolean }) 
               <ToolInput name={b.name} args={b.args} running={b.running} />
               {b.result ? <ToolResult text={b.result} /> : null}
             </ToolFold>
+          );
+          if (!b.calls?.length) return python;
+          return (
+            <div key={b.key} className="space-y-2">
+              {b.calls.map((c) => (
+                <ToolFold
+                  key={c.key}
+                  summary={
+                    <>
+                      <Plugs size={14} />
+                      {c.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                      {c.running ? "Using" : "Used"} {c.title}
+                    </>
+                  }
+                >
+                  {c.result ? <ToolResult text={c.result} /> : null}
+                </ToolFold>
+              ))}
+              {python}
+            </div>
           );
         }
         if (b.type === "assistant") {

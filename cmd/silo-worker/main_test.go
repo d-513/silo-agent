@@ -14,6 +14,28 @@ import (
 	"silo.agent/internal/masker"
 )
 
+func TestResolveStripsWorkspacePrefix(t *testing.T) {
+	dir := t.TempDir()
+	ws := filepath.Join(dir, "workspace")
+	if err := os.Mkdir(ws, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(ws, "twilio_doc.md")
+	if err := os.WriteFile(want, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{workspace: ws}
+	for _, p := range []string{"twilio_doc.md", "/workspace/twilio_doc.md", "workspace/twilio_doc.md", want} {
+		got, err := w.resolve(p)
+		if err != nil {
+			t.Fatalf("%s: %v", p, err)
+		}
+		if got != want {
+			t.Fatalf("%s -> %s want %s", p, got, want)
+		}
+	}
+}
+
 func TestReconnectWaitUnauth(t *testing.T) {
 	if reconnectWait(nil) != 2*time.Second {
 		t.Fatal("ok")
@@ -52,6 +74,18 @@ func TestChildEnvRunID(t *testing.T) {
 	}
 	if !strings.Contains(joined, "SILO_RUN_ID=run-1") {
 		t.Fatal(joined)
+	}
+	n := 0
+	for _, e := range env {
+		if strings.HasPrefix(e, "PYTHONPATH=") {
+			n++
+			if e != "PYTHONPATH=/opt/silo" {
+				t.Fatal(e)
+			}
+		}
+	}
+	if n != 1 {
+		t.Fatalf("PYTHONPATH count %d", n)
 	}
 }
 
@@ -148,5 +182,25 @@ func TestFsMkdirPutRemove(t *testing.T) {
 	}
 	if _, err := w.mkdir("../x"); err == nil {
 		t.Fatal("escaped")
+	}
+}
+
+func TestSyncTools(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("SILO_TOOLS_DIR", dir)
+	w := &worker{}
+	out, err := w.syncTools([]*v1.ToolStub{{
+		Connector: "Demo", Action: "Ping", Description: "ping",
+		ArgsSchemaJson: `{"type":"object","properties":{"x":{"type":"string"}},"required":["x"]}`,
+	}})
+	if err != nil || out != "ok" {
+		t.Fatalf("%q %v", out, err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "demo", "ping.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `call("demo", "Ping"`) {
+		t.Fatal(string(b))
 	}
 }

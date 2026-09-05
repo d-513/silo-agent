@@ -15,6 +15,8 @@ export default defineConfig({
       "/silo.v1.BotWorker": { target: "http://127.0.0.1:8080", changeOrigin: true },
       "/vnc": { target: "http://127.0.0.1:8080", ws: true },
       "/healthz": { target: "http://127.0.0.1:8080" },
+      "/oauth": { target: "http://127.0.0.1:8080" },
+      "/connectors": { target: "http://127.0.0.1:8080" },
     },
   },
 });

@@ -7,6 +7,7 @@ option go_package = "silo.agent/gen/silo/v1;silov1";
 service BotWorker {
   rpc Commands(stream CmdEvent) returns (stream Cmd);
   rpc GetSecret(SecretReq) returns (SecretRes);
+  rpc CallTool(ToolReq) returns (ToolRes);
   rpc VNC(stream Frame) returns (stream Frame);
 }
 
@@ -26,7 +27,31 @@ message Cmd {
     MkdirCmd mkdir = 12;
     RemoveCmd remove = 13;
     PutFileCmd put_file = 14;
+    SyncToolsCmd sync_tools = 15;
   }
+}
+
+message ToolStub {
+  string connector = 1;
+  string action = 2;
+  string description = 3;
+  string args_schema_json = 4;
+}
+
+message SyncToolsCmd {
+  repeated ToolStub stubs = 1;
+}
+
+message ToolReq {
+  string connector = 1;
+  string action = 2;
+  string args_json = 3;
+  string run_id = 4;
+}
+
+message ToolRes {
+  string result_json = 1;
+  string error = 2;
 }
 
 message TerminalCmd {

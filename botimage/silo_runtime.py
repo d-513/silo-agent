@@ -37,3 +37,16 @@ def get_secret(name: str) -> str:
     if rid:
         body["run_id"] = rid
     return _post("/v1/secrets/get", body)["value"]
+
+
+def call(connector: str, action: str, args: dict | None = None) -> dict:
+    clean = {k: v for k, v in (args or {}).items() if v is not None}
+    body = {"connector": connector, "action": action, "args": clean}
+    rid = os.environ.get("SILO_RUN_ID")
+    if rid:
+        body["run_id"] = rid
+    data = _post("/v1/tools/call", body)
+    result = data.get("result")
+    if isinstance(result, dict):
+        return result
+    return {"result": result}

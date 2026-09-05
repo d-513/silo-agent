@@ -24,6 +24,7 @@ const DefaultModel = "openai/gpt-5.6-luna"
 
 type Config struct {
 	HTTPAddr   string     `koanf:"http_addr"`
+	PublicURL  string     `koanf:"public_url"`
 	DataDir    string     `koanf:"data_dir"`
 	DockerHost string     `koanf:"docker_host"`
 	CPURL      string     `koanf:"cp_url"`

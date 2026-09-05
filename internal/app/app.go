@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -23,6 +23,9 @@ import (
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/masker"
+	"silo.agent/internal/mcpx"
+
+	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 type ctxKey int
@@ -111,6 +114,8 @@ type App struct {
 	cmdRun    map[string]string
 	runs      map[string]*liveRun
 	mask      map[string]*masker.Masker
+	oauth     map[string]chan *mcpauth.AuthorizationResult
+	mcp       map[string]*mcpx.Session
 	lifecycle sync.Map
 }
 
@@ -125,6 +130,8 @@ func New(cfg *config.Config, gdb *gorm.DB, eng dockerx.Host) *App {
 		cmdRun:    map[string]string{},
 		runs:      map[string]*liveRun{},
 		mask:      map[string]*masker.Masker{},
+		oauth:     map[string]chan *mcpauth.AuthorizationResult{},
+		mcp:       map[string]*mcpx.Session{},
 	}
 	a.recoverOrphans()
 	return a
@@ -145,6 +152,7 @@ func (a *App) recoverOrphans() {
 }
 
 func (a *App) Shutdown() {
+	a.Hub.CloseAll()
 	a.mu.Lock()
 	for _, lr := range a.runs {
 		lr.cancel()
@@ -157,23 +165,36 @@ func (a *App) Shutdown() {
 		}
 		delete(a.approvals, id)
 	}
+	for id, s := range a.mcp {
+		go s.Close()
+		delete(a.mcp, id)
+	}
 	a.mu.Unlock()
 }
 
-func ListenAndServe(cfg *config.Config, h http.Handler) error {
+func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: h}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	select {
 	case err := <-errc:
+		signal.Stop(sigc)
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
 		return err
-	case <-ctx.Done():
+	case <-sigc:
+		signal.Stop(sigc)
+		if onStop != nil {
+			onStop()
+		}
+		if err := srv.Close(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
 	}
-	sh, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	return srv.Shutdown(sh)
 }
 
 func (a *App) Mask(botID string) *masker.Masker {
@@ -298,6 +319,8 @@ func (a *App) Handler() http.Handler {
 	mux.Handle(wkPath, wkH)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
+	mux.HandleFunc("/oauth/callback", a.handleOAuthCallback)
+	mux.HandleFunc("/connectors/", a.handleConnectorImage)
 	log.Printf("mounted %s %s", uiPath, wkPath)
 	return withHTTP(mux)
 }

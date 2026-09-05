@@ -97,6 +97,24 @@ const (
 	UIPutSettingsProcedure = "/silo.v1.UI/PutSettings"
 	// UIListAuditProcedure is the fully-qualified name of the UI's ListAudit RPC.
 	UIListAuditProcedure = "/silo.v1.UI/ListAudit"
+	// UIListConnectorsProcedure is the fully-qualified name of the UI's ListConnectors RPC.
+	UIListConnectorsProcedure = "/silo.v1.UI/ListConnectors"
+	// UICreateConnectorProcedure is the fully-qualified name of the UI's CreateConnector RPC.
+	UICreateConnectorProcedure = "/silo.v1.UI/CreateConnector"
+	// UIUpdateConnectorProcedure is the fully-qualified name of the UI's UpdateConnector RPC.
+	UIUpdateConnectorProcedure = "/silo.v1.UI/UpdateConnector"
+	// UIDeleteConnectorProcedure is the fully-qualified name of the UI's DeleteConnector RPC.
+	UIDeleteConnectorProcedure = "/silo.v1.UI/DeleteConnector"
+	// UIListBotConnectorsProcedure is the fully-qualified name of the UI's ListBotConnectors RPC.
+	UIListBotConnectorsProcedure = "/silo.v1.UI/ListBotConnectors"
+	// UIAttachConnectorProcedure is the fully-qualified name of the UI's AttachConnector RPC.
+	UIAttachConnectorProcedure = "/silo.v1.UI/AttachConnector"
+	// UIDetachConnectorProcedure is the fully-qualified name of the UI's DetachConnector RPC.
+	UIDetachConnectorProcedure = "/silo.v1.UI/DetachConnector"
+	// UIRefreshBotConnectorProcedure is the fully-qualified name of the UI's RefreshBotConnector RPC.
+	UIRefreshBotConnectorProcedure = "/silo.v1.UI/RefreshBotConnector"
+	// UIStartConnectorAuthProcedure is the fully-qualified name of the UI's StartConnectorAuth RPC.
+	UIStartConnectorAuthProcedure = "/silo.v1.UI/StartConnectorAuth"
 )
 
 // UIClient is a client for the silo.v1.UI service.
@@ -133,6 +151,15 @@ type UIClient interface {
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
+	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
+	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
+	DeleteConnector(context.Context, *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error)
+	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
+	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
+	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
 }
 
 // NewUIClient constructs a client for the silo.v1.UI service. By default, it uses the Connect
@@ -338,43 +365,106 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListAudit")),
 			connect.WithClientOptions(opts...),
 		),
+		listConnectors: connect.NewClient[v1.ListConnectorsRequest, v1.ListConnectorsResponse](
+			httpClient,
+			baseURL+UIListConnectorsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListConnectors")),
+			connect.WithClientOptions(opts...),
+		),
+		createConnector: connect.NewClient[v1.CreateConnectorRequest, v1.Connector](
+			httpClient,
+			baseURL+UICreateConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		updateConnector: connect.NewClient[v1.UpdateConnectorRequest, v1.Connector](
+			httpClient,
+			baseURL+UIUpdateConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteConnector: connect.NewClient[v1.DeleteConnectorRequest, v1.DeleteConnectorResponse](
+			httpClient,
+			baseURL+UIDeleteConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		listBotConnectors: connect.NewClient[v1.ListBotConnectorsRequest, v1.ListBotConnectorsResponse](
+			httpClient,
+			baseURL+UIListBotConnectorsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBotConnectors")),
+			connect.WithClientOptions(opts...),
+		),
+		attachConnector: connect.NewClient[v1.AttachConnectorRequest, v1.BotConnector](
+			httpClient,
+			baseURL+UIAttachConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("AttachConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		detachConnector: connect.NewClient[v1.DetachConnectorRequest, v1.DetachConnectorResponse](
+			httpClient,
+			baseURL+UIDetachConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("DetachConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		refreshBotConnector: connect.NewClient[v1.RefreshBotConnectorRequest, v1.BotConnector](
+			httpClient,
+			baseURL+UIRefreshBotConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("RefreshBotConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		startConnectorAuth: connect.NewClient[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse](
+			httpClient,
+			baseURL+UIStartConnectorAuthProcedure,
+			connect.WithSchema(uIMethods.ByName("StartConnectorAuth")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // uIClient implements UIClient.
 type uIClient struct {
-	signIn         *connect.Client[v1.SignInRequest, v1.SignInResponse]
-	signOut        *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
-	me             *connect.Client[v1.MeRequest, v1.MeResponse]
-	listBots       *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
-	createBot      *connect.Client[v1.CreateBotRequest, v1.Bot]
-	updateBot      *connect.Client[v1.UpdateBotRequest, v1.Bot]
-	getBot         *connect.Client[v1.GetBotRequest, v1.Bot]
-	getContainer   *connect.Client[v1.GetBotRequest, v1.Container]
-	startBot       *connect.Client[v1.GetBotRequest, v1.Bot]
-	stopBot        *connect.Client[v1.GetBotRequest, v1.Bot]
-	deleteBot      *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
-	listChats      *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
-	createChat     *connect.Client[v1.CreateChatRequest, v1.Chat]
-	renameChat     *connect.Client[v1.RenameChatRequest, v1.Chat]
-	deleteChat     *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
-	send           *connect.Client[v1.SendRequest, v1.SendResponse]
-	streamRun      *connect.Client[v1.StreamRunRequest, v1.RunEvent]
-	listSecrets    *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
-	addSecret      *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
-	deleteSecret   *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
-	listApprovals  *connect.Client[v1.ListApprovalsRequest, v1.ListApprovalsResponse]
-	decideApproval *connect.Client[v1.DecideApprovalRequest, v1.Approval]
-	listRules      *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
-	setRule        *connect.Client[v1.SetRuleRequest, v1.Rule]
-	listFiles      *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
-	readFile       *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
-	mkdir          *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
-	removeFile     *connect.Client[v1.RemoveFileRequest, v1.FileOpResponse]
-	putFile        *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
-	getSettings    *connect.Client[v1.GetSettingsRequest, v1.Settings]
-	putSettings    *connect.Client[v1.PutSettingsRequest, v1.Settings]
-	listAudit      *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	signIn              *connect.Client[v1.SignInRequest, v1.SignInResponse]
+	signOut             *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	me                  *connect.Client[v1.MeRequest, v1.MeResponse]
+	listBots            *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
+	createBot           *connect.Client[v1.CreateBotRequest, v1.Bot]
+	updateBot           *connect.Client[v1.UpdateBotRequest, v1.Bot]
+	getBot              *connect.Client[v1.GetBotRequest, v1.Bot]
+	getContainer        *connect.Client[v1.GetBotRequest, v1.Container]
+	startBot            *connect.Client[v1.GetBotRequest, v1.Bot]
+	stopBot             *connect.Client[v1.GetBotRequest, v1.Bot]
+	deleteBot           *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
+	listChats           *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
+	createChat          *connect.Client[v1.CreateChatRequest, v1.Chat]
+	renameChat          *connect.Client[v1.RenameChatRequest, v1.Chat]
+	deleteChat          *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
+	send                *connect.Client[v1.SendRequest, v1.SendResponse]
+	streamRun           *connect.Client[v1.StreamRunRequest, v1.RunEvent]
+	listSecrets         *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
+	addSecret           *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
+	deleteSecret        *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
+	listApprovals       *connect.Client[v1.ListApprovalsRequest, v1.ListApprovalsResponse]
+	decideApproval      *connect.Client[v1.DecideApprovalRequest, v1.Approval]
+	listRules           *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
+	setRule             *connect.Client[v1.SetRuleRequest, v1.Rule]
+	listFiles           *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
+	readFile            *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
+	mkdir               *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
+	removeFile          *connect.Client[v1.RemoveFileRequest, v1.FileOpResponse]
+	putFile             *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
+	getSettings         *connect.Client[v1.GetSettingsRequest, v1.Settings]
+	putSettings         *connect.Client[v1.PutSettingsRequest, v1.Settings]
+	listAudit           *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	listConnectors      *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
+	createConnector     *connect.Client[v1.CreateConnectorRequest, v1.Connector]
+	updateConnector     *connect.Client[v1.UpdateConnectorRequest, v1.Connector]
+	deleteConnector     *connect.Client[v1.DeleteConnectorRequest, v1.DeleteConnectorResponse]
+	listBotConnectors   *connect.Client[v1.ListBotConnectorsRequest, v1.ListBotConnectorsResponse]
+	attachConnector     *connect.Client[v1.AttachConnectorRequest, v1.BotConnector]
+	detachConnector     *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
+	refreshBotConnector *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
+	startConnectorAuth  *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
 }
 
 // SignIn calls silo.v1.UI.SignIn.
@@ -537,6 +627,51 @@ func (c *uIClient) ListAudit(ctx context.Context, req *connect.Request[v1.ListAu
 	return c.listAudit.CallUnary(ctx, req)
 }
 
+// ListConnectors calls silo.v1.UI.ListConnectors.
+func (c *uIClient) ListConnectors(ctx context.Context, req *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
+	return c.listConnectors.CallUnary(ctx, req)
+}
+
+// CreateConnector calls silo.v1.UI.CreateConnector.
+func (c *uIClient) CreateConnector(ctx context.Context, req *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+	return c.createConnector.CallUnary(ctx, req)
+}
+
+// UpdateConnector calls silo.v1.UI.UpdateConnector.
+func (c *uIClient) UpdateConnector(ctx context.Context, req *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+	return c.updateConnector.CallUnary(ctx, req)
+}
+
+// DeleteConnector calls silo.v1.UI.DeleteConnector.
+func (c *uIClient) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
+	return c.deleteConnector.CallUnary(ctx, req)
+}
+
+// ListBotConnectors calls silo.v1.UI.ListBotConnectors.
+func (c *uIClient) ListBotConnectors(ctx context.Context, req *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error) {
+	return c.listBotConnectors.CallUnary(ctx, req)
+}
+
+// AttachConnector calls silo.v1.UI.AttachConnector.
+func (c *uIClient) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return c.attachConnector.CallUnary(ctx, req)
+}
+
+// DetachConnector calls silo.v1.UI.DetachConnector.
+func (c *uIClient) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
+	return c.detachConnector.CallUnary(ctx, req)
+}
+
+// RefreshBotConnector calls silo.v1.UI.RefreshBotConnector.
+func (c *uIClient) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return c.refreshBotConnector.CallUnary(ctx, req)
+}
+
+// StartConnectorAuth calls silo.v1.UI.StartConnectorAuth.
+func (c *uIClient) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
+	return c.startConnectorAuth.CallUnary(ctx, req)
+}
+
 // UIHandler is an implementation of the silo.v1.UI service.
 type UIHandler interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
@@ -571,6 +706,15 @@ type UIHandler interface {
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
+	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
+	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
+	DeleteConnector(context.Context, *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error)
+	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
+	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
+	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
 }
 
 // NewUIHandler builds an HTTP handler from the service implementation. It returns the path on which
@@ -772,6 +916,60 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ListAudit")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListConnectorsHandler := connect.NewUnaryHandler(
+		UIListConnectorsProcedure,
+		svc.ListConnectors,
+		connect.WithSchema(uIMethods.ByName("ListConnectors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateConnectorHandler := connect.NewUnaryHandler(
+		UICreateConnectorProcedure,
+		svc.CreateConnector,
+		connect.WithSchema(uIMethods.ByName("CreateConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateConnectorHandler := connect.NewUnaryHandler(
+		UIUpdateConnectorProcedure,
+		svc.UpdateConnector,
+		connect.WithSchema(uIMethods.ByName("UpdateConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteConnectorHandler := connect.NewUnaryHandler(
+		UIDeleteConnectorProcedure,
+		svc.DeleteConnector,
+		connect.WithSchema(uIMethods.ByName("DeleteConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBotConnectorsHandler := connect.NewUnaryHandler(
+		UIListBotConnectorsProcedure,
+		svc.ListBotConnectors,
+		connect.WithSchema(uIMethods.ByName("ListBotConnectors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAttachConnectorHandler := connect.NewUnaryHandler(
+		UIAttachConnectorProcedure,
+		svc.AttachConnector,
+		connect.WithSchema(uIMethods.ByName("AttachConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDetachConnectorHandler := connect.NewUnaryHandler(
+		UIDetachConnectorProcedure,
+		svc.DetachConnector,
+		connect.WithSchema(uIMethods.ByName("DetachConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRefreshBotConnectorHandler := connect.NewUnaryHandler(
+		UIRefreshBotConnectorProcedure,
+		svc.RefreshBotConnector,
+		connect.WithSchema(uIMethods.ByName("RefreshBotConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStartConnectorAuthHandler := connect.NewUnaryHandler(
+		UIStartConnectorAuthProcedure,
+		svc.StartConnectorAuth,
+		connect.WithSchema(uIMethods.ByName("StartConnectorAuth")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.UI/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UISignInProcedure:
@@ -838,6 +1036,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIPutSettingsHandler.ServeHTTP(w, r)
 		case UIListAuditProcedure:
 			uIListAuditHandler.ServeHTTP(w, r)
+		case UIListConnectorsProcedure:
+			uIListConnectorsHandler.ServeHTTP(w, r)
+		case UICreateConnectorProcedure:
+			uICreateConnectorHandler.ServeHTTP(w, r)
+		case UIUpdateConnectorProcedure:
+			uIUpdateConnectorHandler.ServeHTTP(w, r)
+		case UIDeleteConnectorProcedure:
+			uIDeleteConnectorHandler.ServeHTTP(w, r)
+		case UIListBotConnectorsProcedure:
+			uIListBotConnectorsHandler.ServeHTTP(w, r)
+		case UIAttachConnectorProcedure:
+			uIAttachConnectorHandler.ServeHTTP(w, r)
+		case UIDetachConnectorProcedure:
+			uIDetachConnectorHandler.ServeHTTP(w, r)
+		case UIRefreshBotConnectorProcedure:
+			uIRefreshBotConnectorHandler.ServeHTTP(w, r)
+		case UIStartConnectorAuthProcedure:
+			uIStartConnectorAuthHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -973,4 +1189,40 @@ func (UnimplementedUIHandler) PutSettings(context.Context, *connect.Request[v1.P
 
 func (UnimplementedUIHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAudit is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListConnectors is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteConnector(context.Context, *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBotConnectors is not implemented"))
+}
+
+func (UnimplementedUIHandler) AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AttachConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DetachConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RefreshBotConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StartConnectorAuth is not implemented"))
 }

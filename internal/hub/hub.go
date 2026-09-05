@@ -116,6 +116,16 @@ func (h *Hub) Detach(botID string, s *Session) {
 	s.close()
 }
 
+func (h *Hub) CloseAll() {
+	h.mu.Lock()
+	m := h.m
+	h.m = map[string]*Session{}
+	h.mu.Unlock()
+	for _, s := range m {
+		s.close()
+	}
+}
+
 func (h *Hub) Drop(botID string) {
 	h.mu.Lock()
 	s := h.m[botID]

@@ -32,7 +32,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Use silo_runtime.get_secret(name) for secrets."),
+		Description: openai.String("Run Python in the Bot. Use silo_runtime.get_secret(name) for secrets. Connectors are import tools.<slug>, not extra chat tools. Persist large results to /workspace here, then present the path — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -56,7 +56,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "write",
-		Description: openai.String("Write a file relative to /workspace. Prefer patch for existing files."),
+		Description: openai.String("Write a small file you compose yourself, relative to /workspace. Prefer patch for existing files. Do not copy Python or connector output here — save that from exec_python, then present."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -117,6 +117,17 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 			},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "present",
+		Description: openai.String("Show a workspace file in the chat as-is (markdown, image, code, PDF). Path is relative to /workspace, e.g. notes.md — not /workspace/notes.md. The file must already exist (saved from Python). Do not retype the contents."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"path": map[string]any{"type": "string"},
+			},
+			"required": []string{"path"},
+		},
+	}),
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
@@ -155,7 +166,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	var bot db.Bot
 	sysText := prompts.System
 	if a.DB.First(&bot, "id = ?", botID).Error == nil {
-		sysText = buildSystem(&bot)
+		sysText = buildSystem(&bot, a.connectorBlurb(botID))
 	}
 	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
@@ -242,7 +253,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			if fn.Name == "soul" || fn.Name == "memory" {
 				var row db.Bot
 				if a.DB.First(&row, "id = ?", botID).Error == nil {
-					msgs[0] = openai.SystemMessage(buildSystem(&row))
+					msgs[0] = openai.SystemMessage(buildSystem(&row, a.connectorBlurb(botID)))
 				}
 			}
 		}
@@ -382,6 +393,7 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		v, _ := args[k].(string)
 		return v
 	}
+	path := relWorkspace(str("path"))
 	if name == "soul" || name == "memory" {
 		return a.execDoc(botID, name, args)
 	}
@@ -394,20 +406,25 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: str("code")}}}
 	case "read":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileRead{FileRead: &v1.FileReadCmd{
-			Path: str("path"), Offset: int32(num(args, "offset")), Limit: int32(num(args, "limit")),
+			Path: path, Offset: int32(num(args, "offset")), Limit: int32(num(args, "limit")),
 		}}}
 	case "write":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileWrite{FileWrite: &v1.FileWriteCmd{Path: str("path"), Content: str("content")}}}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileWrite{FileWrite: &v1.FileWriteCmd{Path: path, Content: str("content")}}}
 	case "patch":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{Path: str("path"), OldText: str("old_text"), NewText: str("new_text")}}}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{Path: path, OldText: str("old_text"), NewText: str("new_text")}}}
 	case "grep":
 		max := int32(num(args, "max_hits"))
 		if max <= 0 {
 			max = 80
 		}
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Grep{Grep: &v1.GrepCmd{
-			Pattern: str("pattern"), Path: str("path"), Include: str("include"), MaxHits: max,
+			Pattern: str("pattern"), Path: path, Include: str("include"), MaxHits: max,
 		}}}
+	case "present":
+		if path == "" {
+			return "", fmt.Errorf("path required")
+		}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}}
 	default:
 		return "", fmt.Errorf("unknown tool %s", name)
 	}
@@ -433,9 +450,37 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 			max = 80
 		}
 		return capHits(out, max), nil
+	case "present":
+		return presentAck(out), nil
 	default:
 		return out, nil
 	}
+}
+
+func presentAck(raw string) string {
+	var row struct {
+		Name      string `json:"name"`
+		Truncated bool   `json:"truncated"`
+		Size      int64  `json:"size"`
+	}
+	if json.Unmarshal([]byte(raw), &row) != nil || row.Name == "" {
+		return "presented. Shown in the thread — do not retype it."
+	}
+	msg := fmt.Sprintf("presented %s (%s). Shown in the thread — do not retype it.", row.Name, formatSize(row.Size))
+	if row.Truncated {
+		msg += " Preview is the first 2 MB."
+	}
+	return msg
+}
+
+func formatSize(n int64) string {
+	if n < 1024 {
+		return fmt.Sprintf("%d B", n)
+	}
+	if n < 1024*1024 {
+		return fmt.Sprintf("%.1f KB", float64(n)/1024)
+	}
+	return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
 }
 
 func jsonLooksComplete(s string) bool {

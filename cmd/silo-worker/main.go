@@ -26,6 +26,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/masker"
+	"silo.agent/internal/toolsgen"
 )
 
 func main() {
@@ -62,6 +63,7 @@ func main() {
 		rpc:       client,
 	}
 	w.mask.Add(tok)
+	ensureToolsDir()
 	go serveLocal(sock, w)
 	go w.vncLoop(client)
 
@@ -252,6 +254,8 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.remove(b.Remove.GetPath())
 	case *v1.Cmd_PutFile:
 		return w.putFile(b.PutFile.GetPath(), b.PutFile.GetData())
+	case *v1.Cmd_SyncTools:
+		return w.syncTools(b.SyncTools.GetStubs())
 	default:
 		return "", errors.New("unknown cmd")
 	}
@@ -262,6 +266,20 @@ func shellQuote(s string) string {
 }
 
 func (w *worker) resolve(p string) (string, error) {
+	p = strings.TrimSpace(filepath.ToSlash(p))
+	ws := filepath.ToSlash(filepath.Clean(w.workspace))
+	switch {
+	case p == "" || p == ".":
+		p = "."
+	case p == ws || p == "/workspace" || p == "workspace":
+		p = "."
+	case strings.HasPrefix(p, ws+"/"):
+		p = strings.TrimPrefix(p, ws+"/")
+	case strings.HasPrefix(p, "/workspace/"):
+		p = strings.TrimPrefix(p, "/workspace/")
+	case strings.HasPrefix(p, "workspace/"):
+		p = strings.TrimPrefix(p, "workspace/")
+	}
 	if p == "" {
 		p = "."
 	}
@@ -424,10 +442,33 @@ func (w *worker) putFile(p string, data []byte) (string, error) {
 	return "ok", os.WriteFile(full, data, 0o644)
 }
 
+func toolsDir() string {
+	if d := os.Getenv("SILO_TOOLS_DIR"); d != "" {
+		return d
+	}
+	return "/opt/silo/tools"
+}
+
+func ensureToolsDir() {
+	dir := toolsDir()
+	_ = os.MkdirAll(dir, 0o755)
+	p := filepath.Join(dir, "__init__.py")
+	if _, err := os.Stat(p); err != nil {
+		_ = os.WriteFile(p, []byte(""), 0o644)
+	}
+}
+
+func (w *worker) syncTools(stubs []*v1.ToolStub) (string, error) {
+	if err := toolsgen.Write(toolsDir(), stubs); err != nil {
+		return "", err
+	}
+	return "ok", nil
+}
+
 func (w *worker) childEnv(runID string) []string {
 	var out []string
 	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "SILO_BOT_TOKEN=") || strings.HasPrefix(e, "SILO_CP_URL=") || strings.HasPrefix(e, "SILO_RUN_ID=") {
+		if strings.HasPrefix(e, "SILO_BOT_TOKEN=") || strings.HasPrefix(e, "SILO_CP_URL=") || strings.HasPrefix(e, "SILO_RUN_ID=") || strings.HasPrefix(e, "PYTHONPATH=") {
 			continue
 		}
 		out = append(out, e)
@@ -436,7 +477,7 @@ func (w *worker) childEnv(runID string) []string {
 	if sock == "" {
 		sock = "/var/run/silo/worker.sock"
 	}
-	out = append(out, "SILO_WORKER_SOCK="+sock, "PYTHONPATH=/opt/silo:"+os.Getenv("PYTHONPATH"))
+	out = append(out, "SILO_WORKER_SOCK="+sock, "PYTHONPATH=/opt/silo")
 	if runID != "" {
 		out = append(out, "SILO_RUN_ID="+runID)
 	}
@@ -500,6 +541,27 @@ func serveLocal(sock string, w *worker) {
 		w.mask.Add(val)
 		_ = json.NewEncoder(rw).Encode(map[string]string{"value": val})
 	})
+	mux.HandleFunc("/v1/tools/call", func(rw http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Connector string         `json:"connector"`
+			Action    string         `json:"action"`
+			Args      map[string]any `json:"args"`
+			RunID     string         `json:"run_id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		args, _ := json.Marshal(body.Args)
+		val, err := w.callTool(r.Context(), body.Connector, body.Action, string(args), body.RunID)
+		rw.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			_ = json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		var parsed any
+		if json.Unmarshal([]byte(val), &parsed) != nil {
+			parsed = val
+		}
+		_ = json.NewEncoder(rw).Encode(map[string]any{"result": parsed})
+	})
 	log.Printf("local tools on %s", sock)
 	_ = http.Serve(ln, mux)
 }
@@ -513,6 +575,20 @@ func (w *worker) getSecret(ctx context.Context, name, runID string) (string, err
 		return "", errors.New(res.Msg.GetError())
 	}
 	return res.Msg.GetValue(), nil
+}
+
+func (w *worker) callTool(ctx context.Context, connector, action, argsJSON, runID string) (string, error) {
+	res, err := w.rpc.CallTool(ctx, connect.NewRequest(&v1.ToolReq{
+		Connector: connector, Action: action, ArgsJson: argsJSON, RunId: runID,
+	}))
+	if err != nil {
+		return "", err
+	}
+	if res.Msg.GetError() != "" {
+		return "", errors.New(res.Msg.GetError())
+	}
+	out := res.Msg.GetResultJson()
+	return w.mask.Apply(out), nil
 }
 
 func (w *worker) vncLoop(client silov1connect.BotWorkerClient) {

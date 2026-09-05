@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Cmd, CmdEvent, Frame, SecretReq, SecretRes } from "./worker_pb.js";
+import { Cmd, CmdEvent, Frame, SecretReq, SecretRes, ToolReq, ToolRes } from "./worker_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -28,6 +28,15 @@ export const BotWorker = {
       name: "GetSecret",
       I: SecretReq,
       O: SecretRes,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.BotWorker.CallTool
+     */
+    callTool: {
+      name: "CallTool",
+      I: ToolReq,
+      O: ToolRes,
       kind: MethodKind.Unary,
     },
     /**

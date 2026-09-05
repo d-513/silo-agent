@@ -17,6 +17,7 @@ Do not put the OpenRouter key in Admin or SQLite.
 | `http_addr` | `:8080` | `SILO_HTTP_ADDR` | Control Plane listen address |
 | `data_dir` | `./data` | `SILO_DATA_DIR` | SQLite + per-bot volumes |
 | `docker_host` | `$DOCKER_HOST` | `SILO_DOCKER_HOST` | Docker/Podman socket. Empty falls back to the `DOCKER_HOST` env |
+| `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL the **Bot container** uses to dial the CP |
 | `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | First admin only. Ignored after a user exists |

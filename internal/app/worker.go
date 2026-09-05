@@ -22,6 +22,7 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 	defer a.Hub.Detach(bot.ID, sess)
 	a.recomputeStatus(bot.ID)
 	log.Printf("worker connected bot=%s", bot.ID)
+	go a.pushTools(bot.ID)
 
 	errc := make(chan error, 1)
 	go func() {
@@ -85,11 +86,14 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	if err := a.DB.First(&sec, "bot_id = ? AND name = ?", bot.ID, name).Error; err != nil {
 		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil
 	}
-	decision := security.Rule(a.ruleDecision(bot.ID, "secrets", "get"))
 	runID := req.Msg.GetRunId()
+	title := security.Describe("secrets", "get", argsJSON(name)).Title
+	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, "secrets.get")
+	decision := security.Rule(a.ruleDecision(bot.ID, "secrets", "get", ""))
 	switch decision {
 	case "deny":
 		a.audit(bot, "worker", "secrets.get", "deny")
+		a.emitCallDone(bot.ID, runID, "secrets.get", "denied")
 		return connect.NewResponse(&v1.SecretRes{Error: "denied"}), nil
 	case "allow":
 		now := time.Now()
@@ -97,6 +101,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 		a.DB.Save(&sec)
 		a.Mask(bot.ID).Add(sec.Value)
 		a.audit(bot, "worker", "secrets.get", "allow")
+		a.emitCallDone(bot.ID, runID, "secrets.get", "ok")
 		return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
 	default:
 		ap := db.Approval{
@@ -116,16 +121,19 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 			a.dropWaiter(ap.ID)
 			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
 			a.recomputeStatus(bot.ID)
+			a.emitCallDone(bot.ID, runID, "secrets.get", "canceled")
 			return connect.NewResponse(&v1.SecretRes{Error: "canceled"}), nil
 		case dec = <-ch:
 		}
 		if !security.Granted(dec) {
+			a.emitCallDone(bot.ID, runID, "secrets.get", "denied")
 			return connect.NewResponse(&v1.SecretRes{Error: "denied"}), nil
 		}
 		now := time.Now()
 		sec.LastUsedAt = &now
 		a.DB.Save(&sec)
 		a.Mask(bot.ID).Add(sec.Value)
+		a.emitCallDone(bot.ID, runID, "secrets.get", "ok")
 		return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
 	}
 }
@@ -211,12 +219,19 @@ func (a *App) VNC(ctx context.Context, stream *connect.BidiStream[v1.Frame, v1.F
 	}
 }
 
-func (a *App) ruleDecision(botID, conn, action string) string {
+func (a *App) ruleDecision(botID, conn, action, fallback string) string {
 	var r db.Rule
-	if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, action).Error; err != nil {
-		return "ask"
+	if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, action).Error; err == nil && r.Decision != "" {
+		return r.Decision
 	}
-	return r.Decision
+	if fallback != "" {
+		return fallback
+	}
+	return "ask"
+}
+
+func (a *App) emitCallDone(botID, runID, tool, body string) {
+	a.emit(botID, a.chatOfRun(runID), runID, "call_result", body, tool)
 }
 
 func (a *App) audit(bot *db.Bot, actor, action, decision string) {

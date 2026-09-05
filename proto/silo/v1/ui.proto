@@ -46,6 +46,17 @@ service UI {
   rpc PutSettings(PutSettingsRequest) returns (Settings);
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
+
+  rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse);
+  rpc CreateConnector(CreateConnectorRequest) returns (Connector);
+  rpc UpdateConnector(UpdateConnectorRequest) returns (Connector);
+  rpc DeleteConnector(DeleteConnectorRequest) returns (DeleteConnectorResponse);
+
+  rpc ListBotConnectors(ListBotConnectorsRequest) returns (ListBotConnectorsResponse);
+  rpc AttachConnector(AttachConnectorRequest) returns (BotConnector);
+  rpc DetachConnector(DetachConnectorRequest) returns (DetachConnectorResponse);
+  rpc RefreshBotConnector(RefreshBotConnectorRequest) returns (BotConnector);
+  rpc StartConnectorAuth(StartConnectorAuthRequest) returns (StartConnectorAuthResponse);
 }
 
 message SignInRequest {
@@ -71,6 +82,7 @@ message MeResponse {
 message User {
   string id = 1;
   string email = 2;
+  bool admin = 3;
 }
 
 message Bot {
@@ -335,4 +347,107 @@ message ListAuditRequest {}
 
 message ListAuditResponse {
   repeated AuditRow rows = 1;
+}
+
+message HeaderKey {
+  string name = 1;
+}
+
+message Connector {
+  string id = 1;
+  string type = 2;
+  string name = 3;
+  string description = 4;
+  bool has_image = 5;
+  string transport = 6;
+  string http_url = 7;
+  string auth = 8;
+  repeated HeaderKey header_keys = 9;
+  string created_at = 10;
+  string default_mode = 11;
+}
+
+message ListConnectorsRequest {}
+
+message ListConnectorsResponse {
+  repeated Connector connectors = 1;
+}
+
+message HeaderInput {
+  string name = 1;
+  string value = 2;
+}
+
+message CreateConnectorRequest {
+  string name = 1;
+  string description = 2;
+  bytes image = 3;
+  string image_type = 4;
+  string transport = 5;
+  string http_url = 6;
+  string auth = 7;
+  repeated HeaderInput headers = 8;
+  string default_mode = 9;
+}
+
+message UpdateConnectorRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bytes image = 4;
+  string image_type = 5;
+  bool clear_image = 6;
+  string transport = 7;
+  string http_url = 8;
+  string auth = 9;
+  repeated HeaderInput headers = 10;
+  string default_mode = 11;
+}
+
+message DeleteConnectorRequest {
+  string id = 1;
+}
+
+message DeleteConnectorResponse {}
+
+message BotConnector {
+  string id = 1;
+  string bot_id = 2;
+  Connector connector = 3;
+  string auth_status = 4;
+  string last_error = 5;
+}
+
+message ListBotConnectorsRequest {
+  string bot_id = 1;
+}
+
+message ListBotConnectorsResponse {
+  repeated BotConnector connectors = 1;
+}
+
+message AttachConnectorRequest {
+  string bot_id = 1;
+  string connector_id = 2;
+}
+
+message DetachConnectorRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DetachConnectorResponse {}
+
+message RefreshBotConnectorRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message StartConnectorAuthRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message StartConnectorAuthResponse {
+  string authorize_url = 1;
 }

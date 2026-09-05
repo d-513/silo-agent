@@ -41,7 +41,7 @@ func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]
 		return nil, err
 	}
 	return connect.NewResponse(&v1.SignInResponse{
-		User: &v1.User{Id: u.ID, Email: u.Email},
+		User: protoUser(&u),
 	}), nil
 }
 
@@ -50,9 +50,21 @@ func (a *App) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequest]
 	return connect.NewResponse(&v1.SignOutResponse{}), nil
 }
 
+func protoUser(u *db.User) *v1.User {
+	return &v1.User{Id: u.ID, Email: u.Email, Admin: u.Admin}
+}
+
 func (a *App) Me(ctx context.Context, _ *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error) {
 	u := currentUser(ctx)
-	return connect.NewResponse(&v1.MeResponse{User: &v1.User{Id: u.ID, Email: u.Email}}), nil
+	return connect.NewResponse(&v1.MeResponse{User: protoUser(u)}), nil
+}
+
+func requireAdmin(ctx context.Context) error {
+	u := currentUser(ctx)
+	if u == nil || !u.Admin {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("admin only"))
+	}
+	return nil
 }
 
 func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
@@ -308,12 +320,18 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	}
 }
 
-func (a *App) GetSettings(_ context.Context, _ *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {
+func (a *App) GetSettings(ctx context.Context, _ *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	s := a.settings()
 	return connect.NewResponse(s), nil
 }
 
-func (a *App) PutSettings(_ context.Context, req *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error) {
+func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	if m := req.Msg.GetModel(); m != "" {
 		a.setSetting("model", m)
 	}
@@ -345,7 +363,10 @@ func (a *App) setSetting(k, v string) {
 	a.DB.Save(&s)
 }
 
-func (a *App) ListAudit(_ context.Context, _ *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
+func (a *App) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	var rows []db.Audit
 	a.DB.Order("created_at desc").Limit(100).Find(&rows)
 	out := &v1.ListAuditResponse{}

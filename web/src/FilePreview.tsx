@@ -128,7 +128,7 @@ export function FilePreview({
   const text = textOf(content, binary ? undefined : data);
 
   if (kind === "image" && url) {
-    return <img src={url} alt={name} className="max-h-full max-w-full object-contain" />;
+    return <img src={url} alt={name} className="max-h-[32rem] max-w-full object-contain" />;
   }
   if (kind === "pdf" && url) {
     return <iframe title={name} src={url} className="h-full min-h-[24rem] w-full border-0 bg-folio" />;

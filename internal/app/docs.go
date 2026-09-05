@@ -16,7 +16,7 @@ const (
 
 const defaultSoul = `Who you are, how you speak, and hard rules. You and the human both edit this.`
 
-func buildSystem(b *db.Bot) string {
+func buildSystem(b *db.Bot, connectors string) string {
 	var s strings.Builder
 	s.WriteString(prompts.System)
 	if b.Name != "" {
@@ -24,6 +24,9 @@ func buildSystem(b *db.Bot) string {
 	}
 	if d := strings.TrimSpace(b.Description); d != "" {
 		fmt.Fprintf(&s, " Description: %s.", d)
+	}
+	if connectors != "" {
+		s.WriteString(connectors)
 	}
 	s.WriteString("\n\n## SOUL\n")
 	if t := strings.TrimSpace(b.Soul); t != "" {

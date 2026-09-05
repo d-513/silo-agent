@@ -15,6 +15,7 @@ type User struct {
 	ID           string `gorm:"primaryKey"`
 	Email        string `gorm:"uniqueIndex"`
 	PasswordHash string
+	Admin        bool
 	CreatedAt    time.Time
 }
 
@@ -108,6 +109,32 @@ type Audit struct {
 	CreatedAt time.Time
 }
 
+type Connector struct {
+	ID          string `gorm:"primaryKey"`
+	Type        string
+	Name        string
+	Description string
+	Image       []byte
+	ImageType   string
+	Transport   string
+	HTTPURL     string
+	Auth        string
+	HeadersJSON string
+	DefaultMode string
+	CreatedAt   time.Time
+}
+
+type BotConnector struct {
+	ID          string `gorm:"primaryKey"`
+	BotID       string `gorm:"uniqueIndex:bot_connector"`
+	ConnectorID string `gorm:"uniqueIndex:bot_connector"`
+	AuthStatus  string
+	TokenJSON   string
+	ToolsJSON   string
+	LastError   string
+	CreatedAt   time.Time
+}
+
 func Open(dataDir string) (*gorm.DB, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, err
@@ -122,6 +149,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Setting{}, &Audit{},
+		&Connector{}, &BotConnector{},
 	)
 	if err != nil {
 		return nil, err

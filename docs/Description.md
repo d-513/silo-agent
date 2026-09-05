@@ -78,6 +78,7 @@ This hop is same-container only. It must not know the CP exists.
 ```python
 # silo_runtime — the only file that knows the socket
 def get_secret(name: str) -> str: ...
+def call(connector: str, action: str, args: dict) -> dict: ...
 ```
 
 Local HTTP surface (Worker listens, nothing else):
@@ -85,10 +86,11 @@ Local HTTP surface (Worker listens, nothing else):
 | Method | Path | Body | Result |
 |---|---|---|---|
 | `POST` | `/v1/secrets/get` | `{name, run_id?}` | `{value}` or `{error}` |
+| `POST` | `/v1/tools/call` | `{connector, action, args, run_id?}` | `{result}` or `{error}` |
 
 No local auth. The container is the trust boundary; the CP security engine is the gate. Debug: `curl --unix-socket /var/run/silo/worker.sock http://localhost/v1/...`.
 
-Worker on receive: translate to `GetSecret`, wait, JSON the result back. Register any returned secret value with the **masker** before writing it to the socket.
+Worker on receive: translate to `GetSecret` or `CallTool`, wait, JSON the result back. Register any returned secret value with the **masker** before writing it to the socket.
 
 ### Why this split
 
@@ -113,9 +115,9 @@ The model can still exfiltrate a secret it already holds. We do not try to stop 
 
 ## Who owns the agent loop
 
-**The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
+**The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/silo/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
 
-First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. Connectors are discovered on disk.
+First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` shows a workspace file in the thread (CP uses `browse_file`; the model gets a short ack, not the bytes). Connectors are discovered on disk as `tools.*`.
 
 ## Tools
 
@@ -123,9 +125,9 @@ First-class tools the model sees stay small: `exec_python`, `terminal`, files (`
 
 Pushed on `Commands`. `/workspace` is the agent's artifact dir (volume on the *Docker host*, not necessarily the CP host).
 
-### Web / connectors (later)
+### Web / connectors
 
-Not shipped in v1. Keep provider keys off the Bot. Secret access today is `silo_runtime.get_secret` → `GetSecret` with the security engine (allow / deny / ask).
+Admin owns a **catalog** of connectors (type `mcp` for now). HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each catalog entry has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Bots attach from the catalog. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`.
 
 ### Chromium
 
@@ -149,6 +151,7 @@ v1: session cookie, owner sees their bots, admin sees settings. `User` + `Sessio
 - Multi-host Docker *UI* (the Worker protocol is already remote-safe)
 - OIDC
 - Computer-use loop
+- STDIO MCP (schema only)
 - Generated tools calling the CP, or a Python ConnectRPC client
 - Provider keys or connector tokens inside the Bot
 - `docker exec` / `docker cp` / published VNC as a control channel

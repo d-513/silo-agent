@@ -163,3 +163,22 @@ func TestFailAllOnDisconnect(t *testing.T) {
 		t.Fatal("Expect stuck")
 	}
 }
+
+func TestCloseAllWakesWaitViewer(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- s.WaitViewer(ctx) }()
+	time.Sleep(20 * time.Millisecond)
+	h.CloseAll()
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrClosed) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("WaitViewer stuck after CloseAll")
+	}
+}

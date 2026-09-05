@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, Bot, Chat, Container, CreateBotRequest, CreateChatRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteSecretRequest, DeleteSecretResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StreamRunRequest, UpdateBotRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, Chat, Connector, Container, CreateBotRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteSecretRequest, DeleteSecretResponse, DetachConnectorRequest, DetachConnectorResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StreamRunRequest, UpdateBotRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -298,6 +298,87 @@ export const UI = {
       name: "ListAudit",
       I: ListAuditRequest,
       O: ListAuditResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListConnectors
+     */
+    listConnectors: {
+      name: "ListConnectors",
+      I: ListConnectorsRequest,
+      O: ListConnectorsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.CreateConnector
+     */
+    createConnector: {
+      name: "CreateConnector",
+      I: CreateConnectorRequest,
+      O: Connector,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.UpdateConnector
+     */
+    updateConnector: {
+      name: "UpdateConnector",
+      I: UpdateConnectorRequest,
+      O: Connector,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteConnector
+     */
+    deleteConnector: {
+      name: "DeleteConnector",
+      I: DeleteConnectorRequest,
+      O: DeleteConnectorResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListBotConnectors
+     */
+    listBotConnectors: {
+      name: "ListBotConnectors",
+      I: ListBotConnectorsRequest,
+      O: ListBotConnectorsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.AttachConnector
+     */
+    attachConnector: {
+      name: "AttachConnector",
+      I: AttachConnectorRequest,
+      O: BotConnector,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DetachConnector
+     */
+    detachConnector: {
+      name: "DetachConnector",
+      I: DetachConnectorRequest,
+      O: DetachConnectorResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RefreshBotConnector
+     */
+    refreshBotConnector: {
+      name: "RefreshBotConnector",
+      I: RefreshBotConnectorRequest,
+      O: BotConnector,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.StartConnectorAuth
+     */
+    startConnectorAuth: {
+      name: "StartConnectorAuth",
+      I: StartConnectorAuthRequest,
+      O: StartConnectorAuthResponse,
       kind: MethodKind.Unary,
     },
   }

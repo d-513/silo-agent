@@ -88,6 +88,10 @@ func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 	var u db.User
 	err := gdb.First(&u, "email = ?", email).Error
 	if err == nil {
+		if !u.Admin {
+			u.Admin = true
+			return gdb.Save(&u).Error
+		}
 		return nil
 	}
 	if err != gorm.ErrRecordNotFound {
@@ -97,7 +101,26 @@ func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 	if err != nil {
 		return err
 	}
-	return gdb.Create(&db.User{ID: ids.New(), Email: email, PasswordHash: hash, CreatedAt: time.Now()}).Error
+	return gdb.Create(&db.User{ID: ids.New(), Email: email, PasswordHash: hash, Admin: true, CreatedAt: time.Now()}).Error
+}
+
+func EnsureAdmin(gdb *gorm.DB) error {
+	var n int64
+	if err := gdb.Model(&db.User{}).Where("admin = ?", true).Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	var u db.User
+	if err := gdb.Order("created_at").First(&u).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
+		return err
+	}
+	u.Admin = true
+	return gdb.Save(&u).Error
 }
 
 func UserFromRequest(gdb *gorm.DB, r *http.Request) (*db.User, error) {
