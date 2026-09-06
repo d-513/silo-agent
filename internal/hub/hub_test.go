@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	v1 "silo.agent/gen/silo/v1"
 )
 
 func TestWaitViewer(t *testing.T) {
@@ -205,6 +207,42 @@ func TestFailAllOnDisconnect(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Expect stuck")
+	}
+}
+
+func TestExecCancelsWorker(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := h.Exec(ctx, "bot", &v1.Cmd{Id: "c1", Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: "sleep 9"}}})
+		done <- err
+	}()
+	select {
+	case cmd := <-s.Send:
+		if cmd.GetId() != "c1" {
+			t.Fatalf("cmd %s", cmd.GetId())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("exec not sent")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Exec stuck")
+	}
+	select {
+	case cmd := <-s.Send:
+		if cmd.GetCancel().GetCmdId() != "c1" {
+			t.Fatalf("cancel %+v", cmd)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no CancelCmd")
 	}
 }
 

@@ -230,7 +230,7 @@ The VNC surface is a dark window in a light room.
 - 8px inner matte `#12141A`.
 - Top strip 32px, iron: crest 20px, name, `Desktop` or `Console`, 6px lamp, spacer, status in mono (plaster at 80%).
 - Framebuffer or the PTY fills the rest. Console uses IBM Plex Mono on the matte.
-- Worker down: Cloth well on the plaster (not a fake hatch), Stone sentence “Desktop not connected” / “Console not connected”, secondary “Start Bot”.
+- Worker down: one `NeedMachine` well (Files, Desktop, Console). Cloth, centered Stone sentence, larger bindery Start Bot. While starting: dual bindery/pine ring + elapsed seconds — not a disabled “Starting…”.
 
 ### Approval slip
 
@@ -252,8 +252,8 @@ The Chat tab. Not a marketing chat.
 - Assistant: iron, no well. Markdown (headings, lists, tables, fenced code).
 - Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
 - Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
-- `present`: the file itself is the output in a folio well with a thread border (same preview as Files — markdown, image, PDF, code). Not collapsed. The model does not retype it.
-- Composer: Cloth well, placeholder “Ask this Bot…”, bindery send.
+- `present`: a user-facing path is the file itself in a folio well (same preview as Files). Not collapsed. A `bot/…` path is scratch — a collapsed “Looked at …” row the human can open. The model still gets image pixels. The model does not retype it.
+- Composer: Cloth well, placeholder “Ask this Bot…”, bindery send. While a run is live, Send becomes Stop (filled square) — `StopRun` cancels that chat’s run, not the Bot.
 
 ### Status lamp
 
@@ -269,9 +269,9 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach from the Admin catalog (image, name, description, OAuth). Settings is a 760px column (name + description now; more later).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Settings is a 760px column (name + description now; more later).
 
-**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
+**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
 
 ### Whitespace Strategy
 
@@ -312,8 +312,8 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 4 | Bot · Run | Thread + dark hatch. Default. |
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
 | 6 | Bot · Desktop | Hatch full-bleed. Caret on the tab opens Console. |
-| 7 | Bot · Connectors | Attach catalog MCP connectors. |
-| 8 | Admin · Connectors | Site catalog. HTTP MCP, OAuth or none. |
+| 7 | Bot · Connectors | Attach a library preset or add a custom MCP. |
+| 8 | Admin · Connectors Library | Site presets. HTTP MCP, OAuth or none. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |
 | 10 | Bot · Rules | Allow / ask / deny per action. |
 | 11 | Admin · Settings | Product settings. Not operator YAML. |
@@ -406,7 +406,7 @@ Chrome mid-task inside. Stone caption under the hatch, left: “Same browser the
 
 ```
 Same shell, Scout, tab Connectors.
-Column 760px. “Connectors” and primary “Add connector”. Each row has ghost Refresh (re-list tools) and Remove.
+Column 760px. “Connectors” and primary “Add connector”. Add opens Library | Custom. Each row has ghost Edit, Refresh (re-list tools) and Remove.
 Two list rows on folio:
 1) gmail — slate chip “MCP” — “3 auto · 1 ask” — last call 2h ago
 2) imap_home — pine chip “Python” — “Ask every time” — commit 9f2a1c0 in mono
@@ -416,10 +416,10 @@ Hairline hover only. No card carnival.
 **8 · New connector**
 
 ```
-Same shell. Title: Add connector. Column 560px.
-Segmented: MCP | Python. MCP selected.
-Fields: Name, URL (mono), Auth None|OAuth, Default Allow|Ask|Deny, extra headers (values hidden).
-Primary: Add connector. Ghost: Cancel.
+Same shell. Title: Add preset (Admin library) or Add connector (Bot, Custom). Column 560px.
+Shared form. Fields: Name, URL (mono), Auth None|OAuth, optional OAuth Client ID/Secret (servers without DCR), Default Allow|Ask|Deny, extra headers (values hidden).
+Bot add also has segmented Library | Custom. Library is a picker; clicking a preset shows mark + large name, then a bindery-edged cloth well with the catalog `guide` (iron, not a field). Settings sit in collapsed Advanced settings.
+Primary: Add to library / Add connector. Ghost: Cancel. Back returns to the picker.
 ```
 
 **9 · Bot · Secrets**

@@ -29,7 +29,7 @@ export function AdminLayout() {
             `border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
           }
         >
-          Connectors
+          Connectors Library
         </NavLink>
       </nav>
       <Outlet />

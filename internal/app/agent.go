@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Use silo_runtime.get_secret(name) for secrets. Connectors are import tools.<slug>, not extra chat tools. Persist large results to /workspace here, then present the path — do not hand them to write."),
+		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Scratch files go in /workspace/bot. User-facing files go in /workspace (not bot/). Browser: chrome_page(); screenshot to /workspace/bot/page.png, present bot/page.png (you see the pixels; the human gets a collapsed row), one action, screenshot+present again. Do not oneshot cookies+search. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -119,7 +120,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "present",
-		Description: openai.String("Show a workspace file in the chat as-is (markdown, image, code, PDF). Path is relative to /workspace, e.g. notes.md — not /workspace/notes.md. The file must already exist (saved from Python). Do not retype the contents."),
+		Description: openai.String("Show a workspace file. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -140,7 +141,7 @@ func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
 func (a *App) runLoop(botID, chatID, runID, userText string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	a.trackRun(botID, runID, cancel)
+	a.trackRun(botID, chatID, runID, cancel)
 	defer a.untrackRun(runID)
 	key := ""
 	if a.Cfg != nil {
@@ -171,7 +172,10 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
 
-	for i := 0; i < 12; i++ {
+	for {
+		if a.stopped(ctx, botID, chatID, runID) {
+			return
+		}
 		params := openai.ChatCompletionNewParams{
 			Model:    model,
 			Messages: msgs,
@@ -218,6 +222,9 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			}
 		}
 		if err := stream.Err(); err != nil {
+			if a.stopped(ctx, botID, chatID, runID) {
+				return
+			}
 			a.emit(botID, chatID, runID, "error", err.Error(), "")
 			a.finish(botID, chatID, runID, "error")
 			return
@@ -240,7 +247,10 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 		msgs = append(msgs, msg.ToParam())
 		for _, tc := range msg.ToolCalls {
 			fn := tc.Function
-			out, err := a.execTool(ctx, botID, runID, fn.Name, fn.Arguments)
+			out, img, err := a.execTool(ctx, botID, runID, fn.Name, fn.Arguments)
+			if a.stopped(ctx, botID, chatID, runID) {
+				return
+			}
 			if err != nil {
 				out = "error: " + err.Error()
 			}
@@ -250,6 +260,14 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			}
 			a.emit(botID, chatID, runID, "tool_result", out, fn.Name)
 			msgs = append(msgs, openai.ToolMessage(out, tc.ID))
+			if img != "" {
+				msgs = append(msgs, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
+					openai.TextContentPart("You presented this image. Read the visible labels before you act."),
+					openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
+						URL: img, Detail: "high",
+					}),
+				}))
+			}
 			if fn.Name == "soul" || fn.Name == "memory" {
 				var row db.Bot
 				if a.DB.First(&row, "id = ?", botID).Error == nil {
@@ -258,8 +276,6 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			}
 		}
 	}
-	a.emit(botID, chatID, runID, "error", "tool loop limit", "")
-	a.finish(botID, chatID, runID, "error")
 }
 
 func reasoningDelta(raw string) string {
@@ -379,6 +395,15 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 	return msgs
 }
 
+func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
+	if ctx.Err() == nil {
+		return false
+	}
+	a.emit(botID, chatID, runID, "assistant", "Stopped.", "")
+	a.finish(botID, chatID, runID, "stopped")
+	return true
+}
+
 func (a *App) finish(botID, chatID, runID, st string) {
 	a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", st)
 	a.untrackRun(runID)
@@ -386,7 +411,7 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.emit(botID, chatID, runID, "done", st, "")
 }
 
-func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string) (string, error) {
+func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string) (string, string, error) {
 	var args map[string]any
 	_ = json.Unmarshal([]byte(argsJSON), &args)
 	str := func(k string) string {
@@ -395,7 +420,8 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	}
 	path := relWorkspace(str("path"))
 	if name == "soul" || name == "memory" {
-		return a.execDoc(botID, name, args)
+		out, err := a.execDoc(botID, name, args)
+		return out, "", err
 	}
 	id := ids.New()
 	var cmd *v1.Cmd
@@ -403,7 +429,13 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	case "terminal":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: str("command")}}}
 	case "exec_python":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: str("code")}}}
+		code := str("code")
+		if wantsChrome(code) {
+			if err := a.ensureChrome(ctx, botID, runID); err != nil {
+				return "", "", err
+			}
+		}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: code}}}
 	case "read":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileRead{FileRead: &v1.FileReadCmd{
 			Path: path, Offset: int32(num(args, "offset")), Limit: int32(num(args, "limit")),
@@ -422,11 +454,11 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		}}}
 	case "present":
 		if path == "" {
-			return "", fmt.Errorf("path required")
+			return "", "", fmt.Errorf("path required")
 		}
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}}
 	default:
-		return "", fmt.Errorf("unknown tool %s", name)
+		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
 	log.Printf("exec %s bot=%s run=%s", name, botID, runID)
 	a.mu.Lock()
@@ -439,32 +471,79 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	}()
 	out, err := a.Hub.Exec(ctx, botID, cmd)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	switch name {
 	case "read":
-		return formatRead(out, num(args, "offset"), num(args, "limit")), nil
+		return formatRead(out, num(args, "offset"), num(args, "limit")), "", nil
 	case "grep":
 		max := num(args, "max_hits")
 		if max <= 0 {
 			max = 80
 		}
-		return capHits(out, max), nil
+		return capHits(out, max), "", nil
 	case "present":
-		return presentAck(out), nil
+		return presentAck(path, out), presentImageURL(path, out), nil
 	default:
-		return out, nil
+		return out, "", nil
 	}
 }
 
-func presentAck(raw string) string {
+func presentImageURL(path, raw string) string {
+	var row struct {
+		Name string `json:"name"`
+		Data string `json:"data"`
+	}
+	if json.Unmarshal([]byte(raw), &row) != nil || row.Data == "" {
+		return ""
+	}
+	mime := imageMIME(path)
+	if mime == "" {
+		mime = imageMIME(row.Name)
+	}
+	if mime == "" {
+		return ""
+	}
+	return "data:" + mime + ";base64," + row.Data
+}
+
+func imageMIME(name string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	case ".gif":
+		return "image/gif"
+	default:
+		return ""
+	}
+}
+
+func presentAck(path, raw string) string {
 	var row struct {
 		Name      string `json:"name"`
 		Truncated bool   `json:"truncated"`
 		Size      int64  `json:"size"`
 	}
 	if json.Unmarshal([]byte(raw), &row) != nil || row.Name == "" {
+		if botScratch(path) {
+			return "seen. Scratch — you have the pixels; do not retype."
+		}
 		return "presented. Shown in the thread — do not retype it."
+	}
+	label := path
+	if label == "" {
+		label = row.Name
+	}
+	if botScratch(path) {
+		msg := fmt.Sprintf("seen %s (%s). Scratch — you have the pixels; the human has a collapsed row.", label, formatSize(row.Size))
+		if row.Truncated {
+			msg += " Preview is the first 2 MB."
+		}
+		return msg
 	}
 	msg := fmt.Sprintf("presented %s (%s). Shown in the thread — do not retype it.", row.Name, formatSize(row.Size))
 	if row.Truncated {

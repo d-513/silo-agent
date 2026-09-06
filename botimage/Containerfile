@@ -1,11 +1,19 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 xvfb openbox tint2 thunar feh xfce4-terminal x11vnc chromium \
+    python3 python3-pip \
+    python3-requests python3-matplotlib python3-numpy python3-pil \
+    python3-bs4 python3-lxml python3-yaml python3-pandas \
+    xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
-    ca-certificates fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates fonts-liberation sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 1000 --shell /bin/bash --user-group silo \
+    && echo 'silo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/silo \
+    && chmod 440 /etc/sudoers.d/silo \
+    && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir playwright
 COPY bin/silo-worker /usr/local/bin/silo-worker
 COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
+COPY botimage/silo-chromium /usr/local/bin/silo-chromium
 COPY botimage/start.sh /usr/local/bin/start.sh
 COPY botimage/openbox/autostart /opt/silo/openbox/autostart
 COPY botimage/tint2/tint2rc /opt/silo/tint2/tint2rc
@@ -13,15 +21,22 @@ COPY botimage/apps/ /opt/silo/desktop/
 COPY botimage/wallpaper.png /opt/silo/wallpaper.png
 COPY botimage/gtk-3.0/ /opt/silo/gtk-3.0/
 COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
-RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker \
-    && mkdir -p /workspace /var/run/silo /home/bot/chrome-profile \
-        /usr/local/share/applications /opt/silo/tools \
+COPY botimage/mimeapps.list /opt/silo/mimeapps.list
+COPY botimage/chromium.png /opt/silo/chromium.png
+RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/silo-chromium \
+    && mkdir -p /workspace /workspace/bot /var/run/silo /run/user/1000 \
+        /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools \
     && touch /opt/silo/tools/__init__.py \
-    && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/
+    && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
+    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools
 ENV DISPLAY=:1 \
     SILO_WORKSPACE=/workspace \
     SILO_WORKER_SOCK=/var/run/silo/worker.sock \
     PYTHONPATH=/opt/silo \
-    HOME=/home/bot
+    HOME=/home/silo \
+    USER=silo \
+    LOGNAME=silo \
+    XDG_RUNTIME_DIR=/run/user/1000 \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /workspace
 CMD ["/usr/local/bin/start.sh"]

@@ -3,6 +3,7 @@ import {
   ChatCircle,
   CircleNotch,
   Code,
+  DownloadSimple,
   File,
   FrameCorners,
   GitDiff,
@@ -29,7 +30,7 @@ import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
-import { FilePreview } from "./FilePreview";
+import { downloadFile, FilePreview } from "./FilePreview";
 import { foldEvents, type Ev } from "./fold";
 
 export type { Ev };
@@ -312,7 +313,7 @@ function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNo
   const [open, setOpen] = useState(false);
   return (
     <details
-      className="group max-w-[50%]"
+      className="group max-w-full"
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
@@ -329,7 +330,17 @@ function Md({ text }: { text: string }) {
   if (!text) return null;
   return (
     <div className="silo-md">
-      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={mdHighlight}>
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={mdHighlight}
+        components={{
+          table: ({ children }) => (
+            <div className="silo-md-table">
+              <table>{children}</table>
+            </div>
+          ),
+        }}
+      >
         {text}
       </Markdown>
     </div>
@@ -341,7 +352,12 @@ function fail(e: unknown) {
   return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
-function PresentFile({ botId, path }: { botId: string; path: string }) {
+function isBotScratch(path: string): boolean {
+  const p = path.replace(/^\/+/, "").replace(/^(workspace\/)+/, "");
+  return p === "bot" || p.startsWith("bot/");
+}
+
+function PresentFile({ botId, path, quiet }: { botId: string; path: string; quiet?: boolean }) {
   const [file, setFile] = useState<{ name: string; content: string; data?: Uint8Array; binary: boolean; truncated: boolean } | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -360,11 +376,36 @@ function PresentFile({ botId, path }: { botId: string; path: string }) {
     };
   }, [botId, path]);
   const name = file?.name || path.split("/").filter(Boolean).pop() || path;
+  if (quiet) {
+    return (
+      <div className="space-y-2">
+        {file?.truncated ? <p className="text-[12px] text-stone">Showing the first 2 MB.</p> : null}
+        {err ? <p className="text-carmine">{err}</p> : null}
+        {!file && !err ? (
+          <div className="flex items-center gap-2 text-stone">
+            <CircleNotch size={14} className="animate-spin" />
+            Opening…
+          </div>
+        ) : null}
+        {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
+      </div>
+    );
+  }
   return (
-    <div className="max-w-[50rem] space-y-2 rounded-[10px] border border-thread bg-folio p-3">
+    <div className="max-w-full space-y-2 rounded-[10px] border border-thread bg-folio p-3">
       <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-stone">
         <FrameCorners size={14} />
-        {name}
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        {file && (
+          <button
+            type="button"
+            className="text-stone hover:text-iron"
+            title="Download"
+            onClick={() => downloadFile(file.name, file.content, file.data)}
+          >
+            <DownloadSimple size={14} />
+          </button>
+        )}
       </div>
       {file?.truncated ? <p className="text-[12px] text-stone">Showing the first 2 MB.</p> : null}
       {err ? <p className="text-carmine">{err}</p> : null}
@@ -391,7 +432,7 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
       (b) => (b.type === "assistant" && b.streaming) || (b.type === "thinking" && b.streaming) || (b.type === "tool" && b.running),
     );
   return (
-    <div className="flex-1 space-y-4 overflow-auto p-4">
+    <div className="min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto p-4">
       {blocks.length === 0 && !sending && (
         <p className="flex items-center gap-2 text-stone">
           <ChatCircle size={16} />
@@ -401,7 +442,7 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
       {blocks.map((b) => {
         if (b.type === "user") {
           return (
-            <div key={b.key} className="max-w-[42rem] whitespace-pre-wrap rounded-[10px] border-l-4 border-bindery bg-folio px-3 py-2">
+            <div key={b.key} className="max-w-full break-words whitespace-pre-wrap rounded-[10px] border-l-4 border-bindery bg-folio px-3 py-2">
               {b.text}
             </div>
           );
@@ -419,14 +460,35 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
             );
           }
           return (
-            <details key={b.key} className="text-stone">
+            <details key={b.key} className="max-w-full text-stone">
               <summary className="cursor-pointer text-[12px] font-medium tracking-wide">Thought</summary>
-              <div className="mt-2 whitespace-pre-wrap font-mono text-[13px]">{b.text}</div>
+              <div className="mt-2 break-words whitespace-pre-wrap font-mono text-[13px]">{b.text}</div>
             </details>
           );
         }
         if (b.type === "tool") {
           const path = asStr(parseToolArgs(b.args).path);
+          if (b.name === "present" && path && isBotScratch(path)) {
+            const name = path.split("/").filter(Boolean).pop() || path;
+            return (
+              <ToolFold
+                key={b.key}
+                summary={
+                  <>
+                    <FrameCorners size={14} />
+                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                    {b.running ? "Looking at" : "Looked at"} {name}
+                  </>
+                }
+              >
+                {!b.running && b.result && !b.result.startsWith("error:") ? (
+                  <PresentFile botId={botId} path={path} quiet />
+                ) : b.result ? (
+                  <ToolResult text={b.result} />
+                ) : null}
+              </ToolFold>
+            );
+          }
           if (b.name === "present" && !b.running && b.result && !b.result.startsWith("error:") && path) {
             return <PresentFile key={b.key} botId={botId} path={path} />;
           }
@@ -470,7 +532,7 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
         }
         if (b.type === "assistant") {
           return (
-            <div key={b.key}>
+            <div key={b.key} className="min-w-0">
               <Md text={b.text} />
               {b.streaming ? <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-iron align-middle" /> : null}
             </div>

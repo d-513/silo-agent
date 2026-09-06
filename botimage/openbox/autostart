@@ -1,2 +1,1 @@
-feh --bg-fill /opt/silo/wallpaper.png &
-tint2 &
+# Wallpaper and tint2 are started from start.sh so they stay supervised.

@@ -54,9 +54,47 @@ button {
   animation: lamp-pulse 1.5s ease-in-out infinite;
 }
 
+.silo-need-go {
+  height: 44px;
+  padding-left: 20px;
+  padding-right: 8px;
+  font-size: 16px;
+}
+
+.silo-wake {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.silo-wake::before,
+.silo-wake::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+}
+.silo-wake::before {
+  inset: 0;
+  border: 2px solid var(--color-thread);
+  border-top-color: var(--color-bindery);
+  animation: silo-wake-spin 0.85s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+.silo-wake::after {
+  inset: 9px;
+  border: 2px solid transparent;
+  border-right-color: var(--color-pine);
+  animation: silo-wake-spin 1.55s cubic-bezier(0.32, 0.72, 0, 1) infinite reverse;
+}
+@keyframes silo-wake-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lamp-working,
-  .animate-spin {
+  .animate-spin,
+  .silo-wake::before,
+  .silo-wake::after {
     animation: none;
   }
   button {
@@ -91,6 +129,10 @@ details > summary::-webkit-details-marker {
   display: none;
 }
 
+.silo-md {
+  min-width: 0;
+  max-width: 100%;
+}
 .silo-md > :first-child {
   margin-top: 0;
 }
@@ -125,9 +167,14 @@ details > summary::-webkit-details-marker {
 .silo-md ul,
 .silo-md ol,
 .silo-md pre,
-.silo-md table,
 .silo-md blockquote {
   margin: 0.5em 0;
+}
+.silo-md-table {
+  margin: 0.5em 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 .silo-md ul {
   list-style: disc;
@@ -168,17 +215,21 @@ details > summary::-webkit-details-marker {
 }
 .silo-md table {
   border-collapse: collapse;
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
 }
 .silo-md th,
 .silo-md td {
   border: 1px solid var(--color-thread-2);
   padding: 0.35em 0.6em;
   text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
 }
 .silo-md th {
   background: var(--color-cloth);
   font-weight: 500;
+  white-space: nowrap;
 }
 .silo-md blockquote {
   border-left: 4px solid var(--color-thread);

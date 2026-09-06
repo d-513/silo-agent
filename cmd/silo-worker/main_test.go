@@ -37,10 +37,10 @@ func TestResolveStripsWorkspacePrefix(t *testing.T) {
 }
 
 func TestReconnectWaitUnauth(t *testing.T) {
-	if reconnectWait(nil) != 2*time.Second {
+	if reconnectWait(nil) != 200*time.Millisecond {
 		t.Fatal("ok")
 	}
-	if reconnectWait(errors.New("x")) != 2*time.Second {
+	if reconnectWait(errors.New("x")) != 200*time.Millisecond {
 		t.Fatal("other")
 	}
 	if reconnectWait(connect.NewError(connect.CodeUnauthenticated, nil)) != 15*time.Second {

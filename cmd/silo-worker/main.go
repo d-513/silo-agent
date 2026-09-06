@@ -47,12 +47,13 @@ func main() {
 	_ = os.MkdirAll(filepath.Dir(sock), 0o755)
 	_ = os.MkdirAll(ws, 0o755)
 
+	dialer := &net.Dialer{Timeout: 2 * time.Second, FallbackDelay: 100 * time.Millisecond}
 	httpClient := &http.Client{
 		Timeout: 0,
 		Transport: &http2.Transport{
 			AllowHTTP: true,
 			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
+				return dialer.Dial(network, addr)
 			},
 		},
 	}
@@ -82,7 +83,7 @@ func reconnectWait(err error) time.Duration {
 	if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
 		return 15 * time.Second
 	}
-	return 2 * time.Second
+	return 200 * time.Millisecond
 }
 
 type tokenI struct{ tok string }
@@ -140,6 +141,11 @@ func (w *worker) commands(client silov1connect.BotWorkerClient) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	st := client.Commands(ctx)
+	// ConnectRPC does not send bidi headers until the first Send. Without this
+	// the CP never sees the worker until the 10s heartbeat tick.
+	if err := w.send(st, &v1.CmdEvent{Body: &v1.CmdEvent_Heartbeat{Heartbeat: &v1.Heartbeat{}}}); err != nil {
+		return err
+	}
 	go func() {
 		t := time.NewTicker(10 * time.Second)
 		defer t.Stop()
@@ -258,6 +264,8 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.putFile(b.PutFile.GetPath(), b.PutFile.GetData())
 	case *v1.Cmd_SyncTools:
 		return w.syncTools(b.SyncTools.GetStubs())
+	case *v1.Cmd_EnsureChrome:
+		return w.ensureChrome(ctx)
 	default:
 		return "", errors.New("unknown cmd")
 	}
@@ -491,6 +499,11 @@ func (w *worker) shell(ctx context.Context, runID, command string, chunk func(st
 }
 
 func (w *worker) python(ctx context.Context, runID, code string, chunk func(string)) (string, error) {
+	if wantsPlaywright(code) {
+		if _, err := w.ensureChrome(ctx); err != nil {
+			return "", err
+		}
+	}
 	return w.runCmd(ctx, runID, chunk, "python3", "-c", code)
 }
 
@@ -571,6 +584,15 @@ func serveLocal(sock string, w *worker) {
 		}
 		_ = json.NewEncoder(rw).Encode(map[string]any{"result": parsed})
 	})
+	mux.HandleFunc("/v1/chrome/ensure", func(rw http.ResponseWriter, r *http.Request) {
+		st, err := w.ensureChrome(r.Context())
+		rw.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			_ = json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		_ = json.NewEncoder(rw).Encode(map[string]string{"status": st})
+	})
 	log.Printf("local tools on %s", sock)
 	_ = http.Serve(ln, mux)
 }
@@ -625,7 +647,19 @@ func (w *worker) vncOnce(client silov1connect.BotWorkerClient) error {
 		return err
 	}
 	d := net.Dialer{Timeout: 2 * time.Second}
-	conn, err := d.Dial("tcp", "127.0.0.1:5900")
+	var conn net.Conn
+	var err error
+	for i := 0; i < 25; i++ {
+		conn, err = d.Dial("tcp", "127.0.0.1:5900")
+		if err == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
 	if err != nil {
 		return err
 	}

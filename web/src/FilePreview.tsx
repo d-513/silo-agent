@@ -14,6 +14,15 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { codeLang, kindOf, mimeOf } from "./fileKind";
 
+export function downloadFile(name: string, content: string, data?: Uint8Array) {
+  const blob = new Blob([data && data.length ? data.slice() : content], { type: mimeOf(name) });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 const langs: Record<string, typeof python> = {
   python,
   bash,
@@ -67,13 +76,13 @@ function CsvTable({ text }: { text: string }) {
   const rows = text.split(/\r?\n/).filter((l) => l.length).slice(0, 200);
   const delim = text.includes("\t") && !text.includes(",") ? "\t" : ",";
   return (
-    <div className="overflow-auto">
-      <table className="w-full border-collapse text-left text-[13px]">
+    <div className="max-w-full overflow-x-auto">
+      <table className="w-max min-w-full border-collapse text-left text-[13px]">
         <tbody>
           {rows.map((line, i) => (
             <tr key={i} className="border-b border-thread-2">
               {line.split(delim).map((cell, j) => (
-                <td key={j} className={`px-2 py-1 ${i === 0 ? "font-medium" : ""}`}>
+                <td key={j} className={`px-2 py-1 break-words ${i === 0 ? "font-medium" : ""}`}>
                   {cell}
                 </td>
               ))}
@@ -145,7 +154,18 @@ export function FilePreview({
   if (kind === "markdown") {
     return (
       <div className="silo-md">
-        <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
+        <Markdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            table: ({ children }) => (
+              <div className="silo-md-table">
+                <table>{children}</table>
+              </div>
+            ),
+          }}
+        >
+          {text}
+        </Markdown>
       </div>
     );
   }

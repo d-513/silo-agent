@@ -1,17 +1,18 @@
-import { ArrowUp, CaretDown, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
+import { ArrowUp, CaretDown, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
-import { ApprovalSlip } from "./Approval";
+import { ApprovalSlip, ConnectorAuthSlip } from "./Approval";
 import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
+import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
 import { AdminLayout, AccountPage, AdminSettings } from "./Admin";
 import { AdminConnectors } from "./AdminConnectors";
-import { BotConnectors } from "./BotConnectors";
-import type { Approval, Bot, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
+import { BotConnectors, startConnectorAuth } from "./BotConnectors";
+import type { Approval, Bot, BotConnector, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
 
 const tabs = ["run", "desktop", "files", "connectors", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
@@ -491,12 +492,11 @@ function MachinePane({
   const label = kind === "console" ? "Console" : "Desktop";
   if (!bot.workerConnected) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-start justify-center rounded-[10px] bg-cloth px-6">
-        <p className="mb-3 text-stone">{label} not connected</p>
-        <Btn kind="secondary" onClick={onStart} disabled={bot.status === "starting"} icon={<Power size={12} />}>
-          {bot.status === "starting" ? "Starting…" : "Start Bot"}
-        </Btn>
-      </div>
+      <NeedMachine
+        copy={`${label} not connected`}
+        starting={bot.status === "starting"}
+        onStart={onStart}
+      />
     );
   }
   return (
@@ -766,6 +766,7 @@ function BotPage() {
   const [events, setEvents] = useState<Ev[]>([]);
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<Approval[]>([]);
+  const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
   const [secrets, setSecrets] = useState<SecretMeta[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -778,35 +779,38 @@ function BotPage() {
   useEffect(() => {
     setKeepDesk(tab === "desktop");
     setKeepCon(tab === "console");
+    setAuthPrompt(null);
   }, [id]);
   useEffect(() => {
     if (tab === "desktop") setKeepDesk(true);
     if (tab === "console") setKeepCon(true);
   }, [tab]);
 
+  const settled = Boolean(bot && (bot.workerConnected || bot.status === "stopped"));
   useEffect(() => {
     if (!id) return;
     let dead = false;
-    ui.getBot({ id })
-      .then((b) => {
-        if (!dead) setBot(b);
-      })
-      .catch((e) => {
-        if (!dead) setLoadErr(fail(e));
-      });
-    const t = setInterval(() => {
-      ui.getBot({ id }).then((b) => {
-        if (!dead) setBot(b);
-      }).catch(() => {});
-      ui.listApprovals({ botId: id }).then((r) => {
-        if (!dead) setPending(r.approvals);
-      }).catch(() => {});
-    }, 3000);
+    const tick = (first = false) => {
+      ui.getBot({ id })
+        .then((b) => {
+          if (!dead) setBot(b);
+        })
+        .catch((e) => {
+          if (!dead && first) setLoadErr(fail(e));
+        });
+      ui.listApprovals({ botId: id })
+        .then((r) => {
+          if (!dead) setPending(r.approvals);
+        })
+        .catch(() => {});
+    };
+    tick(true);
+    const t = setInterval(() => tick(), settled ? 3000 : 500);
     return () => {
       dead = true;
       clearInterval(t);
     };
-  }, [id]);
+  }, [id, settled]);
 
   useEffect(() => {
     if (!id || tab !== "run") return;
@@ -911,7 +915,7 @@ function BotPage() {
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (!id || !text.trim()) return;
+    if (sending || !id || !text.trim()) return;
     const msg = text.trim();
     setText("");
     setSending(true);
@@ -922,6 +926,18 @@ function BotPage() {
       ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
     } catch (ex) {
       setSending(false);
+      setActErr(fail(ex));
+    }
+  }
+
+  async function stopRun() {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      await ui.stopRun({ botId: id, chatId });
+      ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
+      ui.getBot({ id }).then(setBot).catch(() => {});
+    } catch (ex) {
       setActErr(fail(ex));
     }
   }
@@ -1056,9 +1072,15 @@ function BotPage() {
                   onChange={(e) => setText(e.target.value)}
                   disabled={!chatId}
                 />
-                <Btn kind="primary" type="submit" disabled={!text.trim() || !chatId} icon={<ArrowUp size={12} />}>
-                  Send
-                </Btn>
+                {sending ? (
+                  <Btn kind="secondary" type="button" title="Stop this reply" onClick={() => void stopRun()} icon={<Stop size={12} weight="fill" />}>
+                    Stop
+                  </Btn>
+                ) : (
+                  <Btn kind="primary" type="submit" disabled={!text.trim() || !chatId} icon={<ArrowUp size={12} />}>
+                    Send
+                  </Btn>
+                )}
               </form>
             </section>
           </>
@@ -1082,7 +1104,7 @@ function BotPage() {
         )}
         {tab === "connectors" && id && (
           <section className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <BotConnectors botId={id} />
+            <BotConnectors botId={id} onNeedAuth={setAuthPrompt} />
           </section>
         )}
         {tab === "secrets" && (
@@ -1180,7 +1202,7 @@ function BotPage() {
             )}
           </div>
         )}
-        {pending[0] && (
+        {pending[0] ? (
           <ApprovalSlip
             bot={bot}
             approval={pending[0]}
@@ -1189,6 +1211,22 @@ function BotPage() {
               setPending((xs) => xs.slice(1));
             }}
           />
+        ) : (
+          authPrompt?.connector && (
+            <ConnectorAuthSlip
+              bot={bot}
+              name={authPrompt.connector.name}
+              onAuthorize={async () => {
+                try {
+                  await startConnectorAuth(bot.id, authPrompt.id);
+                  setAuthPrompt(null);
+                } catch (e) {
+                  setActErr(fail(e));
+                }
+              }}
+              onLater={() => setAuthPrompt(null)}
+            />
+          )
         )}
       </div>
     </div>

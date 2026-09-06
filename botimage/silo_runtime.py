@@ -1,11 +1,20 @@
-"""Local tools bus. Talks to the Worker unix socket. Never talks to the Control Plane."""
+"""Local tools bus. Talks to the Worker unix socket. Never talks to the Control Plane.
+
+Chromium: chrome_page() is Playwright on the headed desktop browser.
+The worker opens silo-chromium if CDP :9222 is down.
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import socket
+import time
 from http.client import HTTPConnection
+
+_CDP = "http://127.0.0.1:9222"
+_pw = None
+_browser = None
 
 
 class _UDS(HTTPConnection):
@@ -37,6 +46,23 @@ def get_secret(name: str) -> str:
     if rid:
         body["run_id"] = rid
     return _post("/v1/secrets/get", body)["value"]
+
+
+def chrome_page():
+    """Playwright Page on the headed desktop Chromium. Opens it if needed."""
+    global _pw, _browser
+    _post("/v1/chrome/ensure", {})
+    from playwright.sync_api import sync_playwright
+
+    if _browser is None:
+        _pw = sync_playwright().start()
+        _browser = _pw.chromium.connect_over_cdp(_CDP)
+    for _ in range(25):
+        if _browser.contexts and _browser.contexts[0].pages:
+            return _browser.contexts[0].pages[-1]
+        time.sleep(0.1)
+    ctx = _browser.contexts[0] if _browser.contexts else _browser.new_context()
+    return ctx.new_page()
 
 
 def call(connector: str, action: str, args: dict | None = None) -> dict:

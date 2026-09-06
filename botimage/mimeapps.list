@@ -1,0 +1,22 @@
+[Default Applications]
+text/plain=silo-edit.desktop
+text/markdown=silo-edit.desktop
+text/x-markdown=silo-edit.desktop
+text/x-python=silo-edit.desktop
+text/x-python3=silo-edit.desktop
+text/x-csrc=silo-edit.desktop
+text/x-c++src=silo-edit.desktop
+text/html=silo-edit.desktop
+text/css=silo-edit.desktop
+text/xml=silo-edit.desktop
+text/csv=silo-edit.desktop
+text/x-sh=silo-edit.desktop
+text/x-shellscript=silo-edit.desktop
+text/javascript=silo-edit.desktop
+application/javascript=silo-edit.desktop
+application/json=silo-edit.desktop
+application/xml=silo-edit.desktop
+application/x-yaml=silo-edit.desktop
+application/yaml=silo-edit.desktop
+application/toml=silo-edit.desktop
+inode/x-empty=silo-edit.desktop

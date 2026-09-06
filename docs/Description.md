@@ -22,7 +22,7 @@ Control Plane owns policy, the agent loop, LLM calls, and secrets. The Bot is a 
 | Auth | session cookies now | OIDC later creates the same `User`/`Session` rows — no plugin framework |
 | Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, **OpenRouter API key**. **Not** editable in the UI |
 | Product settings | DB rows, admin UI | models. Do not overlap with operator config |
-| Desktop | X11 (Xvfb + Openbox + Thunar) | not Wayland |
+| Desktop | X11 (Xvfb + Openbox + Thunar + mousepad) | not Wayland |
 | Remote desktop | x11vnc + noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
 | Process supervisor in Bot | fail-fast `start.sh` | any of Xvfb/Openbox/tint2/x11vnc/worker dying exits the container; Docker `unless-stopped` recreates the stack |
 | Web extract/search | not in v1 | keep provider keys off the Bot |
@@ -49,7 +49,7 @@ Python  (exec_python + generated tools.*)
 
 There is no third path. No `docker exec`, no `docker cp`, no socket mount into the CP, no host-network assumption, no CP connecting to a port on the Bot. A remote Docker host is the same protocol with a different `SILO_CP_URL` (must be reachable *from that host*, not `127.0.0.1` of the CP machine). Volumes live on the machine that runs the container; the CP reads files by asking the Worker.
 
-`SILO_BOT_TOKEN` is rotated on recreate. `docker inspect` can see it; acceptable for v1.
+`SILO_BOT_TOKEN` is rotated on recreate (box gone), not on Stop/Start of the same ID. `docker inspect` can see it; acceptable for v1.
 
 ### CP ↔ Worker (ConnectRPC)
 
@@ -81,6 +81,7 @@ This hop is same-container only. It must not know the CP exists.
 # silo_runtime — the only file that knows the socket
 def get_secret(name: str) -> str: ...
 def call(connector: str, action: str, args: dict) -> dict: ...
+def chrome_page(): ...  # Playwright Page; worker opens Chromium if needed
 ```
 
 Local HTTP surface (Worker listens, nothing else):
@@ -89,6 +90,7 @@ Local HTTP surface (Worker listens, nothing else):
 |---|---|---|---|
 | `POST` | `/v1/secrets/get` | `{name, run_id?}` | `{value}` or `{error}` |
 | `POST` | `/v1/tools/call` | `{connector, action, args, run_id?}` | `{result}` or `{error}` |
+| `POST` | `/v1/chrome/ensure` | `{}` | `{status}` (`up` / `started`) or `{error}` |
 
 No local auth. The container is the trust boundary; the CP security engine is the gate. Debug: `curl --unix-socket /var/run/silo/worker.sock http://localhost/v1/...`.
 
@@ -119,29 +121,29 @@ The model can still exfiltrate a secret it already holds. We do not try to stop 
 
 **The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/silo/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
 
-First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` shows a workspace file in the thread (CP uses `browse_file`; the model gets a short ack, not the bytes). Connectors are discovered on disk as `tools.*`.
+First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` of a user-facing path is a folio in the thread. `present` of `bot/…` is scratch: collapsed “Looked at …” row, same pixels to the model. CP uses `browse_file`; the tool text is a short ack. Images (`png`/`jpg`/`webp`/`gif`) attach as a multimodal part on the next completion. No base64 in the tool text or the run log. Connectors are discovered on disk as `tools.*`.
 
 ## Tools
 
 ### Terminal / files
 
-Pushed on `Commands`. `/workspace` is the agent's artifact dir (volume on the *Docker host*, not necessarily the CP host).
+Pushed on `Commands`. `/workspace` is user-facing artifacts (volume on the *Docker host*, not necessarily the CP host). `/workspace/bot` is the Bot's scratch (PRAV screenshots, dumps).
 
 ### Web / connectors
 
-Admin owns a **catalog** of connectors (type `mcp` for now). HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each catalog entry has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Bots attach from the catalog. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`.
+Admin owns a **library** of connector presets (type `mcp` for now), seeded from `internal/catalog`. HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each preset has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Catalog entries may include a `guide` shown as text when adding from the library — it is not a connector field. Bots attach a **copy** of a preset (shared form, pre-filled), or add a custom MCP that never enters the library. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`. Servers that omit `registration_endpoint` (GitHub) need a pre-registered OAuth Client ID and Secret on the connector.
 
 ### Chromium
 
-Not started with the desktop. The dock **Web** item (or `chromium` with the flags in `silo-web.desktop`) launches a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/bot/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. Playwright/CDP attaches when it is running. Python may use `localhost:9222` with no Worker hop — CDP has no secret.
+Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. The model drives that process with one helper: `silo_runtime.chrome_page()` (Playwright `connect_over_cdp`, same window the human sees). Complex pages use Perceive (screenshot + `present`) → Reason → Act (one Playwright step) → Verify (screenshot + `present`). The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. The CP may send `EnsureChrome` first so the thread can show it opened. Do not `playwright install` a second browser. Do not ship `pyautogui`, `xdotool`, or extra CDP wrappers. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
 
 ### Computer use (later)
 
-Same `:1`. Not v1.
+X11 click/type on the rest of the desktop. Not v1. Chromium is the Playwright loop above.
 
 ### Images
 
-Path refs (`[[silo:image /path]]` or structured `{type:"image", path}`), turned into multimodal parts on the CP. No base64-in-stdout.
+`present` of `png`/`jpg`/`webp`/`gif`: user-facing paths are a folio preview; `bot/…` is a collapsed row. The next model turn gets a multimodal image part from `browse_file` data. Tool text stays the short ack. No base64-in-stdout, no image bytes in the run log.
 
 ## Auth and multi-user
 
@@ -152,7 +154,7 @@ v1: session cookie, owner sees their bots, admin sees settings. `User` + `Sessio
 - Wayland
 - Multi-host Docker *UI* (the Worker protocol is already remote-safe)
 - OIDC
-- Computer-use loop
+- X11 computer-use loop (Chromium Perceive→Act→Verify is in)
 - STDIO MCP (schema only)
 - Generated tools calling the CP, or a Python ConnectRPC client
 - Provider keys or connector tokens inside the Bot

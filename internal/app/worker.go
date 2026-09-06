@@ -111,7 +111,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 		a.DB.Create(&ap)
 		ch := make(chan string, 1)
 		a.mu.Lock()
-		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID}
+		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
 		a.setBotStatus(bot.ID, "needs_you")
 		a.emit(bot.ID, a.chatOfRun(runID), runID, "approval", ap.ID, "secrets.get")

@@ -24,4 +24,5 @@ launcher_icon_as_theme = 1
 launcher_tooltip = 1
 launcher_item_app = /usr/local/share/applications/silo-files.desktop
 launcher_item_app = /usr/local/share/applications/silo-term.desktop
+launcher_item_app = /usr/local/share/applications/silo-edit.desktop
 launcher_item_app = /usr/local/share/applications/silo-web.desktop

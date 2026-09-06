@@ -29,6 +29,7 @@ message Cmd {
     RemoveCmd remove = 13;
     PutFileCmd put_file = 14;
     SyncToolsCmd sync_tools = 15;
+    EnsureChromeCmd ensure_chrome = 16;
   }
 }
 
@@ -111,6 +112,8 @@ message PutFileCmd {
   string path = 1;
   bytes data = 2;
 }
+
+message EnsureChromeCmd {}
 
 message CmdEvent {
   string id = 1;

@@ -12,6 +12,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/auth"
+	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -235,6 +236,13 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
+	var bcs []db.BotConnector
+	a.DB.Where("bot_id = ?", b.ID).Find(&bcs)
+	for _, bc := range bcs {
+		a.dropMCP(bc.ID)
+	}
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
+	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.DB.Delete(b)
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
@@ -270,6 +278,22 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	}
 	go a.runLoop(b.ID, ch.ID, run.ID, text)
 	return connect.NewResponse(&v1.SendResponse{RunId: run.ID, ChatId: ch.ID}), nil
+}
+
+func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	chatID := req.Msg.GetChatId()
+	if chatID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("chat_id required"))
+	}
+	if _, err := a.ownChat(ctx, b.ID, chatID); err != nil {
+		return nil, err
+	}
+	a.stopChat(b.ID, chatID)
+	return connect.NewResponse(&v1.StopRunResponse{}), nil
 }
 
 func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRequest], stream *connect.ServerStream[v1.RunEvent]) error {

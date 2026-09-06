@@ -89,6 +89,7 @@ Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`
 | ---------------------------- | ------------------------------------------------------------------------------------- |
 | Go (CP only)                 | `go build -o bin/silo ./cmd/silo` and restart `./bin/silo`                            |
 | `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                             |
+| `internal/catalog/*`         | same — library presets are `go:embed`’d; restart the CP to seed new keys              |
 | Go (worker)                  | rebuild `bin/silo-worker`, rebuild the image, recreate the Bot container              |
 | `botimage/*`                 | rebuild the image, recreate the Bot container                                         |
 | `proto/**`                   | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
@@ -117,12 +118,3 @@ web/                Vite + React
 web/src/gen         TS stubs (generated)
 data/               SQLite + per-bot volumes (gitignored)
 ```
-
-## Common failures
-
-- **Worker never connects** — `cp_url` from inside the container, `DOCKER_HOST` on the CP, image tag mismatch.
-- **Desktop black / “Opening desktop…”** — worker must be connected (pine **online**). The hatch waits for the RFB `connect` event; it no longer tears down a silent socket every 4s. Sign in again if the CP log shows `sessions` record not found (stale cookie → VNC 401). After a worker rebuild, Stop, `podman rm -f silo-<id>`, Start. Killing x11vnc inside the Bot should recycle the whole container.
-- **Console blank / “Opening console…”** — same worker hop as VNC (`/console` websocket). Old images have no Console RPC; rebuild `silo-worker`, rebuild the image, recreate the box. The shell starts in `/workspace`.
-- **“OpenRouter key missing”** — `silo.yaml` or `SILO_OPENROUTER__API_KEY`, then restart the CP. Not Admin.
-- **Old desktop (no dock / black root)** — image was not rebuilt, or the old container was not removed. Desktop is Thunar + wallpaper.
-- **Proto / TS types missing** — you edited `.proto` and skipped `buf generate`.

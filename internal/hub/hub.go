@@ -358,6 +358,10 @@ func (h *Hub) Exec(ctx context.Context, botID string, cmd *v1.Cmd) (string, erro
 	case r := <-ch:
 		return r.Out, r.Err
 	case <-ctx.Done():
+		select {
+		case s.Send <- &v1.Cmd{Id: cmd.GetId() + "-stop", Body: &v1.Cmd_Cancel{Cancel: &v1.CancelCmd{CmdId: cmd.GetId()}}}:
+		default:
+		}
 		return "", ctx.Err()
 	case <-s.dead:
 		return "", ErrClosed

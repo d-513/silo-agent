@@ -19,3 +19,9 @@ func relWorkspace(p string) string {
 	}
 	return strings.TrimPrefix(p, "/")
 }
+
+// botScratch is /workspace/bot — the Bot's scratch. Not a user-facing present.
+func botScratch(p string) bool {
+	p = relWorkspace(p)
+	return p == "bot" || strings.HasPrefix(p, "bot/")
+}

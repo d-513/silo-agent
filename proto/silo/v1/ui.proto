@@ -24,6 +24,7 @@ service UI {
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
 
   rpc Send(SendRequest) returns (SendResponse);
+  rpc StopRun(StopRunRequest) returns (StopRunResponse);
   rpc StreamRun(StreamRunRequest) returns (stream RunEvent);
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
@@ -54,6 +55,7 @@ service UI {
 
   rpc ListBotConnectors(ListBotConnectorsRequest) returns (ListBotConnectorsResponse);
   rpc AttachConnector(AttachConnectorRequest) returns (BotConnector);
+  rpc CreateBotConnector(CreateBotConnectorRequest) returns (BotConnector);
   rpc DetachConnector(DetachConnectorRequest) returns (DetachConnectorResponse);
   rpc RefreshBotConnector(RefreshBotConnectorRequest) returns (BotConnector);
   rpc StartConnectorAuth(StartConnectorAuthRequest) returns (StartConnectorAuthResponse);
@@ -172,6 +174,13 @@ message SendResponse {
   string run_id = 1;
   string chat_id = 2;
 }
+
+message StopRunRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+}
+
+message StopRunResponse {}
 
 message StreamRunRequest {
   string bot_id = 1;
@@ -365,6 +374,11 @@ message Connector {
   repeated HeaderKey header_keys = 9;
   string created_at = 10;
   string default_mode = 11;
+  string kind = 12;
+  string source_id = 13;
+  string oauth_client_id = 14;
+  bool has_oauth_client_secret = 15;
+  string catalog_guide = 16;
 }
 
 message ListConnectorsRequest {}
@@ -388,6 +402,8 @@ message CreateConnectorRequest {
   string auth = 7;
   repeated HeaderInput headers = 8;
   string default_mode = 9;
+  string oauth_client_id = 10;
+  string oauth_client_secret = 11;
 }
 
 message UpdateConnectorRequest {
@@ -402,6 +418,8 @@ message UpdateConnectorRequest {
   string auth = 9;
   repeated HeaderInput headers = 10;
   string default_mode = 11;
+  string oauth_client_id = 12;
+  string oauth_client_secret = 13;
 }
 
 message DeleteConnectorRequest {
@@ -429,6 +447,22 @@ message ListBotConnectorsResponse {
 message AttachConnectorRequest {
   string bot_id = 1;
   string connector_id = 2;
+}
+
+message CreateBotConnectorRequest {
+  string bot_id = 1;
+  string name = 2;
+  string description = 3;
+  bytes image = 4;
+  string image_type = 5;
+  string transport = 6;
+  string http_url = 7;
+  string auth = 8;
+  repeated HeaderInput headers = 9;
+  string default_mode = 10;
+  string oauth_client_id = 11;
+  string oauth_client_secret = 12;
+  string source_id = 13;
 }
 
 message DetachConnectorRequest {

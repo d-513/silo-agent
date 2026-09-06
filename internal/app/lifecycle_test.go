@@ -40,6 +40,7 @@ type fakeHost struct {
 	createErr  error
 	envHash    map[string]string
 	creates    atomic.Int32
+	starts     atomic.Int32
 	drops      atomic.Int32
 }
 
@@ -91,8 +92,24 @@ func (f *fakeHost) Stats(_ context.Context, id string) (dockerx.Stats, error) {
 	}
 	return dockerx.Stats{CPUPercent: 1.5, MemUsed: 100 << 20, MemLimit: 1 << 30}, nil
 }
-func (f *fakeHost) Start(context.Context, string) error { return nil }
-func (f *fakeHost) Stop(context.Context, string) error  { return nil }
+func (f *fakeHost) Start(_ context.Context, id string) error {
+	f.starts.Add(1)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	st, ok := f.inspect[id]
+	if !ok {
+		return dockerx.ErrNotFound
+	}
+	st.Running = true
+	for k, v := range f.inspect {
+		if v.ID == st.ID {
+			v.Running = true
+			f.inspect[k] = v
+		}
+	}
+	return nil
+}
+func (f *fakeHost) Stop(context.Context, string) error { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
 
 func testApp(t *testing.T, d dockerx.Host) *App {
@@ -150,6 +167,57 @@ func TestLiveNotFoundClears(t *testing.T) {
 	}
 	a.DB.First(b, "id = ?", "bot1")
 	if b.ContainerID != "" {
+		t.Fatalf("id %q", b.ContainerID)
+	}
+}
+
+func TestLiveStoppedKeepsContainer(t *testing.T) {
+	id := "cid-bot1"
+	name := dockerx.Name("bot1")
+	h := &fakeHost{inspect: map[string]dockerx.State{
+		id: {ID: id, Running: false}, name: {ID: id, Running: false},
+	}}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", ContainerID: id, Status: "online"}
+	a.DB.Create(b)
+	if a.live(context.Background(), b) {
+		t.Fatal("expected not live")
+	}
+	if h.drops.Load() != 0 {
+		t.Fatal("dropped a stopped box")
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.ContainerID != id {
+		t.Fatalf("cleared id %q", b.ContainerID)
+	}
+	if b.Status != "stopped" {
+		t.Fatalf("status %s", b.Status)
+	}
+}
+
+func TestEnsureRunningStartsExisting(t *testing.T) {
+	id := "cid-bot1"
+	name := dockerx.Name("bot1")
+	h := &fakeHost{inspect: map[string]dockerx.State{
+		id: {ID: id, Running: false}, name: {ID: id, Running: false},
+	}}
+	a := testApp(t, h)
+	b := &db.Bot{ID: "bot1", ContainerID: id, TokenHash: "h", Status: "stopped"}
+	a.DB.Create(b)
+	if err := a.ensureRunning(context.Background(), b); err != nil {
+		t.Fatal(err)
+	}
+	if h.creates.Load() != 0 {
+		t.Fatalf("creates %d", h.creates.Load())
+	}
+	if h.starts.Load() != 1 {
+		t.Fatalf("starts %d", h.starts.Load())
+	}
+	if h.drops.Load() != 0 {
+		t.Fatalf("drops %d", h.drops.Load())
+	}
+	a.DB.First(b, "id = ?", "bot1")
+	if b.ContainerID != id {
 		t.Fatalf("id %q", b.ContainerID)
 	}
 }
@@ -281,6 +349,49 @@ func TestRecomputeStatusParallelRuns(t *testing.T) {
 	a.DB.First(&bot, "id = ?", "b1")
 	if bot.Status != "idle" {
 		t.Fatalf("status %s", bot.Status)
+	}
+}
+
+func TestStopChat(t *testing.T) {
+	a := testApp(t, nil)
+	a.DB.Create(&db.Bot{ID: "b1", Status: "working"})
+	a.DB.Create(&db.Chat{ID: "c1", BotID: "b1"})
+	a.DB.Create(&db.Chat{ID: "c2", BotID: "b1"})
+	a.DB.Create(&db.Run{ID: "r1", BotID: "b1", ChatID: "c1", Status: "running"})
+	a.DB.Create(&db.Run{ID: "r2", BotID: "b1", ChatID: "c2", Status: "running"})
+	a.DB.Create(&db.Approval{ID: "ap1", BotID: "b1", RunID: "r1", Status: "pending"})
+	hit := make(chan struct{}, 1)
+	other := make(chan struct{}, 1)
+	a.trackRun("b1", "c1", "r1", func() { hit <- struct{}{} })
+	a.trackRun("b1", "c2", "r2", func() { other <- struct{}{} })
+	ch := make(chan string, 1)
+	a.mu.Lock()
+	a.approvals["ap1"] = &waiter{ch: ch, botID: "b1", runID: "r1"}
+	a.mu.Unlock()
+	a.stopChat("b1", "c1")
+	select {
+	case <-hit:
+	default:
+		t.Fatal("run not canceled")
+	}
+	select {
+	case <-other:
+		t.Fatal("other chat canceled")
+	default:
+	}
+	select {
+	case v := <-ch:
+		if v != "canceled" {
+			t.Fatal(v)
+		}
+	default:
+		t.Fatal("approval waiter")
+	}
+	var r1, r2 db.Run
+	a.DB.First(&r1, "id = ?", "r1")
+	a.DB.First(&r2, "id = ?", "r2")
+	if r1.Status != "stopped" || r2.Status != "running" {
+		t.Fatalf("runs %s %s", r1.Status, r2.Status)
 	}
 }
 

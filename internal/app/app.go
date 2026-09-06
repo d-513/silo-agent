@@ -93,11 +93,13 @@ func (b *bus) Subscribe(botID string) (<-chan *v1.RunEvent, func()) {
 type waiter struct {
 	ch    chan string
 	botID string
+	runID string
 }
 
 type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
+	chatID string
 }
 
 type App struct {
@@ -132,6 +134,7 @@ func New(cfg *config.Config, gdb *gorm.DB, eng dockerx.Host) *App {
 		mcp:       map[string]*mcpx.Session{},
 	}
 	a.recoverOrphans()
+	a.initConnectors()
 	return a
 }
 
@@ -324,9 +327,9 @@ func (a *App) Handler() http.Handler {
 	return withHTTP(mux)
 }
 
-func (a *App) trackRun(botID, runID string, cancel context.CancelFunc) {
+func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc) {
 	a.mu.Lock()
-	a.runs[runID] = &liveRun{cancel: cancel, botID: botID}
+	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID}
 	a.mu.Unlock()
 }
 
@@ -337,25 +340,52 @@ func (a *App) untrackRun(runID string) {
 }
 
 func (a *App) cancelBot(botID string) {
+	a.cancelRuns(botID, "", "interrupted")
+}
+
+func (a *App) stopChat(botID, chatID string) {
+	a.cancelRuns(botID, chatID, "stopped")
+}
+
+func (a *App) cancelRuns(botID, chatID, runStatus string) {
 	a.mu.Lock()
+	want := map[string]bool{}
 	for id, lr := range a.runs {
-		if lr.botID == botID {
-			lr.cancel()
-			delete(a.runs, id)
+		if lr.botID != botID {
+			continue
 		}
+		if chatID != "" && lr.chatID != chatID {
+			continue
+		}
+		lr.cancel()
+		delete(a.runs, id)
+		want[id] = true
 	}
 	for id, w := range a.approvals {
-		if w.botID == botID {
-			select {
-			case w.ch <- "canceled":
-			default:
-			}
-			delete(a.approvals, id)
+		if w.botID != botID {
+			continue
 		}
+		if chatID != "" && !want[w.runID] {
+			continue
+		}
+		select {
+		case w.ch <- "canceled":
+		default:
+		}
+		delete(a.approvals, id)
 	}
 	a.mu.Unlock()
-	a.DB.Model(&db.Run{}).Where("bot_id = ? AND status = ?", botID, "running").Update("status", "interrupted")
-	a.DB.Model(&db.Approval{}).Where("bot_id = ? AND status = ?", botID, "pending").Update("status", "interrupted")
+	q := a.DB.Model(&db.Run{}).Where("bot_id = ? AND status = ?", botID, "running")
+	if chatID != "" {
+		q = q.Where("chat_id = ?", chatID)
+	}
+	q.Update("status", runStatus)
+	aq := a.DB.Model(&db.Approval{}).Where("bot_id = ? AND status = ?", botID, "pending")
+	if chatID != "" {
+		aq = aq.Where("run_id IN (?)", a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", botID, chatID))
+	}
+	aq.Update("status", "interrupted")
+	a.recomputeStatus(botID)
 }
 
 func (a *App) recomputeStatus(botID string) {

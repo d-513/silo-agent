@@ -26,7 +26,8 @@ import {
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
-import { FilePreview } from "./FilePreview";
+import { NeedMachine } from "./NeedMachine";
+import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, kindOf } from "./fileKind";
 import type { Bot, FileEntry } from "./gen/silo/v1/ui_pb";
 
@@ -140,12 +141,11 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
 
   if (!bot.workerConnected) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-start justify-center px-6">
-        <p className="mb-3 text-stone">Start the Bot to browse /workspace.</p>
-        <Btn kind="secondary" onClick={onStart} disabled={bot.status === "starting"}>
-          {bot.status === "starting" ? "Starting…" : "Start Bot"}
-        </Btn>
-      </div>
+      <NeedMachine
+        copy="Start the Bot to browse /workspace."
+        starting={bot.status === "starting"}
+        onStart={onStart}
+      />
     );
   }
 
@@ -209,16 +209,6 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
     } catch (ex) {
       setErr(fail(ex));
     }
-  }
-
-  function download(f: OpenFile) {
-    const mime = f.binary ? "application/octet-stream" : "text/plain";
-    const blob = new Blob([f.data && f.data.length ? f.data.slice() : f.content], { type: mime });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = f.name;
-    a.click();
-    URL.revokeObjectURL(a.href);
   }
 
   async function remove(e: FileEntry) {
@@ -324,7 +314,7 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
         <aside className="flex min-w-0 flex-[1.1] flex-col border-l border-thread bg-folio">
           <div className="flex h-10 items-center gap-2 border-b border-thread-2 px-3">
             <span className="min-w-0 flex-1 truncate font-medium">{file.name}</span>
-            <button className="text-stone hover:text-iron" title="Download" onClick={() => download(file)}>
+            <button className="text-stone hover:text-iron" title="Download" onClick={() => downloadFile(file.name, file.content, file.data)}>
               <DownloadSimple size={16} />
             </button>
             <button className="text-stone hover:text-iron" title="Close" onClick={() => setFile(null)}>

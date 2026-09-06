@@ -146,8 +146,9 @@ func (e *Engine) Stats(ctx context.Context, id string) (Stats, error) {
 
 func (e *Engine) Create(ctx context.Context, botID, token string) (string, error) {
 	ws := filepath.Join(e.cfg.DataDir, "bots", botID, "workspace")
+	bot := filepath.Join(ws, "bot")
 	chrome := filepath.Join(e.cfg.DataDir, "bots", botID, "chrome-profile")
-	for _, d := range []string{ws, chrome} {
+	for _, d := range []string{ws, bot, chrome} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return "", err
 		}
@@ -165,7 +166,7 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	}, &container.HostConfig{
 		Binds: []string{
 			absWS + ":/workspace",
-			absChrome + ":/home/bot/chrome-profile",
+			absChrome + ":/home/silo/chrome-profile",
 		},
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 		ExtraHosts:    []string{"host.containers.internal:host-gateway"},

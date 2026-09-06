@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, Chat, Connector, Container, CreateBotRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteSecretRequest, DeleteSecretResponse, DetachConnectorRequest, DetachConnectorResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StreamRunRequest, UpdateBotRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteSecretRequest, DeleteSecretResponse, DetachConnectorRequest, DetachConnectorResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -154,6 +154,15 @@ export const UI = {
       name: "Send",
       I: SendRequest,
       O: SendResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.StopRun
+     */
+    stopRun: {
+      name: "StopRun",
+      I: StopRunRequest,
+      O: StopRunResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -351,6 +360,15 @@ export const UI = {
     attachConnector: {
       name: "AttachConnector",
       I: AttachConnectorRequest,
+      O: BotConnector,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.CreateBotConnector
+     */
+    createBotConnector: {
+      name: "CreateBotConnector",
+      I: CreateBotConnectorRequest,
       O: BotConnector,
       kind: MethodKind.Unary,
     },

@@ -110,18 +110,24 @@ type Audit struct {
 }
 
 type Connector struct {
-	ID          string `gorm:"primaryKey"`
-	Type        string
-	Name        string
-	Description string
-	Image       []byte
-	ImageType   string
-	Transport   string
-	HTTPURL     string
-	Auth        string
-	HeadersJSON string
-	DefaultMode string
-	CreatedAt   time.Time
+	ID                string `gorm:"primaryKey"`
+	Kind              string // library | custom
+	BotID             string `gorm:"index"`
+	SeedKey           string `gorm:"index"`
+	SourceID          string
+	Type              string
+	Name              string
+	Description       string
+	Image             []byte
+	ImageType         string
+	Transport         string
+	HTTPURL           string
+	Auth              string
+	OAuthClientID     string
+	OAuthClientSecret string
+	HeadersJSON       string
+	DefaultMode       string
+	CreatedAt         time.Time
 }
 
 type BotConnector struct {

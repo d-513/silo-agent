@@ -1,0 +1,64 @@
+{
+  "connectors": [
+    {
+      "key": "github",
+      "name": "GitHub",
+      "description": "Repos, issues, pull requests, and Actions.",
+      "guide": "GitHub's hosted MCP. GitHub does not register OAuth clients automatically.\n\nCreate an OAuth App at github.com/settings/developers. Authorization callback URL must be this Silo's /oauth/callback — locally http://127.0.0.1:5173/oauth/callback. Open Advanced settings, paste the Client ID and Secret, then Authorize after adding.\n\nOr set Auth to None and add an Authorization header with a personal access token (Bearer …).",
+      "http_url": "https://api.githubcopilot.com/mcp/",
+      "auth": "oauth",
+      "default_mode": "ask",
+      "image": "github.svg"
+    },
+    {
+      "key": "linear",
+      "name": "Linear",
+      "description": "Issues, projects, and cycles.",
+      "guide": "Linear issues, projects, and cycles.\n\nOAuth usually registers the client automatically — leave Client ID blank, add the connector, then Authorize with your Linear workspace.",
+      "http_url": "https://mcp.linear.app/mcp",
+      "auth": "oauth",
+      "default_mode": "ask",
+      "image": "linear.svg"
+    },
+    {
+      "key": "notion",
+      "name": "Notion",
+      "description": "Pages, databases, and search.",
+      "guide": "Notion pages, databases, and search.\n\nOAuth usually registers the client automatically. After adding, Authorize and grant the pages this Bot may read.",
+      "http_url": "https://mcp.notion.com/mcp",
+      "auth": "oauth",
+      "default_mode": "ask",
+      "image": "notion.svg"
+    },
+    {
+      "key": "stripe",
+      "name": "Stripe",
+      "description": "Customers, payments, and documentation.",
+      "guide": "Stripe customers, payments, and documentation.\n\nOAuth usually registers the client automatically. After adding, Authorize with the Stripe account this Bot should use.",
+      "http_url": "https://mcp.stripe.com",
+      "auth": "oauth",
+      "default_mode": "ask",
+      "image": "stripe.svg"
+    },
+    {
+      "key": "sentry",
+      "name": "Sentry",
+      "description": "Errors, performance, and projects.",
+      "guide": "Sentry errors, performance, and projects.\n\nOAuth usually registers the client automatically. After adding, Authorize with the organization this Bot should read.",
+      "http_url": "https://mcp.sentry.dev/mcp",
+      "auth": "oauth",
+      "default_mode": "ask",
+      "image": "sentry.svg"
+    },
+    {
+      "key": "context7",
+      "name": "Context7",
+      "description": "Up-to-date library documentation.",
+      "guide": "Library documentation. Works without a key at a low rate limit.\n\nFor a higher limit, create a key at context7.com/dashboard and add a CONTEXT7_API_KEY header under Advanced settings.",
+      "http_url": "https://mcp.context7.com/mcp",
+      "auth": "none",
+      "default_mode": "allow",
+      "image": "context7.svg"
+    }
+  ]
+}

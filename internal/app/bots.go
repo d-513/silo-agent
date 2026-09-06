@@ -59,30 +59,27 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 		log.Printf("inspect bot=%s: %v", b.ID, err)
 		return b.ContainerID != ""
 	}
-	if st.Running {
-		if h, err := a.Docker.EnvTokenHash(ctx, st.ID); err == nil && h != "" && h != b.TokenHash {
-			a.Docker.Drop(ctx, b.ID, st.ID)
-			b.ContainerID = ""
-			if b.Status != "stopped" {
-				b.Status = "stopped"
-			}
-			a.DB.Save(b)
-			return false
+	if h, err := a.Docker.EnvTokenHash(ctx, st.ID); err == nil && h != "" && h != b.TokenHash {
+		a.Docker.Drop(ctx, b.ID, st.ID)
+		b.ContainerID = ""
+		if b.Status != "stopped" {
+			b.Status = "stopped"
 		}
-		if b.ContainerID != st.ID {
-			b.ContainerID = st.ID
+		a.DB.Save(b)
+		return false
+	}
+	if b.ContainerID != st.ID {
+		b.ContainerID = st.ID
+		a.DB.Save(b)
+	}
+	if !st.Running {
+		if b.Status != "stopped" {
+			b.Status = "stopped"
 			a.DB.Save(b)
 		}
-		return true
+		return false
 	}
-	_ = a.Docker.Stop(ctx, st.ID)
-	a.Docker.Drop(ctx, b.ID, b.ContainerID)
-	b.ContainerID = ""
-	if b.Status != "stopped" {
-		b.Status = "stopped"
-	}
-	a.DB.Save(b)
-	return false
+	return true
 }
 
 func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) {
@@ -107,6 +104,24 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 			a.DB.Save(b)
 		}
 		return nil
+	}
+	if st, err := a.inspectBot(ctx, b); err == nil {
+		if err := a.Docker.Start(ctx, st.ID); err != nil {
+			b.Status = "stopped"
+			b.LastTask = err.Error()
+			a.DB.Save(b)
+			return err
+		}
+		if b.ContainerID != st.ID {
+			b.ContainerID = st.ID
+		}
+		b.Status = "starting"
+		return a.DB.Save(b).Error
+	} else if !dockerx.IsNotFound(err) {
+		b.Status = "stopped"
+		b.LastTask = err.Error()
+		a.DB.Save(b)
+		return err
 	}
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	token := ids.Token()

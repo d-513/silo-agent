@@ -65,6 +65,8 @@ const (
 	UIDeleteChatProcedure = "/silo.v1.UI/DeleteChat"
 	// UISendProcedure is the fully-qualified name of the UI's Send RPC.
 	UISendProcedure = "/silo.v1.UI/Send"
+	// UIStopRunProcedure is the fully-qualified name of the UI's StopRun RPC.
+	UIStopRunProcedure = "/silo.v1.UI/StopRun"
 	// UIStreamRunProcedure is the fully-qualified name of the UI's StreamRun RPC.
 	UIStreamRunProcedure = "/silo.v1.UI/StreamRun"
 	// UIListSecretsProcedure is the fully-qualified name of the UI's ListSecrets RPC.
@@ -109,6 +111,8 @@ const (
 	UIListBotConnectorsProcedure = "/silo.v1.UI/ListBotConnectors"
 	// UIAttachConnectorProcedure is the fully-qualified name of the UI's AttachConnector RPC.
 	UIAttachConnectorProcedure = "/silo.v1.UI/AttachConnector"
+	// UICreateBotConnectorProcedure is the fully-qualified name of the UI's CreateBotConnector RPC.
+	UICreateBotConnectorProcedure = "/silo.v1.UI/CreateBotConnector"
 	// UIDetachConnectorProcedure is the fully-qualified name of the UI's DetachConnector RPC.
 	UIDetachConnectorProcedure = "/silo.v1.UI/DetachConnector"
 	// UIRefreshBotConnectorProcedure is the fully-qualified name of the UI's RefreshBotConnector RPC.
@@ -135,6 +139,7 @@ type UIClient interface {
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
+	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
@@ -157,6 +162,7 @@ type UIClient interface {
 	DeleteConnector(context.Context, *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error)
 	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
 	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	CreateBotConnector(context.Context, *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
@@ -267,6 +273,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UISendProcedure,
 			connect.WithSchema(uIMethods.ByName("Send")),
+			connect.WithClientOptions(opts...),
+		),
+		stopRun: connect.NewClient[v1.StopRunRequest, v1.StopRunResponse](
+			httpClient,
+			baseURL+UIStopRunProcedure,
+			connect.WithSchema(uIMethods.ByName("StopRun")),
 			connect.WithClientOptions(opts...),
 		),
 		streamRun: connect.NewClient[v1.StreamRunRequest, v1.RunEvent](
@@ -401,6 +413,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("AttachConnector")),
 			connect.WithClientOptions(opts...),
 		),
+		createBotConnector: connect.NewClient[v1.CreateBotConnectorRequest, v1.BotConnector](
+			httpClient,
+			baseURL+UICreateBotConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateBotConnector")),
+			connect.WithClientOptions(opts...),
+		),
 		detachConnector: connect.NewClient[v1.DetachConnectorRequest, v1.DetachConnectorResponse](
 			httpClient,
 			baseURL+UIDetachConnectorProcedure,
@@ -440,6 +458,7 @@ type uIClient struct {
 	renameChat          *connect.Client[v1.RenameChatRequest, v1.Chat]
 	deleteChat          *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
 	send                *connect.Client[v1.SendRequest, v1.SendResponse]
+	stopRun             *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun           *connect.Client[v1.StreamRunRequest, v1.RunEvent]
 	listSecrets         *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret           *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
@@ -462,6 +481,7 @@ type uIClient struct {
 	deleteConnector     *connect.Client[v1.DeleteConnectorRequest, v1.DeleteConnectorResponse]
 	listBotConnectors   *connect.Client[v1.ListBotConnectorsRequest, v1.ListBotConnectorsResponse]
 	attachConnector     *connect.Client[v1.AttachConnectorRequest, v1.BotConnector]
+	createBotConnector  *connect.Client[v1.CreateBotConnectorRequest, v1.BotConnector]
 	detachConnector     *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
 	refreshBotConnector *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
 	startConnectorAuth  *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
@@ -545,6 +565,11 @@ func (c *uIClient) DeleteChat(ctx context.Context, req *connect.Request[v1.Delet
 // Send calls silo.v1.UI.Send.
 func (c *uIClient) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {
 	return c.send.CallUnary(ctx, req)
+}
+
+// StopRun calls silo.v1.UI.StopRun.
+func (c *uIClient) StopRun(ctx context.Context, req *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error) {
+	return c.stopRun.CallUnary(ctx, req)
 }
 
 // StreamRun calls silo.v1.UI.StreamRun.
@@ -657,6 +682,11 @@ func (c *uIClient) AttachConnector(ctx context.Context, req *connect.Request[v1.
 	return c.attachConnector.CallUnary(ctx, req)
 }
 
+// CreateBotConnector calls silo.v1.UI.CreateBotConnector.
+func (c *uIClient) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return c.createBotConnector.CallUnary(ctx, req)
+}
+
 // DetachConnector calls silo.v1.UI.DetachConnector.
 func (c *uIClient) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
 	return c.detachConnector.CallUnary(ctx, req)
@@ -690,6 +720,7 @@ type UIHandler interface {
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
+	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
@@ -712,6 +743,7 @@ type UIHandler interface {
 	DeleteConnector(context.Context, *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error)
 	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
 	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	CreateBotConnector(context.Context, *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
@@ -818,6 +850,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UISendProcedure,
 		svc.Send,
 		connect.WithSchema(uIMethods.ByName("Send")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStopRunHandler := connect.NewUnaryHandler(
+		UIStopRunProcedure,
+		svc.StopRun,
+		connect.WithSchema(uIMethods.ByName("StopRun")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIStreamRunHandler := connect.NewServerStreamHandler(
@@ -952,6 +990,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("AttachConnector")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uICreateBotConnectorHandler := connect.NewUnaryHandler(
+		UICreateBotConnectorProcedure,
+		svc.CreateBotConnector,
+		connect.WithSchema(uIMethods.ByName("CreateBotConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIDetachConnectorHandler := connect.NewUnaryHandler(
 		UIDetachConnectorProcedure,
 		svc.DetachConnector,
@@ -1004,6 +1048,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteChatHandler.ServeHTTP(w, r)
 		case UISendProcedure:
 			uISendHandler.ServeHTTP(w, r)
+		case UIStopRunProcedure:
+			uIStopRunHandler.ServeHTTP(w, r)
 		case UIStreamRunProcedure:
 			uIStreamRunHandler.ServeHTTP(w, r)
 		case UIListSecretsProcedure:
@@ -1048,6 +1094,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListBotConnectorsHandler.ServeHTTP(w, r)
 		case UIAttachConnectorProcedure:
 			uIAttachConnectorHandler.ServeHTTP(w, r)
+		case UICreateBotConnectorProcedure:
+			uICreateBotConnectorHandler.ServeHTTP(w, r)
 		case UIDetachConnectorProcedure:
 			uIDetachConnectorHandler.ServeHTTP(w, r)
 		case UIRefreshBotConnectorProcedure:
@@ -1125,6 +1173,10 @@ func (UnimplementedUIHandler) DeleteChat(context.Context, *connect.Request[v1.De
 
 func (UnimplementedUIHandler) Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Send is not implemented"))
+}
+
+func (UnimplementedUIHandler) StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StopRun is not implemented"))
 }
 
 func (UnimplementedUIHandler) StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error {
@@ -1213,6 +1265,10 @@ func (UnimplementedUIHandler) ListBotConnectors(context.Context, *connect.Reques
 
 func (UnimplementedUIHandler) AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AttachConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateBotConnector(context.Context, *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateBotConnector is not implemented"))
 }
 
 func (UnimplementedUIHandler) DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {

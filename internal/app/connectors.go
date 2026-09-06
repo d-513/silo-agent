@@ -19,6 +19,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	siloauth "silo.agent/internal/auth"
+	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/mcpx"
@@ -42,7 +43,7 @@ const (
 func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
 	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
 	var rows []db.Connector
-	a.DB.Order("created_at desc").Find(&rows)
+	a.DB.Where("kind = ?", catalog.KindLibrary).Order("name").Find(&rows)
 	out := &v1.ListConnectorsResponse{}
 	for i := range rows {
 		out.Connectors = append(out.Connectors, protoConnector(&rows[i], admin))
@@ -55,43 +56,12 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 		return nil, err
 	}
 	m := req.Msg
-	if strings.TrimSpace(m.GetName()) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
-	}
-	tr := strings.ToLower(m.GetTransport())
-	if tr == "" {
-		tr = transportHTTP
-	}
-	if tr == transportSTDIO {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stdio is not available yet"))
-	}
-	if tr != transportHTTP {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transport must be http"))
-	}
-	au := strings.ToLower(m.GetAuth())
-	if au == "" {
-		au = authNone
-	}
-	if au != authNone && au != authOAuth {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auth must be none or oauth"))
-	}
-	if tr == transportHTTP && strings.TrimSpace(m.GetHttpUrl()) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("http_url required"))
-	}
-	hdr, err := mergeHeaders("", m.GetHeaders(), true)
+	row, err := parseConnector(m.GetName(), m.GetDescription(), m.GetTransport(), m.GetHttpUrl(), m.GetAuth(), m.GetDefaultMode(), m.GetImage(), m.GetImageType(), m.GetHeaders(), true)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	img, imgType, err := clipImage(m.GetImage(), m.GetImageType())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	row := db.Connector{
-		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(m.GetName()),
-		Description: strings.TrimSpace(m.GetDescription()), Image: img, ImageType: imgType,
-		Transport: tr, HTTPURL: strings.TrimSpace(m.GetHttpUrl()), Auth: au,
-		HeadersJSON: hdr, DefaultMode: security.Rule(m.GetDefaultMode()), CreatedAt: time.Now(),
-	}
+	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
+	row.Kind = catalog.KindLibrary
 	if err := a.DB.Create(&row).Error; err != nil {
 		return nil, err
 	}
@@ -99,15 +69,18 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 }
 
 func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
-	if err := requireAdmin(ctx); err != nil {
-		return nil, err
-	}
 	var row db.Connector
 	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
+	if err := a.editConnector(ctx, &row); err != nil {
+		return nil, err
+	}
 	m := req.Msg
 	if n := strings.TrimSpace(m.GetName()); n != "" {
+		if row.Kind == catalog.KindCustom && a.slugTaken(row.BotID, n, row.ID) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
+		}
 		row.Name = n
 	}
 	row.Description = strings.TrimSpace(m.GetDescription())
@@ -141,6 +114,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		}
 		row.HeadersJSON = hdr
 	}
+	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), false)
 	if m.GetClearImage() {
 		row.Image, row.ImageType = nil, ""
 	} else if len(m.GetImage()) > 0 {
@@ -158,8 +132,14 @@ func (a *App) DeleteConnector(ctx context.Context, req *connect.Request[v1.Delet
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	a.DB.Where("connector_id = ?", req.Msg.GetId()).Delete(&db.BotConnector{})
-	a.DB.Where("id = ?", req.Msg.GetId()).Delete(&db.Connector{})
+	var row db.Connector
+	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if row.Kind == catalog.KindCustom {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("remove a custom connector from the Bot"))
+	}
+	a.DB.Delete(&row)
 	return connect.NewResponse(&v1.DeleteConnectorResponse{}), nil
 }
 
@@ -175,44 +155,83 @@ func (a *App) ListBotConnectors(ctx context.Context, req *connect.Request[v1.Lis
 		if a.DB.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
 			continue
 		}
-		out.Connectors = append(out.Connectors, &v1.BotConnector{
-			Id: rows[i].ID, BotId: rows[i].BotID, AuthStatus: rows[i].AuthStatus, LastError: rows[i].LastError,
-			Connector: protoConnector(&c, false),
-		})
+		out.Connectors = append(out.Connectors, protoBotConnector(&rows[i], &c, true))
 	}
 	return connect.NewResponse(out), nil
 }
 
 func (a *App) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	botID := req.Msg.GetBotId()
+	if _, err := a.ownBot(ctx, botID); err != nil {
 		return nil, err
 	}
-	var c db.Connector
-	if err := a.DB.First(&c, "id = ?", req.Msg.GetConnectorId()).Error; err != nil {
+	var lib db.Connector
+	if err := a.DB.First(&lib, "id = ? AND kind = ?", req.Msg.GetConnectorId(), catalog.KindLibrary).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	st := statusNone
-	if c.Auth == authOAuth {
-		st = statusNeedsAuth
-	}
-	row := db.BotConnector{
-		ID: ids.New(), BotID: req.Msg.GetBotId(), ConnectorID: c.ID,
-		AuthStatus: st, CreatedAt: time.Now(),
-	}
-	if err := a.DB.Create(&row).Error; err != nil {
+	if a.attachedFrom(botID, lib.ID) {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
 	}
-	if c.Auth != authOAuth {
-		if err := a.refreshTools(ctx, &row, &c); err != nil {
-			row.AuthStatus = statusErr
-			row.LastError = err.Error()
-			a.DB.Save(&row)
-		}
+	out, err := a.putBotConnector(ctx, botID, cloneLibrary(&lib, botID))
+	if err != nil {
+		return nil, err
 	}
-	return connect.NewResponse(&v1.BotConnector{
-		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-		Connector: protoConnector(&c, false),
-	}), nil
+	return connect.NewResponse(out), nil
+}
+
+func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	m := req.Msg
+	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
+		return nil, err
+	}
+	from := strings.TrimSpace(m.GetSourceId())
+	row, err := parseConnector(m.GetName(), m.GetDescription(), m.GetTransport(), m.GetHttpUrl(), m.GetAuth(), m.GetDefaultMode(), m.GetImage(), m.GetImageType(), m.GetHeaders(), from == "")
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
+	if err := a.overlayLibrary(m.GetBotId(), from, &row, m.GetHeaders()); err != nil {
+		return nil, err
+	}
+	out, err := a.putBotConnector(ctx, m.GetBotId(), row)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (a *App) overlayLibrary(botID, src string, row *db.Connector, headers []*v1.HeaderInput) error {
+	if src == "" {
+		return nil
+	}
+	var lib db.Connector
+	if err := a.DB.First(&lib, "id = ? AND kind = ?", src, catalog.KindLibrary).Error; err != nil {
+		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
+	}
+	if a.attachedFrom(botID, lib.ID) {
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
+	}
+	row.SourceID = lib.ID
+	if len(row.Image) == 0 {
+		row.Image = append([]byte(nil), lib.Image...)
+		row.ImageType = lib.ImageType
+	}
+	if row.OAuthClientID == "" {
+		row.OAuthClientID = lib.OAuthClientID
+	}
+	if row.OAuthClientSecret == "" {
+		row.OAuthClientSecret = lib.OAuthClientSecret
+	}
+	if len(headers) == 0 {
+		row.HeadersJSON = lib.HeadersJSON
+		return nil
+	}
+	hdr, err := mergeHeaders(lib.HeadersJSON, headers, false)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	row.HeadersJSON = hdr
+	return nil
 }
 
 func (a *App) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
@@ -224,6 +243,10 @@ func (a *App) DetachConnector(ctx context.Context, req *connect.Request[v1.Detac
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	a.dropMCP(row.ID)
+	var c db.Connector
+	if a.DB.First(&c, "id = ?", row.ConnectorID).Error == nil && c.Kind == catalog.KindCustom {
+		a.DB.Delete(&c)
+	}
 	a.DB.Delete(&row)
 	go a.pushTools(row.BotID)
 	return connect.NewResponse(&v1.DetachConnectorResponse{}), nil
@@ -276,6 +299,7 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 	}
 	redirect := a.publicURL(ctx) + "/oauth/callback"
 	urlCh := make(chan string, 1)
+	errCh := make(chan error, 1)
 	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
 	h, err := a.oauthHandler(&c, &row, redirect, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 		u := args.URL
@@ -303,7 +327,12 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 		defer cancel()
 		sess, err := mcpx.Connect(cctx, a.dial(&c, h))
 		if err != nil {
+			err = wrapOAuth(err)
 			a.DB.Model(&row).Updates(map[string]any{"auth_status": statusErr, "last_error": err.Error()})
+			select {
+			case errCh <- err:
+			default:
+			}
 			return
 		}
 		defer sess.Close()
@@ -316,6 +345,8 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 	select {
 	case u := <-urlCh:
 		return connect.NewResponse(&v1.StartConnectorAuthResponse{AuthorizeUrl: u}), nil
+	case err := <-errCh:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-time.After(20 * time.Second):
@@ -469,7 +500,7 @@ func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 		a.DB.Create(&ap)
 		ch := make(chan string, 1)
 		a.mu.Lock()
-		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID}
+		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
 		a.setBotStatus(bot.ID, "needs_you")
 		a.emit(bot.ID, a.chatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
@@ -611,7 +642,7 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 	}
 	sess, err := mcpx.Connect(ctx, a.dial(c, h))
 	if err != nil {
-		return nil, err
+		return nil, wrapOAuth(err)
 	}
 	a.mu.Lock()
 	if old := a.mcp[row.ID]; old != nil {
@@ -659,6 +690,9 @@ func (a *App) oauthHandler(c *db.Connector, row *db.BotConnector, redirect strin
 			src := oc.TokenSource(ctx, tok)
 			return persistSrc{inner: src, save: func(t *oauth2.Token) { a.saveToken(row.ID, t) }}, nil
 		},
+	}
+	if creds := preregisteredClient(c); creds != nil {
+		cfg.PreregisteredClient = creds
 	}
 	if tok := tokenFromJSON(row.TokenJSON); tok != nil {
 		cfg.InitialTokenSource = persistSrc{
@@ -733,20 +767,210 @@ func (a *App) redirectURL() string {
 	return "http://127.0.0.1:5173/oauth/callback"
 }
 
+func (a *App) initConnectors() {
+	if a.DB == nil {
+		return
+	}
+	a.DB.Model(&db.Connector{}).Where("kind = '' OR kind IS NULL").Update("kind", catalog.KindLibrary)
+	var links []db.BotConnector
+	a.DB.Find(&links)
+	for i := range links {
+		var c db.Connector
+		if a.DB.First(&c, "id = ?", links[i].ConnectorID).Error != nil {
+			continue
+		}
+		if c.Kind == catalog.KindCustom && c.BotID != "" {
+			continue
+		}
+		clone := cloneLibrary(&c, links[i].BotID)
+		if err := a.DB.Create(&clone).Error; err != nil {
+			log.Printf("connector backfill bot=%s: %v", links[i].BotID, err)
+			continue
+		}
+		links[i].ConnectorID = clone.ID
+		a.DB.Save(&links[i])
+	}
+	if a.Cfg != nil {
+		if err := catalog.Seed(a.DB); err != nil {
+			log.Printf("connector library seed: %v", err)
+		}
+	}
+}
+
+func parseConnector(name, desc, transport, httpURL, auth, mode string, image []byte, imageType string, headers []*v1.HeaderInput, requireHeaderValues bool) (db.Connector, error) {
+	if strings.TrimSpace(name) == "" {
+		return db.Connector{}, errors.New("name required")
+	}
+	tr := strings.ToLower(transport)
+	if tr == "" {
+		tr = transportHTTP
+	}
+	if tr == transportSTDIO {
+		return db.Connector{}, errors.New("stdio is not available yet")
+	}
+	if tr != transportHTTP {
+		return db.Connector{}, errors.New("transport must be http")
+	}
+	au := strings.ToLower(auth)
+	if au == "" {
+		au = authNone
+	}
+	if au != authNone && au != authOAuth {
+		return db.Connector{}, errors.New("auth must be none or oauth")
+	}
+	if strings.TrimSpace(httpURL) == "" {
+		return db.Connector{}, errors.New("http_url required")
+	}
+	hdr, err := mergeHeaders("", headers, requireHeaderValues)
+	if err != nil {
+		return db.Connector{}, err
+	}
+	img, imgType, err := clipImage(image, imageType)
+	if err != nil {
+		return db.Connector{}, err
+	}
+	return db.Connector{
+		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(name),
+		Description: strings.TrimSpace(desc), Image: img, ImageType: imgType,
+		Transport: tr, HTTPURL: strings.TrimSpace(httpURL), Auth: au,
+		HeadersJSON: hdr, DefaultMode: security.Rule(mode), CreatedAt: time.Now(),
+	}, nil
+}
+
+func cloneLibrary(lib *db.Connector, botID string) db.Connector {
+	return db.Connector{
+		ID: ids.New(), Kind: catalog.KindCustom, BotID: botID, SourceID: lib.ID,
+		Type: lib.Type, Name: lib.Name, Description: lib.Description,
+		Image: append([]byte(nil), lib.Image...), ImageType: lib.ImageType,
+		Transport: lib.Transport, HTTPURL: lib.HTTPURL, Auth: lib.Auth,
+		OAuthClientID: lib.OAuthClientID, OAuthClientSecret: lib.OAuthClientSecret,
+		HeadersJSON: lib.HeadersJSON, DefaultMode: lib.DefaultMode, CreatedAt: time.Now(),
+	}
+}
+
+func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {
+	if a.slugTaken(botID, c.Name, c.ID) {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
+	}
+	c.Kind = catalog.KindCustom
+	c.BotID = botID
+	if c.ID == "" {
+		c.ID = ids.New()
+	}
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = time.Now()
+	}
+	if err := a.DB.Create(&c).Error; err != nil {
+		return nil, err
+	}
+	st := statusNone
+	if c.Auth == authOAuth {
+		st = statusNeedsAuth
+	}
+	row := db.BotConnector{
+		ID: ids.New(), BotID: botID, ConnectorID: c.ID,
+		AuthStatus: st, CreatedAt: time.Now(),
+	}
+	if err := a.DB.Create(&row).Error; err != nil {
+		a.DB.Delete(&c)
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
+	}
+	if c.Auth != authOAuth {
+		if err := a.refreshTools(ctx, &row, &c); err != nil {
+			row.AuthStatus = statusErr
+			row.LastError = err.Error()
+			a.DB.Save(&row)
+		}
+	}
+	return protoBotConnector(&row, &c, true), nil
+}
+
+func (a *App) attachedFrom(botID, libraryID string) bool {
+	var n int64
+	a.DB.Model(&db.Connector{}).Where("bot_id = ? AND source_id = ?", botID, libraryID).Count(&n)
+	return n > 0
+}
+
+func (a *App) slugTaken(botID, name, exceptID string) bool {
+	slug := toolsgen.Slug(name)
+	var rows []db.Connector
+	a.DB.Where("bot_id = ?", botID).Find(&rows)
+	for i := range rows {
+		if rows[i].ID != exceptID && toolsgen.Slug(rows[i].Name) == slug {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) editConnector(ctx context.Context, row *db.Connector) error {
+	if row.Kind == catalog.KindCustom && row.BotID != "" {
+		_, err := a.ownBot(ctx, row.BotID)
+		return err
+	}
+	return requireAdmin(ctx)
+}
+
+func protoBotConnector(row *db.BotConnector, c *db.Connector, keys bool) *v1.BotConnector {
+	return &v1.BotConnector{
+		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
+		Connector: protoConnector(c, keys),
+	}
+}
+
 func protoConnector(c *db.Connector, admin bool) *v1.Connector {
+	kind := c.Kind
+	if kind == "" {
+		kind = catalog.KindLibrary
+	}
 	out := &v1.Connector{
 		Id: c.ID, Type: c.Type, Name: c.Name, Description: c.Description,
 		HasImage: len(c.Image) > 0, Transport: c.Transport, HttpUrl: c.HTTPURL, Auth: c.Auth,
 		DefaultMode: security.Rule(c.DefaultMode), CreatedAt: c.CreatedAt.Format(time.RFC3339),
+		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),
 	}
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
 	for k := range hdr {
 		out.HeaderKeys = append(out.HeaderKeys, &v1.HeaderKey{Name: k})
 	}
-	if !admin {
+	if admin {
+		out.OauthClientId = c.OAuthClientID
+		out.HasOauthClientSecret = c.OAuthClientSecret != ""
+	} else {
 		out.HeaderKeys = nil
 	}
 	return out
+}
+
+func applyOAuthClient(c *db.Connector, id, secret string, replaceSecret bool) {
+	c.OAuthClientID = strings.TrimSpace(id)
+	if replaceSecret || secret != "" {
+		c.OAuthClientSecret = secret
+	}
+}
+
+// preregisteredClient is the MCP-spec fallback when the authorization server
+// has no registration_endpoint (GitHub) and no CIMD.
+func preregisteredClient(c *db.Connector) *oauthex.ClientCredentials {
+	id := strings.TrimSpace(c.OAuthClientID)
+	if id == "" {
+		return nil
+	}
+	out := &oauthex.ClientCredentials{ClientID: id}
+	if s := c.OAuthClientSecret; s != "" {
+		out.ClientSecretAuth = &oauthex.ClientSecretAuth{ClientSecret: s}
+	}
+	return out
+}
+
+func wrapOAuth(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "no configured client registration methods") {
+		return fmt.Errorf("%w — this server does not register clients automatically; set an OAuth Client ID and Secret on the connector", err)
+	}
+	return err
 }
 
 func clipImage(b []byte, typ string) ([]byte, string, error) {
