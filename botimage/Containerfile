@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-requests python3-matplotlib python3-numpy python3-pil \
     python3-bs4 python3-lxml python3-yaml python3-pandas \
     xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
+    scrot xdotool imagemagick \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
     ca-certificates fonts-liberation sudo \
     && rm -rf /var/lib/apt/lists/* \

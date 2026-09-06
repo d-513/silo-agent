@@ -266,6 +266,16 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.syncTools(b.SyncTools.GetStubs())
 	case *v1.Cmd_EnsureChrome:
 		return w.ensureChrome(ctx)
+	case *v1.Cmd_Look:
+		return w.look(ctx)
+	case *v1.Cmd_Click:
+		return w.click(ctx, b.Click)
+	case *v1.Cmd_Type:
+		return w.typeText(ctx, b.Type.GetText())
+	case *v1.Cmd_Key:
+		return w.key(ctx, b.Key.GetName())
+	case *v1.Cmd_Scroll:
+		return w.scroll(ctx, b.Scroll)
 	default:
 		return "", errors.New("unknown cmd")
 	}

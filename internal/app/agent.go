@@ -33,7 +33,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Scratch files go in /workspace/bot. User-facing files go in /workspace (not bot/). Browser: chrome_page(); screenshot to /workspace/bot/page.png, present bot/page.png (you see the pixels; the human gets a collapsed row), one action, screenshot+present again. Do not oneshot cookies+search. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
+		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Scratch files go in /workspace/bot. User-facing files go in /workspace (not bot/). GUI clicks: look/click/type/key/scroll. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -127,6 +127,62 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 				"path": map[string]any{"type": "string"},
 			},
 			"required": []string{"path"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "look",
+		Description: openai.String("Primary GUI: screenshot the 1280×720 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels."),
+		Parameters: openai.FunctionParameters{
+			"type":       "object",
+			"properties": map[string]any{},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "click",
+		Description: openai.String("Click the desktop at screenshot pixels. Image is 1280×720. Optional button: left (default), right, double."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"x":      map[string]any{"type": "integer"},
+				"y":      map[string]any{"type": "integer"},
+				"button": map[string]any{"type": "string", "enum": []string{"left", "right", "double"}},
+			},
+			"required": []string{"x", "y"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "type",
+		Description: openai.String("Type Unicode into the focused window. Click a field first."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"text": map[string]any{"type": "string"},
+			},
+			"required": []string{"text"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "key",
+		Description: openai.String("Press a named key on the desktop (Return, Tab, ctrl+l)."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{"type": "string"},
+			},
+			"required": []string{"name"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "scroll",
+		Description: openai.String("Scroll at screenshot pixels. dy is wheel steps (negative up, positive down)."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"x":  map[string]any{"type": "integer"},
+				"y":  map[string]any{"type": "integer"},
+				"dy": map[string]any{"type": "integer"},
+			},
+			"required": []string{"x", "y", "dy"},
 		},
 	}),
 }
@@ -261,11 +317,10 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			a.emit(botID, chatID, runID, "tool_result", out, fn.Name)
 			msgs = append(msgs, openai.ToolMessage(out, tc.ID))
 			if img != "" {
+				text, part := visionImage(fn.Name, img)
 				msgs = append(msgs, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
-					openai.TextContentPart("You presented this image. Read the visible labels before you act."),
-					openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
-						URL: img, Detail: "high",
-					}),
+					openai.TextContentPart(text),
+					openai.ImageContentPart(part),
 				}))
 			}
 			if fn.Name == "soul" || fn.Name == "memory" {
@@ -423,6 +478,20 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		out, err := a.execDoc(botID, name, args)
 		return out, "", err
 	}
+	if name == "click" || name == "scroll" {
+		if err := screenPoint(num(args, "x"), num(args, "y")); err != nil {
+			return "", "", err
+		}
+	}
+	if name == "type" && str("text") == "" {
+		return "", "", fmt.Errorf("text required")
+	}
+	if name == "key" && str("name") == "" {
+		return "", "", fmt.Errorf("key required")
+	}
+	if name == "scroll" && num(args, "dy") == 0 {
+		return "", "", fmt.Errorf("dy required")
+	}
 	id := ids.New()
 	var cmd *v1.Cmd
 	switch name {
@@ -457,6 +526,20 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 			return "", "", fmt.Errorf("path required")
 		}
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}}
+	case "look":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
+	case "click":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Click{Click: &v1.ClickCmd{
+			X: int32(num(args, "x")), Y: int32(num(args, "y")), Button: str("button"),
+		}}}
+	case "type":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Type{Type: &v1.TypeCmd{Text: str("text")}}}
+	case "key":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Key{Key: &v1.KeyCmd{Name: str("name")}}}
+	case "scroll":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Scroll{Scroll: &v1.ScrollCmd{
+			X: int32(num(args, "x")), Y: int32(num(args, "y")), Dy: int32(num(args, "dy")),
+		}}}
 	default:
 		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
@@ -484,9 +567,38 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		return capHits(out, max), "", nil
 	case "present":
 		return presentAck(path, out), presentImageURL(path, out), nil
+	case "look":
+		return lookAck(out), presentImageURL(lookPath, out), nil
 	default:
 		return out, "", nil
 	}
+}
+
+const (
+	screenW      = 1280
+	screenH      = 720
+	lookPath     = "bot/screen.png"
+	lookCoordLaw = "Image is 1280×720. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
+)
+
+func screenPoint(x, y int) error {
+	if x < 0 || x >= screenW || y < 0 || y >= screenH {
+		return fmt.Errorf("(%d,%d) is outside 1280×720", x, y)
+	}
+	return nil
+}
+
+func visionImage(tool, url string) (string, openai.ChatCompletionContentPartImageImageURLParam) {
+	part := openai.ChatCompletionContentPartImageImageURLParam{URL: url}
+	if tool == "look" {
+		return lookCoordLaw, part
+	}
+	part.Detail = "high"
+	return "You presented this image. Read the visible labels before you act.", part
+}
+
+func lookAck(raw string) string {
+	return lookCoordLaw + " " + presentAck(lookPath, raw)
 }
 
 func presentImageURL(path, raw string) string {

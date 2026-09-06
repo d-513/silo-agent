@@ -5,9 +5,12 @@ import {
   Code,
   DownloadSimple,
   File,
+  Eye,
   FrameCorners,
   GitDiff,
+  Keyboard,
   MagnifyingGlass,
+  Mouse,
   Notebook,
   PencilSimple,
   Plugs,
@@ -202,6 +205,16 @@ function toolMeta(name: string) {
       return { label: "MEMORY", Icon: Notebook };
     case "present":
       return { label: "present", Icon: FrameCorners };
+    case "look":
+      return { label: "look", Icon: Eye };
+    case "click":
+      return { label: "click", Icon: Mouse };
+    case "type":
+      return { label: "type", Icon: Keyboard };
+    case "key":
+      return { label: "key", Icon: Keyboard };
+    case "scroll":
+      return { label: "scroll", Icon: Mouse };
     default:
       return { label: name, Icon: Code };
   }
@@ -221,6 +234,12 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
   const append = asStr(a.append);
   const offset = a.offset;
   const limit = a.limit;
+  const x = a.x;
+  const y = a.y;
+  const button = asStr(a.button);
+  const typeText = asStr(a.text);
+  const keyName = asStr(a.name);
+  const dy = a.dy;
 
   let body: JSX.Element | null = null;
   if (name === "exec_python" && code) {
@@ -265,6 +284,23 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
     }
   } else if (name === "present" && path) {
     body = <div className="font-mono text-[13px]">{path}</div>;
+  } else if (name === "click" && (x != null || y != null)) {
+    body = (
+      <div className="font-mono text-[13px]">
+        {asStr(x)},{asStr(y)}
+        {button && button !== "left" ? ` ${button}` : ""}
+      </div>
+    );
+  } else if (name === "scroll" && (x != null || y != null || dy != null)) {
+    body = (
+      <div className="font-mono text-[13px]">
+        {asStr(x)},{asStr(y)} dy {asStr(dy)}
+      </div>
+    );
+  } else if (name === "type" && typeText) {
+    body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{typeText}</div>;
+  } else if (name === "key" && keyName) {
+    body = <div className="font-mono text-[13px]">{keyName}</div>;
   } else if (name === "grep" && (pattern || path || include)) {
     body = (
       <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
@@ -284,9 +320,9 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
 
   if (body) return body;
   if (running && !Object.keys(a).length) return null;
-  const text = Object.keys(a).length ? JSON.stringify(a, null, 2) : prettyJson(args);
-  if (!text) return null;
-  return <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{text}</pre>;
+  const dump = Object.keys(a).length ? JSON.stringify(a, null, 2) : prettyJson(args);
+  if (!dump) return null;
+  return <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{dump}</pre>;
 }
 
 function ToolResult({ text }: { text: string }) {
@@ -468,6 +504,26 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
         }
         if (b.type === "tool") {
           const path = asStr(parseToolArgs(b.args).path);
+          if (b.name === "look") {
+            return (
+              <ToolFold
+                key={b.key}
+                summary={
+                  <>
+                    <Eye size={14} />
+                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                    {b.running ? "Looking at" : "Looked at"} screen
+                  </>
+                }
+              >
+                {!b.running && b.result && !b.result.startsWith("error:") ? (
+                  <PresentFile botId={botId} path="bot/screen.png" quiet />
+                ) : b.result ? (
+                  <ToolResult text={b.result} />
+                ) : null}
+              </ToolFold>
+            );
+          }
           if (b.name === "present" && path && isBotScratch(path)) {
             const name = path.split("/").filter(Boolean).pop() || path;
             return (

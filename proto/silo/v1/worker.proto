@@ -30,6 +30,11 @@ message Cmd {
     PutFileCmd put_file = 14;
     SyncToolsCmd sync_tools = 15;
     EnsureChromeCmd ensure_chrome = 16;
+    LookCmd look = 17;
+    ClickCmd click = 18;
+    TypeCmd type = 19;
+    KeyCmd key = 20;
+    ScrollCmd scroll = 21;
   }
 }
 
@@ -114,6 +119,28 @@ message PutFileCmd {
 }
 
 message EnsureChromeCmd {}
+
+message LookCmd {}
+
+message ClickCmd {
+  int32 x = 1;
+  int32 y = 2;
+  string button = 3;
+}
+
+message TypeCmd {
+  string text = 1;
+}
+
+message KeyCmd {
+  string name = 1;
+}
+
+message ScrollCmd {
+  int32 x = 1;
+  int32 y = 2;
+  int32 dy = 3;
+}
 
 message CmdEvent {
   string id = 1;

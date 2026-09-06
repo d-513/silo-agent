@@ -253,6 +253,7 @@ The Chat tab. Not a marketing chat.
 - Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
 - Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
 - `present`: a user-facing path is the file itself in a folio well (same preview as Files). Not collapsed. A `bot/…` path is scratch — a collapsed “Looked at …” row the human can open. The model still gets image pixels. The model does not retype it.
+- `look`: collapsed “Looked at screen” (same scratch fold as `present bot/…`). Clicks are 1280×720 screenshot pixels.
 - Composer: Cloth well, placeholder “Ask this Bot…”, bindery send. While a run is live, Send becomes Stop (filled square) — `StopRun` cancels that chat’s run, not the Bot.
 
 ### Status lamp

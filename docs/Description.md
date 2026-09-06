@@ -135,11 +135,11 @@ Admin owns a **library** of connector presets (type `mcp` for now), seeded from 
 
 ### Chromium
 
-Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. The model drives that process with one helper: `silo_runtime.chrome_page()` (Playwright `connect_over_cdp`, same window the human sees). Complex pages use Perceive (screenshot + `present`) → Reason → Act (one Playwright step) → Verify (screenshot + `present`). The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. The CP may send `EnsureChrome` first so the thread can show it opened. Do not `playwright install` a second browser. Do not ship `pyautogui`, `xdotool`, or extra CDP wrappers. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
+Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. GUI work uses first-class `look` / `click` / `type` / `key` / `scroll` on the 1280×720 X11 desktop (screenshot pixels = display pixels; no scale) — that is the live click path. Playwright `silo_runtime.chrome_page()` is for page screenshots, mutating displayed HTML, and automated scripts. The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. Do not `playwright install` a second browser. The model must not call `pyautogui` or `xdotool`; the worker may. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
 
-### Computer use (later)
+### Computer use
 
-X11 click/type on the rest of the desktop. Not v1. Chromium is the Playwright loop above.
+`look` grabs `DISPLAY=:1` root to `/workspace/bot/screen.png` and attaches the PNG (no `detail: high`). Coordinate law on every look: image is 1280×720, origin top-left, `click(x,y)` in those pixels. Prompt ladder: look → one act → look. Playwright is screenshots / DOM edits / scripts, not the click loop.
 
 ### Images
 
@@ -154,7 +154,6 @@ v1: session cookie, owner sees their bots, admin sees settings. `User` + `Sessio
 - Wayland
 - Multi-host Docker *UI* (the Worker protocol is already remote-safe)
 - OIDC
-- X11 computer-use loop (Chromium Perceive→Act→Verify is in)
 - STDIO MCP (schema only)
 - Generated tools calling the CP, or a Python ConnectRPC client
 - Provider keys or connector tokens inside the Bot
