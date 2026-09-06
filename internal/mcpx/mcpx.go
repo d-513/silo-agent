@@ -1,23 +1,30 @@
+// Package mcpx dials remote MCP servers over HTTP for the control plane.
+//
+// All protocol logic (server/discover → initialize handshake, session IDs,
+// SSE parsing, Mcp-* headers, reconnects) lives in the official MCP Go SDK.
+// This wrapper only adds what the SDK does not: per-connector headers and the
+// OAuth flow on the HTTP client, canonical URLs, POST-preserving redirects,
+// and the spec's backwards-compatibility fallback to the legacy HTTP+SSE
+// transport for servers that reject the streamable POST.
 package mcpx
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync/atomic"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 )
 
-var ErrSessionGone = errors.New("session not found")
+// ErrSessionGone reports that the server no longer knows our session; callers
+// reconnect and retry once.
+var ErrSessionGone = mcp.ErrSessionMissing
 
 type Dial struct {
 	URL     string
@@ -32,11 +39,7 @@ type Tool struct {
 }
 
 type Session struct {
-	url       string
-	client    *http.Client
-	sessionID string
-	protocol  string
-	seq       atomic.Int64
+	cs *mcp.ClientSession
 }
 
 func Connect(ctx context.Context, d Dial) (*Session, error) {
@@ -47,124 +50,75 @@ func Connect(ctx context.Context, d Dial) (*Session, error) {
 		Transport:     &headerRT{base: http.DefaultTransport, hdr: d.Headers, oauth: d.OAuth},
 		CheckRedirect: keepPOSTRedirect,
 	}
-	var last error
-	for _, u := range endpointURLs(d.URL) {
-		sess, err := handshake(ctx, client, u)
+	urls := endpointURLs(strings.TrimSpace(d.URL))
+	var transports []mcp.Transport
+	for _, u := range urls {
+		transports = append(transports, &mcp.StreamableClientTransport{Endpoint: u, HTTPClient: client})
+	}
+	// Spec backwards compatibility: servers still on the 2024-11-05 HTTP+SSE
+	// transport reject the streamable POST; retry with the legacy transport.
+	for _, u := range urls {
+		transports = append(transports, &mcp.SSEClientTransport{Endpoint: u, HTTPClient: client})
+	}
+	var first error
+	for _, t := range transports {
+		cs, err := mcp.NewClient(&mcp.Implementation{Name: "silo", Version: "v1"}, nil).Connect(ctx, t, nil)
 		if err == nil {
-			return sess, nil
+			return &Session{cs: cs}, nil
 		}
-		last = err
-		if !isMissingSession(err) {
-			return nil, err
+		if first == nil {
+			first = err
+		}
+		if ctx.Err() != nil {
+			break
 		}
 	}
-	return nil, last
-}
-
-func handshake(ctx context.Context, client *http.Client, endpoint string) (*Session, error) {
-	s := &Session{url: endpoint, client: client, protocol: "2025-03-26"}
-	raw, hdr, err := s.call(ctx, "initialize", map[string]any{
-		"protocolVersion": s.protocol,
-		"capabilities":    map[string]any{},
-		"clientInfo":      map[string]any{"name": "silo", "version": "v1"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("initialize: %w", err)
-	}
-	if sid := hdr.Get("Mcp-Session-Id"); sid != "" {
-		s.sessionID = sid
-	}
-	var ir struct {
-		ProtocolVersion string `json:"protocolVersion"`
-	}
-	_ = json.Unmarshal(raw, &ir)
-	if ir.ProtocolVersion != "" {
-		s.protocol = ir.ProtocolVersion
-	}
-	_ = s.notify(ctx, "notifications/initialized", map[string]any{})
-	return s, nil
+	return nil, first
 }
 
 func (s *Session) Close() error {
-	if s == nil || s.sessionID == "" {
+	if s == nil || s.cs == nil {
 		return nil
 	}
-	req, err := http.NewRequest(http.MethodDelete, s.url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Mcp-Session-Id", s.sessionID)
-	if s.protocol != "" {
-		req.Header.Set("Mcp-Protocol-Version", s.protocol)
-	}
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-	return nil
+	return s.cs.Close()
 }
 
 func ListAll(ctx context.Context, sess *Session) ([]Tool, error) {
 	var out []Tool
-	var cursor string
-	for {
-		params := map[string]any{}
-		if cursor != "" {
-			params["cursor"] = cursor
-		}
-		raw, _, err := sess.call(ctx, "tools/list", params)
+	for t, err := range sess.cs.Tools(ctx, nil) {
 		if err != nil {
 			return nil, err
 		}
-		var res struct {
-			Tools      []Tool `json:"tools"`
-			NextCursor string `json:"nextCursor"`
-		}
-		if err := json.Unmarshal(raw, &res); err != nil {
-			return nil, err
-		}
-		out = append(out, res.Tools...)
-		if res.NextCursor == "" {
-			return out, nil
-		}
-		cursor = res.NextCursor
+		out = append(out, Tool{Name: t.Name, Description: t.Description, InputSchema: t.InputSchema})
 	}
+	return out, nil
 }
 
 func Call(ctx context.Context, sess *Session, name string, args map[string]any) (string, error) {
 	if args == nil {
 		args = map[string]any{}
 	}
-	raw, _, err := sess.call(ctx, "tools/call", map[string]any{"name": name, "arguments": args})
+	res, err := sess.cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
 	if err != nil {
 		return "", err
 	}
-	var res struct {
-		IsError           bool            `json:"isError"`
-		StructuredContent json.RawMessage `json:"structuredContent"`
-		Content           []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	}
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return string(raw), nil
-	}
 	body := ""
-	if len(res.StructuredContent) > 0 && string(res.StructuredContent) != "null" {
-		body = string(res.StructuredContent)
-	} else {
+	if res.StructuredContent != nil {
+		if b, err := json.Marshal(res.StructuredContent); err == nil && string(b) != "null" {
+			body = string(b)
+		}
+	}
+	if body == "" {
 		var texts []string
 		for _, c := range res.Content {
-			if c.Type == "text" && c.Text != "" {
-				texts = append(texts, c.Text)
+			if t, ok := c.(*mcp.TextContent); ok && t.Text != "" {
+				texts = append(texts, t.Text)
 			}
 		}
 		switch len(texts) {
 		case 0:
-			body = string(raw)
+			b, _ := json.Marshal(res)
+			body = string(b)
 		case 1:
 			body = texts[0]
 		default:
@@ -178,152 +132,28 @@ func Call(ctx context.Context, sess *Session, name string, args map[string]any) 
 	return body, nil
 }
 
-func (s *Session) call(ctx context.Context, method string, params any) (json.RawMessage, http.Header, error) {
-	id := s.seq.Add(1)
-	payload, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params})
-	if err != nil {
-		return nil, nil, err
+// endpointURLs returns the URL plus its trailing-slash twin: some servers
+// only serve one of /mcp and /mcp/ and 404 the other without redirecting.
+func endpointURLs(raw string) []string {
+	out := []string{raw}
+	u, err := url.Parse(raw)
+	if err != nil || u.Path == "" || u.Path == "/" {
+		return out
 	}
-	resp, err := s.post(ctx, payload)
-	if err != nil {
-		return nil, nil, err
+	alt := *u
+	if strings.HasSuffix(u.Path, "/") {
+		alt.Path = strings.TrimSuffix(u.Path, "/")
+	} else {
+		alt.Path += "/"
 	}
-	hdr := resp.Header.Clone()
-	raw, err := readBody(resp)
-	if err != nil {
-		return nil, hdr, err
+	if s := alt.String(); s != raw {
+		out = append(out, s)
 	}
-	if err := httpStatusErr(resp.StatusCode, raw, s.sessionID != ""); err != nil {
-		return nil, hdr, err
-	}
-	var msg struct {
-		Error *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-		Result json.RawMessage `json:"result"`
-	}
-	if err := json.Unmarshal(raw, &msg); err != nil {
-		return nil, hdr, fmt.Errorf("%s: %s", method, truncate(raw))
-	}
-	if msg.Error != nil {
-		return nil, hdr, fmt.Errorf("%s: %s", method, msg.Error.Message)
-	}
-	return msg.Result, hdr, nil
+	return out
 }
 
-func (s *Session) notify(ctx context.Context, method string, params any) error {
-	payload, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
-	if err != nil {
-		return err
-	}
-	resp, err := s.post(ctx, payload)
-	if err != nil {
-		return err
-	}
-	raw, err := readBody(resp)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode == http.StatusAccepted || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
-		return nil
-	}
-	return httpStatusErr(resp.StatusCode, raw, s.sessionID != "")
-}
-
-func (s *Session) post(ctx context.Context, body []byte) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json, text/event-stream")
-	if s.protocol != "" {
-		req.Header.Set("Mcp-Protocol-Version", s.protocol)
-	}
-	if s.sessionID != "" {
-		req.Header.Set("Mcp-Session-Id", s.sessionID)
-	}
-	return s.client.Do(req)
-}
-
-func readBody(resp *http.Response) ([]byte, error) {
-	defer resp.Body.Close()
-	ct := strings.ToLower(resp.Header.Get("Content-Type"))
-	if strings.Contains(ct, "text/event-stream") {
-		sc := bufio.NewScanner(resp.Body)
-		sc.Buffer(make([]byte, 0, 64*1024), 8<<20)
-		var data []string
-		flush := func() []byte {
-			if len(data) == 0 {
-				return nil
-			}
-			b := []byte(strings.Join(data, "\n"))
-			data = nil
-			return b
-		}
-		for sc.Scan() {
-			line := sc.Text()
-			switch {
-			case strings.HasPrefix(line, "data:"):
-				data = append(data, strings.TrimSpace(strings.TrimPrefix(line, "data:")))
-			case line == "":
-				if b := flush(); len(b) > 0 && bytes.Contains(b, []byte(`"jsonrpc"`)) {
-					return b, nil
-				}
-			}
-		}
-		if b := flush(); len(b) > 0 {
-			return b, sc.Err()
-		}
-		return nil, sc.Err()
-	}
-	return io.ReadAll(resp.Body)
-}
-
-func httpStatusErr(code int, raw []byte, hadSession bool) error {
-	if code >= 200 && code < 300 {
-		return nil
-	}
-	if looksHTML(raw) {
-		return fmt.Errorf("http %d: not an MCP endpoint (server returned HTML)", code)
-	}
-	msg := strings.TrimSpace(string(raw))
-	if msg == "" {
-		msg = http.StatusText(code)
-	}
-	if code == http.StatusNotFound && (hadSession || isMissingSession(errors.New(msg))) {
-		return fmt.Errorf("%w: %s", ErrSessionGone, truncate(raw))
-	}
-	return fmt.Errorf("http %d: %s", code, truncate(raw))
-}
-
-func looksHTML(b []byte) bool {
-	s := bytes.ToLower(bytes.TrimSpace(b))
-	return bytes.HasPrefix(s, []byte("<!doctype html")) || bytes.HasPrefix(s, []byte("<html"))
-}
-
-func isMissingSession(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, ErrSessionGone) {
-		return true
-	}
-	return strings.Contains(strings.ToLower(err.Error()), "session not found")
-}
-
-func truncate(b []byte) string {
-	s := strings.TrimSpace(string(b))
-	if len(s) > 300 {
-		return s[:300]
-	}
-	if s == "" {
-		return "(empty)"
-	}
-	return s
-}
-
+// keepPOSTRedirect re-issues the POST body when a server redirects with
+// 301/302 (net/http would downgrade those to GET).
 func keepPOSTRedirect(req *http.Request, via []*http.Request) error {
 	if len(via) >= 8 {
 		return errors.New("too many redirects")
@@ -348,24 +178,10 @@ func keepPOSTRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func endpointURLs(raw string) []string {
-	out := []string{raw}
-	u, err := url.Parse(raw)
-	if err != nil || u.Path == "" || u.Path == "/" {
-		return out
-	}
-	alt := *u
-	if strings.HasSuffix(u.Path, "/") {
-		alt.Path = strings.TrimSuffix(u.Path, "/")
-	} else {
-		alt.Path += "/"
-	}
-	if s := alt.String(); s != raw {
-		out = append(out, s)
-	}
-	return out
-}
-
+// headerRT applies connector headers and the OAuth flow to every request, so
+// both the streamable and the legacy SSE transport get identical auth: bearer
+// token when available, and on 401/403 one Authorize (which may run the
+// interactive flow) followed by one retry.
 type headerRT struct {
 	base  http.RoundTripper
 	hdr   map[string]string
@@ -373,6 +189,43 @@ type headerRT struct {
 }
 
 func (h *headerRT) RoundTrip(req *http.Request) (*http.Response, error) {
+	r, err := h.apply(req)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := h.base.RoundTrip(r)
+	if err != nil {
+		return nil, err
+	}
+	if h.oauth == nil || (resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden) {
+		return resp, nil
+	}
+	// A 401 with an empty body is a challenge: surface the OAuth error, never
+	// swallow it behind "http 401: (empty)". Authorize closes resp.Body.
+	// The OAuth resource identity is the URL without query or fragment: the
+	// query stays on MCP requests (`?codemode=false` selects Cloudflare's full
+	// tool list) but must not leak into `resource=` or .well-known lookups.
+	ar := r.Clone(r.Context())
+	ar.URL.RawQuery, ar.URL.Fragment = "", ""
+	if err := h.oauth.Authorize(r.Context(), ar, resp); err != nil {
+		return nil, fmt.Errorf("oauth: %w", err)
+	}
+	r2, err := h.apply(req)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body != nil {
+		if req.GetBody == nil {
+			return nil, errors.New("oauth retry: request body not replayable")
+		}
+		if r2.Body, err = req.GetBody(); err != nil {
+			return nil, err
+		}
+	}
+	return h.base.RoundTrip(r2)
+}
+
+func (h *headerRT) apply(req *http.Request) (*http.Request, error) {
 	r := req.Clone(req.Context())
 	for k, v := range h.hdr {
 		if k == "" || v == "" {
@@ -383,55 +236,25 @@ func (h *headerRT) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 		r.Header.Set(k, v)
 	}
-	if err := h.bearer(r); err != nil {
-		return nil, err
-	}
-	base := h.base
-	if base == nil {
-		base = http.DefaultTransport
-	}
-	resp, err := base.RoundTrip(r)
-	if err != nil {
-		return nil, err
-	}
-	if h.oauth == nil || (resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden) {
-		return resp, nil
-	}
-	if err := h.oauth.Authorize(r.Context(), r, resp); err != nil {
-		return resp, nil
-	}
-	r2 := req.Clone(req.Context())
-	for k, v := range h.hdr {
-		if k != "" && v != "" {
-			r2.Header.Set(k, v)
-		}
-	}
-	if err := h.bearer(r2); err != nil {
-		return nil, err
-	}
-	return base.RoundTrip(r2)
-}
-
-func (h *headerRT) bearer(r *http.Request) error {
-	if h.oauth == nil {
-		return nil
+	if h.oauth == nil || r.Header.Get("Authorization") != "" {
+		return r, nil
 	}
 	ts, err := h.oauth.TokenSource(r.Context())
 	if err != nil || ts == nil {
-		return err
+		return r, err
 	}
 	tok, err := ts.Token()
 	if err != nil {
 		var retrieveErr *oauth2.RetrieveError
 		if errors.As(err, &retrieveErr) && retrieveErr.ErrorCode == "invalid_grant" {
-			return nil
+			return r, nil // expired refresh token: go unauthenticated, the 401 re-runs Authorize
 		}
-		return err
+		return nil, err
 	}
-	if tok != nil && tok.AccessToken != "" && r.Header.Get("Authorization") == "" {
+	if tok.AccessToken != "" {
 		r.Header.Set("Authorization", "Bearer "+tok.AccessToken)
 	}
-	return nil
+	return r, nil
 }
 
 func HeadersFromJSON(raw string) (map[string]string, error) {

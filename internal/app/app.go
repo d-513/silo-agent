@@ -24,8 +24,6 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/masker"
 	"silo.agent/internal/mcpx"
-
-	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 type ctxKey int
@@ -114,7 +112,7 @@ type App struct {
 	cmdRun    map[string]string
 	runs      map[string]*liveRun
 	mask      map[string]*masker.Masker
-	oauth     map[string]chan *mcpauth.AuthorizationResult
+	oauth     map[string]*oauthWait
 	mcp       map[string]*mcpx.Session
 	lifecycle sync.Map
 }
@@ -130,7 +128,7 @@ func New(cfg *config.Config, gdb *gorm.DB, eng dockerx.Host) *App {
 		cmdRun:    map[string]string{},
 		runs:      map[string]*liveRun{},
 		mask:      map[string]*masker.Masker{},
-		oauth:     map[string]chan *mcpauth.AuthorizationResult{},
+		oauth:     map[string]*oauthWait{},
 		mcp:       map[string]*mcpx.Session{},
 	}
 	a.recoverOrphans()

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	v1 "silo.agent/gen/silo/v1"
 )
@@ -217,9 +218,17 @@ func funcDoc(desc, action string, sch jsonSchema) string {
 	}
 	out := b.String()
 	if len(out) > 2500 {
-		out = out[:2500] + "…"
+		cut := 2500
+		for cut > 0 && !utf8.RuneStart(out[cut]) {
+			cut--
+		}
+		out = out[:cut] + "…"
 	}
-	return strings.ReplaceAll(out, `"""`, `'''`)
+	// Escape for a """…""" literal: a lone trailing `"` or an embedded `"""`
+	// (or a stray backslash) is a SyntaxError that kills the whole package
+	// import. Escaped quotes render identically in help()/getdoc.
+	out = strings.ReplaceAll(out, `\`, `\\`)
+	return strings.ReplaceAll(out, `"`, `\"`)
 }
 
 func enumNote(xs []any) string {

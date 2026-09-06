@@ -2,10 +2,13 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 )
@@ -114,5 +117,24 @@ func TestMergeHeadersKeepsSecret(t *testing.T) {
 	}
 	if !strings.Contains(old, `"A":"one"`) || !strings.Contains(old, `"B":"two"`) {
 		t.Fatal(old)
+	}
+}
+
+func TestOriginOf(t *testing.T) {
+	if got := originOf("https://mcp.cloudflare.com/authorize?x=1"); got != "https://mcp.cloudflare.com" {
+		t.Fatal(got)
+	}
+}
+
+func TestOAuthCallbackFillsMissingIss(t *testing.T) {
+	a := testApp(t, nil)
+	ch := make(chan *mcpauth.AuthorizationResult, 1)
+	a.oauth["st"] = &oauthWait{ch: ch, issuer: "https://mcp.cloudflare.com"}
+	r := httptest.NewRequest(http.MethodGet, "/oauth/callback?code=abc&state=st", nil)
+	w := httptest.NewRecorder()
+	a.handleOAuthCallback(w, r)
+	res := <-ch
+	if res.Code != "abc" || res.Iss != "https://mcp.cloudflare.com" {
+		t.Fatalf("%+v", res)
 	}
 }

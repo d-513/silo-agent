@@ -2,7 +2,7 @@ package mcpx
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -10,73 +10,47 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/auth"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/oauth2"
 )
 
-func fakeMCP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "session not found", http.StatusNotFound)
-		return
-	}
-	raw, _ := io.ReadAll(r.Body)
-	var msg struct {
-		JSONRPC string          `json:"jsonrpc"`
-		ID      any             `json:"id"`
-		Method  string          `json:"method"`
-		Params  json.RawMessage `json:"params"`
-	}
-	if json.Unmarshal(raw, &msg) != nil {
-		http.Error(w, "bad json", 400)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	switch msg.Method {
-	case "initialize":
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0", "id": msg.ID,
-			"result": map[string]any{
-				"protocolVersion": "2025-03-26",
-				"capabilities":    map[string]any{"tools": map[string]any{}},
-				"serverInfo":      map[string]any{"name": "fake", "version": "1"},
-			},
-		})
-	case "notifications/initialized":
-		w.WriteHeader(http.StatusAccepted)
-	case "tools/list":
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0", "id": msg.ID,
-			"result": map[string]any{
-				"tools": []map[string]any{{
-					"name":        "echo",
-					"description": "echo",
-					"inputSchema": map[string]any{"type": "object", "properties": map[string]any{"q": map[string]any{"type": "string"}}},
-				}},
-			},
-		})
-	case "tools/call":
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0", "id": msg.ID,
-			"result": map[string]any{
-				"content": []map[string]any{{"type": "text", "text": "pong"}},
-			},
-		})
-	default:
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0", "id": msg.ID,
-			"error": map[string]any{"code": -32601, "message": msg.Method},
-		})
-	}
+type echoIn struct {
+	Q string `json:"q"`
 }
 
-func TestConnectListCall(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(fakeMCP))
-	defer srv.Close()
+func testServer() *mcp.Server {
+	srv := mcp.NewServer(&mcp.Implementation{Name: "fake", Version: "1"}, nil)
+	mcp.AddTool(srv, &mcp.Tool{Name: "echo", Description: "echo"},
+		func(context.Context, *mcp.CallToolRequest, echoIn) (*mcp.CallToolResult, any, error) {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "pong"}}}, nil, nil
+		})
+	return srv
+}
+
+func streamableHandler() http.Handler {
+	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return testServer() }, nil)
+}
+
+func testCtx(t *testing.T) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	sess, err := Connect(ctx, Dial{URL: srv.URL})
+	t.Cleanup(cancel)
+	return ctx
+}
+
+func mustConnect(t *testing.T, ctx context.Context, d Dial) *Session {
+	t.Helper()
+	sess, err := Connect(ctx, d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sess.Close()
+	t.Cleanup(func() { sess.Close() })
+	return sess
+}
+
+func checkEcho(t *testing.T, ctx context.Context, sess *Session) {
+	t.Helper()
 	tools, err := ListAll(ctx, sess)
 	if err != nil {
 		t.Fatal(err)
@@ -90,75 +64,154 @@ func TestConnectListCall(t *testing.T) {
 	}
 }
 
+func TestConnectListCall(t *testing.T) {
+	srv := httptest.NewServer(streamableHandler())
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	checkEcho(t, ctx, mustConnect(t, ctx, Dial{URL: srv.URL}))
+}
+
+func TestConnectFallsBackToLegacySSE(t *testing.T) {
+	srv := httptest.NewServer(mcp.NewSSEHandler(func(*http.Request) *mcp.Server { return testServer() }, nil))
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	checkEcho(t, ctx, mustConnect(t, ctx, Dial{URL: srv.URL + "/sse"}))
+}
+
 func TestConnectKeepsPOSTOnRedirect(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/mcp/", http.StatusFound)
 	})
-	mux.HandleFunc("/mcp/", fakeMCP)
+	mux.Handle("/mcp/", streamableHandler())
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	sess, err := Connect(ctx, Dial{URL: srv.URL + "/mcp"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sess.Close()
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	mustConnect(t, ctx, Dial{URL: srv.URL + "/mcp"})
 }
 
 func TestConnectRetriesTrailingSlashOn404(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "session not found", http.StatusNotFound)
+		http.Error(w, "not found", http.StatusNotFound)
 	})
-	mux.HandleFunc("/mcp/", fakeMCP)
+	mux.Handle("/mcp/", streamableHandler())
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	sess, err := Connect(ctx, Dial{URL: srv.URL + "/mcp"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sess.Close()
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	mustConnect(t, ctx, Dial{URL: srv.URL + "/mcp"})
 }
 
-func TestWolframLive(t *testing.T) {
-	d := net.Dialer{Timeout: 3 * time.Second}
-	c, err := d.Dial("tcp", "agenttools.wolfram.com:443")
-	if err != nil {
-		t.Skip("wolfram unreachable: ", err)
-	}
-	_ = c.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-	sess, err := Connect(ctx, Dial{URL: "https://agenttools.wolfram.com/mcp"})
-	if err != nil {
-		t.Skip("wolfram mcp initialize: ", err)
-	}
-	defer sess.Close()
-	tools, err := ListAll(ctx, sess)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tools) == 0 {
-		t.Fatal("no tools")
-	}
-	name := tools[0].Name
-	for _, tl := range tools {
-		if tl.Name == "WolframAlpha" {
-			name = tl.Name
-			break
+func TestConnectSendsDialHeaders(t *testing.T) {
+	var got string
+	inner := streamableHandler()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got == "" {
+			got = r.Header.Get("X-Api-Key")
 		}
+		inner.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	mustConnect(t, ctx, Dial{URL: srv.URL, Headers: map[string]string{"X-Api-Key": "k"}})
+	if got != "k" {
+		t.Fatalf("X-Api-Key=%q", got)
 	}
-	out, err := Call(ctx, sess, name, map[string]any{"query": "2+2"})
-	if err != nil {
+}
+
+func TestHeadersFromJSON(t *testing.T) {
+	h, err := HeadersFromJSON(`{"X-A":"b"}`)
+	if err != nil || h["X-A"] != "b" {
+		t.Fatal(h, err)
+	}
+}
+
+type failAuth struct{}
+
+func (failAuth) TokenSource(context.Context) (oauth2.TokenSource, error) { return nil, nil }
+
+func (failAuth) Authorize(_ context.Context, _ *http.Request, resp *http.Response) error {
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	return errors.New("iss missing")
+}
+
+var _ auth.OAuthHandler = failAuth{}
+
+func TestConnectSurfacesOAuthError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("WWW-Authenticate", `Bearer realm="OAuth"`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	_, err := Connect(ctx, Dial{URL: srv.URL, OAuth: failAuth{}})
+	if err == nil || !strings.Contains(err.Error(), "oauth: iss missing") {
 		t.Fatal(err)
 	}
-	if out == "" {
-		t.Fatal("empty result")
+}
+
+// grantAuth yields a token only after Authorize ran, so the 401 → Authorize →
+// retry path is actually exercised. It records the URL Authorize was given.
+type grantAuth struct {
+	granted *bool
+	authURL *string
+}
+
+func (g grantAuth) TokenSource(context.Context) (oauth2.TokenSource, error) {
+	if !*g.granted {
+		return nil, nil
+	}
+	return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "tok"}), nil
+}
+
+func (g grantAuth) Authorize(_ context.Context, req *http.Request, resp *http.Response) error {
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	*g.granted = true
+	*g.authURL = req.URL.String()
+	return nil
+}
+
+// The retried POST after Authorize must carry a replayed body, not the
+// consumed one from the first attempt.
+func TestOAuthRetryReplaysPOSTBody(t *testing.T) {
+	inner := streamableHandler()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		inner.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	checkEcho(t, ctx, mustConnect(t, ctx, Dial{URL: srv.URL, OAuth: grantAuth{granted: new(bool), authURL: new(string)}}))
+}
+
+// The query string selects server behavior (Cloudflare's ?codemode=false) and
+// must reach the server on every request, but must be stripped from the URL
+// handed to OAuth Authorize, which derives the resource identity from it.
+func TestQueryStaysOnRequestsNotOAuthResource(t *testing.T) {
+	inner := streamableHandler()
+	var query string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		query = r.URL.RawQuery
+		inner.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	ctx := testCtx(t)
+	var authURL string
+	mustConnect(t, ctx, Dial{URL: srv.URL + "/mcp?codemode=false", OAuth: grantAuth{granted: new(bool), authURL: &authURL}})
+	if query != "codemode=false" {
+		t.Fatalf("server saw query %q", query)
+	}
+	if authURL != srv.URL+"/mcp" {
+		t.Fatalf("Authorize saw %q", authURL)
 	}
 }
 
@@ -182,27 +235,5 @@ func TestTwilioDocsLive(t *testing.T) {
 	}
 	if len(tools) == 0 {
 		t.Fatal("no tools")
-	}
-}
-
-func TestHTML404IsNotMCP(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = io.WriteString(w, `<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1></body></html>`)
-	}))
-	defer srv.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := Connect(ctx, Dial{URL: srv.URL + "/mcp"})
-	if err == nil || !strings.Contains(err.Error(), "not an MCP endpoint") {
-		t.Fatal(err)
-	}
-}
-
-func TestHeadersFromJSON(t *testing.T) {
-	h, err := HeadersFromJSON(`{"X-A":"b"}`)
-	if err != nil || h["X-A"] != "b" {
-		t.Fatal(h, err)
 	}
 }

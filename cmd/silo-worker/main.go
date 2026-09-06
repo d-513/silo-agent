@@ -487,24 +487,31 @@ func (w *worker) childEnv(runID string) []string {
 }
 
 func (w *worker) shell(ctx context.Context, runID, command string, chunk func(string)) (string, error) {
-	c := exec.CommandContext(ctx, "/bin/sh", "-lc", command)
-	c.Dir = w.workspace
-	c.Env = w.childEnv(runID)
-	var buf bytes.Buffer
-	c.Stdout = &tee{w: &buf, f: chunk}
-	c.Stderr = c.Stdout
-	err := c.Run()
-	return buf.String(), err
+	return w.runCmd(ctx, runID, chunk, "/bin/sh", "-lc", command)
 }
 
 func (w *worker) python(ctx context.Context, runID, code string, chunk func(string)) (string, error) {
-	c := exec.CommandContext(ctx, "python3", "-c", code)
+	return w.runCmd(ctx, runID, chunk, "python3", "-c", code)
+}
+
+func (w *worker) runCmd(ctx context.Context, runID string, chunk func(string), name string, args ...string) (string, error) {
+	c := exec.CommandContext(ctx, name, args...)
 	c.Dir = w.workspace
 	c.Env = w.childEnv(runID)
 	var buf bytes.Buffer
 	c.Stdout = &tee{w: &buf, f: chunk}
 	c.Stderr = c.Stdout
 	err := c.Run()
+	// A nonzero exit is a result, not a transport failure: the traceback in
+	// the buffer is what the model needs; err.Error() alone is "exit status 1".
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		fmt.Fprintf(&buf, "\nerror: %v", err)
+		if ctx.Err() != nil {
+			fmt.Fprintf(&buf, " (%v)", ctx.Err())
+		}
+		return buf.String(), nil
+	}
 	return buf.String(), err
 }
 

@@ -8,13 +8,13 @@ import (
 
 func TestRelWorkspace(t *testing.T) {
 	cases := map[string]string{
-		"twilio.md":                "twilio.md",
-		"/workspace/twilio.md":     "twilio.md",
-		"workspace/twilio.md":      "twilio.md",
+		"twilio.md":                 "twilio.md",
+		"/workspace/twilio.md":      "twilio.md",
+		"workspace/twilio.md":       "twilio.md",
 		"/workspace/workspace/x.md": "workspace/x.md",
-		"/workspace":               "",
-		"workspace":                "",
-		"notes/a.md":               "notes/a.md",
+		"/workspace":                "",
+		"workspace":                 "",
+		"notes/a.md":                "notes/a.md",
 	}
 	for in, want := range cases {
 		if got := relWorkspace(in); got != want {

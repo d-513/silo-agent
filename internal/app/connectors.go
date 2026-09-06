@@ -281,7 +281,7 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 		u := args.URL
 		if st := queryParam(u, "state"); st != "" {
 			a.mu.Lock()
-			a.oauth[st] = codeCh
+			a.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u)}
 			a.mu.Unlock()
 		}
 		select {
@@ -327,17 +327,21 @@ func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	state := q.Get("state")
 	a.mu.Lock()
-	ch := a.oauth[state]
+	wait := a.oauth[state]
 	delete(a.oauth, state)
 	a.mu.Unlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if ch == nil {
+	if wait == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = io.WriteString(w, "<p>Unknown or expired authorization. You can close this window.</p>")
 		return
 	}
+	iss := q.Get("iss")
+	if iss == "" {
+		iss = wait.issuer
+	}
 	select {
-	case ch <- &mcpauth.AuthorizationResult{Code: q.Get("code"), State: state, Iss: q.Get("iss")}:
+	case wait.ch <- &mcpauth.AuthorizationResult{Code: q.Get("code"), State: state, Iss: iss}:
 	default:
 	}
 	_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
@@ -645,9 +649,10 @@ func (a *App) oauthHandler(c *db.Connector, row *db.BotConnector, redirect strin
 		RequestRefreshToken:      true,
 		DynamicClientRegistrationConfig: &mcpauth.DynamicClientRegistrationConfig{
 			Metadata: &oauthex.ClientRegistrationMetadata{
-				RedirectURIs: []string{redirect},
-				ClientName:   "Silo Agent",
-				GrantTypes:   []string{"authorization_code", "refresh_token"},
+				RedirectURIs:            []string{redirect},
+				ClientName:              "Silo Agent",
+				GrantTypes:              []string{"authorization_code", "refresh_token"},
+				TokenEndpointAuthMethod: "none",
 			},
 		},
 		NewTokenSource: func(ctx context.Context, oc *oauth2.Config, tok *oauth2.Token) (oauth2.TokenSource, error) {
@@ -790,6 +795,19 @@ func queryParam(raw, key string) string {
 		return ""
 	}
 	return u.Query().Get(key)
+}
+
+func originOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+type oauthWait struct {
+	ch     chan *mcpauth.AuthorizationResult
+	issuer string
 }
 
 func tokenFromJSON(raw string) *oauth2.Token {
