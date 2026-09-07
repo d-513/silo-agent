@@ -89,7 +89,7 @@ Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`
 | ---------------------------- | ------------------------------------------------------------------------------------- |
 | Go (CP only)                 | `go build -o bin/silo ./cmd/silo` and restart `./bin/silo`                            |
 | `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                             |
-| `internal/catalog/*`         | same — library presets are `go:embed`’d; restart the CP to seed new keys              |
+| `internal/catalog/*`         | same — library presets and skills are `go:embed`’d; restart the CP to seed new keys |
 | Go (worker)                  | rebuild `bin/silo-worker`, rebuild the image, recreate the Bot container              |
 | `botimage/*`                 | rebuild the image, recreate the Bot container                                         |
 | `proto/**`                   | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
@@ -111,10 +111,11 @@ cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
 internal/app        UI + worker RPCs, agent loop
 internal/prompts    SYSTEM.md (embedded)
+internal/catalog    connector presets + skills (embedded)
 botimage/           Containerfile, start.sh, Thunar, wallpaper, dock
 proto/silo/v1       ui.proto, worker.proto
 gen/                Go stubs (generated)
 web/                Vite + React
 web/src/gen         TS stubs (generated)
-data/               SQLite + per-bot volumes (gitignored)
+data/               SQLite + per-bot volumes + skills (gitignored)
 ```

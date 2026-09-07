@@ -125,7 +125,7 @@ func (a *App) sweepRules(botID string) {
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Secrets, "get").Delete(&db.Rule{})
 	live := map[string]bool{
 		security.Python: true, security.Terminal: true, security.Files: true,
-		security.Desktop: true, security.Bot: true, security.Secrets: true,
+		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true,
 	}
 	secretOK := map[string]bool{}
 	var secs []db.Secret

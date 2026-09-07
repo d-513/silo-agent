@@ -60,6 +60,17 @@ service UI {
   rpc DetachConnector(DetachConnectorRequest) returns (DetachConnectorResponse);
   rpc RefreshBotConnector(RefreshBotConnectorRequest) returns (BotConnector);
   rpc StartConnectorAuth(StartConnectorAuthRequest) returns (StartConnectorAuthResponse);
+
+  rpc SeedConnectors(SeedConnectorsRequest) returns (SeedConnectorsResponse);
+  rpc SeedSkills(SeedSkillsRequest) returns (SeedSkillsResponse);
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  rpc InstallSkill(InstallSkillRequest) returns (InstallSkillResponse);
+  rpc DeleteSkill(DeleteSkillRequest) returns (DeleteSkillResponse);
+  rpc ListBotSkills(ListBotSkillsRequest) returns (ListBotSkillsResponse);
+  rpc SetBotSkill(SetBotSkillRequest) returns (BotSkill);
+  rpc ListSkillFiles(ListSkillFilesRequest) returns (ListFilesResponse);
+  rpc ReadSkillFile(ReadSkillFileRequest) returns (ReadFileResponse);
+  rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
 }
 
 message SignInRequest {
@@ -494,4 +505,92 @@ message StartConnectorAuthRequest {
 
 message StartConnectorAuthResponse {
   string authorize_url = 1;
+}
+
+message SeedConnectorsRequest {}
+
+message SeedConnectorsResponse {}
+
+message SeedSkillsRequest {}
+
+message SeedSkillsResponse {}
+
+message Skill {
+  string name = 1;
+  string description = 2;
+  string kind = 3;
+  string source = 4;
+  bool seeded = 5;
+}
+
+message ListSkillsRequest {
+  string scope = 1;
+}
+
+message ListSkillsResponse {
+  repeated Skill skills = 1;
+}
+
+message InstallSkillRequest {
+  string scope = 1;
+  string url = 2;
+  bytes archive = 3;
+  string filename = 4;
+}
+
+message InstallSkillResponse {
+  repeated string installed = 1;
+  repeated string skipped = 2;
+}
+
+message DeleteSkillRequest {
+  string scope = 1;
+  string name = 2;
+}
+
+message DeleteSkillResponse {}
+
+message BotSkill {
+  string name = 1;
+  string description = 2;
+  string kind = 3;
+  bool enabled = 4;
+  string source = 5;
+}
+
+message ListBotSkillsRequest {
+  string bot_id = 1;
+}
+
+message ListBotSkillsResponse {
+  repeated BotSkill skills = 1;
+}
+
+message SetBotSkillRequest {
+  string bot_id = 1;
+  string kind = 2;
+  string name = 3;
+  bool enabled = 4;
+}
+
+message ListSkillFilesRequest {
+  string scope = 1;
+  string name = 2;
+  string path = 3;
+}
+
+message ReadSkillFileRequest {
+  string scope = 1;
+  string name = 2;
+  string path = 3;
+}
+
+message SaveSkillRequest {
+  string bot_id = 1;
+  string path = 2;
+  string run_id = 3;
+}
+
+message SaveSkillResponse {
+  string name = 1;
 }

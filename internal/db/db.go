@@ -141,6 +141,15 @@ type BotConnector struct {
 	CreatedAt   time.Time
 }
 
+type BotSkill struct {
+	ID        string `gorm:"primaryKey"`
+	BotID     string `gorm:"uniqueIndex:bot_skill"`
+	Kind      string `gorm:"uniqueIndex:bot_skill"`
+	Name      string `gorm:"uniqueIndex:bot_skill"`
+	Enabled   bool
+	CreatedAt time.Time
+}
+
 func Open(dataDir string) (*gorm.DB, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, err
@@ -155,7 +164,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Setting{}, &Audit{},
-		&Connector{}, &BotConnector{},
+		&Connector{}, &BotConnector{}, &BotSkill{},
 	)
 	if err != nil {
 		return nil, err

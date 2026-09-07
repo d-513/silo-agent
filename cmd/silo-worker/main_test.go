@@ -237,3 +237,23 @@ func TestSyncTools(t *testing.T) {
 		t.Fatal(string(b))
 	}
 }
+
+func TestSyncSkills(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("SILO_SKILLS_DIR", dir)
+	w := &worker{}
+	out, err := w.syncSkills([]*v1.SkillFile{
+		{Path: "one/SKILL.md", Data: []byte("hello")},
+		{Path: "one/scripts/a.py", Data: []byte("print(1)")},
+	})
+	if err != nil || out != "ok" {
+		t.Fatalf("%q %v", out, err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "one", "SKILL.md"))
+	if err != nil || string(b) != "hello" {
+		t.Fatalf("%s %v", b, err)
+	}
+	if _, err := w.syncSkills([]*v1.SkillFile{{Path: "../x", Data: []byte("no")}}); err == nil {
+		t.Fatal("escape")
+	}
+}

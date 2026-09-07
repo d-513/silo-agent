@@ -12,13 +12,13 @@ function fail(e: unknown) {
 
 export function AdminLayout() {
   return (
-    <div className="mx-auto w-[760px] p-7">
+    <div className="silo-page">
       <h1 className="text-[22px] font-medium tracking-tight">Admin</h1>
-      <nav className="mb-6 mt-4 flex gap-1 border-b border-thread-2">
+      <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 border-b border-thread-2">
         <NavLink
           to="/admin/settings"
           className={({ isActive }) =>
-            `border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
           }
         >
           Settings
@@ -26,10 +26,18 @@ export function AdminLayout() {
         <NavLink
           to="/admin/connectors"
           className={({ isActive }) =>
-            `border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
           }
         >
           Connectors Library
+        </NavLink>
+        <NavLink
+          to="/admin/skills"
+          className={({ isActive }) =>
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+          }
+        >
+          Skills Library
         </NavLink>
       </nav>
       <Outlet />
@@ -72,7 +80,8 @@ export function AdminSettings() {
       {audit.length === 0 ? (
         <p className="text-stone">No decisions yet.</p>
       ) : (
-        <table className="w-full text-left text-[13px]">
+        <div className="silo-scroll-x">
+        <table className="w-full min-w-[36rem] text-left text-[13px]">
           <thead className="bg-cloth text-stone">
             <tr>
               <th className="p-2">When</th>
@@ -97,6 +106,7 @@ export function AdminSettings() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
@@ -104,7 +114,7 @@ export function AdminSettings() {
 
 export function AccountPage({ email }: { email: string }) {
   return (
-    <div className="mx-auto w-[560px] p-7">
+    <div className="silo-page silo-page-sm">
       <h1 className="mb-2 text-[22px] font-medium tracking-tight">Account</h1>
       <p className="mb-6 text-stone">Your sign-in. More settings later.</p>
       <div className="mb-1 text-[12px] font-medium text-stone">Email</div>

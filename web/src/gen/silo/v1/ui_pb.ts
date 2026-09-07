@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file silo/v1/ui.proto.
  */
 export const file_silo_v1_ui: GenFile = /*@__PURE__*/
-  fileDesc("ChBzaWxvL3YxL3VpLnByb3RvEgdzaWxvLnYxIjAKDVNpZ25JblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiPgoOU2lnbkluUmVzcG9uc2USGwoEdXNlchgBIAEoCzINLnNpbG8udjEuVXNlchIPCgdjcmVhdGVkGAIgASgIIhAKDlNpZ25PdXRSZXF1ZXN0IhEKD1NpZ25PdXRSZXNwb25zZSILCglNZVJlcXVlc3QiKQoKTWVSZXNwb25zZRIbCgR1c2VyGAEgASgLMg0uc2lsby52MS5Vc2VyIjAKBFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDQoFYWRtaW4YAyABKAgingEKA0JvdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIRCglsYXN0X3Rhc2sYBCABKAkSDQoFY3Jlc3QYBSABKAUSGAoQd29ya2VyX2Nvbm5lY3RlZBgGIAEoCBITCgtkZXNjcmlwdGlvbhgHIAEoCRIMCgRzb3VsGAggASgJEg4KBm1lbW9yeRgJIAEoCSIRCg9MaXN0Qm90c1JlcXVlc3QiLgoQTGlzdEJvdHNSZXNwb25zZRIaCgRib3RzGAEgAygLMgwuc2lsby52MS5Cb3QiRAoQQ3JlYXRlQm90UmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWNyZXN0GAIgASgFEhMKC2Rlc2NyaXB0aW9uGAMgASgJIl8KEFVwZGF0ZUJvdFJlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRzb3VsGAQgASgJEg4KBm1lbW9yeRgFIAEoCSIbCg1HZXRCb3RSZXF1ZXN0EgoKAmlkGAEgASgJIlYKCUNvbnRhaW5lchIPCgdydW5uaW5nGAEgASgIEhMKC2NwdV9wZXJjZW50GAIgASgBEhAKCG1lbV91c2VkGAMgASgDEhEKCW1lbV9saW1pdBgEIAEoAyITChFEZWxldGVCb3RSZXNwb25zZSJFCgRDaGF0EgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRISCgp1cGRhdGVkX2F0GAQgASgJIiIKEExpc3RDaGF0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjEKEUxpc3RDaGF0c1Jlc3BvbnNlEhwKBWNoYXRzGAEgAygLMg0uc2lsby52MS5DaGF0IiMKEUNyZWF0ZUNoYXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI+ChFSZW5hbWVDaGF0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSCgoCaWQYAiABKAkSDQoFdGl0bGUYAyABKAkiLwoRRGVsZXRlQ2hhdFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhQKEkRlbGV0ZUNoYXRSZXNwb25zZSI8CgtTZW5kUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdjaGF0X2lkGAMgASgJIi8KDFNlbmRSZXNwb25zZRIOCgZydW5faWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSIxCg5TdG9wUnVuUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSIRCg9TdG9wUnVuUmVzcG9uc2UiSwoQU3RyZWFtUnVuUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCRIWCg5hZnRlcl9ldmVudF9pZBgDIAEoCSJhCghSdW5FdmVudBIOCgZydW5faWQYASABKAkSDAoEa2luZBgCIAEoCRIMCgRib2R5GAMgASgJEgwKBHRvb2wYBCABKAkSDwoHY2hhdF9pZBgFIAEoCRIKCgJpZBgGIAEoCSJQCgpTZWNyZXRNZXRhEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIUCgxsYXN0X3VzZWRfYXQYBCABKAkiJAoSTGlzdFNlY3JldHNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI7ChNMaXN0U2VjcmV0c1Jlc3BvbnNlEiQKB3NlY3JldHMYASADKAsyEy5zaWxvLnYxLlNlY3JldE1ldGEiPwoQQWRkU2VjcmV0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgV2YWx1ZRgDIAEoCSIxChNEZWxldGVTZWNyZXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSIWChREZWxldGVTZWNyZXRSZXNwb25zZSItCg1BcHByb3ZhbEZpZWxkEg0KBWxhYmVsGAEgASgJEg0KBXZhbHVlGAIgASgJIsQBCghBcHByb3ZhbBIKCgJpZBgBIAEoCRIOCgZib3RfaWQYAiABKAkSDgoGcnVuX2lkGAMgASgJEhEKCWNvbm5lY3RvchgEIAEoCRIOCgZhY3Rpb24YBSABKAkSEQoJYXJnc19qc29uGAYgASgJEg4KBnN0YXR1cxgHIAEoCRINCgV0aXRsZRgIIAEoCRIPCgdzdW1tYXJ5GAkgASgJEiYKBmZpZWxkcxgKIAMoCzIWLnNpbG8udjEuQXBwcm92YWxGaWVsZCImChRMaXN0QXBwcm92YWxzUmVxdWVzdBIOCgZib3RfaWQYASABKAkiPQoVTGlzdEFwcHJvdmFsc1Jlc3BvbnNlEiQKCWFwcHJvdmFscxgBIAMoCzIRLnNpbG8udjEuQXBwcm92YWwiNQoVRGVjaWRlQXBwcm92YWxSZXF1ZXN0EgoKAmlkGAEgASgJEhAKCGRlY2lzaW9uGAIgASgJImYKBFJ1bGUSCgoCaWQYASABKAkSDgoGYm90X2lkGAIgASgJEhEKCWNvbm5lY3RvchgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEAoIZGVjaXNpb24YBSABKAkSDQoFdGl0bGUYBiABKAkiVwoLUnVsZVNlY3Rpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHc3VtbWFyeRgDIAEoCRIcCgVydWxlcxgEIAMoCzINLnNpbG8udjEuUnVsZSIiChBMaXN0UnVsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSJZChFMaXN0UnVsZXNSZXNwb25zZRIcCgVydWxlcxgBIAMoCzINLnNpbG8udjEuUnVsZRImCghzZWN0aW9ucxgCIAMoCzIULnNpbG8udjEuUnVsZVNlY3Rpb24iVQoOU2V0UnVsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEhEKCWNvbm5lY3RvchgCIAEoCRIOCgZhY3Rpb24YAyABKAkSEAoIZGVjaXNpb24YBCABKAkiVAoJRmlsZUVudHJ5EgwKBG5hbWUYASABKAkSDAoEcGF0aBgCIAEoCRILCgNkaXIYAyABKAgSDAoEc2l6ZRgEIAEoAxIQCghtb2RpZmllZBgFIAEoCSIwChBMaXN0RmlsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjgKEUxpc3RGaWxlc1Jlc3BvbnNlEiMKB2VudHJpZXMYASADKAsyEi5zaWxvLnYxLkZpbGVFbnRyeSIvCg9SZWFkRmlsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkicAoQUmVhZEZpbGVSZXNwb25zZRIMCgRuYW1lGAEgASgJEg8KB2NvbnRlbnQYAiABKAkSDgoGYmluYXJ5GAMgASgIEhEKCXRydW5jYXRlZBgEIAEoCBIMCgRzaXplGAUgASgDEgwKBGRhdGEYBiABKAwiLAoMTWtkaXJSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjEKEVJlbW92ZUZpbGVSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjwKDlB1dEZpbGVSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJEgwKBGRhdGEYAyABKAwiEAoORmlsZU9wUmVzcG9uc2UiPwoIU2V0dGluZ3MSDQoFbW9kZWwYASABKAkSEwoLaGFzX2FwaV9rZXkYAiABKAgSDwoHYXBpX2tleRgDIAEoCSIUChJHZXRTZXR0aW5nc1JlcXVlc3QiNAoSUHV0U2V0dGluZ3NSZXF1ZXN0Eg0KBW1vZGVsGAEgASgJEg8KB2FwaV9rZXkYAiABKAkihAEKCEF1ZGl0Um93EgoKAmlkGAEgASgJEgoKAmF0GAIgASgJEg4KBmJvdF9pZBgDIAEoCRIQCghib3RfbmFtZRgEIAEoCRINCgVjcmVzdBgFIAEoBRINCgVhY3RvchgGIAEoCRIOCgZhY3Rpb24YByABKAkSEAoIZGVjaXNpb24YCCABKAkiEgoQTGlzdEF1ZGl0UmVxdWVzdCI0ChFMaXN0QXVkaXRSZXNwb25zZRIfCgRyb3dzGAEgAygLMhEuc2lsby52MS5BdWRpdFJvdyIZCglIZWFkZXJLZXkSDAoEbmFtZRgBIAEoCSLTAgoJQ29ubmVjdG9yEgoKAmlkGAEgASgJEgwKBHR5cGUYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIRCgloYXNfaW1hZ2UYBSABKAgSEQoJdHJhbnNwb3J0GAYgASgJEhAKCGh0dHBfdXJsGAcgASgJEgwKBGF1dGgYCCABKAkSJwoLaGVhZGVyX2tleXMYCSADKAsyEi5zaWxvLnYxLkhlYWRlcktleRISCgpjcmVhdGVkX2F0GAogASgJEhQKDGRlZmF1bHRfbW9kZRgLIAEoCRIMCgRraW5kGAwgASgJEhEKCXNvdXJjZV9pZBgNIAEoCRIXCg9vYXV0aF9jbGllbnRfaWQYDiABKAkSHwoXaGFzX29hdXRoX2NsaWVudF9zZWNyZXQYDyABKAgSFQoNY2F0YWxvZ19ndWlkZRgQIAEoCSIXChVMaXN0Q29ubmVjdG9yc1JlcXVlc3QiQAoWTGlzdENvbm5lY3RvcnNSZXNwb25zZRImCgpjb25uZWN0b3JzGAEgAygLMhIuc2lsby52MS5Db25uZWN0b3IiKgoLSGVhZGVySW5wdXQSDAoEbmFtZRgBIAEoCRINCgV2YWx1ZRgCIAEoCSKEAgoWQ3JlYXRlQ29ubmVjdG9yUmVxdWVzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg0KBWltYWdlGAMgASgMEhIKCmltYWdlX3R5cGUYBCABKAkSEQoJdHJhbnNwb3J0GAUgASgJEhAKCGh0dHBfdXJsGAYgASgJEgwKBGF1dGgYByABKAkSJQoHaGVhZGVycxgIIAMoCzIULnNpbG8udjEuSGVhZGVySW5wdXQSFAoMZGVmYXVsdF9tb2RlGAkgASgJEhcKD29hdXRoX2NsaWVudF9pZBgKIAEoCRIbChNvYXV0aF9jbGllbnRfc2VjcmV0GAsgASgJIqUCChZVcGRhdGVDb25uZWN0b3JSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDQoFaW1hZ2UYBCABKAwSEgoKaW1hZ2VfdHlwZRgFIAEoCRITCgtjbGVhcl9pbWFnZRgGIAEoCBIRCgl0cmFuc3BvcnQYByABKAkSEAoIaHR0cF91cmwYCCABKAkSDAoEYXV0aBgJIAEoCRIlCgdoZWFkZXJzGAogAygLMhQuc2lsby52MS5IZWFkZXJJbnB1dBIUCgxkZWZhdWx0X21vZGUYCyABKAkSFwoPb2F1dGhfY2xpZW50X2lkGAwgASgJEhsKE29hdXRoX2NsaWVudF9zZWNyZXQYDSABKAkiJAoWRGVsZXRlQ29ubmVjdG9yUmVxdWVzdBIKCgJpZBgBIAEoCSIZChdEZWxldGVDb25uZWN0b3JSZXNwb25zZSJ6CgxCb3RDb25uZWN0b3ISCgoCaWQYASABKAkSDgoGYm90X2lkGAIgASgJEiUKCWNvbm5lY3RvchgDIAEoCzISLnNpbG8udjEuQ29ubmVjdG9yEhMKC2F1dGhfc3RhdHVzGAQgASgJEhIKCmxhc3RfZXJyb3IYBSABKAkiKgoYTGlzdEJvdENvbm5lY3RvcnNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSJGChlMaXN0Qm90Q29ubmVjdG9yc1Jlc3BvbnNlEikKCmNvbm5lY3RvcnMYASADKAsyFS5zaWxvLnYxLkJvdENvbm5lY3RvciI+ChZBdHRhY2hDb25uZWN0b3JSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIUCgxjb25uZWN0b3JfaWQYAiABKAkiqgIKGUNyZWF0ZUJvdENvbm5lY3RvclJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDQoFaW1hZ2UYBCABKAwSEgoKaW1hZ2VfdHlwZRgFIAEoCRIRCgl0cmFuc3BvcnQYBiABKAkSEAoIaHR0cF91cmwYByABKAkSDAoEYXV0aBgIIAEoCRIlCgdoZWFkZXJzGAkgAygLMhQuc2lsby52MS5IZWFkZXJJbnB1dBIUCgxkZWZhdWx0X21vZGUYCiABKAkSFwoPb2F1dGhfY2xpZW50X2lkGAsgASgJEhsKE29hdXRoX2NsaWVudF9zZWNyZXQYDCABKAkSEQoJc291cmNlX2lkGA0gASgJIjQKFkRldGFjaENvbm5lY3RvclJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhkKF0RldGFjaENvbm5lY3RvclJlc3BvbnNlIjgKGlJlZnJlc2hCb3RDb25uZWN0b3JSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSI3ChlTdGFydENvbm5lY3RvckF1dGhSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSIzChpTdGFydENvbm5lY3RvckF1dGhSZXNwb25zZRIVCg1hdXRob3JpemVfdXJsGAEgASgJMucWCgJVSRI5CgZTaWduSW4SFi5zaWxvLnYxLlNpZ25JblJlcXVlc3QaFy5zaWxvLnYxLlNpZ25JblJlc3BvbnNlEjwKB1NpZ25PdXQSFy5zaWxvLnYxLlNpZ25PdXRSZXF1ZXN0Ghguc2lsby52MS5TaWduT3V0UmVzcG9uc2USLQoCTWUSEi5zaWxvLnYxLk1lUmVxdWVzdBoTLnNpbG8udjEuTWVSZXNwb25zZRI/CghMaXN0Qm90cxIYLnNpbG8udjEuTGlzdEJvdHNSZXF1ZXN0Ghkuc2lsby52MS5MaXN0Qm90c1Jlc3BvbnNlEjQKCUNyZWF0ZUJvdBIZLnNpbG8udjEuQ3JlYXRlQm90UmVxdWVzdBoMLnNpbG8udjEuQm90EjQKCVVwZGF0ZUJvdBIZLnNpbG8udjEuVXBkYXRlQm90UmVxdWVzdBoMLnNpbG8udjEuQm90Ei4KBkdldEJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoMLnNpbG8udjEuQm90EjoKDEdldENvbnRhaW5lchIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoSLnNpbG8udjEuQ29udGFpbmVyEjAKCFN0YXJ0Qm90EhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSLwoHU3RvcEJvdBIWLnNpbG8udjEuR2V0Qm90UmVxdWVzdBoMLnNpbG8udjEuQm90EjYKDlJlc2V0Q29udGFpbmVyEhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSPwoJRGVsZXRlQm90EhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ghouc2lsby52MS5EZWxldGVCb3RSZXNwb25zZRJCCglMaXN0Q2hhdHMSGS5zaWxvLnYxLkxpc3RDaGF0c1JlcXVlc3QaGi5zaWxvLnYxLkxpc3RDaGF0c1Jlc3BvbnNlEjcKCkNyZWF0ZUNoYXQSGi5zaWxvLnYxLkNyZWF0ZUNoYXRSZXF1ZXN0Gg0uc2lsby52MS5DaGF0EjcKClJlbmFtZUNoYXQSGi5zaWxvLnYxLlJlbmFtZUNoYXRSZXF1ZXN0Gg0uc2lsby52MS5DaGF0EkUKCkRlbGV0ZUNoYXQSGi5zaWxvLnYxLkRlbGV0ZUNoYXRSZXF1ZXN0Ghsuc2lsby52MS5EZWxldGVDaGF0UmVzcG9uc2USMwoEU2VuZBIULnNpbG8udjEuU2VuZFJlcXVlc3QaFS5zaWxvLnYxLlNlbmRSZXNwb25zZRI8CgdTdG9wUnVuEhcuc2lsby52MS5TdG9wUnVuUmVxdWVzdBoYLnNpbG8udjEuU3RvcFJ1blJlc3BvbnNlEjsKCVN0cmVhbVJ1bhIZLnNpbG8udjEuU3RyZWFtUnVuUmVxdWVzdBoRLnNpbG8udjEuUnVuRXZlbnQwARJICgtMaXN0U2VjcmV0cxIbLnNpbG8udjEuTGlzdFNlY3JldHNSZXF1ZXN0Ghwuc2lsby52MS5MaXN0U2VjcmV0c1Jlc3BvbnNlEjsKCUFkZFNlY3JldBIZLnNpbG8udjEuQWRkU2VjcmV0UmVxdWVzdBoTLnNpbG8udjEuU2VjcmV0TWV0YRJLCgxEZWxldGVTZWNyZXQSHC5zaWxvLnYxLkRlbGV0ZVNlY3JldFJlcXVlc3QaHS5zaWxvLnYxLkRlbGV0ZVNlY3JldFJlc3BvbnNlEk4KDUxpc3RBcHByb3ZhbHMSHS5zaWxvLnYxLkxpc3RBcHByb3ZhbHNSZXF1ZXN0Gh4uc2lsby52MS5MaXN0QXBwcm92YWxzUmVzcG9uc2USQwoORGVjaWRlQXBwcm92YWwSHi5zaWxvLnYxLkRlY2lkZUFwcHJvdmFsUmVxdWVzdBoRLnNpbG8udjEuQXBwcm92YWwSQgoJTGlzdFJ1bGVzEhkuc2lsby52MS5MaXN0UnVsZXNSZXF1ZXN0Ghouc2lsby52MS5MaXN0UnVsZXNSZXNwb25zZRIxCgdTZXRSdWxlEhcuc2lsby52MS5TZXRSdWxlUmVxdWVzdBoNLnNpbG8udjEuUnVsZRJCCglMaXN0RmlsZXMSGS5zaWxvLnYxLkxpc3RGaWxlc1JlcXVlc3QaGi5zaWxvLnYxLkxpc3RGaWxlc1Jlc3BvbnNlEj8KCFJlYWRGaWxlEhguc2lsby52MS5SZWFkRmlsZVJlcXVlc3QaGS5zaWxvLnYxLlJlYWRGaWxlUmVzcG9uc2USNwoFTWtkaXISFS5zaWxvLnYxLk1rZGlyUmVxdWVzdBoXLnNpbG8udjEuRmlsZU9wUmVzcG9uc2USQQoKUmVtb3ZlRmlsZRIaLnNpbG8udjEuUmVtb3ZlRmlsZVJlcXVlc3QaFy5zaWxvLnYxLkZpbGVPcFJlc3BvbnNlEjsKB1B1dEZpbGUSFy5zaWxvLnYxLlB1dEZpbGVSZXF1ZXN0Ghcuc2lsby52MS5GaWxlT3BSZXNwb25zZRI9CgtHZXRTZXR0aW5ncxIbLnNpbG8udjEuR2V0U2V0dGluZ3NSZXF1ZXN0GhEuc2lsby52MS5TZXR0aW5ncxI9CgtQdXRTZXR0aW5ncxIbLnNpbG8udjEuUHV0U2V0dGluZ3NSZXF1ZXN0GhEuc2lsby52MS5TZXR0aW5ncxJCCglMaXN0QXVkaXQSGS5zaWxvLnYxLkxpc3RBdWRpdFJlcXVlc3QaGi5zaWxvLnYxLkxpc3RBdWRpdFJlc3BvbnNlElEKDkxpc3RDb25uZWN0b3JzEh4uc2lsby52MS5MaXN0Q29ubmVjdG9yc1JlcXVlc3QaHy5zaWxvLnYxLkxpc3RDb25uZWN0b3JzUmVzcG9uc2USRgoPQ3JlYXRlQ29ubmVjdG9yEh8uc2lsby52MS5DcmVhdGVDb25uZWN0b3JSZXF1ZXN0GhIuc2lsby52MS5Db25uZWN0b3ISRgoPVXBkYXRlQ29ubmVjdG9yEh8uc2lsby52MS5VcGRhdGVDb25uZWN0b3JSZXF1ZXN0GhIuc2lsby52MS5Db25uZWN0b3ISVAoPRGVsZXRlQ29ubmVjdG9yEh8uc2lsby52MS5EZWxldGVDb25uZWN0b3JSZXF1ZXN0GiAuc2lsby52MS5EZWxldGVDb25uZWN0b3JSZXNwb25zZRJaChFMaXN0Qm90Q29ubmVjdG9ycxIhLnNpbG8udjEuTGlzdEJvdENvbm5lY3RvcnNSZXF1ZXN0GiIuc2lsby52MS5MaXN0Qm90Q29ubmVjdG9yc1Jlc3BvbnNlEkkKD0F0dGFjaENvbm5lY3RvchIfLnNpbG8udjEuQXR0YWNoQ29ubmVjdG9yUmVxdWVzdBoVLnNpbG8udjEuQm90Q29ubmVjdG9yEk8KEkNyZWF0ZUJvdENvbm5lY3RvchIiLnNpbG8udjEuQ3JlYXRlQm90Q29ubmVjdG9yUmVxdWVzdBoVLnNpbG8udjEuQm90Q29ubmVjdG9yElQKD0RldGFjaENvbm5lY3RvchIfLnNpbG8udjEuRGV0YWNoQ29ubmVjdG9yUmVxdWVzdBogLnNpbG8udjEuRGV0YWNoQ29ubmVjdG9yUmVzcG9uc2USUQoTUmVmcmVzaEJvdENvbm5lY3RvchIjLnNpbG8udjEuUmVmcmVzaEJvdENvbm5lY3RvclJlcXVlc3QaFS5zaWxvLnYxLkJvdENvbm5lY3RvchJdChJTdGFydENvbm5lY3RvckF1dGgSIi5zaWxvLnYxLlN0YXJ0Q29ubmVjdG9yQXV0aFJlcXVlc3QaIy5zaWxvLnYxLlN0YXJ0Q29ubmVjdG9yQXV0aFJlc3BvbnNlQh9aHXNpbG8uYWdlbnQvZ2VuL3NpbG8vdjE7c2lsb3YxYgZwcm90bzM");
+  fileDesc("ChBzaWxvL3YxL3VpLnByb3RvEgdzaWxvLnYxIjAKDVNpZ25JblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiPgoOU2lnbkluUmVzcG9uc2USGwoEdXNlchgBIAEoCzINLnNpbG8udjEuVXNlchIPCgdjcmVhdGVkGAIgASgIIhAKDlNpZ25PdXRSZXF1ZXN0IhEKD1NpZ25PdXRSZXNwb25zZSILCglNZVJlcXVlc3QiKQoKTWVSZXNwb25zZRIbCgR1c2VyGAEgASgLMg0uc2lsby52MS5Vc2VyIjAKBFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDQoFYWRtaW4YAyABKAgingEKA0JvdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIRCglsYXN0X3Rhc2sYBCABKAkSDQoFY3Jlc3QYBSABKAUSGAoQd29ya2VyX2Nvbm5lY3RlZBgGIAEoCBITCgtkZXNjcmlwdGlvbhgHIAEoCRIMCgRzb3VsGAggASgJEg4KBm1lbW9yeRgJIAEoCSIRCg9MaXN0Qm90c1JlcXVlc3QiLgoQTGlzdEJvdHNSZXNwb25zZRIaCgRib3RzGAEgAygLMgwuc2lsby52MS5Cb3QiRAoQQ3JlYXRlQm90UmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWNyZXN0GAIgASgFEhMKC2Rlc2NyaXB0aW9uGAMgASgJIl8KEFVwZGF0ZUJvdFJlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRzb3VsGAQgASgJEg4KBm1lbW9yeRgFIAEoCSIbCg1HZXRCb3RSZXF1ZXN0EgoKAmlkGAEgASgJIlYKCUNvbnRhaW5lchIPCgdydW5uaW5nGAEgASgIEhMKC2NwdV9wZXJjZW50GAIgASgBEhAKCG1lbV91c2VkGAMgASgDEhEKCW1lbV9saW1pdBgEIAEoAyITChFEZWxldGVCb3RSZXNwb25zZSJFCgRDaGF0EgoKAmlkGAEgASgJEg4KBmJvdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRISCgp1cGRhdGVkX2F0GAQgASgJIiIKEExpc3RDaGF0c1JlcXVlc3QSDgoGYm90X2lkGAEgASgJIjEKEUxpc3RDaGF0c1Jlc3BvbnNlEhwKBWNoYXRzGAEgAygLMg0uc2lsby52MS5DaGF0IiMKEUNyZWF0ZUNoYXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI+ChFSZW5hbWVDaGF0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSCgoCaWQYAiABKAkSDQoFdGl0bGUYAyABKAkiLwoRRGVsZXRlQ2hhdFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhQKEkRlbGV0ZUNoYXRSZXNwb25zZSI8CgtTZW5kUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdjaGF0X2lkGAMgASgJIi8KDFNlbmRSZXNwb25zZRIOCgZydW5faWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSIxCg5TdG9wUnVuUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCSIRCg9TdG9wUnVuUmVzcG9uc2UiSwoQU3RyZWFtUnVuUmVxdWVzdBIOCgZib3RfaWQYASABKAkSDwoHY2hhdF9pZBgCIAEoCRIWCg5hZnRlcl9ldmVudF9pZBgDIAEoCSJhCghSdW5FdmVudBIOCgZydW5faWQYASABKAkSDAoEa2luZBgCIAEoCRIMCgRib2R5GAMgASgJEgwKBHRvb2wYBCABKAkSDwoHY2hhdF9pZBgFIAEoCRIKCgJpZBgGIAEoCSJQCgpTZWNyZXRNZXRhEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEgoKY3JlYXRlZF9hdBgDIAEoCRIUCgxsYXN0X3VzZWRfYXQYBCABKAkiJAoSTGlzdFNlY3JldHNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI7ChNMaXN0U2VjcmV0c1Jlc3BvbnNlEiQKB3NlY3JldHMYASADKAsyEy5zaWxvLnYxLlNlY3JldE1ldGEiPwoQQWRkU2VjcmV0UmVxdWVzdBIOCgZib3RfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgV2YWx1ZRgDIAEoCSIxChNEZWxldGVTZWNyZXRSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSIWChREZWxldGVTZWNyZXRSZXNwb25zZSItCg1BcHByb3ZhbEZpZWxkEg0KBWxhYmVsGAEgASgJEg0KBXZhbHVlGAIgASgJIsQBCghBcHByb3ZhbBIKCgJpZBgBIAEoCRIOCgZib3RfaWQYAiABKAkSDgoGcnVuX2lkGAMgASgJEhEKCWNvbm5lY3RvchgEIAEoCRIOCgZhY3Rpb24YBSABKAkSEQoJYXJnc19qc29uGAYgASgJEg4KBnN0YXR1cxgHIAEoCRINCgV0aXRsZRgIIAEoCRIPCgdzdW1tYXJ5GAkgASgJEiYKBmZpZWxkcxgKIAMoCzIWLnNpbG8udjEuQXBwcm92YWxGaWVsZCImChRMaXN0QXBwcm92YWxzUmVxdWVzdBIOCgZib3RfaWQYASABKAkiPQoVTGlzdEFwcHJvdmFsc1Jlc3BvbnNlEiQKCWFwcHJvdmFscxgBIAMoCzIRLnNpbG8udjEuQXBwcm92YWwiNQoVRGVjaWRlQXBwcm92YWxSZXF1ZXN0EgoKAmlkGAEgASgJEhAKCGRlY2lzaW9uGAIgASgJImYKBFJ1bGUSCgoCaWQYASABKAkSDgoGYm90X2lkGAIgASgJEhEKCWNvbm5lY3RvchgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEAoIZGVjaXNpb24YBSABKAkSDQoFdGl0bGUYBiABKAkiVwoLUnVsZVNlY3Rpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHc3VtbWFyeRgDIAEoCRIcCgVydWxlcxgEIAMoCzINLnNpbG8udjEuUnVsZSIiChBMaXN0UnVsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSJZChFMaXN0UnVsZXNSZXNwb25zZRIcCgVydWxlcxgBIAMoCzINLnNpbG8udjEuUnVsZRImCghzZWN0aW9ucxgCIAMoCzIULnNpbG8udjEuUnVsZVNlY3Rpb24iVQoOU2V0UnVsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEhEKCWNvbm5lY3RvchgCIAEoCRIOCgZhY3Rpb24YAyABKAkSEAoIZGVjaXNpb24YBCABKAkiVAoJRmlsZUVudHJ5EgwKBG5hbWUYASABKAkSDAoEcGF0aBgCIAEoCRILCgNkaXIYAyABKAgSDAoEc2l6ZRgEIAEoAxIQCghtb2RpZmllZBgFIAEoCSIwChBMaXN0RmlsZXNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjgKEUxpc3RGaWxlc1Jlc3BvbnNlEiMKB2VudHJpZXMYASADKAsyEi5zaWxvLnYxLkZpbGVFbnRyeSIvCg9SZWFkRmlsZVJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkicAoQUmVhZEZpbGVSZXNwb25zZRIMCgRuYW1lGAEgASgJEg8KB2NvbnRlbnQYAiABKAkSDgoGYmluYXJ5GAMgASgIEhEKCXRydW5jYXRlZBgEIAEoCBIMCgRzaXplGAUgASgDEgwKBGRhdGEYBiABKAwiLAoMTWtkaXJSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjEKEVJlbW92ZUZpbGVSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJIjwKDlB1dEZpbGVSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIMCgRwYXRoGAIgASgJEgwKBGRhdGEYAyABKAwiEAoORmlsZU9wUmVzcG9uc2UiPwoIU2V0dGluZ3MSDQoFbW9kZWwYASABKAkSEwoLaGFzX2FwaV9rZXkYAiABKAgSDwoHYXBpX2tleRgDIAEoCSIUChJHZXRTZXR0aW5nc1JlcXVlc3QiNAoSUHV0U2V0dGluZ3NSZXF1ZXN0Eg0KBW1vZGVsGAEgASgJEg8KB2FwaV9rZXkYAiABKAkihAEKCEF1ZGl0Um93EgoKAmlkGAEgASgJEgoKAmF0GAIgASgJEg4KBmJvdF9pZBgDIAEoCRIQCghib3RfbmFtZRgEIAEoCRINCgVjcmVzdBgFIAEoBRINCgVhY3RvchgGIAEoCRIOCgZhY3Rpb24YByABKAkSEAoIZGVjaXNpb24YCCABKAkiEgoQTGlzdEF1ZGl0UmVxdWVzdCI0ChFMaXN0QXVkaXRSZXNwb25zZRIfCgRyb3dzGAEgAygLMhEuc2lsby52MS5BdWRpdFJvdyIZCglIZWFkZXJLZXkSDAoEbmFtZRgBIAEoCSLTAgoJQ29ubmVjdG9yEgoKAmlkGAEgASgJEgwKBHR5cGUYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIRCgloYXNfaW1hZ2UYBSABKAgSEQoJdHJhbnNwb3J0GAYgASgJEhAKCGh0dHBfdXJsGAcgASgJEgwKBGF1dGgYCCABKAkSJwoLaGVhZGVyX2tleXMYCSADKAsyEi5zaWxvLnYxLkhlYWRlcktleRISCgpjcmVhdGVkX2F0GAogASgJEhQKDGRlZmF1bHRfbW9kZRgLIAEoCRIMCgRraW5kGAwgASgJEhEKCXNvdXJjZV9pZBgNIAEoCRIXCg9vYXV0aF9jbGllbnRfaWQYDiABKAkSHwoXaGFzX29hdXRoX2NsaWVudF9zZWNyZXQYDyABKAgSFQoNY2F0YWxvZ19ndWlkZRgQIAEoCSIXChVMaXN0Q29ubmVjdG9yc1JlcXVlc3QiQAoWTGlzdENvbm5lY3RvcnNSZXNwb25zZRImCgpjb25uZWN0b3JzGAEgAygLMhIuc2lsby52MS5Db25uZWN0b3IiKgoLSGVhZGVySW5wdXQSDAoEbmFtZRgBIAEoCRINCgV2YWx1ZRgCIAEoCSKEAgoWQ3JlYXRlQ29ubmVjdG9yUmVxdWVzdBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEg0KBWltYWdlGAMgASgMEhIKCmltYWdlX3R5cGUYBCABKAkSEQoJdHJhbnNwb3J0GAUgASgJEhAKCGh0dHBfdXJsGAYgASgJEgwKBGF1dGgYByABKAkSJQoHaGVhZGVycxgIIAMoCzIULnNpbG8udjEuSGVhZGVySW5wdXQSFAoMZGVmYXVsdF9tb2RlGAkgASgJEhcKD29hdXRoX2NsaWVudF9pZBgKIAEoCRIbChNvYXV0aF9jbGllbnRfc2VjcmV0GAsgASgJIqUCChZVcGRhdGVDb25uZWN0b3JSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDQoFaW1hZ2UYBCABKAwSEgoKaW1hZ2VfdHlwZRgFIAEoCRITCgtjbGVhcl9pbWFnZRgGIAEoCBIRCgl0cmFuc3BvcnQYByABKAkSEAoIaHR0cF91cmwYCCABKAkSDAoEYXV0aBgJIAEoCRIlCgdoZWFkZXJzGAogAygLMhQuc2lsby52MS5IZWFkZXJJbnB1dBIUCgxkZWZhdWx0X21vZGUYCyABKAkSFwoPb2F1dGhfY2xpZW50X2lkGAwgASgJEhsKE29hdXRoX2NsaWVudF9zZWNyZXQYDSABKAkiJAoWRGVsZXRlQ29ubmVjdG9yUmVxdWVzdBIKCgJpZBgBIAEoCSIZChdEZWxldGVDb25uZWN0b3JSZXNwb25zZSJ6CgxCb3RDb25uZWN0b3ISCgoCaWQYASABKAkSDgoGYm90X2lkGAIgASgJEiUKCWNvbm5lY3RvchgDIAEoCzISLnNpbG8udjEuQ29ubmVjdG9yEhMKC2F1dGhfc3RhdHVzGAQgASgJEhIKCmxhc3RfZXJyb3IYBSABKAkiKgoYTGlzdEJvdENvbm5lY3RvcnNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSJGChlMaXN0Qm90Q29ubmVjdG9yc1Jlc3BvbnNlEikKCmNvbm5lY3RvcnMYASADKAsyFS5zaWxvLnYxLkJvdENvbm5lY3RvciI+ChZBdHRhY2hDb25uZWN0b3JSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIUCgxjb25uZWN0b3JfaWQYAiABKAkiqgIKGUNyZWF0ZUJvdENvbm5lY3RvclJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDQoFaW1hZ2UYBCABKAwSEgoKaW1hZ2VfdHlwZRgFIAEoCRIRCgl0cmFuc3BvcnQYBiABKAkSEAoIaHR0cF91cmwYByABKAkSDAoEYXV0aBgIIAEoCRIlCgdoZWFkZXJzGAkgAygLMhQuc2lsby52MS5IZWFkZXJJbnB1dBIUCgxkZWZhdWx0X21vZGUYCiABKAkSFwoPb2F1dGhfY2xpZW50X2lkGAsgASgJEhsKE29hdXRoX2NsaWVudF9zZWNyZXQYDCABKAkSEQoJc291cmNlX2lkGA0gASgJIjQKFkRldGFjaENvbm5lY3RvclJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgoKAmlkGAIgASgJIhkKF0RldGFjaENvbm5lY3RvclJlc3BvbnNlIjgKGlJlZnJlc2hCb3RDb25uZWN0b3JSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSI3ChlTdGFydENvbm5lY3RvckF1dGhSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCRIKCgJpZBgCIAEoCSIzChpTdGFydENvbm5lY3RvckF1dGhSZXNwb25zZRIVCg1hdXRob3JpemVfdXJsGAEgASgJIhcKFVNlZWRDb25uZWN0b3JzUmVxdWVzdCIYChZTZWVkQ29ubmVjdG9yc1Jlc3BvbnNlIhMKEVNlZWRTa2lsbHNSZXF1ZXN0IhQKElNlZWRTa2lsbHNSZXNwb25zZSJYCgVTa2lsbBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEgwKBGtpbmQYAyABKAkSDgoGc291cmNlGAQgASgJEg4KBnNlZWRlZBgFIAEoCCIiChFMaXN0U2tpbGxzUmVxdWVzdBINCgVzY29wZRgBIAEoCSI0ChJMaXN0U2tpbGxzUmVzcG9uc2USHgoGc2tpbGxzGAEgAygLMg4uc2lsby52MS5Ta2lsbCJUChNJbnN0YWxsU2tpbGxSZXF1ZXN0Eg0KBXNjb3BlGAEgASgJEgsKA3VybBgCIAEoCRIPCgdhcmNoaXZlGAMgASgMEhAKCGZpbGVuYW1lGAQgASgJIjoKFEluc3RhbGxTa2lsbFJlc3BvbnNlEhEKCWluc3RhbGxlZBgBIAMoCRIPCgdza2lwcGVkGAIgAygJIjEKEkRlbGV0ZVNraWxsUmVxdWVzdBINCgVzY29wZRgBIAEoCRIMCgRuYW1lGAIgASgJIhUKE0RlbGV0ZVNraWxsUmVzcG9uc2UiXAoIQm90U2tpbGwSDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIMCgRraW5kGAMgASgJEg8KB2VuYWJsZWQYBCABKAgSDgoGc291cmNlGAUgASgJIiYKFExpc3RCb3RTa2lsbHNSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSI6ChVMaXN0Qm90U2tpbGxzUmVzcG9uc2USIQoGc2tpbGxzGAEgAygLMhEuc2lsby52MS5Cb3RTa2lsbCJRChJTZXRCb3RTa2lsbFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBGtpbmQYAiABKAkSDAoEbmFtZRgDIAEoCRIPCgdlbmFibGVkGAQgASgIIkIKFUxpc3RTa2lsbEZpbGVzUmVxdWVzdBINCgVzY29wZRgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHBhdGgYAyABKAkiQQoUUmVhZFNraWxsRmlsZVJlcXVlc3QSDQoFc2NvcGUYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRwYXRoGAMgASgJIkAKEFNhdmVTa2lsbFJlcXVlc3QSDgoGYm90X2lkGAEgASgJEgwKBHBhdGgYAiABKAkSDgoGcnVuX2lkGAMgASgJIiEKEVNhdmVTa2lsbFJlc3BvbnNlEgwKBG5hbWUYASABKAkyyxwKAlVJEjkKBlNpZ25JbhIWLnNpbG8udjEuU2lnbkluUmVxdWVzdBoXLnNpbG8udjEuU2lnbkluUmVzcG9uc2USPAoHU2lnbk91dBIXLnNpbG8udjEuU2lnbk91dFJlcXVlc3QaGC5zaWxvLnYxLlNpZ25PdXRSZXNwb25zZRItCgJNZRISLnNpbG8udjEuTWVSZXF1ZXN0GhMuc2lsby52MS5NZVJlc3BvbnNlEj8KCExpc3RCb3RzEhguc2lsby52MS5MaXN0Qm90c1JlcXVlc3QaGS5zaWxvLnYxLkxpc3RCb3RzUmVzcG9uc2USNAoJQ3JlYXRlQm90Ehkuc2lsby52MS5DcmVhdGVCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSNAoJVXBkYXRlQm90Ehkuc2lsby52MS5VcGRhdGVCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSLgoGR2V0Qm90EhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSOgoMR2V0Q29udGFpbmVyEhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0GhIuc2lsby52MS5Db250YWluZXISMAoIU3RhcnRCb3QSFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaDC5zaWxvLnYxLkJvdBIvCgdTdG9wQm90EhYuc2lsby52MS5HZXRCb3RSZXF1ZXN0Ggwuc2lsby52MS5Cb3QSNgoOUmVzZXRDb250YWluZXISFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaDC5zaWxvLnYxLkJvdBI/CglEZWxldGVCb3QSFi5zaWxvLnYxLkdldEJvdFJlcXVlc3QaGi5zaWxvLnYxLkRlbGV0ZUJvdFJlc3BvbnNlEkIKCUxpc3RDaGF0cxIZLnNpbG8udjEuTGlzdENoYXRzUmVxdWVzdBoaLnNpbG8udjEuTGlzdENoYXRzUmVzcG9uc2USNwoKQ3JlYXRlQ2hhdBIaLnNpbG8udjEuQ3JlYXRlQ2hhdFJlcXVlc3QaDS5zaWxvLnYxLkNoYXQSNwoKUmVuYW1lQ2hhdBIaLnNpbG8udjEuUmVuYW1lQ2hhdFJlcXVlc3QaDS5zaWxvLnYxLkNoYXQSRQoKRGVsZXRlQ2hhdBIaLnNpbG8udjEuRGVsZXRlQ2hhdFJlcXVlc3QaGy5zaWxvLnYxLkRlbGV0ZUNoYXRSZXNwb25zZRIzCgRTZW5kEhQuc2lsby52MS5TZW5kUmVxdWVzdBoVLnNpbG8udjEuU2VuZFJlc3BvbnNlEjwKB1N0b3BSdW4SFy5zaWxvLnYxLlN0b3BSdW5SZXF1ZXN0Ghguc2lsby52MS5TdG9wUnVuUmVzcG9uc2USOwoJU3RyZWFtUnVuEhkuc2lsby52MS5TdHJlYW1SdW5SZXF1ZXN0GhEuc2lsby52MS5SdW5FdmVudDABEkgKC0xpc3RTZWNyZXRzEhsuc2lsby52MS5MaXN0U2VjcmV0c1JlcXVlc3QaHC5zaWxvLnYxLkxpc3RTZWNyZXRzUmVzcG9uc2USOwoJQWRkU2VjcmV0Ehkuc2lsby52MS5BZGRTZWNyZXRSZXF1ZXN0GhMuc2lsby52MS5TZWNyZXRNZXRhEksKDERlbGV0ZVNlY3JldBIcLnNpbG8udjEuRGVsZXRlU2VjcmV0UmVxdWVzdBodLnNpbG8udjEuRGVsZXRlU2VjcmV0UmVzcG9uc2USTgoNTGlzdEFwcHJvdmFscxIdLnNpbG8udjEuTGlzdEFwcHJvdmFsc1JlcXVlc3QaHi5zaWxvLnYxLkxpc3RBcHByb3ZhbHNSZXNwb25zZRJDCg5EZWNpZGVBcHByb3ZhbBIeLnNpbG8udjEuRGVjaWRlQXBwcm92YWxSZXF1ZXN0GhEuc2lsby52MS5BcHByb3ZhbBJCCglMaXN0UnVsZXMSGS5zaWxvLnYxLkxpc3RSdWxlc1JlcXVlc3QaGi5zaWxvLnYxLkxpc3RSdWxlc1Jlc3BvbnNlEjEKB1NldFJ1bGUSFy5zaWxvLnYxLlNldFJ1bGVSZXF1ZXN0Gg0uc2lsby52MS5SdWxlEkIKCUxpc3RGaWxlcxIZLnNpbG8udjEuTGlzdEZpbGVzUmVxdWVzdBoaLnNpbG8udjEuTGlzdEZpbGVzUmVzcG9uc2USPwoIUmVhZEZpbGUSGC5zaWxvLnYxLlJlYWRGaWxlUmVxdWVzdBoZLnNpbG8udjEuUmVhZEZpbGVSZXNwb25zZRI3CgVNa2RpchIVLnNpbG8udjEuTWtkaXJSZXF1ZXN0Ghcuc2lsby52MS5GaWxlT3BSZXNwb25zZRJBCgpSZW1vdmVGaWxlEhouc2lsby52MS5SZW1vdmVGaWxlUmVxdWVzdBoXLnNpbG8udjEuRmlsZU9wUmVzcG9uc2USOwoHUHV0RmlsZRIXLnNpbG8udjEuUHV0RmlsZVJlcXVlc3QaFy5zaWxvLnYxLkZpbGVPcFJlc3BvbnNlEj0KC0dldFNldHRpbmdzEhsuc2lsby52MS5HZXRTZXR0aW5nc1JlcXVlc3QaES5zaWxvLnYxLlNldHRpbmdzEj0KC1B1dFNldHRpbmdzEhsuc2lsby52MS5QdXRTZXR0aW5nc1JlcXVlc3QaES5zaWxvLnYxLlNldHRpbmdzEkIKCUxpc3RBdWRpdBIZLnNpbG8udjEuTGlzdEF1ZGl0UmVxdWVzdBoaLnNpbG8udjEuTGlzdEF1ZGl0UmVzcG9uc2USUQoOTGlzdENvbm5lY3RvcnMSHi5zaWxvLnYxLkxpc3RDb25uZWN0b3JzUmVxdWVzdBofLnNpbG8udjEuTGlzdENvbm5lY3RvcnNSZXNwb25zZRJGCg9DcmVhdGVDb25uZWN0b3ISHy5zaWxvLnYxLkNyZWF0ZUNvbm5lY3RvclJlcXVlc3QaEi5zaWxvLnYxLkNvbm5lY3RvchJGCg9VcGRhdGVDb25uZWN0b3ISHy5zaWxvLnYxLlVwZGF0ZUNvbm5lY3RvclJlcXVlc3QaEi5zaWxvLnYxLkNvbm5lY3RvchJUCg9EZWxldGVDb25uZWN0b3ISHy5zaWxvLnYxLkRlbGV0ZUNvbm5lY3RvclJlcXVlc3QaIC5zaWxvLnYxLkRlbGV0ZUNvbm5lY3RvclJlc3BvbnNlEloKEUxpc3RCb3RDb25uZWN0b3JzEiEuc2lsby52MS5MaXN0Qm90Q29ubmVjdG9yc1JlcXVlc3QaIi5zaWxvLnYxLkxpc3RCb3RDb25uZWN0b3JzUmVzcG9uc2USSQoPQXR0YWNoQ29ubmVjdG9yEh8uc2lsby52MS5BdHRhY2hDb25uZWN0b3JSZXF1ZXN0GhUuc2lsby52MS5Cb3RDb25uZWN0b3ISTwoSQ3JlYXRlQm90Q29ubmVjdG9yEiIuc2lsby52MS5DcmVhdGVCb3RDb25uZWN0b3JSZXF1ZXN0GhUuc2lsby52MS5Cb3RDb25uZWN0b3ISVAoPRGV0YWNoQ29ubmVjdG9yEh8uc2lsby52MS5EZXRhY2hDb25uZWN0b3JSZXF1ZXN0GiAuc2lsby52MS5EZXRhY2hDb25uZWN0b3JSZXNwb25zZRJRChNSZWZyZXNoQm90Q29ubmVjdG9yEiMuc2lsby52MS5SZWZyZXNoQm90Q29ubmVjdG9yUmVxdWVzdBoVLnNpbG8udjEuQm90Q29ubmVjdG9yEl0KElN0YXJ0Q29ubmVjdG9yQXV0aBIiLnNpbG8udjEuU3RhcnRDb25uZWN0b3JBdXRoUmVxdWVzdBojLnNpbG8udjEuU3RhcnRDb25uZWN0b3JBdXRoUmVzcG9uc2USUQoOU2VlZENvbm5lY3RvcnMSHi5zaWxvLnYxLlNlZWRDb25uZWN0b3JzUmVxdWVzdBofLnNpbG8udjEuU2VlZENvbm5lY3RvcnNSZXNwb25zZRJFCgpTZWVkU2tpbGxzEhouc2lsby52MS5TZWVkU2tpbGxzUmVxdWVzdBobLnNpbG8udjEuU2VlZFNraWxsc1Jlc3BvbnNlEkUKCkxpc3RTa2lsbHMSGi5zaWxvLnYxLkxpc3RTa2lsbHNSZXF1ZXN0Ghsuc2lsby52MS5MaXN0U2tpbGxzUmVzcG9uc2USSwoMSW5zdGFsbFNraWxsEhwuc2lsby52MS5JbnN0YWxsU2tpbGxSZXF1ZXN0Gh0uc2lsby52MS5JbnN0YWxsU2tpbGxSZXNwb25zZRJICgtEZWxldGVTa2lsbBIbLnNpbG8udjEuRGVsZXRlU2tpbGxSZXF1ZXN0Ghwuc2lsby52MS5EZWxldGVTa2lsbFJlc3BvbnNlEk4KDUxpc3RCb3RTa2lsbHMSHS5zaWxvLnYxLkxpc3RCb3RTa2lsbHNSZXF1ZXN0Gh4uc2lsby52MS5MaXN0Qm90U2tpbGxzUmVzcG9uc2USPQoLU2V0Qm90U2tpbGwSGy5zaWxvLnYxLlNldEJvdFNraWxsUmVxdWVzdBoRLnNpbG8udjEuQm90U2tpbGwSTAoOTGlzdFNraWxsRmlsZXMSHi5zaWxvLnYxLkxpc3RTa2lsbEZpbGVzUmVxdWVzdBoaLnNpbG8udjEuTGlzdEZpbGVzUmVzcG9uc2USSQoNUmVhZFNraWxsRmlsZRIdLnNpbG8udjEuUmVhZFNraWxsRmlsZVJlcXVlc3QaGS5zaWxvLnYxLlJlYWRGaWxlUmVzcG9uc2USQgoJU2F2ZVNraWxsEhkuc2lsby52MS5TYXZlU2tpbGxSZXF1ZXN0Ghouc2lsby52MS5TYXZlU2tpbGxSZXNwb25zZUIfWh1zaWxvLmFnZW50L2dlbi9zaWxvL3YxO3NpbG92MWIGcHJvdG8z");
 
 /**
  * @generated from message silo.v1.SignInRequest
@@ -2033,6 +2033,419 @@ export const StartConnectorAuthResponseSchema: GenMessage<StartConnectorAuthResp
   messageDesc(file_silo_v1_ui, 77);
 
 /**
+ * @generated from message silo.v1.SeedConnectorsRequest
+ */
+export type SeedConnectorsRequest = Message<"silo.v1.SeedConnectorsRequest"> & {
+};
+
+/**
+ * Describes the message silo.v1.SeedConnectorsRequest.
+ * Use `create(SeedConnectorsRequestSchema)` to create a new message.
+ */
+export const SeedConnectorsRequestSchema: GenMessage<SeedConnectorsRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 78);
+
+/**
+ * @generated from message silo.v1.SeedConnectorsResponse
+ */
+export type SeedConnectorsResponse = Message<"silo.v1.SeedConnectorsResponse"> & {
+};
+
+/**
+ * Describes the message silo.v1.SeedConnectorsResponse.
+ * Use `create(SeedConnectorsResponseSchema)` to create a new message.
+ */
+export const SeedConnectorsResponseSchema: GenMessage<SeedConnectorsResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 79);
+
+/**
+ * @generated from message silo.v1.SeedSkillsRequest
+ */
+export type SeedSkillsRequest = Message<"silo.v1.SeedSkillsRequest"> & {
+};
+
+/**
+ * Describes the message silo.v1.SeedSkillsRequest.
+ * Use `create(SeedSkillsRequestSchema)` to create a new message.
+ */
+export const SeedSkillsRequestSchema: GenMessage<SeedSkillsRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 80);
+
+/**
+ * @generated from message silo.v1.SeedSkillsResponse
+ */
+export type SeedSkillsResponse = Message<"silo.v1.SeedSkillsResponse"> & {
+};
+
+/**
+ * Describes the message silo.v1.SeedSkillsResponse.
+ * Use `create(SeedSkillsResponseSchema)` to create a new message.
+ */
+export const SeedSkillsResponseSchema: GenMessage<SeedSkillsResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 81);
+
+/**
+ * @generated from message silo.v1.Skill
+ */
+export type Skill = Message<"silo.v1.Skill"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string source = 4;
+   */
+  source: string;
+
+  /**
+   * @generated from field: bool seeded = 5;
+   */
+  seeded: boolean;
+};
+
+/**
+ * Describes the message silo.v1.Skill.
+ * Use `create(SkillSchema)` to create a new message.
+ */
+export const SkillSchema: GenMessage<Skill> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 82);
+
+/**
+ * @generated from message silo.v1.ListSkillsRequest
+ */
+export type ListSkillsRequest = Message<"silo.v1.ListSkillsRequest"> & {
+  /**
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+};
+
+/**
+ * Describes the message silo.v1.ListSkillsRequest.
+ * Use `create(ListSkillsRequestSchema)` to create a new message.
+ */
+export const ListSkillsRequestSchema: GenMessage<ListSkillsRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 83);
+
+/**
+ * @generated from message silo.v1.ListSkillsResponse
+ */
+export type ListSkillsResponse = Message<"silo.v1.ListSkillsResponse"> & {
+  /**
+   * @generated from field: repeated silo.v1.Skill skills = 1;
+   */
+  skills: Skill[];
+};
+
+/**
+ * Describes the message silo.v1.ListSkillsResponse.
+ * Use `create(ListSkillsResponseSchema)` to create a new message.
+ */
+export const ListSkillsResponseSchema: GenMessage<ListSkillsResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 84);
+
+/**
+ * @generated from message silo.v1.InstallSkillRequest
+ */
+export type InstallSkillRequest = Message<"silo.v1.InstallSkillRequest"> & {
+  /**
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * @generated from field: bytes archive = 3;
+   */
+  archive: Uint8Array;
+
+  /**
+   * @generated from field: string filename = 4;
+   */
+  filename: string;
+};
+
+/**
+ * Describes the message silo.v1.InstallSkillRequest.
+ * Use `create(InstallSkillRequestSchema)` to create a new message.
+ */
+export const InstallSkillRequestSchema: GenMessage<InstallSkillRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 85);
+
+/**
+ * @generated from message silo.v1.InstallSkillResponse
+ */
+export type InstallSkillResponse = Message<"silo.v1.InstallSkillResponse"> & {
+  /**
+   * @generated from field: repeated string installed = 1;
+   */
+  installed: string[];
+
+  /**
+   * @generated from field: repeated string skipped = 2;
+   */
+  skipped: string[];
+};
+
+/**
+ * Describes the message silo.v1.InstallSkillResponse.
+ * Use `create(InstallSkillResponseSchema)` to create a new message.
+ */
+export const InstallSkillResponseSchema: GenMessage<InstallSkillResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 86);
+
+/**
+ * @generated from message silo.v1.DeleteSkillRequest
+ */
+export type DeleteSkillRequest = Message<"silo.v1.DeleteSkillRequest"> & {
+  /**
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message silo.v1.DeleteSkillRequest.
+ * Use `create(DeleteSkillRequestSchema)` to create a new message.
+ */
+export const DeleteSkillRequestSchema: GenMessage<DeleteSkillRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 87);
+
+/**
+ * @generated from message silo.v1.DeleteSkillResponse
+ */
+export type DeleteSkillResponse = Message<"silo.v1.DeleteSkillResponse"> & {
+};
+
+/**
+ * Describes the message silo.v1.DeleteSkillResponse.
+ * Use `create(DeleteSkillResponseSchema)` to create a new message.
+ */
+export const DeleteSkillResponseSchema: GenMessage<DeleteSkillResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 88);
+
+/**
+ * @generated from message silo.v1.BotSkill
+ */
+export type BotSkill = Message<"silo.v1.BotSkill"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+
+  /**
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: bool enabled = 4;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string source = 5;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message silo.v1.BotSkill.
+ * Use `create(BotSkillSchema)` to create a new message.
+ */
+export const BotSkillSchema: GenMessage<BotSkill> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 89);
+
+/**
+ * @generated from message silo.v1.ListBotSkillsRequest
+ */
+export type ListBotSkillsRequest = Message<"silo.v1.ListBotSkillsRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+};
+
+/**
+ * Describes the message silo.v1.ListBotSkillsRequest.
+ * Use `create(ListBotSkillsRequestSchema)` to create a new message.
+ */
+export const ListBotSkillsRequestSchema: GenMessage<ListBotSkillsRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 90);
+
+/**
+ * @generated from message silo.v1.ListBotSkillsResponse
+ */
+export type ListBotSkillsResponse = Message<"silo.v1.ListBotSkillsResponse"> & {
+  /**
+   * @generated from field: repeated silo.v1.BotSkill skills = 1;
+   */
+  skills: BotSkill[];
+};
+
+/**
+ * Describes the message silo.v1.ListBotSkillsResponse.
+ * Use `create(ListBotSkillsResponseSchema)` to create a new message.
+ */
+export const ListBotSkillsResponseSchema: GenMessage<ListBotSkillsResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 91);
+
+/**
+ * @generated from message silo.v1.SetBotSkillRequest
+ */
+export type SetBotSkillRequest = Message<"silo.v1.SetBotSkillRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: bool enabled = 4;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message silo.v1.SetBotSkillRequest.
+ * Use `create(SetBotSkillRequestSchema)` to create a new message.
+ */
+export const SetBotSkillRequestSchema: GenMessage<SetBotSkillRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 92);
+
+/**
+ * @generated from message silo.v1.ListSkillFilesRequest
+ */
+export type ListSkillFilesRequest = Message<"silo.v1.ListSkillFilesRequest"> & {
+  /**
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string path = 3;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message silo.v1.ListSkillFilesRequest.
+ * Use `create(ListSkillFilesRequestSchema)` to create a new message.
+ */
+export const ListSkillFilesRequestSchema: GenMessage<ListSkillFilesRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 93);
+
+/**
+ * @generated from message silo.v1.ReadSkillFileRequest
+ */
+export type ReadSkillFileRequest = Message<"silo.v1.ReadSkillFileRequest"> & {
+  /**
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string path = 3;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message silo.v1.ReadSkillFileRequest.
+ * Use `create(ReadSkillFileRequestSchema)` to create a new message.
+ */
+export const ReadSkillFileRequestSchema: GenMessage<ReadSkillFileRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 94);
+
+/**
+ * @generated from message silo.v1.SaveSkillRequest
+ */
+export type SaveSkillRequest = Message<"silo.v1.SaveSkillRequest"> & {
+  /**
+   * @generated from field: string bot_id = 1;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * @generated from field: string run_id = 3;
+   */
+  runId: string;
+};
+
+/**
+ * Describes the message silo.v1.SaveSkillRequest.
+ * Use `create(SaveSkillRequestSchema)` to create a new message.
+ */
+export const SaveSkillRequestSchema: GenMessage<SaveSkillRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 95);
+
+/**
+ * @generated from message silo.v1.SaveSkillResponse
+ */
+export type SaveSkillResponse = Message<"silo.v1.SaveSkillResponse"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message silo.v1.SaveSkillResponse.
+ * Use `create(SaveSkillResponseSchema)` to create a new message.
+ */
+export const SaveSkillResponseSchema: GenMessage<SaveSkillResponse> = /*@__PURE__*/
+  messageDesc(file_silo_v1_ui, 96);
+
+/**
  * @generated from service silo.v1.UI
  */
 export const UI: GenService<{
@@ -2387,6 +2800,86 @@ export const UI: GenService<{
     methodKind: "unary";
     input: typeof StartConnectorAuthRequestSchema;
     output: typeof StartConnectorAuthResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.SeedConnectors
+   */
+  seedConnectors: {
+    methodKind: "unary";
+    input: typeof SeedConnectorsRequestSchema;
+    output: typeof SeedConnectorsResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.SeedSkills
+   */
+  seedSkills: {
+    methodKind: "unary";
+    input: typeof SeedSkillsRequestSchema;
+    output: typeof SeedSkillsResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.ListSkills
+   */
+  listSkills: {
+    methodKind: "unary";
+    input: typeof ListSkillsRequestSchema;
+    output: typeof ListSkillsResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.InstallSkill
+   */
+  installSkill: {
+    methodKind: "unary";
+    input: typeof InstallSkillRequestSchema;
+    output: typeof InstallSkillResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.DeleteSkill
+   */
+  deleteSkill: {
+    methodKind: "unary";
+    input: typeof DeleteSkillRequestSchema;
+    output: typeof DeleteSkillResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.ListBotSkills
+   */
+  listBotSkills: {
+    methodKind: "unary";
+    input: typeof ListBotSkillsRequestSchema;
+    output: typeof ListBotSkillsResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.SetBotSkill
+   */
+  setBotSkill: {
+    methodKind: "unary";
+    input: typeof SetBotSkillRequestSchema;
+    output: typeof BotSkillSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.ListSkillFiles
+   */
+  listSkillFiles: {
+    methodKind: "unary";
+    input: typeof ListSkillFilesRequestSchema;
+    output: typeof ListFilesResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.ReadSkillFile
+   */
+  readSkillFile: {
+    methodKind: "unary";
+    input: typeof ReadSkillFileRequestSchema;
+    output: typeof ReadFileResponseSchema;
+  },
+  /**
+   * @generated from rpc silo.v1.UI.SaveSkill
+   */
+  saveSkill: {
+    methodKind: "unary";
+    input: typeof SaveSkillRequestSchema;
+    output: typeof SaveSkillResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_silo_v1_ui, 0);

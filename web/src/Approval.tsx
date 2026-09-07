@@ -45,7 +45,8 @@ export function NeedYouSlip({
   children: ReactNode;
 }) {
   return (
-    <aside className="absolute top-0 right-0 z-10 flex h-full w-[400px] flex-col border-l border-thread bg-folio p-5">
+    <aside className="z-20 flex flex-col overflow-auto bg-folio p-5 max-wide:fixed max-wide:inset-x-0 max-wide:bottom-0 max-wide:max-h-[80dvh] max-wide:rounded-t-[10px] max-wide:border-t max-wide:border-thread max-wide:pb-[max(1.25rem,env(safe-area-inset-bottom))] wide:absolute wide:top-0 wide:right-0 wide:h-full wide:w-[400px] wide:border-l wide:border-thread">
+      <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-thread wide:hidden" />
       <div className="mb-4 flex items-center gap-2">
         <Crest index={bot.crest} size={28} />
         <span className="font-medium">{bot.name}</span>
@@ -58,7 +59,7 @@ export function NeedYouSlip({
           {fields.map((f) => (
             <div key={f.label}>
               <dt className="text-[11px] font-medium tracking-wide text-stone">{f.label}</dt>
-              <dd className="font-mono text-[13px]">{f.value}</dd>
+              <dd className="whitespace-pre-wrap font-mono text-[13px]">{f.value}</dd>
             </div>
           ))}
         </dl>

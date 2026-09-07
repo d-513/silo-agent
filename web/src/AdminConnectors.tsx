@@ -1,4 +1,4 @@
-import { Plus } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Plus, Trash } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
@@ -24,19 +24,45 @@ export function AdminConnectors() {
 function CatalogList() {
   const [rows, setRows] = useState<Connector[] | null>(null);
   const [err, setErr] = useState("");
+  const [arm, setArm] = useState("");
+  async function load() {
+    const r = await ui.listConnectors({});
+    setRows(r.connectors);
+  }
   useEffect(() => {
-    ui.listConnectors({})
-      .then((r) => setRows(r.connectors))
-      .catch((e) => setErr(fail(e)));
+    load().catch((e) => setErr(fail(e)));
   }, []);
+  async function seed() {
+    setErr("");
+    try {
+      await ui.seedConnectors({});
+      await load();
+    } catch (e) {
+      setErr(fail(e));
+    }
+  }
+  async function remove(id: string) {
+    setErr("");
+    try {
+      await ui.deleteConnector({ id });
+      await load();
+    } catch (e) {
+      setErr(fail(e));
+    }
+  }
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[22px] font-medium">Connectors Library</h2>
-        <Link to="/admin/connectors/new" className={btnClass("primary")}>
-          <Plus size={16} />
-          Add connector
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<ArrowCounterClockwise size={12} />}>
+            Re-add defaults
+          </Btn>
+          <Link to="/admin/connectors/new" className={btnClass("primary")}>
+            <Plus size={16} />
+            Add connector
+          </Link>
+        </div>
       </div>
       <p className="mb-4 text-stone">Presets every Bot can pick. Attaching copies the preset onto that Bot.</p>
       {err && <p className="mb-3 text-carmine">{err}</p>}
@@ -47,21 +73,37 @@ function CatalogList() {
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((c) => (
-            <Link
-              key={c.id}
-              to={`/admin/connectors/${c.id}`}
-              className="flex items-center gap-3 rounded-[10px] border border-thread bg-folio px-3 py-3 hover:border-[#B9B3A6]"
-            >
-              <ConnectorMark id={c.id} hasImage={c.hasImage} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{c.name}</span>
-                  <McpChip />
+            <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-[10px] border border-thread bg-folio px-3 py-3 hover:border-[#B9B3A6]">
+              <Link to={`/admin/connectors/${c.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                <ConnectorMark id={c.id} hasImage={c.hasImage} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{c.name}</span>
+                    <McpChip />
+                  </div>
+                  <p className="truncate text-stone">{c.description || c.httpUrl}</p>
                 </div>
-                <p className="truncate text-stone">{c.description || c.httpUrl}</p>
-              </div>
-              <span className="font-mono text-stone">{c.transport} · {c.auth} · {c.defaultMode || "ask"}</span>
-            </Link>
+                <span className="hidden font-mono text-stone wide:inline">{c.transport} · {c.auth} · {c.defaultMode || "ask"}</span>
+              </Link>
+              <Btn
+                kind="deny"
+                type="button"
+                className="shrink-0"
+                icon={<Trash size={12} />}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (arm !== c.id) {
+                    setArm(c.id);
+                    return;
+                  }
+                  setArm("");
+                  void remove(c.id);
+                }}
+              >
+                {arm === c.id ? "Remove?" : "Remove"}
+              </Btn>
+            </div>
           ))}
         </div>
       )}

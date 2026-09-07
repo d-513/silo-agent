@@ -9,7 +9,19 @@ export type Block =
   | { key: string; type: "assistant"; text: string; streaming?: boolean }
   | { key: string; type: "thinking"; text: string; streaming?: boolean }
   | ToolBlock
-  | { key: string; type: "error"; text: string };
+  | { key: string; type: "error"; text: string }
+  | {
+      key: string;
+      type: "artifact";
+      artifactType: string;
+      name: string;
+      title: string;
+      path: string;
+      scope: string;
+      approvalId: string;
+      status: string;
+      runId?: string;
+    };
 
 const staleKey = /openrouter api key|set openrouter|silo_openrouter|api key in admin/i;
 
@@ -179,6 +191,41 @@ export function foldEvents(events: Ev[]): Block[] {
         }
         break;
       }
+      continue;
+    }
+    if (e.kind === "artifact") {
+      closeThinking(out);
+      let body: Record<string, unknown> = {};
+      try {
+        body = JSON.parse(e.body || "{}") as Record<string, unknown>;
+      } catch {
+        /* ignore */
+      }
+      const name = String(body.name || "");
+      const approvalId = String(body.approval_id || "");
+      const next = {
+        key,
+        type: "artifact" as const,
+        artifactType: String(body.type || "skill"),
+        name,
+        title: String(body.title || name),
+        path: String(body.path || ""),
+        scope: String(body.scope || ""),
+        approvalId,
+        status: String(body.status || ""),
+        runId: e.runId,
+      };
+      let found = false;
+      for (let j = out.length - 1; j >= 0; j--) {
+        const b = out[j];
+        if (b.type !== "artifact") continue;
+        if ((approvalId && b.approvalId === approvalId) || (name && b.name === name && b.path === next.path)) {
+          Object.assign(b, next, { key: b.key });
+          found = true;
+          break;
+        }
+      }
+      if (!found) push(next);
       continue;
     }
     if (e.kind === "error") {

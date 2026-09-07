@@ -8,8 +8,8 @@ export SILO_WORKSPACE=/workspace
 export SILO_WORKER_SOCK=/var/run/silo/worker.sock
 export PYTHONPATH=/opt/silo
 
-mkdir -p /var/run/silo /run/user/1000 /workspace /workspace/bot /opt/silo/tools
-chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /workspace /workspace/bot
+mkdir -p /var/run/silo /run/user/1000 /workspace /workspace/bot /opt/silo/tools /opt/silo/skills
+chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/skills /workspace /workspace/bot
 chmod 1777 /workspace /workspace/bot
 chmod 700 /run/user/1000
 

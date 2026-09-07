@@ -186,6 +186,29 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 			"required": []string{"x", "y", "dy"},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "skill",
+		Description: openai.String("Load an enabled skill. Pass name (from the Skills list in the system prompt). Optional path is a file inside the skill (default SKILL.md). Scripts live at /opt/silo/skills/<name>/."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{"type": "string"},
+				"path": map[string]any{"type": "string", "description": "relative file inside the skill, default SKILL.md"},
+			},
+			"required": []string{"name"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "propose_skill",
+		Description: openai.String("Show a skill you wrote as an artifact in the thread. Path is a directory relative to /workspace that contains SKILL.md. This does not install it — the human Saves it from the card."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"path": map[string]any{"type": "string"},
+			},
+			"required": []string{"path"},
+		},
+	}),
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
@@ -225,7 +248,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	var bot db.Bot
 	sysText := prompts.System
 	if a.DB.First(&bot, "id = ?", botID).Error == nil {
-		sysText = buildSystem(&bot, a.connectorBlurb(botID))
+		sysText = buildSystem(&bot, a.connectorBlurb(botID)+a.skillBlurb(botID))
 	}
 	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
@@ -328,7 +351,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			if fn.Name == "soul" || fn.Name == "memory" {
 				var row db.Bot
 				if a.DB.First(&row, "id = ?", botID).Error == nil {
-					msgs[0] = openai.SystemMessage(buildSystem(&row, a.connectorBlurb(botID)))
+					msgs[0] = openai.SystemMessage(buildSystem(&row, a.connectorBlurb(botID)+a.skillBlurb(botID)))
 				}
 			}
 		}
@@ -514,6 +537,12 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if name == "present" && path == "" {
 		return "", "", fmt.Errorf("path required")
 	}
+	if name == "skill" && str("name") == "" {
+		return "", "", fmt.Errorf("name required")
+	}
+	if name == "propose_skill" && path == "" {
+		return "", "", fmt.Errorf("path required")
+	}
 	conn, action, ok := chatTool(name)
 	if !ok {
 		return "", "", fmt.Errorf("unknown tool %s", name)
@@ -522,12 +551,28 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", "", fmt.Errorf("unknown bot")
 	}
-	if err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
+	var peek skillPeek
+	if name == "propose_skill" {
+		var err error
+		peek, err = a.peekSkillProposal(ctx, botID, path)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	if _, err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
 		return "", "", err
 	}
 	if name == "soul" || name == "memory" {
 		out, err := a.execDoc(botID, name, args)
 		return out, "", err
+	}
+	if name == "skill" {
+		out, err := a.loadSkill(botID, str("name"), str("path"))
+		return out, "", err
+	}
+	if name == "propose_skill" {
+		a.emitSkillArtifact(botID, runID, peek.Name, peek.Name, peek.Path, "workspace", "pending")
+		return "proposed skill " + peek.Name + " as an artifact. It is not installed until the human clicks Save skill.", "", nil
 	}
 	id := ids.New()
 	var cmd *v1.Cmd
@@ -627,6 +672,10 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Desktop, name, true
 	case "soul", "memory":
 		return security.Bot, name, true
+	case "skill":
+		return security.Skills, "load", true
+	case "propose_skill":
+		return security.Skills, "propose", true
 	default:
 		return "", "", false
 	}

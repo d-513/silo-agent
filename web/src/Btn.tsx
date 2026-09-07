@@ -18,7 +18,7 @@ const glyphWell: Record<BtnKind, string> = {
 
 export function btnClass(kind: BtnKind = "secondary", extra = "") {
   return [
-    "inline-flex h-9 items-center gap-2 rounded px-3 text-[14px] font-medium outline-none",
+    "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded px-3 text-[14px] font-medium outline-none",
     "transition-[transform,background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
     "active:scale-[0.98] focus-visible:border-bindery disabled:opacity-50",
     kindClass[kind],

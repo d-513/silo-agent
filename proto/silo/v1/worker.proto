@@ -35,6 +35,7 @@ message Cmd {
     TypeCmd type = 19;
     KeyCmd key = 20;
     ScrollCmd scroll = 21;
+    SyncSkillsCmd sync_skills = 22;
   }
 }
 
@@ -140,6 +141,15 @@ message ScrollCmd {
   int32 x = 1;
   int32 y = 2;
   int32 dy = 3;
+}
+
+message SkillFile {
+  string path = 1;
+  bytes data = 2;
+}
+
+message SyncSkillsCmd {
+  repeated SkillFile files = 1;
 }
 
 message CmdEvent {

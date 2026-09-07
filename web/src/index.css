@@ -23,6 +23,7 @@
   --color-slate: #5c6b7a;
   --color-hatch: #1e2126;
   --color-matte: #12141a;
+  --breakpoint-wide: 960px;
 }
 
 html,
@@ -34,6 +35,32 @@ body,
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 22px;
+}
+
+.silo-page {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  padding: 16px 16px 48px;
+}
+.silo-page-sm {
+  max-width: 560px;
+}
+@media (min-width: 960px) {
+  .silo-page,
+  .silo-page-sm {
+    padding: 28px;
+  }
+}
+
+.silo-scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.silo-scroll-x::-webkit-scrollbar {
+  display: none;
 }
 
 button {

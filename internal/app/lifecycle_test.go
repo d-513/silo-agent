@@ -27,7 +27,7 @@ func memDB(t *testing.T) *gorm.DB {
 	if err := gdb.AutoMigrate(
 		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
 		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Setting{}, &db.Audit{},
-		&db.Connector{}, &db.BotConnector{},
+		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func (f *fakeHost) Start(_ context.Context, id string) error {
 	}
 	return nil
 }
-func (f *fakeHost) Stop(context.Context, string) error { return nil }
+func (f *fakeHost) Stop(context.Context, string) error  { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
 
 func testApp(t *testing.T, d dockerx.Host) *App {

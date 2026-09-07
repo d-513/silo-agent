@@ -254,6 +254,7 @@ The Chat tab. Not a marketing chat.
 - Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
 - `present`: a user-facing path is the file itself in a folio well (same preview as Files). Not collapsed. A `bot/…` path is scratch — a collapsed “Looked at …” row the human can open. The model still gets image pixels. The model does not retype it.
 - `look`: collapsed “Looked at screen” (same scratch fold as `present bot/…`). Clicks are 1280×720 screenshot pixels.
+- Artifact: hatch card in the thread (scroll mark, name, muted “Skill”, download, **Save skill** while pending). v1 type is skill only (`propose_skill` is Allow — show the card, do not install). Clicking opens the skill overlay. Save on the card copies it to personal; after save, checkmark, no Save. No Needs-you slip for this.
 - Composer: Cloth well, placeholder “Ask this Bot…”, bindery send. While a run is live, Send becomes Stop (filled square) — `StopRun` cancels that chat’s run, not the Bot.
 
 ### Status lamp
@@ -270,9 +271,9 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Chat titles: generated from the first prompt; pencil or double-click to rename. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then a folio **Dangerous** well (Reset / Delete, second click).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Chat titles: generated from the first prompt; pencil or double-click to rename. Tabs: `Chat`, `Desktop` (caret → folio menu with only the other view; the tab itself becomes Console while that view is open), `Files`, `Connectors`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace `FileBrowser`: tree sidebar + preview (images, PDF, media, markdown, code, docx), breadcrumbs in the header, upload / new / download. Delete is a second click, not `confirm()`. Skill inspect (Hub, Admin library, Bot Skills, Artifact) is the same tree+preview in a **hatch overlay** — iron chrome, folio preview pane, open `SKILL.md` first, readonly. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Skills: bindery switch (no On/Off labels); click the row to inspect. `catalog` chip only on embed library names. Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then a folio **Dangerous** well (Reset / Delete, second click).
 
-**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors) scroll inside the hatch; do not clip.
+**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library | Skills Library. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors, Skills) scroll inside the hatch; do not clip.
 
 ### Whitespace Strategy
 
@@ -284,7 +285,13 @@ Left spine. Crests left of names. Header actions right. One ribbon in the grid a
 
 ### Responsive
 
-v1 is a desktop operator UI. Below 960: rail becomes a 48px top bar; run stacks thread then hatch; approval becomes a bottom sheet. 40px hits. No separate marketing site.
+Desktop-first operator UI. Break at **960** (`wide:` / `max-wide:`).
+
+- **≥960:** 64px left rail. Bot header is one row: crest + name + lamp, then a horizontally scrollable tab strip (no native scrollbar; fade + caret when that edge still has tabs), then Start Bot / Stop Bot. Desktop’s caret opens one Console tab, same size and style as Desktop, flush under it (portaled so overflow does not clip). When the header is under 1280px, Start / Stop is the power glyph only. Chats stay a 240px sidebar. Approval is the 400px right slip.
+- **<960:** rail becomes a 48px top bar (safe-area padded); crests scroll sideways. Bot header is tabs + Start/Stop only — no repeated name or crest (the rail mark is enough). Tabs are icons with the label only on the active one; Start / Stop is the power glyph. Desktop and Console are separate tabs, no caret. Chats become a horizontal chip strip. Files shows tree or preview, not both (crumbs go back). Approval is a bottom sheet. Settings SOUL / MEMORY stack. 40px hits.
+- **Bots grid:** 1 column, 2 at 1100, 3 at 1440. Settings columns use `.silo-page` (max 760, 16px gutters on small, 28px on wide).
+
+No separate marketing site.
 
 ## 6. Design System Notes for Stitch Generation
 
@@ -314,7 +321,10 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
 | 6 | Bot · Desktop | Hatch full-bleed. Caret on the tab opens Console. |
 | 7 | Bot · Connectors | Attach a library preset (more than once is another account) or add a custom MCP. |
-| 8 | Admin · Connectors Library | Site presets. HTTP MCP, OAuth or none. |
+| 14 | Skills | Hub: Personal / Library. Install URL or zip on Personal. |
+| 15 | Bot · Skills | Toggle library and personal skills. |
+| 8 | Admin · Connectors Library | Site presets. HTTP MCP, OAuth or none. Re-add defaults. |
+| 16 | Admin · Skills Library | Site skills. Install URL or zip. Re-add defaults. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |
 | 10 | Bot · Rules | Allow / ask / deny per action. |
 | 11 | Admin · Settings | Product settings. Not operator YAML. |

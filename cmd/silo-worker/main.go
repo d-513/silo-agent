@@ -265,6 +265,8 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.putFile(b.PutFile.GetPath(), b.PutFile.GetData())
 	case *v1.Cmd_SyncTools:
 		return w.syncTools(b.SyncTools.GetStubs())
+	case *v1.Cmd_SyncSkills:
+		return w.syncSkills(b.SyncSkills.GetFiles())
 	case *v1.Cmd_EnsureChrome:
 		return w.ensureChrome(ctx)
 	case *v1.Cmd_Look:
@@ -482,6 +484,41 @@ func ensureToolsDir() {
 func (w *worker) syncTools(stubs []*v1.ToolStub) (string, error) {
 	if err := toolsgen.Write(toolsDir(), stubs); err != nil {
 		return "", err
+	}
+	return "ok", nil
+}
+
+func skillsDir() string {
+	if d := os.Getenv("SILO_SKILLS_DIR"); d != "" {
+		return d
+	}
+	return "/opt/silo/skills"
+}
+
+func (w *worker) syncSkills(files []*v1.SkillFile) (string, error) {
+	dir := skillsDir()
+	if err := toolsgen.ResetDir(dir); err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		rel := filepath.ToSlash(strings.TrimSpace(f.GetPath()))
+		if rel == "" || strings.Contains(rel, "..") || strings.HasPrefix(rel, "/") {
+			return "", errors.New("invalid skill path")
+		}
+		full := filepath.Join(dir, filepath.FromSlash(rel))
+		got, err := filepath.Rel(dir, full)
+		if err != nil || strings.HasPrefix(got, "..") {
+			return "", errors.New("skill path escapes")
+		}
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(full, f.GetData(), 0o644); err != nil {
+			return "", err
+		}
 	}
 	return "ok", nil
 }

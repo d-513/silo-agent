@@ -121,6 +121,26 @@ const (
 	UIRefreshBotConnectorProcedure = "/silo.v1.UI/RefreshBotConnector"
 	// UIStartConnectorAuthProcedure is the fully-qualified name of the UI's StartConnectorAuth RPC.
 	UIStartConnectorAuthProcedure = "/silo.v1.UI/StartConnectorAuth"
+	// UISeedConnectorsProcedure is the fully-qualified name of the UI's SeedConnectors RPC.
+	UISeedConnectorsProcedure = "/silo.v1.UI/SeedConnectors"
+	// UISeedSkillsProcedure is the fully-qualified name of the UI's SeedSkills RPC.
+	UISeedSkillsProcedure = "/silo.v1.UI/SeedSkills"
+	// UIListSkillsProcedure is the fully-qualified name of the UI's ListSkills RPC.
+	UIListSkillsProcedure = "/silo.v1.UI/ListSkills"
+	// UIInstallSkillProcedure is the fully-qualified name of the UI's InstallSkill RPC.
+	UIInstallSkillProcedure = "/silo.v1.UI/InstallSkill"
+	// UIDeleteSkillProcedure is the fully-qualified name of the UI's DeleteSkill RPC.
+	UIDeleteSkillProcedure = "/silo.v1.UI/DeleteSkill"
+	// UIListBotSkillsProcedure is the fully-qualified name of the UI's ListBotSkills RPC.
+	UIListBotSkillsProcedure = "/silo.v1.UI/ListBotSkills"
+	// UISetBotSkillProcedure is the fully-qualified name of the UI's SetBotSkill RPC.
+	UISetBotSkillProcedure = "/silo.v1.UI/SetBotSkill"
+	// UIListSkillFilesProcedure is the fully-qualified name of the UI's ListSkillFiles RPC.
+	UIListSkillFilesProcedure = "/silo.v1.UI/ListSkillFiles"
+	// UIReadSkillFileProcedure is the fully-qualified name of the UI's ReadSkillFile RPC.
+	UIReadSkillFileProcedure = "/silo.v1.UI/ReadSkillFile"
+	// UISaveSkillProcedure is the fully-qualified name of the UI's SaveSkill RPC.
+	UISaveSkillProcedure = "/silo.v1.UI/SaveSkill"
 )
 
 // UIClient is a client for the silo.v1.UI service.
@@ -169,6 +189,16 @@ type UIClient interface {
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
+	SeedConnectors(context.Context, *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error)
+	SeedSkills(context.Context, *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error)
+	ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error)
+	InstallSkill(context.Context, *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error)
+	DeleteSkill(context.Context, *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error)
+	ListBotSkills(context.Context, *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error)
+	SetBotSkill(context.Context, *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error)
+	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
 }
 
 // NewUIClient constructs a client for the silo.v1.UI service. By default, it uses the Connect
@@ -446,6 +476,66 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("StartConnectorAuth")),
 			connect.WithClientOptions(opts...),
 		),
+		seedConnectors: connect.NewClient[v1.SeedConnectorsRequest, v1.SeedConnectorsResponse](
+			httpClient,
+			baseURL+UISeedConnectorsProcedure,
+			connect.WithSchema(uIMethods.ByName("SeedConnectors")),
+			connect.WithClientOptions(opts...),
+		),
+		seedSkills: connect.NewClient[v1.SeedSkillsRequest, v1.SeedSkillsResponse](
+			httpClient,
+			baseURL+UISeedSkillsProcedure,
+			connect.WithSchema(uIMethods.ByName("SeedSkills")),
+			connect.WithClientOptions(opts...),
+		),
+		listSkills: connect.NewClient[v1.ListSkillsRequest, v1.ListSkillsResponse](
+			httpClient,
+			baseURL+UIListSkillsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSkills")),
+			connect.WithClientOptions(opts...),
+		),
+		installSkill: connect.NewClient[v1.InstallSkillRequest, v1.InstallSkillResponse](
+			httpClient,
+			baseURL+UIInstallSkillProcedure,
+			connect.WithSchema(uIMethods.ByName("InstallSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSkill: connect.NewClient[v1.DeleteSkillRequest, v1.DeleteSkillResponse](
+			httpClient,
+			baseURL+UIDeleteSkillProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		listBotSkills: connect.NewClient[v1.ListBotSkillsRequest, v1.ListBotSkillsResponse](
+			httpClient,
+			baseURL+UIListBotSkillsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBotSkills")),
+			connect.WithClientOptions(opts...),
+		),
+		setBotSkill: connect.NewClient[v1.SetBotSkillRequest, v1.BotSkill](
+			httpClient,
+			baseURL+UISetBotSkillProcedure,
+			connect.WithSchema(uIMethods.ByName("SetBotSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		listSkillFiles: connect.NewClient[v1.ListSkillFilesRequest, v1.ListFilesResponse](
+			httpClient,
+			baseURL+UIListSkillFilesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSkillFiles")),
+			connect.WithClientOptions(opts...),
+		),
+		readSkillFile: connect.NewClient[v1.ReadSkillFileRequest, v1.ReadFileResponse](
+			httpClient,
+			baseURL+UIReadSkillFileProcedure,
+			connect.WithSchema(uIMethods.ByName("ReadSkillFile")),
+			connect.WithClientOptions(opts...),
+		),
+		saveSkill: connect.NewClient[v1.SaveSkillRequest, v1.SaveSkillResponse](
+			httpClient,
+			baseURL+UISaveSkillProcedure,
+			connect.WithSchema(uIMethods.ByName("SaveSkill")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -495,6 +585,16 @@ type uIClient struct {
 	detachConnector     *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
 	refreshBotConnector *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
 	startConnectorAuth  *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
+	seedConnectors      *connect.Client[v1.SeedConnectorsRequest, v1.SeedConnectorsResponse]
+	seedSkills          *connect.Client[v1.SeedSkillsRequest, v1.SeedSkillsResponse]
+	listSkills          *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
+	installSkill        *connect.Client[v1.InstallSkillRequest, v1.InstallSkillResponse]
+	deleteSkill         *connect.Client[v1.DeleteSkillRequest, v1.DeleteSkillResponse]
+	listBotSkills       *connect.Client[v1.ListBotSkillsRequest, v1.ListBotSkillsResponse]
+	setBotSkill         *connect.Client[v1.SetBotSkillRequest, v1.BotSkill]
+	listSkillFiles      *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
+	readSkillFile       *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
+	saveSkill           *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
 }
 
 // SignIn calls silo.v1.UI.SignIn.
@@ -717,6 +817,56 @@ func (c *uIClient) StartConnectorAuth(ctx context.Context, req *connect.Request[
 	return c.startConnectorAuth.CallUnary(ctx, req)
 }
 
+// SeedConnectors calls silo.v1.UI.SeedConnectors.
+func (c *uIClient) SeedConnectors(ctx context.Context, req *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
+	return c.seedConnectors.CallUnary(ctx, req)
+}
+
+// SeedSkills calls silo.v1.UI.SeedSkills.
+func (c *uIClient) SeedSkills(ctx context.Context, req *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error) {
+	return c.seedSkills.CallUnary(ctx, req)
+}
+
+// ListSkills calls silo.v1.UI.ListSkills.
+func (c *uIClient) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
+	return c.listSkills.CallUnary(ctx, req)
+}
+
+// InstallSkill calls silo.v1.UI.InstallSkill.
+func (c *uIClient) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
+	return c.installSkill.CallUnary(ctx, req)
+}
+
+// DeleteSkill calls silo.v1.UI.DeleteSkill.
+func (c *uIClient) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
+	return c.deleteSkill.CallUnary(ctx, req)
+}
+
+// ListBotSkills calls silo.v1.UI.ListBotSkills.
+func (c *uIClient) ListBotSkills(ctx context.Context, req *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error) {
+	return c.listBotSkills.CallUnary(ctx, req)
+}
+
+// SetBotSkill calls silo.v1.UI.SetBotSkill.
+func (c *uIClient) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error) {
+	return c.setBotSkill.CallUnary(ctx, req)
+}
+
+// ListSkillFiles calls silo.v1.UI.ListSkillFiles.
+func (c *uIClient) ListSkillFiles(ctx context.Context, req *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
+	return c.listSkillFiles.CallUnary(ctx, req)
+}
+
+// ReadSkillFile calls silo.v1.UI.ReadSkillFile.
+func (c *uIClient) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
+	return c.readSkillFile.CallUnary(ctx, req)
+}
+
+// SaveSkill calls silo.v1.UI.SaveSkill.
+func (c *uIClient) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
+	return c.saveSkill.CallUnary(ctx, req)
+}
+
 // UIHandler is an implementation of the silo.v1.UI service.
 type UIHandler interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
@@ -763,6 +913,16 @@ type UIHandler interface {
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
+	SeedConnectors(context.Context, *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error)
+	SeedSkills(context.Context, *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error)
+	ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error)
+	InstallSkill(context.Context, *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error)
+	DeleteSkill(context.Context, *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error)
+	ListBotSkills(context.Context, *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error)
+	SetBotSkill(context.Context, *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error)
+	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
 }
 
 // NewUIHandler builds an HTTP handler from the service implementation. It returns the path on which
@@ -1036,6 +1196,66 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("StartConnectorAuth")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uISeedConnectorsHandler := connect.NewUnaryHandler(
+		UISeedConnectorsProcedure,
+		svc.SeedConnectors,
+		connect.WithSchema(uIMethods.ByName("SeedConnectors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISeedSkillsHandler := connect.NewUnaryHandler(
+		UISeedSkillsProcedure,
+		svc.SeedSkills,
+		connect.WithSchema(uIMethods.ByName("SeedSkills")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSkillsHandler := connect.NewUnaryHandler(
+		UIListSkillsProcedure,
+		svc.ListSkills,
+		connect.WithSchema(uIMethods.ByName("ListSkills")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIInstallSkillHandler := connect.NewUnaryHandler(
+		UIInstallSkillProcedure,
+		svc.InstallSkill,
+		connect.WithSchema(uIMethods.ByName("InstallSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteSkillHandler := connect.NewUnaryHandler(
+		UIDeleteSkillProcedure,
+		svc.DeleteSkill,
+		connect.WithSchema(uIMethods.ByName("DeleteSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBotSkillsHandler := connect.NewUnaryHandler(
+		UIListBotSkillsProcedure,
+		svc.ListBotSkills,
+		connect.WithSchema(uIMethods.ByName("ListBotSkills")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetBotSkillHandler := connect.NewUnaryHandler(
+		UISetBotSkillProcedure,
+		svc.SetBotSkill,
+		connect.WithSchema(uIMethods.ByName("SetBotSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSkillFilesHandler := connect.NewUnaryHandler(
+		UIListSkillFilesProcedure,
+		svc.ListSkillFiles,
+		connect.WithSchema(uIMethods.ByName("ListSkillFiles")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIReadSkillFileHandler := connect.NewUnaryHandler(
+		UIReadSkillFileProcedure,
+		svc.ReadSkillFile,
+		connect.WithSchema(uIMethods.ByName("ReadSkillFile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISaveSkillHandler := connect.NewUnaryHandler(
+		UISaveSkillProcedure,
+		svc.SaveSkill,
+		connect.WithSchema(uIMethods.ByName("SaveSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.UI/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UISignInProcedure:
@@ -1126,6 +1346,26 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIRefreshBotConnectorHandler.ServeHTTP(w, r)
 		case UIStartConnectorAuthProcedure:
 			uIStartConnectorAuthHandler.ServeHTTP(w, r)
+		case UISeedConnectorsProcedure:
+			uISeedConnectorsHandler.ServeHTTP(w, r)
+		case UISeedSkillsProcedure:
+			uISeedSkillsHandler.ServeHTTP(w, r)
+		case UIListSkillsProcedure:
+			uIListSkillsHandler.ServeHTTP(w, r)
+		case UIInstallSkillProcedure:
+			uIInstallSkillHandler.ServeHTTP(w, r)
+		case UIDeleteSkillProcedure:
+			uIDeleteSkillHandler.ServeHTTP(w, r)
+		case UIListBotSkillsProcedure:
+			uIListBotSkillsHandler.ServeHTTP(w, r)
+		case UISetBotSkillProcedure:
+			uISetBotSkillHandler.ServeHTTP(w, r)
+		case UIListSkillFilesProcedure:
+			uIListSkillFilesHandler.ServeHTTP(w, r)
+		case UIReadSkillFileProcedure:
+			uIReadSkillFileHandler.ServeHTTP(w, r)
+		case UISaveSkillProcedure:
+			uISaveSkillHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1309,4 +1549,44 @@ func (UnimplementedUIHandler) RefreshBotConnector(context.Context, *connect.Requ
 
 func (UnimplementedUIHandler) StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StartConnectorAuth is not implemented"))
+}
+
+func (UnimplementedUIHandler) SeedConnectors(context.Context, *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SeedConnectors is not implemented"))
+}
+
+func (UnimplementedUIHandler) SeedSkills(context.Context, *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SeedSkills is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSkills is not implemented"))
+}
+
+func (UnimplementedUIHandler) InstallSkill(context.Context, *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.InstallSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteSkill(context.Context, *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBotSkills(context.Context, *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBotSkills is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetBotSkill(context.Context, *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetBotSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSkillFiles is not implemented"))
+}
+
+func (UnimplementedUIHandler) ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ReadSkillFile is not implemented"))
+}
+
+func (UnimplementedUIHandler) SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SaveSkill is not implemented"))
 }

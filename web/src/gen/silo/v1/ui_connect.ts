@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteSecretRequest, DeleteSecretResponse, DetachConnectorRequest, DetachConnectorResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SecretMeta, SendRequest, SendResponse, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, BotSkill, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SaveSkillRequest, SaveSkillResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -406,6 +406,96 @@ export const UI = {
       name: "StartConnectorAuth",
       I: StartConnectorAuthRequest,
       O: StartConnectorAuthResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SeedConnectors
+     */
+    seedConnectors: {
+      name: "SeedConnectors",
+      I: SeedConnectorsRequest,
+      O: SeedConnectorsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SeedSkills
+     */
+    seedSkills: {
+      name: "SeedSkills",
+      I: SeedSkillsRequest,
+      O: SeedSkillsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListSkills
+     */
+    listSkills: {
+      name: "ListSkills",
+      I: ListSkillsRequest,
+      O: ListSkillsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.InstallSkill
+     */
+    installSkill: {
+      name: "InstallSkill",
+      I: InstallSkillRequest,
+      O: InstallSkillResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteSkill
+     */
+    deleteSkill: {
+      name: "DeleteSkill",
+      I: DeleteSkillRequest,
+      O: DeleteSkillResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListBotSkills
+     */
+    listBotSkills: {
+      name: "ListBotSkills",
+      I: ListBotSkillsRequest,
+      O: ListBotSkillsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SetBotSkill
+     */
+    setBotSkill: {
+      name: "SetBotSkill",
+      I: SetBotSkillRequest,
+      O: BotSkill,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListSkillFiles
+     */
+    listSkillFiles: {
+      name: "ListSkillFiles",
+      I: ListSkillFilesRequest,
+      O: ListFilesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ReadSkillFile
+     */
+    readSkillFile: {
+      name: "ReadSkillFile",
+      I: ReadSkillFileRequest,
+      O: ReadFileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SaveSkill
+     */
+    saveSkill: {
+      name: "SaveSkill",
+      I: SaveSkillRequest,
+      O: SaveSkillResponse,
       kind: MethodKind.Unary,
     },
   }

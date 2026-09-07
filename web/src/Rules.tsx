@@ -40,7 +40,7 @@ export function RulesPane({ botId }: { botId: string }) {
   }
 
   return (
-    <div className="mx-auto w-[760px] p-7">
+    <div className="silo-page">
       <h2 className="mb-2 text-[22px] font-medium">Rules</h2>
       <p className="mb-2 text-stone">
         <span className="font-medium text-iron">Allow</span> runs without asking.{" "}
@@ -70,11 +70,11 @@ export function RulesPane({ botId }: { botId: string }) {
               <p className="text-stone">Nothing to set here yet.</p>
             ) : (
               s.rules.map((r) => (
-                <div key={`${r.connector}.${r.action}`} className="flex items-center gap-4 border-t border-thread-2 py-2">
+                <div key={`${r.connector}.${r.action}`} className="flex flex-col gap-2 border-t border-thread-2 py-2 wide:flex-row wide:items-center wide:gap-4">
                   <div className="min-w-0 flex-1">
                     <div className={r.connector === "secrets" ? "font-mono" : "font-medium"}>{r.title || r.action}</div>
                   </div>
-                  <div className="w-[220px] shrink-0">
+                  <div className="w-full wide:w-[220px] wide:shrink-0">
                     <Segmented value={r.decision} onChange={(v) => void setDecision(r, v)} options={modes} />
                   </div>
                 </div>

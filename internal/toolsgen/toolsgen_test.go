@@ -62,6 +62,30 @@ func TestWrite(t *testing.T) {
 	}
 }
 
+func TestWriteWhenParentNotWritable(t *testing.T) {
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "tools")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "stale"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+	if err := Write(dir, []*v1.ToolStub{{Connector: "Demo", Action: "Ping"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "stale")); err == nil {
+		t.Fatal("stale left")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "demo", "ping.py")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Cloudflare's get_organizations description ends with a quote; unescaped it
 // yields `""""` and the SyntaxError kills the whole package import.
 func TestWriteQuoteHeavyDescriptionCompiles(t *testing.T) {

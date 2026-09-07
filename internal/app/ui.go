@@ -142,6 +142,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		return nil, err
 	}
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
+	a.ensureDefaultSkill(id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
 	}
@@ -254,6 +255,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 		a.dropMCP(bc.ID)
 	}
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.DB.Delete(b)
 	if a.Cfg != nil && a.Cfg.DataDir != "" {

@@ -60,6 +60,12 @@ func TestDefault(t *testing.T) {
 	if _, ok := Default("twilio_docs", "search"); ok {
 		t.Fatal("mcp")
 	}
+	if m, ok := Default("skills", "load"); !ok || m != Allow {
+		t.Fatal("skill load")
+	}
+	if m, ok := Default("skills", "propose"); !ok || m != Allow {
+		t.Fatal("skill propose")
+	}
 }
 
 func TestVote(t *testing.T) {
@@ -72,7 +78,7 @@ func TestVote(t *testing.T) {
 }
 
 func TestReserved(t *testing.T) {
-	if !Reserved("desktop") || !Reserved("secrets") || Reserved("github") {
+	if !Reserved("desktop") || !Reserved("secrets") || !Reserved("skills") || Reserved("github") {
 		t.Fatal("reserved")
 	}
 }

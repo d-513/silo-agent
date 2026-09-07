@@ -23,6 +23,7 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 	a.recomputeStatus(bot.ID)
 	log.Printf("worker connected bot=%s", bot.ID)
 	go a.pushTools(bot.ID)
+	go a.pushSkills(bot.ID)
 
 	errc := make(chan error, 1)
 	go func() {
@@ -90,7 +91,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	tool := security.Key(security.Secrets, name)
 	title := security.Describe(security.Secrets, name, argsJSON(name)).Title
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
-	if err := a.authorizeAction(ctx, bot, runID, security.Secrets, name, argsJSON(name), ""); err != nil {
+	if _, err := a.authorizeAction(ctx, bot, runID, security.Secrets, name, argsJSON(name), ""); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.SecretRes{Error: err.Error()}), nil
 	}

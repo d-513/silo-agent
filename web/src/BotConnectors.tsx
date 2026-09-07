@@ -155,8 +155,8 @@ export function BotConnectors({
   }
 
   return (
-    <div className="mx-auto w-[760px] p-7">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="silo-page">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-[22px] font-medium">Connectors</h2>
         <button className={btnClass("primary")} onClick={() => setPick(true)}>
           <Plus size={16} />
@@ -170,7 +170,7 @@ export function BotConnectors({
         const c = row.connector;
         if (!c) return null;
         return (
-          <div key={row.id} className="mb-2 flex items-center gap-3 rounded-[10px] border border-thread bg-folio px-3 py-3">
+          <div key={row.id} className="mb-2 flex flex-wrap items-center gap-2 rounded-[10px] border border-thread bg-folio px-3 py-3">
             <ConnectorMark id={c.id} hasImage={c.hasImage} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -207,7 +207,7 @@ export function BotConnectors({
       })}
       {pick && (
         <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-iron/20 py-[8vh]">
-          <div className="w-[560px] rounded-[10px] border border-thread bg-folio p-5">
+          <div className="mx-4 w-full max-w-[560px] rounded-[10px] border border-thread bg-folio p-5">
             <h3 className="mb-3 text-[16px] font-medium">Add connector</h3>
             <div className="mb-4">
               <Segmented
@@ -282,7 +282,7 @@ export function BotConnectors({
       )}
       {edit && (
         <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-iron/20 py-[8vh]">
-          <form onSubmit={saveEdit} className="w-[560px] rounded-[10px] border border-thread bg-folio p-5">
+          <form onSubmit={saveEdit} className="mx-4 w-full max-w-[560px] rounded-[10px] border border-thread bg-folio p-5">
             <h3 className="mb-3 text-[16px] font-medium">Edit connector</h3>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
             <div className="flex gap-2">

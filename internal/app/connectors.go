@@ -427,7 +427,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	runID := req.Msg.GetRunId()
 	tool := slug + "." + action
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
-	if err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), c.DefaultMode); err != nil {
+	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), c.DefaultMode); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
@@ -471,7 +471,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 	}
 	tool := security.Key(slug, action)
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
-	if err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
@@ -500,15 +500,15 @@ func capCall(s string) string {
 	return s
 }
 
-func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) error {
+func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
 	decision := security.Rule(a.ruleDecision(bot.ID, conn, action, fallback))
 	switch decision {
 	case security.Deny:
 		a.audit(bot, "worker", conn+"."+action, security.Deny)
-		return errors.New("denied")
+		return "", errors.New("denied")
 	case security.Allow:
 		a.audit(bot, "worker", conn+"."+action, security.Allow)
-		return nil
+		return "", nil
 	default:
 		ap := db.Approval{
 			ID: ids.New(), BotID: bot.ID, RunID: runID,
@@ -527,13 +527,13 @@ func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 			a.dropWaiter(ap.ID)
 			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
 			a.recomputeStatus(bot.ID)
-			return errors.New("canceled")
+			return ap.ID, errors.New("canceled")
 		case dec = <-ch:
 		}
 		if !security.Granted(dec) {
-			return errors.New("denied")
+			return ap.ID, errors.New("denied")
 		}
-		return nil
+		return ap.ID, nil
 	}
 }
 
@@ -817,6 +817,9 @@ func (a *App) initConnectors() {
 	if a.Cfg != nil {
 		if err := catalog.Seed(a.DB); err != nil {
 			log.Printf("connector library seed: %v", err)
+		}
+		if err := catalog.SeedSkills(a.Cfg.DataDir); err != nil {
+			log.Printf("skill library seed: %v", err)
 		}
 	}
 }

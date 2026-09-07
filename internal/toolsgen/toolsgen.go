@@ -75,11 +75,26 @@ func PyName(action string) string {
 	return out
 }
 
-func Write(dir string, stubs []*v1.ToolStub) error {
-	if err := os.RemoveAll(dir); err != nil {
+// ResetDir makes dir exist and empty. It does not unlink dir itself — /opt/silo
+// is root-owned, so silo can write inside a chowned child but cannot rmdir it.
+func ResetDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range ents {
+		if err := os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Write(dir string, stubs []*v1.ToolStub) error {
+	if err := ResetDir(dir); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "__init__.py"), []byte(""), 0o644); err != nil {

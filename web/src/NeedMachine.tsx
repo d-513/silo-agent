@@ -12,7 +12,7 @@ export function NeedMachine({
   onStart: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-[10px] bg-cloth px-8">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-[10px] bg-cloth px-4 wide:px-8">
       <p className="mb-7 max-w-[22rem] text-center text-[17px] leading-7 text-stone">{copy}</p>
       {starting ? (
         <WakeMark />

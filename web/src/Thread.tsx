@@ -33,6 +33,7 @@ import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
+import { ArtifactCard, downloadArtifact, type SkillArtifact } from "./Artifact";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { foldEvents, type Ev } from "./fold";
 
@@ -203,6 +204,10 @@ function toolMeta(name: string) {
       return { label: "SOUL", Icon: User };
     case "memory":
       return { label: "MEMORY", Icon: Notebook };
+    case "skill":
+      return { label: "skill", Icon: Notebook };
+    case "propose_skill":
+      return { label: "propose skill", Icon: Notebook };
     case "present":
       return { label: "present", Icon: FrameCorners };
     case "look":
@@ -282,6 +287,13 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
     } else {
       body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
     }
+  } else if (name === "skill" || name === "propose_skill") {
+    const skillName = asStr(a.name);
+    body = (
+      <div className="font-mono text-[13px]">
+        {skillName || path}
+      </div>
+    );
   } else if (name === "present" && path) {
     body = <div className="font-mono text-[13px]">{path}</div>;
   } else if (name === "click" && (x != null || y != null)) {
@@ -456,7 +468,19 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
   );
 }
 
-export function Thread({ botId, events, sending }: { botId: string; events: Ev[]; sending: boolean }) {
+export function Thread({
+  botId,
+  events,
+  sending,
+  onInspectArtifact,
+  onSaveSkill,
+}: {
+  botId: string;
+  events: Ev[];
+  sending: boolean;
+  onInspectArtifact?: (a: SkillArtifact) => void;
+  onSaveSkill?: (a: SkillArtifact) => void;
+}) {
   const end = useRef<HTMLDivElement>(null);
   const blocks = foldEvents(events);
   useEffect(() => {
@@ -503,6 +527,9 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
           );
         }
         if (b.type === "tool") {
+          if (b.name === "propose_skill" && blocks.some((x) => x.type === "artifact")) {
+            return null;
+          }
           const path = asStr(parseToolArgs(b.args).path);
           if (b.name === "look") {
             return (
@@ -584,6 +611,27 @@ export function Thread({ botId, events, sending }: { botId: string; events: Ev[]
               ))}
               {python}
             </div>
+          );
+        }
+        if (b.type === "artifact") {
+          const a: SkillArtifact = {
+            type: "skill",
+            name: b.name,
+            title: b.title,
+            path: b.path,
+            scope: b.scope,
+            approvalId: b.approvalId,
+            status: b.status,
+            runId: b.runId,
+          };
+          return (
+            <ArtifactCard
+              key={b.key}
+              artifact={a}
+              onOpen={() => onInspectArtifact?.(a)}
+              onSave={a.status === "pending" ? () => onSaveSkill?.(a) : undefined}
+              onDownload={() => void downloadArtifact(botId, a)}
+            />
           );
         }
         if (b.type === "assistant") {

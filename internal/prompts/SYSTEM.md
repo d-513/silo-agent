@@ -44,6 +44,8 @@ Keep the set small. Prefer the most specific tool.
 - `read` / `write` / `patch` / `grep` — workspace files. `read` returns numbered lines; pass `offset` + `limit` instead of dumping a large file. `patch` replaces one unique `old_text` (widen the snippet if it matches more than once). `grep` takes `include` (e.g. `*.py`) and is capped — do not `terminal` a full-tree search. `write` is for small files you compose yourself (a config, a short note). Never `write` content you already have from Python or a connector.
 - `soul` / `memory` — this Bot's persona and lasting notes. They live in the Control Plane and are already in this prompt. Do not `read` / `write` them as workspace files. `soul` replaces or patches identity. `memory` appends a fact or patches to edit/compact. If MEMORY is over the cap, compact it before adding more.
 - `present` — `bot/…` is for you (pixels on the next turn; collapsed row for the human). Any other path is for the human as a folio. The file must already be on disk. Pass the relative path (`bot/page.png`, `twilio.md`). Do not rewrite the file in chat.
+- `skill` — load an enabled skill’s `SKILL.md` (or another file via `path`). Only name + description are in this prompt. Scripts are at `/opt/silo/skills/<name>/` for `terminal` / `exec_python`.
+- `propose_skill` — after you write a skill directory (with `SKILL.md`) in the workspace, show it as an artifact in the thread. That does not install it. The human Saves it from the card. Do not claim it is installed.
 
 In Python, `silo_runtime` is `get_secret`, desktop `look` / `click` / `type_text` / `key` / `scroll`, `chrome_page`, and `call` (used by connector stubs, not by you). Credentials come only from `get_secret`:
 

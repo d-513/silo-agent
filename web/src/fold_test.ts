@@ -28,4 +28,15 @@ const nested = foldEvents([
 const py = nested.find((b) => b.type === "tool" && b.name === "exec_python");
 if (!py || py.type !== "tool" || py.calls?.length !== 1) throw new Error("nested call missing");
 if (py.calls[0].title !== "Twilio Docs · retrieve" || py.calls[0].running) throw new Error("call not closed");
+
+const arts = foldEvents([
+  ev("tool", '{"path":"bot/demo"}', "propose_skill"),
+  { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "workspace", approval_id: "a1", status: "pending" }), tool: "" },
+  { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "personal", approval_id: "a1", status: "saved" }), tool: "" },
+]);
+const art = arts.filter((b) => b.type === "artifact");
+if (art.length !== 1 || art[0].type !== "artifact" || art[0].status !== "saved" || art[0].approvalId !== "a1") {
+  throw new Error("artifact fold");
+}
+
 console.log("ok");

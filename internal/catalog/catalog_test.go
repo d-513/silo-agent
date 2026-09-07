@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -91,5 +93,53 @@ func TestSeedIdempotent(t *testing.T) {
 	gdb.First(&again, "seed_key = ?", "github")
 	if again.Name != "GitHub (edited)" {
 		t.Fatal(again.Name)
+	}
+}
+
+func TestSeedSkills(t *testing.T) {
+	dir := t.TempDir()
+	if err := SeedSkills(dir); err != nil {
+		t.Fatal(err)
+	}
+	lib := filepath.Join(dir, "skills", "library", DefaultSkill, "SKILL.md")
+	b, err := os.ReadFile(lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "name: product-self-knowledge") {
+		t.Fatal(string(b))
+	}
+	if err := os.RemoveAll(filepath.Join(dir, "skills", "library", DefaultSkill)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "skills", "library", "keep.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedSkills(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(lib); err != nil {
+		t.Fatal("re-add", err)
+	}
+	// existing custom-looking dir is left alone if SKILL.md present
+	other := filepath.Join(dir, "skills", "library", DefaultSkill)
+	if err := os.WriteFile(filepath.Join(other, "SKILL.md"), []byte("---\nname: product-self-knowledge\ndescription: Edited locally. Use when testing seed skip.\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedSkills(dir); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(other, "SKILL.md"))
+	if !strings.Contains(string(got), "Edited locally") {
+		t.Fatal(string(got))
+	}
+}
+
+func TestSeededName(t *testing.T) {
+	if !SeededName(DefaultSkill) {
+		t.Fatal("embed missing")
+	}
+	if SeededName("copied-seed") || SeededName("") {
+		t.Fatal("unknown name")
 	}
 }
