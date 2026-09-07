@@ -27,6 +27,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/masker"
+	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
 
@@ -581,6 +582,27 @@ func serveLocal(sock string, w *worker) {
 			RunID     string         `json:"run_id"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Connector == "desktop" {
+			raw, _ := json.Marshal(body.Args)
+			redacted := security.Redact("desktop", body.Action, string(raw))
+			if _, err := w.callTool(r.Context(), body.Connector, body.Action, redacted, body.RunID); err != nil {
+				rw.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
+				return
+			}
+			val, err := w.runDesktop(r.Context(), body.Action, body.Args)
+			rw.Header().Set("Content-Type", "application/json")
+			if err != nil {
+				_ = json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
+				return
+			}
+			var parsed any
+			if json.Unmarshal([]byte(val), &parsed) != nil {
+				parsed = val
+			}
+			_ = json.NewEncoder(rw).Encode(map[string]any{"result": parsed})
+			return
+		}
 		args, _ := json.Marshal(body.Args)
 		val, err := w.callTool(r.Context(), body.Connector, body.Action, string(args), body.RunID)
 		rw.Header().Set("Content-Type", "application/json")

@@ -81,6 +81,9 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		if row.Kind == catalog.KindCustom && a.slugTaken(row.BotID, n, row.ID) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
 		}
+		if row.Kind == catalog.KindCustom && security.Reserved(toolsgen.Slug(n)) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that name is reserved"))
+		}
 		row.Name = n
 	}
 	row.Description = strings.TrimSpace(m.GetDescription())
@@ -169,9 +172,6 @@ func (a *App) AttachConnector(ctx context.Context, req *connect.Request[v1.Attac
 	if err := a.DB.First(&lib, "id = ? AND kind = ?", req.Msg.GetConnectorId(), catalog.KindLibrary).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	if a.attachedFrom(botID, lib.ID) {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
-	}
 	out, err := a.putBotConnector(ctx, botID, cloneLibrary(&lib, botID))
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
-	if err := a.overlayLibrary(m.GetBotId(), from, &row, m.GetHeaders()); err != nil {
+	if err := a.overlayLibrary(from, &row, m.GetHeaders()); err != nil {
 		return nil, err
 	}
 	out, err := a.putBotConnector(ctx, m.GetBotId(), row)
@@ -200,16 +200,13 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) overlayLibrary(botID, src string, row *db.Connector, headers []*v1.HeaderInput) error {
+func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput) error {
 	if src == "" {
 		return nil
 	}
 	var lib db.Connector
 	if err := a.DB.First(&lib, "id = ? AND kind = ?", src, catalog.KindLibrary).Error; err != nil {
 		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
-	}
-	if a.attachedFrom(botID, lib.ID) {
-		return connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
 	}
 	row.SourceID = lib.ID
 	if len(row.Image) == 0 {
@@ -244,8 +241,11 @@ func (a *App) DetachConnector(ctx context.Context, req *connect.Request[v1.Detac
 	}
 	a.dropMCP(row.ID)
 	var c db.Connector
-	if a.DB.First(&c, "id = ?", row.ConnectorID).Error == nil && c.Kind == catalog.KindCustom {
-		a.DB.Delete(&c)
+	if a.DB.First(&c, "id = ?", row.ConnectorID).Error == nil {
+		a.pruneConnectorRules(row.BotID, toolsgen.Slug(c.Name), nil)
+		if c.Kind == catalog.KindCustom {
+			a.DB.Delete(&c)
+		}
 	}
 	a.DB.Delete(&row)
 	go a.pushTools(row.BotID)
@@ -406,6 +406,9 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	bot := currentBot(ctx)
 	slug := req.Msg.GetConnector()
 	action := req.Msg.GetAction()
+	if security.Reserved(slug) {
+		return a.callBuiltin(ctx, bot, slug, action, req.Msg.GetArgsJson(), req.Msg.GetRunId())
+	}
 	bc, c, err := a.findBotConnector(bot.ID, slug)
 	if err != nil {
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -462,6 +465,20 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 }
 
+func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJSON, runID string) (*connect.Response[v1.ToolRes], error) {
+	if slug != security.Desktop {
+		return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+	}
+	tool := security.Key(slug, action)
+	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
+	if err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+		a.emitCallDone(bot.ID, runID, tool, err.Error())
+		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+	}
+	a.emitCallDone(bot.ID, runID, tool, "ok")
+	return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
+}
+
 func callTitle(name, action string) string {
 	a := action
 	if i := strings.LastIndex(action, "__"); i >= 0 {
@@ -495,7 +512,7 @@ func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 	default:
 		ap := db.Approval{
 			ID: ids.New(), BotID: bot.ID, RunID: runID,
-			Connector: conn, Action: action, ArgsJSON: argsJSON, Status: "pending", CreatedAt: time.Now(),
+			Connector: conn, Action: action, ArgsJSON: security.Redact(conn, action, argsJSON), Status: "pending", CreatedAt: time.Now(),
 		}
 		a.DB.Create(&ap)
 		ch := make(chan string, 1)
@@ -544,6 +561,13 @@ func (a *App) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Conn
 	row.AuthStatus = statusOK
 	row.LastError = ""
 	a.DB.Save(row)
+	var names []string
+	for _, t := range tools {
+		if t.Name != "" {
+			names = append(names, t.Name)
+		}
+	}
+	a.pruneConnectorRules(row.BotID, toolsgen.Slug(c.Name), names)
 	go a.pushTools(row.BotID)
 	return nil
 }
@@ -849,8 +873,9 @@ func cloneLibrary(lib *db.Connector, botID string) db.Connector {
 }
 
 func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {
-	if a.slugTaken(botID, c.Name, c.ID) {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
+	c.Name = a.uniqueName(botID, c.Name, c.ID)
+	if security.Reserved(toolsgen.Slug(c.Name)) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that name is reserved"))
 	}
 	c.Kind = catalog.KindCustom
 	c.BotID = botID
@@ -885,10 +910,21 @@ func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector)
 	return protoBotConnector(&row, &c, true), nil
 }
 
-func (a *App) attachedFrom(botID, libraryID string) bool {
-	var n int64
-	a.DB.Model(&db.Connector{}).Where("bot_id = ? AND source_id = ?", botID, libraryID).Count(&n)
-	return n > 0
+func (a *App) uniqueName(botID, name, exceptID string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "Connector"
+	}
+	if !a.slugTaken(botID, name, exceptID) {
+		return name
+	}
+	for n := 2; n < 10000; n++ {
+		cand := fmt.Sprintf("%s %d", name, n)
+		if !a.slugTaken(botID, cand, exceptID) {
+			return cand
+		}
+	}
+	return name + " " + ids.New()[:6]
 }
 
 func (a *App) slugTaken(botID, name, exceptID string) bool {

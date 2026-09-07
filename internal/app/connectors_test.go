@@ -147,8 +147,19 @@ func TestCreateBotConnector(t *testing.T) {
 	_, err = a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
 		BotId: "b1", Name: "Home MCP", Transport: "http", HttpUrl: "http://127.0.0.1:2",
 	}))
-	if err == nil || !strings.Contains(err.Error(), "already uses that name") {
-		t.Fatalf("got %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xs, err := a.ListBotConnectors(ctx, connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: "b1"}))
+	if err != nil || len(xs.Msg.Connectors) != 2 {
+		t.Fatal(err, xs)
+	}
+	names := map[string]bool{}
+	for _, r := range xs.Msg.Connectors {
+		names[r.Connector.Name] = true
+	}
+	if !names["Home MCP"] || !names["Home MCP 2"] {
+		t.Fatal(names)
 	}
 	other := context.WithValue(context.Background(), userKey, &db.User{ID: "x", Admin: false})
 	if _, err := a.CreateBotConnector(other, connect.NewRequest(&v1.CreateBotConnectorRequest{
@@ -173,8 +184,15 @@ func TestAttachTwice(t *testing.T) {
 	if _, err := a.AttachConnector(ctx, connect.NewRequest(&v1.AttachConnectorRequest{BotId: "b1", ConnectorId: c.Msg.Id})); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.AttachConnector(ctx, connect.NewRequest(&v1.AttachConnectorRequest{BotId: "b1", ConnectorId: c.Msg.Id})); err == nil {
-		t.Fatal("expected already attached")
+	second, err := a.AttachConnector(ctx, connect.NewRequest(&v1.AttachConnectorRequest{BotId: "b1", ConnectorId: c.Msg.Id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Msg.Connector.Name != "Docs 2" {
+		t.Fatal(second.Msg.Connector.Name)
+	}
+	if second.Msg.Connector.SourceId != c.Msg.Id {
+		t.Fatal(second.Msg.Connector.SourceId)
 	}
 }
 
@@ -251,10 +269,14 @@ func TestCreateBotConnectorFromLibrary(t *testing.T) {
 	if !strings.Contains(inst.HeadersJSON, "X-Test") {
 		t.Fatal(inst.HeadersJSON)
 	}
-	if _, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
-		BotId: "b1", Name: "Other", Transport: "http", HttpUrl: "http://x", SourceId: lib.Msg.Id,
-	})); err == nil || !strings.Contains(err.Error(), "already attached") {
-		t.Fatalf("got %v", err)
+	again, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "GitHub", Transport: "http", HttpUrl: "http://x", SourceId: lib.Msg.Id,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Msg.Connector.Name != "GitHub 2" || again.Msg.Connector.SourceId != lib.Msg.Id {
+		t.Fatal(again.Msg.Connector)
 	}
 }
 

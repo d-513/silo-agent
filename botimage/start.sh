@@ -53,7 +53,7 @@ cp /opt/silo/gtk-3.0/bookmarks /home/silo/.config/gtk-3.0/bookmarks
 cp /opt/silo/thunar/thunarrc /home/silo/.config/Thunar/thunarrc
 cp /opt/silo/mimeapps.list /home/silo/.config/mimeapps.list
 chown silo:silo /home/silo /home/silo/chrome-profile
-chown -R silo:silo /home/silo/.config
+chown -R silo:silo /home/silo/.config /opt/silo/ubol
 
 run Xvfb :1 -screen 0 1280x720x24 -ac +extension RANDR >/tmp/xvfb.log 2>&1
 ok=0

@@ -198,7 +198,7 @@ Not dashboard tiles.
 
 - Folio fill, 10px radius, 1px Thread.
 - Left: 56px crest (the shape, no plate).
-- Name, optional one-line description in Stone, last task in Stone, 7px lamp.
+- Name, optional one-line description in Stone, 7px lamp.
 - Hover: border to `#B9B3A6`. No shadow, no lift.
 - Needs you: 2px carmine ribbon on the left edge only.
 
@@ -237,7 +237,7 @@ The VNC surface is a dark window in a light room.
 A 400px Folio panel from the right, Thread on the left. Paper, not a modal dim-to-black.
 
 - Crest, Bot name, `Needs you` in carmine
-- Title from the security catalog (`Read a secret`), not `secrets.get`
+- Title from the security catalog (`Read a secret`), not a raw key. Each secret is its own action.
 - One Stone sentence, then labeled fields on Cloth (Secret → `TEST`). No raw JSON.
 - **Allow once** (bindery), **Always allow this action** (secondary), **Deny** (carmine)
 - Stone: “This run is paused until you choose.”
@@ -270,9 +270,9 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Settings is a 760px column (name + description now; more later).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Chat titles: generated from the first prompt; pencil or double-click to rename. Tabs: `Chat`, `Desktop` (caret → Desktop | Console), `Files`, `Connectors`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace browser: breadcrumbs, type icons, preview (images, PDF, media, markdown, code, docx), upload / new / download. Delete is a second click, not `confirm()`. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then a folio **Dangerous** well (Reset / Delete, second click).
 
-**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library. Lists. Bot Settings: name, description, SOUL, MEMORY (mono wells).
+**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors) scroll inside the hatch; do not clip.
 
 ### Whitespace Strategy
 
@@ -313,7 +313,7 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 4 | Bot · Run | Thread + dark hatch. Default. |
 | 5 | Bot · Run · Needs you | Same, approval slip open. |
 | 6 | Bot · Desktop | Hatch full-bleed. Caret on the tab opens Console. |
-| 7 | Bot · Connectors | Attach a library preset or add a custom MCP. |
+| 7 | Bot · Connectors | Attach a library preset (more than once is another account) or add a custom MCP. |
 | 8 | Admin · Connectors Library | Site presets. HTTP MCP, OAuth or none. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |
 | 10 | Bot · Rules | Allow / ask / deny per action. |
@@ -342,15 +342,15 @@ No hero, no marketing line, no gradient, no orange.
 Desktop web, 1440 wide. 64px left rail on cloth (Silo mark, Bots active, crest stack, +, Admin, user initial at bottom).
 Main plaster: header “Bots” left, primary “New Bot” right.
 Stone subtitle: “Machines you can open.”
-A 3-column grid of folio cards. Six Bots. Use the attached crests. Each has a name, one-line last task, 7px lamp.
+A 3-column grid of folio cards. Six Bots. Use the attached crests. Each has a name, one-line description, 7px lamp.
 
 Populate:
-- Owl (Mail) — Idle — “Sorted the inbox down to 12”
-- Fox (Scout) — Working — “Reading the pricing page”
-- Scarab (Crawler) — Needs you — “Captcha on the vendor login” — carmine left ribbon
-- Kettle (House) — Idle — “No runs this week”
-- Fish (Ledger) — Working — “exec_python · reconcile.py”
-- Key (Vault) — Stopped — “Stopped by you”
+- Owl (Mail) — Idle — “Reads the house inbox”
+- Fox (Scout) — Working — “Vendor pricing and captchas”
+- Scarab (Crawler) — Needs you — “Walks the supplier catalog” — carmine left ribbon
+- Kettle (House) — Idle — “Kitchen orders and deliveries”
+- Fish (Ledger) — Working — “Monthly reconcile”
+- Key (Vault) — Stopped — “Holds the spare keys”
 
 No KPI row. No search. No orange. The hatch is not on this screen.
 ```
@@ -371,7 +371,7 @@ No model picker, no tags, no orange.
 
 ```
 Same shell. Header 56px: fox crest, “Scout”, pine lamp, “Working”, tabs (Chat active, Desktop, Secrets, Rules), Stop.
-Body split: left 240px chats list on cloth; thread on plaster. No hatch on this tab.
+Body split: left 240px chats list on cloth (titles generated from the first prompt; double-click or pencil to rename); thread on plaster. No hatch on this tab.
 
 Thread:
 - User: “Log into the vendor site and download last month’s invoice.”
@@ -438,10 +438,9 @@ Add well: Name, Value (password), Add.
 
 ```
 Same shell, tab Rules. Column 760px.
-Table: Connector, Action (mono), Decision, Then.
-gmail / send / Ask; gmail / list / Allow; secrets / get / Ask; imap_home / * / Deny.
-Decision is a select: Allow / Ask / Deny.
-Stone: “Ask pauses the run and opens the slip. Catalog default applies until you set a rule.”
+Intro: Allow runs without asking. Ask pauses and opens the slip (Allow once / Always / Deny). Deny refuses. Always keeps only that action or secret.
+Folio sections, not one table. Each section is a collapsible card (caret); This Bot starts open. This Bot: Python, Terminal, Files, Desktop, Soul, Memory (segmented Allow / Ask / Deny). Secrets: one row per stored secret (empty: add them on Secrets). Then one section per attached connector; actions from the tool list; unset uses the connector default. Authorize-needed connectors say so instead of inventing rows.
+No ghost rows after detach or deleting a secret.
 ```
 
 **11 · Admin**

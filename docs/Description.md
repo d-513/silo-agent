@@ -80,6 +80,11 @@ This hop is same-container only. It must not know the CP exists.
 ```python
 # silo_runtime — the only file that knows the socket
 def get_secret(name: str) -> str: ...
+def look() -> str: ...  # writes bot/screen.png
+def click(x, y, button="left"): ...
+def type_text(text: str): ...  # not type — that shadows Python
+def key(name: str): ...
+def scroll(x, y, dy): ...
 def call(connector: str, action: str, args: dict) -> dict: ...
 def chrome_page(): ...  # Playwright Page; worker opens Chromium if needed
 ```
@@ -94,7 +99,7 @@ Local HTTP surface (Worker listens, nothing else):
 
 No local auth. The container is the trust boundary; the CP security engine is the gate. Debug: `curl --unix-socket /var/run/silo/worker.sock http://localhost/v1/...`.
 
-Worker on receive: translate to `GetSecret` or `CallTool`, wait, JSON the result back. Register any returned secret value with the **masker** before writing it to the socket.
+Worker on receive: translate to `GetSecret` or `CallTool`, wait, JSON the result back. `desktop.*` is CallTool for the grant only; the Worker then runs look/click/type/key/scroll locally and never sends `type` text to the CP. Register any returned secret value with the **masker** before writing it to the socket.
 
 ### Why this split
 
@@ -121,7 +126,7 @@ The model can still exfiltrate a secret it already holds. We do not try to stop 
 
 **The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/silo/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
 
-First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` of a user-facing path is a folio in the thread. `present` of `bot/…` is scratch: collapsed “Looked at …” row, same pixels to the model. CP uses `browse_file`; the tool text is a short ack. Images (`png`/`jpg`/`webp`/`gif`) attach as a multimodal part on the next completion. No base64 in the tool text or the run log. Connectors are discovered on disk as `tools.*`.
+First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, maybe `browser_snapshot`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` of a user-facing path is a folio in the thread. `present` of `bot/…` is scratch: collapsed “Looked at …” row, same pixels to the model. CP uses `browse_file`; the tool text is a short ack. Images (`png`/`jpg`/`webp`/`gif`) attach as a multimodal part on the next completion. No base64 in the tool text or the run log. Connectors are discovered on disk as `tools.*`. Every gated action (`python.run`, `terminal.run`, `files.*`, `desktop.*`, `bot.soul`/`memory`, `secrets.<name>`, MCP `slug.action`) goes through one `authorizeAction`: bot rule, else `*` for that connector, else the builtin catalog default, else the MCP connector default, else ask. Python and Terminal default allow. Each secret is its own action — not `secrets.get`. Chat tools and Python `CallTool` share that gate. `desktop.*` from Python is grant-then-local on the Worker so typed secrets never ride to the CP.
 
 ## Tools
 
@@ -131,15 +136,15 @@ Pushed on `Commands`. `/workspace` is user-facing artifacts (volume on the *Dock
 
 ### Web / connectors
 
-Admin owns a **library** of connector presets (type `mcp` for now), seeded from `internal/catalog`. HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each preset has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Catalog entries may include a `guide` shown as text when adding from the library — it is not a connector field. Bots attach a **copy** of a preset (shared form, pre-filled), or add a custom MCP that never enters the library. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`. Servers that omit `registration_endpoint` (GitHub) need a pre-registered OAuth Client ID and Secret on the connector.
+Admin owns a **library** of connector presets (type `mcp` for now), seeded from `internal/catalog`. HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each preset has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Catalog entries may include a `guide` shown as text when adding from the library — it is not a connector field. Bots attach a **copy** of a preset (shared form, pre-filled) as many times as they want — a second GitHub is `GitHub 2` with its own OAuth and `tools.github_2`. They can also add a custom MCP that never enters the library. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`. Servers that omit `registration_endpoint` (GitHub) need a pre-registered OAuth Client ID and Secret on the connector.
 
 ### Chromium
 
-Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`. Closing Chromium must not take down the container. GUI work uses first-class `look` / `click` / `type` / `key` / `scroll` on the 1280×720 X11 desktop (screenshot pixels = display pixels; no scale) — that is the live click path. Playwright `silo_runtime.chrome_page()` is for page screenshots, mutating displayed HTML, and automated scripts. The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. Do not `playwright install` a second browser. The model must not call `pyautogui` or `xdotool`; the worker may. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
+Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`, ~67% page zoom, and uBlock Origin Lite (managed policy: ads, cookie banners, overlays). Closing Chromium must not take down the container. GUI work uses first-class `look` / `click` / `type` / `key` / `scroll` on the 1280×720 X11 desktop (screenshot pixels = display pixels; no scale) — that is the live click path. Playwright `silo_runtime.chrome_page()` is for page screenshots, mutating displayed HTML, and automated scripts. The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. Do not `playwright install` a second browser. The model must not call `pyautogui` or `xdotool`; the worker may. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
 
 ### Computer use
 
-`look` grabs `DISPLAY=:1` root to `/workspace/bot/screen.png` and attaches the PNG (no `detail: high`). Coordinate law on every look: image is 1280×720, origin top-left, `click(x,y)` in those pixels. Prompt ladder: look → one act → look. Playwright is screenshots / DOM edits / scripts, not the click loop.
+`look` grabs `DISPLAY=:1` root to `/workspace/bot/screen.png` and attaches the PNG (no `detail: high`). Coordinate law on every look: image is 1280×720, origin top-left, `click(x,y)` in those pixels. Prompt ladder: look → one act → look. The same actions exist on `silo_runtime` for programmatic sequences (type a secret into a field). Playwright is screenshots / DOM edits / scripts, not the click loop.
 
 ### Images
 

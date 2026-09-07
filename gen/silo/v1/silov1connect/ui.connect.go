@@ -53,6 +53,8 @@ const (
 	UIStartBotProcedure = "/silo.v1.UI/StartBot"
 	// UIStopBotProcedure is the fully-qualified name of the UI's StopBot RPC.
 	UIStopBotProcedure = "/silo.v1.UI/StopBot"
+	// UIResetContainerProcedure is the fully-qualified name of the UI's ResetContainer RPC.
+	UIResetContainerProcedure = "/silo.v1.UI/ResetContainer"
 	// UIDeleteBotProcedure is the fully-qualified name of the UI's DeleteBot RPC.
 	UIDeleteBotProcedure = "/silo.v1.UI/DeleteBot"
 	// UIListChatsProcedure is the fully-qualified name of the UI's ListChats RPC.
@@ -133,6 +135,7 @@ type UIClient interface {
 	GetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error)
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
@@ -237,6 +240,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIStopBotProcedure,
 			connect.WithSchema(uIMethods.ByName("StopBot")),
+			connect.WithClientOptions(opts...),
+		),
+		resetContainer: connect.NewClient[v1.GetBotRequest, v1.Bot](
+			httpClient,
+			baseURL+UIResetContainerProcedure,
+			connect.WithSchema(uIMethods.ByName("ResetContainer")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteBot: connect.NewClient[v1.GetBotRequest, v1.DeleteBotResponse](
@@ -452,6 +461,7 @@ type uIClient struct {
 	getContainer        *connect.Client[v1.GetBotRequest, v1.Container]
 	startBot            *connect.Client[v1.GetBotRequest, v1.Bot]
 	stopBot             *connect.Client[v1.GetBotRequest, v1.Bot]
+	resetContainer      *connect.Client[v1.GetBotRequest, v1.Bot]
 	deleteBot           *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
 	listChats           *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
 	createChat          *connect.Client[v1.CreateChatRequest, v1.Chat]
@@ -535,6 +545,11 @@ func (c *uIClient) StartBot(ctx context.Context, req *connect.Request[v1.GetBotR
 // StopBot calls silo.v1.UI.StopBot.
 func (c *uIClient) StopBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return c.stopBot.CallUnary(ctx, req)
+}
+
+// ResetContainer calls silo.v1.UI.ResetContainer.
+func (c *uIClient) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
+	return c.resetContainer.CallUnary(ctx, req)
 }
 
 // DeleteBot calls silo.v1.UI.DeleteBot.
@@ -714,6 +729,7 @@ type UIHandler interface {
 	GetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error)
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
@@ -814,6 +830,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIStopBotProcedure,
 		svc.StopBot,
 		connect.WithSchema(uIMethods.ByName("StopBot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIResetContainerHandler := connect.NewUnaryHandler(
+		UIResetContainerProcedure,
+		svc.ResetContainer,
+		connect.WithSchema(uIMethods.ByName("ResetContainer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIDeleteBotHandler := connect.NewUnaryHandler(
@@ -1036,6 +1058,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStartBotHandler.ServeHTTP(w, r)
 		case UIStopBotProcedure:
 			uIStopBotHandler.ServeHTTP(w, r)
+		case UIResetContainerProcedure:
+			uIResetContainerHandler.ServeHTTP(w, r)
 		case UIDeleteBotProcedure:
 			uIDeleteBotHandler.ServeHTTP(w, r)
 		case UIListChatsProcedure:
@@ -1149,6 +1173,10 @@ func (UnimplementedUIHandler) StartBot(context.Context, *connect.Request[v1.GetB
 
 func (UnimplementedUIHandler) StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StopBot is not implemented"))
+}
+
+func (UnimplementedUIHandler) ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ResetContainer is not implemented"))
 }
 
 func (UnimplementedUIHandler) DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {

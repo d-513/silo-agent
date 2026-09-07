@@ -52,6 +52,10 @@ func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSe
 	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
+	var sec db.Secret
+	if err := a.DB.First(&sec, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err == nil {
+		a.DB.Where("bot_id = ? AND connector = ? AND action = ?", sec.BotID, security.Secrets, sec.Name).Delete(&db.Rule{})
+	}
 	a.DB.Where("id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Delete(&db.Secret{})
 	a.mu.Lock()
 	delete(a.mask, req.Msg.GetBotId())
@@ -127,35 +131,6 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	}
 	a.recomputeStatus(row.BotID)
 	return connect.NewResponse(protoApproval(&row)), nil
-}
-
-func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
-		return nil, err
-	}
-	var rows []db.Rule
-	a.DB.Where("bot_id = ?", req.Msg.GetBotId()).Find(&rows)
-	out := &v1.ListRulesResponse{}
-	for _, r := range rows {
-		out.Rules = append(out.Rules, &v1.Rule{Id: r.ID, BotId: r.BotID, Connector: r.Connector, Action: r.Action, Decision: r.Decision})
-	}
-	return connect.NewResponse(out), nil
-}
-
-func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
-		return nil, err
-	}
-	var rule db.Rule
-	err := a.DB.First(&rule, "bot_id = ? AND connector = ? AND action = ?", req.Msg.GetBotId(), req.Msg.GetConnector(), req.Msg.GetAction()).Error
-	if err != nil {
-		rule = db.Rule{ID: ids.New(), BotID: req.Msg.GetBotId(), Connector: req.Msg.GetConnector(), Action: req.Msg.GetAction(), Decision: req.Msg.GetDecision()}
-		a.DB.Create(&rule)
-	} else {
-		rule.Decision = req.Msg.GetDecision()
-		a.DB.Save(&rule)
-	}
-	return connect.NewResponse(&v1.Rule{Id: rule.ID, BotId: rule.BotID, Connector: rule.Connector, Action: rule.Action, Decision: rule.Decision}), nil
 }
 
 func (a *App) setBotStatus(id, st string) {

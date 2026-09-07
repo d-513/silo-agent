@@ -1,5 +1,6 @@
 #!/bin/sh
 # Dock + model share this. No --no-sandbox (infobar). Site isolation stays on.
+# --load-extension: one vendored uBO Lite. Do not also force-install from the Chrome Web Store.
 exec chromium \
   --user-data-dir=/home/silo/chrome-profile \
   --remote-debugging-port=9222 \
@@ -13,4 +14,5 @@ exec chromium \
   --disk-cache-size=134217728 \
   --password-store=basic \
   --mute-audio \
+  --load-extension=/opt/silo/ubol \
   "$@"

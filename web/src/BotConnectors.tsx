@@ -36,6 +36,17 @@ function isCustom(c: Connector) {
   return c.kind === "custom" && !c.sourceId;
 }
 
+function nextCopyName(base: string, names: string[]) {
+  const used = new Set(names.map((n) => n.trim().toLowerCase()));
+  const stem = base.trim();
+  if (!used.has(stem.toLowerCase())) return stem;
+  for (let n = 2; n < 10000; n++) {
+    const cand = `${stem} ${n}`;
+    if (!used.has(cand.toLowerCase())) return cand;
+  }
+  return `${stem} ${names.length + 1}`;
+}
+
 export function BotConnectors({
   botId,
   onNeedAuth,
@@ -69,7 +80,7 @@ export function BotConnectors({
   function chooseLibrary(c: Connector) {
     setErr("");
     setPicked(c);
-    setDraft(draftFrom(c));
+    setDraft({ ...draftFrom(c), name: nextCopyName(c.name, attached.map((x) => x.connector?.name ?? "")) });
   }
 
   async function addConnector(e: React.FormEvent) {
@@ -143,9 +154,6 @@ export function BotConnectors({
     setDraft(emptyDraft());
   }
 
-  const taken = new Set(attached.map((x) => x.connector?.sourceId || x.connector?.id));
-  const available = catalog.filter((c) => !taken.has(c.id));
-
   return (
     <div className="mx-auto w-[760px] p-7">
       <div className="mb-4 flex items-center justify-between">
@@ -155,7 +163,7 @@ export function BotConnectors({
           Add connector
         </button>
       </div>
-      <p className="mb-4 text-stone">Pick a library preset or add a custom MCP. The Control Plane talks to the server; this Bot never sees tokens.</p>
+      <p className="mb-4 text-stone">Pick a library preset or add a custom MCP. Add the same preset again for another account (GitHub 2). The Control Plane talks to the server; this Bot never sees tokens.</p>
       {err && <p className="mb-3 text-carmine">{err}</p>}
       {attached.length === 0 && <p className="mb-4 text-stone">None on this Bot yet.</p>}
       {attached.map((row) => {
@@ -218,8 +226,8 @@ export function BotConnectors({
             </div>
             {mode === "library" && !picked ? (
               <>
-                {available.length === 0 && <p className="text-stone">Nothing left in the library.</p>}
-                {available.map((c) => (
+                {catalog.length === 0 && <p className="text-stone">Nothing in the library.</p>}
+                {catalog.map((c) => (
                   <button
                     key={c.id}
                     className="mb-2 flex w-full items-center gap-3 rounded border border-thread px-3 py-2 text-left hover:border-[#B9B3A6]"

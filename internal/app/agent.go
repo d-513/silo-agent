@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/prompts"
+	"silo.agent/internal/security"
 )
 
 var toolDefs = []openai.ChatCompletionToolUnionParam{
@@ -33,7 +34,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Scratch files go in /workspace/bot. User-facing files go in /workspace (not bot/). GUI clicks: look/click/type/key/scroll. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
+		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -152,7 +153,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "type",
-		Description: openai.String("Type Unicode into the focused window. Click a field first."),
+		Description: openai.String("Type Unicode into the focused window. Click a field first. For shortcuts use key (ctrl+l) — if you pass a chord here it is sent as a shortcut, not typed as letters."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -163,7 +164,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "key",
-		Description: openai.String("Press a named key on the desktop (Return, Tab, ctrl+l)."),
+		Description: openai.String("Press a key or shortcut on the desktop. Examples: Return, Tab, Escape, BackSpace, ctrl+l, ctrl+shift+t, alt+Tab, ctrl+a. Use this for shortcuts, not type."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -218,7 +219,8 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	)
 
 	a.emit(botID, chatID, runID, "user", userText, "")
-	a.touchChatTitle(chatID, userText)
+	a.bumpChat(chatID)
+	go a.nameChat(botID, chatID, runID, userText, client, model)
 
 	var bot db.Bot
 	sysText := prompts.System
@@ -349,23 +351,44 @@ func reasoningDelta(raw string) string {
 	return ""
 }
 
-func (a *App) touchChatTitle(chatID, userText string) {
+func (a *App) bumpChat(chatID string) {
+	a.DB.Model(&db.Chat{}).Where("id = ?", chatID).Update("updated_at", time.Now())
+}
+
+func (a *App) nameChat(botID, chatID, runID, userText string, client openai.Client, model string) {
 	var c db.Chat
-	if err := a.DB.First(&c, "id = ?", chatID).Error; err != nil {
+	if a.DB.First(&c, "id = ?", chatID).Error != nil || !untitledTitle(c.Title) {
 		return
 	}
-	c.UpdatedAt = time.Now()
-	if c.Title == "New chat" || c.Title == "Chat" {
-		t := strings.TrimSpace(strings.ReplaceAll(userText, "\n", " "))
-		if t == "" {
-			t = "New chat"
-		}
-		if len(t) > 48 {
-			t = t[:48] + "…"
-		}
-		c.Title = t
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	snippet := userText
+	if len(snippet) > 800 {
+		snippet = snippet[:800]
 	}
-	a.DB.Save(&c)
+	res, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Model: model,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation."),
+			openai.UserMessage(snippet),
+		},
+	})
+	if err != nil {
+		log.Printf("name chat %s: %v", chatID, err)
+		return
+	}
+	title := ""
+	if len(res.Choices) > 0 {
+		title = cleanTitle(res.Choices[0].Message.Content)
+	}
+	if title == "" {
+		log.Printf("name chat %s: empty title from model", chatID)
+		return
+	}
+	if !a.applyGeneratedTitle(chatID, title) {
+		return
+	}
+	a.emit(botID, chatID, runID, "chat_title", title, "")
 }
 
 func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUnion {
@@ -474,10 +497,6 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		return v
 	}
 	path := relWorkspace(str("path"))
-	if name == "soul" || name == "memory" {
-		out, err := a.execDoc(botID, name, args)
-		return out, "", err
-	}
 	if name == "click" || name == "scroll" {
 		if err := screenPoint(num(args, "x"), num(args, "y")); err != nil {
 			return "", "", err
@@ -491,6 +510,24 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	}
 	if name == "scroll" && num(args, "dy") == 0 {
 		return "", "", fmt.Errorf("dy required")
+	}
+	if name == "present" && path == "" {
+		return "", "", fmt.Errorf("path required")
+	}
+	conn, action, ok := chatTool(name)
+	if !ok {
+		return "", "", fmt.Errorf("unknown tool %s", name)
+	}
+	var bot db.Bot
+	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+		return "", "", fmt.Errorf("unknown bot")
+	}
+	if err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
+		return "", "", err
+	}
+	if name == "soul" || name == "memory" {
+		out, err := a.execDoc(botID, name, args)
+		return out, "", err
 	}
 	id := ids.New()
 	var cmd *v1.Cmd
@@ -522,9 +559,6 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 			Pattern: str("pattern"), Path: path, Include: str("include"), MaxHits: max,
 		}}}
 	case "present":
-		if path == "" {
-			return "", "", fmt.Errorf("path required")
-		}
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}}
 	case "look":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
@@ -580,6 +614,23 @@ const (
 	lookPath     = "bot/screen.png"
 	lookCoordLaw = "Image is 1280×720. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
+
+func chatTool(name string) (conn, action string, ok bool) {
+	switch name {
+	case "exec_python":
+		return security.Python, "run", true
+	case "terminal":
+		return security.Terminal, "run", true
+	case "read", "write", "patch", "grep", "present":
+		return security.Files, name, true
+	case "look", "click", "type", "key", "scroll":
+		return security.Desktop, name, true
+	case "soul", "memory":
+		return security.Bot, name, true
+	default:
+		return "", "", false
+	}
+}
 
 func screenPoint(x, y int) error {
 	if x < 0 || x >= screenW || y < 0 || y >= screenH {

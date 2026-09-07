@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"image"
 	"image/png"
 	"os"
@@ -34,11 +35,44 @@ func TestValidKey(t *testing.T) {
 	if err := validKey("Return"); err != nil {
 		t.Fatal(err)
 	}
-	if err := validKey("ctrl+l"); err != nil {
-		t.Fatal(err)
+	got, err := normalizeKey("ctrl+l")
+	if err != nil || got != "ctrl+l" {
+		t.Fatalf("%s %v", got, err)
+	}
+	got, err = normalizeKey("ctrl-shift-t")
+	if err != nil || got != "ctrl+shift+t" {
+		t.Fatalf("%s %v", got, err)
+	}
+	got, err = normalizeKey("alt+Tab")
+	if err != nil || got != "alt+Tab" {
+		t.Fatalf("%s %v", got, err)
+	}
+	got, err = normalizeKey("Enter")
+	if err != nil || got != "Return" {
+		t.Fatalf("%s %v", got, err)
 	}
 	if validKey("ctrl;l") == nil || validKey("") == nil {
 		t.Fatal("bad key")
+	}
+}
+
+func TestLooksLikeChord(t *testing.T) {
+	if !looksLikeChord("ctrl+l") || !looksLikeChord("Ctrl-L") || looksLikeChord("hello") {
+		t.Fatal("chord")
+	}
+}
+
+func TestIntArg(t *testing.T) {
+	m := map[string]any{"x": float64(12), "y": "7"}
+	if intArg(m, "x") != 12 || intArg(m, "y") != 7 || intArg(m, "z") != 0 {
+		t.Fatal(m)
+	}
+}
+
+func TestRunDesktopUnknown(t *testing.T) {
+	w := &worker{}
+	if _, err := w.runDesktop(context.Background(), "wave", nil); err == nil {
+		t.Fatal("expected error")
 	}
 }
 

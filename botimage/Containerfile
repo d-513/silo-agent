@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-requests python3-matplotlib python3-numpy python3-pil \
     python3-bs4 python3-lxml python3-yaml python3-pandas \
     xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
-    scrot xdotool imagemagick \
+    scrot xdotool imagemagick unzip \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
     ca-certificates fonts-liberation sudo \
     && rm -rf /var/lib/apt/lists/* \
@@ -24,12 +24,21 @@ COPY botimage/gtk-3.0/ /opt/silo/gtk-3.0/
 COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
 COPY botimage/mimeapps.list /opt/silo/mimeapps.list
 COPY botimage/chromium.png /opt/silo/chromium.png
+COPY botimage/chromium/policies.json /etc/chromium/policies/managed/silo.json
+ADD https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.901.1442/uBOLite_2026.901.1442.chromium.zip /tmp/ubol.zip
+RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
+    && unzip -q /tmp/ubol.zip -d /tmp/ubol-src \
+    && m=$(find /tmp/ubol-src -name manifest.json | head -1) \
+    && test -n "$m" \
+    && cp -a "$(dirname "$m")/." /opt/silo/ubol/ \
+    && rm -rf /tmp/ubol.zip /tmp/ubol-src \
+    && test -f /opt/silo/ubol/manifest.json
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/silo-chromium \
     && mkdir -p /workspace /workspace/bot /var/run/silo /run/user/1000 \
         /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools \
     && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
-    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools
+    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol
 ENV DISPLAY=:1 \
     SILO_WORKSPACE=/workspace \
     SILO_WORKER_SOCK=/var/run/silo/worker.sock \

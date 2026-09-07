@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -419,5 +420,54 @@ func TestEmitPersists(t *testing.T) {
 	a.DB.Model(&db.RunEvent{}).Count(&n)
 	if n != 1 {
 		t.Fatalf("events %d", n)
+	}
+}
+
+func TestResetContainerDropsBox(t *testing.T) {
+	h := &fakeHost{inspect: map[string]dockerx.State{
+		"cid": {ID: "cid", Running: true},
+	}}
+	a := testApp(t, h)
+	a.DB.Create(&db.User{ID: "u", Email: "a@b.c"})
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u", ContainerID: "cid", Status: "online"})
+	ctx := context.WithValue(context.Background(), userKey, &db.User{ID: "u"})
+	res, err := a.ResetContainer(ctx, connect.NewRequest(&v1.GetBotRequest{Id: "b1"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.drops.Load() != 1 {
+		t.Fatalf("drops %d", h.drops.Load())
+	}
+	if res.Msg.Status != "stopped" {
+		t.Fatalf("status %s", res.Msg.Status)
+	}
+	var b db.Bot
+	a.DB.First(&b, "id = ?", "b1")
+	if b.ContainerID != "" || b.Status != "stopped" {
+		t.Fatalf("id %q status %s", b.ContainerID, b.Status)
+	}
+}
+
+func TestDeleteBotRemovesRow(t *testing.T) {
+	h := &fakeHost{}
+	a := testApp(t, h)
+	a.DB.Create(&db.User{ID: "u", Email: "a@b.c"})
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u", ContainerID: "cid"})
+	a.DB.Create(&db.Chat{ID: "c1", BotID: "b1"})
+	ctx := context.WithValue(context.Background(), userKey, &db.User{ID: "u"})
+	if _, err := a.DeleteBot(ctx, connect.NewRequest(&v1.GetBotRequest{Id: "b1"})); err != nil {
+		t.Fatal(err)
+	}
+	if h.drops.Load() != 1 {
+		t.Fatalf("drops %d", h.drops.Load())
+	}
+	var n int64
+	a.DB.Model(&db.Bot{}).Count(&n)
+	if n != 0 {
+		t.Fatalf("bots %d", n)
+	}
+	a.DB.Model(&db.Chat{}).Count(&n)
+	if n != 0 {
+		t.Fatalf("chats %d", n)
 	}
 }

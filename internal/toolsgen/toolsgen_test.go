@@ -14,8 +14,8 @@ func TestSlug(t *testing.T) {
 	if Slug("Wolfram Alpha") != "wolfram_alpha" {
 		t.Fatal(Slug("Wolfram Alpha"))
 	}
-	if Slug("123") != "c_123" {
-		t.Fatal(Slug("123"))
+	if Slug("GitHub 2") != "github_2" {
+		t.Fatal(Slug("GitHub 2"))
 	}
 }
 

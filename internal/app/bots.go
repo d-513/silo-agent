@@ -172,4 +172,5 @@ func (a *App) destroyBot(ctx context.Context, b *db.Bot) {
 	a.cancelBot(b.ID)
 	a.Hub.Drop(b.ID)
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
+	b.ContainerID = ""
 }

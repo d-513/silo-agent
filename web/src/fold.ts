@@ -53,7 +53,7 @@ export function foldEvents(events: Ev[]): Block[] {
     out.push(b);
   };
   for (const e of events) {
-    if (e.kind === "done") continue;
+    if (e.kind === "done" || e.kind === "chat_title") continue;
     if (e.kind === "error" && staleKey.test(e.body)) continue;
     const key = `${e.kind}-${i++}`;
     if (e.kind === "user") {

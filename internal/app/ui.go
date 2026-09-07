@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -139,7 +141,6 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err := a.DB.Create(&b).Error; err != nil {
 		return nil, err
 	}
-	_ = a.DB.Create(&db.Rule{ID: ids.New(), BotID: id, Connector: "secrets", Action: "get", Decision: "ask"}).Error
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
@@ -221,6 +222,17 @@ func (a *App) StopBot(ctx context.Context, req *connect.Request[v1.GetBotRequest
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
 
+func (a *App) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	a.destroyBot(ctx, b)
+	b.Status = "stopped"
+	a.DB.Save(b)
+	return connect.NewResponse(a.viewBot(ctx, b)), nil
+}
+
 func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
 	b, err := a.ownBot(ctx, req.Msg.GetId())
 	if err != nil {
@@ -244,6 +256,9 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.DB.Delete(b)
+	if a.Cfg != nil && a.Cfg.DataDir != "" {
+		_ = os.RemoveAll(filepath.Join(a.Cfg.DataDir, "bots", b.ID))
+	}
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
 

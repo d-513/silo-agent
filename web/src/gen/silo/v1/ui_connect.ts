@@ -103,6 +103,15 @@ export const UI = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc silo.v1.UI.ResetContainer
+     */
+    resetContainer: {
+      name: "ResetContainer",
+      I: GetBotRequest,
+      O: Bot,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc silo.v1.UI.DeleteBot
      */
     deleteBot: {

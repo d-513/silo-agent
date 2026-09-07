@@ -1,4 +1,4 @@
-import { ArrowUp, CaretDown, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ArrowUp, CaretDown, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
@@ -12,7 +12,8 @@ import { Thread, type Ev } from "./Thread";
 import { AdminLayout, AccountPage, AdminSettings } from "./Admin";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
-import type { Approval, Bot, BotConnector, Chat, Container, Rule, SecretMeta } from "./gen/silo/v1/ui_pb";
+import { RulesPane } from "./Rules";
+import type { Approval, Bot, BotConnector, Chat, Container, SecretMeta } from "./gen/silo/v1/ui_pb";
 
 const tabs = ["run", "desktop", "files", "connectors", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
@@ -194,7 +195,7 @@ function Shell({ page, fill, children }: { page: "bots" | "admin" | "account"; f
   return (
     <div className="flex h-dvh overflow-hidden">
       <Rail page={page} />
-      <main className={`min-w-0 flex-1 ${fill ? "overflow-hidden" : "overflow-auto"}`}>{children}</main>
+      <main className={`min-w-0 flex-1 ${fill ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>{children}</main>
     </div>
   );
 }
@@ -301,8 +302,7 @@ function BotsPage() {
               <Crest index={b.crest} size={56} />
               <div className="min-w-0">
                 <div className="text-[16px] font-medium">{b.name}</div>
-                {b.description && <div className="truncate text-stone">{b.description}</div>}
-                <div className="truncate text-[13px] text-stone">{b.lastTask || "No runs this week"}</div>
+                {b.description ? <div className="truncate text-stone">{b.description}</div> : null}
                 <div className="mt-1 flex items-center gap-2 text-[12px] font-medium">
                   <span className={`inline-block h-[7px] w-[7px] rounded-full ${lampClass(b.status)}`} />
                   <span className={statusWord(b.status)}>{statusLabel(b.status)}</span>
@@ -664,6 +664,34 @@ function ContainerPane({
   );
 }
 
+function PromptWell({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (s: string) => void;
+}) {
+  const over = value.length > 8000;
+  return (
+    <div className="min-w-0">
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <label className="text-[12px] font-medium text-stone">{label}</label>
+        <span className={`font-mono text-[11px] ${over ? "text-carmine" : "text-stone"}`}>{value.length}/8000</span>
+      </div>
+      <p className="mb-1 text-[12px] text-stone">{hint}</p>
+      <textarea
+        className="h-[240px] w-full resize-y rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] leading-5 outline-none focus:border-bindery"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 function SettingsPane({
   bot,
   onSaved,
@@ -673,17 +701,23 @@ function SettingsPane({
   onSaved: (b: Bot) => void;
   onError: (s: string) => void;
 }) {
+  const nav = useNavigate();
+  const { refresh } = useBots();
   const [name, setName] = useState(bot.name);
   const [description, setDescription] = useState(bot.description);
   const [soul, setSoul] = useState(bot.soul);
   const [memory, setMemory] = useState(bot.memory);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [arm, setArm] = useState<"reset" | "delete" | "">("");
+  const [dangerBusy, setDangerBusy] = useState(false);
   useEffect(() => {
     setName(bot.name);
     setDescription(bot.description);
     setSoul(bot.soul);
     setMemory(bot.memory);
+    setArm("");
+    setDangerBusy(false);
   }, [bot.id]);
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -709,11 +743,35 @@ function SettingsPane({
       setBusy(false);
     }
   }
+  async function go(which: "reset" | "delete") {
+    if (arm !== which) {
+      setArm(which);
+      return;
+    }
+    setDangerBusy(true);
+    onError("");
+    try {
+      if (which === "reset") {
+        onSaved(await ui.resetContainer({ id: bot.id }));
+        setArm("");
+        refresh();
+      } else {
+        await ui.deleteBot({ id: bot.id });
+        refresh();
+        nav("/");
+        return;
+      }
+    } catch (ex) {
+      onError(fail(ex));
+    } finally {
+      setDangerBusy(false);
+    }
+  }
   return (
-    <div className="mx-auto w-[760px] p-7">
-      <h2 className="text-[22px] font-medium">Settings</h2>
-      <p className="mb-6 text-stone">This Bot only. SOUL and MEMORY are also in the prompt — the Bot can edit them.</p>
-      <form onSubmit={save} className="max-w-[560px]">
+    <div className="mx-auto w-[760px] p-7 pb-12">
+      <h2 className="text-[22px] font-medium tracking-tight">Settings</h2>
+      <p className="mb-6 text-stone">This Bot only. SOUL and MEMORY are in the prompt; the Bot can edit them too.</p>
+      <form onSubmit={save}>
         <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
         <input
           className="mb-4 h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery"
@@ -722,25 +780,15 @@ function SettingsPane({
         />
         <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
         <textarea
-          className="mb-6 min-h-[72px] w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          className="mb-6 h-[72px] w-full resize-y rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
           placeholder="What this machine is for"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <label className="mb-1 block text-[12px] font-medium text-stone">SOUL</label>
-        <p className="mb-1 text-[12px] text-stone">Identity, tone, hard rules.</p>
-        <textarea
-          className="mb-6 min-h-[160px] w-full rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] outline-none focus:border-bindery"
-          value={soul}
-          onChange={(e) => setSoul(e.target.value)}
-        />
-        <label className="mb-1 block text-[12px] font-medium text-stone">MEMORY</label>
-        <p className="mb-1 text-[12px] text-stone">Lasting facts. Over 8000 characters the Bot is told to compact.</p>
-        <textarea
-          className="mb-6 min-h-[160px] w-full rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] outline-none focus:border-bindery"
-          value={memory}
-          onChange={(e) => setMemory(e.target.value)}
-        />
+        <div className="mb-5 grid grid-cols-2 gap-4">
+          <PromptWell label="SOUL" hint="Identity, tone, hard rules." value={soul} onChange={setSoul} />
+          <PromptWell label="MEMORY" hint="Lasting facts. Compact past 8000." value={memory} onChange={setMemory} />
+        </div>
         <div className="flex items-center gap-3">
           <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
             {busy ? "Saving…" : "Save"}
@@ -748,6 +796,30 @@ function SettingsPane({
           {saved && <span className="text-stone">Saved</span>}
         </div>
       </form>
+      <div className="mt-10">
+        <h3 className="mb-1 text-[12px] font-medium text-carmine">Dangerous</h3>
+        <p className="mb-3 text-[12px] text-stone">Second click confirms. These cannot be undone from here.</p>
+        <div className="overflow-hidden rounded-[10px] border border-thread bg-folio">
+          <div className="flex items-center gap-4 border-b border-thread-2 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">Reset container</div>
+              <p className="text-[12px] text-stone">Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one.</p>
+            </div>
+            <Btn kind="secondary" type="button" className="shrink-0" disabled={dangerBusy} icon={<ArrowCounterClockwise size={12} />} onClick={() => void go("reset")}>
+              {arm === "reset" ? "Reset?" : "Reset"}
+            </Btn>
+          </div>
+          <div className="flex items-center gap-4 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">Delete Bot</div>
+              <p className="text-[12px] text-stone">Chats, secrets, connectors, the container, and files on disk.</p>
+            </div>
+            <Btn kind="deny" type="button" className="shrink-0" disabled={dangerBusy} icon={<Trash size={12} />} onClick={() => void go("delete")}>
+              {arm === "delete" ? "Delete?" : "Delete"}
+            </Btn>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -768,8 +840,10 @@ function BotPage() {
   const [pending, setPending] = useState<Approval[]>([]);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
   const [secrets, setSecrets] = useState<SecretMeta[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
+  const [editingChat, setEditingChat] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const renameCancel = useRef(false);
   const [secName, setSecName] = useState("");
   const [secVal, setSecVal] = useState("");
   const [actErr, setActErr] = useState("");
@@ -856,6 +930,9 @@ function BotPage() {
               const list = await ui.listApprovals({ botId: id });
               if (!dead) setPending(list.approvals);
             }
+            if (ev.kind === "chat_title" && ev.body) {
+              setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title: ev.body } : c)));
+            }
             if (ev.kind === "done") {
               ui.listChats({ botId: id }).then((r) => {
                 if (!dead) setChats(r.chats);
@@ -882,10 +959,6 @@ function BotPage() {
   useEffect(() => {
     if (!id || tab !== "secrets") return;
     ui.listSecrets({ botId: id }).then((r) => setSecrets(r.secrets)).catch(console.error);
-  }, [id, tab]);
-  useEffect(() => {
-    if (!id || tab !== "rules") return;
-    ui.listRules({ botId: id }).then((r) => setRules(r.rules)).catch(console.error);
   }, [id, tab]);
 
   if (!id) return <Navigate to="/" />;
@@ -963,6 +1036,21 @@ function BotPage() {
     }
   }
 
+  async function renameChat(cid: string) {
+    if (!id) return;
+    const title = editTitle.trim();
+    setEditingChat("");
+    if (!title) return;
+    const cur = chats.find((x) => x.id === cid);
+    if (cur && cur.title === title) return;
+    try {
+      const row = await ui.renameChat({ botId: id, id: cid, title });
+      setChats((xs) => xs.map((c) => (c.id === cid ? row : c)));
+    } catch (e) {
+      setActErr(fail(e));
+    }
+  }
+
   async function newChat() {
     if (!id) return;
     const c = await ui.createChat({ botId: id });
@@ -986,7 +1074,7 @@ function BotPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-thread-2 px-4">
         <Crest index={bot.crest} size={28} />
         <div className="text-[22px] font-medium tracking-tight">{bot.name}</div>
@@ -1043,14 +1131,58 @@ function BotPage() {
                 {chats.length === 0 && <p className="px-2 py-2 text-stone">No chats</p>}
                 {chats.map((c) => (
                   <div key={c.id} className="group mb-0.5 flex items-center">
-                    <NavLink
-                      to={`/bots/${id}/run/${c.id}`}
-                      className={`min-w-0 flex-1 truncate rounded px-2 py-1.5 ${
-                        c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen hover:text-iron"
-                      }`}
-                    >
-                      {c.title || "New chat"}
-                    </NavLink>
+                    {editingChat === c.id ? (
+                      <input
+                        autoFocus
+                        className="min-w-0 flex-1 rounded bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onBlur={() => {
+                          if (renameCancel.current) {
+                            renameCancel.current = false;
+                            return;
+                          }
+                          void renameChat(c.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void renameChat(c.id);
+                          }
+                          if (e.key === "Escape") {
+                            renameCancel.current = true;
+                            setEditingChat("");
+                          }
+                        }}
+                      />
+                    ) : (
+                      <NavLink
+                        to={`/bots/${id}/run/${c.id}`}
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          setEditingChat(c.id);
+                          setEditTitle(c.title || "");
+                        }}
+                        className={`min-w-0 flex-1 truncate rounded px-2 py-1.5 ${
+                          c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen hover:text-iron"
+                        }`}
+                      >
+                        {c.title || "New chat"}
+                      </NavLink>
+                    )}
+                    {editingChat !== c.id && (
+                      <button
+                        title="Rename chat"
+                        className="hidden px-1 text-stone hover:text-iron group-hover:block"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setEditingChat(c.id);
+                          setEditTitle(c.title || "");
+                        }}
+                      >
+                        <PencilSimple size={14} />
+                      </button>
+                    )}
                     <button
                       title="Delete chat"
                       className="hidden px-1 text-stone hover:text-carmine group-hover:block"
@@ -1108,6 +1240,7 @@ function BotPage() {
           </section>
         )}
         {tab === "secrets" && (
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
           <div className="mx-auto w-[760px] p-7">
             <h2 className="text-[22px] font-medium">Secrets</h2>
             <p className="mb-4 text-stone">Handed to the Bot only after you allow it. Masked before the model sees output.</p>
@@ -1147,59 +1280,28 @@ function BotPage() {
               </Btn>
             </form>
           </div>
+          </div>
         )}
-        {tab === "container" && <ContainerPane bot={bot} onStart={start} onStop={stop} />}
+        {tab === "container" && (
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <ContainerPane bot={bot} onStart={start} onStop={stop} />
+          </div>
+        )}
         {tab === "settings" && (
-          <SettingsPane
-            bot={bot}
-            onSaved={(next) => {
-              setBot(next);
-              refresh();
-            }}
-            onError={setActErr}
-          />
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <SettingsPane
+              bot={bot}
+              onSaved={(next) => {
+                setBot(next);
+                refresh();
+              }}
+              onError={setActErr}
+            />
+          </div>
         )}
         {tab === "rules" && (
-          <div className="mx-auto w-[760px] p-7">
-            <h2 className="mb-4 text-[22px] font-medium">Rules</h2>
-            {rules.length === 0 ? (
-              <p className="mb-3 text-stone">No rules yet. The catalog default applies; Ask pauses the run and opens the slip.</p>
-            ) : (
-              <>
-                <table className="w-full text-left">
-                  <thead className="bg-cloth text-[11px] font-medium tracking-wide text-stone">
-                    <tr>
-                      <th className="p-2">Connector</th>
-                      <th className="p-2">Action</th>
-                      <th className="p-2">Decision</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((r) => (
-                      <tr key={r.id} className="border-b border-thread-2">
-                        <td className="p-2">{r.connector}</td>
-                        <td className="p-2 font-mono">{r.action}</td>
-                        <td className="p-2">
-                          <select
-                            className="rounded border border-thread bg-folio px-2 py-1"
-                            value={r.decision}
-                            onChange={async (e) => {
-                              await ui.setRule({ botId: id, connector: r.connector, action: r.action, decision: e.target.value });
-                              setRules((await ui.listRules({ botId: id })).rules);
-                            }}
-                          >
-                            <option value="allow">Allow</option>
-                            <option value="ask">Ask</option>
-                            <option value="deny">Deny</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-3 text-stone">Ask pauses the run and opens the slip. Catalog default applies until you set a rule.</p>
-              </>
-            )}
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <RulesPane botId={id} />
           </div>
         )}
         {pending[0] ? (

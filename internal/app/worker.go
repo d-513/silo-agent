@@ -87,55 +87,19 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil
 	}
 	runID := req.Msg.GetRunId()
-	title := security.Describe("secrets", "get", argsJSON(name)).Title
-	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, "secrets.get")
-	decision := security.Rule(a.ruleDecision(bot.ID, "secrets", "get", ""))
-	switch decision {
-	case "deny":
-		a.audit(bot, "worker", "secrets.get", "deny")
-		a.emitCallDone(bot.ID, runID, "secrets.get", "denied")
-		return connect.NewResponse(&v1.SecretRes{Error: "denied"}), nil
-	case "allow":
-		now := time.Now()
-		sec.LastUsedAt = &now
-		a.DB.Save(&sec)
-		a.Mask(bot.ID).Add(sec.Value)
-		a.audit(bot, "worker", "secrets.get", "allow")
-		a.emitCallDone(bot.ID, runID, "secrets.get", "ok")
-		return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
-	default:
-		ap := db.Approval{
-			ID: ids.New(), BotID: bot.ID, RunID: runID,
-			Connector: "secrets", Action: "get", ArgsJSON: argsJSON(name), Status: "pending", CreatedAt: time.Now(),
-		}
-		a.DB.Create(&ap)
-		ch := make(chan string, 1)
-		a.mu.Lock()
-		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
-		a.mu.Unlock()
-		a.setBotStatus(bot.ID, "needs_you")
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "approval", ap.ID, "secrets.get")
-		var dec string
-		select {
-		case <-ctx.Done():
-			a.dropWaiter(ap.ID)
-			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
-			a.recomputeStatus(bot.ID)
-			a.emitCallDone(bot.ID, runID, "secrets.get", "canceled")
-			return connect.NewResponse(&v1.SecretRes{Error: "canceled"}), nil
-		case dec = <-ch:
-		}
-		if !security.Granted(dec) {
-			a.emitCallDone(bot.ID, runID, "secrets.get", "denied")
-			return connect.NewResponse(&v1.SecretRes{Error: "denied"}), nil
-		}
-		now := time.Now()
-		sec.LastUsedAt = &now
-		a.DB.Save(&sec)
-		a.Mask(bot.ID).Add(sec.Value)
-		a.emitCallDone(bot.ID, runID, "secrets.get", "ok")
-		return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
+	tool := security.Key(security.Secrets, name)
+	title := security.Describe(security.Secrets, name, argsJSON(name)).Title
+	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
+	if err := a.authorizeAction(ctx, bot, runID, security.Secrets, name, argsJSON(name), ""); err != nil {
+		a.emitCallDone(bot.ID, runID, tool, err.Error())
+		return connect.NewResponse(&v1.SecretRes{Error: err.Error()}), nil
 	}
+	now := time.Now()
+	sec.LastUsedAt = &now
+	a.DB.Save(&sec)
+	a.Mask(bot.ID).Add(sec.Value)
+	a.emitCallDone(bot.ID, runID, tool, "ok")
+	return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
 }
 
 func (a *App) dropWaiter(id string) {
@@ -296,10 +260,18 @@ func (a *App) ruleDecision(botID, conn, action, fallback string) string {
 	if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, action).Error; err == nil && r.Decision != "" {
 		return r.Decision
 	}
+	if action != security.Star {
+		if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, security.Star).Error; err == nil && r.Decision != "" {
+			return r.Decision
+		}
+	}
+	if d, ok := security.Default(conn, action); ok {
+		return d
+	}
 	if fallback != "" {
 		return fallback
 	}
-	return "ask"
+	return security.Ask
 }
 
 func (a *App) emitCallDone(botID, runID, tool, body string) {

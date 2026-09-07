@@ -16,6 +16,7 @@ service UI {
   rpc GetContainer(GetBotRequest) returns (Container);
   rpc StartBot(GetBotRequest) returns (Bot);
   rpc StopBot(GetBotRequest) returns (Bot);
+  rpc ResetContainer(GetBotRequest) returns (Bot);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
 
   rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
@@ -262,6 +263,14 @@ message Rule {
   string connector = 3;
   string action = 4;
   string decision = 5;
+  string title = 6;
+}
+
+message RuleSection {
+  string id = 1;
+  string title = 2;
+  string summary = 3;
+  repeated Rule rules = 4;
 }
 
 message ListRulesRequest {
@@ -270,6 +279,7 @@ message ListRulesRequest {
 
 message ListRulesResponse {
   repeated Rule rules = 1;
+  repeated RuleSection sections = 2;
 }
 
 message SetRuleRequest {

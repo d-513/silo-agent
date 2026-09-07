@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -77,9 +79,12 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	if err != nil {
 		return nil, err
 	}
-	title := req.Msg.GetTitle()
+	title := strings.TrimSpace(req.Msg.GetTitle())
 	if title == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title required"))
+	}
+	if n := utf8.RuneCountInString(title); n > 80 {
+		title = string([]rune(title)[:80])
 	}
 	c.Title = title
 	c.UpdatedAt = time.Now()
@@ -100,4 +105,36 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	a.DB.Where("chat_id = ?", c.ID).Delete(&db.Run{})
 	a.DB.Delete(c)
 	return connect.NewResponse(&v1.DeleteChatResponse{}), nil
+}
+
+func untitledTitle(s string) bool {
+	switch strings.TrimSpace(s) {
+	case "", "New chat", "Chat":
+		return true
+	}
+	return false
+}
+
+func cleanTitle(raw string) string {
+	s := strings.TrimSpace(strings.Join(strings.Fields(raw), " "))
+	s = strings.Trim(s, `"'“”‘’`)
+	s = strings.TrimRight(s, " .")
+	s = strings.TrimSpace(s)
+	if untitledTitle(s) {
+		return ""
+	}
+	if utf8.RuneCountInString(s) > 60 {
+		s = strings.TrimSpace(string([]rune(s)[:60]))
+	}
+	return s
+}
+
+func (a *App) applyGeneratedTitle(chatID, title string) bool {
+	title = strings.TrimSpace(title)
+	if untitledTitle(title) {
+		return false
+	}
+	res := a.DB.Model(&db.Chat{}).Where("id = ? AND title IN ?", chatID, []string{"New chat", "Chat", ""}).
+		Updates(map[string]any{"title": title, "updated_at": time.Now()})
+	return res.RowsAffected > 0
 }

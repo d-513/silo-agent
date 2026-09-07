@@ -1,0 +1,18 @@
+{
+  "DefaultZoomLevel": -2.186,
+  "3rdparty": {
+    "extensions": {
+      "ddkjiahejlhfcafbddmgiahcphecmpfh": {
+        "disableFirstRunPage": true,
+        "defaultFiltering": "complete",
+        "rulesets": [
+          "+default",
+          "+annoyances-cookies",
+          "+annoyances-overlays",
+          "+annoyances-others",
+          "+annoyances-notifications"
+        ]
+      }
+    }
+  }
+}
