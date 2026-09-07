@@ -112,7 +112,8 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	})
 	if dec == "always" {
 		var rule db.Rule
-		if err := a.DB.First(&rule, "bot_id = ? AND connector = ? AND action = ?", row.BotID, row.Connector, row.Action).Error; err != nil {
+		a.DB.Where("bot_id = ? AND connector = ? AND action = ?", row.BotID, row.Connector, row.Action).Limit(1).Find(&rule)
+		if rule.ID == "" {
 			a.DB.Create(&db.Rule{ID: ids.New(), BotID: row.BotID, Connector: row.Connector, Action: row.Action, Decision: "allow"})
 		} else {
 			rule.Decision = "allow"

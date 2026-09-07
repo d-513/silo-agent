@@ -89,8 +89,8 @@ func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleReques
 	}
 	dec := security.Rule(req.Msg.GetDecision())
 	var rule db.Rule
-	err := a.DB.First(&rule, "bot_id = ? AND connector = ? AND action = ?", req.Msg.GetBotId(), req.Msg.GetConnector(), req.Msg.GetAction()).Error
-	if err != nil {
+	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", req.Msg.GetBotId(), req.Msg.GetConnector(), req.Msg.GetAction()).Limit(1).Find(&rule)
+	if rule.ID == "" {
 		rule = db.Rule{ID: ids.New(), BotID: req.Msg.GetBotId(), Connector: req.Msg.GetConnector(), Action: req.Msg.GetAction(), Decision: dec}
 		a.DB.Create(&rule)
 	} else {

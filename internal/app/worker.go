@@ -256,14 +256,24 @@ func (a *App) Console(ctx context.Context, stream *connect.BidiStream[v1.Console
 }
 
 func (a *App) ruleDecision(botID, conn, action, fallback string) string {
-	var r db.Rule
-	if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, action).Error; err == nil && r.Decision != "" {
-		return r.Decision
-	}
+	actions := []string{action}
 	if action != security.Star {
-		if err := a.DB.First(&r, "bot_id = ? AND connector = ? AND action = ?", botID, conn, security.Star).Error; err == nil && r.Decision != "" {
+		actions = append(actions, security.Star)
+	}
+	var rows []db.Rule
+	a.DB.Where("bot_id = ? AND connector = ? AND action IN ?", botID, conn, actions).Find(&rows)
+	var star string
+	for _, r := range rows {
+		if r.Decision == "" {
+			continue
+		}
+		if r.Action == action {
 			return r.Decision
 		}
+		star = r.Decision
+	}
+	if star != "" {
+		return star
 	}
 	if d, ok := security.Default(conn, action); ok {
 		return d
