@@ -8,3 +8,4 @@ web/dist/
 .env
 silo.yaml
 bin
+__pycache__
