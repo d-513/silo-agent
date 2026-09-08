@@ -242,6 +242,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 		return nil, err
 	}
 	a.destroyBot(ctx, b)
+	a.dropBotStdio(b.ID)
 	var runs []db.Run
 	a.DB.Where("bot_id = ?", b.ID).Find(&runs)
 	for _, r := range runs {
@@ -255,6 +256,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Find(&bcs)
 	for _, bc := range bcs {
 		a.dropMCP(bc.ID)
+		a.dropStdio(&bc)
 	}
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})

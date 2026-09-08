@@ -121,6 +121,10 @@ type Connector struct {
 	OAuthClientID     string
 	OAuthClientSecret string
 	HeadersJSON       string
+	StdioCommand      string
+	StdioArgsJSON     string
+	StdioImage        string
+	EnvJSON           string
 	DefaultMode       string
 	CreatedAt         time.Time
 }
@@ -133,6 +137,7 @@ type BotConnector struct {
 	TokenJSON   string
 	ToolsJSON   string
 	LastError   string
+	ContainerID string
 	CreatedAt   time.Time
 }
 

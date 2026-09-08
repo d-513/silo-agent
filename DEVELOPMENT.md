@@ -1,6 +1,6 @@
 # Development
 
-Silo is three processes you run locally, plus one container image for Bots.
+Silo is three processes you run locally, plus two container images (Bots and STDIO MCP sidecars).
 
 ```
 browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-worker)
@@ -14,6 +14,7 @@ browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-wor
 | Control Plane | `./bin/silo`            | Users, chats, agent loop, Docker, VNC + console proxy             |
 | Frontend      | `pnpm dev` in `web/`    | UI on http://127.0.0.1:5173                                       |
 | Bot image     | `localhost/silo-bot:v1` | X11 desktop + `silo-worker` (Chromium on the dock, not autostart) |
+| STDIO image   | `localhost/silo-mcp-stdio:v1` | `silo-mcp-bridge` + Node/`npx` + Python; one sidecar per STDIO connector |
 
 Architecture: `docs/Description.md`. UI: `DESIGN.md`. Agent prompt: `internal/prompts/SYSTEM.md`.
 
@@ -55,12 +56,16 @@ export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
 
 go build -o bin/silo ./cmd/silo
 go build -o bin/silo-worker ./cmd/silo-worker
+go build -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
 podman build -t localhost/silo-bot:v1 -f botimage/Containerfile .
+podman build -t localhost/silo-mcp-stdio:v1 -f mcpimage/Containerfile .
 ```
 
-Build `silo-worker` **before** the image. The Containerfile copies `bin/silo-worker` into the Bot.
+Build `silo-worker` **before** the Bot image. The Containerfile copies `bin/silo-worker` into the Bot.
 
-Image tag must match `bot_image` in `silo.yaml` (default `localhost/silo-bot:v1`).
+Build `silo-mcp-bridge` **before** the STDIO image. The Containerfile copies `bin/silo-mcp-bridge` into the sidecar.
+
+Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1` and `localhost/silo-mcp-stdio:v1`).
 
 ## Run
 
@@ -92,6 +97,8 @@ Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`
 | `internal/catalog/*`         | same — library presets and skills are `go:embed`’d; restart the CP to seed new keys |
 | Go (worker)                  | rebuild `bin/silo-worker`, rebuild the image, recreate the Bot container              |
 | `botimage/*`                 | rebuild the image, recreate the Bot container                                         |
+| Go (stdio bridge)            | rebuild `bin/silo-mcp-bridge`, rebuild `localhost/silo-mcp-stdio:v1`, Refresh the connector |
+| `mcpimage/*`                 | same                                                                                  |
 | `proto/**`                   | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 
@@ -109,10 +116,12 @@ go test ./...
 ```
 cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
+cmd/silo-mcp-bridge HTTP↔stdio proxy inside a STDIO sidecar
 internal/app        UI + worker RPCs, agent loop
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)
 botimage/           Containerfile, start.sh, Thunar, wallpaper, dock
+mcpimage/           STDIO sidecar Containerfile
 proto/silo/v1       ui.proto, worker.proto
 gen/                Go stubs (generated)
 web/                Vite + React

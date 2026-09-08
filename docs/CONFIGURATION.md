@@ -22,6 +22,7 @@ Libraries (Connectors, Skills) are not YAML.
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL the **Bot container** uses to dial the CP |
 | `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
+| `mcp_stdio_image` | `localhost/silo-mcp-stdio:v1` | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
 | `model` | `openai/gpt-5.6-luna` | `SILO_MODEL` | Chat model slug |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | First admin only. Ignored after a user exists |
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
@@ -46,6 +47,7 @@ data_dir: ./data
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
 bot_image: localhost/silo-bot:v1
+mcp_stdio_image: localhost/silo-mcp-stdio:v1
 model: openai/gpt-5.6-luna
 
 bootstrap:

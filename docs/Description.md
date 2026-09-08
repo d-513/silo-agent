@@ -20,7 +20,7 @@ Control Plane owns policy, the agent loop, LLM calls, and secrets. The Bot is a 
 | Local tools bus | HTTP/JSON over a Unix socket | Python↔Worker, same container, never leaves the Bot |
 | DB | SQLite + GORM, WAL mode | single-node v1; no repository layer; sqlc only if GORM hurts |
 | Auth | session cookies now | OIDC later creates the same `User`/`Session` rows — no plugin framework |
-| Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, OpenRouter key, model, search. Admin Settings writes `silo.yaml`. |
+| Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, OpenRouter key, model, search, STDIO MCP image. Admin Settings writes `silo.yaml`. |
 | Product libraries | SQLite + `data/skills/` | Connectors Library, Skills Library. Not YAML. |
 | Desktop | X11 (Xvfb + Openbox + Thunar + mousepad) | not Wayland |
 | Remote desktop | x11vnc + noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
@@ -145,7 +145,9 @@ CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Sear
 
 ### Web / connectors
 
-Admin owns a **library** of connector presets (type `mcp` for now), seeded from `internal/catalog`. HTTP MCP only; STDIO is reserved. Auth is `none` or `oauth`. Extra headers stay on the CP. Each preset has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Catalog entries may include a `guide` shown as text when adding from the library — it is not a connector field. Bots attach a **copy** of a preset (shared form, pre-filled) as many times as they want — a second GitHub is `GitHub 2` with its own OAuth and `tools.github_2`. They can also add a custom MCP that never enters the library. The CP is the MCP client (`internal/mcpx`, streamable HTTP). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`. Servers that omit `registration_endpoint` (GitHub) need a pre-registered OAuth Client ID and Secret on the connector.
+Admin owns a **library** of connector presets (type `mcp`), seeded from `internal/catalog`. HTTP MCP (streamable HTTP / legacy SSE) and STDIO MCP. Auth is `none` or `oauth` (HTTP only). Extra headers stay on the CP. Each preset has a **default mode** (`allow` / `ask` / `deny`) used when a Bot has no rule for that action. Catalog entries may include a `guide` shown as text when adding from the library — it is not a connector field. Bots attach a **copy** of a preset (shared form, pre-filled) as many times as they want — a second GitHub is `GitHub 2` with its own OAuth and `tools.github_2`. They can also add a custom MCP that never enters the library. The CP is the MCP client (`internal/mcpx`). Worker generates `tools/<slug>/*.py` stubs that `silo_runtime.call` → `CallTool`. OAuth uses MCP authorization code + PKCE; tokens never enter the Bot. `public_url` is the browser origin for `/oauth/callback`. Servers that omit `registration_endpoint` (GitHub) need a pre-registered OAuth Client ID and Secret on the connector.
+
+STDIO connectors run **outside** the Bot: one isolated sidecar container per attachment (`silo-mcp-<botConnectorID>`), on the same Docker engine as Bots. The sidecar image (`mcp_stdio_image`, default `localhost/silo-mcp-stdio:v1`) includes Node/`npx`, Python, and `silo-mcp-bridge`. A library preset may name a curated image that still ships that bridge as entrypoint. The bridge starts exactly one child from structured `command` + `args` (never a shell), speaks MCP JSON-RPC on the child's stdin/stdout, and serves streamable HTTP on a unix socket bind-mounted from `data/mcp/<id>/`. The CP dials that socket with the same `mcpx` client used for HTTP MCPs, so authorization, audit, masking, and tool stubs are identical. Env values are CP-side (plaintext or a Bot secret name, resolved only at sidecar create). Docker inspect of the sidecar can still see injected environment — treat that as the v1 ceiling. Sidecars get no Bot volumes and no bot token. They are created on attach/refresh, replaced on connector edit, and removed on detach, bot delete, and CP shutdown. Custom STDIO command/args are allowed for the Bot owner; only an admin can set `stdio_image`.
 
 ### Chromium
 
@@ -168,7 +170,7 @@ v1: session cookie, owner sees their bots, admin sees settings. `User` + `Sessio
 - Wayland
 - Multi-host Docker *UI* (the Worker protocol is already remote-safe)
 - OIDC
-- STDIO MCP (schema only)
+- STDIO MCP in the Bot container (sidecars are CP-managed, isolated from the Bot)
 - Generated tools calling the CP, or a Python ConnectRPC client
 - Provider keys or connector tokens inside the Bot
 - `docker exec` / `docker cp` / published VNC as a control channel

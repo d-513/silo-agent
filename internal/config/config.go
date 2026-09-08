@@ -40,18 +40,20 @@ type Search struct {
 }
 
 const DefaultModel = "openai/gpt-5.6-luna"
+const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
 
 type Config struct {
-	HTTPAddr   string     `koanf:"http_addr"`
-	PublicURL  string     `koanf:"public_url"`
-	DataDir    string     `koanf:"data_dir"`
-	DockerHost string     `koanf:"docker_host"`
-	CPURL      string     `koanf:"cp_url"`
-	BotImage   string     `koanf:"bot_image"`
-	Model      string     `koanf:"model"`
-	Bootstrap  Bootstrap  `koanf:"bootstrap"`
-	OpenRouter OpenRouter `koanf:"openrouter"`
-	Search     Search     `koanf:"search"`
+	HTTPAddr      string     `koanf:"http_addr"`
+	PublicURL     string     `koanf:"public_url"`
+	DataDir       string     `koanf:"data_dir"`
+	DockerHost    string     `koanf:"docker_host"`
+	CPURL         string     `koanf:"cp_url"`
+	BotImage      string     `koanf:"bot_image"`
+	MCPStdioImage string     `koanf:"mcp_stdio_image"`
+	Model         string     `koanf:"model"`
+	Bootstrap     Bootstrap  `koanf:"bootstrap"`
+	OpenRouter    OpenRouter `koanf:"openrouter"`
+	Search        Search     `koanf:"search"`
 }
 
 type fieldMeta struct {
@@ -70,6 +72,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "data_dir", Restart: true},
 	{Key: "docker_host", Restart: true},
 	{Key: "bot_image"},
+	{Key: "mcp_stdio_image"},
 	{Key: "bootstrap.email", Restart: true},
 	{Key: "bootstrap.password", Secret: true, Restart: true},
 }
@@ -122,6 +125,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("data_dir", "./data")
 	_ = k.Set("cp_url", "http://host.containers.internal:8080")
 	_ = k.Set("bot_image", "localhost/silo-bot:v1")
+	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
 }

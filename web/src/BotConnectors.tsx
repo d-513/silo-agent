@@ -163,7 +163,7 @@ export function BotConnectors({
           Add connector
         </button>
       </div>
-      <p className="mb-4 text-stone">Pick a library preset or add a custom MCP. Add the same preset again for another account (GitHub 2). The Control Plane talks to the server; this Bot never sees tokens.</p>
+      <p className="mb-4 text-stone">Pick a library preset or add a custom MCP (HTTP or STDIO). Add the same preset again for another account (GitHub 2). The Control Plane talks to the server; this Bot never sees tokens. STDIO servers run in an isolated sidecar on the Control Plane host.</p>
       {err && <p className="mb-3 text-carmine">{err}</p>}
       {attached.length === 0 && <p className="mb-4 text-stone">None on this Bot yet.</p>}
       {attached.map((row) => {

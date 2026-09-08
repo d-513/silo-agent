@@ -2,6 +2,7 @@ import { CaretRight, Plugs } from "@phosphor-icons/react";
 import type { Connector } from "./gen/silo/v1/ui_pb";
 
 export type HeaderDraft = { name: string; value: string };
+export type EnvDraft = { name: string; value: string; secret: string };
 
 export type ConnectorDraft = {
   name: string;
@@ -14,6 +15,10 @@ export type ConnectorDraft = {
   oauthClientId: string;
   oauthClientSecret: string;
   hasOauthClientSecret: boolean;
+  stdioCommand: string;
+  stdioArgs: string[];
+  stdioImage: string;
+  env: EnvDraft[];
   image?: Uint8Array;
   imageType: string;
   hasImage: boolean;
@@ -34,6 +39,10 @@ export function emptyDraft(): ConnectorDraft {
     oauthClientId: "",
     oauthClientSecret: "",
     hasOauthClientSecret: false,
+    stdioCommand: "",
+    stdioArgs: [""],
+    stdioImage: "",
+    env: [{ name: "", value: "", secret: "" }],
     imageType: "",
     hasImage: false,
     clearImage: false,
@@ -52,6 +61,12 @@ export function draftFrom(c: Connector): ConnectorDraft {
     oauthClientId: c.oauthClientId || "",
     oauthClientSecret: "",
     hasOauthClientSecret: c.hasOauthClientSecret,
+    stdioCommand: c.stdioCommand || "",
+    stdioArgs: c.stdioArgs.length ? c.stdioArgs : [""],
+    stdioImage: c.stdioImage || "",
+    env: c.envKeys.length
+      ? c.envKeys.map((e) => ({ name: e.name, value: "", secret: e.secretName || "" }))
+      : [{ name: "", value: "", secret: "" }],
     imageType: "",
     hasImage: c.hasImage,
     clearImage: false,
@@ -64,12 +79,16 @@ export function specOf(d: ConnectorDraft) {
     name: d.name,
     description: d.description,
     httpUrl: d.httpUrl,
-    auth: d.auth,
+    auth: d.transport === "stdio" ? "none" : d.auth,
     defaultMode: d.defaultMode,
     transport: d.transport,
     headers: d.headers.filter((h) => h.name.trim()),
     oauthClientId: d.oauthClientId,
     oauthClientSecret: d.oauthClientSecret,
+    stdioCommand: d.stdioCommand,
+    stdioArgs: d.stdioArgs.map((a) => a.trim()).filter(Boolean),
+    stdioImage: d.stdioImage,
+    env: d.env.filter((e) => e.name.trim()).map((e) => ({ name: e.name, value: e.value, secret: e.secret })),
     image: d.image,
     imageType: d.imageType,
     clearImage: d.clearImage,
@@ -151,12 +170,14 @@ export function ConnectorFields({
   existing,
   fromCatalog,
   catalogGuide,
+  allowStdioImage,
 }: {
   value: ConnectorDraft;
   onChange: (next: ConnectorDraft) => void;
   existing?: boolean;
   fromCatalog?: boolean;
   catalogGuide?: string;
+  allowStdioImage?: boolean;
 }) {
   function set<K extends keyof ConnectorDraft>(k: K, v: ConnectorDraft[K]) {
     onChange({ ...value, [k]: v });
@@ -212,44 +233,83 @@ export function ConnectorFields({
           onChange={(v) => set("transport", v)}
           options={[
             { id: "http", label: "HTTP" },
-            { id: "stdio", label: "STDIO", disabled: true, title: "Coming later" },
+            { id: "stdio", label: "STDIO" },
           ]}
         />
       </div>
-      <label className="mb-1 block text-[12px] font-medium text-stone">URL</label>
-      <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
-      <div className="mb-1 text-[12px] font-medium text-stone">Auth</div>
-      <div className="mb-3">
-        <Segmented
-          value={value.auth}
-          onChange={(v) => set("auth", v)}
-          options={[
-            { id: "none", label: "None" },
-            { id: "oauth", label: "OAuth" },
-          ]}
-        />
-      </div>
-      {value.auth === "oauth" && (
+      {value.transport === "stdio" ? (
         <>
-          <p className="mb-2 text-stone">
-            Leave blank when the server registers clients itself. GitHub and similar need a pre-registered OAuth App whose callback is <span className="font-mono">/oauth/callback</span> on this Silo.
-          </p>
-          <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client ID</label>
+          <label className="mb-1 block text-[12px] font-medium text-stone">Command</label>
           <input
             className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
-            value={value.oauthClientId}
-            onChange={(e) => set("oauthClientId", e.target.value)}
-            autoComplete="off"
+            value={value.stdioCommand}
+            onChange={(e) => set("stdioCommand", e.target.value)}
+            placeholder="npx"
+            required={!fromCatalog}
           />
-          <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client Secret</label>
-          <input
-            className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
-            type="password"
-            value={value.oauthClientSecret}
-            onChange={(e) => set("oauthClientSecret", e.target.value)}
-            placeholder={existing && value.hasOauthClientSecret ? "unchanged" : ""}
-            autoComplete="new-password"
-          />
+          <p className="mb-2 text-stone">Arguments, one per field. No shell — this is exec, not bash -c.</p>
+          {value.stdioArgs.map((arg, i) => (
+            <input
+              key={i}
+              className="mb-2 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+              value={arg}
+              onChange={(e) => set("stdioArgs", value.stdioArgs.map((x, j) => (j === i ? e.target.value : x)))}
+              placeholder={i === 0 ? "-y" : ""}
+            />
+          ))}
+          <button type="button" className="mb-3 text-bindery" onClick={() => set("stdioArgs", [...value.stdioArgs, ""])}>
+            Add argument
+          </button>
+          {allowStdioImage && (
+            <>
+              <label className="mb-1 block text-[12px] font-medium text-stone">Image</label>
+              <input
+                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                value={value.stdioImage}
+                onChange={(e) => set("stdioImage", e.target.value)}
+                placeholder="localhost/silo-mcp-stdio:v1"
+              />
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <label className="mb-1 block text-[12px] font-medium text-stone">URL</label>
+          <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
+          <div className="mb-1 text-[12px] font-medium text-stone">Auth</div>
+          <div className="mb-3">
+            <Segmented
+              value={value.auth}
+              onChange={(v) => set("auth", v)}
+              options={[
+                { id: "none", label: "None" },
+                { id: "oauth", label: "OAuth" },
+              ]}
+            />
+          </div>
+          {value.auth === "oauth" && (
+            <>
+              <p className="mb-2 text-stone">
+                Leave blank when the server registers clients itself. GitHub and similar need a pre-registered OAuth App whose callback is <span className="font-mono">/oauth/callback</span> on this Silo.
+              </p>
+              <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client ID</label>
+              <input
+                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                value={value.oauthClientId}
+                onChange={(e) => set("oauthClientId", e.target.value)}
+                autoComplete="off"
+              />
+              <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client Secret</label>
+              <input
+                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                type="password"
+                value={value.oauthClientSecret}
+                onChange={(e) => set("oauthClientSecret", e.target.value)}
+                placeholder={existing && value.hasOauthClientSecret ? "unchanged" : ""}
+                autoComplete="new-password"
+              />
+            </>
+          )}
         </>
       )}
       <div className="mb-1 text-[12px] font-medium text-stone">Default for tools</div>
@@ -265,28 +325,63 @@ export function ConnectorFields({
           ]}
         />
       </div>
-      <div className="mb-1 text-[12px] font-medium text-stone">Extra headers</div>
-      <p className="mb-2 text-stone">Values are stored on the Control Plane and never shown again.</p>
-      {value.headers.map((h, i) => (
-        <div key={i} className="mb-2 flex gap-2">
-          <input
-            className="h-9 w-40 rounded border border-thread bg-folio px-2 font-mono"
-            placeholder="Name"
-            value={h.name}
-            onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-          />
-          <input
-            className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-2 font-mono"
-            placeholder={existing ? "unchanged" : "Value"}
-            type="password"
-            value={h.value}
-            onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-          />
-        </div>
-      ))}
-      <button type="button" className="mb-6 text-bindery" onClick={() => set("headers", [...value.headers, { name: "", value: "" }])}>
-        Add header
-      </button>
+      {value.transport === "stdio" ? (
+        <>
+          <div className="mb-1 text-[12px] font-medium text-stone">Environment</div>
+          <p className="mb-2 text-stone">Values stay on the Control Plane. A secret name reads that Bot secret when the sidecar starts. Docker inspect can still see injected env.</p>
+          {value.env.map((e, i) => (
+            <div key={i} className="mb-2 flex flex-wrap gap-2">
+              <input
+                className="h-9 w-36 rounded border border-thread bg-folio px-2 font-mono"
+                placeholder="NAME"
+                value={e.name}
+                onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, name: ev.target.value } : x)))}
+              />
+              <input
+                className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-2 font-mono"
+                placeholder={existing ? "unchanged" : "Value"}
+                type="password"
+                value={e.value}
+                onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, value: ev.target.value } : x)))}
+              />
+              <input
+                className="h-9 w-36 rounded border border-thread bg-folio px-2 font-mono"
+                placeholder="secret name"
+                value={e.secret}
+                onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, secret: ev.target.value } : x)))}
+              />
+            </div>
+          ))}
+          <button type="button" className="mb-6 text-bindery" onClick={() => set("env", [...value.env, { name: "", value: "", secret: "" }])}>
+            Add env
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mb-1 text-[12px] font-medium text-stone">Extra headers</div>
+          <p className="mb-2 text-stone">Values are stored on the Control Plane and never shown again.</p>
+          {value.headers.map((h, i) => (
+            <div key={i} className="mb-2 flex gap-2">
+              <input
+                className="h-9 w-40 rounded border border-thread bg-folio px-2 font-mono"
+                placeholder="Name"
+                value={h.name}
+                onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+              />
+              <input
+                className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-2 font-mono"
+                placeholder={existing ? "unchanged" : "Value"}
+                type="password"
+                value={h.value}
+                onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+              />
+            </div>
+          ))}
+          <button type="button" className="mb-6 text-bindery" onClick={() => set("headers", [...value.headers, { name: "", value: "" }])}>
+            Add header
+          </button>
+        </>
+      )}
     </>
   );
 

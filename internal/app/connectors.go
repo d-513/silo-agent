@@ -22,6 +22,7 @@ import (
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/mcpbridge"
 	"silo.agent/internal/mcpx"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
@@ -56,11 +57,22 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 		return nil, err
 	}
 	m := req.Msg
-	row, err := parseConnector(m.GetName(), m.GetDescription(), m.GetTransport(), m.GetHttpUrl(), m.GetAuth(), m.GetDefaultMode(), m.GetImage(), m.GetImageType(), m.GetHeaders(), true)
+	row, err := parseConnector(connectorIn{
+		Name: m.GetName(), Desc: m.GetDescription(), Transport: m.GetTransport(),
+		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
+		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
+		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
+		Env: m.GetEnv(), AllowImage: true, RequireComplete: true,
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
+	if row.Transport == transportSTDIO {
+		row.Auth = authNone
+		row.OAuthClientID = ""
+		row.OAuthClientSecret = ""
+	}
 	row.Kind = catalog.KindLibrary
 	if err := a.DB.Create(&row).Error; err != nil {
 		return nil, err
@@ -89,35 +101,72 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	row.Description = strings.TrimSpace(m.GetDescription())
 	if m.GetTransport() != "" {
 		tr := strings.ToLower(m.GetTransport())
-		if tr == transportSTDIO {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stdio is not available yet"))
-		}
-		if tr != transportHTTP {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transport must be http"))
+		if err := checkTransport(tr); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		row.Transport = tr
 	}
-	if m.GetHttpUrl() != "" {
-		row.HTTPURL = strings.TrimSpace(m.GetHttpUrl())
-	}
-	if m.GetAuth() != "" {
-		au := strings.ToLower(m.GetAuth())
-		if au != authNone && au != authOAuth {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auth must be none or oauth"))
+	if row.Transport == transportSTDIO {
+		row.Auth = authNone
+		row.HTTPURL = ""
+		row.HeadersJSON = "{}"
+		row.OAuthClientID = ""
+		if m.GetStdioCommand() != "" {
+			if err := mcpbridge.ValidCommand(m.GetStdioCommand()); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			row.StdioCommand = strings.TrimSpace(m.GetStdioCommand())
 		}
-		row.Auth = au
+		if len(m.GetStdioArgs()) > 0 || m.StdioArgs != nil {
+			for _, a := range m.GetStdioArgs() {
+				if err := mcpbridge.ValidArg(a); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+			}
+			row.StdioArgsJSON = mustJSON(m.GetStdioArgs())
+		}
+		if currentUser(ctx) != nil && currentUser(ctx).Admin {
+			if err := mcpbridge.ValidImage(m.GetStdioImage()); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			if m.GetStdioImage() != "" || row.Kind == catalog.KindLibrary {
+				row.StdioImage = strings.TrimSpace(m.GetStdioImage())
+			}
+		}
+		if m.GetEnv() != nil {
+			env, err := mergeEnv(row.EnvJSON, m.GetEnv(), false)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			row.EnvJSON = env
+		}
+	} else {
+		if m.GetHttpUrl() != "" {
+			row.HTTPURL = strings.TrimSpace(m.GetHttpUrl())
+		}
+		if m.GetAuth() != "" {
+			au := strings.ToLower(m.GetAuth())
+			if au != authNone && au != authOAuth {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auth must be none or oauth"))
+			}
+			row.Auth = au
+		}
+		if m.GetHeaders() != nil {
+			hdr, err := mergeHeaders(row.HeadersJSON, m.GetHeaders(), false)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			row.HeadersJSON = hdr
+		}
 	}
 	if m.GetDefaultMode() != "" {
 		row.DefaultMode = security.Rule(m.GetDefaultMode())
 	}
-	if m.GetHeaders() != nil {
-		hdr, err := mergeHeaders(row.HeadersJSON, m.GetHeaders(), false)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		row.HeadersJSON = hdr
+	if row.Transport != transportSTDIO {
+		applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), false)
+	} else {
+		row.OAuthClientSecret = ""
 	}
-	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), false)
 	if m.GetClearImage() {
 		row.Image, row.ImageType = nil, ""
 	} else if len(m.GetImage()) > 0 {
@@ -128,6 +177,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		row.Image, row.ImageType = img, imgType
 	}
 	a.DB.Save(&row)
+	a.restartStdio(&row)
 	return connect.NewResponse(protoConnector(&row, true)), nil
 }
 
@@ -184,13 +234,22 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
 		return nil, err
 	}
+	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
-	row, err := parseConnector(m.GetName(), m.GetDescription(), m.GetTransport(), m.GetHttpUrl(), m.GetAuth(), m.GetDefaultMode(), m.GetImage(), m.GetImageType(), m.GetHeaders(), from == "")
+	row, err := parseConnector(connectorIn{
+		Name: m.GetName(), Desc: m.GetDescription(), Transport: m.GetTransport(),
+		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
+		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
+		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
+		Env: m.GetEnv(), AllowImage: admin, RequireComplete: from == "",
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
-	if err := a.overlayLibrary(from, &row, m.GetHeaders()); err != nil {
+	if row.Transport != transportSTDIO {
+		applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
+	}
+	if err := a.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv()); err != nil {
 		return nil, err
 	}
 	out, err := a.putBotConnector(ctx, m.GetBotId(), row)
@@ -200,7 +259,7 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput) error {
+func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput) error {
 	if src == "" {
 		return nil
 	}
@@ -219,15 +278,37 @@ func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.Header
 	if row.OAuthClientSecret == "" {
 		row.OAuthClientSecret = lib.OAuthClientSecret
 	}
+	if row.Transport == "" {
+		row.Transport = lib.Transport
+	}
+	if row.StdioCommand == "" {
+		row.StdioCommand = lib.StdioCommand
+		row.StdioArgsJSON = lib.StdioArgsJSON
+	}
+	if row.StdioImage == "" {
+		row.StdioImage = lib.StdioImage
+	}
 	if len(headers) == 0 {
 		row.HeadersJSON = lib.HeadersJSON
-		return nil
+	} else {
+		hdr, err := mergeHeaders(lib.HeadersJSON, headers, false)
+		if err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		row.HeadersJSON = hdr
 	}
-	hdr, err := mergeHeaders(lib.HeadersJSON, headers, false)
-	if err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	if len(env) == 0 {
+		row.EnvJSON = lib.EnvJSON
+	} else {
+		merged, err := mergeEnv(lib.EnvJSON, env, false)
+		if err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		row.EnvJSON = merged
 	}
-	row.HeadersJSON = hdr
+	if row.Transport == transportSTDIO && row.StdioCommand == "" {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("stdio_command required"))
+	}
 	return nil
 }
 
@@ -240,6 +321,7 @@ func (a *App) DetachConnector(ctx context.Context, req *connect.Request[v1.Detac
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	a.dropMCP(row.ID)
+	a.dropStdio(&row)
 	var c db.Connector
 	if a.DB.First(&c, "id = ?", row.ConnectorID).Error == nil {
 		a.pruneConnectorRules(row.BotID, toolsgen.Slug(c.Name), nil)
@@ -412,9 +494,6 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	bc, c, err := a.findBotConnector(bot.ID, slug)
 	if err != nil {
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-	}
-	if c.Transport != transportHTTP {
-		return connect.NewResponse(&v1.ToolRes{Error: "stdio is not available yet"}), nil
 	}
 	if c.Auth == authOAuth && bc.AuthStatus != statusOK {
 		return connect.NewResponse(&v1.ToolRes{Error: "connector is not authorized"}), nil
@@ -685,7 +764,15 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 		}
 		h = oh
 	}
-	sess, err := mcpx.Connect(ctx, a.dial(c, h))
+	d := a.dial(c, h)
+	if c.Transport == transportSTDIO {
+		sock, err := a.ensureStdio(ctx, row, c)
+		if err != nil {
+			return nil, err
+		}
+		d = mcpx.Dial{URL: "http://localhost/mcp", Sock: sock}
+	}
+	sess, err := mcpx.Connect(ctx, d)
 	if err != nil {
 		return nil, wrapOAuth(err)
 	}
@@ -845,44 +932,97 @@ func (a *App) initConnectors() {
 	}
 }
 
-func parseConnector(name, desc, transport, httpURL, auth, mode string, image []byte, imageType string, headers []*v1.HeaderInput, requireHeaderValues bool) (db.Connector, error) {
-	if strings.TrimSpace(name) == "" {
+func parseConnector(in connectorIn) (db.Connector, error) {
+	if strings.TrimSpace(in.Name) == "" {
 		return db.Connector{}, errors.New("name required")
 	}
-	tr := strings.ToLower(transport)
+	tr := strings.ToLower(in.Transport)
 	if tr == "" {
 		tr = transportHTTP
 	}
+	if err := checkTransport(tr); err != nil {
+		return db.Connector{}, err
+	}
+	img, imgType, err := clipImage(in.Image, in.ImageType)
+	if err != nil {
+		return db.Connector{}, err
+	}
+	row := db.Connector{
+		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(in.Name),
+		Description: strings.TrimSpace(in.Desc), Image: img, ImageType: imgType,
+		Transport: tr, DefaultMode: security.Rule(in.Mode), CreatedAt: time.Now(),
+	}
 	if tr == transportSTDIO {
-		return db.Connector{}, errors.New("stdio is not available yet")
+		row.Auth = authNone
+		if in.RequireComplete || strings.TrimSpace(in.StdioCommand) != "" {
+			if err := mcpbridge.ValidCommand(in.StdioCommand); err != nil {
+				return db.Connector{}, err
+			}
+			row.StdioCommand = strings.TrimSpace(in.StdioCommand)
+		}
+		for _, a := range in.StdioArgs {
+			if err := mcpbridge.ValidArg(a); err != nil {
+				return db.Connector{}, err
+			}
+		}
+		args := in.StdioArgs
+		if args == nil {
+			args = []string{}
+		}
+		row.StdioArgsJSON = mustJSON(args)
+		if in.AllowImage {
+			if err := mcpbridge.ValidImage(in.StdioImage); err != nil {
+				return db.Connector{}, err
+			}
+			row.StdioImage = strings.TrimSpace(in.StdioImage)
+		}
+		env, err := mergeEnv("", in.Env, in.RequireComplete)
+		if err != nil {
+			return db.Connector{}, err
+		}
+		row.EnvJSON = env
+		return row, nil
 	}
-	if tr != transportHTTP {
-		return db.Connector{}, errors.New("transport must be http")
-	}
-	au := strings.ToLower(auth)
+	au := strings.ToLower(in.Auth)
 	if au == "" {
 		au = authNone
 	}
 	if au != authNone && au != authOAuth {
 		return db.Connector{}, errors.New("auth must be none or oauth")
 	}
-	if strings.TrimSpace(httpURL) == "" {
+	if in.RequireComplete && strings.TrimSpace(in.HTTPURL) == "" {
 		return db.Connector{}, errors.New("http_url required")
 	}
-	hdr, err := mergeHeaders("", headers, requireHeaderValues)
+	hdr, err := mergeHeaders("", in.Headers, in.RequireComplete)
 	if err != nil {
 		return db.Connector{}, err
 	}
-	img, imgType, err := clipImage(image, imageType)
-	if err != nil {
-		return db.Connector{}, err
+	row.HTTPURL = strings.TrimSpace(in.HTTPURL)
+	row.Auth = au
+	row.HeadersJSON = hdr
+	return row, nil
+}
+
+type connectorIn struct {
+	Name, Desc, Transport, HTTPURL, Auth, Mode string
+	Image                                      []byte
+	ImageType                                  string
+	Headers                                    []*v1.HeaderInput
+	StdioCommand                               string
+	StdioArgs                                  []string
+	StdioImage                                 string
+	Env                                        []*v1.EnvInput
+	AllowImage                                 bool
+	RequireComplete                            bool
+}
+
+func checkTransport(tr string) error {
+	switch tr {
+	case transportHTTP, transportSTDIO:
+		return nil
+	default:
+		return errors.New("transport must be http or stdio")
 	}
-	return db.Connector{
-		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(name),
-		Description: strings.TrimSpace(desc), Image: img, ImageType: imgType,
-		Transport: tr, HTTPURL: strings.TrimSpace(httpURL), Auth: au,
-		HeadersJSON: hdr, DefaultMode: security.Rule(mode), CreatedAt: time.Now(),
-	}, nil
 }
 
 func cloneLibrary(lib *db.Connector, botID string) db.Connector {
@@ -892,7 +1032,9 @@ func cloneLibrary(lib *db.Connector, botID string) db.Connector {
 		Image: append([]byte(nil), lib.Image...), ImageType: lib.ImageType,
 		Transport: lib.Transport, HTTPURL: lib.HTTPURL, Auth: lib.Auth,
 		OAuthClientID: lib.OAuthClientID, OAuthClientSecret: lib.OAuthClientSecret,
-		HeadersJSON: lib.HeadersJSON, DefaultMode: lib.DefaultMode, CreatedAt: time.Now(),
+		HeadersJSON: lib.HeadersJSON, StdioCommand: lib.StdioCommand,
+		StdioArgsJSON: lib.StdioArgsJSON, StdioImage: lib.StdioImage, EnvJSON: lib.EnvJSON,
+		DefaultMode: lib.DefaultMode, CreatedAt: time.Now(),
 	}
 }
 
@@ -988,16 +1130,21 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 		HasImage: len(c.Image) > 0, Transport: c.Transport, HttpUrl: c.HTTPURL, Auth: c.Auth,
 		DefaultMode: security.Rule(c.DefaultMode), CreatedAt: c.CreatedAt.Format(time.RFC3339),
 		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),
+		StdioCommand: c.StdioCommand, StdioArgs: mcpbridge.ParseArgs(c.StdioArgsJSON), StdioImage: c.StdioImage,
 	}
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
 	for k := range hdr {
 		out.HeaderKeys = append(out.HeaderKeys, &v1.HeaderKey{Name: k})
+	}
+	for _, e := range parseEnv(c.EnvJSON) {
+		out.EnvKeys = append(out.EnvKeys, &v1.EnvKey{Name: e.Name, Secret: e.Secret != "", SecretName: e.Secret})
 	}
 	if admin {
 		out.OauthClientId = c.OAuthClientID
 		out.HasOauthClientSecret = c.OAuthClientSecret != ""
 	} else {
 		out.HeaderKeys = nil
+		out.EnvKeys = nil
 	}
 	return out
 }
@@ -1071,6 +1218,92 @@ func mergeHeaders(existingJSON string, ins []*v1.HeaderInput, requireValue bool)
 		return "", err
 	}
 	return string(b), nil
+}
+
+type envEntry struct {
+	Name   string `json:"name"`
+	Value  string `json:"value,omitempty"`
+	Secret string `json:"secret,omitempty"`
+}
+
+func parseEnv(raw string) []envEntry {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var out []envEntry
+	if json.Unmarshal([]byte(raw), &out) != nil {
+		return nil
+	}
+	return out
+}
+
+func mergeEnv(existingJSON string, ins []*v1.EnvInput, requireValue bool) (string, error) {
+	old := map[string]envEntry{}
+	for _, e := range parseEnv(existingJSON) {
+		old[e.Name] = e
+	}
+	var next []envEntry
+	seen := map[string]bool{}
+	for _, in := range ins {
+		name := strings.TrimSpace(in.GetName())
+		if name == "" {
+			continue
+		}
+		if err := mcpbridge.ValidEnvName(name); err != nil {
+			return "", err
+		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		secret := strings.TrimSpace(in.GetSecret())
+		val := in.GetValue()
+		if val == "" && secret == "" {
+			if requireValue {
+				return "", fmt.Errorf("env %s needs a value or secret", name)
+			}
+			if prev, ok := old[name]; ok {
+				next = append(next, prev)
+			}
+			continue
+		}
+		if secret != "" {
+			next = append(next, envEntry{Name: name, Secret: secret})
+			continue
+		}
+		next = append(next, envEntry{Name: name, Value: val})
+	}
+	if next == nil {
+		next = []envEntry{}
+	}
+	b, err := json.Marshal(next)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (a *App) restartStdio(c *db.Connector) {
+	if c == nil || c.Kind != catalog.KindCustom || c.BotID == "" {
+		return
+	}
+	var row db.BotConnector
+	if a.DB.Where("connector_id = ? AND bot_id = ?", c.ID, c.BotID).Limit(1).Find(&row).Error != nil || row.ID == "" {
+		return
+	}
+	a.dropStdio(&row)
+	if c.Transport != transportSTDIO {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := a.refreshTools(ctx, &row, c); err != nil {
+			row.AuthStatus = statusErr
+			row.LastError = err.Error()
+			a.DB.Save(&row)
+		}
+	}()
 }
 
 func queryParam(raw, key string) string {

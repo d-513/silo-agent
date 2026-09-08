@@ -67,6 +67,9 @@ func TestLoadSearchEngineDefault(t *testing.T) {
 	if c.Search.Engine != "duckduckgo_scraper" {
 		t.Fatalf("search.engine %q", c.Search.Engine)
 	}
+	if c.MCPStdioImage != DefaultMCPStdioImage {
+		t.Fatalf("mcp_stdio_image %q", c.MCPStdioImage)
+	}
 	if c.Model != DefaultModel {
 		t.Fatalf("model %q", c.Model)
 	}
@@ -131,7 +134,7 @@ func TestWriteYAMLRejectsUnknownEngine(t *testing.T) {
 }
 
 func TestKnownKey(t *testing.T) {
-	if !KnownKey("model") || !KnownKey("search.engine") || KnownKey("nope") {
+	if !KnownKey("model") || !KnownKey("search.engine") || !KnownKey("mcp_stdio_image") || KnownKey("nope") {
 		t.Fatal("catalog")
 	}
 }

@@ -4,8 +4,9 @@
 // SSE parsing, Mcp-* headers, reconnects) lives in the official MCP Go SDK.
 // This wrapper only adds what the SDK does not: per-connector headers and the
 // OAuth flow on the HTTP client, canonical URLs, POST-preserving redirects,
-// and the spec's backwards-compatibility fallback to the legacy HTTP+SSE
-// transport for servers that reject the streamable POST.
+// unix-socket dials for STDIO sidecars, and the spec's backwards-compatibility
+// fallback to the legacy HTTP+SSE transport for servers that reject the
+// streamable POST.
 package mcpx
 
 import (
@@ -13,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,6 +30,7 @@ var ErrSessionGone = mcp.ErrSessionMissing
 
 type Dial struct {
 	URL     string
+	Sock    string
 	Headers map[string]string
 	OAuth   auth.OAuthHandler
 }
@@ -46,8 +49,12 @@ func Connect(ctx context.Context, d Dial) (*Session, error) {
 	if d.URL == "" {
 		return nil, errors.New("mcp url required")
 	}
+	base := http.RoundTripper(http.DefaultTransport)
+	if d.Sock != "" {
+		base = unixTransport(d.Sock)
+	}
 	client := &http.Client{
-		Transport:     &headerRT{base: http.DefaultTransport, hdr: d.Headers, oauth: d.OAuth},
+		Transport:     &headerRT{base: base, hdr: d.Headers, oauth: d.OAuth},
 		CheckRedirect: keepPOSTRedirect,
 	}
 	urls := endpointURLs(strings.TrimSpace(d.URL))
@@ -55,10 +62,12 @@ func Connect(ctx context.Context, d Dial) (*Session, error) {
 	for _, u := range urls {
 		transports = append(transports, &mcp.StreamableClientTransport{Endpoint: u, HTTPClient: client})
 	}
-	// Spec backwards compatibility: servers still on the 2024-11-05 HTTP+SSE
-	// transport reject the streamable POST; retry with the legacy transport.
-	for _, u := range urls {
-		transports = append(transports, &mcp.SSEClientTransport{Endpoint: u, HTTPClient: client})
+	if d.Sock == "" {
+		// Spec backwards compatibility: servers still on the 2024-11-05 HTTP+SSE
+		// transport reject the streamable POST; retry with the legacy transport.
+		for _, u := range urls {
+			transports = append(transports, &mcp.SSEClientTransport{Endpoint: u, HTTPClient: client})
+		}
 	}
 	var first error
 	for _, t := range transports {
@@ -255,6 +264,15 @@ func (h *headerRT) apply(req *http.Request) (*http.Request, error) {
 		r.Header.Set("Authorization", "Bearer "+tok.AccessToken)
 	}
 	return r, nil
+}
+
+func unixTransport(sock string) http.RoundTripper {
+	return &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "unix", sock)
+		},
+	}
 }
 
 func HeadersFromJSON(raw string) (map[string]string, error) {

@@ -19,6 +19,8 @@ import (
 
 func Name(botID string) string { return "silo-" + botID }
 
+func StdioName(id string) string { return "silo-mcp-" + id }
+
 var ErrNotFound = errors.New("container not found")
 
 func IsNotFound(err error) bool {
@@ -44,6 +46,15 @@ type Host interface {
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string) error
 	Drop(ctx context.Context, botID, containerID string)
+	CreateStdio(ctx context.Context, spec StdioSpec) (string, error)
+	DropStdio(ctx context.Context, id, containerID string)
+}
+
+type StdioSpec struct {
+	ID      string
+	Image   string
+	Env     []string
+	SockDir string
 }
 
 type Engine struct {
@@ -198,4 +209,46 @@ func (e *Engine) Remove(ctx context.Context, id string) error {
 func (e *Engine) Drop(ctx context.Context, botID, containerID string) {
 	_ = e.Remove(ctx, containerID)
 	_ = e.Remove(ctx, Name(botID))
+}
+
+func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error) {
+	if spec.ID == "" {
+		return "", errors.New("stdio id required")
+	}
+	cfg := e.store.Config()
+	image := strings.TrimSpace(spec.Image)
+	if image == "" {
+		image = cfg.MCPStdioImage
+	}
+	if err := os.MkdirAll(spec.SockDir, 0o700); err != nil {
+		return "", err
+	}
+	abs, err := filepath.Abs(spec.SockDir)
+	if err != nil {
+		return "", err
+	}
+	env := append([]string{"SILO_MCP_SOCK=/run/silo/mcp.sock"}, spec.Env...)
+	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+		Image:    image,
+		Env:      env,
+		Hostname: "mcp",
+		Labels: map[string]string{
+			"silo.role":         "mcp-stdio",
+			"silo.connector_id": spec.ID,
+		},
+	}, &container.HostConfig{
+		Binds:         []string{abs + ":/run/silo"},
+		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+	}, nil, nil, StdioName(spec.ID))
+	if err != nil {
+		return "", fmt.Errorf("stdio create: %w", err)
+	}
+	return resp.ID, nil
+}
+
+func (e *Engine) DropStdio(ctx context.Context, id, containerID string) {
+	_ = e.Remove(ctx, containerID)
+	if id != "" {
+		_ = e.Remove(ctx, StdioName(id))
+	}
 }

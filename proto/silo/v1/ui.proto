@@ -416,6 +416,18 @@ message HeaderKey {
   string name = 1;
 }
 
+message EnvKey {
+  string name = 1;
+  bool secret = 2;
+  string secret_name = 3;
+}
+
+message EnvInput {
+  string name = 1;
+  string value = 2;
+  string secret = 3;
+}
+
 message Connector {
   string id = 1;
   string type = 2;
@@ -433,6 +445,10 @@ message Connector {
   string oauth_client_id = 14;
   bool has_oauth_client_secret = 15;
   string catalog_guide = 16;
+  string stdio_command = 17;
+  repeated string stdio_args = 18;
+  string stdio_image = 19;
+  repeated EnvKey env_keys = 20;
 }
 
 message ListConnectorsRequest {}
@@ -458,6 +474,10 @@ message CreateConnectorRequest {
   string default_mode = 9;
   string oauth_client_id = 10;
   string oauth_client_secret = 11;
+  string stdio_command = 12;
+  repeated string stdio_args = 13;
+  string stdio_image = 14;
+  repeated EnvInput env = 15;
 }
 
 message UpdateConnectorRequest {
@@ -474,6 +494,10 @@ message UpdateConnectorRequest {
   string default_mode = 11;
   string oauth_client_id = 12;
   string oauth_client_secret = 13;
+  string stdio_command = 14;
+  repeated string stdio_args = 15;
+  string stdio_image = 16;
+  repeated EnvInput env = 17;
 }
 
 message DeleteConnectorRequest {
@@ -517,6 +541,10 @@ message CreateBotConnectorRequest {
   string oauth_client_id = 11;
   string oauth_client_secret = 12;
   string source_id = 13;
+  string stdio_command = 14;
+  repeated string stdio_args = 15;
+  string stdio_image = 16;
+  repeated EnvInput env = 17;
 }
 
 message DetachConnectorRequest {

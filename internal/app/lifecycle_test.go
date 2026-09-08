@@ -3,12 +3,17 @@ package app
 import (
 	"context"
 	"errors"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/glebarez/sqlite"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	v1 "silo.agent/gen/silo/v1"
@@ -36,14 +41,17 @@ func memDB(t *testing.T) *gorm.DB {
 }
 
 type fakeHost struct {
-	mu         sync.Mutex
-	inspect    map[string]dockerx.State
-	inspectErr error
-	createErr  error
-	envHash    map[string]string
-	creates    atomic.Int32
-	starts     atomic.Int32
-	drops      atomic.Int32
+	mu           sync.Mutex
+	inspect      map[string]dockerx.State
+	inspectErr   error
+	createErr    error
+	envHash      map[string]string
+	creates      atomic.Int32
+	starts       atomic.Int32
+	drops        atomic.Int32
+	stdioCreates atomic.Int32
+	stdioDrops   atomic.Int32
+	stdioSrv     map[string]*http.Server
 }
 
 func (f *fakeHost) Inspect(_ context.Context, id string) (dockerx.State, error) {
@@ -114,12 +122,93 @@ func (f *fakeHost) Start(_ context.Context, id string) error {
 func (f *fakeHost) Stop(context.Context, string) error  { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
 
+func (f *fakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (string, error) {
+	f.stdioCreates.Add(1)
+	if f.createErr != nil {
+		return "", f.createErr
+	}
+	if spec.SockDir != "" {
+		if err := os.MkdirAll(spec.SockDir, 0o700); err != nil {
+			return "", err
+		}
+		sock := filepath.Join(spec.SockDir, "mcp.sock")
+		_ = os.Remove(sock)
+		ln, err := net.Listen("unix", sock)
+		if err != nil {
+			return "", err
+		}
+		h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return fakeStdioMCP() }, &mcp.StreamableHTTPOptions{DisableLocalhostProtection: true})
+		srv := &http.Server{Handler: h}
+		go srv.Serve(ln)
+		f.mu.Lock()
+		if f.stdioSrv == nil {
+			f.stdioSrv = map[string]*http.Server{}
+		}
+		if old := f.stdioSrv[spec.ID]; old != nil {
+			_ = old.Close()
+		}
+		f.stdioSrv[spec.ID] = srv
+		f.mu.Unlock()
+	}
+	id := "mcp-" + spec.ID
+	f.mu.Lock()
+	if f.inspect == nil {
+		f.inspect = map[string]dockerx.State{}
+	}
+	st := dockerx.State{ID: id, Running: true}
+	f.inspect[id] = st
+	f.inspect[dockerx.StdioName(spec.ID)] = st
+	f.mu.Unlock()
+	return id, nil
+}
+
+func (f *fakeHost) DropStdio(_ context.Context, id, _ string) {
+	f.stdioDrops.Add(1)
+	f.mu.Lock()
+	if f.stdioSrv != nil {
+		if s := f.stdioSrv[id]; s != nil {
+			_ = s.Close()
+			delete(f.stdioSrv, id)
+		}
+	}
+	if f.inspect != nil {
+		delete(f.inspect, "mcp-"+id)
+		delete(f.inspect, dockerx.StdioName(id))
+	}
+	f.mu.Unlock()
+}
+
+func fakeStdioMCP() *mcp.Server {
+	srv := mcp.NewServer(&mcp.Implementation{Name: "fake-stdio", Version: "1"}, nil)
+	mcp.AddTool(srv, &mcp.Tool{Name: "echo", Description: "echo"},
+		func(context.Context, *mcp.CallToolRequest, echoIn) (*mcp.CallToolResult, any, error) {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "pong"}}}, nil, nil
+		})
+	return srv
+}
+
+type echoIn struct {
+	Q string `json:"q"`
+}
+
 func testApp(t *testing.T, d dockerx.Host) *App {
 	t.Helper()
 	if d == nil {
 		d = &fakeHost{}
 	}
-	return New(nil, memDB(t), d)
+	a := New(nil, memDB(t), d)
+	t.Cleanup(a.Shutdown)
+	return a
+}
+
+func testAppStore(t *testing.T, d dockerx.Host) *App {
+	t.Helper()
+	if d == nil {
+		d = &fakeHost{}
+	}
+	a := New(testStore(t), memDB(t), d)
+	t.Cleanup(a.Shutdown)
+	return a
 }
 
 func testStore(t *testing.T) *config.Store {

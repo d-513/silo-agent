@@ -46,3 +46,9 @@ func TestIsNotFoundEmpty(t *testing.T) {
 		t.Fatal("nil")
 	}
 }
+
+func TestStdioName(t *testing.T) {
+	if StdioName("abc") != "silo-mcp-abc" {
+		t.Fatal(StdioName("abc"))
+	}
+}

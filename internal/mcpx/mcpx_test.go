@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -213,6 +214,21 @@ func TestQueryStaysOnRequestsNotOAuthResource(t *testing.T) {
 	if authURL != srv.URL+"/mcp" {
 		t.Fatalf("Authorize saw %q", authURL)
 	}
+}
+
+func TestConnectUnix(t *testing.T) {
+	dir := t.TempDir()
+	sock := filepath.Join(dir, "mcp.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	srv := &http.Server{Handler: streamableHandler()}
+	go srv.Serve(ln)
+	t.Cleanup(func() { srv.Close() })
+	ctx := testCtx(t)
+	checkEcho(t, ctx, mustConnect(t, ctx, Dial{URL: "http://localhost/mcp", Sock: sock}))
 }
 
 func TestTwilioDocsLive(t *testing.T) {

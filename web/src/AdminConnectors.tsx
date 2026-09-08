@@ -69,7 +69,7 @@ function CatalogList() {
       {rows === null ? (
         <p className="text-stone">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-stone">No presets yet. HTTP MCP servers added here show up when a Bot adds from the library.</p>
+        <p className="text-stone">No presets yet. HTTP or STDIO MCP servers added here show up when a Bot adds from the library.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((c) => (
@@ -81,7 +81,7 @@ function CatalogList() {
                     <span className="font-medium">{c.name}</span>
                     <McpChip />
                   </div>
-                  <p className="truncate text-stone">{c.description || c.httpUrl}</p>
+                  <p className="truncate text-stone">{c.description || c.httpUrl || c.stdioCommand}</p>
                 </div>
                 <span className="hidden font-mono text-stone wide:inline">{c.transport} · {c.auth} · {c.defaultMode || "ask"}</span>
               </Link>
@@ -166,7 +166,7 @@ function LibraryForm() {
     <form onSubmit={onSubmit} className="max-w-[560px]">
       <h2 className="mb-4 text-[22px] font-medium">{id ? "Edit preset" : "Add preset"}</h2>
       {err && <p className="mb-3 text-carmine">{err}</p>}
-      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} />
+      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage />
       <div className="flex gap-2">
         <Btn kind="primary" type="submit">
           {id ? "Save" : "Add to library"}

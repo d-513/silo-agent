@@ -30,6 +30,7 @@ const LABELS: Record<string, string> = {
   data_dir: "Data directory",
   docker_host: "Docker host",
   bot_image: "Bot image",
+  mcp_stdio_image: "STDIO MCP image",
   "bootstrap.email": "Email",
   "bootstrap.password": "Password",
 };

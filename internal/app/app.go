@@ -211,6 +211,7 @@ func (a *App) Shutdown() {
 		delete(a.mcp, id)
 	}
 	a.mu.Unlock()
+	a.dropAllStdio()
 }
 
 func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {

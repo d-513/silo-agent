@@ -27,13 +27,31 @@ func TestRequireAdmin(t *testing.T) {
 	}
 }
 
-func TestCreateConnectorRejectsStdio(t *testing.T) {
+func TestCreateConnectorStdio(t *testing.T) {
+	a := testApp(t, nil)
+	ctx := context.WithValue(context.Background(), userKey, &db.User{ID: "u", Admin: true})
+	c, err := a.CreateConnector(ctx, connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Filesystem", Transport: "stdio", StdioCommand: "npx",
+		StdioArgs: []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Msg.Transport != "stdio" || c.Msg.StdioCommand != "npx" || c.Msg.Auth != "none" || c.Msg.HttpUrl != "" {
+		t.Fatalf("%+v", c.Msg)
+	}
+	if len(c.Msg.StdioArgs) != 3 || c.Msg.StdioArgs[0] != "-y" {
+		t.Fatal(c.Msg.StdioArgs)
+	}
+}
+
+func TestCreateConnectorStdioRejectsShell(t *testing.T) {
 	a := testApp(t, nil)
 	ctx := context.WithValue(context.Background(), userKey, &db.User{ID: "u", Admin: true})
 	_, err := a.CreateConnector(ctx, connect.NewRequest(&v1.CreateConnectorRequest{
-		Name: "x", Transport: "stdio", HttpUrl: "http://x",
+		Name: "x", Transport: "stdio", StdioCommand: "bash", StdioArgs: []string{"-c", "id"},
 	}))
-	if err == nil || !strings.Contains(err.Error(), "stdio") {
+	if err == nil || !strings.Contains(err.Error(), "shell") {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -349,5 +367,137 @@ func TestOAuthCallbackFillsMissingIss(t *testing.T) {
 	res := <-ch
 	if res.Code != "abc" || res.Iss != "https://mcp.cloudflare.com" {
 		t.Fatalf("%+v", res)
+	}
+}
+
+func TestStdioAttachAndCall(t *testing.T) {
+	h := &fakeHost{}
+	a := testAppStore(t, h)
+	admin := &db.User{ID: "u", Email: "a@b.c", Admin: true}
+	a.DB.Create(admin)
+	bot := &db.Bot{ID: "b1", UserID: "u"}
+	a.DB.Create(bot)
+	ctx := context.WithValue(context.Background(), userKey, admin)
+	c, err := a.CreateConnector(ctx, connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Local", Transport: "stdio", StdioCommand: "npx", DefaultMode: "allow",
+		Env: []*v1.EnvInput{{Name: "FOO", Value: "bar"}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Msg.EnvKeys) != 1 || c.Msg.EnvKeys[0].Name != "FOO" || c.Msg.EnvKeys[0].Secret {
+		t.Fatalf("%v", c.Msg.EnvKeys)
+	}
+	att, err := a.AttachConnector(ctx, connect.NewRequest(&v1.AttachConnectorRequest{BotId: "b1", ConnectorId: c.Msg.Id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if att.Msg.AuthStatus != statusOK {
+		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	}
+	if h.stdioCreates.Load() < 1 {
+		t.Fatal("sidecar not created")
+	}
+	res, err := a.CallTool(botCtx(bot), connect.NewRequest(&v1.ToolReq{
+		Connector: "local", Action: "echo", ArgsJson: `{"q":"hi"}`,
+	}))
+	if err != nil || res.Msg.Error != "" || res.Msg.ResultJson != "pong" {
+		t.Fatalf("%v %+v", err, res)
+	}
+	if _, err := a.DetachConnector(ctx, connect.NewRequest(&v1.DetachConnectorRequest{BotId: "b1", Id: att.Msg.Id})); err != nil {
+		t.Fatal(err)
+	}
+	if h.stdioDrops.Load() < 1 {
+		t.Fatal("sidecar not dropped")
+	}
+}
+
+func TestCreateBotConnectorStdio(t *testing.T) {
+	a := testAppStore(t, &fakeHost{})
+	u := &db.User{ID: "u", Email: "a@b.c", Admin: false}
+	a.DB.Create(u)
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	ctx := context.WithValue(context.Background(), userKey, u)
+	att, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "Files MCP", Transport: "stdio", StdioCommand: "npx",
+		StdioArgs: []string{"-y", "pkg"}, DefaultMode: "allow",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if att.Msg.Connector.Transport != "stdio" || att.Msg.Connector.StdioCommand != "npx" {
+		t.Fatal(att.Msg.Connector)
+	}
+	if att.Msg.AuthStatus != statusOK {
+		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	}
+}
+
+func TestStdioSecretEnvMissing(t *testing.T) {
+	a := testAppStore(t, &fakeHost{})
+	u := &db.User{ID: "u", Email: "a@b.c", Admin: false}
+	a.DB.Create(u)
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	ctx := context.WithValue(context.Background(), userKey, u)
+	att, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "Sec", Transport: "stdio", StdioCommand: "npx",
+		Env: []*v1.EnvInput{{Name: "TOKEN", Secret: "missing"}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if att.Msg.AuthStatus != statusErr || !strings.Contains(att.Msg.LastError, "secret") {
+		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	}
+}
+
+func TestStdioSidecarsArePerAttachment(t *testing.T) {
+	h := &fakeHost{}
+	a := testAppStore(t, h)
+	u := &db.User{ID: "u", Email: "a@b.c", Admin: true}
+	a.DB.Create(u)
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	ctx := context.WithValue(context.Background(), userKey, u)
+	first, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "Files MCP", Transport: "stdio", StdioCommand: "npx", DefaultMode: "allow",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "Files MCP", Transport: "stdio", StdioCommand: "npx", DefaultMode: "allow",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r1, r2 db.BotConnector
+	a.DB.First(&r1, "id = ?", first.Msg.Id)
+	a.DB.First(&r2, "id = ?", second.Msg.Id)
+	if r1.ContainerID == "" || r1.ContainerID == r2.ContainerID {
+		t.Fatalf("shared sidecar %q %q", r1.ContainerID, r2.ContainerID)
+	}
+	if h.stdioCreates.Load() < 2 {
+		t.Fatalf("creates %d", h.stdioCreates.Load())
+	}
+}
+
+func TestStdioEnvMasked(t *testing.T) {
+	a := testAppStore(t, &fakeHost{})
+	u := &db.User{ID: "u", Email: "a@b.c", Admin: false}
+	a.DB.Create(u)
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	ctx := context.WithValue(context.Background(), userKey, u)
+	att, err := a.CreateBotConnector(ctx, connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: "b1", Name: "GH", Transport: "stdio", StdioCommand: "npx", DefaultMode: "allow",
+		Env: []*v1.EnvInput{{Name: "TOKEN", Value: "plaintextsecretvalue"}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if att.Msg.AuthStatus != statusOK {
+		t.Fatal(att.Msg.LastError)
+	}
+	if got := a.Mask("b1").Apply("token=plaintextsecretvalue"); !strings.Contains(got, "***") {
+		t.Fatal(got)
 	}
 }
