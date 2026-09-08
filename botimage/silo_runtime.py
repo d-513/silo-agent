@@ -2,6 +2,7 @@
 
 Chromium: chrome_page() is Playwright on the headed desktop browser.
 The worker opens silo-chromium if CDP :9222 is down.
+Web: web_search(query) runs on the Control Plane.
 """
 
 from __future__ import annotations
@@ -85,6 +86,14 @@ def key(name: str) -> dict:
 
 def scroll(x: int, y: int, dy: int) -> dict:
     return call("desktop", "scroll", {"x": x, "y": y, "dy": dy})
+
+
+def web_search(query: str, max_results: int | None = None) -> dict:
+    """Search the public web. Returns {results: [{title, url, snippet}, ...]}."""
+    args: dict = {"query": query}
+    if max_results is not None:
+        args["max_results"] = max_results
+    return call("web", "search", args)
 
 
 def call(connector: str, action: str, args: dict | None = None) -> dict:

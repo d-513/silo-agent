@@ -218,9 +218,11 @@ function toolMeta(name: string) {
       return { label: "type", Icon: Keyboard };
     case "key":
       return { label: "key", Icon: Keyboard };
-    case "scroll":
-      return { label: "scroll", Icon: Mouse };
-    default:
+      case "scroll":
+        return { label: "scroll", Icon: Mouse };
+      case "web_search":
+        return { label: "web search", Icon: MagnifyingGlass };
+      default:
       return { label: name, Icon: Code };
   }
 }
@@ -321,6 +323,8 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
         {include ? <div className="text-stone">{include}</div> : null}
       </div>
     );
+  } else if (name === "web_search" && asStr(a.query)) {
+    body = <div className="font-mono text-[13px]">{asStr(a.query)}</div>;
   } else if (path || command) {
     body = (
       <div className="space-y-2">

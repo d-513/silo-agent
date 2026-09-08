@@ -103,7 +103,7 @@ type liveRun struct {
 }
 
 type App struct {
-	Cfg    *config.Config
+	Store  *config.Store
 	DB     *gorm.DB
 	Docker dockerx.Host
 	Hub    *hub.Hub
@@ -119,9 +119,9 @@ type App struct {
 	lifecycle sync.Map
 }
 
-func New(cfg *config.Config, gdb *gorm.DB, eng dockerx.Host) *App {
+func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a := &App{
-		Cfg:       cfg,
+		Store:     store,
 		DB:        gdb,
 		Docker:    eng,
 		Hub:       hub.New(),
@@ -135,7 +135,47 @@ func New(cfg *config.Config, gdb *gorm.DB, eng dockerx.Host) *App {
 	}
 	a.recoverOrphans()
 	a.initConnectors()
+	a.migrateSettings()
 	return a
+}
+
+func (a *App) cfg() config.Config {
+	if a.Store == nil {
+		return config.Config{}
+	}
+	return a.Store.Config()
+}
+
+func (a *App) migrateSettings() {
+	if a.Store == nil || a.DB == nil {
+		return
+	}
+	var rows []struct {
+		Key   string `gorm:"column:key"`
+		Value string `gorm:"column:value"`
+	}
+	if err := a.DB.Table("settings").Find(&rows).Error; err != nil {
+		return
+	}
+	patch := map[string]string{}
+	for _, r := range rows {
+		if r.Key != "model" && r.Key != "search.engine" {
+			continue
+		}
+		if strings.TrimSpace(r.Value) == "" {
+			continue
+		}
+		if a.Store.Source(r.Key) == config.SourceYAML {
+			continue
+		}
+		patch[r.Key] = r.Value
+	}
+	if len(patch) == 0 {
+		return
+	}
+	if err := a.Store.Patch(patch); err != nil {
+		log.Printf("settings migrate: %v", err)
+	}
 }
 
 func (a *App) recoverOrphans() {

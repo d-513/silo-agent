@@ -34,7 +34,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
+		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -209,6 +209,18 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 			"required": []string{"path"},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "web_search",
+		Description: openai.String("Search the public web. Returns titles, URLs, and snippets. Prefer this over typing a search URL on the desktop."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"query":       map[string]any{"type": "string"},
+				"max_results": map[string]any{"type": "integer", "description": "how many hits to return (default 8, max 20)"},
+			},
+			"required": []string{"query"},
+		},
+	}),
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
@@ -223,11 +235,9 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel)
 	defer a.untrackRun(runID)
-	key := ""
-	if a.Cfg != nil {
-		key = a.Cfg.OpenRouter.APIKey
-	}
-	model := a.getSetting("model")
+	cfg := a.cfg()
+	key := cfg.OpenRouter.APIKey
+	model := cfg.Model
 	if model == "" {
 		model = config.DefaultModel
 	}
@@ -543,6 +553,9 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if name == "propose_skill" && path == "" {
 		return "", "", fmt.Errorf("path required")
 	}
+	if name == "web_search" && str("query") == "" {
+		return "", "", fmt.Errorf("query required")
+	}
 	conn, action, ok := chatTool(name)
 	if !ok {
 		return "", "", fmt.Errorf("unknown tool %s", name)
@@ -573,6 +586,10 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if name == "propose_skill" {
 		a.emitSkillArtifact(botID, runID, peek.Name, peek.Name, peek.Path, "workspace", "pending")
 		return "proposed skill " + peek.Name + " as an artifact. It is not installed until the human clicks Save skill.", "", nil
+	}
+	if name == "web_search" {
+		out, err := a.runWebSearch(ctx, argsJSON)
+		return out, "", err
 	}
 	id := ids.New()
 	var cmd *v1.Cmd
@@ -676,6 +693,8 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Skills, "load", true
 	case "propose_skill":
 		return security.Skills, "propose", true
+	case "web_search":
+		return security.Web, "search", true
 	default:
 		return "", "", false
 	}

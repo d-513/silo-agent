@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/search"
 )
 
 func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error) {
@@ -258,8 +260,8 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.DB.Delete(b)
-	if a.Cfg != nil && a.Cfg.DataDir != "" {
-		_ = os.RemoveAll(filepath.Join(a.Cfg.DataDir, "bots", b.ID))
+	if dir := a.cfg().DataDir; dir != "" {
+		_ = os.RemoveAll(filepath.Join(dir, "bots", b.ID))
 	}
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
@@ -365,7 +367,10 @@ func (a *App) GetSettings(ctx context.Context, _ *connect.Request[v1.GetSettings
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	s := a.settings()
+	s, err := a.settings()
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(s), nil
 }
 
@@ -373,35 +378,94 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	if m := req.Msg.GetModel(); m != "" {
-		a.setSetting("model", m)
+	if a.Store == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
 	}
-	return connect.NewResponse(a.settings()), nil
+	yamlText := req.Msg.GetYaml()
+	fields := req.Msg.GetFields()
+	if yamlText != "" && len(fields) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set fields or yaml, not both"))
+	}
+	if yamlText != "" {
+		if err := a.Store.WriteYAML([]byte(yamlText)); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	} else if len(fields) > 0 {
+		for k, v := range fields {
+			if !config.KnownKey(k) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown setting %q", k))
+			}
+			if k == "search.engine" && v != "" && !search.Known(v) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
+			}
+		}
+		if err := a.Store.Patch(fields); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	s, err := a.settings()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(s), nil
 }
 
-func (a *App) settings() *v1.Settings {
-	model := a.getSetting("model")
-	if model == "" {
-		model = config.DefaultModel
+func (a *App) settings() (*v1.Settings, error) {
+	out := &v1.Settings{SearchEngines: searchEngineProtos()}
+	if a.Store == nil {
+		return out, nil
 	}
-	key := ""
-	if a.Cfg != nil {
-		key = a.Cfg.OpenRouter.APIKey
+	raw, err := a.Store.YAML()
+	if err != nil {
+		return nil, err
 	}
-	return &v1.Settings{Model: model, HasApiKey: key != "", ApiKey: ""}
+	for _, f := range a.Store.Fields() {
+		out.Fields = append(out.Fields, &v1.ConfigField{
+			Key:             f.Key,
+			Value:           f.Value,
+			Source:          sourceProto(f.Source),
+			EnvName:         f.EnvName,
+			Secret:          f.Secret,
+			RestartRequired: f.Restart,
+		})
+	}
+	out.Yaml = string(raw)
+	out.YamlPath = a.Store.Path()
+	return out, nil
 }
 
-func (a *App) getSetting(k string) string {
-	var s db.Setting
-	if err := a.DB.Where("key = ?", k).Limit(1).Find(&s).Error; err != nil {
-		return ""
+func sourceProto(s config.Source) v1.ConfigSource {
+	switch s {
+	case config.SourceYAML:
+		return v1.ConfigSource_CONFIG_SOURCE_YAML
+	case config.SourceEnv:
+		return v1.ConfigSource_CONFIG_SOURCE_ENV
+	default:
+		return v1.ConfigSource_CONFIG_SOURCE_DEFAULT
 	}
-	return s.Value
 }
 
-func (a *App) setSetting(k, v string) {
-	s := db.Setting{Key: k, Value: v}
-	a.DB.Save(&s)
+func settingsField(s *v1.Settings, key string) string {
+	for _, f := range s.GetFields() {
+		if f.GetKey() == key {
+			return f.GetValue()
+		}
+	}
+	return ""
+}
+
+func searchEngineProtos() []*v1.SearchEngine {
+	out := make([]*v1.SearchEngine, 0, len(search.Descriptors()))
+	for _, d := range search.Descriptors() {
+		e := &v1.SearchEngine{Id: d.ID, Name: d.Name, Description: d.Description}
+		for _, f := range d.Settings {
+			e.Fields = append(e.Fields, &v1.SearchEngineField{
+				Key: f.Key, Label: f.Label, Type: f.Type, Description: f.Description, Secret: f.Secret,
+			})
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 func (a *App) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {

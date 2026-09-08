@@ -66,6 +66,9 @@ func TestDefault(t *testing.T) {
 	if m, ok := Default("skills", "propose"); !ok || m != Allow {
 		t.Fatal("skill propose")
 	}
+	if m, ok := Default("web", "search"); !ok || m != Allow {
+		t.Fatal("web search")
+	}
 }
 
 func TestVote(t *testing.T) {
@@ -78,7 +81,7 @@ func TestVote(t *testing.T) {
 }
 
 func TestReserved(t *testing.T) {
-	if !Reserved("desktop") || !Reserved("secrets") || !Reserved("skills") || Reserved("github") {
+	if !Reserved("desktop") || !Reserved("secrets") || !Reserved("skills") || !Reserved("web") || Reserved("github") {
 		t.Fatal("reserved")
 	}
 }

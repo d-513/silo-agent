@@ -8,7 +8,9 @@ Copy [silo.yaml.example](../silo.yaml.example) to gitignored `silo.yaml` in the 
 SILO_OPENROUTER__API_KEY → openrouter.api_key
 ```
 
-Do not put the OpenRouter key in Admin or SQLite.
+Admin Settings (form and YAML editor) writes `silo.yaml` only. Env still wins; the UI shows a warning and disables those fields. `http_addr`, `data_dir`, `docker_host`, and `bootstrap.*` save to YAML but take effect on restart.
+
+Libraries (Connectors, Skills) are not YAML.
 
 ## Keys
 
@@ -20,9 +22,11 @@ Do not put the OpenRouter key in Admin or SQLite.
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL the **Bot container** uses to dial the CP |
 | `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
+| `model` | `openai/gpt-5.6-luna` | `SILO_MODEL` | Chat model slug |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | First admin only. Ignored after a user exists |
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
 | `openrouter.api_key` | (none) | `SILO_OPENROUTER__API_KEY` | Required for the agent loop |
+| `search.engine` | `duckduckgo_scraper` | `SILO_SEARCH__ENGINE` | Web search engine. Future engines may add keys under `search.<engine_id>` |
 
 This machine:
 
@@ -42,6 +46,7 @@ data_dir: ./data
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
 bot_image: localhost/silo-bot:v1
+model: openai/gpt-5.6-luna
 
 bootstrap:
   email: admin@local
@@ -49,18 +54,14 @@ bootstrap:
 
 openrouter:
   api_key: "sk-or-…"
+
+search:
+  engine: duckduckgo_scraper
 ```
-
-## Product settings (not YAML)
-
-Admin stores the **model slug** in SQLite. It is not operator config.
-
-Default when unset: `openai/gpt-5.6-luna` (`config.DefaultModel`). Change it in Admin. Saving writes a `settings` row; the code fallback is used only when that row is empty.
-
-API keys, listen address, Docker host, and `cp_url` stay in YAML / env. Admin will not show or store them.
 
 ## What is not config
 
+- Connector / skill libraries: SQLite + `data/skills/`
 - Bot tokens, container IDs, chats, secrets: SQLite under `data_dir`
 - Session cookie: issued at sign-in. A missing session row is a stale cookie, not a server fault
 - Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz` to `http_addr`

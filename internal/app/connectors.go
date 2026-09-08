@@ -466,17 +466,38 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 }
 
 func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJSON, runID string) (*connect.Response[v1.ToolRes], error) {
-	if slug != security.Desktop {
+	switch slug {
+	case security.Desktop:
+		tool := security.Key(slug, action)
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
+		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, "ok")
+		return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
+	case security.Web:
+		if action != "search" {
+			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		tool := security.Key(slug, action)
+		title := security.Describe(slug, action, argsJSON).Title
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
+		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		out, err := a.runWebSearch(ctx, argsJSON)
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		out = a.Mask(bot.ID).Apply(out)
+		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
+	default:
 		return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
 	}
-	tool := security.Key(slug, action)
-	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
-	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
-		a.emitCallDone(bot.ID, runID, tool, err.Error())
-		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-	}
-	a.emitCallDone(bot.ID, runID, tool, "ok")
-	return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
 }
 
 func callTitle(name, action string) string {
@@ -763,8 +784,8 @@ func (a *App) findBotConnector(botID, slug string) (*db.BotConnector, *db.Connec
 }
 
 func (a *App) publicURL(ctx context.Context) string {
-	if a.Cfg != nil && strings.TrimSpace(a.Cfg.PublicURL) != "" {
-		return strings.TrimRight(a.Cfg.PublicURL, "/")
+	if u := strings.TrimSpace(a.cfg().PublicURL); u != "" {
+		return strings.TrimRight(u, "/")
 	}
 	r := httpReq(ctx)
 	if r == nil {
@@ -785,8 +806,8 @@ func (a *App) publicURL(ctx context.Context) string {
 }
 
 func (a *App) redirectURL() string {
-	if a.Cfg != nil && strings.TrimSpace(a.Cfg.PublicURL) != "" {
-		return strings.TrimRight(a.Cfg.PublicURL, "/") + "/oauth/callback"
+	if u := strings.TrimSpace(a.cfg().PublicURL); u != "" {
+		return strings.TrimRight(u, "/") + "/oauth/callback"
 	}
 	return "http://127.0.0.1:5173/oauth/callback"
 }
@@ -814,11 +835,11 @@ func (a *App) initConnectors() {
 		links[i].ConnectorID = clone.ID
 		a.DB.Save(&links[i])
 	}
-	if a.Cfg != nil {
+	if a.Store != nil {
 		if err := catalog.Seed(a.DB); err != nil {
 			log.Printf("connector library seed: %v", err)
 		}
-		if err := catalog.SeedSkills(a.Cfg.DataDir); err != nil {
+		if err := catalog.SeedSkills(a.cfg().DataDir); err != nil {
 			log.Printf("skill library seed: %v", err)
 		}
 	}

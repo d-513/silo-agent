@@ -93,11 +93,6 @@ type Approval struct {
 	CreatedAt time.Time
 }
 
-type Setting struct {
-	Key   string `gorm:"primaryKey"`
-	Value string
-}
-
 type Audit struct {
 	ID        string `gorm:"primaryKey"`
 	BotID     string
@@ -163,7 +158,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	}
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
-		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Setting{}, &Audit{},
+		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{},
 		&Connector{}, &BotConnector{}, &BotSkill{},
 	)
 	if err != nil {

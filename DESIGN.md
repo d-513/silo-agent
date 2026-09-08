@@ -273,7 +273,7 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Chat titles: generated from the first prompt; pencil or double-click to rename. Tabs: `Chat`, `Desktop` (caret → folio menu with only the other view; the tab itself becomes Console while that view is open), `Files`, `Connectors`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace `FileBrowser`: tree sidebar + preview (images, PDF, media, markdown, code, docx), breadcrumbs in the header, upload / new / download. Delete is a second click, not `confirm()`. Skill inspect (Hub, Admin library, Bot Skills, Artifact) is the same tree+preview in a **hatch overlay** — iron chrome, folio preview pane, open `SKILL.md` first, readonly. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Skills: bindery switch (no On/Off labels); click the row to inspect. `catalog` chip only on embed library names. Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then a folio **Dangerous** well (Reset / Delete, second click).
 
-**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library | Skills Library. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors, Skills) scroll inside the hatch; do not clip.
+**Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library | Skills Library | Search & Extract. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors, Skills) scroll inside the hatch; do not clip.
 
 ### Whitespace Strategy
 
@@ -327,7 +327,7 @@ Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary 
 | 16 | Admin · Skills Library | Site skills. Install URL or zip. Re-add defaults. |
 | 9 | Bot · Secrets | Named secrets. Values never shown. |
 | 10 | Bot · Rules | Allow / ask / deny per action. |
-| 11 | Admin · Settings | Product settings. Not operator YAML. |
+| 11 | Admin · Settings | Operator YAML: nested form + editor. Env warning. |
 | 12 | Audit | Who allowed what. |
 
 ### Screen prompts
@@ -457,9 +457,9 @@ No ghost rows after detach or deleting a secret.
 
 ```
 Same shell, Admin active.
-Title: Admin. Column 640px. Product settings, not a server file.
-Groups: Model (select Claude Sonnet, API key as bullets); Web (Firecrawl key as bullets); Session (Idle hours before stop = 12).
-No YAML, no docker host, no listen address.
+Title: Admin. Column 640px. Operator config: silo.yaml.
+Groups match YAML: Model, OpenRouter, Search, Server, Bootstrap. Each field shows source (default / yaml / env). Env-set fields are disabled with a carmine warning.
+YAML editor below (syntax highlighted). Save writes silo.yaml only.
 Primary: Save.
 ```
 

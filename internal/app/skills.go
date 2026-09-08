@@ -24,10 +24,7 @@ import (
 )
 
 func (a *App) dataDir() string {
-	if a.Cfg != nil {
-		return a.Cfg.DataDir
-	}
-	return ""
+	return a.cfg().DataDir
 }
 
 func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {

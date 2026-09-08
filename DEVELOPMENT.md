@@ -43,7 +43,7 @@ cd web && pnpm install
 
 `silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_OPENROUTER__API_KEY` → `openrouter.api_key`).
 
-The OpenRouter key is operator config. It is not set in Admin and is not stored in SQLite. Admin only has the model slug. `bootstrap.*` seeds the first admin user; wipe `data/` to recreate it.
+The OpenRouter key, model, and search engine live in `silo.yaml` (Admin can edit the file). `SILO_*` env still wins. `bootstrap.*` seeds the first admin user; wipe `data/` to recreate it.
 
 ## Build
 

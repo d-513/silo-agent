@@ -1,9 +1,11 @@
+import { Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ui } from "./api";
 import { Btn } from "./Btn";
-import { Crest } from "./Crest";
-import type { AuditRow } from "./gen/silo/v1/ui_pb";
+import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
+
+export { AdminSettings } from "./AdminSettings";
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -39,75 +41,111 @@ export function AdminLayout() {
         >
           Skills Library
         </NavLink>
+        <NavLink
+          to="/admin/search-extract"
+          className={({ isActive }) =>
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+          }
+        >
+          Search & Extract
+        </NavLink>
       </nav>
       <Outlet />
     </div>
   );
 }
 
-export function AdminSettings() {
-  const [model, setModel] = useState("");
-  const [audit, setAudit] = useState<AuditRow[]>([]);
+function fieldOf(fields: ConfigField[], key: string) {
+  return fields.find((f) => f.key === key);
+}
+
+export function AdminSearchExtract() {
+  const [engine, setEngine] = useState("");
+  const [engines, setEngines] = useState<SearchEngine[]>([]);
+  const [engineField, setEngineField] = useState<ConfigField | undefined>();
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
   useEffect(() => {
     ui.getSettings({})
-      .then((x) => setModel(x.model))
-      .catch((e) => setErr(fail(e)));
-    ui.listAudit({})
-      .then((x) => setAudit(x.rows))
+      .then((x) => {
+        const f = fieldOf(x.fields, "search.engine");
+        setEngineField(f);
+        setEngine(f?.value || x.searchEngines[0]?.id || "");
+        setEngines(x.searchEngines);
+      })
       .catch((e) => setErr(fail(e)));
   }, []);
   async function save() {
     setErr("");
+    setSaved(false);
     try {
-      await ui.putSettings({ model });
+      const x = await ui.putSettings({ fields: { "search.engine": engine } });
+      const f = fieldOf(x.fields, "search.engine");
+      setEngineField(f);
+      setEngine(f?.value || engine);
+      setEngines(x.searchEngines);
       setSaved(true);
     } catch (ex) {
       setErr(fail(ex));
     }
   }
+  const current = engines.find((e) => e.id === engine);
+  const locked = engineField?.source === ConfigSource.ENV;
   return (
     <div>
       {err && <p className="mb-3 text-carmine">{err}</p>}
-      <div className="mb-2 text-[11px] font-medium tracking-wide text-stone">Model</div>
-      <input className="mb-4 h-9 w-full rounded border border-thread bg-folio px-3" value={model} onChange={(e) => setModel(e.target.value)} />
-      <Btn kind="primary" onClick={() => void save()}>
+      <h2 className="mb-3 text-[22px] font-medium">Search</h2>
+      <div className="mb-1 flex items-center gap-2">
+        <div className="text-[11px] font-medium tracking-wide text-stone">Engine</div>
+        {engineField ? (
+          <span className="font-mono text-[11px] text-stone">
+            {engineField.source === ConfigSource.ENV ? "env" : engineField.source === ConfigSource.YAML ? "yaml" : "default"}
+          </span>
+        ) : null}
+        {locked ? (
+          <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={engineField?.envName}>
+            <Warning size={14} weight="fill" />
+            {engineField?.envName}
+          </span>
+        ) : null}
+      </div>
+      <select
+        className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 disabled:bg-cloth disabled:text-stone"
+        value={engine}
+        disabled={locked}
+        onChange={(e) => {
+          setEngine(e.target.value);
+          setSaved(false);
+        }}
+      >
+        {engines.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.name}
+          </option>
+        ))}
+      </select>
+      {current?.description ? <p className="mb-4 text-[13px] text-stone">{current.description}</p> : null}
+      {current && current.fields.length > 0 ? (
+        <div className="mb-4 space-y-2">
+          {current.fields.map((f) => (
+            <div key={f.key}>
+              <div className="text-[13px]">
+                <span className="font-medium">{f.label}</span>
+                <span className="ml-2 font-mono text-stone">{f.key}</span>
+              </div>
+              {f.description ? <p className="text-[12px] text-stone">{f.description}</p> : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-4 text-[13px] text-stone">No settings for this engine.</p>
+      )}
+      <Btn kind="primary" onClick={() => void save()} disabled={locked}>
         Save
       </Btn>
       {saved && <span className="ml-3 text-stone">Saved</span>}
-      <h2 className="mt-10 mb-3 text-[22px] font-medium">Audit</h2>
-      {audit.length === 0 ? (
-        <p className="text-stone">No decisions yet.</p>
-      ) : (
-        <div className="silo-scroll-x">
-        <table className="w-full min-w-[36rem] text-left text-[13px]">
-          <thead className="bg-cloth text-stone">
-            <tr>
-              <th className="p-2">When</th>
-              <th className="p-2">Bot</th>
-              <th className="p-2">Actor</th>
-              <th className="p-2">Action</th>
-              <th className="p-2">Decision</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audit.map((r) => (
-              <tr key={r.id} className="border-b border-thread-2">
-                <td className="p-2">{r.at}</td>
-                <td className="flex items-center gap-2 p-2">
-                  <Crest index={r.crest} size={20} />
-                  {r.botName}
-                </td>
-                <td className="p-2">{r.actor}</td>
-                <td className="p-2 font-mono">{r.action}</td>
-                <td className="p-2">{r.decision}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      )}
+      <h2 className="mt-10 mb-3 text-[22px] font-medium">Extract</h2>
+      <p className="text-stone">Page extract is not available yet.</p>
     </div>
   );
 }

@@ -349,17 +349,50 @@ message PutFileRequest {
 
 message FileOpResponse {}
 
+enum ConfigSource {
+  CONFIG_SOURCE_UNSPECIFIED = 0;
+  CONFIG_SOURCE_DEFAULT = 1;
+  CONFIG_SOURCE_YAML = 2;
+  CONFIG_SOURCE_ENV = 3;
+}
+
+message ConfigField {
+  string key = 1;
+  string value = 2;
+  ConfigSource source = 3;
+  string env_name = 4;
+  bool secret = 5;
+  bool restart_required = 6;
+}
+
 message Settings {
-  string model = 1;
-  bool has_api_key = 2;
-  string api_key = 3;
+  repeated ConfigField fields = 1;
+  string yaml = 2;
+  string yaml_path = 3;
+  repeated SearchEngine search_engines = 4;
+}
+
+message SearchEngine {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated SearchEngineField fields = 4;
+}
+
+message SearchEngineField {
+  string key = 1;
+  string label = 2;
+  string type = 3;
+  string description = 4;
+  bool secret = 5;
+  bool has_value = 6;
 }
 
 message GetSettingsRequest {}
 
 message PutSettingsRequest {
-  string model = 1;
-  string api_key = 2;
+  map<string, string> fields = 1;
+  string yaml = 2;
 }
 
 message AuditRow {

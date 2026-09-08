@@ -10,7 +10,6 @@ import (
 	"connectrpc.com/connect"
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/catalog"
-	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/skills"
 )
@@ -19,7 +18,10 @@ func skillApp(t *testing.T) *App {
 	t.Helper()
 	dir := t.TempDir()
 	a := testApp(t, nil)
-	a.Cfg = &config.Config{DataDir: dir}
+	a.Store = testStore(t)
+	if err := a.Store.Patch(map[string]string{"data_dir": dir}); err != nil {
+		t.Fatal(err)
+	}
 	if err := catalog.SeedSkills(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +56,7 @@ func TestSetBotSkillUniqueName(t *testing.T) {
 	a.DB.Create(u)
 	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
 	ctx := context.WithValue(context.Background(), userKey, u)
-	root := skills.PersonalDir(a.Cfg.DataDir, "u")
+	root := skills.PersonalDir(a.cfg().DataDir, "u")
 	writePersonal := func() {
 		dir := filepath.Join(root, catalog.DefaultSkill)
 		if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -107,7 +109,7 @@ func TestSeededChipNotPersonal(t *testing.T) {
 	if !found {
 		t.Fatal("missing catalog skill")
 	}
-	root := skills.PersonalDir(a.Cfg.DataDir, "u")
+	root := skills.PersonalDir(a.cfg().DataDir, "u")
 	dir := filepath.Join(root, "copied-seed")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)

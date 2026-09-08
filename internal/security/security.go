@@ -27,6 +27,7 @@ const (
 	Bot      = "bot"
 	Secrets  = "secrets"
 	Skills   = "skills"
+	Web      = "web"
 )
 
 type Field struct {
@@ -55,7 +56,7 @@ type spec struct {
 }
 
 var reserved = map[string]bool{
-	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true,
+	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true,
 }
 
 var catalog = map[string]spec{
@@ -67,6 +68,7 @@ var catalog = map[string]spec{
 	"bot.memory":     {title: "Memory", mode: Allow, summary: want("edit MEMORY")},
 	"skills.load":    {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"skills.propose": {title: "Propose skill", mode: Allow, summary: want("show a skill artifact")},
+	"web.search":     {title: "Web search", mode: Allow, summary: want("search the web")},
 }
 
 func want(s string) func(map[string]string) string {
@@ -87,6 +89,7 @@ func BuiltinRows() []Row {
 		{Bot, "memory", "Memory"},
 		{Skills, "load", "Load skill"},
 		{Skills, "propose", "Propose skill"},
+		{Web, "search", "Web search"},
 	}
 }
 

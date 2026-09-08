@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 )
@@ -26,7 +27,7 @@ func memDB(t *testing.T) *gorm.DB {
 	}
 	if err := gdb.AutoMigrate(
 		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
-		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Setting{}, &db.Audit{},
+		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Audit{},
 		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{},
 	); err != nil {
 		t.Fatal(err)
@@ -119,6 +120,16 @@ func testApp(t *testing.T, d dockerx.Host) *App {
 		d = &fakeHost{}
 	}
 	return New(nil, memDB(t), d)
+}
+
+func testStore(t *testing.T) *config.Store {
+	t.Helper()
+	t.Chdir(t.TempDir())
+	st, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return st
 }
 
 func TestDeriveStatus(t *testing.T) {

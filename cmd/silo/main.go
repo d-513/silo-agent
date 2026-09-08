@@ -14,10 +14,11 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	store, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
+	cfg := store.Config()
 	gdb, err := db.Open(cfg.DataDir)
 	if err != nil {
 		log.Fatal(err)
@@ -28,14 +29,14 @@ func main() {
 	if err := auth.EnsureAdmin(gdb); err != nil {
 		log.Fatal(err)
 	}
-	eng, err := dockerx.New(cfg)
+	eng, err := dockerx.New(store)
 	if err != nil {
 		log.Fatal(err)
 	}
-	a := app.New(cfg, gdb, eng)
+	a := app.New(store, gdb, eng)
 	log.Printf("silo listening %s docker=%s cp_url=%s", cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
 	h2s := &http2.Server{}
-	err = app.ListenAndServe(cfg, h2c.NewHandler(a.Handler(), h2s), a.Shutdown)
+	err = app.ListenAndServe(&cfg, h2c.NewHandler(a.Handler(), h2s), a.Shutdown)
 	if err != nil {
 		log.Fatal(err)
 	}

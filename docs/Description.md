@@ -20,12 +20,12 @@ Control Plane owns policy, the agent loop, LLM calls, and secrets. The Bot is a 
 | Local tools bus | HTTP/JSON over a Unix socket | Python↔Worker, same container, never leaves the Bot |
 | DB | SQLite + GORM, WAL mode | single-node v1; no repository layer; sqlc only if GORM hurts |
 | Auth | session cookies now | OIDC later creates the same `User`/`Session` rows — no plugin framework |
-| Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, **OpenRouter API key**. **Not** editable in the UI |
-| Product settings | DB rows, admin UI | models. Do not overlap with operator config |
+| Operator config | Koanf: defaults → YAML → env (`SILO_FOO__BAR` → `foo.bar`) | listen addr, sqlite path, docker host, OpenRouter key, model, search. Admin Settings writes `silo.yaml`. |
+| Product libraries | SQLite + `data/skills/` | Connectors Library, Skills Library. Not YAML. |
 | Desktop | X11 (Xvfb + Openbox + Thunar + mousepad) | not Wayland |
 | Remote desktop | x11vnc + noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
 | Process supervisor in Bot | fail-fast `start.sh` | any of Xvfb/Openbox/tint2/x11vnc/worker dying exits the container; Docker `unless-stopped` recreates the stack |
-| Web extract/search | not in v1 | keep provider keys off the Bot |
+| Web search | CP engine registry (`internal/search`) | keys stay off the Bot; DuckDuckGo Scraper is the default; extract later |
 
 Python is not a ConnectRPC citizen. Generated `tools` never see `SILO_CP_URL` or `SILO_BOT_TOKEN`.
 
@@ -85,6 +85,7 @@ def click(x, y, button="left"): ...
 def type_text(text: str): ...  # not type — that shadows Python
 def key(name: str): ...
 def scroll(x, y, dy): ...
+def web_search(query: str, max_results: int | None = None) -> dict: ...
 def call(connector: str, action: str, args: dict) -> dict: ...
 def chrome_page(): ...  # Playwright Page; worker opens Chromium if needed
 ```
@@ -126,7 +127,7 @@ The model can still exfiltrate a secret it already holds. We do not try to stop 
 
 **The Control Plane.** The Worker is a dumb executor plus event stream. Python is `exec_python` plus `/opt/silo/tools` — the [code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) pattern.
 
-First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, `skill` / `propose_skill`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` of a user-facing path is a folio in the thread. `present` of `bot/…` is scratch: collapsed “Looked at …” row, same pixels to the model. CP uses `browse_file`; the tool text is a short ack. Images (`png`/`jpg`/`webp`/`gif`) attach as a multimodal part on the next completion. No base64 in the tool text or the run log. Connectors are discovered on disk as `tools.*`. Skills follow the [Agent Skills](https://agentskills.io/specification) format (`SKILL.md`); bodies live on the CP under `data/skills/` (library + per-user personal). Enablement is SQLite `bot_skills`. The prompt lists name + description only; `skill` loads the markdown; extras sync to `/opt/silo/skills/<name>/`. Every gated action (`python.run`, `terminal.run`, `files.*`, `desktop.*`, `bot.soul`/`memory`, `skills.load`/`propose`, `secrets.<name>`, MCP `slug.action`) goes through one `authorizeAction`: bot rule, else `*` for that connector, else the builtin catalog default, else the MCP connector default, else ask. Python and Terminal default allow. `skills.load` and `skills.propose` default allow. `propose_skill` emits a thread artifact; **Save skill** on the card copies the workspace dir to personal — there is no Ask slip that installs. Each secret is its own action — not `secrets.get`. Chat tools and Python `CallTool` share that gate. `desktop.*` from Python is grant-then-local on the Worker so typed secrets never ride to the CP.
+First-class tools the model sees stay small: `exec_python`, `terminal`, files (`read`/`write`/`patch`/`grep`), `present`, `skill` / `propose_skill`, `web_search`. `read` is numbered and sliced (`offset`/`limit`). `patch` requires a unique `old_text`. `grep` takes `include` and is capped. `present` of a user-facing path is a folio in the thread. `present` of `bot/…` is scratch: collapsed “Looked at …” row, same pixels to the model. CP uses `browse_file`; the tool text is a short ack. Images (`png`/`jpg`/`webp`/`gif`) attach as a multimodal part on the next completion. No base64 in the tool text or the run log. Connectors are discovered on disk as `tools.*`. Skills follow the [Agent Skills](https://agentskills.io/specification) format (`SKILL.md`); bodies live on the CP under `data/skills/` (library + per-user personal). Enablement is SQLite `bot_skills`. The prompt lists name + description only; `skill` loads the markdown; extras sync to `/opt/silo/skills/<name>/`. Every gated action (`python.run`, `terminal.run`, `files.*`, `desktop.*`, `bot.soul`/`memory`, `skills.load`/`propose`, `web.search`, `secrets.<name>`, MCP `slug.action`) goes through one `authorizeAction`: bot rule, else `*` for that connector, else the builtin catalog default, else the MCP connector default, else ask. Python and Terminal default allow. `skills.load` and `skills.propose` default allow. `web.search` default allow. `propose_skill` emits a thread artifact; **Save skill** on the card copies the workspace dir to personal — there is no Ask slip that installs. Each secret is its own action — not `secrets.get`. Chat tools and Python `CallTool` share that gate. `desktop.*` from Python is grant-then-local on the Worker so typed secrets never ride to the CP. `web.search` runs on the CP (engine registry); Python reaches it via `silo_runtime.web_search`.
 
 ## Tools
 
@@ -137,6 +138,10 @@ Pushed on `Commands`. `/workspace` is user-facing artifacts (volume on the *Dock
 ### Skills
 
 Catalog skills are `go:embed`’d under `internal/catalog/skills` and seeded into `data/skills/library/` (insert-if-absent). Personal skills are `data/skills/users/<userID>/`. Install from a GitHub URL / `owner/repo` / `SKILL.md` / zip (same size caps as `npx skills`, no npx). Admin Skills Library can re-add defaults and remove. The Skill Hub (`/skills`) lists Personal | Library. A Bot Skills tab toggles enablement (unique `name` per bot). Worker `SyncSkills` replaces `/opt/silo/skills`.
+
+### Web search
+
+CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is DuckDuckGo Scraper (`duckduckgo_scraper`) from Koanf `search.engine`. Admin `/admin/search-extract` writes that key in `silo.yaml`. Provider keys never enter the Bot. Chat tool `web_search` and `silo_runtime.web_search` both run `web.search` after `authorizeAction`. Page extract is not in yet.
 
 ### Web / connectors
 

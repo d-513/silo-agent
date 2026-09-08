@@ -11,7 +11,7 @@ import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
 import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
-import { AdminLayout, AccountPage, AdminSettings } from "./Admin";
+import { AdminLayout, AccountPage, AdminSettings, AdminSearchExtract } from "./Admin";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
 import { RulesPane } from "./Rules";
@@ -1690,6 +1690,7 @@ function Authed() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="connectors/*" element={<AdminConnectors />} />
           <Route path="skills" element={<AdminSkills />} />
+          <Route path="search-extract" element={<AdminSearchExtract />} />
         </Route>
         <Route
           path="/account"

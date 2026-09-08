@@ -18,6 +18,26 @@ def test_chrome_page_ensures():
         raise SystemExit(f"ensure first: {seen}")
 
 
+def test_web_search_call():
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"result": {"results": []}}
+
+    silo_runtime._post = post
+    out = silo_runtime.web_search("alpha", 3)
+    if out != {"results": []}:
+        raise SystemExit(f"result {out}")
+    if seen != [("/v1/tools/call", {"connector": "web", "action": "search", "args": {"query": "alpha", "max_results": 3}})]:
+        raise SystemExit(f"body {seen}")
+    seen.clear()
+    silo_runtime.web_search("beta")
+    if seen[0][1]["args"] != {"query": "beta"}:
+        raise SystemExit(f"omit max {seen}")
+
+
 if __name__ == "__main__":
     test_chrome_page_ensures()
+    test_web_search_call()
     print("ok")

@@ -47,11 +47,12 @@ type Host interface {
 }
 
 type Engine struct {
-	cli *client.Client
-	cfg *config.Config
+	cli   *client.Client
+	store *config.Store
 }
 
-func New(cfg *config.Config) (*Engine, error) {
+func New(store *config.Store) (*Engine, error) {
+	cfg := store.Config()
 	opts := []client.Opt{client.FromEnv, client.WithAPIVersionNegotiation()}
 	if cfg.DockerHost != "" {
 		opts = append(opts, client.WithHost(cfg.DockerHost))
@@ -60,7 +61,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{cli: cli, cfg: cfg}, nil
+	return &Engine{cli: cli, store: store}, nil
 }
 
 func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
@@ -145,9 +146,10 @@ func (e *Engine) Stats(ctx context.Context, id string) (Stats, error) {
 }
 
 func (e *Engine) Create(ctx context.Context, botID, token string) (string, error) {
-	ws := filepath.Join(e.cfg.DataDir, "bots", botID, "workspace")
+	cfg := e.store.Config()
+	ws := filepath.Join(cfg.DataDir, "bots", botID, "workspace")
 	bot := filepath.Join(ws, "bot")
-	chrome := filepath.Join(e.cfg.DataDir, "bots", botID, "chrome-profile")
+	chrome := filepath.Join(cfg.DataDir, "bots", botID, "chrome-profile")
 	for _, d := range []string{ws, bot, chrome} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return "", err
@@ -156,9 +158,9 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	absWS, _ := filepath.Abs(ws)
 	absChrome, _ := filepath.Abs(chrome)
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
-		Image: e.cfg.BotImage,
+		Image: cfg.BotImage,
 		Env: []string{
-			"SILO_CP_URL=" + e.cfg.CPURL,
+			"SILO_CP_URL=" + cfg.CPURL,
 			"SILO_BOT_TOKEN=" + token,
 			"SILO_BOT_ID=" + botID,
 		},
