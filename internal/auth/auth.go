@@ -86,16 +86,18 @@ func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 		return nil
 	}
 	var u db.User
-	err := gdb.First(&u, "email = ?", email).Error
-	if err == nil {
+	// Find leaves an empty result as a nil error, so a first bootstrap does not
+	// emit an avoidable record-not-found database log.
+	res := gdb.Where("email = ?", email).Limit(1).Find(&u)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected > 0 {
 		if !u.Admin {
 			u.Admin = true
 			return gdb.Save(&u).Error
 		}
 		return nil
-	}
-	if err != gorm.ErrRecordNotFound {
-		return err
 	}
 	hash, err := HashPassword(pass)
 	if err != nil {

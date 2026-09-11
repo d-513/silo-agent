@@ -303,7 +303,7 @@ func TestEnsureRunningStartsExisting(t *testing.T) {
 		id: {ID: id, Running: false}, name: {ID: id, Running: false},
 	}}
 	a := testApp(t, h)
-	b := &db.Bot{ID: "bot1", ContainerID: id, TokenHash: "h", Status: "stopped"}
+	b := &db.Bot{ID: "bot1", ContainerID: id, TokenHash: "h", Status: "stopped", LastTask: "old error"}
 	a.DB.Create(b)
 	if err := a.ensureRunning(context.Background(), b); err != nil {
 		t.Fatal(err)
@@ -320,6 +320,9 @@ func TestEnsureRunningStartsExisting(t *testing.T) {
 	a.DB.First(b, "id = ?", "bot1")
 	if b.ContainerID != id {
 		t.Fatalf("id %q", b.ContainerID)
+	}
+	if b.LastTask != "" {
+		t.Fatalf("stale task %q", b.LastTask)
 	}
 }
 

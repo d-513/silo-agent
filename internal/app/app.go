@@ -150,6 +150,11 @@ func (a *App) migrateSettings() {
 	if a.Store == nil || a.DB == nil {
 		return
 	}
+	// settings is a legacy table. New databases do not create it, so avoid
+	// issuing a query that would make SQLite log "no such table" on startup.
+	if !a.DB.Migrator().HasTable("settings") {
+		return
+	}
 	var rows []struct {
 		Key   string `gorm:"column:key"`
 		Value string `gorm:"column:value"`

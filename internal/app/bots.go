@@ -116,6 +116,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 			b.ContainerID = st.ID
 		}
 		b.Status = "starting"
+		b.LastTask = ""
 		return a.DB.Save(b).Error
 	} else if !dockerx.IsNotFound(err) {
 		b.Status = "stopped"
@@ -144,6 +145,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 	b.TokenHash = ids.Hash(token)
 	b.ContainerID = cid
 	b.Status = "starting"
+	b.LastTask = ""
 	return a.DB.Save(b).Error
 }
 
