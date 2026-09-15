@@ -143,7 +143,7 @@ func (a *App) ListBotSkills(ctx context.Context, req *connect.Request[v1.ListBot
 	if err != nil {
 		return nil, err
 	}
-	a.ensureDefaultSkill(b.ID)
+	a.ensureDefaultSkills(b.ID)
 	out := &v1.ListBotSkillsResponse{}
 	out.Skills = append(out.Skills, a.botSkillRows(b, skills.KindLibrary, "")...)
 	out.Skills = append(out.Skills, a.botSkillRows(b, skills.KindPersonal, b.UserID)...)
@@ -291,7 +291,7 @@ func (a *App) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSki
 	if bytes.IndexByte(raw, 0) >= 0 {
 		out.Binary = true
 	} else {
-		out.Content = string(raw)
+		out.Content = validUTF8(string(raw))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -319,22 +319,24 @@ func (a *App) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRe
 	return connect.NewResponse(&v1.SaveSkillResponse{Name: peek.Name}), nil
 }
 
-func (a *App) ensureDefaultSkill(botID string) {
+func (a *App) ensureDefaultSkills(botID string) {
 	if a.DB == nil || a.dataDir() == "" {
 		return
 	}
-	name := catalog.DefaultSkill
-	if !skills.Exists(skills.LibraryDir(a.dataDir()), name) {
-		return
+	root := skills.LibraryDir(a.dataDir())
+	for _, name := range catalog.DefaultSkills {
+		if !skills.Exists(root, name) {
+			continue
+		}
+		var n int64
+		a.DB.Model(&db.BotSkill{}).Where("bot_id = ? AND kind = ? AND name = ?", botID, skills.KindLibrary, name).Count(&n)
+		if n > 0 {
+			continue
+		}
+		_ = a.DB.Create(&db.BotSkill{
+			ID: ids.New(), BotID: botID, Kind: skills.KindLibrary, Name: name, Enabled: true, CreatedAt: time.Now(),
+		}).Error
 	}
-	var n int64
-	a.DB.Model(&db.BotSkill{}).Where("bot_id = ? AND kind = ? AND name = ?", botID, skills.KindLibrary, name).Count(&n)
-	if n > 0 {
-		return
-	}
-	_ = a.DB.Create(&db.BotSkill{
-		ID: ids.New(), BotID: botID, Kind: skills.KindLibrary, Name: name, Enabled: true, CreatedAt: time.Now(),
-	}).Error
 }
 
 func (a *App) enabledSkills(botID string) []skills.Info {
@@ -342,7 +344,7 @@ func (a *App) enabledSkills(botID string) []skills.Info {
 	if a.DB.First(&bot, "id = ?", botID).Error != nil {
 		return nil
 	}
-	a.ensureDefaultSkill(botID)
+	a.ensureDefaultSkills(botID)
 	var rows []db.BotSkill
 	a.DB.Where("bot_id = ? AND enabled = ?", botID, true).Order("name").Find(&rows)
 	var out []skills.Info

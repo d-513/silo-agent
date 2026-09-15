@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	v1 "silo.agent/gen/silo/v1"
@@ -149,12 +151,48 @@ func TestListDirAndBrowse(t *testing.T) {
 	if _, err := w.listDir("../etc"); err == nil {
 		t.Fatal("escaped")
 	}
-	view, err := w.browseFile("hello.txt")
+	view, err := w.browseFile("hello.txt", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(view, `"content":"hi"`) || !strings.Contains(view, `"data":`) {
 		t.Fatal(view)
+	}
+}
+
+func TestValidUTF8(t *testing.T) {
+	if got := validUTF8("ok"); got != "ok" {
+		t.Fatal(got)
+	}
+	got := validUTF8("a\xffb")
+	if !utf8.ValidString(got) || !strings.Contains(got, "a") {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestBrowseFileLimit(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "big.txt"), []byte(strings.Repeat("a", 100)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{workspace: dir}
+	raw, err := w.browseFile("big.txt", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var view struct {
+		Content   string `json:"content"`
+		Truncated bool   `json:"truncated"`
+	}
+	if err := json.Unmarshal([]byte(raw), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Content) != 10 || !view.Truncated {
+		t.Fatalf("content=%d truncated=%v", len(view.Content), view.Truncated)
+	}
+	// A limit above presentLimit falls back to the preview budget, not unlimited.
+	if _, err := w.browseFile("big.txt", 1<<40); err != nil {
+		t.Fatal(err)
 	}
 }
 

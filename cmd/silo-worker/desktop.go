@@ -140,7 +140,7 @@ func (w *worker) look(ctx context.Context) (string, error) {
 	if err := w.lookShot(ctx); err != nil {
 		return "", err
 	}
-	return w.browseFile("bot/screen.png")
+	return w.browseFile("bot/screen.png", 0)
 }
 
 func (w *worker) lookShot(ctx context.Context) error {

@@ -9,8 +9,11 @@ export SILO_WORKER_SOCK=/var/run/silo/worker.sock
 export PYTHONPATH=/opt/silo
 
 mkdir -p /var/run/silo /run/user/1000 /workspace /workspace/bot /opt/silo/tools /opt/silo/skills
-chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/skills /workspace /workspace/bot
-chmod 1777 /workspace /workspace/bot
+# Chat uploads land in /workspace/tmp. Clear it every start so it cannot accumulate.
+rm -rf /workspace/tmp
+mkdir -p /workspace/tmp
+chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/skills /workspace /workspace/bot /workspace/tmp
+chmod 1777 /workspace /workspace/bot /workspace/tmp
 chmod 700 /run/user/1000
 
 children=()

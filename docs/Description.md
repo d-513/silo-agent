@@ -133,7 +133,7 @@ First-class tools the model sees stay small: `exec_python`, `terminal`, files (`
 
 ### Terminal / files
 
-Pushed on `Commands`. `/workspace` is user-facing artifacts (volume on the *Docker host*, not necessarily the CP host). `/workspace/bot` is the Bot's scratch (PRAV screenshots, dumps).
+Pushed on `Commands`. `/workspace` is user-facing artifacts (volume on the *Docker host*, not necessarily the CP host). `/workspace/bot` is the Bot's scratch (PRAV screenshots, dumps). Chat uploads land in `/workspace/tmp`, which `start.sh` empties on every container start; the composer uploads over `PutFile` (50 MB) and the message carries the paths as a `RunEvent.attachments` list.
 
 ### Skills
 

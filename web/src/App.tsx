@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, ArrowUp, BookOpen, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ArrowUp, BookOpen, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -9,6 +9,7 @@ import { ArtifactOverlay, type SkillArtifact } from "./Artifact";
 import { ApprovalSlip, ConnectorAuthSlip } from "./Approval";
 import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
+import { joinPath } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
 import { AdminLayout, AccountPage, AdminSettings, AdminSearchExtract } from "./Admin";
@@ -400,7 +401,7 @@ function chatBusy(events: Ev[]): boolean {
   const open = new Set<string>();
   for (const ev of events) {
     if (ev.runId && ev.kind === "user") open.add(ev.runId);
-    if (ev.runId && ev.kind === "done") open.delete(ev.runId);
+    if (ev.runId && (ev.kind === "done" || ev.kind === "error")) open.delete(ev.runId);
   }
   return open.size > 0;
 }
@@ -1037,6 +1038,9 @@ function BotPage() {
   const [secName, setSecName] = useState("");
   const [secVal, setSecVal] = useState("");
   const [actErr, setActErr] = useState("");
+  const [atts, setAtts] = useState<{ name: string; path: string; size: number }[]>([]);
+  const [attachErr, setAttachErr] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
   const [keepDesk, setKeepDesk] = useState(tab === "desktop");
   const [keepCon, setKeepCon] = useState(tab === "console");
   const [inspect, setInspect] = useState<SkillArtifact | null>(null);
@@ -1129,7 +1133,7 @@ function BotPage() {
                 if (!dead) setChats(r.chats);
               }).catch(() => {});
             }
-            if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId });
+            if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId, attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })) });
           }
         } catch {
           if (!dead) setSending(false);
@@ -1179,18 +1183,51 @@ function BotPage() {
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (sending || !id || !text.trim()) return;
+    if (sending || !id || (!text.trim() && atts.length === 0)) return;
     const msg = text.trim();
     setText("");
     setSending(true);
     setActErr("");
     try {
-      await ui.send({ botId: id, chatId: chatId || "", text: msg });
+      await ui.send({
+        botId: id,
+        chatId: chatId || "",
+        text: msg,
+        attachments: atts.map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+      });
+      setAtts([]);
       ui.getBot({ id }).then(setBot);
       ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
     } catch (ex) {
       setSending(false);
       setActErr(fail(ex));
+    }
+  }
+
+  async function attach(list: FileList | null) {
+    if (!list?.length || !id || !bot?.workerConnected) return;
+    setAttachErr("");
+    const added: { name: string; path: string; size: number }[] = [];
+    for (const f of list) {
+      if (f.size > 50 << 20) {
+        setAttachErr(`${f.name} is larger than 50 MB`);
+        continue;
+      }
+      const path = joinPath("tmp", f.name);
+      if (!path) continue;
+      try {
+        const buf = new Uint8Array(await f.arrayBuffer());
+        await ui.putFile({ botId: id, path, data: buf });
+        added.push({ name: f.name, path, size: f.size });
+      } catch (ex) {
+        setAttachErr(fail(ex));
+      }
+    }
+    if (added.length) {
+      setAtts((xs) => {
+        const seen = new Set(xs.map((x) => x.path));
+        return [...xs, ...added.filter((a) => !seen.has(a.path))];
+      });
     }
   }
 
@@ -1485,23 +1522,67 @@ function BotPage() {
                 onInspectArtifact={setInspect}
                 onSaveSkill={(a) => void saveSkill(a)}
               />
-              <form onSubmit={send} className="flex gap-2 border-t border-thread-2 p-3 max-wide:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                <input
-                  className="min-w-0 flex-1 rounded bg-cloth px-3 py-2 outline-none focus:border-bindery focus:ring-1 focus:ring-bindery"
-                  placeholder="Ask this Bot…"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  disabled={!chatId}
-                />
-                {sending ? (
-                  <Btn kind="secondary" type="button" title="Stop this reply" onClick={() => void stopRun()} icon={<Stop size={12} weight="fill" />}>
-                    Stop
-                  </Btn>
-                ) : (
-                  <Btn kind="primary" type="submit" disabled={!text.trim() || !chatId} icon={<ArrowUp size={12} />}>
-                    Send
-                  </Btn>
+              <form onSubmit={send} className="flex flex-col gap-2 border-t border-thread-2 p-3 max-wide:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                {atts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {atts.map((a) => (
+                      <span
+                        key={a.path}
+                        title={a.path}
+                        className="inline-flex max-w-full items-center gap-1 rounded border border-thread-2 bg-cloth px-2 py-0.5 text-[12px] text-iron"
+                      >
+                        <Paperclip size={12} />
+                        <span className="truncate">{a.name}</span>
+                        <button
+                          type="button"
+                          title="Remove"
+                          className="text-stone hover:text-carmine"
+                          onClick={() => setAtts((xs) => xs.filter((x) => x.path !== a.path))}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 )}
+                {attachErr && <p className="text-[12px] text-carmine">{attachErr}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    title={bot.workerConnected ? "Attach files" : "Start the Bot to attach files"}
+                    disabled={!bot.workerConnected}
+                    className="px-1 text-stone hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      void attach(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    className="min-w-0 flex-1 rounded bg-cloth px-3 py-2 outline-none focus:border-bindery focus:ring-1 focus:ring-bindery"
+                    placeholder="Ask this Bot…"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    disabled={!chatId}
+                  />
+                  {sending ? (
+                    <Btn kind="secondary" type="button" title="Stop this reply" onClick={() => void stopRun()} icon={<Stop size={12} weight="fill" />}>
+                      Stop
+                    </Btn>
+                  ) : (
+                    <Btn kind="primary" type="submit" disabled={(!text.trim() && atts.length === 0) || !chatId} icon={<ArrowUp size={12} />}>
+                      Send
+                    </Btn>
+                  )}
+                </div>
               </form>
             </section>
           </>

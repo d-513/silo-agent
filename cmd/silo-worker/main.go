@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"github.com/creack/pty"
@@ -185,13 +186,22 @@ func (w *worker) run(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], cmd *
 		_ = w.send(st, ev)
 	}
 	out, err := w.exec(ctx, cmd, func(chunk string) {
-		send(&v1.CmdEvent{Body: &v1.CmdEvent_Chunk{Chunk: &v1.OutputChunk{Text: w.mask.Apply(chunk)}}})
+		send(&v1.CmdEvent{Body: &v1.CmdEvent_Chunk{Chunk: &v1.OutputChunk{Text: validUTF8(w.mask.Apply(chunk))}}})
 	})
 	if err != nil {
-		send(&v1.CmdEvent{Body: &v1.CmdEvent_Error{Error: &v1.CmdError{Message: err.Error()}}})
+		send(&v1.CmdEvent{Body: &v1.CmdEvent_Error{Error: &v1.CmdError{Message: validUTF8(err.Error())}}})
 		return
 	}
-	send(&v1.CmdEvent{Body: &v1.CmdEvent_Done{Done: &v1.CmdDone{Result: w.mask.Apply(out)}}})
+	send(&v1.CmdEvent{Body: &v1.CmdEvent_Done{Done: &v1.CmdDone{Result: validUTF8(w.mask.Apply(out))}}})
+}
+
+// validUTF8 replaces invalid UTF-8 so protobuf string fields stay marshalable.
+// Command output (a docx dump, terminal bytes) can carry arbitrary bytes.
+func validUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	return strings.ToValidUTF8(s, "\uFFFD")
 }
 
 func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (string, error) {
@@ -256,7 +266,7 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 	case *v1.Cmd_DirList:
 		return w.listDir(b.DirList.GetPath())
 	case *v1.Cmd_BrowseFile:
-		return w.browseFile(b.BrowseFile.GetPath())
+		return w.browseFile(b.BrowseFile.GetPath(), b.BrowseFile.GetLimit())
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:
@@ -314,7 +324,11 @@ func (w *worker) resolve(p string) (string, error) {
 	return full, nil
 }
 
-const browseLimit = 2 << 20
+const (
+	browseLimit  = 2 << 20  // Files preview / default browse budget
+	presentLimit = 32 << 20 // explicit high budget the CP asks for on present
+	putLimit     = 50 << 20 // uploads via PutFile
+)
 
 type dirEnt struct {
 	Name     string `json:"name"`
@@ -378,7 +392,7 @@ func (w *worker) listDir(p string) (string, error) {
 	return string(b), nil
 }
 
-func (w *worker) browseFile(p string) (string, error) {
+func (w *worker) browseFile(p string, limit int64) (string, error) {
 	full, err := w.resolve(p)
 	if err != nil {
 		return "", err
@@ -390,20 +404,23 @@ func (w *worker) browseFile(p string) (string, error) {
 	if st.IsDir() {
 		return "", errors.New("is a directory")
 	}
+	if limit <= 0 || limit > presentLimit {
+		limit = browseLimit
+	}
 	f, err := os.Open(full)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-	buf := make([]byte, browseLimit+1)
+	buf := make([]byte, limit+1)
 	n, err := f.Read(buf)
 	if err != nil && err != io.EOF {
 		return "", err
 	}
 	raw := buf[:n]
-	trunc := st.Size() > int64(len(raw)) || n > browseLimit
-	if n > browseLimit {
-		raw = raw[:browseLimit]
+	trunc := st.Size() > int64(len(raw)) || n > int(limit)
+	if n > int(limit) {
+		raw = raw[:limit]
 	}
 	view := fileView{
 		Name:      filepath.Base(full),
@@ -452,8 +469,8 @@ func (w *worker) putFile(p string, data []byte) (string, error) {
 	if strings.TrimSpace(p) == "" {
 		return "", errors.New("path required")
 	}
-	if len(data) > browseLimit {
-		return "", fmt.Errorf("file too large (%d bytes, max %d)", len(data), browseLimit)
+	if len(data) > putLimit {
+		return "", fmt.Errorf("file too large (%d bytes, max %d)", len(data), putLimit)
 	}
 	full, err := w.resolve(p)
 	if err != nil {

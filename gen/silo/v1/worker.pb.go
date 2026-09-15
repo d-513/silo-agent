@@ -1058,6 +1058,7 @@ func (x *DirListCmd) GetPath() string {
 type BrowseFileCmd struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Limit         int64                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1097,6 +1098,13 @@ func (x *BrowseFileCmd) GetPath() string {
 		return x.Path
 	}
 	return ""
+}
+
+func (x *BrowseFileCmd) GetLimit() int64 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
 }
 
 type MkdirCmd struct {
@@ -2189,9 +2197,10 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"\x06cmd_id\x18\x01 \x01(\tR\x05cmdId\" \n" +
 	"\n" +
 	"DirListCmd\x12\x12\n" +
-	"\x04path\x18\x01 \x01(\tR\x04path\"#\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\"9\n" +
 	"\rBrowseFileCmd\x12\x12\n" +
-	"\x04path\x18\x01 \x01(\tR\x04path\"\x1e\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x03R\x05limit\"\x1e\n" +
 	"\bMkdirCmd\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\x1f\n" +
 	"\tRemoveCmd\x12\x12\n" +

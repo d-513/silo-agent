@@ -1,11 +1,13 @@
-export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string };
+export type Attachment = { name: string; path: string; size: number };
+
+export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string; attachments?: Attachment[] };
 
 export type NestedCall = { key: string; title: string; name: string; result?: string; running?: boolean };
 
 export type ToolBlock = { key: string; type: "tool"; name: string; args: string; result?: string; running?: boolean; runId?: string; calls?: NestedCall[] };
 
 export type Block =
-  | { key: string; type: "user"; text: string }
+  | { key: string; type: "user"; text: string; attachments?: Attachment[] }
   | { key: string; type: "assistant"; text: string; streaming?: boolean }
   | { key: string; type: "thinking"; text: string; streaming?: boolean }
   | ToolBlock
@@ -69,7 +71,7 @@ export function foldEvents(events: Ev[]): Block[] {
     if (e.kind === "error" && staleKey.test(e.body)) continue;
     const key = `${e.kind}-${i++}`;
     if (e.kind === "user") {
-      push({ key, type: "user", text: e.body });
+      push({ key, type: "user", text: e.body, attachments: e.attachments });
       continue;
     }
     if (e.kind === "thinking_chunk") {

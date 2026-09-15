@@ -7,11 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     scrot xdotool imagemagick unzip \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
     ca-certificates fonts-liberation sudo \
+    poppler-utils ghostscript pandoc tesseract-ocr catdoc unrtf \
+    python3-docx python3-openpyxl python3-xlrd python3-odf python3-pypdf \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 --shell /bin/bash --user-group silo \
     && echo 'silo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/silo \
     && chmod 440 /etc/sudoers.d/silo \
-    && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir playwright
+    && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir playwright python-pptx
 COPY bin/silo-worker /usr/local/bin/silo-worker
 COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
 COPY botimage/silo-chromium /usr/local/bin/silo-chromium
@@ -34,7 +36,7 @@ RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
     && rm -rf /tmp/ubol.zip /tmp/ubol-src \
     && test -f /opt/silo/ubol/manifest.json
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/silo-chromium \
-    && mkdir -p /workspace /workspace/bot /var/run/silo /run/user/1000 \
+    && mkdir -p /workspace /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
         /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools \
     && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \

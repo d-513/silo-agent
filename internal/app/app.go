@@ -197,14 +197,30 @@ func (a *App) recoverOrphans() {
 	if a.DB == nil {
 		return
 	}
-	res := a.DB.Model(&db.Run{}).Where("status = ?", "running").Update("status", "interrupted")
-	if res.RowsAffected > 0 {
-		log.Printf("interrupted %d orphaned runs", res.RowsAffected)
+	var runs []db.Run
+	a.DB.Where("status = ?", "running").Find(&runs)
+	if len(runs) > 0 {
+		a.DB.Model(&db.Run{}).Where("status = ?", "running").Update("status", "interrupted")
+		for _, r := range runs {
+			a.ensureTerminalEvent(r, "interrupted")
+		}
+		log.Printf("interrupted %d orphaned runs", len(runs))
 	}
-	res = a.DB.Model(&db.Approval{}).Where("status = ?", "pending").Update("status", "interrupted")
+	res := a.DB.Model(&db.Approval{}).Where("status = ?", "pending").Update("status", "interrupted")
 	if res.RowsAffected > 0 {
 		log.Printf("interrupted %d orphaned approvals", res.RowsAffected)
 	}
+}
+
+// ensureTerminalEvent appends a done event for a run that is no longer live so
+// replayed history never leaves the client spinning on an open run.
+func (a *App) ensureTerminalEvent(run db.Run, status string) {
+	var n int64
+	a.DB.Model(&db.RunEvent{}).Where("run_id = ? AND kind = ?", run.ID, "done").Count(&n)
+	if n > 0 {
+		return
+	}
+	a.emit(run.BotID, run.ChatID, run.ID, "done", status, "")
 }
 
 func (a *App) Shutdown() {

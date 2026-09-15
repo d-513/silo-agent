@@ -137,6 +137,9 @@ func (a *App) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFile
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }
 
+// putFileMax matches the worker's putLimit. Previews stay smaller (worker browseLimit).
+const putFileMax = 50 << 20
+
 func (a *App) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
 	b, err := a.ownBot(ctx, req.Msg.GetBotId())
 	if err != nil {
@@ -147,8 +150,8 @@ func (a *App) PutFile(ctx context.Context, req *connect.Request[v1.PutFileReques
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}
 	data := req.Msg.GetData()
-	if len(data) > 2<<20 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file too large (max 2 MB)"))
+	if len(data) > putFileMax {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file too large (max 50 MB)"))
 	}
 	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
 		return nil, err

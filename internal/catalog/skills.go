@@ -15,6 +15,17 @@ var skillFiles embed.FS
 
 const DefaultSkill = skills.DefaultName
 
+// DefaultSkills are seed library skills that every bot enables on creation.
+// Owners can still turn any of them off; a disabled row is left alone.
+var DefaultSkills = []string{
+	DefaultSkill,
+	"reading-pdf",
+	"reading-word",
+	"reading-spreadsheets",
+	"reading-presentations",
+	"reading-images",
+}
+
 // SeededName is true when name is one of the embed’d catalog skills.
 func SeededName(name string) bool {
 	name = strings.TrimSpace(name)

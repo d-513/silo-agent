@@ -79,6 +79,7 @@ type RunEvent struct {
 	Kind      string
 	Body      string
 	Tool      string
+	Meta      string
 	CreatedAt time.Time
 }
 

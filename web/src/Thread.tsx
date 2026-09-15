@@ -12,6 +12,7 @@ import {
   MagnifyingGlass,
   Mouse,
   Notebook,
+  Paperclip,
   PencilSimple,
   Plugs,
   Terminal,
@@ -35,6 +36,7 @@ import remarkGfm from "remark-gfm";
 import { ui } from "./api";
 import { ArtifactCard, downloadArtifact, type SkillArtifact } from "./Artifact";
 import { downloadFile, FilePreview } from "./FilePreview";
+import { fmtSize } from "./fs";
 import { foldEvents, type Ev } from "./fold";
 
 export type { Ev };
@@ -508,6 +510,21 @@ export function Thread({
           return (
             <div key={b.key} className="max-w-full break-words whitespace-pre-wrap rounded-[10px] border-l-4 border-bindery bg-folio px-3 py-2">
               {b.text}
+              {b.attachments?.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {b.attachments.map((a) => (
+                    <span
+                      key={a.path}
+                      title={a.path}
+                      className="inline-flex max-w-full items-center gap-1 rounded border border-thread-2 bg-cloth px-2 py-0.5 text-[12px] text-iron"
+                    >
+                      <Paperclip size={12} />
+                      <span className="truncate">{a.name}</span>
+                      <span className="shrink-0 text-stone">{fmtSize(a.size)}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           );
         }

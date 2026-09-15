@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -19,6 +20,31 @@ import (
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 )
+
+// validUTF8 replaces invalid UTF-8 bytes so protobuf string fields stay
+// marshalable and SQLite text stays decodable. Command output (a docx dump,
+// terminal bytes, a masking splice) can otherwise poison a run event and make
+// the whole chat unreplayable.
+func validUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	return strings.ToValidUTF8(s, "\uFFFD")
+}
+
+// truncateUTF8 cuts s to at most n bytes without splitting a rune. Slicing a
+// Go string at an arbitrary byte offset can leave a partial multibyte rune,
+// which is invalid UTF-8 and unparseable over protobuf.
+func truncateUTF8(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	s = s[:n]
+	for len(s) > 0 && !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s
+}
 
 var toolDefs = []openai.ChatCompletionToolUnionParam{
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
@@ -224,13 +250,67 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
-	body = a.Mask(botID).Apply(body)
+	body = validUTF8(a.Mask(botID).Apply(body))
+	tool = validUTF8(tool)
 	id := ids.New()
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, CreatedAt: time.Now()})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
 }
 
-func (a *App) runLoop(botID, chatID, runID, userText string) {
+// presentBrowseLimit is the byte budget the CP asks the worker for when a
+// tool presents a file. It is higher than the Files-tab preview budget so a
+// photo or a rendered PDF page still reaches the multimodal model.
+const presentBrowseLimit = 32 << 20
+
+type eventAttachment struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Size int64  `json:"size"`
+	Mime string `json:"mime,omitempty"`
+}
+
+// emitUser persists the opening user message and carries any chat uploads so
+// the thread can render chips on reload and the model can be told the paths.
+func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment) {
+	body = validUTF8(a.Mask(botID).Apply(body))
+	meta := ""
+	if len(atts) > 0 {
+		flat := make([]eventAttachment, 0, len(atts))
+		for _, at := range atts {
+			flat = append(flat, eventAttachment{Name: at.GetName(), Path: at.GetPath(), Size: at.GetSize(), Mime: at.GetMime()})
+		}
+		if b, err := json.Marshal(flat); err == nil {
+			meta = string(b)
+		}
+	}
+	id := ids.New()
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Meta: meta, CreatedAt: time.Now()})
+	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Attachments: atts})
+}
+
+func attachmentsFromMeta(meta string) []eventAttachment {
+	if meta == "" {
+		return nil
+	}
+	var out []eventAttachment
+	if json.Unmarshal([]byte(meta), &out) != nil {
+		return nil
+	}
+	return out
+}
+
+func v1Attachments(flat []eventAttachment) []*v1.Attachment {
+	if len(flat) == 0 {
+		return nil
+	}
+	out := make([]*v1.Attachment, 0, len(flat))
+	for _, a := range flat {
+		out = append(out, &v1.Attachment{Name: a.Name, Path: a.Path, Size: a.Size, Mime: a.Mime})
+	}
+	return out
+}
+
+func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel)
@@ -251,9 +331,13 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 		option.WithBaseURL("https://openrouter.ai/api/v1"),
 	)
 
-	a.emit(botID, chatID, runID, "user", userText, "")
+	a.emitUser(botID, chatID, runID, userText, atts)
 	a.bumpChat(chatID)
-	go a.nameChat(botID, chatID, runID, userText, client, model)
+	title := userText
+	if strings.TrimSpace(title) == "" && len(atts) > 0 {
+		title = "attached " + atts[0].GetName()
+	}
+	go a.nameChat(botID, chatID, runID, title, client, model)
 
 	var bot db.Bot
 	sysText := prompts.System
@@ -347,7 +431,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string) {
 			}
 			out = a.Mask(botID).Apply(out)
 			if len(out) > 12000 {
-				out = out[:12000] + "\n…truncated"
+				out = truncateUTF8(out, 12000) + "\n…truncated"
 			}
 			a.emit(botID, chatID, runID, "tool_result", out, fn.Name)
 			msgs = append(msgs, openai.ToolMessage(out, tc.ID))
@@ -397,7 +481,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string, client openai.Clie
 	defer cancel()
 	snippet := userText
 	if len(snippet) > 800 {
-		snippet = snippet[:800]
+		snippet = truncateUTF8(snippet, 800)
 	}
 	res, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: model,
@@ -457,7 +541,15 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 			switch ev.Kind {
 			case "user":
 				flushTools()
-				msgs = append(msgs, openai.UserMessage(ev.Body))
+				text := ev.Body
+				if atts := attachmentsFromMeta(ev.Meta); len(atts) > 0 {
+					paths := make([]string, 0, len(atts))
+					for _, at := range atts {
+						paths = append(paths, at.Path)
+					}
+					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
+				}
+				msgs = append(msgs, openai.UserMessage(text))
 			case "assistant":
 				flushTools()
 				if strings.TrimSpace(ev.Body) != "" {
@@ -621,7 +713,7 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 			Pattern: str("pattern"), Path: path, Include: str("include"), MaxHits: max,
 		}}}
 	case "present":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path, Limit: presentBrowseLimit}}}
 	case "look":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
 	case "click":
@@ -772,13 +864,13 @@ func presentAck(path, raw string) string {
 	if botScratch(path) {
 		msg := fmt.Sprintf("seen %s (%s). Scratch — you have the pixels; the human has a collapsed row.", label, formatSize(row.Size))
 		if row.Truncated {
-			msg += " Preview is the first 2 MB."
+			msg += " Preview is truncated."
 		}
 		return msg
 	}
 	msg := fmt.Sprintf("presented %s (%s). Shown in the thread — do not retype it.", row.Name, formatSize(row.Size))
 	if row.Truncated {
-		msg += " Preview is the first 2 MB."
+		msg += " Preview is truncated."
 	}
 	return msg
 }

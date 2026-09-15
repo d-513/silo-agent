@@ -601,7 +601,7 @@ func callTitle(name, action string) string {
 
 func capCall(s string) string {
 	if len(s) > 2000 {
-		return s[:2000] + "\n…truncated"
+		return truncateUTF8(s, 2000) + "\n…truncated"
 	}
 	return s
 }

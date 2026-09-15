@@ -139,6 +139,11 @@ func TestSeededName(t *testing.T) {
 	if !SeededName(DefaultSkill) {
 		t.Fatal("embed missing")
 	}
+	for _, name := range DefaultSkills {
+		if !SeededName(name) {
+			t.Fatalf("default skill %q missing from embed", name)
+		}
+	}
 	if SeededName("copied-seed") || SeededName("") {
 		t.Fatal("unknown name")
 	}

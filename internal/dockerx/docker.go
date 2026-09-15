@@ -168,8 +168,9 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	cfg := e.store.Config()
 	ws := filepath.Join(cfg.DataDir, "bots", botID, "workspace")
 	bot := filepath.Join(ws, "bot")
+	tmp := filepath.Join(ws, "tmp")
 	chrome := filepath.Join(cfg.DataDir, "bots", botID, "chrome-profile")
-	for _, d := range []string{ws, bot, chrome} {
+	for _, d := range []string{ws, bot, tmp, chrome} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return "", err
 		}

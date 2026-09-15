@@ -32,7 +32,7 @@ func TestSkillBlurbAndLoad(t *testing.T) {
 	a := skillApp(t)
 	a.DB.Create(&db.User{ID: "u"})
 	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
-	a.ensureDefaultSkill("b1")
+	a.ensureDefaultSkills("b1")
 	blurb := a.skillBlurb("b1")
 	if !strings.Contains(blurb, "`product-self-knowledge`") || strings.Contains(blurb, "## Silo product") {
 		t.Fatal(blurb)
@@ -68,7 +68,7 @@ func TestSetBotSkillUniqueName(t *testing.T) {
 		}
 	}
 	writePersonal()
-	a.ensureDefaultSkill("b1")
+	a.ensureDefaultSkills("b1")
 	_, err := a.SetBotSkill(ctx, connect.NewRequest(&v1.SetBotSkillRequest{
 		BotId: "b1", Kind: skills.KindPersonal, Name: catalog.DefaultSkill, Enabled: true,
 	}))

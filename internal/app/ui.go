@@ -144,7 +144,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		return nil, err
 	}
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
-	a.ensureDefaultSkill(id)
+	a.ensureDefaultSkills(id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
 	}
@@ -273,7 +273,8 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		return nil, err
 	}
 	text := req.Msg.GetText()
-	if text == "" {
+	atts := cleanAttachments(req.Msg.GetAttachments())
+	if text == "" && len(atts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text required"))
 	}
 	chatID := req.Msg.GetChatId()
@@ -296,8 +297,35 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		cp := *b
 		a.ensureRunningBg(&cp)
 	}
-	go a.runLoop(b.ID, ch.ID, run.ID, text)
+	go a.runLoop(b.ID, ch.ID, run.ID, text, atts)
 	return connect.NewResponse(&v1.SendResponse{RunId: run.ID, ChatId: ch.ID}), nil
+}
+
+const maxAttachments = 20
+
+// cleanAttachments normalizes client-supplied upload metadata into
+// workspace-relative paths. The bytes already landed via PutFile; this is
+// prompt metadata, so bad entries are dropped rather than rejected.
+func cleanAttachments(in []*v1.Attachment) []*v1.Attachment {
+	out := make([]*v1.Attachment, 0, len(in))
+	for _, at := range in {
+		if at == nil {
+			continue
+		}
+		p := relWorkspace(at.GetPath())
+		if p == "" {
+			continue
+		}
+		name := strings.TrimSpace(at.GetName())
+		if name == "" {
+			name = filepath.Base(p)
+		}
+		out = append(out, &v1.Attachment{Name: name, Path: p, Size: at.GetSize(), Mime: at.GetMime()})
+		if len(out) == maxAttachments {
+			break
+		}
+	}
+	return out
 }
 
 func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error) {
@@ -336,7 +364,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for _, r := range eventsAfter(rows, after) {
 		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: r.Body, Tool: r.Tool}); err != nil {
+		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: validUTF8(r.Body), Tool: validUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta))}); err != nil {
 			return err
 		}
 	}

@@ -63,8 +63,8 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
         const dest = joinPath(cwd, f.name);
         if (!dest) continue;
         const buf = new Uint8Array(await f.arrayBuffer());
-        if (buf.byteLength > 2 << 20) {
-          setErr(`${f.name} is larger than 2 MB`);
+        if (buf.byteLength > 50 << 20) {
+          setErr(`${f.name} is larger than 50 MB`);
           continue;
         }
         await ui.putFile({ botId: bot.id, path: dest, data: buf });

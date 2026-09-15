@@ -176,10 +176,18 @@ message DeleteChatRequest {
 
 message DeleteChatResponse {}
 
+message Attachment {
+  string name = 1;
+  string path = 2;
+  int64 size = 3;
+  string mime = 4;
+}
+
 message SendRequest {
   string bot_id = 1;
   string text = 2;
   string chat_id = 3;
+  repeated Attachment attachments = 4;
 }
 
 message SendResponse {
@@ -207,6 +215,7 @@ message RunEvent {
   string tool = 4;
   string chat_id = 5;
   string id = 6;
+  repeated Attachment attachments = 7;
 }
 
 message SecretMeta {

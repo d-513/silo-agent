@@ -39,7 +39,7 @@ func TestPresentAck(t *testing.T) {
 		t.Fatal(got)
 	}
 	trunc := presentAck("big.bin", `{"name":"big.bin","size":3000000,"truncated":true}`)
-	if !strings.Contains(trunc, "2 MB") {
+	if !strings.Contains(trunc, "truncated") {
 		t.Fatal(trunc)
 	}
 	seen := presentAck("bot/page.png", `{"name":"page.png","size":2048}`)
