@@ -2,10 +2,36 @@ package app
 
 import (
 	"context"
+	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"silo.agent/internal/db"
 )
+
+// A sidecar left running across a control-plane restart reconnects and reports
+// "starting". That progress note belongs only to an in-flight initialization;
+// on an already-authorized connector it must be ignored.
+func TestBridgeStatusOnlyAppliesWhileInitializing(t *testing.T) {
+	a := testApp(t, nil)
+	a.DB.Create(&db.BotConnector{ID: "bc1", BotID: "b1", ConnectorID: "c1", AuthStatus: statusInit})
+
+	a.setBridgeStatus("bc1", "starting")
+	var row db.BotConnector
+	a.DB.First(&row, "id = ?", "bc1")
+	if row.StatusDetail != "Starting MCP server…" {
+		t.Fatalf("initializing detail %q", row.StatusDetail)
+	}
+
+	a.DB.Model(&db.BotConnector{}).Where("id = ?", "bc1").
+		Updates(map[string]any{"auth_status": statusOK, "status_detail": ""})
+	a.setBridgeStatus("bc1", "starting")
+	a.DB.First(&row, "id = ?", "bc1")
+	if row.StatusDetail != "" || row.AuthStatus != statusOK {
+		t.Fatalf("stale %q %q", row.AuthStatus, row.StatusDetail)
+	}
+}
 
 // testStartBridge registers an in-process MCP server as if a sidecar had dialed
 // the CP, exercising the real bridge registry and transport without Docker.

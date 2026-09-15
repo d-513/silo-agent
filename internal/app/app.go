@@ -145,6 +145,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
+	a.resumeConnectors()
 	a.migrateSettings()
 	return a
 }

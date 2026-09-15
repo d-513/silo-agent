@@ -102,15 +102,25 @@ func (a *App) waitBridge(ctx context.Context, id string, timeout time.Duration) 
 }
 
 func (a *App) setBridgeStatus(id, status string) {
+	if a.DB == nil {
+		return
+	}
+	// Bridge status is progress for a connection that is still coming up. Only
+	// touch the row while it is initializing: a sidecar left running across a
+	// control-plane restart reconnects and reports "starting", and writing that
+	// onto an already-authorized connector left a stale
+	// "Authorized · Starting MCP server…" in the UI forever.
+	var row db.BotConnector
+	if err := a.DB.First(&row, "id = ?", id).Error; err != nil || row.AuthStatus != statusInit {
+		return
+	}
 	detail := map[string]string{
 		"starting": "Starting MCP server…",
 	}[status]
 	if detail == "" {
 		detail = status
 	}
-	if a.DB != nil {
-		a.DB.Model(&db.BotConnector{}).Where("id = ?", id).Update("status_detail", detail)
-	}
+	a.DB.Model(&db.BotConnector{}).Where("id = ?", id).Update("status_detail", detail)
 }
 
 // Tunnel is the reverse MCP host endpoint. Sidecars authenticate with their

@@ -415,6 +415,38 @@ func TestRecoverOrphans(t *testing.T) {
 	}
 }
 
+func TestResumeClearsStaleConnectorDetail(t *testing.T) {
+	gdb := memDB(t)
+	gdb.Create(&db.Connector{ID: "c1", Kind: "library", Name: "X", Transport: "stdio", StdioCommand: "npx"})
+	gdb.Create(&db.BotConnector{
+		ID: "bc1", BotID: "b1", ConnectorID: "c1",
+		AuthStatus: statusOK, StatusDetail: "Starting MCP server…",
+	})
+	New(nil, gdb, &fakeHost{})
+	var row db.BotConnector
+	gdb.First(&row, "id = ?", "bc1")
+	if row.StatusDetail != "" {
+		t.Fatalf("stale detail %q", row.StatusDetail)
+	}
+	if row.AuthStatus != statusOK {
+		t.Fatalf("status %q", row.AuthStatus)
+	}
+}
+
+func TestResumeRedrivesInitializing(t *testing.T) {
+	h := &fakeHost{}
+	a := testAppStore(t, h)
+	a.DB.Create(&db.Connector{ID: "c1", Kind: "custom", BotID: "b1", Name: "X", Transport: "stdio", StdioCommand: "npx"})
+	a.DB.Create(&db.BotConnector{
+		ID: "bc1", BotID: "b1", ConnectorID: "c1",
+		AuthStatus: statusInit, StatusDetail: "Starting MCP server…",
+	})
+	a.resumeConnectors()
+	if row := waitConnector(t, a, "bc1"); row.AuthStatus != statusOK || row.StatusDetail != "" {
+		t.Fatalf("resume %q %q %q", row.AuthStatus, row.StatusDetail, row.LastError)
+	}
+}
+
 func TestRunOfCmd(t *testing.T) {
 	a := testApp(t, nil)
 	a.mu.Lock()

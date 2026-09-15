@@ -427,6 +427,7 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 		a.persistOAuthToken(h, &row)
 		row.AuthStatus = statusOK
 		row.LastError = ""
+		row.StatusDetail = ""
 		a.DB.Save(&row)
 		_ = a.refreshTools(cctx, &row, &c)
 	}()
@@ -961,6 +962,28 @@ func (a *App) initConnectors() {
 		}
 		if err := catalog.SeedSkills(a.cfg().DataDir); err != nil {
 			log.Printf("skill library seed: %v", err)
+		}
+	}
+}
+
+// resumeConnectors reconciles attachment state after a restart. Initialization
+// jobs live only in memory, so a row left "initializing" would otherwise be
+// stuck forever; re-drive it so it converges to authorized or error. Transient
+// progress details from before the restart are cleared so the UI cannot show a
+// stale "Starting MCP server…".
+func (a *App) resumeConnectors() {
+	if a.DB == nil {
+		return
+	}
+	var rows []db.BotConnector
+	a.DB.Find(&rows)
+	for i := range rows {
+		row := rows[i]
+		if row.StatusDetail != "" {
+			a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Update("status_detail", "")
+		}
+		if row.AuthStatus == statusInit {
+			a.startRefresh(row.ID)
 		}
 	}
 }
