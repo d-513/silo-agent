@@ -1,8 +1,11 @@
 import {
+  ArrowDown,
   CaretRight,
   ChatCircle,
+  Check,
   CircleNotch,
   Code,
+  Copy,
   DownloadSimple,
   File,
   Eye,
@@ -15,6 +18,7 @@ import {
   Paperclip,
   PencilSimple,
   Plugs,
+  Sparkle,
   Terminal,
   User,
 } from "@phosphor-icons/react";
@@ -35,6 +39,7 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
 import { ArtifactCard, downloadArtifact, type SkillArtifact } from "./Artifact";
+import { Crest } from "./Crest";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
 import { foldEvents, type Ev } from "./fold";
@@ -180,11 +185,43 @@ function resultLang(s: string) {
   return langFromPath(t.split("\n")[0] ?? "") || undefined;
 }
 
-function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+function CopyButton({ text, className = "" }: { text: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
   return (
-    <pre className="whitespace-pre-wrap break-words rounded bg-cloth p-3 font-mono text-[13px] leading-5">
-      <code className="hljs whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
-    </pre>
+    <button
+      type="button"
+      onClick={copy}
+      title={copied ? "Copied to clipboard!" : "Copy code"}
+      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-stone transition-colors hover:bg-linen hover:text-iron active:scale-95 ${className}`}
+    >
+      {copied ? <Check size={12} className="text-pine" /> : <Copy size={12} />}
+      <span>{copied ? "Copied" : "Copy"}</span>
+    </button>
+  );
+}
+
+function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+  const displayLang = lang || (resultLang(code) ?? "");
+  return (
+    <div className="group/code overflow-hidden rounded-xl border border-thread-2 bg-cloth">
+      <div className="flex items-center justify-between border-b border-thread-2/60 bg-linen/30 px-3 py-1 text-[11px] font-mono text-stone">
+        <span className="uppercase tracking-wider">{displayLang || "code"}</span>
+        <CopyButton text={code} />
+      </div>
+      <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[13px] leading-5">
+        <code className="hljs whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
+      </pre>
+    </div>
   );
 }
 
@@ -367,15 +404,15 @@ function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNo
   const [open, setOpen] = useState(false);
   return (
     <details
-      className="group max-w-full"
+      className="group max-w-full rounded-xl border border-thread-2/80 bg-folio transition-colors hover:border-thread"
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="flex cursor-pointer items-center gap-2 rounded bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
-        <CaretRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+      <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-[12px] font-medium tracking-wide text-stone transition-colors hover:text-iron">
+        <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
         {summary}
       </summary>
-      <div className="mt-2 space-y-2">{children}</div>
+      <div className="border-t border-thread-2/50 bg-cloth/30 p-3 space-y-2">{children}</div>
     </details>
   );
 }
@@ -446,14 +483,14 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
     );
   }
   return (
-    <div className="max-w-full space-y-2 rounded-[10px] border border-thread bg-folio p-3">
+    <div className="max-w-full space-y-2 rounded-xl border border-thread bg-folio p-3 shadow-sm">
       <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-stone">
         <FrameCorners size={14} />
         <span className="min-w-0 flex-1 truncate">{name}</span>
         {file && (
           <button
             type="button"
-            className="text-stone hover:text-iron"
+            className="text-stone hover:text-iron transition-colors"
             title="Download"
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
@@ -476,206 +513,288 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
 
 export function Thread({
   botId,
+  botName,
+  botCrest,
   events,
   sending,
   onInspectArtifact,
   onSaveSkill,
+  onSelectPrompt,
 }: {
   botId: string;
+  botName?: string;
+  botCrest?: number;
   events: Ev[];
   sending: boolean;
   onInspectArtifact?: (a: SkillArtifact) => void;
   onSaveSkill?: (a: SkillArtifact) => void;
+  onSelectPrompt?: (prompt: string) => void;
 }) {
   const end = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const blocks = foldEvents(events);
+
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
   }, [events, sending]);
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBottom(distanceToBottom > 160);
+  };
+
+  const scrollToBottom = () => {
+    end.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const working =
     sending &&
     !blocks.some(
       (b) => (b.type === "assistant" && b.streaming) || (b.type === "thinking" && b.streaming) || (b.type === "tool" && b.running),
     );
+
   return (
-    <div className="min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto p-4">
-      {blocks.length === 0 && !sending && (
-        <p className="flex items-center gap-2 text-stone">
-          <ChatCircle size={16} />
-          Ask this Bot…
-        </p>
-      )}
-      {blocks.map((b) => {
-        if (b.type === "user") {
-          return (
-            <div key={b.key} className="max-w-full break-words whitespace-pre-wrap rounded-[10px] border-l-4 border-bindery bg-folio px-3 py-2">
-              {b.text}
-              {b.attachments?.length ? (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {b.attachments.map((a) => (
-                    <span
-                      key={a.path}
-                      title={a.path}
-                      className="inline-flex max-w-full items-center gap-1 rounded border border-thread-2 bg-cloth px-2 py-0.5 text-[12px] text-iron"
-                    >
-                      <Paperclip size={12} />
-                      <span className="truncate">{a.name}</span>
-                      <span className="shrink-0 text-stone">{fmtSize(a.size)}</span>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4"
+    >
+      <div className="mx-auto max-w-3xl xl:max-w-4xl space-y-4">
+        {blocks.length === 0 && !sending && (
+          <div className="my-auto flex flex-col items-center justify-center px-4 py-12 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cloth/80 border border-thread-2 shadow-sm">
+              {botCrest !== undefined ? (
+                <Crest index={botCrest} size={36} />
+              ) : (
+                <ChatCircle size={28} className="text-bindery" />
+              )}
             </div>
-          );
-        }
-        if (b.type === "thinking") {
-          if (b.streaming && sending) {
+            <h2 className="text-[18px] font-medium tracking-tight text-iron">
+              {botName ? botName : "Silo Bot"}
+            </h2>
+            <p className="mt-1 max-w-md text-[13px] text-stone">
+              Ready for your prompt. Run code in the container, inspect files, or command the browser and desktop.
+            </p>
+            {onSelectPrompt && (
+              <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                {[
+                  "What files are in /workspace?",
+                  "Run a Python script to check system info",
+                  "Open browser and check the desktop",
+                  "Search the web",
+                ].map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => onSelectPrompt(prompt)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-thread-2 bg-folio px-3 py-1.5 text-[12px] text-iron shadow-sm transition-all hover:border-bindery hover:bg-linen active:scale-95"
+                  >
+                    <Sparkle size={12} className="text-bindery" />
+                    <span>{prompt}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {blocks.map((b) => {
+          if (b.type === "user") {
             return (
-              <div key={b.key} className="space-y-2 text-stone">
-                <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide">
-                  <CircleNotch size={14} className="animate-spin" />
-                  Thinking
+              <div
+                key={b.key}
+                className="max-w-full break-words whitespace-pre-wrap rounded-2xl border border-thread-2/80 border-l-[3.5px] border-l-bindery bg-folio p-3.5 shadow-[0_1px_3px_rgba(30,33,38,0.03)]"
+              >
+                <div className="mb-1 flex items-center gap-1 text-[11px] font-medium tracking-wider text-stone uppercase">
+                  <User size={12} className="text-bindery" />
+                  <span>You</span>
                 </div>
-                {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px]">{b.text}</div> : null}
+                <div className="text-[14px] leading-relaxed text-iron">{b.text}</div>
+                {b.attachments?.length ? (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-thread-2/50 pt-2">
+                    {b.attachments.map((a) => (
+                      <span
+                        key={a.path}
+                        title={a.path}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-thread-2 bg-cloth px-2.5 py-1 text-[12px] text-iron"
+                      >
+                        <Paperclip size={12} className="text-bindery" />
+                        <span className="truncate">{a.name}</span>
+                        <span className="shrink-0 font-mono text-[11px] text-stone">{fmtSize(a.size)}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
+          if (b.type === "thinking") {
+            if (b.streaming && sending) {
+              return (
+                <div key={b.key} className="rounded-xl border border-thread-2/70 bg-cloth/30 p-3 space-y-2 text-stone">
+                  <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-bindery">
+                    <CircleNotch size={14} className="animate-spin" />
+                    Thinking…
+                  </div>
+                  {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px] text-stone/90 leading-relaxed">{b.text}</div> : null}
+                </div>
+              );
+            }
+            return (
+              <details key={b.key} className="group max-w-full rounded-xl border border-thread-2/60 bg-cloth/20 text-stone">
+                <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium tracking-wide hover:text-iron">
+                  <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
+                  <span>Thought</span>
+                </summary>
+                <div className="border-t border-thread-2/50 p-3 break-words whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div>
+              </details>
+            );
+          }
+          if (b.type === "tool") {
+            if (b.name === "propose_skill" && blocks.some((x) => x.type === "artifact")) {
+              return null;
+            }
+            const path = asStr(parseToolArgs(b.args).path);
+            if (b.name === "look") {
+              return (
+                <ToolFold
+                  key={b.key}
+                  summary={
+                    <>
+                      <Eye size={14} className="text-bindery" />
+                      {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                      {b.running ? "Looking at" : "Looked at"} screen
+                    </>
+                  }
+                >
+                  {!b.running && b.result && !b.result.startsWith("error:") ? (
+                    <PresentFile botId={botId} path="bot/screen.png" quiet />
+                  ) : b.result ? (
+                    <ToolResult text={b.result} />
+                  ) : null}
+                </ToolFold>
+              );
+            }
+            if (b.name === "present" && path && isBotScratch(path)) {
+              const name = path.split("/").filter(Boolean).pop() || path;
+              return (
+                <ToolFold
+                  key={b.key}
+                  summary={
+                    <>
+                      <FrameCorners size={14} className="text-bindery" />
+                      {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                      {b.running ? "Looking at" : "Looked at"} {name}
+                    </>
+                  }
+                >
+                  {!b.running && b.result && !b.result.startsWith("error:") ? (
+                    <PresentFile botId={botId} path={path} quiet />
+                  ) : b.result ? (
+                    <ToolResult text={b.result} />
+                  ) : null}
+                </ToolFold>
+              );
+            }
+            if (b.name === "present" && !b.running && b.result && !b.result.startsWith("error:") && path) {
+              return <PresentFile key={b.key} botId={botId} path={path} />;
+            }
+            const { label, Icon } = toolMeta(b.name);
+            const python =
+              b.name === "call" ? null : (
+              <ToolFold
+                key={b.calls?.length ? `${b.key}-py` : b.key}
+                summary={
+                  <>
+                    <Icon size={14} className={b.name === "exec_python" ? "text-pine" : ""} />
+                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                    {b.running ? "Using" : "Used"} {label}
+                  </>
+                }
+              >
+                <ToolInput name={b.name} args={b.args} running={b.running} />
+                {b.result ? <ToolResult text={b.result} /> : null}
+              </ToolFold>
+            );
+            if (!b.calls?.length) return python;
+            return (
+              <div key={b.key} className="space-y-2">
+                {b.calls.map((c) => (
+                  <ToolFold
+                    key={c.key}
+                    summary={
+                      <>
+                        <Plugs size={14} className="text-slate" />
+                        {c.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                        {c.running ? "Using" : "Used"} {c.title}
+                      </>
+                    }
+                  >
+                    {c.result ? <ToolResult text={c.result} /> : null}
+                  </ToolFold>
+                ))}
+                {python}
+              </div>
+            );
+          }
+          if (b.type === "artifact") {
+            const a: SkillArtifact = {
+              type: "skill",
+              name: b.name,
+              title: b.title,
+              path: b.path,
+              scope: b.scope,
+              approvalId: b.approvalId,
+              status: b.status,
+              runId: b.runId,
+            };
+            return (
+              <ArtifactCard
+                key={b.key}
+                artifact={a}
+                onOpen={() => onInspectArtifact?.(a)}
+                onSave={a.status === "pending" ? () => onSaveSkill?.(a) : undefined}
+                onDownload={() => void downloadArtifact(botId, a)}
+              />
+            );
+          }
+          if (b.type === "assistant") {
+            return (
+              <div key={b.key} className="min-w-0 space-y-1">
+                <Md text={b.text} />
+                {b.streaming ? (
+                  <span className="ml-1 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-bindery align-middle" />
+                ) : null}
               </div>
             );
           }
           return (
-            <details key={b.key} className="max-w-full text-stone">
-              <summary className="cursor-pointer text-[12px] font-medium tracking-wide">Thought</summary>
-              <div className="mt-2 break-words whitespace-pre-wrap font-mono text-[13px]">{b.text}</div>
-            </details>
-          );
-        }
-        if (b.type === "tool") {
-          if (b.name === "propose_skill" && blocks.some((x) => x.type === "artifact")) {
-            return null;
-          }
-          const path = asStr(parseToolArgs(b.args).path);
-          if (b.name === "look") {
-            return (
-              <ToolFold
-                key={b.key}
-                summary={
-                  <>
-                    <Eye size={14} />
-                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
-                    {b.running ? "Looking at" : "Looked at"} screen
-                  </>
-                }
-              >
-                {!b.running && b.result && !b.result.startsWith("error:") ? (
-                  <PresentFile botId={botId} path="bot/screen.png" quiet />
-                ) : b.result ? (
-                  <ToolResult text={b.result} />
-                ) : null}
-              </ToolFold>
-            );
-          }
-          if (b.name === "present" && path && isBotScratch(path)) {
-            const name = path.split("/").filter(Boolean).pop() || path;
-            return (
-              <ToolFold
-                key={b.key}
-                summary={
-                  <>
-                    <FrameCorners size={14} />
-                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
-                    {b.running ? "Looking at" : "Looked at"} {name}
-                  </>
-                }
-              >
-                {!b.running && b.result && !b.result.startsWith("error:") ? (
-                  <PresentFile botId={botId} path={path} quiet />
-                ) : b.result ? (
-                  <ToolResult text={b.result} />
-                ) : null}
-              </ToolFold>
-            );
-          }
-          if (b.name === "present" && !b.running && b.result && !b.result.startsWith("error:") && path) {
-            return <PresentFile key={b.key} botId={botId} path={path} />;
-          }
-          const { label, Icon } = toolMeta(b.name);
-          const python =
-            b.name === "call" ? null : (
-            <ToolFold
-              key={b.calls?.length ? `${b.key}-py` : b.key}
-              summary={
-                <>
-                  <Icon size={14} />
-                  {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
-                  {b.running ? "Using" : "Used"} {label}
-                </>
-              }
-            >
-              <ToolInput name={b.name} args={b.args} running={b.running} />
-              {b.result ? <ToolResult text={b.result} /> : null}
-            </ToolFold>
-          );
-          if (!b.calls?.length) return python;
-          return (
-            <div key={b.key} className="space-y-2">
-              {b.calls.map((c) => (
-                <ToolFold
-                  key={c.key}
-                  summary={
-                    <>
-                      <Plugs size={14} />
-                      {c.running ? <CircleNotch size={14} className="animate-spin" /> : null}
-                      {c.running ? "Using" : "Used"} {c.title}
-                    </>
-                  }
-                >
-                  {c.result ? <ToolResult text={c.result} /> : null}
-                </ToolFold>
-              ))}
-              {python}
+            <div key={b.key} className="rounded-xl border border-carmine/30 bg-carmine/10 p-3 text-carmine text-[13px]">
+              {b.text}
             </div>
           );
-        }
-        if (b.type === "artifact") {
-          const a: SkillArtifact = {
-            type: "skill",
-            name: b.name,
-            title: b.title,
-            path: b.path,
-            scope: b.scope,
-            approvalId: b.approvalId,
-            status: b.status,
-            runId: b.runId,
-          };
-          return (
-            <ArtifactCard
-              key={b.key}
-              artifact={a}
-              onOpen={() => onInspectArtifact?.(a)}
-              onSave={a.status === "pending" ? () => onSaveSkill?.(a) : undefined}
-              onDownload={() => void downloadArtifact(botId, a)}
-            />
-          );
-        }
-        if (b.type === "assistant") {
-          return (
-            <div key={b.key} className="min-w-0">
-              <Md text={b.text} />
-              {b.streaming ? <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-iron align-middle" /> : null}
-            </div>
-          );
-        }
-        return (
-          <div key={b.key} className="text-carmine">
-            {b.text}
+        })}
+        {working ? (
+          <div className="flex items-center gap-2 text-stone">
+            <CircleNotch size={14} className="animate-spin text-bindery" />
+            <span>Working…</span>
           </div>
-        );
-      })}
-      {working ? (
-        <div className="flex items-center gap-2 text-stone">
-          <CircleNotch size={14} className="animate-spin" />
-          Working…
-        </div>
-      ) : null}
-      <div ref={end} />
+        ) : null}
+        <div ref={end} />
+      </div>
+
+      {showScrollBottom && (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          className="fixed bottom-24 right-8 z-20 flex items-center gap-1.5 rounded-full border border-thread bg-folio px-3 py-1.5 text-[12px] font-medium text-iron shadow-[0_4px_16px_rgba(30,33,38,0.12)] transition-all hover:bg-linen active:scale-95"
+        >
+          <ArrowDown size={13} weight="bold" />
+          <span>Latest</span>
+        </button>
+      )}
     </div>
   );
 }
