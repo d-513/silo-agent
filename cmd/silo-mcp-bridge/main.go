@@ -13,9 +13,8 @@ import (
 
 func main() {
 	cmd := os.Getenv("SILO_MCP_CMD")
-	sock := os.Getenv("SILO_MCP_SOCK")
-	if sock == "" {
-		sock = "/run/silo/" + mcpbridge.SockFile
+	if cmd == "" {
+		log.Fatal("SILO_MCP_CMD required")
 	}
 	var args []string
 	if raw := os.Getenv("SILO_MCP_ARGS"); raw != "" {
@@ -23,15 +22,19 @@ func main() {
 			log.Fatalf("SILO_MCP_ARGS: %v", err)
 		}
 	}
+	cp := os.Getenv("SILO_CP_URL")
+	token := os.Getenv("SILO_BRIDGE_TOKEN")
+	if cp == "" || token == "" {
+		log.Fatal("SILO_CP_URL and SILO_BRIDGE_TOKEN required")
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	var err error
-	if addr := os.Getenv("SILO_MCP_TCP"); addr != "" {
-		err = mcpbridge.ServeTCP(ctx, addr, os.Getenv("SILO_MCP_TOKEN"), mcpbridge.Config{Command: cmd, Args: args})
-	} else {
-		err = mcpbridge.Run(ctx, mcpbridge.Config{Command: cmd, Args: args, Sock: sock})
-	}
-	if err != nil && err != context.Canceled && ctx.Err() == nil {
-		log.Fatal(err)
+	if err := mcpbridge.Serve(ctx, mcpbridge.Config{
+		Command: cmd,
+		Args:    args,
+		CPURL:   cp,
+		Token:   token,
+	}); err != nil {
+		log.Fatalf("mcp bridge: %v", err)
 	}
 }

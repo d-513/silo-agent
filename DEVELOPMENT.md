@@ -89,6 +89,19 @@ Vite proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`
 
 `cp_url` (`http://host.containers.internal:8080` by default) is what the **container** uses to dial the CP. The create path adds `host.containers.internal:host-gateway`. If the worker never connects, that URL is not reachable from the Bot.
 
+## Fast debugging
+
+The repository includes VS Code tasks and launch configurations in `.vscode/`:
+
+1. Run `Silo: start local stack` from the Command Palette. This builds only the control plane and starts Vite with HMR.
+2. Start `Silo: control plane + browser` from Run and Debug. Go breakpoints work in the control plane and browser breakpoints work in the UI.
+3. After changing `cmd/silo-worker`, `botimage/`, or worker-facing generated code, run `Silo: rebuild bot image`. Remove the affected container with `podman rm -f silo-<bot-id>`, then Start the Bot so it is recreated from the new image.
+4. After changing `cmd/silo-mcp-bridge` or `mcpimage/`, run `Silo: rebuild MCP image`, then refresh the connector.
+
+The equivalent commands are `./rebuild.sh cp`, `./rebuild.sh bot`, and `./rebuild.sh stdio`. `./rebuild.sh all` retains the old full rebuild behavior and removes all `silo-*` containers. The targeted modes do not remove containers, which keeps the database and running development environment intact.
+
+For cross-process debugging, keep the control-plane terminal visible and inspect the container that owns the Bot with `podman logs -f silo-<bot-id>`. MCP sidecars use `podman logs -f silo-mcp-<connector-id>`. A worker change requires an image rebuild because the worker binary is copied into the image; a control-plane change does not.
+
 ## After you change…
 
 | What                         | Then                                                                                  |
@@ -109,15 +122,17 @@ A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, 
 
 ```
 export CGO_ENABLED=0
-go test ./...
+go test ./cmd/... ./internal/...
 ```
+
+The explicit package patterns are intentional. `data/` is ignored runtime state, not Go source, but `go test ./...` still walks it. A Bot Chromium profile may be owned by the container UID and unreadable from the host, which makes the broad pattern fail before Go can run a test. See [TESTING.md](TESTING.md) for the test tiers and live checks.
 
 ## Layout
 
 ```
 cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
-cmd/silo-mcp-bridge HTTP↔stdio proxy inside a STDIO sidecar
+cmd/silo-mcp-bridge reverse tunnel from a STDIO sidecar to the CP (raw JSON-RPC)
 internal/app        UI + worker RPCs, agent loop
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)

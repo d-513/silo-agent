@@ -4468,6 +4468,7 @@ type BotConnector struct {
 	Connector     *Connector             `protobuf:"bytes,3,opt,name=connector,proto3" json:"connector,omitempty"`
 	AuthStatus    string                 `protobuf:"bytes,4,opt,name=auth_status,json=authStatus,proto3" json:"auth_status,omitempty"`
 	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	StatusDetail  string                 `protobuf:"bytes,6,opt,name=status_detail,json=statusDetail,proto3" json:"status_detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4533,6 +4534,13 @@ func (x *BotConnector) GetAuthStatus() string {
 func (x *BotConnector) GetLastError() string {
 	if x != nil {
 		return x.LastError
+	}
+	return ""
+}
+
+func (x *BotConnector) GetStatusDetail() string {
+	if x != nil {
+		return x.StatusDetail
 	}
 	return ""
 }
@@ -6381,7 +6389,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x03env\x18\x11 \x03(\v2\x11.silo.v1.EnvInputR\x03env\"(\n" +
 	"\x16DeleteConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x19\n" +
-	"\x17DeleteConnectorResponse\"\xa7\x01\n" +
+	"\x17DeleteConnectorResponse\"\xcc\x01\n" +
 	"\fBotConnector\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x120\n" +
@@ -6389,7 +6397,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\vauth_status\x18\x04 \x01(\tR\n" +
 	"authStatus\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\x05 \x01(\tR\tlastError\"1\n" +
+	"last_error\x18\x05 \x01(\tR\tlastError\x12#\n" +
+	"\rstatus_detail\x18\x06 \x01(\tR\fstatusDetail\"1\n" +
 	"\x18ListBotConnectorsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"R\n" +
 	"\x19ListBotConnectorsResponse\x125\n" +

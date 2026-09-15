@@ -28,6 +28,7 @@ function fail(e: unknown) {
 function statusLabel(s: string) {
   if (s === "authorized") return "Authorized";
   if (s === "needs_auth") return "Needs authorization";
+  if (s === "initializing") return "Initializing";
   if (s === "error") return "Error";
   return "Ready";
 }
@@ -64,6 +65,7 @@ export function BotConnectors({
   const [editDraft, setEditDraft] = useState<ConnectorDraft>(emptyDraft());
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
+  const hasInit = attached.some((r) => r.authStatus === "initializing");
 
   async function load() {
     const [a, c] = await Promise.all([ui.listBotConnectors({ botId }), ui.listConnectors({})]);
@@ -73,9 +75,9 @@ export function BotConnectors({
 
   useEffect(() => {
     load().catch((e) => setErr(fail(e)));
-    const t = setInterval(() => load().catch(() => {}), 3000);
+    const t = setInterval(() => load().catch(() => {}), hasInit ? 1000 : 3000);
     return () => clearInterval(t);
-  }, [botId]);
+  }, [botId, hasInit]);
 
   function chooseLibrary(c: Connector) {
     setErr("");
@@ -179,7 +181,17 @@ export function BotConnectors({
                 {isCustom(c) && <CustomChip />}
               </div>
               <p className="truncate text-stone">{c.description}</p>
-              <p className="text-stone">{statusLabel(row.authStatus)}{row.lastError ? ` · ${row.lastError}` : ""}</p>
+              <p className="flex items-center gap-1.5 text-stone">
+                {row.authStatus === "initializing" && (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border border-thread border-t-transparent" />
+                )}
+                {statusLabel(row.authStatus)}
+                {row.statusDetail
+                  ? ` · ${row.statusDetail}`
+                  : row.lastError
+                    ? ` · ${row.lastError}`
+                    : ""}
+              </p>
             </div>
             {row.authStatus === "needs_auth" && (
               <Btn kind="primary" onClick={() => authorize(row)}>
@@ -195,7 +207,11 @@ export function BotConnectors({
             >
               Edit
             </Btn>
-            <Btn kind="ghost" disabled={busy === row.id} onClick={() => refresh(row.id)}>
+            <Btn
+              kind="ghost"
+              disabled={busy === row.id || row.authStatus === "initializing"}
+              onClick={() => refresh(row.id)}
+            >
               <ArrowClockwise size={16} />
               Refresh
             </Btn>

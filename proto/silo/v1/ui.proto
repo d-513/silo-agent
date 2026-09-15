@@ -512,6 +512,7 @@ message BotConnector {
   Connector connector = 3;
   string auth_status = 4;
   string last_error = 5;
+  string status_detail = 6;
 }
 
 message ListBotConnectorsRequest {

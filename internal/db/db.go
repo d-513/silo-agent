@@ -130,15 +130,17 @@ type Connector struct {
 }
 
 type BotConnector struct {
-	ID          string `gorm:"primaryKey"`
-	BotID       string `gorm:"uniqueIndex:bot_connector"`
-	ConnectorID string `gorm:"uniqueIndex:bot_connector"`
-	AuthStatus  string
-	TokenJSON   string
-	ToolsJSON   string
-	LastError   string
-	ContainerID string
-	CreatedAt   time.Time
+	ID              string `gorm:"primaryKey"`
+	BotID           string `gorm:"uniqueIndex:bot_connector"`
+	ConnectorID     string `gorm:"uniqueIndex:bot_connector"`
+	AuthStatus      string
+	StatusDetail    string
+	TokenJSON       string
+	ToolsJSON       string
+	LastError       string
+	ContainerID     string
+	BridgeTokenHash string
+	CreatedAt       time.Time
 }
 
 type BotSkill struct {

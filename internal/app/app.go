@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"connectrpc.com/connect"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
@@ -33,6 +34,7 @@ const (
 	rwKey
 	userKey
 	botKey
+	bridgeKey
 )
 
 type bus struct {
@@ -109,37 +111,40 @@ type App struct {
 	Hub    *hub.Hub
 	Bus    *bus
 
-	mu          sync.Mutex
-	approvals   map[string]*waiter
-	cmdRun      map[string]string
-	runs        map[string]*liveRun
-	mask        map[string]*masker.Masker
-	oauth       map[string]*oauthWait
-	mcp         map[string]*mcpx.Session
-	stdioMu     sync.Mutex
-	stdioPorts  map[string]int    // sidecar id -> published host port
-	stdioTokens map[string]string // sidecar id -> bridge bearer token
-	lifecycle   sync.Map
+	mu        sync.Mutex
+	approvals map[string]*waiter
+	cmdRun    map[string]string
+	runs      map[string]*liveRun
+	mask      map[string]*masker.Masker
+	oauth     map[string]*oauthWait
+	mcp       map[string]*mcpx.Session
+	lifecycle sync.Map
+	bridgesMu sync.Mutex
+	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
+
+	// bridgeTransportFn is a test seam; when set it replaces the real
+	// sidecar container + reverse tunnel for STDIO connectors.
+	bridgeTransportFn func(ctx context.Context, row *db.BotConnector, c *db.Connector) (mcp.Transport, error)
 }
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a := &App{
-		Store:       store,
-		DB:          gdb,
-		Docker:      eng,
-		Hub:         hub.New(),
-		Bus:         newBus(),
-		approvals:   map[string]*waiter{},
-		cmdRun:      map[string]string{},
-		runs:        map[string]*liveRun{},
-		mask:        map[string]*masker.Masker{},
-		oauth:       map[string]*oauthWait{},
-		mcp:         map[string]*mcpx.Session{},
-		stdioPorts:  map[string]int{},
-		stdioTokens: map[string]string{},
+		Store:     store,
+		DB:        gdb,
+		Docker:    eng,
+		Hub:       hub.New(),
+		Bus:       newBus(),
+		approvals: map[string]*waiter{},
+		cmdRun:    map[string]string{},
+		runs:      map[string]*liveRun{},
+		mask:      map[string]*masker.Masker{},
+		oauth:     map[string]*oauthWait{},
+		mcp:       map[string]*mcpx.Session{},
+		bridges:   map[string]*bridgeTunnel{},
 	}
 	a.recoverOrphans()
 	a.initConnectors()
+	a.reconcileStdio()
 	a.migrateSettings()
 	return a
 }
@@ -221,7 +226,9 @@ func (a *App) Shutdown() {
 		delete(a.mcp, id)
 	}
 	a.mu.Unlock()
-	a.dropAllStdio()
+	// Deliberately leave STDIO sidecars running: their bridges reconnect when
+	// the CP comes back, so a CP restart does not re-pull npm packages. Genuine
+	// orphans are reclaimed by reconcileStdio on the next start.
 }
 
 func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {
@@ -367,8 +374,10 @@ func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	uiPath, uiH := silov1connect.NewUIHandler(a, connect.WithInterceptors(uiInterceptor{a}))
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(workerInterceptor{a}))
+	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(bridgeInterceptor{a}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
+	mux.Handle(brPath, brH)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
 	mux.HandleFunc("/console", a.handleConsole)

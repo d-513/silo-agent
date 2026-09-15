@@ -33,9 +33,12 @@ type Dial struct {
 	Sock    string
 	Headers map[string]string
 	OAuth   auth.OAuthHandler
-	// Token is a static bearer credential for private bridges (STDIO
-	// sidecars on a published TCP port). It never triggers the OAuth flow.
+	// Token is a static bearer credential for private bridges. It never
+	// triggers the OAuth flow.
 	Token string
+	// Transport, when set, is used directly instead of the HTTP/SSE ladder.
+	// STDIO sidecars use a reverse CP connection instead of a URL.
+	Transport mcp.Transport
 }
 
 type Tool struct {
@@ -49,6 +52,13 @@ type Session struct {
 }
 
 func Connect(ctx context.Context, d Dial) (*Session, error) {
+	if d.Transport != nil {
+		cs, err := mcp.NewClient(&mcp.Implementation{Name: "silo", Version: "v1"}, nil).Connect(ctx, d.Transport, nil)
+		if err != nil {
+			return nil, err
+		}
+		return &Session{cs: cs}, nil
+	}
 	if d.URL == "" {
 		return nil, errors.New("mcp url required")
 	}

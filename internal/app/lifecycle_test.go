@@ -3,14 +3,10 @@ package app
 import (
 	"context"
 	"errors"
-	"net"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/glebarez/sqlite"
@@ -52,7 +48,9 @@ type fakeHost struct {
 	drops        atomic.Int32
 	stdioCreates atomic.Int32
 	stdioDrops   atomic.Int32
-	stdioSrv     map[string]*http.Server
+	sidecars     []dockerx.StdioContainer
+	orphans      []dockerx.StdioContainer
+	app          *App
 }
 
 func (f *fakeHost) Inspect(_ context.Context, id string) (dockerx.State, error) {
@@ -123,43 +121,10 @@ func (f *fakeHost) Start(_ context.Context, id string) error {
 func (f *fakeHost) Stop(context.Context, string) error  { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
 
-func (f *fakeHost) CreateStdio(ctx context.Context, spec dockerx.StdioSpec) (string, error) {
-	return f.CreateStdioTCP(ctx, spec, dockerx.StdioTCP{})
-}
-
-func (f *fakeHost) CreateStdioTCP(_ context.Context, spec dockerx.StdioSpec, tcp dockerx.StdioTCP) (string, error) {
+func (f *fakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (string, error) {
 	f.stdioCreates.Add(1)
 	if f.createErr != nil {
 		return "", f.createErr
-	}
-	if spec.SockDir != "" {
-		if err := os.MkdirAll(spec.SockDir, 0o700); err != nil {
-			return "", err
-		}
-		var ln net.Listener
-		var err error
-		if tcp.HostPort > 0 {
-			ln, err = net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(tcp.HostPort))
-		} else {
-			sock := filepath.Join(spec.SockDir, "mcp.sock")
-			_ = os.Remove(sock)
-			ln, err = net.Listen("unix", sock)
-		}
-		if err != nil {
-			return "", err
-		}
-		h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return fakeStdioMCP() }, &mcp.StreamableHTTPOptions{DisableLocalhostProtection: true})
-		srv := &http.Server{Handler: h}
-		go srv.Serve(ln)
-		f.mu.Lock()
-		if f.stdioSrv == nil {
-			f.stdioSrv = map[string]*http.Server{}
-		}
-		if old := f.stdioSrv[spec.ID]; old != nil {
-			_ = old.Close()
-		}
-		f.stdioSrv[spec.ID] = srv
-		f.mu.Unlock()
 	}
 	id := "mcp-" + spec.ID
 	f.mu.Lock()
@@ -169,24 +134,38 @@ func (f *fakeHost) CreateStdioTCP(_ context.Context, spec dockerx.StdioSpec, tcp
 	st := dockerx.State{ID: id, Running: true}
 	f.inspect[id] = st
 	f.inspect[dockerx.StdioName(spec.ID)] = st
+	f.sidecars = append(f.sidecars, dockerx.StdioContainer{ID: id, Name: dockerx.StdioName(spec.ID), ConnectorID: spec.ID})
+	app := f.app
 	f.mu.Unlock()
+	if app != nil {
+		app.testStartBridge(spec.ID)
+	}
 	return id, nil
 }
 
 func (f *fakeHost) DropStdio(_ context.Context, id, _ string) {
 	f.stdioDrops.Add(1)
 	f.mu.Lock()
-	if f.stdioSrv != nil {
-		if s := f.stdioSrv[id]; s != nil {
-			_ = s.Close()
-			delete(f.stdioSrv, id)
-		}
-	}
 	if f.inspect != nil {
 		delete(f.inspect, "mcp-"+id)
 		delete(f.inspect, dockerx.StdioName(id))
 	}
+	out := f.sidecars[:0]
+	for _, s := range f.sidecars {
+		if s.ConnectorID != id {
+			out = append(out, s)
+		}
+	}
+	f.sidecars = out
 	f.mu.Unlock()
+}
+
+func (f *fakeHost) ListStdio(context.Context) ([]dockerx.StdioContainer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := append([]dockerx.StdioContainer(nil), f.sidecars...)
+	out = append(out, f.orphans...)
+	return out, nil
 }
 
 func fakeStdioMCP() *mcp.Server {
@@ -208,6 +187,9 @@ func testApp(t *testing.T, d dockerx.Host) *App {
 		d = &fakeHost{}
 	}
 	a := New(nil, memDB(t), d)
+	if fh, ok := d.(*fakeHost); ok {
+		fh.app = a
+	}
 	t.Cleanup(a.Shutdown)
 	return a
 }
@@ -218,8 +200,29 @@ func testAppStore(t *testing.T, d dockerx.Host) *App {
 		d = &fakeHost{}
 	}
 	a := New(testStore(t), memDB(t), d)
+	if fh, ok := d.(*fakeHost); ok {
+		fh.app = a
+	}
 	t.Cleanup(a.Shutdown)
 	return a
+}
+
+// waitConnector polls until an async connector job leaves the initializing
+// state, then returns the row.
+func waitConnector(t *testing.T, a *App, id string) db.BotConnector {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var row db.BotConnector
+		a.DB.First(&row, "id = ?", id)
+		if row.AuthStatus != statusInit && row.AuthStatus != "" {
+			return row
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("connector %s stuck: %s %s", id, row.AuthStatus, row.LastError)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func testStore(t *testing.T) *config.Store {

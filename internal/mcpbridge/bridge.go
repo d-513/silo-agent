@@ -1,8 +1,13 @@
-// Package mcpbridge runs one STDIO MCP process and exposes it over streamable HTTP.
+// Package mcpbridge runs one STDIO MCP process and tunnels its raw JSON-RPC
+// traffic to the control plane over a reverse ConnectRPC stream. The sidecar
+// dials the CP (rather than the CP dialing a published sidecar port) and
+// authenticates with a per-attachment bridge token.
 package mcpbridge
 
 import (
+	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,46 +17,159 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
-	"syscall"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"connectrpc.com/connect"
+	"golang.org/x/net/http2"
+
+	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/gen/silo/v1/silov1connect"
 )
 
 const (
-	SockFile        = "mcp.sock"
-	MaxResultBytes  = 8 << 20
-	childPoll       = 100 * time.Millisecond
-	emptyObjectJSON = `{"type":"object"}`
+	MaxResultBytes = 8 << 20
+	reconnectMin   = 200 * time.Millisecond
+	reconnectMax   = 15 * time.Second
+	dialTimeout    = 10 * time.Second
 )
 
+// Config describes one sidecar: the child process to supervise, plus the CP
+// endpoint and bridge token to reach.
 type Config struct {
 	Command string
 	Args    []string
-	Sock    string
 	Env     []string
+	CPURL   string
+	Token   string
 }
 
-func Run(ctx context.Context, cfg Config) error {
+// errChildExited means the child process stopped on its own while a tunnel was
+// live; the bridge should exit so the container's restart policy replaces it.
+var errChildExited = errors.New("stdio mcp process exited")
+
+// Serve supervises the child and keeps a reverse tunnel to the control plane
+// open. The child is restarted for each tunnel session, so a CP restart does
+// not require recreating the container (npm's cache lives in the container
+// filesystem). A child crash exits the bridge so the container restarts.
+func Serve(ctx context.Context, cfg Config) error {
+	if err := ValidCommand(cfg.Command); err != nil {
+		return err
+	}
+	if strings.TrimSpace(cfg.CPURL) == "" {
+		return errors.New("cp url required")
+	}
+	if strings.TrimSpace(cfg.Token) == "" {
+		return errors.New("bridge token required")
+	}
+	client := newClient(cfg.CPURL, cfg.Token)
+	wait := reconnectMin
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		sctx, cancel := context.WithCancel(ctx)
+		conn := client.Tunnel(sctx)
+		err := session(sctx, cfg, conn)
+		_ = conn.CloseRequest()
+		_ = conn.CloseResponse()
+		cancel()
+		switch {
+		case ctx.Err() != nil:
+			return ctx.Err()
+		case errors.Is(err, errChildExited):
+			return err
+		}
+		time.Sleep(wait)
+		wait *= 2
+		if wait > reconnectMax {
+			wait = reconnectMax
+		}
+	}
+}
+
+// session runs one child against one tunnel. It returns errChildExited if the
+// child stopped while the tunnel was live, or nil when the tunnel closed and
+// the next session should start a fresh child.
+func session(ctx context.Context, cfg Config, conn *connect.BidiStreamForClient[v1.BridgeFrame, v1.BridgeFrame]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	cmd, err := child(cfg)
 	if err != nil {
 		return err
 	}
-	return Serve(ctx, cfg.Sock, cmd)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	_ = conn.Send(&v1.BridgeFrame{Body: &v1.BridgeFrame_Status{Status: "starting"}})
+
+	childDone := make(chan error, 1)
+	go func() {
+		sc := bufio.NewScanner(stdout)
+		sc.Buffer(make([]byte, 0, 64<<10), MaxResultBytes)
+		for sc.Scan() {
+			line := append([]byte(nil), sc.Bytes()...)
+			if len(line) == 0 {
+				continue
+			}
+			if err := conn.Send(&v1.BridgeFrame{Body: &v1.BridgeFrame_Data{Data: line}}); err != nil {
+				return
+			}
+		}
+		childDone <- sc.Err()
+	}()
+
+	recvErr := make(chan error, 1)
+	go func() {
+		for {
+			frame, err := conn.Receive()
+			if err != nil {
+				recvErr <- err
+				return
+			}
+			data := frame.GetData()
+			if len(data) == 0 {
+				continue
+			}
+			if _, err := stdin.Write(append(data, '\n')); err != nil {
+				recvErr <- err
+				return
+			}
+		}
+	}()
+
+	var cause error
+	select {
+	case <-ctx.Done():
+		cause = ctx.Err()
+	case err := <-childDone:
+		cause = fmt.Errorf("%w: %v", errChildExited, err)
+	case <-recvErr:
+		cause = nil
+	}
+	cancel()
+	if cmd.Process != nil {
+		_ = cmd.Process.Kill()
+	}
+	_ = cmd.Wait()
+	_ = stdin.Close()
+	return cause
 }
 
 func child(cfg Config) (*exec.Cmd, error) {
-	if err := ValidCommand(cfg.Command); err != nil {
-		return nil, err
-	}
 	for _, a := range cfg.Args {
 		if err := ValidArg(a); err != nil {
 			return nil, err
 		}
-	}
-	if strings.TrimSpace(cfg.Sock) == "" {
-		return nil, errors.New("socket path required")
 	}
 	cmd := exec.Command(cfg.Command, cfg.Args...)
 	if cfg.Env != nil {
@@ -63,213 +181,64 @@ func child(cfg Config) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func Serve(ctx context.Context, sock string, cmd *exec.Cmd) error {
-	return serve(ctx, sock, "", cmd)
+func newClient(cpURL, token string) silov1connect.MCPHostClient {
+	dialer := &net.Dialer{Timeout: dialTimeout, FallbackDelay: 100 * time.Millisecond}
+	hc := &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+				return dialer.Dial(network, addr)
+			},
+		},
+	}
+	return silov1connect.NewMCPHostClient(hc, cpURL, connect.WithInterceptors(tokenInterceptor{token}))
 }
 
-// ServeTCP runs one STDIO MCP process and exposes it over TCP. addr is
-// host:port to bind; token, when non-empty, is required as "Bearer <token>"
-// on every request (a TCP listener is reachable from other containers on the
-// shared bridge network, unlike a 0600 unix socket).
-func ServeTCP(ctx context.Context, addr, token string, cfg Config) error {
-	cmd, err := child(cfg)
-	if err != nil {
-		return err
-	}
-	return serve(ctx, "", token+":"+addr, cmd)
-}
+type tokenInterceptor struct{ tok string }
 
-func serve(ctx context.Context, sock, tcpAddrToken string, cmd *exec.Cmd) error {
-	if cmd == nil || cmd.Path == "" && cmd.Args == nil {
-		return errors.New("command required")
-	}
-	if tcpAddrToken == "" {
-		if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
-			return err
-		}
-		_ = os.Remove(sock)
-	}
-	if cmd.Stderr == nil {
-		cmd.Stderr = os.Stderr
-	}
-
-	client := mcp.NewClient(&mcp.Implementation{Name: "silo-mcp-bridge", Version: "v1"}, nil)
-	cs, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
-	if err != nil {
-		return err
-	}
-	defer cs.Close()
-
-	fwd := newForwarder(cs)
-	srv := mcp.NewServer(&mcp.Implementation{Name: "silo-mcp-bridge", Version: "v1"}, &mcp.ServerOptions{
-		Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}},
-	})
-	for t, err := range cs.Tools(ctx, nil) {
-		if err != nil {
-			return err
-		}
-		srv.AddTool(&mcp.Tool{
-			Name:        t.Name,
-			Description: t.Description,
-			InputSchema: objectSchema(t.InputSchema),
-		}, fwd.handle)
-	}
-
-	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{
-		DisableLocalhostProtection:   true,
-		MaxRequestBodyBytes:          MaxResultBytes,
-		PropagateRequestCancellation: true,
-	})
-	var handler http.Handler = h
-	var token string
-	if strings.Contains(tcpAddrToken, ":") {
-		token, tcpAddrToken, _ = strings.Cut(tcpAddrToken, ":")
-		if token != "" {
-			handler = requireToken(h, token)
-		}
-	}
-	var ln net.Listener
-	if tcpAddrToken != "" {
-		var err error
-		ln, err = net.Listen("tcp", tcpAddrToken)
-		if err != nil {
-			return err
-		}
-	} else {
-		if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
-			return err
-		}
-		_ = os.Remove(sock)
-		var err error
-		ln, err = net.Listen("unix", sock)
-		if err != nil {
-			return err
-		}
-		_ = os.Chmod(sock, 0o600)
-	}
-	defer func() {
-		_ = ln.Close()
-		if tcpAddrToken == "" {
-			_ = os.Remove(sock)
-		}
-	}()
-
-	httpSrv := &http.Server{Handler: handler}
-	dead := make(chan struct{})
-	if cmd.Process != nil {
-		pid := cmd.Process.Pid
-		go watchPID(ctx, pid, dead)
-	}
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-dead:
-		}
-		_ = httpSrv.Close()
-	}()
-	err = httpSrv.Serve(ln)
-	if errors.Is(err, http.ErrServerClosed) {
-		select {
-		case <-dead:
-			return errors.New("stdio mcp process exited")
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			return nil
-		}
-	}
-	return err
-}
-
-func watchPID(ctx context.Context, pid int, dead chan struct{}) {
-	for {
-		if err := syscall.Kill(pid, 0); err != nil {
-			close(dead)
-			return
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(childPoll):
-		}
+func (t tokenInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		req.Header().Set("Authorization", "Bearer "+t.tok)
+		return next(ctx, req)
 	}
 }
 
-// requireToken rejects requests without "Authorization: Bearer <token>".
-func requireToken(next http.Handler, token string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer "+token {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func (t tokenInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
+		conn := next(ctx, spec)
+		conn.RequestHeader().Set("Authorization", "Bearer "+t.tok)
+		return conn
+	}
 }
 
-type forwarder struct {
-	mu sync.Mutex
-	cs *mcp.ClientSession
-}
-
-func newForwarder(cs *mcp.ClientSession) *forwarder { return &forwarder{cs: cs} }
-
-func (f *forwarder) handle(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// skip: stdio MCP is one client; concurrent HTTP sessions queue on this lock.
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var args any
-	if len(req.Params.Arguments) > 0 {
-		if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-			return nil, err
-		}
-	}
-	res, err := f.cs.CallTool(ctx, &mcp.CallToolParams{Name: req.Params.Name, Arguments: args})
-	if err != nil {
-		return nil, err
-	}
-	b, err := json.Marshal(res)
-	if err != nil {
-		return nil, err
-	}
-	if len(b) > MaxResultBytes {
-		return nil, fmt.Errorf("tool result exceeds %d bytes", MaxResultBytes)
-	}
-	return res, nil
-}
-
-func objectSchema(v any) any {
-	if v == nil {
-		return json.RawMessage(emptyObjectJSON)
-	}
-	var m map[string]any
-	switch t := v.(type) {
-	case map[string]any:
-		m = t
-	default:
-		b, err := json.Marshal(v)
-		if err != nil {
-			return json.RawMessage(emptyObjectJSON)
-		}
-		if json.Unmarshal(b, &m) != nil || m == nil {
-			return json.RawMessage(emptyObjectJSON)
-		}
-	}
-	if typ, _ := m["type"].(string); typ == "object" {
-		return v
-	}
-	return json.RawMessage(emptyObjectJSON)
+func (t tokenInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
 }
 
 func stripBridgeEnv(env []string) []string {
+	strip := []string{
+		"SILO_MCP_CMD=", "SILO_MCP_ARGS=", "SILO_MCP_SOCK=",
+		"SILO_MCP_TCP=", "SILO_MCP_TOKEN=",
+		"SILO_CP_URL=", "SILO_BRIDGE_TOKEN=",
+	}
 	out := make([]string, 0, len(env))
 	for _, e := range env {
-		if strings.HasPrefix(e, "SILO_MCP_CMD=") || strings.HasPrefix(e, "SILO_MCP_ARGS=") || strings.HasPrefix(e, "SILO_MCP_SOCK=") {
-			continue
+		drop := false
+		for _, p := range strip {
+			if strings.HasPrefix(e, p) {
+				drop = true
+				break
+			}
 		}
-		out = append(out, e)
+		if !drop {
+			out = append(out, e)
+		}
 	}
 	return out
 }
+
+// ParseArgs and the validators below are shared with the control plane: the CP
+// validates connector edits and persists the structured argv the bridge runs.
 
 func ValidCommand(cmd string) error {
 	cmd = strings.TrimSpace(cmd)

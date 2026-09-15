@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -35,10 +36,14 @@ const (
 	authNone        = "none"
 	authOAuth       = "oauth"
 	statusNone      = "none"
+	statusInit      = "initializing"
 	statusNeedsAuth = "needs_auth"
 	statusOK        = "authorized"
 	statusErr       = "error"
 	imageMax        = 512 << 10
+
+	// connectorInitWait bounds an async connect+tool-discovery job.
+	connectorInitWait = 10 * time.Minute
 )
 
 func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
@@ -349,18 +354,19 @@ func (a *App) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.R
 	if c.Auth == authOAuth && row.AuthStatus == statusNeedsAuth {
 		return connect.NewResponse(&v1.BotConnector{
 			Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-			Connector: protoConnector(&c, false),
+			StatusDetail: row.StatusDetail,
+			Connector:    protoConnector(&c, false),
 		}), nil
 	}
+	// Dropping the MCP session also closes the sidecar tunnel; its bridge
+	// reconnects and spawns a fresh child, reusing the container's npm cache.
 	a.dropMCP(row.ID)
-	if err := a.refreshTools(ctx, &row, &c); err != nil {
-		row.AuthStatus = statusErr
-		row.LastError = err.Error()
-		a.DB.Save(&row)
-	}
+	a.applyInit(&row, c.Transport)
+	a.startRefresh(row.ID)
 	return connect.NewResponse(&v1.BotConnector{
 		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-		Connector: protoConnector(&c, false),
+		StatusDetail: row.StatusDetail,
+		Connector:    protoConnector(&c, false),
 	}), nil
 }
 
@@ -660,6 +666,7 @@ func (a *App) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Conn
 	row.ToolsJSON = string(b)
 	row.AuthStatus = statusOK
 	row.LastError = ""
+	row.StatusDetail = ""
 	a.DB.Save(row)
 	var names []string
 	for _, t := range tools {
@@ -721,6 +728,8 @@ func (a *App) connectorBlurb(botID string) string {
 		switch rows[i].AuthStatus {
 		case statusNeedsAuth:
 			fmt.Fprintf(&b, "- `%s` (%s) — needs Authorize on the Connectors tab.\n", slug, c.Name)
+		case statusInit:
+			fmt.Fprintf(&b, "- `%s` (%s) — still starting up; its tools are not ready yet.\n", slug, c.Name)
 		case statusErr:
 			err := rows[i].LastError
 			if len(err) > 180 {
@@ -750,6 +759,8 @@ func (a *App) connectorBlurb(botID string) string {
 }
 
 func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connector) (*mcpx.Session, error) {
+	unlock := a.lockSession(row.ID)
+	defer unlock()
 	a.mu.Lock()
 	if s := a.mcp[row.ID]; s != nil {
 		a.mu.Unlock()
@@ -766,13 +777,17 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 	}
 	d := a.dial(c, h)
 	if c.Transport == transportSTDIO {
-		addr, err := a.ensureStdio(ctx, row, c)
-		if err != nil {
-			return nil, err
-		}
-		d, err = stdioDial(addr, h)
-		if err != nil {
-			return nil, err
+		if a.bridgeTransportFn != nil {
+			t, err := a.bridgeTransportFn(ctx, row, c)
+			if err != nil {
+				return nil, err
+			}
+			d = mcpx.Dial{Transport: t}
+		} else {
+			if err := a.ensureStdio(ctx, row, c); err != nil {
+				return nil, err
+			}
+			d = mcpx.Dial{Transport: &bridgeTransport{a: a, row: row}}
 		}
 	}
 	sess, err := mcpx.Connect(ctx, d)
@@ -788,7 +803,22 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 	return sess, nil
 }
 
+// lockSession serializes creating one MCP session per attachment so concurrent
+// callers do not interleave initialize over the same sidecar tunnel.
+func (a *App) lockSession(id string) func() {
+	v, _ := a.lifecycle.LoadOrStore("mcpsess:"+id, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
 func (a *App) dropMCP(id string) {
+	// Close the tunnel first: that unblocks the MCP read loop, so closing the
+	// session below cannot wait on a read that will never return.
+	if b := a.lookupBridge(id); b != nil {
+		a.unregisterBridge(id, b)
+		b.close(errors.New("session dropped"))
+	}
 	a.mu.Lock()
 	s := a.mcp[id]
 	delete(a.mcp, id)
@@ -1057,26 +1087,65 @@ func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector)
 	if err := a.DB.Create(&c).Error; err != nil {
 		return nil, err
 	}
-	st := statusNone
+	st := statusInit
+	detail := initDetail(c.Transport)
 	if c.Auth == authOAuth {
 		st = statusNeedsAuth
+		detail = ""
 	}
 	row := db.BotConnector{
 		ID: ids.New(), BotID: botID, ConnectorID: c.ID,
-		AuthStatus: st, CreatedAt: time.Now(),
+		AuthStatus: st, StatusDetail: detail, CreatedAt: time.Now(),
 	}
 	if err := a.DB.Create(&row).Error; err != nil {
 		a.DB.Delete(&c)
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
 	}
 	if c.Auth != authOAuth {
+		a.startRefresh(row.ID)
+	}
+	return protoBotConnector(&row, &c, true), nil
+}
+
+func initDetail(transport string) string {
+	if transport == transportSTDIO {
+		return "Starting MCP server — the first run may download packages…"
+	}
+	return "Connecting…"
+}
+
+// applyInit marks a connector as initializing and clears any prior error so the
+// UI can show progress while the async job runs.
+func (a *App) applyInit(row *db.BotConnector, transport string) {
+	row.AuthStatus = statusInit
+	row.StatusDetail = initDetail(transport)
+	row.LastError = ""
+	if a.DB != nil {
+		a.DB.Save(row)
+	}
+}
+
+// startRefresh runs connect + tool discovery for one attachment in the
+// background. Callers set the initializing status first.
+func (a *App) startRefresh(botConnectorID string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), connectorInitWait)
+		defer cancel()
+		var row db.BotConnector
+		if err := a.DB.First(&row, "id = ?", botConnectorID).Error; err != nil {
+			return
+		}
+		var c db.Connector
+		if err := a.DB.First(&c, "id = ?", row.ConnectorID).Error; err != nil {
+			return
+		}
 		if err := a.refreshTools(ctx, &row, &c); err != nil {
 			row.AuthStatus = statusErr
 			row.LastError = err.Error()
+			row.StatusDetail = ""
 			a.DB.Save(&row)
 		}
-	}
-	return protoBotConnector(&row, &c, true), nil
+	}()
 }
 
 func (a *App) uniqueName(botID, name, exceptID string) string {
@@ -1119,7 +1188,8 @@ func (a *App) editConnector(ctx context.Context, row *db.Connector) error {
 func protoBotConnector(row *db.BotConnector, c *db.Connector, keys bool) *v1.BotConnector {
 	return &v1.BotConnector{
 		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-		Connector: protoConnector(c, keys),
+		StatusDetail: row.StatusDetail,
+		Connector:    protoConnector(c, keys),
 	}
 }
 
@@ -1298,15 +1368,8 @@ func (a *App) restartStdio(c *db.Connector) {
 	if c.Transport != transportSTDIO {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := a.refreshTools(ctx, &row, c); err != nil {
-			row.AuthStatus = statusErr
-			row.LastError = err.Error()
-			a.DB.Save(&row)
-		}
-	}()
+	a.applyInit(&row, c.Transport)
+	a.startRefresh(row.ID)
 }
 
 func queryParam(raw, key string) string {

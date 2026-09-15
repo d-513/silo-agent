@@ -392,8 +392,8 @@ func TestStdioAttachAndCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if att.Msg.AuthStatus != statusOK {
-		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	if row := waitConnector(t, a, att.Msg.Id); row.AuthStatus != statusOK {
+		t.Fatal(row.AuthStatus, row.LastError)
 	}
 	if h.stdioCreates.Load() < 1 {
 		t.Fatal("sidecar not created")
@@ -428,8 +428,8 @@ func TestCreateBotConnectorStdio(t *testing.T) {
 	if att.Msg.Connector.Transport != "stdio" || att.Msg.Connector.StdioCommand != "npx" {
 		t.Fatal(att.Msg.Connector)
 	}
-	if att.Msg.AuthStatus != statusOK {
-		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	if row := waitConnector(t, a, att.Msg.Id); row.AuthStatus != statusOK {
+		t.Fatal(row.AuthStatus, row.LastError)
 	}
 }
 
@@ -446,8 +446,11 @@ func TestStdioSecretEnvMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if att.Msg.AuthStatus != statusErr || !strings.Contains(att.Msg.LastError, "secret") {
+	if att.Msg.AuthStatus != statusErr && att.Msg.AuthStatus != statusInit {
 		t.Fatal(att.Msg.AuthStatus, att.Msg.LastError)
+	}
+	if row := waitConnector(t, a, att.Msg.Id); row.AuthStatus != statusErr || !strings.Contains(row.LastError, "secret") {
+		t.Fatal(row.AuthStatus, row.LastError)
 	}
 }
 
@@ -470,6 +473,8 @@ func TestStdioSidecarsArePerAttachment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	waitConnector(t, a, first.Msg.Id)
+	waitConnector(t, a, second.Msg.Id)
 	var r1, r2 db.BotConnector
 	a.DB.First(&r1, "id = ?", first.Msg.Id)
 	a.DB.First(&r2, "id = ?", second.Msg.Id)
@@ -494,8 +499,8 @@ func TestStdioEnvMasked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if att.Msg.AuthStatus != statusOK {
-		t.Fatal(att.Msg.LastError)
+	if row := waitConnector(t, a, att.Msg.Id); row.AuthStatus != statusOK {
+		t.Fatal(row.LastError)
 	}
 	if got := a.Mask("b1").Apply("token=plaintextsecretvalue"); !strings.Contains(got, "***") {
 		t.Fatal(got)

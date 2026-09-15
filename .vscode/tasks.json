@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Silo: build control plane",
+      "type": "shell",
+      "command": "./rebuild.sh cp",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$go"
+    },
+    {
+      "label": "Silo: rebuild bot image",
+      "type": "shell",
+      "command": "./rebuild.sh bot",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$go"
+    },
+    {
+      "label": "Silo: rebuild MCP image",
+      "type": "shell",
+      "command": "./rebuild.sh stdio",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$go"
+    },
+    {
+      "label": "Silo: rebuild everything",
+      "type": "shell",
+      "command": "./rebuild.sh all",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$go"
+    },
+    {
+      "label": "Silo: start frontend",
+      "type": "shell",
+      "command": "pnpm dev",
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "Silo: start local stack",
+      "dependsOn": [
+        "Silo: build control plane",
+        "Silo: start frontend"
+      ],
+      "dependsOrder": "parallel"
+    },
+    {
+      "label": "Silo: test Go",
+      "type": "shell",
+      "command": "go test ./cmd/... ./internal/...",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "CGO_ENABLED": "0"
+        }
+      },
+      "problemMatcher": "$go"
+    }
+  ]
+}

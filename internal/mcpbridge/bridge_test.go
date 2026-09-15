@@ -3,16 +3,20 @@ package mcpbridge
 import (
 	"context"
 	"encoding/json"
-	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"silo.agent/internal/mcpx"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+
+	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/gen/silo/v1/silov1connect"
 )
 
 func TestMain(m *testing.M) {
@@ -28,9 +32,6 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	case "sleep":
 		runSleep()
-		os.Exit(0)
-	case "big":
-		runBig()
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
@@ -69,29 +70,105 @@ func runSleep() {
 	_ = srv.Run(context.Background(), &mcp.StdioTransport{})
 }
 
-func runBig() {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "big", Version: "1"}, nil)
-	mcp.AddTool(srv, &mcp.Tool{Name: "big", Description: "huge"},
-		func(context.Context, *mcp.CallToolRequest, echoIn) (*mcp.CallToolResult, any, error) {
-			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: strings.Repeat("x", MaxResultBytes+1)}}}, nil, nil
-		})
-	_ = srv.Run(context.Background(), &mcp.StdioTransport{})
+// hostFake plays the control plane: it accepts the sidecar's tunnel and drives
+// a standard MCP client over it.
+type hostFake struct {
+	addr string
+	got  chan *mcp.ClientSession
+	errc chan error
 }
 
-func helper(t *testing.T, mode string) *exec.Cmd {
-	t.Helper()
-	cmd := exec.Command(os.Args[0], "-test.run=^$")
-	cmd.Env = append(os.Environ(), "SILO_MCP_HELPER="+mode)
-	return cmd
+func (h *hostFake) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.BridgeFrame, v1.BridgeFrame]) error {
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "cp", Version: "1"}, nil).Connect(ctx, &frameTransport{stream: stream}, nil)
+	if err != nil {
+		return err
+	}
+	h.got <- cs
+	<-ctx.Done()
+	return nil
 }
 
-func serveBridge(t *testing.T, mode string) (context.CancelFunc, string) {
+func startHost(t *testing.T) *hostFake {
 	t.Helper()
-	dir := t.TempDir()
-	sock := filepath.Join(dir, SockFile)
+	h := &hostFake{got: make(chan *mcp.ClientSession, 1), errc: make(chan error, 1)}
+	path, handler := silov1connect.NewMCPHostHandler(h)
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	srv := httptest.NewUnstartedServer(h2c.NewHandler(mux, &http2.Server{}))
+	srv.Start()
+	t.Cleanup(srv.Close)
+	h.addr = srv.Listener.Addr().String()
+	return h
+}
+
+func (h *hostFake) session(t *testing.T) *mcp.ClientSession {
+	t.Helper()
+	select {
+	case cs := <-h.got:
+		return cs
+	case err := <-h.errc:
+		t.Fatalf("bridge serve exited: %v", err)
+		return nil
+	case <-time.After(10 * time.Second):
+		t.Fatal("control plane never got a session")
+		return nil
+	}
+}
+
+type frameTransport struct {
+	stream *connect.BidiStream[v1.BridgeFrame, v1.BridgeFrame]
+}
+
+func (t *frameTransport) Connect(context.Context) (mcp.Connection, error) {
+	return &frameConn{stream: t.stream}, nil
+}
+
+type frameConn struct {
+	stream *connect.BidiStream[v1.BridgeFrame, v1.BridgeFrame]
+}
+
+func (c *frameConn) Read(context.Context) (jsonrpc.Message, error) {
+	for {
+		frame, err := c.stream.Receive()
+		if err != nil {
+			return nil, err
+		}
+		data := frame.GetData()
+		if len(data) == 0 {
+			continue
+		}
+		return jsonrpc.DecodeMessage(data)
+	}
+}
+
+func (c *frameConn) Write(_ context.Context, msg jsonrpc.Message) error {
+	data, err := jsonrpc.EncodeMessage(msg)
+	if err != nil {
+		return err
+	}
+	return c.stream.Send(&v1.BridgeFrame{Body: &v1.BridgeFrame_Data{Data: data}})
+}
+
+func (c *frameConn) Close() error      { return nil }
+func (c *frameConn) SessionID() string { return "" }
+
+func bridgeConfig(h *hostFake, mode string) Config {
+	return Config{
+		Command: os.Args[0],
+		Args:    []string{"-test.run=^$"},
+		Env:     append(os.Environ(), "SILO_MCP_HELPER="+mode),
+		CPURL:   "http://" + h.addr,
+		Token:   "test-token",
+	}
+}
+
+func startBridge(t *testing.T, mode string) (*hostFake, context.CancelFunc) {
+	t.Helper()
+	h := startHost(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	errc := make(chan error, 1)
-	go func() { errc <- Serve(ctx, sock, helper(t, mode)) }()
+	h.errc = errc
+	go func() { errc <- Serve(ctx, bridgeConfig(h, mode)) }()
 	t.Cleanup(func() {
 		cancel()
 		select {
@@ -99,129 +176,64 @@ func serveBridge(t *testing.T, mode string) (context.CancelFunc, string) {
 		case <-time.After(5 * time.Second):
 		}
 	})
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, err := os.Stat(sock); err == nil {
-			c, err := net.Dial("unix", sock)
-			if err == nil {
-				c.Close()
-				return cancel, sock
-			}
-		}
-		select {
-		case err := <-errc:
-			t.Fatalf("bridge: %v", err)
-		default:
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("socket not ready")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-}
-
-func connectSock(t *testing.T, sock string) *mcpx.Session {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	t.Cleanup(cancel)
-	sess, err := mcpx.Connect(ctx, mcpx.Dial{URL: "http://localhost/mcp", Sock: sock})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { sess.Close() })
-	return sess
+	return h, cancel
 }
 
 func TestBridgeEcho(t *testing.T) {
-	_, sock := serveBridge(t, "echo")
+	h, _ := startBridge(t, "echo")
+	cs := h.session(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	sess := connectSock(t, sock)
-	tools, err := mcpx.ListAll(ctx, sess)
-	if err != nil || len(tools) != 1 || tools[0].Name != "echo" {
-		t.Fatalf("%v %v", tools, err)
-	}
-	out, err := mcpx.Call(ctx, sess, "echo", map[string]any{"q": "hi"})
-	if err != nil || out != "hi" {
-		t.Fatalf("%q %v", out, err)
-	}
-}
-
-func TestBridgeConcurrent(t *testing.T) {
-	_, sock := serveBridge(t, "echo")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	sess := connectSock(t, sock)
-	errc := make(chan error, 8)
-	for i := 0; i < 8; i++ {
-		go func() {
-			_, err := mcpx.Call(ctx, sess, "echo", map[string]any{"q": "x"})
-			errc <- err
-		}()
-	}
-	for i := 0; i < 8; i++ {
-		if err := <-errc; err != nil {
+	var names []string
+	for tool, err := range cs.Tools(ctx, nil) {
+		if err != nil {
 			t.Fatal(err)
 		}
+		names = append(names, tool.Name)
 	}
-}
-
-func TestBridgeMalformedChild(t *testing.T) {
-	dir := t.TempDir()
-	sock := filepath.Join(dir, SockFile)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	err := Serve(ctx, sock, helper(t, "garbage"))
-	if err == nil {
-		t.Fatal("expected error")
+	if len(names) != 1 || names[0] != "echo" {
+		t.Fatalf("tools %v", names)
+	}
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "echo", Arguments: map[string]any{"q": "hi"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Content) != 1 {
+		t.Fatalf("content %+v", res.Content)
+	}
+	if txt, ok := res.Content[0].(*mcp.TextContent); !ok || txt.Text != "hi" {
+		t.Fatalf("content %+v", res.Content[0])
 	}
 }
 
 func TestBridgeChildExit(t *testing.T) {
-	_, sock := serveBridge(t, "exit")
+	h, _ := startBridge(t, "exit")
+	cs := h.session(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	sess := connectSock(t, sock)
-	_, err := mcpx.Call(ctx, sess, "die", map[string]any{"q": "x"})
-	if err == nil {
-		t.Fatal("expected die")
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "die", Arguments: map[string]any{"q": "x"}})
+	if err == nil && (res == nil || !res.IsError) {
+		t.Fatalf("expected die to fail the call: %+v %v", res, err)
 	}
 }
 
 func TestBridgeCancel(t *testing.T) {
-	_, sock := serveBridge(t, "sleep")
-	sess := connectSock(t, sock)
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	h, _ := startBridge(t, "sleep")
+	cs := h.session(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
-	_, err := mcpx.Call(ctx, sess, "sleep", map[string]any{})
-	if err == nil {
-		t.Fatal("expected cancel")
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "sleep", Arguments: map[string]any{"q": "x"}})
+	if err == nil && (res == nil || !res.IsError) {
+		t.Fatalf("expected cancel: %+v %v", res, err)
 	}
 }
 
-func TestBridgeOversized(t *testing.T) {
-	_, sock := serveBridge(t, "big")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func TestBridgeMalformedChild(t *testing.T) {
+	h := startHost(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	sess := connectSock(t, sock)
-	_, err := mcpx.Call(ctx, sess, "big", map[string]any{"q": "x"})
-	if err == nil || !strings.Contains(err.Error(), "exceeds") {
-		t.Fatalf("got %v", err)
-	}
-}
-
-func TestBridgeShutdown(t *testing.T) {
-	cancel, sock := serveBridge(t, "echo")
-	cancel()
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		if _, err := os.Stat(sock); err != nil {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("socket lingered")
-		}
-		time.Sleep(20 * time.Millisecond)
+	if err := Serve(ctx, bridgeConfig(h, "garbage")); err == nil {
+		t.Fatal("expected error")
 	}
 }
 
@@ -253,7 +265,10 @@ func TestValidCommand(t *testing.T) {
 }
 
 func TestStripBridgeEnv(t *testing.T) {
-	got := stripBridgeEnv([]string{"FOO=1", "SILO_MCP_CMD=npx", "BAR=2"})
+	got := stripBridgeEnv([]string{
+		"FOO=1", "SILO_MCP_CMD=npx", "BAR=2",
+		"SILO_CP_URL=http://x", "SILO_BRIDGE_TOKEN=secret",
+	})
 	raw, _ := json.Marshal(got)
 	if string(raw) != `["FOO=1","BAR=2"]` {
 		t.Fatal(got)

@@ -20,7 +20,7 @@ Libraries (Connectors, Skills) are not YAML.
 | `data_dir` | `./data` | `SILO_DATA_DIR` | SQLite + per-bot volumes |
 | `docker_host` | `$DOCKER_HOST` | `SILO_DOCKER_HOST` | Docker/Podman socket. Empty falls back to the `DOCKER_HOST` env |
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
-| `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL the **Bot container** uses to dial the CP |
+| `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL Bot containers and STDIO sidecars use to dial the CP |
 | `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
 | `mcp_stdio_image` | `localhost/silo-mcp-stdio:v1` | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
 | `model` | `openai/gpt-5.6-luna` | `SILO_MODEL` | Chat model slug |
@@ -37,7 +37,7 @@ export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
 
 `podman machine` / Docker Desktop: set `docker_host` to that socket instead.
 
-`cp_url` must be reachable from inside the Bot. Create adds `host.containers.internal:host-gateway`. If the worker never connects, the container cannot see the CP.
+`cp_url` must be reachable from inside the Bot and from STDIO sidecars. Create adds `host.containers.internal:host-gateway` to both. If the worker or a bridge never connects, the container cannot see the CP.
 
 ## Example
 

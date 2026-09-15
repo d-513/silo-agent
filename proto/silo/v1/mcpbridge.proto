@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+// MCPHost is the reverse channel for STDIO MCP sidecars. The sidecar dials the
+// control plane (instead of the CP dialing a published sidecar port) and
+// authenticates with its per-attachment bridge token, so the CP learns which
+// BotConnector the tunnel belongs to. The CP then drives a standard MCP client
+// over this stream while the sidecar relays raw JSON-RPC to its child process.
+service MCPHost {
+  rpc Tunnel(stream BridgeFrame) returns (stream BridgeFrame);
+}
+
+message BridgeFrame {
+  oneof body {
+    // A raw newline-delimited MCP JSON-RPC message.
+    bytes data = 1;
+    // Out-of-band lifecycle status from the sidecar.
+    string status = 2;
+  }
+}

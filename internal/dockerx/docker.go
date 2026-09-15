@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 
 	"silo.agent/internal/config"
 	"silo.agent/internal/ids"
@@ -50,24 +48,21 @@ type Host interface {
 	Stop(ctx context.Context, id string) error
 	Drop(ctx context.Context, botID, containerID string)
 	CreateStdio(ctx context.Context, spec StdioSpec) (string, error)
-	CreateStdioTCP(ctx context.Context, spec StdioSpec, tcp StdioTCP) (string, error)
 	DropStdio(ctx context.Context, id, containerID string)
+	ListStdio(ctx context.Context) ([]StdioContainer, error)
 }
 
 type StdioSpec struct {
-	ID      string
-	Image   string
-	Env     []string
-	SockDir string
+	ID    string
+	Image string
+	Env   []string
 }
 
-// StdioTCP runs the sidecar's bridge on TCP instead of a unix socket. macOS
-// podman runs containers in a VM: the socket file crosses the virtiofs mount
-// but connections do not, so the CP on the host dials a published loopback
-// port. Token gates the port against other containers on the bridge network.
-type StdioTCP struct {
-	HostPort int
-	Token    string
+// StdioContainer is a discovered MCP sidecar container.
+type StdioContainer struct {
+	ID          string
+	Name        string
+	ConnectorID string
 }
 
 type Engine struct {
@@ -225,17 +220,6 @@ func (e *Engine) Drop(ctx context.Context, botID, containerID string) {
 }
 
 func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error) {
-	return e.createStdio(ctx, spec, nil)
-}
-
-func (e *Engine) CreateStdioTCP(ctx context.Context, spec StdioSpec, tcp StdioTCP) (string, error) {
-	if tcp.HostPort <= 0 {
-		return "", errors.New("stdio host port required")
-	}
-	return e.createStdio(ctx, spec, &tcp)
-}
-
-func (e *Engine) createStdio(ctx context.Context, spec StdioSpec, tcp *StdioTCP) (string, error) {
 	if spec.ID == "" {
 		return "", errors.New("stdio id required")
 	}
@@ -244,52 +228,35 @@ func (e *Engine) createStdio(ctx context.Context, spec StdioSpec, tcp *StdioTCP)
 	if image == "" {
 		image = cfg.MCPStdioImage
 	}
-	if err := os.MkdirAll(spec.SockDir, 0o700); err != nil {
-		return "", err
-	}
-	abs, err := filepath.Abs(spec.SockDir)
-	if err != nil {
-		return "", err
-	}
-	env := append([]string{"SILO_MCP_SOCK=/run/silo/mcp.sock"}, spec.Env...)
-	hc := &container.HostConfig{
-		Binds:         []string{abs + ":/run/silo"},
-		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-	}
-	if tcp != nil {
-		env = append(env,
-			"SILO_MCP_TCP=0.0.0.0:"+strconv.Itoa(tcp.HostPort),
-			"SILO_MCP_TOKEN="+tcp.Token,
-		)
-		hc.PortBindings = nat.PortMap{
-			nat.Port(strconv.Itoa(tcp.HostPort) + "/tcp"): []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: strconv.Itoa(tcp.HostPort)}},
+	var binds []string
+	if cfg.DataDir != "" {
+		cache := filepath.Join(cfg.DataDir, "mcp-npm")
+		if err := os.MkdirAll(cache, 0o700); err != nil {
+			return "", err
+		}
+		if abs, err := filepath.Abs(cache); err == nil {
+			// Shared npm cache so recreating a sidecar does not re-download
+			// packages its siblings already pulled.
+			binds = append(binds, abs+":/root/.npm")
 		}
 	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image:    image,
-		Env:      env,
+		Env:      spec.Env,
 		Hostname: "mcp",
 		Labels: map[string]string{
 			"silo.role":         "mcp-stdio",
 			"silo.connector_id": spec.ID,
 		},
-	}, hc, nil, nil, StdioName(spec.ID))
+	}, &container.HostConfig{
+		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		ExtraHosts:    []string{"host.containers.internal:host-gateway"},
+		Binds:         binds,
+	}, nil, nil, StdioName(spec.ID))
 	if err != nil {
 		return "", fmt.Errorf("stdio create: %w", err)
 	}
 	return resp.ID, nil
-}
-
-// FreePort asks the kernel for an unused loopback port. The bound socket is
-// closed before returning; between close and container start another process
-// could take it, and the ready check below then fails visibly.
-func FreePort() (int, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
-	}
-	defer ln.Close()
-	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
 func (e *Engine) DropStdio(ctx context.Context, id, containerID string) {
@@ -297,4 +264,30 @@ func (e *Engine) DropStdio(ctx context.Context, id, containerID string) {
 	if id != "" {
 		_ = e.Remove(ctx, StdioName(id))
 	}
+}
+
+// ListStdio returns every running-or-stopped MCP sidecar container, keyed by
+// its connector label. The CP uses it to reclaim containers whose attachment
+// row is gone.
+func (e *Engine) ListStdio(ctx context.Context) ([]StdioContainer, error) {
+	items, err := e.cli.ContainerList(ctx, container.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.Arg("label", "silo.role=mcp-stdio")),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StdioContainer, 0, len(items))
+	for _, c := range items {
+		name := ""
+		if len(c.Names) > 0 {
+			name = strings.TrimPrefix(c.Names[0], "/")
+		}
+		out = append(out, StdioContainer{
+			ID:          c.ID,
+			Name:        name,
+			ConnectorID: c.Labels["silo.connector_id"],
+		})
+	}
+	return out, nil
 }

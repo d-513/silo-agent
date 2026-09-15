@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -232,6 +233,9 @@ func TestConnectUnix(t *testing.T) {
 }
 
 func TestTwilioDocsLive(t *testing.T) {
+	if os.Getenv("SILO_LIVE_TESTS") != "1" {
+		t.Skip("set SILO_LIVE_TESTS=1 to run live MCP checks")
+	}
 	d := net.Dialer{Timeout: 3 * time.Second}
 	c, err := d.Dial("tcp", "mcp.twilio.com:443")
 	if err != nil {

@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
+	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,16 +15,11 @@ import (
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/mcpbridge"
-	"silo.agent/internal/mcpx"
-
-	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 )
 
-const stdioReadyWait = 45 * time.Second
-
-// stdioTCPToken is the prefix CP↔bridge dial addresses carry to distinguish
-// a published TCP port from a unix socket path.
-const stdioTCPToken = "tcp:"
+// stdioInitWait bounds how long the CP waits for a sidecar to dial in and the
+// MCP session to come up. npm pulls on a cold container can be slow.
+const stdioInitWait = 10 * time.Minute
 
 func (a *App) lockStdio(id string) func() {
 	v, _ := a.lifecycle.LoadOrStore("mcp:"+id, &sync.Mutex{})
@@ -34,83 +28,120 @@ func (a *App) lockStdio(id string) func() {
 	return mu.Unlock
 }
 
-func (a *App) stdioSockDir(id string) string {
-	return filepath.Join(a.cfg().DataDir, "mcp", id)
-}
-
-// stdioDial parses the ensureStdio address ("tcp:host:port|token" or a unix
-// socket path) into an mcpx.Dial.
-func stdioDial(addr string, h mcpauth.OAuthHandler) (mcpx.Dial, error) {
-	host, token, _ := strings.Cut(addr, "|")
-	if strings.HasPrefix(host, stdioTCPToken) {
-		host = strings.TrimPrefix(host, stdioTCPToken)
-		if host == "" {
-			return mcpx.Dial{}, errors.New("stdio sidecar address missing")
-		}
-		return mcpx.Dial{URL: "http://" + host + "/mcp", Token: token}, nil
+// ensureStdio makes sure the sidecar container for row is running and its
+// bridge has connected to the CP. It is safe to call repeatedly.
+func (a *App) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+	unlock := a.lockStdio(row.ID)
+	defer unlock()
+	if a.Docker == nil {
+		return errors.New("docker unavailable")
 	}
-	if host == "" {
-		return mcpx.Dial{}, errors.New("stdio sidecar socket missing")
+	if strings.TrimSpace(a.cfg().DataDir) == "" {
+		return errors.New("data_dir required for stdio")
 	}
-	return mcpx.Dial{URL: "http://localhost/mcp", Sock: host, Token: token}, nil
-}
-
-// stdioRememberPort records (or clears, with port 0) the published port and
-// bridge token for a sidecar.
-func (a *App) stdioRememberPort(id string, port int, token string) {
-	a.stdioMu.Lock()
-	defer a.stdioMu.Unlock()
-	if port == 0 {
-		delete(a.stdioPorts, id)
-		delete(a.stdioTokens, id)
-		return
-	}
-	a.stdioPorts[id] = port
-	a.stdioTokens[id] = token
-}
-
-// waitTCP polls the sidecar's published port until the bridge accepts
-// connections.
-func waitTCP(ctx context.Context, port int, d time.Duration) error {
-	if port == 0 {
-		return errors.New("no published port")
-	}
-	deadline := time.Now().Add(d)
-	for {
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(port), time.Second)
-		if err == nil {
-			_ = conn.Close()
+	if b := a.lookupBridge(row.ID); b != nil {
+		select {
+		case <-b.done:
+			a.unregisterBridge(row.ID, b)
+		default:
 			return nil
 		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if time.Now().After(deadline) {
-			return errors.New("bridge port not ready")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(50 * time.Millisecond):
-		}
 	}
+	if row.ContainerID != "" {
+		st, err := a.Docker.Inspect(ctx, row.ContainerID)
+		switch {
+		case err == nil && !st.Running:
+			if err := a.Docker.Start(ctx, st.ID); err != nil {
+				a.dropStdio(row)
+			} else {
+				return a.awaitBridge(ctx, row)
+			}
+		case err == nil:
+			return a.awaitBridge(ctx, row)
+		case dockerx.IsNotFound(err):
+			a.dropStdio(row)
+		default:
+			return err
+		}
+	} else {
+		a.Docker.DropStdio(ctx, row.ID, "")
+	}
+	if err := a.startStdio(ctx, row, c); err != nil {
+		return err
+	}
+	return a.awaitBridge(ctx, row)
 }
 
+func (a *App) awaitBridge(ctx context.Context, row *db.BotConnector) error {
+	if _, err := a.waitBridge(ctx, row.ID, stdioInitWait); err != nil {
+		a.dropStdio(row)
+		return fmt.Errorf("stdio sidecar not ready: %w", err)
+	}
+	return nil
+}
+
+func (a *App) startStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+	env, err := a.stdioEnv(row.BotID, c)
+	if err != nil {
+		return err
+	}
+	image := strings.TrimSpace(c.StdioImage)
+	if image == "" {
+		image = a.cfg().MCPStdioImage
+	}
+	token := ids.New() + ids.New()
+	env = append(env,
+		"SILO_MCP_CMD="+c.StdioCommand,
+		"SILO_MCP_ARGS="+mustJSON(mcpbridge.ParseArgs(c.StdioArgsJSON)),
+		"SILO_CP_URL="+a.cfg().CPURL,
+		"SILO_BRIDGE_TOKEN="+token,
+	)
+	a.Mask(row.BotID).Add(token)
+	cid, err := a.Docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, Image: image, Env: env})
+	if err != nil {
+		return err
+	}
+	if err := a.Docker.Start(ctx, cid); err != nil {
+		a.Docker.DropStdio(ctx, row.ID, cid)
+		return err
+	}
+	// Persist the container and token hash only after a successful create.
+	hash := ids.Hash(token)
+	a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
+		"container_id":      cid,
+		"bridge_token_hash": hash,
+	})
+	row.ContainerID = cid
+	row.BridgeTokenHash = hash
+	return nil
+}
+
+// dropStdio tears down a sidecar for good: closes the session and tunnel,
+// removes the container (by ID and by name), wipes its data dir, and clears
+// the remembered container/token. Idempotent.
 func (a *App) dropStdio(row *db.BotConnector) {
 	if row == nil {
 		return
 	}
 	a.dropMCP(row.ID)
+	if b := a.lookupBridge(row.ID); b != nil {
+		a.unregisterBridge(row.ID, b)
+		b.close(errors.New("sidecar dropped"))
+	}
 	if a.Docker != nil {
 		a.Docker.DropStdio(context.Background(), row.ID, row.ContainerID)
 	}
 	if dir := a.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "mcp", row.ID))
 	}
-	if row.ContainerID != "" {
+	if row.ContainerID != "" || row.BridgeTokenHash != "" {
 		row.ContainerID = ""
+		row.BridgeTokenHash = ""
 		if a.DB != nil {
-			a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Update("container_id", "")
+			a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
+				"container_id":      "",
+				"bridge_token_hash": "",
+			})
 		}
 	}
 }
@@ -133,124 +164,43 @@ func (a *App) dropAllStdio() {
 	var rows []db.BotConnector
 	a.DB.Find(&rows)
 	for i := range rows {
-		if rows[i].ContainerID == "" {
-			continue
-		}
 		a.dropStdio(&rows[i])
 	}
 }
 
-func (a *App) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) (string, error) {
-	unlock := a.lockStdio(row.ID)
-	defer unlock()
-	if a.Docker == nil {
-		return "", errors.New("docker unavailable")
+// reconcileStdio reclaims sidecar containers whose BotConnector row is gone
+// (crash mid-delete, DB reset, older-version leftovers). Runs at startup.
+func (a *App) reconcileStdio() {
+	if a.DB == nil || a.Docker == nil {
+		return
 	}
-	if strings.TrimSpace(a.cfg().DataDir) == "" {
-		return "", errors.New("data_dir required for stdio")
-	}
-	addr, err := a.stdioTCPAddr(ctx, row, c)
+	containers, err := a.Docker.ListStdio(context.Background())
 	if err != nil {
-		return "", err
+		return
 	}
-	return addr, nil
-}
-
-// stdioTCPAddr returns the CP dial address ("tcp:127.0.0.1:<port>|<token>")
-// for the sidecar, creating or restarting the container when needed. Ports
-// and tokens live only in CP memory: after a CP restart the container is
-// replaced on first use (the token is lost, so the old box is unusable).
-func (a *App) stdioTCPAddr(ctx context.Context, row *db.BotConnector, c *db.Connector) (string, error) {
-	port := a.stdioPortOf(row.ID)
-	drop := func() {
-		a.stdioRememberPort(row.ID, 0, "")
-		if row.ContainerID != "" {
-			a.Docker.DropStdio(ctx, row.ID, row.ContainerID)
-		} else {
-			a.Docker.DropStdio(ctx, row.ID, "")
+	if len(containers) == 0 {
+		return
+	}
+	valid := map[string]bool{}
+	var rows []db.BotConnector
+	a.DB.Find(&rows)
+	for i := range rows {
+		valid[rows[i].ID] = true
+	}
+	for _, c := range containers {
+		id := c.ConnectorID
+		if id == "" && strings.HasPrefix(c.Name, "silo-mcp-") {
+			id = strings.TrimPrefix(c.Name, "silo-mcp-")
 		}
-		row.ContainerID = ""
-		if a.DB != nil {
-			a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Update("container_id", "")
+		if id != "" && valid[id] {
+			continue
 		}
-	}
-	if row.ContainerID != "" {
-		st, err := a.Docker.Inspect(ctx, row.ContainerID)
-		switch {
-		case err == nil && !st.Running:
-			if err := a.Docker.Start(ctx, st.ID); err != nil {
-				drop()
-			} else if waitTCP(ctx, port, stdioReadyWait) == nil {
-				return a.stdioAddrOf(row.ID), nil
-			} else {
-				drop()
-			}
-		case err == nil:
-			if waitTCP(ctx, port, stdioReadyWait) == nil {
-				return a.stdioAddrOf(row.ID), nil
-			}
-			drop()
-		case dockerx.IsNotFound(err):
-			drop()
-		default:
-			return "", err
+		a.Docker.DropStdio(context.Background(), id, c.ID)
+		if dir := a.cfg().DataDir; dir != "" && id != "" {
+			_ = os.RemoveAll(filepath.Join(dir, "mcp", id))
 		}
-	} else {
-		a.Docker.DropStdio(ctx, row.ID, "")
+		log.Printf("reclaimed orphaned stdio sidecar %s (%s)", c.ID, c.Name)
 	}
-
-	env, err := a.stdioEnv(row.BotID, c)
-	if err != nil {
-		return "", err
-	}
-	image := strings.TrimSpace(c.StdioImage)
-	if image == "" {
-		image = a.cfg().MCPStdioImage
-	}
-	port, perr := dockerx.FreePort()
-	if perr != nil {
-		return "", perr
-	}
-	token := ids.New() + ids.New()
-	env = append([]string{
-		"SILO_MCP_CMD=" + c.StdioCommand,
-		"SILO_MCP_ARGS=" + mustJSON(mcpbridge.ParseArgs(c.StdioArgsJSON)),
-	}, env...)
-	cid, err := a.Docker.CreateStdioTCP(ctx, dockerx.StdioSpec{
-		ID: row.ID, Image: image, Env: env, SockDir: a.stdioSockDir(row.ID),
-	}, dockerx.StdioTCP{HostPort: port, Token: token})
-	if err != nil {
-		return "", err
-	}
-	if err := a.Docker.Start(ctx, cid); err != nil {
-		a.Docker.DropStdio(ctx, row.ID, cid)
-		return "", err
-	}
-	row.ContainerID = cid
-	a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Update("container_id", cid)
-	a.stdioRememberPort(row.ID, port, token)
-	if err := waitTCP(ctx, port, stdioReadyWait); err != nil {
-		a.stdioRememberPort(row.ID, 0, "")
-		drop()
-		return "", fmt.Errorf("stdio sidecar not ready: %w", err)
-	}
-	return a.stdioAddrOf(row.ID), nil
-}
-
-// stdioPortOf returns the remembered published port for a sidecar (0 = none).
-func (a *App) stdioPortOf(id string) int {
-	a.stdioMu.Lock()
-	defer a.stdioMu.Unlock()
-	return a.stdioPorts[id]
-}
-
-// stdioAddrOf returns the CP dial address for the sidecar. The bridge token
-// rides along ("tcp:host:port|token") so callers can set the Authorization
-// header without a second lookup.
-func (a *App) stdioAddrOf(id string) string {
-	a.stdioMu.Lock()
-	defer a.stdioMu.Unlock()
-	return stdioTCPToken + "127.0.0.1:" + strconv.Itoa(a.stdioPorts[id]) + "|" + a.stdioTokens[id]
 }
 
 func (a *App) stdioEnv(botID string, c *db.Connector) ([]string, error) {
