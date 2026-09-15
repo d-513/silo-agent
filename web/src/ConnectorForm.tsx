@@ -247,7 +247,7 @@ export function ConnectorFields({
             placeholder="npx"
             required={!fromCatalog}
           />
-          <p className="mb-2 text-stone">Arguments, one per field. No shell — this is exec, not bash -c.</p>
+          <p className="mb-2 text-stone">Arguments, one per field. The command runs directly, without a shell.</p>
           {value.stdioArgs.map((arg, i) => (
             <input
               key={i}

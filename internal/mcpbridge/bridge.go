@@ -34,16 +34,24 @@ type Config struct {
 }
 
 func Run(ctx context.Context, cfg Config) error {
-	if err := ValidCommand(cfg.Command); err != nil {
+	cmd, err := child(cfg)
+	if err != nil {
 		return err
+	}
+	return Serve(ctx, cfg.Sock, cmd)
+}
+
+func child(cfg Config) (*exec.Cmd, error) {
+	if err := ValidCommand(cfg.Command); err != nil {
+		return nil, err
 	}
 	for _, a := range cfg.Args {
 		if err := ValidArg(a); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if strings.TrimSpace(cfg.Sock) == "" {
-		return errors.New("socket path required")
+		return nil, errors.New("socket path required")
 	}
 	cmd := exec.Command(cfg.Command, cfg.Args...)
 	if cfg.Env != nil {
@@ -52,17 +60,35 @@ func Run(ctx context.Context, cfg Config) error {
 		cmd.Env = stripBridgeEnv(os.Environ())
 	}
 	cmd.Stderr = os.Stderr
-	return Serve(ctx, cfg.Sock, cmd)
+	return cmd, nil
 }
 
 func Serve(ctx context.Context, sock string, cmd *exec.Cmd) error {
+	return serve(ctx, sock, "", cmd)
+}
+
+// ServeTCP runs one STDIO MCP process and exposes it over TCP. addr is
+// host:port to bind; token, when non-empty, is required as "Bearer <token>"
+// on every request (a TCP listener is reachable from other containers on the
+// shared bridge network, unlike a 0600 unix socket).
+func ServeTCP(ctx context.Context, addr, token string, cfg Config) error {
+	cmd, err := child(cfg)
+	if err != nil {
+		return err
+	}
+	return serve(ctx, "", token+":"+addr, cmd)
+}
+
+func serve(ctx context.Context, sock, tcpAddrToken string, cmd *exec.Cmd) error {
 	if cmd == nil || cmd.Path == "" && cmd.Args == nil {
 		return errors.New("command required")
 	}
-	if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
-		return err
+	if tcpAddrToken == "" {
+		if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
+			return err
+		}
+		_ = os.Remove(sock)
 	}
-	_ = os.Remove(sock)
 	if cmd.Stderr == nil {
 		cmd.Stderr = os.Stderr
 	}
@@ -94,17 +120,41 @@ func Serve(ctx context.Context, sock string, cmd *exec.Cmd) error {
 		MaxRequestBodyBytes:          MaxResultBytes,
 		PropagateRequestCancellation: true,
 	})
-	ln, err := net.Listen("unix", sock)
-	if err != nil {
-		return err
+	var handler http.Handler = h
+	var token string
+	if strings.Contains(tcpAddrToken, ":") {
+		token, tcpAddrToken, _ = strings.Cut(tcpAddrToken, ":")
+		if token != "" {
+			handler = requireToken(h, token)
+		}
 	}
-	_ = os.Chmod(sock, 0o600)
+	var ln net.Listener
+	if tcpAddrToken != "" {
+		var err error
+		ln, err = net.Listen("tcp", tcpAddrToken)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
+			return err
+		}
+		_ = os.Remove(sock)
+		var err error
+		ln, err = net.Listen("unix", sock)
+		if err != nil {
+			return err
+		}
+		_ = os.Chmod(sock, 0o600)
+	}
 	defer func() {
 		_ = ln.Close()
-		_ = os.Remove(sock)
+		if tcpAddrToken == "" {
+			_ = os.Remove(sock)
+		}
 	}()
 
-	httpSrv := &http.Server{Handler: h}
+	httpSrv := &http.Server{Handler: handler}
 	dead := make(chan struct{})
 	if cmd.Process != nil {
 		pid := cmd.Process.Pid
@@ -143,6 +193,17 @@ func watchPID(ctx context.Context, pid int, dead chan struct{}) {
 		case <-time.After(childPoll):
 		}
 	}
+}
+
+// requireToken rejects requests without "Authorization: Bearer <token>".
+func requireToken(next http.Handler, token string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+token {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 type forwarder struct {
@@ -266,6 +327,10 @@ func ValidEnvName(s string) error {
 	return nil
 }
 
+// ParseArgs normalizes stored stdio args. Each element is one argument, but
+// users paste "-y package" into a single field; npm exec would then fall back
+// to a shell for the multi-word spec. Split on unquoted whitespace so the
+// child always gets structured argv; quote an argument to keep it whole.
 func ParseArgs(raw string) []string {
 	if strings.TrimSpace(raw) == "" || strings.TrimSpace(raw) == "null" {
 		return []string{}
@@ -274,5 +339,44 @@ func ParseArgs(raw string) []string {
 	if json.Unmarshal([]byte(raw), &out) != nil || out == nil {
 		return []string{}
 	}
-	return out
+	split := make([]string, 0, len(out))
+	for _, a := range out {
+		split = append(split, SplitArg(a)...)
+	}
+	return split
+}
+
+// SplitArg turns one stored argument into zero or more argv elements.
+// Whitespace separates; single or double quotes group.
+func SplitArg(a string) []string {
+	var words []string
+	var cur strings.Builder
+	inWord, quote := false, rune(0)
+	flush := func() {
+		if inWord {
+			words = append(words, cur.String())
+			cur.Reset()
+			inWord = false
+		}
+	}
+	for _, r := range a {
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			} else {
+				cur.WriteRune(r)
+			}
+		case r == '\'' || r == '"':
+			quote = r
+			inWord = true
+		case r == ' ' || r == '\t':
+			flush()
+		default:
+			cur.WriteRune(r)
+			inWord = true
+		}
+	}
+	flush()
+	return words
 }

@@ -25,11 +25,13 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := mcpbridge.Run(ctx, mcpbridge.Config{Command: cmd, Args: args, Sock: sock}); err != nil && !errorsIsSignal(err, ctx) {
+	var err error
+	if addr := os.Getenv("SILO_MCP_TCP"); addr != "" {
+		err = mcpbridge.ServeTCP(ctx, addr, os.Getenv("SILO_MCP_TOKEN"), mcpbridge.Config{Command: cmd, Args: args})
+	} else {
+		err = mcpbridge.Run(ctx, mcpbridge.Config{Command: cmd, Args: args, Sock: sock})
+	}
+	if err != nil && err != context.Canceled && ctx.Err() == nil {
 		log.Fatal(err)
 	}
-}
-
-func errorsIsSignal(err error, ctx context.Context) bool {
-	return err == nil || ctx.Err() != nil
 }

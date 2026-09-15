@@ -259,3 +259,28 @@ func TestStripBridgeEnv(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestParseArgs(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want []string
+	}{
+		{`["-y @modelcontextprotocol/server-fetch"]`, []string{"-y", "@modelcontextprotocol/server-fetch"}},
+		{`["-y", "@modelcontextprotocol/server-fetch"]`, []string{"-y", "@modelcontextprotocol/server-fetch"}},
+		{`["--flag", "\"hello world\""]`, []string{"--flag", "hello world"}},
+		{`["-p \"a b\""]`, []string{"-p", "a b"}},
+		{`["-p 'x y'"]`, []string{"-p", "x y"}},
+		{`[]`, []string{}},
+		{``, []string{}},
+		{`null`, []string{}},
+		{`not json`, []string{}},
+	}
+	for _, c := range cases {
+		got := ParseArgs(c.raw)
+		r1, _ := json.Marshal(got)
+		r2, _ := json.Marshal(c.want)
+		if string(r1) != string(r2) {
+			t.Errorf("ParseArgs(%q) = %s, want %s", c.raw, r1, r2)
+		}
+	}
+}

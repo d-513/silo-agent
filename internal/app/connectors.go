@@ -766,11 +766,14 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 	}
 	d := a.dial(c, h)
 	if c.Transport == transportSTDIO {
-		sock, err := a.ensureStdio(ctx, row, c)
+		addr, err := a.ensureStdio(ctx, row, c)
 		if err != nil {
 			return nil, err
 		}
-		d = mcpx.Dial{URL: "http://localhost/mcp", Sock: sock}
+		d, err = stdioDial(addr, h)
+		if err != nil {
+			return nil, err
+		}
 	}
 	sess, err := mcpx.Connect(ctx, d)
 	if err != nil {

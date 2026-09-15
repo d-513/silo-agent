@@ -33,6 +33,9 @@ type Dial struct {
 	Sock    string
 	Headers map[string]string
 	OAuth   auth.OAuthHandler
+	// Token is a static bearer credential for private bridges (STDIO
+	// sidecars on a published TCP port). It never triggers the OAuth flow.
+	Token string
 }
 
 type Tool struct {
@@ -54,7 +57,7 @@ func Connect(ctx context.Context, d Dial) (*Session, error) {
 		base = unixTransport(d.Sock)
 	}
 	client := &http.Client{
-		Transport:     &headerRT{base: base, hdr: d.Headers, oauth: d.OAuth},
+		Transport:     &headerRT{base: base, hdr: d.Headers, oauth: d.OAuth, token: d.Token},
 		CheckRedirect: keepPOSTRedirect,
 	}
 	urls := endpointURLs(strings.TrimSpace(d.URL))
@@ -195,6 +198,7 @@ type headerRT struct {
 	base  http.RoundTripper
 	hdr   map[string]string
 	oauth auth.OAuthHandler
+	token string
 }
 
 func (h *headerRT) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -244,6 +248,9 @@ func (h *headerRT) apply(req *http.Request) (*http.Request, error) {
 			continue
 		}
 		r.Header.Set(k, v)
+	}
+	if h.token != "" && r.Header.Get("Authorization") == "" {
+		r.Header.Set("Authorization", "Bearer "+h.token)
 	}
 	if h.oauth == nil || r.Header.Get("Authorization") != "" {
 		return r, nil

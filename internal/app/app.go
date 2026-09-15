@@ -109,29 +109,34 @@ type App struct {
 	Hub    *hub.Hub
 	Bus    *bus
 
-	mu        sync.Mutex
-	approvals map[string]*waiter
-	cmdRun    map[string]string
-	runs      map[string]*liveRun
-	mask      map[string]*masker.Masker
-	oauth     map[string]*oauthWait
-	mcp       map[string]*mcpx.Session
-	lifecycle sync.Map
+	mu          sync.Mutex
+	approvals   map[string]*waiter
+	cmdRun      map[string]string
+	runs        map[string]*liveRun
+	mask        map[string]*masker.Masker
+	oauth       map[string]*oauthWait
+	mcp         map[string]*mcpx.Session
+	stdioMu     sync.Mutex
+	stdioPorts  map[string]int    // sidecar id -> published host port
+	stdioTokens map[string]string // sidecar id -> bridge bearer token
+	lifecycle   sync.Map
 }
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a := &App{
-		Store:     store,
-		DB:        gdb,
-		Docker:    eng,
-		Hub:       hub.New(),
-		Bus:       newBus(),
-		approvals: map[string]*waiter{},
-		cmdRun:    map[string]string{},
-		runs:      map[string]*liveRun{},
-		mask:      map[string]*masker.Masker{},
-		oauth:     map[string]*oauthWait{},
-		mcp:       map[string]*mcpx.Session{},
+		Store:       store,
+		DB:          gdb,
+		Docker:      eng,
+		Hub:         hub.New(),
+		Bus:         newBus(),
+		approvals:   map[string]*waiter{},
+		cmdRun:      map[string]string{},
+		runs:        map[string]*liveRun{},
+		mask:        map[string]*masker.Masker{},
+		oauth:       map[string]*oauthWait{},
+		mcp:         map[string]*mcpx.Session{},
+		stdioPorts:  map[string]int{},
+		stdioTokens: map[string]string{},
 	}
 	a.recoverOrphans()
 	a.initConnectors()

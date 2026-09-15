@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -122,7 +123,11 @@ func (f *fakeHost) Start(_ context.Context, id string) error {
 func (f *fakeHost) Stop(context.Context, string) error  { return nil }
 func (f *fakeHost) Drop(_ context.Context, _, _ string) { f.drops.Add(1) }
 
-func (f *fakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (string, error) {
+func (f *fakeHost) CreateStdio(ctx context.Context, spec dockerx.StdioSpec) (string, error) {
+	return f.CreateStdioTCP(ctx, spec, dockerx.StdioTCP{})
+}
+
+func (f *fakeHost) CreateStdioTCP(_ context.Context, spec dockerx.StdioSpec, tcp dockerx.StdioTCP) (string, error) {
 	f.stdioCreates.Add(1)
 	if f.createErr != nil {
 		return "", f.createErr
@@ -131,9 +136,15 @@ func (f *fakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (strin
 		if err := os.MkdirAll(spec.SockDir, 0o700); err != nil {
 			return "", err
 		}
-		sock := filepath.Join(spec.SockDir, "mcp.sock")
-		_ = os.Remove(sock)
-		ln, err := net.Listen("unix", sock)
+		var ln net.Listener
+		var err error
+		if tcp.HostPort > 0 {
+			ln, err = net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(tcp.HostPort))
+		} else {
+			sock := filepath.Join(spec.SockDir, "mcp.sock")
+			_ = os.Remove(sock)
+			ln, err = net.Listen("unix", sock)
+		}
 		if err != nil {
 			return "", err
 		}
