@@ -29,9 +29,11 @@ type entry struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Guide       string `json:"guide"`
+	Prompt      string `json:"prompt"`
 	HTTPURL     string `json:"http_url"`
 	Auth        string `json:"auth"`
 	DefaultMode string `json:"default_mode"`
+	AutoAttach  bool   `json:"auto_attach"`
 	Image       string `json:"image"`
 }
 
@@ -124,7 +126,8 @@ func Seed(gdb *gorm.DB) error {
 			ID: ids.New(), Kind: KindLibrary, SeedKey: e.Key, Type: typeMCP,
 			Name: e.Name, Description: e.Description, Image: img, ImageType: typ,
 			Transport: "http", HTTPURL: e.HTTPURL, Auth: auth,
-			DefaultMode: security.Rule(e.DefaultMode), CreatedAt: time.Now(),
+			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach,
+			CreatedAt: time.Now(),
 		}
 		if err := gdb.Create(&row).Error; err != nil {
 			return err

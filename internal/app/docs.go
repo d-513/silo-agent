@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"silo.agent/internal/db"
-	"silo.agent/internal/prompts"
 )
 
 const (
@@ -15,36 +14,6 @@ const (
 )
 
 const defaultSoul = `Who you are, how you speak, and hard rules. You and the human both edit this.`
-
-func buildSystem(b *db.Bot, connectors string) string {
-	var s strings.Builder
-	s.WriteString(prompts.System)
-	if b.Name != "" {
-		fmt.Fprintf(&s, "\n\nThis Bot's name is %s.", b.Name)
-	}
-	if d := strings.TrimSpace(b.Description); d != "" {
-		fmt.Fprintf(&s, " Description: %s.", d)
-	}
-	if connectors != "" {
-		s.WriteString(connectors)
-	}
-	s.WriteString("\n\n## SOUL\n")
-	if t := strings.TrimSpace(b.Soul); t != "" {
-		s.WriteString(t)
-	} else {
-		s.WriteString("(empty — write it with the soul tool.)")
-	}
-	s.WriteString("\n\n## MEMORY\n")
-	if t := strings.TrimSpace(b.Memory); t != "" {
-		s.WriteString(t)
-	} else {
-		s.WriteString("(empty)")
-	}
-	if len(b.Memory) > memoryMax {
-		fmt.Fprintf(&s, "\n\nMEMORY is over the %d-character cap (now %d). Compact it with `memory` (replace redundant facts with a shorter summary) before adding more.", memoryMax, len(b.Memory))
-	}
-	return s.String()
-}
 
 func applyPatch(cur, old, neu string) (string, error) {
 	if old == "" {

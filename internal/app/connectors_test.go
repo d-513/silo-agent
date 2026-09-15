@@ -109,9 +109,52 @@ func TestCreateAndAttachConnector(t *testing.T) {
 	if err != nil || len(listed2.Msg.Connectors) != 1 {
 		t.Fatal("library grew", err, listed2)
 	}
-	blurb := a.connectorBlurb("b1")
+	blurb := a.buildSystem("b1")
 	if !strings.Contains(blurb, "wolfram") && !strings.Contains(blurb, "needs Authorize") {
 		t.Fatal(blurb)
+	}
+}
+
+func TestAttachDefaultConnectors(t *testing.T) {
+	a := testApp(t, nil)
+	admin := &db.User{ID: "u", Email: "a@b.c", Admin: true}
+	a.DB.Create(admin)
+	ctx := context.WithValue(context.Background(), userKey, admin)
+	if _, err := a.CreateConnector(ctx, connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Context7", Transport: "http", HttpUrl: "http://127.0.0.1:1", AutoAttach: true, Prompt: "Use for docs.",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateConnector(ctx, connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Stripe", Transport: "http", HttpUrl: "http://127.0.0.1:2",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	owner := &db.User{ID: "o", Email: "o@b.c"}
+	a.DB.Create(owner)
+	b, err := a.CreateBot(context.WithValue(context.Background(), userKey, owner), connect.NewRequest(&v1.CreateBotRequest{Name: "New"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerCtx := context.WithValue(context.Background(), userKey, owner)
+	xs, err := a.ListBotConnectors(ownerCtx, connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: b.Msg.Id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(xs.Msg.Connectors) != 1 || xs.Msg.Connectors[0].Connector.Name != "Context7" {
+		t.Fatalf("defaults %+v", xs.Msg.Connectors)
+	}
+	var inst db.Connector
+	a.DB.First(&inst, "id = ?", xs.Msg.Connectors[0].Connector.Id)
+	if inst.Prompt != "Use for docs." {
+		t.Fatalf("prompt not copied: %q", inst.Prompt)
+	}
+	if _, err := a.DetachConnector(ownerCtx, connect.NewRequest(&v1.DetachConnectorRequest{BotId: b.Msg.Id, Id: xs.Msg.Connectors[0].Id})); err != nil {
+		t.Fatal(err)
+	}
+	xs, err = a.ListBotConnectors(ownerCtx, connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: b.Msg.Id}))
+	if err != nil || len(xs.Msg.Connectors) != 0 {
+		t.Fatalf("removed default came back: %v %+v", err, xs.Msg.Connectors)
 	}
 }
 

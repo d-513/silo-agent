@@ -1,6 +1,23 @@
 #!/bin/sh
 # Dock + model share this. No --no-sandbox (infobar). Site isolation stays on.
-# --load-extension: one vendored uBO Lite. Do not also force-install from the Chrome Web Store.
+# --load-extension: one vendored uBO Lite + the hardening extension. Do not also
+# force-install uBO from the Chrome Web Store.
+#
+# Anti-detection notes:
+#   navigator.webdriver is already false on this headed, non-automation launch,
+#   and the hardening extension pins it false regardless, so the bad-flags
+#   warning that --disable-blink-features=AutomationControlled draws is not
+#   worth the screen space.
+#   --enable-unsafe-swiftshader gives WebGL a context despite --disable-gpu; the
+#     hardening extension rewrites the resulting SwiftShader renderer strings.
+#   --user-agent is pinned to the installed Chromium version so a future headless
+#     launch can never leak "HeadlessChrome"; it matches Sec-CH-UA, unlike a
+#     cross-platform spoof.
+#   --enable-low-end-device-mode is intentionally absent: it forced
+#     navigator.deviceMemory to 2, which contradicts the real CPU count.
+major=$(chromium --version 2>/dev/null | cut -d' ' -f2 | cut -d. -f1)
+[ -n "$major" ] && set -- --user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36" "$@"
+
 exec chromium \
   --user-data-dir=/home/silo/chrome-profile \
   --remote-debugging-port=9222 \
@@ -9,10 +26,12 @@ exec chromium \
   --no-default-browser-check \
   --disable-sync \
   --disable-gpu \
+  --enable-unsafe-swiftshader \
+  --lang=en-US \
+  --accept-lang=en-US,en \
   --disable-dev-shm-usage \
-  --enable-low-end-device-mode \
   --disk-cache-size=134217728 \
   --password-store=basic \
   --mute-audio \
-  --load-extension=/opt/silo/ubol \
+  --load-extension=/opt/silo/ubol,/opt/silo/stealth \
   "$@"

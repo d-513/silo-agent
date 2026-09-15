@@ -17,7 +17,6 @@ import (
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
-	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 )
 
@@ -339,11 +338,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	}
 	go a.nameChat(botID, chatID, runID, title, client, model)
 
-	var bot db.Bot
-	sysText := prompts.System
-	if a.DB.First(&bot, "id = ?", botID).Error == nil {
-		sysText = buildSystem(&bot, a.connectorBlurb(botID)+a.skillBlurb(botID))
-	}
+	sysText := a.buildSystem(botID)
 	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
 
@@ -443,10 +438,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 				}))
 			}
 			if fn.Name == "soul" || fn.Name == "memory" {
-				var row db.Bot
-				if a.DB.First(&row, "id = ?", botID).Error == nil {
-					msgs[0] = openai.SystemMessage(buildSystem(&row, a.connectorBlurb(botID)+a.skillBlurb(botID)))
-				}
+				msgs[0] = openai.SystemMessage(a.buildSystem(botID))
 			}
 		}
 	}

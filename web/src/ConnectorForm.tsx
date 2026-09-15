@@ -7,6 +7,8 @@ export type EnvDraft = { name: string; value: string; secret: string };
 export type ConnectorDraft = {
   name: string;
   description: string;
+  prompt: string;
+  autoAttach: boolean;
   httpUrl: string;
   auth: string;
   defaultMode: string;
@@ -31,6 +33,8 @@ export function emptyDraft(): ConnectorDraft {
   return {
     name: "",
     description: "",
+    prompt: "",
+    autoAttach: false,
     httpUrl: "",
     auth: "none",
     defaultMode: "ask",
@@ -53,6 +57,8 @@ export function draftFrom(c: Connector): ConnectorDraft {
   return {
     name: c.name,
     description: c.description,
+    prompt: c.prompt || "",
+    autoAttach: c.autoAttach,
     httpUrl: c.httpUrl,
     auth: c.auth || "none",
     defaultMode: c.defaultMode || "ask",
@@ -78,6 +84,8 @@ export function specOf(d: ConnectorDraft) {
   return {
     name: d.name,
     description: d.description,
+    prompt: d.prompt,
+    autoAttach: d.autoAttach,
     httpUrl: d.httpUrl,
     auth: d.transport === "stdio" ? "none" : d.auth,
     defaultMode: d.defaultMode,
@@ -171,6 +179,7 @@ export function ConnectorFields({
   fromCatalog,
   catalogGuide,
   allowStdioImage,
+  allowAutoAttach,
 }: {
   value: ConnectorDraft;
   onChange: (next: ConnectorDraft) => void;
@@ -178,6 +187,7 @@ export function ConnectorFields({
   fromCatalog?: boolean;
   catalogGuide?: string;
   allowStdioImage?: boolean;
+  allowAutoAttach?: boolean;
 }) {
   function set<K extends keyof ConnectorDraft>(k: K, v: ConnectorDraft[K]) {
     onChange({ ...value, [k]: v });
@@ -207,6 +217,14 @@ export function ConnectorFields({
           <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
         </>
       )}
+      <label className="mb-1 block text-[12px] font-medium text-stone">Prompt</label>
+      <p className="mb-2 text-stone">Extra instructions added to the system prompt while this connector is authorized and its tools are ready.</p>
+      <textarea
+        className="mb-3 min-h-24 w-full rounded border border-thread bg-folio px-3 py-2"
+        value={value.prompt}
+        onChange={(e) => set("prompt", e.target.value)}
+        placeholder="When to use this connector, and how."
+      />
       <label className="mb-1 block text-[12px] font-medium text-stone">Image</label>
       <div className="mb-3 flex items-center gap-3">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} />
@@ -325,6 +343,20 @@ export function ConnectorFields({
           ]}
         />
       </div>
+      {allowAutoAttach && (
+        <label className="mb-3 flex items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 accent-bindery"
+            checked={value.autoAttach}
+            onChange={(e) => set("autoAttach", e.target.checked)}
+          />
+          <span>
+            <span className="block text-[12px] font-medium text-stone">Add to new bots by default</span>
+            <span className="block text-stone">New bots get this connector automatically. Removing it from a bot does not re-add it.</span>
+          </span>
+        </label>
+      )}
       {value.transport === "stdio" ? (
         <>
           <div className="mb-1 text-[12px] font-medium text-stone">Environment</div>

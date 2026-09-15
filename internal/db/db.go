@@ -127,6 +127,8 @@ type Connector struct {
 	StdioImage        string
 	EnvJSON           string
 	DefaultMode       string
+	Prompt            string
+	AutoAttach        bool `gorm:"index"`
 	CreatedAt         time.Time
 }
 

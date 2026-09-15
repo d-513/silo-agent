@@ -368,19 +368,17 @@ func (a *App) enabledSkills(botID string) []skills.Info {
 	return out
 }
 
-func (a *App) skillBlurb(botID string) string {
-	xs := a.enabledSkills(botID)
+func (a *App) skillSections(pc promptContext) []promptSection {
 	var b strings.Builder
-	b.WriteString("\n\n## Skills\n")
 	b.WriteString("Load with `skill` when the task matches. Instructions are not in this prompt. Scripts and extras are at `/opt/silo/skills/<name>/`.\n")
-	if len(xs) == 0 {
+	if len(pc.skills) == 0 {
 		b.WriteString("None enabled.\n")
-		return b.String()
+		return []promptSection{{title: "Skills", body: b.String()}}
 	}
-	for _, s := range xs {
+	for _, s := range pc.skills {
 		fmt.Fprintf(&b, "- `%s` — %s\n", s.Name, s.Description)
 	}
-	return b.String()
+	return []promptSection{{title: "Skills", body: b.String()}}
 }
 
 func (a *App) pushSkills(botID string) {

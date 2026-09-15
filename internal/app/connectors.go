@@ -67,11 +67,12 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
 		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
 		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
-		Env: m.GetEnv(), AllowImage: true, RequireComplete: true,
+		Env: m.GetEnv(), Prompt: m.GetPrompt(), AllowImage: true, RequireComplete: true,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	row.AutoAttach = m.GetAutoAttach()
 	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
 	if row.Transport == transportSTDIO {
 		row.Auth = authNone
@@ -104,6 +105,10 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		row.Name = n
 	}
 	row.Description = strings.TrimSpace(m.GetDescription())
+	row.Prompt = strings.TrimSpace(m.GetPrompt())
+	if row.Kind == catalog.KindLibrary {
+		row.AutoAttach = m.GetAutoAttach()
+	}
 	if m.GetTransport() != "" {
 		tr := strings.ToLower(m.GetTransport())
 		if err := checkTransport(tr); err != nil {
@@ -246,7 +251,7 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
 		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
 		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
-		Env: m.GetEnv(), AllowImage: admin, RequireComplete: from == "",
+		Env: m.GetEnv(), Prompt: m.GetPrompt(), AllowImage: admin, RequireComplete: from == "",
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -282,6 +287,9 @@ func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.Header
 	}
 	if row.OAuthClientSecret == "" {
 		row.OAuthClientSecret = lib.OAuthClientSecret
+	}
+	if row.Prompt == "" {
+		row.Prompt = lib.Prompt
 	}
 	if row.Transport == "" {
 		row.Transport = lib.Transport
@@ -707,39 +715,29 @@ func (a *App) pushTools(botID string) {
 	}
 }
 
-func (a *App) connectorBlurb(botID string) string {
-	if a.DB == nil {
-		return ""
-	}
-	var rows []db.BotConnector
-	a.DB.Where("bot_id = ?", botID).Find(&rows)
+func (a *App) connectorSections(pc promptContext) []promptSection {
 	var b strings.Builder
-	b.WriteString("\n\n## Connectors\n")
-	if len(rows) == 0 {
-		b.WriteString("None attached. Do not invent MCP servers, packages, or credentials.\n")
-		return b.String()
-	}
 	b.WriteString("Attached on this Bot. Use exec_python and `import tools.<slug>`. They are not chat tools.\n")
-	for i := range rows {
-		var c db.Connector
-		if a.DB.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
-			continue
-		}
-		slug := toolsgen.Slug(c.Name)
-		switch rows[i].AuthStatus {
+	if len(pc.connectors) == 0 {
+		b.WriteString("None attached. Do not invent MCP servers, packages, or credentials.\n")
+		return []promptSection{{title: "Connectors", body: b.String()}}
+	}
+	for _, v := range pc.connectors {
+		slug := toolsgen.Slug(v.conn.Name)
+		switch v.link.AuthStatus {
 		case statusNeedsAuth:
-			fmt.Fprintf(&b, "- `%s` (%s) — needs Authorize on the Connectors tab.\n", slug, c.Name)
+			fmt.Fprintf(&b, "- `%s` (%s) — needs Authorize on the Connectors tab.\n", slug, v.conn.Name)
 		case statusInit:
-			fmt.Fprintf(&b, "- `%s` (%s) — still starting up; its tools are not ready yet.\n", slug, c.Name)
+			fmt.Fprintf(&b, "- `%s` (%s) — still starting up; its tools are not ready yet.\n", slug, v.conn.Name)
 		case statusErr:
-			err := rows[i].LastError
+			err := v.link.LastError
 			if len(err) > 180 {
 				err = err[:180]
 			}
-			fmt.Fprintf(&b, "- `%s` (%s) — refresh failed: %s\n", slug, c.Name, err)
+			fmt.Fprintf(&b, "- `%s` (%s) — refresh failed: %s\n", slug, v.conn.Name, err)
 		default:
 			var tools []mcpx.Tool
-			_ = json.Unmarshal([]byte(rows[i].ToolsJSON), &tools)
+			_ = json.Unmarshal([]byte(v.link.ToolsJSON), &tools)
 			var names []string
 			for _, t := range tools {
 				if t.Name != "" {
@@ -747,16 +745,21 @@ func (a *App) connectorBlurb(botID string) string {
 				}
 			}
 			if len(names) == 0 {
-				fmt.Fprintf(&b, "- `%s` (%s) — attached; Refresh on the Connectors tab if import tools finds nothing.\n", slug, c.Name)
-				break
+				fmt.Fprintf(&b, "- `%s` (%s) — attached; Refresh on the Connectors tab if import tools finds nothing.\n", slug, v.conn.Name)
+			} else {
+				if len(names) > 12 {
+					names = append(names[:12], "…")
+				}
+				fmt.Fprintf(&b, "- `import tools.%s` — %s\n", slug, strings.Join(names, ", "))
 			}
-			if len(names) > 12 {
-				names = append(names[:12], "…")
+			if v.link.AuthStatus == statusOK && strings.TrimSpace(v.conn.Prompt) != "" {
+				for _, line := range strings.Split(strings.TrimSpace(v.conn.Prompt), "\n") {
+					fmt.Fprintf(&b, "  %s\n", strings.TrimRight(line, "\r"))
+				}
 			}
-			fmt.Fprintf(&b, "- `import tools.%s` — %s\n", slug, strings.Join(names, ", "))
 		}
 	}
-	return b.String()
+	return []promptSection{{title: "Connectors", body: b.String()}}
 }
 
 func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connector) (*mcpx.Session, error) {
@@ -1006,7 +1009,8 @@ func parseConnector(in connectorIn) (db.Connector, error) {
 	row := db.Connector{
 		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(in.Name),
 		Description: strings.TrimSpace(in.Desc), Image: img, ImageType: imgType,
-		Transport: tr, DefaultMode: security.Rule(in.Mode), CreatedAt: time.Now(),
+		Transport: tr, DefaultMode: security.Rule(in.Mode), Prompt: strings.TrimSpace(in.Prompt),
+		CreatedAt: time.Now(),
 	}
 	if tr == transportSTDIO {
 		row.Auth = authNone
@@ -1068,6 +1072,7 @@ type connectorIn struct {
 	StdioArgs                                  []string
 	StdioImage                                 string
 	Env                                        []*v1.EnvInput
+	Prompt                                     string
 	AllowImage                                 bool
 	RequireComplete                            bool
 }
@@ -1090,7 +1095,23 @@ func cloneLibrary(lib *db.Connector, botID string) db.Connector {
 		OAuthClientID: lib.OAuthClientID, OAuthClientSecret: lib.OAuthClientSecret,
 		HeadersJSON: lib.HeadersJSON, StdioCommand: lib.StdioCommand,
 		StdioArgsJSON: lib.StdioArgsJSON, StdioImage: lib.StdioImage, EnvJSON: lib.EnvJSON,
-		DefaultMode: lib.DefaultMode, CreatedAt: time.Now(),
+		DefaultMode: lib.DefaultMode, Prompt: lib.Prompt, CreatedAt: time.Now(),
+	}
+}
+
+// attachDefaultConnectors copies every library preset flagged auto_attach onto
+// a newly created Bot. It runs exactly once, from CreateBot, so a preset the
+// human later removes from the Bot is never silently re-added.
+func (a *App) attachDefaultConnectors(ctx context.Context, botID string) {
+	if a.DB == nil {
+		return
+	}
+	var libs []db.Connector
+	a.DB.Where("kind = ? AND auto_attach = ?", catalog.KindLibrary, true).Order("name").Find(&libs)
+	for i := range libs {
+		if _, err := a.putBotConnector(ctx, botID, cloneLibrary(&libs[i], botID)); err != nil {
+			log.Printf("default connector %s bot=%s: %v", libs[i].Name, botID, err)
+		}
 	}
 }
 
@@ -1227,6 +1248,7 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 		DefaultMode: security.Rule(c.DefaultMode), CreatedAt: c.CreatedAt.Format(time.RFC3339),
 		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),
 		StdioCommand: c.StdioCommand, StdioArgs: mcpbridge.ParseArgs(c.StdioArgsJSON), StdioImage: c.StdioImage,
+		Prompt: c.Prompt, AutoAttach: c.AutoAttach,
 	}
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
 	for k := range hdr {

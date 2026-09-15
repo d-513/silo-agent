@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Silo Browser Hardening",
+  "version": "1.0",
+  "description": "Removes the container/automation tells that a GPU-less, automated desktop browser would otherwise leak.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["stealth.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "world": "MAIN"
+    }
+  ]
+}

@@ -84,6 +84,9 @@ func TestSeedIdempotent(t *testing.T) {
 	if gh.Kind != KindLibrary || gh.Auth != "oauth" || len(gh.Image) == 0 {
 		t.Fatalf("%+v", gh)
 	}
+	if gh.AutoAttach || gh.Prompt != "" {
+		t.Fatalf("unexpected connector defaults %+v", gh)
+	}
 	gh.Name = "GitHub (edited)"
 	gdb.Save(&gh)
 	if err := Seed(gdb); err != nil {

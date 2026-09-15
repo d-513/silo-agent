@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
     scrot xdotool imagemagick unzip \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
-    ca-certificates fonts-liberation sudo \
+    ca-certificates fonts-liberation fonts-dejavu fonts-liberation2 \
+    fonts-noto-core fonts-noto-color-emoji fonts-freefont-ttf sudo \
     poppler-utils ghostscript pandoc tesseract-ocr catdoc unrtf \
     python3-docx python3-openpyxl python3-xlrd python3-odf python3-pypdf \
     && rm -rf /var/lib/apt/lists/* \
@@ -27,6 +28,7 @@ COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
 COPY botimage/mimeapps.list /opt/silo/mimeapps.list
 COPY botimage/chromium.png /opt/silo/chromium.png
 COPY botimage/chromium/policies.json /etc/chromium/policies/managed/silo.json
+COPY botimage/chromium/stealth/ /opt/silo/stealth/
 ADD https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.901.1442/uBOLite_2026.901.1442.chromium.zip /tmp/ubol.zip
 RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
     && unzip -q /tmp/ubol.zip -d /tmp/ubol-src \
@@ -40,7 +42,7 @@ RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/s
         /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools \
     && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
-    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol
+    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol /opt/silo/stealth
 ENV DISPLAY=:1 \
     SILO_WORKSPACE=/workspace \
     SILO_WORKER_SOCK=/var/run/silo/worker.sock \

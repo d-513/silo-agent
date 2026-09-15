@@ -80,6 +80,9 @@ function CatalogList() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{c.name}</span>
                     <McpChip />
+                    {c.autoAttach && (
+                      <span className="rounded bg-bindery-pale px-1.5 py-0.5 text-[11px] font-medium text-bindery">Default</span>
+                    )}
                   </div>
                   <p className="truncate text-stone">{c.description || c.httpUrl || c.stdioCommand}</p>
                 </div>
@@ -166,7 +169,7 @@ function LibraryForm() {
     <form onSubmit={onSubmit} className="max-w-[560px]">
       <h2 className="mb-4 text-[22px] font-medium">{id ? "Edit preset" : "Add preset"}</h2>
       {err && <p className="mb-3 text-carmine">{err}</p>}
-      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage />
+      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage allowAutoAttach />
       <div className="flex gap-2">
         <Btn kind="primary" type="submit">
           {id ? "Save" : "Add to library"}
