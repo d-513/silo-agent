@@ -19,11 +19,11 @@ const DefaultSkill = skills.DefaultName
 // Owners can still turn any of them off; a disabled row is left alone.
 var DefaultSkills = []string{
 	DefaultSkill,
-	"reading-pdf",
-	"reading-word",
-	"reading-spreadsheets",
-	"reading-presentations",
-	"reading-images",
+	"pdf",
+	"word",
+	"spreadsheets",
+	"presentations",
+	"images",
 }
 
 // SeededName is true when name is one of the embed’d catalog skills.

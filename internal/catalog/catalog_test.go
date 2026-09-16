@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/skills"
 )
 
 func TestLoad(t *testing.T) {
@@ -135,6 +136,22 @@ func TestSeedSkills(t *testing.T) {
 	got, _ := os.ReadFile(filepath.Join(other, "SKILL.md"))
 	if !strings.Contains(string(got), "Edited locally") {
 		t.Fatal(string(got))
+	}
+}
+
+func TestDefaultSkillsParse(t *testing.T) {
+	dir := t.TempDir()
+	if err := SeedSkills(dir); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range DefaultSkills {
+		info, err := skills.Load(filepath.Join(skills.LibraryDir(dir), name))
+		if err != nil {
+			t.Fatalf("default skill %q: %v", name, err)
+		}
+		if info.Name != name {
+			t.Fatalf("default skill %q loaded as %q", name, info.Name)
+		}
 	}
 }
 

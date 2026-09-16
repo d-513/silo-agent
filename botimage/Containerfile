@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates fonts-liberation fonts-dejavu fonts-liberation2 \
     fonts-noto-core fonts-noto-color-emoji fonts-freefont-ttf sudo \
     poppler-utils ghostscript pandoc tesseract-ocr catdoc unrtf \
+    python3-reportlab img2pdf weasyprint \
     python3-docx python3-openpyxl python3-xlrd python3-odf python3-pypdf \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 --shell /bin/bash --user-group silo \
