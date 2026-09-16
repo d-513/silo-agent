@@ -18,6 +18,7 @@ export default defineConfig({
       "/healthz": { target: "http://127.0.0.1:8080" },
       "/oauth": { target: "http://127.0.0.1:8080" },
       "/connectors": { target: "http://127.0.0.1:8080" },
+      "/artifacts": { target: "http://127.0.0.1:8080" },
     },
   },
 });

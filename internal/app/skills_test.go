@@ -77,10 +77,13 @@ func TestSetBotSkillUniqueName(t *testing.T) {
 	}
 }
 
-func TestProposeSkillAllow(t *testing.T) {
-	conn, action, ok := chatTool("propose_skill")
-	if !ok || conn != "skills" || action != "propose" {
+func TestArtifactAllow(t *testing.T) {
+	conn, action, ok := chatTool("artifact")
+	if !ok || conn != "artifact" || action != "emit" {
 		t.Fatal(conn, action)
+	}
+	if _, _, ok := chatTool("propose_skill"); ok {
+		t.Fatal("propose_skill should be gone")
 	}
 	conn, action, ok = chatTool("skill")
 	if !ok || conn != "skills" || action != "load" {

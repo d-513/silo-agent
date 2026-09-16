@@ -3,6 +3,8 @@
 Chromium: chrome_page() is Playwright on the headed desktop browser.
 The worker opens silo-chromium if CDP :9222 is down.
 Web: web_search(query) runs on the Control Plane.
+Artifacts: artifact(path) shows a skill directory or a file as a card in the
+thread. It is not the same as present — present only displays a file inline.
 """
 
 from __future__ import annotations
@@ -86,6 +88,21 @@ def key(name: str) -> dict:
 
 def scroll(x: int, y: int, dy: int) -> dict:
     return call("desktop", "scroll", {"x": x, "y": y, "dy": dy})
+
+
+def artifact(path: str, title: str | None = None, kind: str | None = None) -> dict:
+    """Show a deliverable as a card in the thread.
+
+    A directory that contains SKILL.md becomes an installable skill (the human
+    clicks Save skill). Any other file becomes a downloadable card with a
+    preview. `path` is relative to /workspace. This is not `present`.
+    """
+    args: dict = {"path": path}
+    if title is not None:
+        args["title"] = title
+    if kind is not None:
+        args["kind"] = kind
+    return call("artifact", "emit", args)
 
 
 def web_search(query: str, max_results: int | None = None) -> dict:

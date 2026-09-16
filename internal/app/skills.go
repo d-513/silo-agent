@@ -314,7 +314,10 @@ func (a *App) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRe
 	}
 	runID := strings.TrimSpace(req.Msg.GetRunId())
 	if runID != "" {
-		a.emitSkillArtifact(b.ID, runID, peek.Name, peek.Name, peek.Path, skills.KindPersonal, "saved")
+		a.emitArtifact(b.ID, runID, artifactInfo{
+			Type: "skill", Name: peek.Name, Title: peek.Name, Path: peek.Path,
+			Scope: skills.KindPersonal, Status: "saved",
+		})
 	}
 	return connect.NewResponse(&v1.SaveSkillResponse{Name: peek.Name}), nil
 }
@@ -490,18 +493,6 @@ type skillPeek struct {
 	Description string
 	Path        string
 	Files       string
-}
-
-func skillArtifactJSON(name, title, path, scope, status string) string {
-	b, _ := json.Marshal(map[string]string{
-		"type": "skill", "name": name, "title": title, "path": path,
-		"scope": scope, "status": status,
-	})
-	return string(b)
-}
-
-func (a *App) emitSkillArtifact(botID, runID, name, title, path, scope, status string) {
-	a.emit(botID, a.chatOfRun(runID), runID, "artifact", skillArtifactJSON(name, title, path, scope, status), "")
 }
 
 func (a *App) peekSkillProposal(ctx context.Context, botID, rel string) (skillPeek, error) {

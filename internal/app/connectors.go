@@ -589,6 +589,24 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		out = a.Mask(bot.ID).Apply(out)
 		a.emitCallDone(bot.ID, runID, tool, capCall(out))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
+	case security.Artifact:
+		if action != "emit" {
+			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		tool := security.Key(slug, action)
+		title := security.Describe(slug, action, argsJSON).Title
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
+		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		out, err := a.artifact(ctx, bot, runID, argsJSON)
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, out)
+		return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
 	default:
 		return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
 	}

@@ -400,6 +400,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/console", a.handleConsole)
 	mux.HandleFunc("/oauth/callback", a.handleOAuthCallback)
 	mux.HandleFunc("/connectors/", a.handleConnectorImage)
+	mux.HandleFunc("/artifacts/", a.handleArtifactDownload)
 	log.Printf("mounted %s %s", uiPath, wkPath)
 	return withHTTP(mux)
 }

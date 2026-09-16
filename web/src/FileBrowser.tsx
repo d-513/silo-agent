@@ -26,26 +26,26 @@ import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, kindOf } from "./fileKind";
 import { crumbs, fmtSize, type FsEntry, type FsFile, type FsSource } from "./fs";
 
-export function TypeIcon({ name, dir }: { name: string; dir: boolean }) {
+export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean; size?: number }) {
   const cls = "shrink-0 text-current opacity-70";
-  if (dir) return <Folder size={16} className={cls} />;
+  if (dir) return <Folder size={size} className={cls} />;
   const e = extOf(name);
   const k = kindOf(name);
-  if (k === "pdf") return <FilePdf size={16} className={cls} />;
-  if (k === "image") return <FileImage size={16} className={cls} />;
-  if (k === "video") return <FileVideo size={16} className={cls} />;
-  if (k === "audio") return <FileAudio size={16} className={cls} />;
-  if (k === "csv") return <FileCsv size={16} className={cls} />;
-  if (k === "docx") return <FileDoc size={16} className={cls} />;
-  if (e === "zip" || e === "gz" || e === "tgz" || e === "tar" || e === "7z") return <FileArchive size={16} className={cls} />;
-  if (e === "py") return <FilePy size={16} className={cls} />;
-  if (e === "ts" || e === "tsx") return <FileTs size={16} className={cls} />;
-  if (e === "js" || e === "jsx") return <FileJs size={16} className={cls} />;
-  if (e === "css") return <FileCss size={16} className={cls} />;
-  if (e === "html" || e === "htm") return <FileHtml size={16} className={cls} />;
-  if (k === "code" || k === "json") return <FileCode size={16} className={cls} />;
-  if (k === "markdown" || k === "text") return <FileText size={16} className={cls} />;
-  return <File size={16} className={cls} />;
+  if (k === "pdf") return <FilePdf size={size} className={cls} />;
+  if (k === "image") return <FileImage size={size} className={cls} />;
+  if (k === "video") return <FileVideo size={size} className={cls} />;
+  if (k === "audio") return <FileAudio size={size} className={cls} />;
+  if (k === "csv") return <FileCsv size={size} className={cls} />;
+  if (k === "docx") return <FileDoc size={size} className={cls} />;
+  if (e === "zip" || e === "gz" || e === "tgz" || e === "tar" || e === "7z") return <FileArchive size={size} className={cls} />;
+  if (e === "py") return <FilePy size={size} className={cls} />;
+  if (e === "ts" || e === "tsx") return <FileTs size={size} className={cls} />;
+  if (e === "js" || e === "jsx") return <FileJs size={size} className={cls} />;
+  if (e === "css") return <FileCss size={size} className={cls} />;
+  if (e === "html" || e === "htm") return <FileHtml size={size} className={cls} />;
+  if (k === "code" || k === "json") return <FileCode size={size} className={cls} />;
+  if (k === "markdown" || k === "text") return <FileText size={size} className={cls} />;
+  return <File size={size} className={cls} />;
 }
 
 export function FileBrowser({

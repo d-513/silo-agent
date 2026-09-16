@@ -5,7 +5,7 @@ import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, usePa
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
-import { ArtifactOverlay, type SkillArtifact } from "./Artifact";
+import { ArtifactOverlay, type Artifact } from "./Artifact";
 import { ApprovalSlip, ConnectorAuthSlip } from "./Approval";
 import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
@@ -1055,7 +1055,7 @@ function BotPage() {
   const [attachErr, setAttachErr] = useState("");
   const [keepDesk, setKeepDesk] = useState(tab === "desktop");
   const [keepCon, setKeepCon] = useState(tab === "console");
-  const [inspect, setInspect] = useState<SkillArtifact | null>(null);
+  const [inspect, setInspect] = useState<Artifact | null>(null);
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
@@ -1276,7 +1276,7 @@ function BotPage() {
     }
   }
 
-  async function saveSkill(a: SkillArtifact) {
+  async function saveSkill(a: Artifact) {
     if (!id) return;
     try {
       await ui.saveSkill({ botId: id, path: a.path, runId: a.runId ?? "" });

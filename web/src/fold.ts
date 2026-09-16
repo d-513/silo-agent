@@ -22,6 +22,7 @@ export type Block =
       scope: string;
       approvalId: string;
       status: string;
+      size?: number;
       runId?: string;
     };
 
@@ -215,6 +216,7 @@ export function foldEvents(events: Ev[]): Block[] {
         scope: String(body.scope || ""),
         approvalId,
         status: String(body.status || ""),
+        size: typeof body.size === "number" ? body.size : undefined,
         runId: e.runId,
       };
       let found = false;

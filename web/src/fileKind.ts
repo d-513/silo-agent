@@ -92,3 +92,38 @@ export function mimeOf(name: string): string {
 export function codeLang(name: string) {
   return codes[extOf(name)];
 }
+
+export function kindLabel(name: string): string {
+  switch (kindOf(name)) {
+    case "image":
+      return "Image";
+    case "pdf":
+      return "PDF";
+    case "video":
+      return "Video";
+    case "audio":
+      return "Audio";
+    case "markdown":
+      return "Markdown";
+    case "csv":
+      return "Spreadsheet";
+    case "json":
+      return "JSON";
+    case "docx":
+      return "Document";
+    case "code":
+      return extOf(name).toUpperCase() || "Code";
+    case "text":
+      return "Text";
+    default:
+      break;
+  }
+  const e = extOf(name);
+  if (e === "zip" || e === "gz" || e === "tgz" || e === "tar" || e === "7z") return "Archive";
+  return e ? e.toUpperCase() : "File";
+}
+
+export function isTextKind(name: string): boolean {
+  const k = kindOf(name);
+  return k === "markdown" || k === "csv" || k === "json" || k === "code" || k === "text";
+}

@@ -30,13 +30,21 @@ if (!py || py.type !== "tool" || py.calls?.length !== 1) throw new Error("nested
 if (py.calls[0].title !== "Twilio Docs · retrieve" || py.calls[0].running) throw new Error("call not closed");
 
 const arts = foldEvents([
-  ev("tool", '{"path":"bot/demo"}', "propose_skill"),
+  ev("tool", '{"path":"bot/demo"}', "artifact"),
   { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "workspace", approval_id: "a1", status: "pending" }), tool: "" },
   { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "personal", approval_id: "a1", status: "saved" }), tool: "" },
 ]);
 const art = arts.filter((b) => b.type === "artifact");
-if (art.length !== 1 || art[0].type !== "artifact" || art[0].status !== "saved" || art[0].approvalId !== "a1") {
+if (art.length !== 1 || art[0].type !== "artifact" || art[0].artifactType !== "skill" || art[0].status !== "saved" || art[0].approvalId !== "a1") {
   throw new Error("artifact fold");
+}
+
+const files = foldEvents([
+  { kind: "artifact", body: JSON.stringify({ type: "file", name: "q3.pdf", title: "Q3 report", path: "reports/q3.pdf", scope: "workspace", status: "ready", size: 2048 }), tool: "" },
+]);
+const file = files.filter((b) => b.type === "artifact");
+if (file.length !== 1 || file[0].type !== "artifact" || file[0].artifactType !== "file" || file[0].size !== 2048) {
+  throw new Error("file artifact fold");
 }
 
 console.log("ok");

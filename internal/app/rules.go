@@ -26,7 +26,7 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 	botSec := &v1.RuleSection{
 		Id:      "bot",
 		Title:   "This Bot",
-		Summary: "Python, Terminal, and Web search are allowed until you change them. Files and Desktop cover the chat tools (and the Python desktop helpers).",
+		Summary: "Python, Terminal, Web search, and Artifacts are allowed until you change them. Files and Desktop cover the chat tools (and the Python desktop helpers).",
 	}
 	for _, row := range security.BuiltinRows() {
 		r := a.effectiveRule(botID, row.Connector, row.Action, row.Title, stored, "")
@@ -123,9 +123,11 @@ func (a *App) pruneConnectorRules(botID, slug string, keepActions []string) {
 
 func (a *App) sweepRules(botID string) {
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Secrets, "get").Delete(&db.Rule{})
+	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Skills, "propose").Delete(&db.Rule{})
 	live := map[string]bool{
 		security.Python: true, security.Terminal: true, security.Files: true,
-		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true, security.Web: true,
+		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true,
+		security.Web: true, security.Artifact: true,
 	}
 	secretOK := map[string]bool{}
 	var secs []db.Secret

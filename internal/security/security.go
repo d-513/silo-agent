@@ -28,6 +28,7 @@ const (
 	Secrets  = "secrets"
 	Skills   = "skills"
 	Web      = "web"
+	Artifact = "artifact"
 )
 
 type Field struct {
@@ -56,19 +57,19 @@ type spec struct {
 }
 
 var reserved = map[string]bool{
-	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true,
+	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
 }
 
 var catalog = map[string]spec{
-	"python.run":     {title: "Python", mode: Allow, summary: want("run Python")},
-	"terminal.run":   {title: "Terminal", mode: Allow, summary: want("run a shell command")},
-	"files.*":        {title: "Files", mode: Allow, summary: want("use workspace files")},
-	"desktop.*":      {title: "Desktop", mode: Allow, summary: want("use the desktop"), hide: []string{"text"}},
-	"bot.soul":       {title: "Soul", mode: Allow, summary: want("edit SOUL")},
-	"bot.memory":     {title: "Memory", mode: Allow, summary: want("edit MEMORY")},
-	"skills.load":    {title: "Load skill", mode: Allow, summary: want("load a skill")},
-	"skills.propose": {title: "Propose skill", mode: Allow, summary: want("show a skill artifact")},
-	"web.search":     {title: "Web search", mode: Allow, summary: want("search the web")},
+	"python.run":    {title: "Python", mode: Allow, summary: want("run Python")},
+	"terminal.run":  {title: "Terminal", mode: Allow, summary: want("run a shell command")},
+	"files.*":       {title: "Files", mode: Allow, summary: want("use workspace files")},
+	"desktop.*":     {title: "Desktop", mode: Allow, summary: want("use the desktop"), hide: []string{"text"}},
+	"bot.soul":      {title: "Soul", mode: Allow, summary: want("edit SOUL")},
+	"bot.memory":    {title: "Memory", mode: Allow, summary: want("edit MEMORY")},
+	"skills.load":   {title: "Load skill", mode: Allow, summary: want("load a skill")},
+	"artifact.emit": {title: "Artifact", mode: Allow, summary: want("show an artifact")},
+	"web.search":    {title: "Web search", mode: Allow, summary: want("search the web")},
 }
 
 func want(s string) func(map[string]string) string {
@@ -88,7 +89,7 @@ func BuiltinRows() []Row {
 		{Bot, "soul", "Soul"},
 		{Bot, "memory", "Memory"},
 		{Skills, "load", "Load skill"},
-		{Skills, "propose", "Propose skill"},
+		{Artifact, "emit", "Artifact"},
 		{Web, "search", "Web search"},
 	}
 }

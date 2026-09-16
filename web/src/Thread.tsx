@@ -38,7 +38,7 @@ import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
-import { ArtifactCard, downloadArtifact, type SkillArtifact } from "./Artifact";
+import { ArtifactCard, downloadArtifact, type Artifact } from "./Artifact";
 import { Crest } from "./Crest";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
@@ -245,8 +245,8 @@ function toolMeta(name: string) {
       return { label: "MEMORY", Icon: Notebook };
     case "skill":
       return { label: "skill", Icon: Notebook };
-    case "propose_skill":
-      return { label: "propose skill", Icon: Notebook };
+    case "artifact":
+      return { label: "artifact", Icon: Notebook };
     case "present":
       return { label: "present", Icon: FrameCorners };
     case "look":
@@ -328,13 +328,15 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
     } else {
       body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
     }
-  } else if (name === "skill" || name === "propose_skill") {
+  } else if (name === "skill") {
     const skillName = asStr(a.name);
     body = (
       <div className="font-mono text-[13px]">
         {skillName || path}
       </div>
     );
+  } else if (name === "artifact" && path) {
+    body = <div className="font-mono text-[13px]">{path}</div>;
   } else if (name === "present" && path) {
     body = <div className="font-mono text-[13px]">{path}</div>;
   } else if (name === "click" && (x != null || y != null)) {
@@ -526,8 +528,8 @@ export function Thread({
   botCrest?: number;
   events: Ev[];
   sending: boolean;
-  onInspectArtifact?: (a: SkillArtifact) => void;
-  onSaveSkill?: (a: SkillArtifact) => void;
+  onInspectArtifact?: (a: Artifact) => void;
+  onSaveSkill?: (a: Artifact) => void;
   onSelectPrompt?: (prompt: string) => void;
 }) {
   const end = useRef<HTMLDivElement>(null);
@@ -653,7 +655,7 @@ export function Thread({
             );
           }
           if (b.type === "tool") {
-            if (b.name === "propose_skill" && blocks.some((x) => x.type === "artifact")) {
+            if (b.name === "artifact" && blocks.some((x) => x.type === "artifact" && (!x.runId || !b.runId || x.runId === b.runId))) {
               return null;
             }
             const path = asStr(parseToolArgs(b.args).path);
@@ -740,14 +742,15 @@ export function Thread({
             );
           }
           if (b.type === "artifact") {
-            const a: SkillArtifact = {
-              type: "skill",
+            const a: Artifact = {
+              type: b.artifactType === "file" ? "file" : "skill",
               name: b.name,
               title: b.title,
               path: b.path,
               scope: b.scope,
               approvalId: b.approvalId,
               status: b.status,
+              size: b.size,
               runId: b.runId,
             };
             return (

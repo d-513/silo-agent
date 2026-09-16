@@ -59,7 +59,7 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
 		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
+		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Deliverables: silo_runtime.artifact(path) shows a skill dir or a file as a card — not the same as present. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
@@ -224,12 +224,14 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 		},
 	}),
 	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "propose_skill",
-		Description: openai.String("Show a skill you wrote as an artifact in the thread. Path is a directory relative to /workspace that contains SKILL.md. This does not install it — the human Saves it from the card."),
+		Name:        "artifact",
+		Description: openai.String("Show a deliverable as a card in the thread. Path is relative to /workspace. A directory that contains SKILL.md becomes an installable skill (the human clicks Save skill); any other file becomes a downloadable card with a preview. Use this for things the human keeps or downloads. This is not present — present merely displays a file inline."),
 		Parameters: openai.FunctionParameters{
 			"type": "object",
 			"properties": map[string]any{
-				"path": map[string]any{"type": "string"},
+				"path":  map[string]any{"type": "string"},
+				"title": map[string]any{"type": "string", "description": "display title (defaults to the file or skill name)"},
+				"kind":  map[string]any{"type": "string", "enum": []string{"skill", "file"}, "description": "override the auto-detected type"},
 			},
 			"required": []string{"path"},
 		},
@@ -634,7 +636,7 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if name == "skill" && str("name") == "" {
 		return "", "", fmt.Errorf("name required")
 	}
-	if name == "propose_skill" && path == "" {
+	if name == "artifact" && path == "" {
 		return "", "", fmt.Errorf("path required")
 	}
 	if name == "web_search" && str("query") == "" {
@@ -648,14 +650,6 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", "", fmt.Errorf("unknown bot")
 	}
-	var peek skillPeek
-	if name == "propose_skill" {
-		var err error
-		peek, err = a.peekSkillProposal(ctx, botID, path)
-		if err != nil {
-			return "", "", err
-		}
-	}
 	if _, err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
 		return "", "", err
 	}
@@ -667,9 +661,9 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		out, err := a.loadSkill(botID, str("name"), str("path"))
 		return out, "", err
 	}
-	if name == "propose_skill" {
-		a.emitSkillArtifact(botID, runID, peek.Name, peek.Name, peek.Path, "workspace", "pending")
-		return "proposed skill " + peek.Name + " as an artifact. It is not installed until the human clicks Save skill.", "", nil
+	if name == "artifact" {
+		out, err := a.artifact(ctx, &bot, runID, argsJSON)
+		return out, "", err
 	}
 	if name == "web_search" {
 		out, err := a.runWebSearch(ctx, argsJSON)
@@ -775,8 +769,8 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Bot, name, true
 	case "skill":
 		return security.Skills, "load", true
-	case "propose_skill":
-		return security.Skills, "propose", true
+	case "artifact":
+		return security.Artifact, "emit", true
 	case "web_search":
 		return security.Web, "search", true
 	default:
