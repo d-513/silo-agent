@@ -11,3 +11,6 @@ bin
 __pycache__
 tmp
 scratchpad.txt
+.DS_Store
+**/xcuserdata/
+**/.swiftpm/

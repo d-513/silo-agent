@@ -1,0 +1,11 @@
+version: v2
+plugins:
+  - remote: buf.build/apple/swift
+    out: ios/SiloClient/Sources/SiloClient/Generated
+    opt:
+      - Visibility=Public
+  - remote: buf.build/connectrpc/swift
+    out: ios/SiloClient/Sources/SiloClient/Generated
+    opt:
+      - GenerateAsyncMethods=true
+      - Visibility=Public
