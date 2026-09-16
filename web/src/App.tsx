@@ -68,10 +68,22 @@ function randomCrest() {
   return packCrest(Math.floor(Math.random() * SHAPE_COUNT), Math.floor(Math.random() * COLOR_COUNT));
 }
 
+function SiloGlyph({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path
+        d="M6 12a10 10 0 0 1 20 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2ZM11.8 11.2h8.4a0.8 0.8 0 0 1 0 1.6h-8.4a0.8 0.8 0 0 1 0-1.6Z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 function SiloMark() {
   return (
-    <div className="flex shrink-0 items-center gap-2 px-3 max-wide:h-12 wide:flex-col wide:gap-1 wide:px-2 wide:pt-4">
-      <div className="rounded-sm bg-iron max-wide:h-5 max-wide:w-2 wide:h-7 wide:w-3" />
+    <div className="flex shrink-0 items-center gap-2 px-3 text-iron max-wide:h-12 wide:flex-col wide:gap-1 wide:px-2 wide:pt-4">
+      <SiloGlyph className="max-wide:h-5 max-wide:w-5 wide:h-7 wide:w-7" />
       <div className="font-medium max-wide:text-[13px] wide:px-1 wide:text-center wide:text-[11px] wide:leading-tight wide:tracking-wide">
         <span className="wide:hidden">Silo</span>
         <span className="hidden wide:inline">Silo Agent</span>
@@ -241,7 +253,7 @@ function SignIn() {
     <div className="flex min-h-dvh items-start justify-center bg-plaster px-4 pt-[18vh]">
       <form onSubmit={onSubmit} className="w-full max-w-[400px] rounded-[10px] border border-thread bg-folio p-8">
         <div className="mb-6 flex items-center gap-3">
-          <div className="h-7 w-3 rounded-sm bg-iron" />
+          <SiloGlyph className="h-7 w-7 text-iron" />
           <span className="text-[13px] font-medium">Silo Agent</span>
         </div>
         <h1 className="mb-6 text-[22px] font-medium tracking-tight">Sign in</h1>
