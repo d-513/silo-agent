@@ -240,6 +240,24 @@ func (a *App) setChannelStatus(id, status, detail string) {
 }
 
 func (a *App) publishChannelState(channelID string, st channels.State) {
+	// Merge values with the previously stored state. Adapters stash durable
+	// keys in Values (the Telegram adapter keeps peer access hashes under
+	// peer:…), and a plain status update must not wipe them.
+	var prev channels.State
+	var ch db.Channel
+	if a.DB.First(&ch, "id = ?", channelID).Error == nil && strings.TrimSpace(ch.StateJSON) != "" {
+		_ = json.Unmarshal([]byte(ch.StateJSON), &prev)
+	}
+	if len(prev.Values) > 0 {
+		merged := make(map[string]string, len(prev.Values)+len(st.Values))
+		for k, v := range prev.Values {
+			merged[k] = v
+		}
+		for k, v := range st.Values {
+			merged[k] = v
+		}
+		st.Values = merged
+	}
 	a.chanMu.Lock()
 	a.chanStates[channelID] = st
 	a.chanMu.Unlock()
@@ -554,6 +572,11 @@ func (a *App) ChannelAction(ctx context.Context, req *connect.Request[v1.Channel
 		ch.TargetTitle = title
 		if err := a.DB.Save(&ch).Error; err != nil {
 			return nil, err
+		}
+		// Ask the adapter to republish its state so the peer access hash it
+		// just used is persisted before the next restart.
+		if rst, rerr := ad.Action(ctx, &ch, a.channelConfig(&ch), "refresh", nil); rerr == nil && rst.Kind != channels.StateError {
+			a.publishChannelState(ch.ID, rst)
 		}
 		st := channels.State{Kind: channels.StateInfo, Message: "Chat: " + title}
 		return connect.NewResponse(&v1.ChannelActionResponse{State: protoChannelState(st)}), nil

@@ -65,6 +65,10 @@ const (
 	UIRenameChatProcedure = "/silo.v1.UI/RenameChat"
 	// UIDeleteChatProcedure is the fully-qualified name of the UI's DeleteChat RPC.
 	UIDeleteChatProcedure = "/silo.v1.UI/DeleteChat"
+	// UISetChatModelProcedure is the fully-qualified name of the UI's SetChatModel RPC.
+	UISetChatModelProcedure = "/silo.v1.UI/SetChatModel"
+	// UIListModelsProcedure is the fully-qualified name of the UI's ListModels RPC.
+	UIListModelsProcedure = "/silo.v1.UI/ListModels"
 	// UISendProcedure is the fully-qualified name of the UI's Send RPC.
 	UISendProcedure = "/silo.v1.UI/Send"
 	// UIStopRunProcedure is the fully-qualified name of the UI's StopRun RPC.
@@ -99,6 +103,8 @@ const (
 	UIGetSettingsProcedure = "/silo.v1.UI/GetSettings"
 	// UIPutSettingsProcedure is the fully-qualified name of the UI's PutSettings RPC.
 	UIPutSettingsProcedure = "/silo.v1.UI/PutSettings"
+	// UISetModelsProcedure is the fully-qualified name of the UI's SetModels RPC.
+	UISetModelsProcedure = "/silo.v1.UI/SetModels"
 	// UIListAuditProcedure is the fully-qualified name of the UI's ListAudit RPC.
 	UIListAuditProcedure = "/silo.v1.UI/ListAudit"
 	// UIListConnectorsProcedure is the fully-qualified name of the UI's ListConnectors RPC.
@@ -173,6 +179,8 @@ type UIClient interface {
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
+	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
+	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
@@ -190,6 +198,7 @@ type UIClient interface {
 	PutFile(context.Context, *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
+	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -326,6 +335,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("DeleteChat")),
 			connect.WithClientOptions(opts...),
 		),
+		setChatModel: connect.NewClient[v1.SetChatModelRequest, v1.Chat](
+			httpClient,
+			baseURL+UISetChatModelProcedure,
+			connect.WithSchema(uIMethods.ByName("SetChatModel")),
+			connect.WithClientOptions(opts...),
+		),
+		listModels: connect.NewClient[v1.ListModelsRequest, v1.ListModelsResponse](
+			httpClient,
+			baseURL+UIListModelsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListModels")),
+			connect.WithClientOptions(opts...),
+		),
 		send: connect.NewClient[v1.SendRequest, v1.SendResponse](
 			httpClient,
 			baseURL+UISendProcedure,
@@ -426,6 +447,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIPutSettingsProcedure,
 			connect.WithSchema(uIMethods.ByName("PutSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		setModels: connect.NewClient[v1.SetModelsRequest, v1.Settings](
+			httpClient,
+			baseURL+UISetModelsProcedure,
+			connect.WithSchema(uIMethods.ByName("SetModels")),
 			connect.WithClientOptions(opts...),
 		),
 		listAudit: connect.NewClient[v1.ListAuditRequest, v1.ListAuditResponse](
@@ -611,6 +638,8 @@ type uIClient struct {
 	createChat          *connect.Client[v1.CreateChatRequest, v1.Chat]
 	renameChat          *connect.Client[v1.RenameChatRequest, v1.Chat]
 	deleteChat          *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
+	setChatModel        *connect.Client[v1.SetChatModelRequest, v1.Chat]
+	listModels          *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
 	send                *connect.Client[v1.SendRequest, v1.SendResponse]
 	stopRun             *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun           *connect.Client[v1.StreamRunRequest, v1.RunEvent]
@@ -628,6 +657,7 @@ type uIClient struct {
 	putFile             *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
 	getSettings         *connect.Client[v1.GetSettingsRequest, v1.Settings]
 	putSettings         *connect.Client[v1.PutSettingsRequest, v1.Settings]
+	setModels           *connect.Client[v1.SetModelsRequest, v1.Settings]
 	listAudit           *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
 	listConnectors      *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
 	createConnector     *connect.Client[v1.CreateConnectorRequest, v1.Connector]
@@ -737,6 +767,16 @@ func (c *uIClient) DeleteChat(ctx context.Context, req *connect.Request[v1.Delet
 	return c.deleteChat.CallUnary(ctx, req)
 }
 
+// SetChatModel calls silo.v1.UI.SetChatModel.
+func (c *uIClient) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
+	return c.setChatModel.CallUnary(ctx, req)
+}
+
+// ListModels calls silo.v1.UI.ListModels.
+func (c *uIClient) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
+	return c.listModels.CallUnary(ctx, req)
+}
+
 // Send calls silo.v1.UI.Send.
 func (c *uIClient) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {
 	return c.send.CallUnary(ctx, req)
@@ -820,6 +860,11 @@ func (c *uIClient) GetSettings(ctx context.Context, req *connect.Request[v1.GetS
 // PutSettings calls silo.v1.UI.PutSettings.
 func (c *uIClient) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error) {
 	return c.putSettings.CallUnary(ctx, req)
+}
+
+// SetModels calls silo.v1.UI.SetModels.
+func (c *uIClient) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error) {
+	return c.setModels.CallUnary(ctx, req)
 }
 
 // ListAudit calls silo.v1.UI.ListAudit.
@@ -975,6 +1020,8 @@ type UIHandler interface {
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
+	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
+	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
@@ -992,6 +1039,7 @@ type UIHandler interface {
 	PutFile(context.Context, *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error)
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
+	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -1124,6 +1172,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("DeleteChat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uISetChatModelHandler := connect.NewUnaryHandler(
+		UISetChatModelProcedure,
+		svc.SetChatModel,
+		connect.WithSchema(uIMethods.ByName("SetChatModel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListModelsHandler := connect.NewUnaryHandler(
+		UIListModelsProcedure,
+		svc.ListModels,
+		connect.WithSchema(uIMethods.ByName("ListModels")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uISendHandler := connect.NewUnaryHandler(
 		UISendProcedure,
 		svc.Send,
@@ -1224,6 +1284,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIPutSettingsProcedure,
 		svc.PutSettings,
 		connect.WithSchema(uIMethods.ByName("PutSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetModelsHandler := connect.NewUnaryHandler(
+		UISetModelsProcedure,
+		svc.SetModels,
+		connect.WithSchema(uIMethods.ByName("SetModels")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListAuditHandler := connect.NewUnaryHandler(
@@ -1422,6 +1488,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIRenameChatHandler.ServeHTTP(w, r)
 		case UIDeleteChatProcedure:
 			uIDeleteChatHandler.ServeHTTP(w, r)
+		case UISetChatModelProcedure:
+			uISetChatModelHandler.ServeHTTP(w, r)
+		case UIListModelsProcedure:
+			uIListModelsHandler.ServeHTTP(w, r)
 		case UISendProcedure:
 			uISendHandler.ServeHTTP(w, r)
 		case UIStopRunProcedure:
@@ -1456,6 +1526,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIGetSettingsHandler.ServeHTTP(w, r)
 		case UIPutSettingsProcedure:
 			uIPutSettingsHandler.ServeHTTP(w, r)
+		case UISetModelsProcedure:
+			uISetModelsHandler.ServeHTTP(w, r)
 		case UIListAuditProcedure:
 			uIListAuditHandler.ServeHTTP(w, r)
 		case UIListConnectorsProcedure:
@@ -1583,6 +1655,14 @@ func (UnimplementedUIHandler) DeleteChat(context.Context, *connect.Request[v1.De
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteChat is not implemented"))
 }
 
+func (UnimplementedUIHandler) SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetChatModel is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListModels is not implemented"))
+}
+
 func (UnimplementedUIHandler) Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Send is not implemented"))
 }
@@ -1649,6 +1729,10 @@ func (UnimplementedUIHandler) GetSettings(context.Context, *connect.Request[v1.G
 
 func (UnimplementedUIHandler) PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PutSettings is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetModels is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {

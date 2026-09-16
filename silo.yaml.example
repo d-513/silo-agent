@@ -5,16 +5,35 @@ cp_url: http://host.containers.internal:8080
 public_url: http://127.0.0.1:5173
 bot_image: localhost/silo-bot:v1
 mcp_stdio_image: localhost/silo-mcp-stdio:v1
-model: openai/gpt-5.6-luna
+
+# Model ids are provider/model. Providers: openrouter, openai, anthropic.
+# The default model must be one of models below.
+model: openrouter/openai/gpt-5.6-luna
+# Chat title model. Leave empty to use the default model.
+model_title: ""
+# Operator allowlist: only these models appear in the chat model picker.
+models:
+  - openrouter/openai/gpt-5.6-luna
 
 # First admin only. Wipe data/ to recreate. Not OpenRouter.
 bootstrap:
   email: admin@local
   password: change-me
 
-# Operator config. Env wins: SILO_OPENROUTER__API_KEY
-openrouter:
-  api_key: ""
+# Model providers. Env wins: SILO_PROVIDERS__OPENROUTER__API_KEY,
+# SILO_PROVIDERS__OPENAI__API_KEY, SILO_PROVIDERS__ANTHROPIC__API_KEY.
+providers:
+  openrouter:
+    api_key: ""
+    # base_url: ""          # optional; OpenRouter caches upstream automatically
+  openai:
+    api_key: ""
+    # base_url: ""          # optional proxy/self-hosted override
+    # cache: true           # send prompt_cache_key for routing
+  anthropic:
+    api_key: ""
+    # cache: true
+    # cache_ttl: 5m         # 5m or 1h; requires cache: true
 
 # Web search engine. Env: SILO_SEARCH__ENGINE
 search:

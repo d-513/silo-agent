@@ -7,18 +7,16 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"github.com/openai/openai-go/v2"
-	"github.com/openai/openai-go/v2/option"
-
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/channels"
-	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/security"
 )
 
@@ -47,230 +45,171 @@ func truncateUTF8(s string, n int) string {
 	return s
 }
 
-var toolDefs = []openai.ChatCompletionToolUnionParam{
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "terminal",
-		Description: openai.String("Run a shell command in the Bot workspace."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"command": map[string]any{"type": "string"},
-			},
-			"required": []string{"command"},
+// tool builds a neutral tool definition from a JSON-schema property map.
+func tool(name, desc string, params map[string]any) llm.Tool {
+	raw, _ := json.Marshal(params)
+	return llm.Tool{Name: name, Description: desc, Parameters: raw}
+}
+
+var toolDefs = []llm.Tool{
+	tool("terminal", "Run a shell command in the Bot workspace.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"command": map[string]any{"type": "string"},
+		},
+		"required": []string{"command"},
+	}),
+	tool("exec_python", "Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Deliverables: silo_runtime.artifact(path) shows a skill dir or a file as a card — not the same as present. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"code": map[string]any{"type": "string"},
+		},
+		"required": []string{"code"},
+	}),
+	tool("read", "Read a workspace file. Returns numbered lines. Use offset (1-based line) and limit to read a slice — do not dump large files.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":   map[string]any{"type": "string"},
+			"offset": map[string]any{"type": "integer", "description": "1-based start line"},
+			"limit":  map[string]any{"type": "integer", "description": "max lines to return"},
+		},
+		"required": []string{"path"},
+	}),
+	tool("write", "Write a small file you compose yourself, relative to /workspace. Prefer patch for existing files. Do not copy Python or connector output here — save that from exec_python, then present.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":    map[string]any{"type": "string"},
+			"content": map[string]any{"type": "string"},
+		},
+		"required": []string{"path", "content"},
+	}),
+	tool("patch", "Replace exactly one occurrence of old_text with new_text. old_text must match once; if it matches several times, add surrounding lines.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":     map[string]any{"type": "string"},
+			"old_text": map[string]any{"type": "string"},
+			"new_text": map[string]any{"type": "string"},
+		},
+		"required": []string{"path", "old_text", "new_text"},
+	}),
+	tool("grep", "Search workspace files. Prefer include (e.g. *.py) over a full-tree scan. Results are capped.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"pattern":  map[string]any{"type": "string"},
+			"path":     map[string]any{"type": "string"},
+			"include":  map[string]any{"type": "string", "description": "glob such as *.py or *.md"},
+			"max_hits": map[string]any{"type": "integer"},
+		},
+		"required": []string{"pattern"},
+	}),
+	tool("soul", "Update this Bot's SOUL (identity, tone, hard rules). Already in the system prompt — do not read a file. Pass content to replace, or old_text/new_text to patch one unique snippet.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"content":  map[string]any{"type": "string"},
+			"old_text": map[string]any{"type": "string"},
+			"new_text": map[string]any{"type": "string"},
 		},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "exec_python",
-		Description: openai.String("Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Deliverables: silo_runtime.artifact(path) shows a skill dir or a file as a card — not the same as present. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"code": map[string]any{"type": "string"},
-			},
-			"required": []string{"code"},
+	tool("memory", "Update this Bot's MEMORY (lasting facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"append":   map[string]any{"type": "string"},
+			"old_text": map[string]any{"type": "string"},
+			"new_text": map[string]any{"type": "string"},
 		},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "read",
-		Description: openai.String("Read a workspace file. Returns numbered lines. Use offset (1-based line) and limit to read a slice — do not dump large files."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"path":   map[string]any{"type": "string"},
-				"offset": map[string]any{"type": "integer", "description": "1-based start line"},
-				"limit":  map[string]any{"type": "integer", "description": "max lines to return"},
-			},
-			"required": []string{"path"},
-		},
+	tool("list_models", "List the models this Bot may switch to, with the current chat model and the operator default. Use this before switch_model.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "write",
-		Description: openai.String("Write a small file you compose yourself, relative to /workspace. Prefer patch for existing files. Do not copy Python or connector output here — save that from exec_python, then present."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"path":    map[string]any{"type": "string"},
-				"content": map[string]any{"type": "string"},
-			},
-			"required": []string{"path", "content"},
+	tool("switch_model", "Switch this conversation to another allowed model. model must be one of the ids from list_models. Takes effect from the next model call.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"model": map[string]any{"type": "string", "description": "provider/model id from list_models"},
 		},
+		"required": []string{"model"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "patch",
-		Description: openai.String("Replace exactly one occurrence of old_text with new_text. old_text must match once; if it matches several times, add surrounding lines."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"path":     map[string]any{"type": "string"},
-				"old_text": map[string]any{"type": "string"},
-				"new_text": map[string]any{"type": "string"},
-			},
-			"required": []string{"path", "old_text", "new_text"},
+	tool("present", "Show a workspace file. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path": map[string]any{"type": "string"},
 		},
+		"required": []string{"path"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "grep",
-		Description: openai.String("Search workspace files. Prefer include (e.g. *.py) over a full-tree scan. Results are capped."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"pattern":  map[string]any{"type": "string"},
-				"path":     map[string]any{"type": "string"},
-				"include":  map[string]any{"type": "string", "description": "glob such as *.py or *.md"},
-				"max_hits": map[string]any{"type": "integer"},
-			},
-			"required": []string{"pattern"},
+	tool("look", "Primary GUI: screenshot the 1280×720 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}),
+	tool("click", "Click the desktop at screenshot pixels. Image is 1280×720. Optional button: left (default), right, double.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"x":      map[string]any{"type": "integer"},
+			"y":      map[string]any{"type": "integer"},
+			"button": map[string]any{"type": "string", "enum": []string{"left", "right", "double"}},
 		},
+		"required": []string{"x", "y"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "soul",
-		Description: openai.String("Update this Bot's SOUL (identity, tone, hard rules). Already in the system prompt — do not read a file. Pass content to replace, or old_text/new_text to patch one unique snippet."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"content":  map[string]any{"type": "string"},
-				"old_text": map[string]any{"type": "string"},
-				"new_text": map[string]any{"type": "string"},
-			},
+	tool("type", "Type Unicode into the focused window. Click a field first. For shortcuts use key (ctrl+l) — if you pass a chord here it is sent as a shortcut, not typed as letters.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"text": map[string]any{"type": "string"},
 		},
+		"required": []string{"text"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "memory",
-		Description: openai.String("Update this Bot's MEMORY (lasting facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"append":   map[string]any{"type": "string"},
-				"old_text": map[string]any{"type": "string"},
-				"new_text": map[string]any{"type": "string"},
-			},
+	tool("key", "Press a key or shortcut on the desktop. Examples: Return, Tab, Escape, BackSpace, ctrl+l, ctrl+shift+t, alt+Tab, ctrl+a. Use this for shortcuts, not type.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string"},
 		},
+		"required": []string{"name"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "present",
-		Description: openai.String("Show a workspace file. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"path": map[string]any{"type": "string"},
-			},
-			"required": []string{"path"},
+	tool("scroll", "Scroll at screenshot pixels. dy is wheel steps (negative up, positive down).", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"x":  map[string]any{"type": "integer"},
+			"y":  map[string]any{"type": "integer"},
+			"dy": map[string]any{"type": "integer"},
 		},
+		"required": []string{"x", "y", "dy"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "look",
-		Description: openai.String("Primary GUI: screenshot the 1280×720 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels."),
-		Parameters: openai.FunctionParameters{
-			"type":       "object",
-			"properties": map[string]any{},
+	tool("skill", "Load an enabled skill. Pass name (from the Skills list in the system prompt). Optional path is a file inside the skill (default SKILL.md). Scripts live at /opt/silo/skills/<name>/.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string"},
+			"path": map[string]any{"type": "string", "description": "relative file inside the skill, default SKILL.md"},
 		},
+		"required": []string{"name"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "click",
-		Description: openai.String("Click the desktop at screenshot pixels. Image is 1280×720. Optional button: left (default), right, double."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"x":      map[string]any{"type": "integer"},
-				"y":      map[string]any{"type": "integer"},
-				"button": map[string]any{"type": "string", "enum": []string{"left", "right", "double"}},
-			},
-			"required": []string{"x", "y"},
+	tool("artifact", "Show a deliverable as a card in the thread. Path is relative to /workspace. A directory that contains SKILL.md becomes an installable skill (the human clicks Save skill); any other file becomes a downloadable card with a preview. Use this for things the human keeps or downloads. This is not present — present merely displays a file inline.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":  map[string]any{"type": "string"},
+			"title": map[string]any{"type": "string", "description": "display title (defaults to the file or skill name)"},
+			"kind":  map[string]any{"type": "string", "enum": []string{"skill", "file"}, "description": "override the auto-detected type"},
 		},
+		"required": []string{"path"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "type",
-		Description: openai.String("Type Unicode into the focused window. Click a field first. For shortcuts use key (ctrl+l) — if you pass a chord here it is sent as a shortcut, not typed as letters."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"text": map[string]any{"type": "string"},
-			},
-			"required": []string{"text"},
+	tool("web_search", "Search the public web. Returns titles, URLs, and snippets. Prefer this over typing a search URL on the desktop.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query":       map[string]any{"type": "string"},
+			"max_results": map[string]any{"type": "integer", "description": "how many hits to return (default 8, max 20)"},
 		},
+		"required": []string{"query"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "key",
-		Description: openai.String("Press a key or shortcut on the desktop. Examples: Return, Tab, Escape, BackSpace, ctrl+l, ctrl+shift+t, alt+Tab, ctrl+a. Use this for shortcuts, not type."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"name": map[string]any{"type": "string"},
-			},
-			"required": []string{"name"},
+	tool("channel", "Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"channel": map[string]any{"type": "string", "description": "channel name; omit for the current channel"},
+			"text":    map[string]any{"type": "string"},
 		},
+		"required": []string{"text"},
 	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "scroll",
-		Description: openai.String("Scroll at screenshot pixels. dy is wheel steps (negative up, positive down)."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"x":  map[string]any{"type": "integer"},
-				"y":  map[string]any{"type": "integer"},
-				"dy": map[string]any{"type": "integer"},
-			},
-			"required": []string{"x", "y", "dy"},
-		},
-	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "skill",
-		Description: openai.String("Load an enabled skill. Pass name (from the Skills list in the system prompt). Optional path is a file inside the skill (default SKILL.md). Scripts live at /opt/silo/skills/<name>/."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"name": map[string]any{"type": "string"},
-				"path": map[string]any{"type": "string", "description": "relative file inside the skill, default SKILL.md"},
-			},
-			"required": []string{"name"},
-		},
-	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "artifact",
-		Description: openai.String("Show a deliverable as a card in the thread. Path is relative to /workspace. A directory that contains SKILL.md becomes an installable skill (the human clicks Save skill); any other file becomes a downloadable card with a preview. Use this for things the human keeps or downloads. This is not present — present merely displays a file inline."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"path":  map[string]any{"type": "string"},
-				"title": map[string]any{"type": "string", "description": "display title (defaults to the file or skill name)"},
-				"kind":  map[string]any{"type": "string", "enum": []string{"skill", "file"}, "description": "override the auto-detected type"},
-			},
-			"required": []string{"path"},
-		},
-	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "web_search",
-		Description: openai.String("Search the public web. Returns titles, URLs, and snippets. Prefer this over typing a search URL on the desktop."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"query":       map[string]any{"type": "string"},
-				"max_results": map[string]any{"type": "integer", "description": "how many hits to return (default 8, max 20)"},
-			},
-			"required": []string{"query"},
-		},
-	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "channel",
-		Description: openai.String("Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"channel": map[string]any{"type": "string", "description": "channel name; omit for the current channel"},
-				"text":    map[string]any{"type": "string"},
-			},
-			"required": []string{"text"},
-		},
-	}),
-	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-		Name:        "chats",
-		Description: openai.String("Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot."),
-		Parameters: openai.FunctionParameters{
-			"type": "object",
-			"properties": map[string]any{
-				"chat":  map[string]any{"type": "string", "description": "chat id or title; omit to list chats"},
-				"limit": map[string]any{"type": "integer", "description": "max messages (default 20, max 50)"},
-			},
+	tool("chats", "Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"chat":  map[string]any{"type": "string", "description": "chat id or title; omit to list chats"},
+			"limit": map[string]any{"type": "integer", "description": "max messages (default 20, max 50)"},
 		},
 	}),
 }
@@ -425,14 +364,14 @@ func (a *App) dbSaveBotWorking(botID, text string) {
 	a.DB.Model(&db.Bot{}).Where("id = ?", botID).Updates(map[string]any{"last_task": text, "status": "working"})
 }
 
-func drainInbox(msgs []openai.ChatCompletionMessageParamUnion, inbox chan inboxMsg) []openai.ChatCompletionMessageParamUnion {
+func drainInbox(msgs []llm.Message, inbox chan inboxMsg) []llm.Message {
 	if inbox == nil {
 		return msgs
 	}
 	for {
 		select {
 		case m := <-inbox:
-			msgs = append(msgs, openai.UserMessage(userTextWithAttachments(m.text, m.atts)))
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: userTextWithAttachments(m.text, m.atts)})
 		default:
 			return msgs
 		}
@@ -543,26 +482,122 @@ func dataURLAttachment(path, dataURL string) (channels.Attachment, bool) {
 	return channels.Attachment{Name: name, Mime: mime, Data: raw}, true
 }
 
+// turnResult is one streamed assistant turn: the assembled message plus any
+// user-visible sections the model closed with <section_send />.
+type turnResult struct {
+	assistant llm.Message
+	sections  []string
+	tail      string
+}
+
+// streamTurn drives one provider completion, emitting chunks, reasoning, and
+// tool-call events, and returns the assembled assistant message.
+func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, client llm.Client, req llm.Request) (turnResult, error) {
+	stream, err := client.Stream(ctx, req)
+	if err != nil {
+		return turnResult{}, err
+	}
+	defer stream.Close()
+
+	sp := &channels.Splitter{}
+	var text strings.Builder
+	var think strings.Builder
+	var sections []string
+	type tcState struct {
+		call     llm.ToolCall
+		notified bool
+	}
+	open := map[int]*tcState{}
+	var order []int
+	touch := func(idx int) *tcState {
+		st := open[idx]
+		if st == nil {
+			st = &tcState{}
+			open[idx] = st
+			order = append(order, idx)
+		}
+		return st
+	}
+	var usage llm.Usage
+	saw := false
+
+	for stream.Next() {
+		ev := stream.Event()
+		switch ev.Kind {
+		case llm.EventText:
+			if ev.Text == "" {
+				continue
+			}
+			saw = true
+			text.WriteString(ev.Text)
+			a.emit(botID, chatID, runID, "chunk", ev.Text, "")
+			sections = append(sections, sp.Write(ev.Text)...)
+		case llm.EventReasoning:
+			if ev.Text == "" {
+				continue
+			}
+			saw = true
+			think.WriteString(ev.Text)
+			a.emit(botID, chatID, runID, "thinking_chunk", ev.Text, "")
+		case llm.EventToolCallStart:
+			saw = true
+			st := touch(ev.Index)
+			if ev.ToolCallID != "" {
+				st.call.ID = ev.ToolCallID
+			}
+			if ev.ToolName != "" {
+				st.call.Name = ev.ToolName
+			}
+			if st.call.Name != "" && !st.notified {
+				a.emit(botID, chatID, runID, "tool", "", st.call.Name)
+				st.notified = true
+			}
+		case llm.EventToolCallDelta:
+			saw = true
+			st := touch(ev.Index)
+			st.call.Arguments += ev.Text
+			a.emit(botID, chatID, runID, "tool_args_chunk", ev.Text, st.call.Name)
+		case llm.EventUsage:
+			usage = ev.Usage
+		}
+	}
+	if err := stream.Err(); err != nil {
+		return turnResult{}, err
+	}
+	if think.Len() > 0 {
+		a.emit(botID, chatID, runID, "thinking", think.String(), "")
+	}
+	if usage.InputTokens > 0 || usage.OutputTokens > 0 || usage.CacheReadTokens > 0 || usage.CacheWriteTokens > 0 {
+		a.emitUsage(botID, chatID, runID, usage)
+	}
+	if !saw {
+		return turnResult{}, fmt.Errorf("empty completion")
+	}
+	assistant := llm.Message{Role: llm.RoleAssistant, Text: text.String()}
+	for _, idx := range order {
+		c := open[idx].call
+		if c.ID == "" {
+			c.ID = "call_" + strconv.Itoa(idx)
+		}
+		assistant.ToolCalls = append(assistant.ToolCalls, c)
+	}
+	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush()}, nil
+}
+
 func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment, origin *runOrigin, inbox chan inboxMsg) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel, inbox)
 	defer a.untrackRun(runID)
-	cfg := a.cfg()
-	key := cfg.OpenRouter.APIKey
-	model := cfg.Model
-	if model == "" {
-		model = config.DefaultModel
-	}
-	if key == "" {
-		a.emit(botID, chatID, runID, "error", "OpenRouter key missing in operator config (silo.yaml / SILO_OPENROUTER__API_KEY).", "")
+
+	modelID := a.resolveModel(chatID)
+	client, provider, model, err := a.modelClient(modelID)
+	if err != nil {
+		a.emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
 		return
 	}
-	client := openai.NewClient(
-		option.WithAPIKey(key),
-		option.WithBaseURL("https://openrouter.ai/api/v1"),
-	)
+	settings := a.cfg().ProviderSettings(provider)
 
 	a.emitUser(botID, chatID, runID, userText, atts)
 	a.bumpChat(chatID)
@@ -570,66 +605,31 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	if strings.TrimSpace(title) == "" && len(atts) > 0 {
 		title = "attached " + atts[0].GetName()
 	}
-	go a.nameChat(botID, chatID, runID, title, client, model)
+	go a.nameChat(botID, chatID, runID, title)
 
-	sysText := a.buildSystem(botID, origin)
-	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
-	msgs = append(msgs, a.historyFromDB(chatID)...)
+	msgs := a.historyFromDB(chatID)
 
 	for {
 		msgs = drainInbox(msgs, inbox)
 		if a.stopped(ctx, botID, chatID, runID) {
 			return
 		}
-		params := openai.ChatCompletionNewParams{
+		// Re-resolve each turn so a switch_model tool call takes effect on the
+		// next model call without restarting the run.
+		if m := a.resolveModel(chatID); m != modelID {
+			if c, pr, mo, e := a.modelClient(m); e == nil {
+				modelID, client, provider, model = m, c, pr, mo
+				settings = a.cfg().ProviderSettings(pr)
+			}
+		}
+		res, err := a.streamTurn(ctx, botID, chatID, runID, client, llm.Request{
 			Model:    model,
+			System:   a.buildSystemBlocks(botID, origin),
 			Messages: msgs,
 			Tools:    toolDefs,
-		}
-		stream := client.Chat.Completions.NewStreaming(ctx, params)
-		acc := openai.ChatCompletionAccumulator{}
-		sp := &channels.Splitter{}
-		var sections []string
-		var think strings.Builder
-		type toolDelta struct {
-			name    string
-			started bool
-		}
-		openTools := map[int64]*toolDelta{}
-		for stream.Next() {
-			chunk := stream.Current()
-			acc.AddChunk(chunk)
-			if len(chunk.Choices) == 0 {
-				continue
-			}
-			d := chunk.Choices[0].Delta
-			if d.Content != "" {
-				a.emit(botID, chatID, runID, "chunk", d.Content, "")
-				sections = append(sections, sp.Write(d.Content)...)
-			}
-			if r := reasoningDelta(d.RawJSON()); r != "" {
-				think.WriteString(r)
-				a.emit(botID, chatID, runID, "thinking_chunk", r, "")
-			}
-			for _, tc := range d.ToolCalls {
-				st := openTools[tc.Index]
-				if st == nil {
-					st = &toolDelta{}
-					openTools[tc.Index] = st
-				}
-				if tc.Function.Name != "" {
-					st.name = tc.Function.Name
-				}
-				if st.name != "" && !st.started {
-					a.emit(botID, chatID, runID, "tool", "", st.name)
-					st.started = true
-				}
-				if tc.Function.Arguments != "" {
-					a.emit(botID, chatID, runID, "tool_args_chunk", tc.Function.Arguments, st.name)
-				}
-			}
-		}
-		if err := stream.Err(); err != nil {
+			Cache:    cachePolicy(settings, botID),
+		})
+		if err != nil {
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
@@ -637,39 +637,28 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			a.finish(botID, chatID, runID, "error")
 			return
 		}
-		if think.Len() > 0 {
-			a.emit(botID, chatID, runID, "thinking", think.String(), "")
-		}
-		if len(acc.Choices) == 0 {
-			a.emit(botID, chatID, runID, "error", "empty completion", "")
-			a.finish(botID, chatID, runID, "error")
-			return
-		}
-		msg := acc.Choices[0].Message
-		tail := sp.Flush()
-		if len(msg.ToolCalls) == 0 {
-			for _, sec := range sections {
+		if len(res.assistant.ToolCalls) == 0 {
+			for _, sec := range res.sections {
 				a.emitDelivered(botID, chatID, runID, "section", sec, origin)
 			}
-			if tail != "" {
+			if res.tail != "" {
 				kind := "section"
-				if len(sections) == 0 {
+				if len(res.sections) == 0 {
 					kind = "assistant"
 				}
-				a.emitDelivered(botID, chatID, runID, kind, tail, origin)
+				a.emitDelivered(botID, chatID, runID, kind, res.tail, origin)
 			}
 			a.finish(botID, chatID, runID, "done")
 			return
 		}
 		// A tool-call turn: send any section the model explicitly closed so the
 		// human gets a progress note, but keep it out of replayed history.
-		for _, sec := range sections {
+		for _, sec := range res.sections {
 			a.emitDelivered(botID, chatID, runID, "section_live", sec, origin)
 		}
-		msgs = append(msgs, msg.ToParam())
-		for _, tc := range msg.ToolCalls {
-			fn := tc.Function
-			out, img, err := a.execTool(ctx, botID, runID, fn.Name, fn.Arguments)
+		msgs = append(msgs, res.assistant)
+		for _, tc := range res.assistant.ToolCalls {
+			out, img, err := a.execTool(ctx, botID, chatID, runID, tc.Name, tc.Arguments)
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
@@ -680,46 +669,24 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			if len(out) > 12000 {
 				out = truncateUTF8(out, 12000) + "\n…truncated"
 			}
-			a.emit(botID, chatID, runID, "tool_result", out, fn.Name)
-			msgs = append(msgs, openai.ToolMessage(out, tc.ID))
+			a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
+			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 			if img != "" {
-				text, part := visionImage(fn.Name, img)
-				msgs = append(msgs, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{
-					openai.TextContentPart(text),
-					openai.ImageContentPart(part),
-				}))
+				itype, vimg := visionImage(tc.Name, img)
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
 			}
 			if origin != nil && origin.channel != nil && err == nil {
-				a.deliverTool(ctx, botID, chatID, runID, origin, fn.Name, fn.Arguments, img)
-			}
-			if fn.Name == "soul" || fn.Name == "memory" {
-				msgs[0] = openai.SystemMessage(a.buildSystem(botID, origin))
+				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
 			}
 		}
 	}
-}
-
-func reasoningDelta(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	var m map[string]any
-	if json.Unmarshal([]byte(raw), &m) != nil {
-		return ""
-	}
-	for _, k := range []string{"reasoning", "reasoning_content"} {
-		if s, ok := m[k].(string); ok && s != "" {
-			return s
-		}
-	}
-	return ""
 }
 
 func (a *App) bumpChat(chatID string) {
 	a.DB.Model(&db.Chat{}).Where("id = ?", chatID).Update("updated_at", time.Now())
 }
 
-func (a *App) nameChat(botID, chatID, runID, userText string, client openai.Client, model string) {
+func (a *App) nameChat(botID, chatID, runID, userText string) {
 	var c db.Chat
 	if a.DB.First(&c, "id = ?", chatID).Error != nil || !untitledTitle(c.Title) {
 		return
@@ -730,21 +697,22 @@ func (a *App) nameChat(botID, chatID, runID, userText string, client openai.Clie
 	if len(snippet) > 800 {
 		snippet = truncateUTF8(snippet, 800)
 	}
-	res, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model: model,
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage("Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation."),
-			openai.UserMessage(snippet),
-		},
+	client, provider, model, err := a.modelClient(a.titleModel(chatID))
+	if err != nil {
+		log.Printf("name chat %s: %v", chatID, err)
+		return
+	}
+	res, err := client.Complete(ctx, llm.Request{
+		Model:    model,
+		System:   []llm.SystemBlock{{Text: "Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation."}},
+		Messages: []llm.Message{{Role: llm.RoleUser, Text: snippet}},
+		Cache:    cachePolicy(a.cfg().ProviderSettings(provider), botID),
 	})
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)
 		return
 	}
-	title := ""
-	if len(res.Choices) > 0 {
-		title = cleanTitle(res.Choices[0].Message.Content)
-	}
+	title := cleanTitle(res.Text)
 	if title == "" {
 		log.Printf("name chat %s: empty title from model", chatID)
 		return
@@ -755,30 +723,28 @@ func (a *App) nameChat(botID, chatID, runID, userText string, client openai.Clie
 	a.emit(botID, chatID, runID, "chat_title", title, "")
 }
 
-func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUnion {
+func (a *App) historyFromDB(chatID string) []llm.Message {
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", chatID).Order("created_at").Find(&runs)
-	var msgs []openai.ChatCompletionMessageParamUnion
+	var msgs []llm.Message
 	for _, run := range runs {
 		var evs []db.RunEvent
 		a.DB.Where("run_id = ?", run.ID).Order("created_at").Find(&evs)
-		var pending []openai.ChatCompletionMessageToolCallUnionParam
+		var pending []llm.ToolCall
 		var lastCall string
-		var results []openai.ChatCompletionMessageParamUnion
+		var results []llm.Message
 		flushTools := func() {
 			if len(pending) == 0 {
 				return
 			}
 			for len(results) < len(pending) {
-				id := pending[len(results)].OfFunction.ID
+				id := pending[len(results)].ID
 				if id == "" {
 					id = "call_missing"
 				}
-				results = append(results, openai.ToolMessage("error: interrupted", id))
+				results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: "error: interrupted"})
 			}
-			msgs = append(msgs, openai.ChatCompletionMessageParamUnion{
-				OfAssistant: &openai.ChatCompletionAssistantMessageParam{ToolCalls: pending},
-			})
+			msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, ToolCalls: pending})
 			msgs = append(msgs, results...)
 			pending = nil
 			results = nil
@@ -796,23 +762,23 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 					}
 					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 				}
-				msgs = append(msgs, openai.UserMessage(text))
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
 			case "assistant", "section":
 				flushTools()
 				if strings.TrimSpace(ev.Body) != "" {
-					msgs = append(msgs, openai.AssistantMessage(ev.Body))
+					msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: ev.Body})
 				}
 			case "tool":
-				if n := len(pending); n > 0 && pending[n-1].OfFunction != nil {
-					last := pending[n-1].OfFunction
-					same := last.Function.Name == ev.Tool || last.Function.Name == "" || ev.Tool == ""
-					incomplete := last.Function.Arguments == "" || !jsonLooksComplete(last.Function.Arguments)
-					if same && (ev.Body == "" || incomplete || ev.Body == last.Function.Arguments) {
+				if n := len(pending); n > 0 {
+					last := &pending[n-1]
+					same := last.Name == ev.Tool || last.Name == "" || ev.Tool == ""
+					incomplete := last.Arguments == "" || !jsonLooksComplete(last.Arguments)
+					if same && (ev.Body == "" || incomplete || ev.Body == last.Arguments) {
 						if ev.Body != "" {
-							last.Function.Arguments = ev.Body
+							last.Arguments = ev.Body
 						}
 						if ev.Tool != "" {
-							last.Function.Name = ev.Tool
+							last.Name = ev.Tool
 						}
 						lastCall = last.ID
 						continue
@@ -820,24 +786,17 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 				}
 				id := "call_" + ev.ID
 				lastCall = id
-				pending = append(pending, openai.ChatCompletionMessageToolCallUnionParam{
-					OfFunction: &openai.ChatCompletionMessageFunctionToolCallParam{
-						ID: id,
-						Function: openai.ChatCompletionMessageFunctionToolCallFunctionParam{
-							Name: ev.Tool, Arguments: ev.Body,
-						},
-					},
-				})
+				pending = append(pending, llm.ToolCall{ID: id, Name: ev.Tool, Arguments: ev.Body})
 			case "tool_args_chunk":
-				if n := len(pending); n > 0 && pending[n-1].OfFunction != nil {
-					pending[n-1].OfFunction.Function.Arguments += ev.Body
+				if n := len(pending); n > 0 {
+					pending[n-1].Arguments += ev.Body
 				}
 			case "tool_result":
 				id := lastCall
 				if id == "" {
 					id = "call_" + ev.ID
 				}
-				results = append(results, openai.ToolMessage(ev.Body, id))
+				results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: ev.Body})
 			}
 		}
 		flushTools()
@@ -882,7 +841,7 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.emit(botID, chatID, runID, "done", st, "")
 }
 
-func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string) (string, string, error) {
+func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON string) (string, string, error) {
 	var args map[string]any
 	_ = json.Unmarshal([]byte(argsJSON), &args)
 	str := func(k string) string {
@@ -940,6 +899,14 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	}
 	if name == "soul" || name == "memory" {
 		out, err := a.execDoc(botID, name, args)
+		return out, "", err
+	}
+	if name == "list_models" {
+		out, err := a.listModelsTool(chatID)
+		return out, "", err
+	}
+	if name == "switch_model" {
+		out, err := a.switchModelTool(chatID, str("model"))
 		return out, "", err
 	}
 	if name == "skill" {
@@ -1061,6 +1028,10 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Artifact, "emit", true
 	case "web_search":
 		return security.Web, "search", true
+	case "list_models":
+		return security.Model, "list", true
+	case "switch_model":
+		return security.Model, "switch", true
 	default:
 		return "", "", false
 	}
@@ -1073,13 +1044,27 @@ func screenPoint(x, y int) error {
 	return nil
 }
 
-func visionImage(tool, url string) (string, openai.ChatCompletionContentPartImageImageURLParam) {
-	part := openai.ChatCompletionContentPartImageImageURLParam{URL: url}
+func visionImage(tool, url string) (string, llm.Image) {
+	img := imageFromDataURL(url)
 	if tool == "look" {
-		return lookCoordLaw, part
+		return lookCoordLaw, img
 	}
-	part.Detail = "high"
-	return "You presented this image. Read the visible labels before you act.", part
+	img.Detail = "high"
+	return "You presented this image. Read the visible labels before you act.", img
+}
+
+// imageFromDataURL decodes a data: URL into a neutral image.
+func imageFromDataURL(url string) llm.Image {
+	const marker = ";base64,"
+	i := strings.Index(url, marker)
+	if !strings.HasPrefix(url, "data:") || i < 0 {
+		return llm.Image{}
+	}
+	raw, err := base64.StdEncoding.DecodeString(url[i+len(marker):])
+	if err != nil {
+		return llm.Image{}
+	}
+	return llm.Image{Mime: strings.TrimPrefix(url[:i], "data:"), Data: raw}
 }
 
 func lookAck(raw string) string {

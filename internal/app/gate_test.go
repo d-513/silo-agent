@@ -38,7 +38,7 @@ func TestExecToolDenied(t *testing.T) {
 	a := testApp(t, nil)
 	a.DB.Create(&db.Bot{ID: "b1"})
 	a.DB.Create(&db.Rule{ID: "r1", BotID: "b1", Connector: "terminal", Action: "run", Decision: "deny"})
-	_, _, err := a.execTool(context.Background(), "b1", "run1", "terminal", `{"command":"ls"}`)
+	_, _, err := a.execTool(context.Background(), "b1", "", "run1", "terminal", `{"command":"ls"}`)
 	if err == nil || !strings.Contains(err.Error(), "denied") {
 		t.Fatalf("%v", err)
 	}

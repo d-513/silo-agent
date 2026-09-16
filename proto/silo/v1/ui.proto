@@ -23,6 +23,9 @@ service UI {
   rpc CreateChat(CreateChatRequest) returns (Chat);
   rpc RenameChat(RenameChatRequest) returns (Chat);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
+  rpc SetChatModel(SetChatModelRequest) returns (Chat);
+
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
 
   rpc Send(SendRequest) returns (SendResponse);
   rpc StopRun(StopRunRequest) returns (StopRunResponse);
@@ -46,6 +49,7 @@ service UI {
 
   rpc GetSettings(GetSettingsRequest) returns (Settings);
   rpc PutSettings(PutSettingsRequest) returns (Settings);
+  rpc SetModels(SetModelsRequest) returns (Settings);
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
 
@@ -156,6 +160,29 @@ message Chat {
   string bot_id = 2;
   string title = 3;
   string updated_at = 4;
+  string model = 5;
+}
+
+message ModelOption {
+  string id = 1;
+  string provider = 2;
+  string label = 3;
+}
+
+message ListModelsRequest {
+  string bot_id = 1;
+}
+
+message ListModelsResponse {
+  repeated ModelOption models = 1;
+  string default_model = 2;
+  string title_model = 3;
+}
+
+message SetChatModelRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string model = 3;
 }
 
 message ListChatsRequest {
@@ -382,6 +409,7 @@ message ConfigField {
   string env_name = 4;
   bool secret = 5;
   bool restart_required = 6;
+  string type = 7;
 }
 
 message Settings {
@@ -389,6 +417,31 @@ message Settings {
   string yaml = 2;
   string yaml_path = 3;
   repeated SearchEngine search_engines = 4;
+  repeated Provider providers = 5;
+  repeated ModelOption models = 6;
+  string default_model = 7;
+  string title_model = 8;
+}
+
+message Provider {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated ProviderField fields = 4;
+  bool supports_cache = 5;
+  repeated string cache_ttls = 6;
+}
+
+message ProviderField {
+  string key = 1;
+  string label = 2;
+  string type = 3;
+  string description = 4;
+  bool secret = 5;
+}
+
+message SetModelsRequest {
+  repeated string models = 1;
 }
 
 message SearchEngine {

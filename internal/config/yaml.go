@@ -42,6 +42,33 @@ func setNodeKey(doc *yaml.Node, key, value string) error {
 	return setPath(mappingOf(doc), strings.Split(key, "."), value)
 }
 
+// setNodeList replaces a top-level key with a YAML sequence, preserving any
+// comments on the existing key. Used for the model allowlist.
+func setNodeList(doc *yaml.Node, key string, values []string) error {
+	m := mappingOf(doc)
+	if m.Kind != yaml.MappingNode {
+		*m = yaml.Node{Kind: yaml.MappingNode}
+	}
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	for _, v := range values {
+		seq.Content = append(seq.Content, &yaml.Node{
+			Kind: yaml.ScalarNode, Tag: "!!str", Value: v, Style: quoteStyle(v),
+		})
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value != key {
+			continue
+		}
+		seq.HeadComment = m.Content[i+1].HeadComment
+		seq.LineComment = m.Content[i+1].LineComment
+		seq.FootComment = m.Content[i+1].FootComment
+		m.Content[i+1] = seq
+		return nil
+	}
+	m.Content = append(m.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, seq)
+	return nil
+}
+
 func setPath(m *yaml.Node, parts []string, value string) error {
 	if m.Kind != yaml.MappingNode {
 		*m = yaml.Node{Kind: yaml.MappingNode, HeadComment: m.HeadComment, LineComment: m.LineComment, FootComment: m.FootComment}

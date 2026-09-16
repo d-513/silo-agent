@@ -5,15 +5,18 @@ import (
 	"strings"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/skills"
 )
 
 // promptSection is one ordered block of the system prompt. An empty body is
-// dropped when the builder renders it.
+// dropped when the builder renders it. A trailing section is placed after SOUL
+// and MEMORY so per-run content never invalidates the cached prefix.
 type promptSection struct {
-	title string
-	body  string
+	title    string
+	body     string
+	trailing bool
 }
 
 func (s promptSection) render() string {
@@ -88,17 +91,20 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 			b.WriteString("\n\n")
 		}
 		b.WriteString(strings.TrimSpace(prompts.Channel))
-		out = append(out, promptSection{title: "This conversation", body: b.String()})
+		out = append(out, promptSection{title: "This conversation", body: b.String(), trailing: true})
 	}
 	return out
 }
 
-// systemPromptBuilder assembles the system message: the base prompt, the Bot
-// identity, provider sections in registration order, then SOUL and MEMORY.
+// systemPromptBuilder assembles the system prompt as ordered cache tiers:
+// (1) base + identity, (2) session config (connectors, skills, channels),
+// (3) SOUL, (4) MEMORY, (5) per-run trailing sections. Stable content leads so
+// prompt caches keep the longest prefix.
 type systemPromptBuilder struct {
 	base     string
 	bot      *db.Bot
 	sections []promptSection
+	trailing []promptSection
 }
 
 func (b *systemPromptBuilder) add(s promptSection) {
@@ -108,45 +114,83 @@ func (b *systemPromptBuilder) add(s promptSection) {
 	b.sections = append(b.sections, s)
 }
 
-func (b *systemPromptBuilder) String() string {
-	var s strings.Builder
-	s.WriteString(b.base)
+// Blocks renders the prompt as cache-aware blocks. A block with CacheAfter ends
+// a provider cache breakpoint. Empty blocks are dropped and their breakpoint
+// carries back to the previous block.
+func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
+	var stable strings.Builder
+	stable.WriteString(b.base)
 	if b.bot.Name != "" {
-		fmt.Fprintf(&s, "\n\nThis Bot's name is %s.", b.bot.Name)
+		fmt.Fprintf(&stable, "\n\nThis Bot's name is %s.", b.bot.Name)
 	}
 	if d := strings.TrimSpace(b.bot.Description); d != "" {
-		fmt.Fprintf(&s, " Description: %s.", d)
+		fmt.Fprintf(&stable, " Description: %s.", d)
 	}
+	var session strings.Builder
 	for _, sec := range b.sections {
-		s.WriteString(sec.render())
+		session.WriteString(sec.render())
 	}
-	s.WriteString("\n\n## SOUL\n")
+	var trailing strings.Builder
+	for _, sec := range b.trailing {
+		trailing.WriteString(sec.render())
+	}
+
+	var soul strings.Builder
+	soul.WriteString("\n\n## SOUL\n")
 	if t := strings.TrimSpace(b.bot.Soul); t != "" {
-		s.WriteString(t)
+		soul.WriteString(t)
 	} else {
-		s.WriteString("(empty — write it with the soul tool.)")
+		soul.WriteString("(empty — write it with the soul tool.)")
 	}
-	s.WriteString("\n\n## MEMORY\n")
+	var mem strings.Builder
+	mem.WriteString("\n\n## MEMORY\n")
 	if t := strings.TrimSpace(b.bot.Memory); t != "" {
-		s.WriteString(t)
+		mem.WriteString(t)
 	} else {
-		s.WriteString("(empty)")
+		mem.WriteString("(empty)")
 	}
 	if len(b.bot.Memory) > memoryMax {
-		fmt.Fprintf(&s, "\n\nMEMORY is over the %d-character cap (now %d). Compact it with `memory` (replace redundant facts with a shorter summary) before adding more.", memoryMax, len(b.bot.Memory))
+		fmt.Fprintf(&mem, "\n\nMEMORY is over the %d-character cap (now %d). Compact it with `memory` (replace redundant facts with a shorter summary) before adding more.", memoryMax, len(b.bot.Memory))
+	}
+
+	raw := []llm.SystemBlock{
+		{Text: stable.String(), CacheAfter: true},
+		{Text: session.String(), CacheAfter: true},
+		{Text: soul.String(), CacheAfter: true},
+		{Text: mem.String()},
+		{Text: trailing.String()},
+	}
+	out := make([]llm.SystemBlock, 0, len(raw))
+	for _, blk := range raw {
+		if strings.TrimSpace(blk.Text) == "" {
+			if blk.CacheAfter && len(out) > 0 {
+				out[len(out)-1].CacheAfter = true
+			}
+			continue
+		}
+		out = append(out, blk)
+	}
+	return out
+}
+
+func (b *systemPromptBuilder) String() string {
+	var s strings.Builder
+	for _, blk := range b.Blocks() {
+		s.WriteString(blk.Text)
 	}
 	return s.String()
 }
 
-// buildSystem loads the session and assembles the system prompt. An optional
-// origin makes the prompt aware of the channel a run came from.
-func (a *App) buildSystem(botID string, origin ...*runOrigin) string {
+// buildSystemBlocks loads the session and returns the ordered, cache-aware
+// system prompt. An optional origin makes the prompt aware of the channel a run
+// came from; that per-run note is placed last.
+func (a *App) buildSystemBlocks(botID string, origin ...*runOrigin) []llm.SystemBlock {
 	if a.DB == nil {
-		return prompts.System
+		return []llm.SystemBlock{{Text: prompts.System}}
 	}
 	var bot db.Bot
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
-		return prompts.System
+		return []llm.SystemBlock{{Text: prompts.System}}
 	}
 	var o *runOrigin
 	if len(origin) > 0 {
@@ -156,10 +200,25 @@ func (a *App) buildSystem(botID string, origin ...*runOrigin) string {
 	b := &systemPromptBuilder{base: prompts.System, bot: &bot}
 	for _, p := range a.promptProviders() {
 		for _, sec := range p(pc) {
+			if sec.trailing {
+				if strings.TrimSpace(sec.body) != "" {
+					b.trailing = append(b.trailing, sec)
+				}
+				continue
+			}
 			b.add(sec)
 		}
 	}
-	return b.String()
+	return b.Blocks()
+}
+
+// buildSystem renders the system prompt as one string.
+func (a *App) buildSystem(botID string, origin ...*runOrigin) string {
+	var s strings.Builder
+	for _, blk := range a.buildSystemBlocks(botID, origin...) {
+		s.WriteString(blk.Text)
+	}
+	return s.String()
 }
 
 // promptContext snapshots the session state providers may depend on.

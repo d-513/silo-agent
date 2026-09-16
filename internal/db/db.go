@@ -65,8 +65,11 @@ type Chat struct {
 	ChannelID  string `gorm:"index"`
 	ExternalID string
 	Title      string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// Model is the per-chat provider/model override; empty falls back to the
+	// operator default.
+	Model     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Run struct {

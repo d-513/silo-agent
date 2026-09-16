@@ -38,13 +38,13 @@ export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
 
 ```
 cp silo.yaml.example silo.yaml
-# edit silo.yaml: openrouter.api_key, bootstrap.email / bootstrap.password
+# edit silo.yaml: providers.<id>.api_key, models allowlist, bootstrap.email / bootstrap.password
 cd web && pnpm install
 ```
 
-`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_OPENROUTER__API_KEY` → `openrouter.api_key`).
+`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`).
 
-The OpenRouter key, model, and search engine live in `silo.yaml` (Admin can edit the file). `SILO_*` env still wins. `bootstrap.*` seeds the first admin user; wipe `data/` to recreate it.
+Provider keys, the model allowlist/default, and the search engine live in `silo.yaml` (Admin can edit the file). `SILO_*` env still wins. `bootstrap.*` seeds the first admin user; wipe `data/` to recreate it.
 
 ## Build
 

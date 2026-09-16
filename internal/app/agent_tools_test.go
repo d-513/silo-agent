@@ -10,6 +10,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/llm"
 )
 
 func TestHistoryPairsStreamedTool(t *testing.T) {
@@ -28,10 +29,10 @@ func TestHistoryPairsStreamedTool(t *testing.T) {
 	msgs := a.historyFromDB("c1")
 	var calls, outs int
 	for _, m := range msgs {
-		if m.OfAssistant != nil {
-			calls += len(m.OfAssistant.ToolCalls)
+		if m.Role == llm.RoleAssistant {
+			calls += len(m.ToolCalls)
 		}
-		if m.OfTool != nil {
+		if m.Role == llm.RoleTool {
 			outs++
 		}
 	}

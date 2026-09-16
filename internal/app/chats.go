@@ -13,11 +13,12 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/llm"
 )
 
 func protoChat(c *db.Chat) *v1.Chat {
 	return &v1.Chat{
-		Id: c.ID, BotId: c.BotID, Title: c.Title,
+		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model,
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
 	}
 }
@@ -111,6 +112,40 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	a.DB.Where("chat_id = ?", c.ID).Delete(&db.Run{})
 	a.DB.Delete(c)
 	return connect.NewResponse(&v1.DeleteChatResponse{}), nil
+}
+
+// ListModels returns the operator's model allowlist for the chat model picker.
+// It is available to any owner of the Bot, not just admins.
+func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
+	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+		return nil, err
+	}
+	cfg := a.cfg()
+	return connect.NewResponse(&v1.ListModelsResponse{
+		Models:       modelOptionProtos(a.allowedModels()),
+		DefaultModel: cfg.Model,
+		TitleModel:   cfg.ModelTitle,
+	}), nil
+}
+
+// SetChatModel persists a per-chat model override. It must be in the allowlist.
+func (a *App) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
+	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+	model := strings.TrimSpace(req.Msg.GetModel())
+	if model != "" {
+		if _, _, err := llm.Parse(model); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if !llm.Allowed(model, a.cfg().Models) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("model is not in the allowed list"))
+		}
+	}
+	c.Model = model
+	a.DB.Save(c)
+	return connect.NewResponse(protoChat(c)), nil
 }
 
 func untitledTitle(s string) bool {

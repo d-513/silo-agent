@@ -387,7 +387,7 @@ Thread:
 - User: “Log into the vendor site and download last month’s invoice.”
 - Tool row: browser_snapshot · running
 - Assistant: “The login page is up. There’s a captcha. I need you on the desktop.”
-- Composer: “Ask this Bot…”
+- Composer: “Ask this Bot…”. Left cluster: Attach, a model picker (allowed models; sets the chat override), and a cache chip after usage events.
 ```
 
 **5 · Bot · Chat · Needs you**
@@ -458,7 +458,7 @@ No ghost rows after detach or deleting a secret.
 ```
 Same shell, Admin active.
 Title: Admin. Column 640px. Operator config: silo.yaml.
-Groups match YAML: Model, OpenRouter, Search, Server, Bootstrap. Each field shows source (default / yaml / env). Env-set fields are disabled with a carmine warning.
+Groups match YAML: Models, Providers, Search, Server, Bootstrap. Models holds the allowlist plus Default and Title pickers; Providers holds one block per provider (key, base URL, cache toggle). Each field shows source (default / yaml / env). Env-set fields are disabled with a carmine warning.
 YAML editor below (syntax highlighted). Save writes silo.yaml only.
 Primary: Save.
 ```

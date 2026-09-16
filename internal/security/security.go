@@ -31,6 +31,7 @@ const (
 	Artifact = "artifact"
 	Channels = "channels"
 	Chats    = "chats"
+	Model    = "model"
 )
 
 type Field struct {
@@ -60,7 +61,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true,
+	Channels: true, Chats: true, Model: true,
 }
 
 var catalog = map[string]spec{
@@ -74,9 +75,25 @@ var catalog = map[string]spec{
 	"artifact.emit": {title: "Artifact", mode: Allow, summary: want("show an artifact")},
 	"web.search":    {title: "Web search", mode: Allow, summary: want("search the web")},
 	"chats.read":    {title: "Read chats", mode: Allow, summary: want("read chat messages")},
+	"model.list":    {title: "List models", mode: Allow, summary: want("list the allowed models")},
+	"model.switch":  {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
+}
+
+func switchSummary(args map[string]string) string {
+	if m := strings.TrimSpace(args["model"]); m != "" {
+		return "This Bot wants to switch this conversation to the “" + m + "” model."
+	}
+	return "This Bot wants to switch to another model."
+}
+
+func switchFields(args map[string]string) []Field {
+	if m := strings.TrimSpace(args["model"]); m != "" {
+		return []Field{{Label: "Model", Value: m}}
+	}
+	return nil
 }
 
 func channelSummary(args map[string]string) string {
@@ -120,6 +137,8 @@ func BuiltinRows() []Row {
 		{Artifact, "emit", "Artifact"},
 		{Web, "search", "Web search"},
 		{Chats, "read", "Read chats"},
+		{Model, "list", "List models"},
+		{Model, "switch", "Switch model"},
 	}
 }
 

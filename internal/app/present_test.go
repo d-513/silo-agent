@@ -53,7 +53,7 @@ func TestPresentAck(t *testing.T) {
 
 func TestPresentNeedsPath(t *testing.T) {
 	a := &App{}
-	_, _, err := a.execTool(context.Background(), "b", "r", "present", `{}`)
+	_, _, err := a.execTool(context.Background(), "b", "", "r", "present", `{}`)
 	if err == nil || !strings.Contains(err.Error(), "path") {
 		t.Fatalf("%v", err)
 	}

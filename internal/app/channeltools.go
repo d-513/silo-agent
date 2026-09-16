@@ -102,11 +102,19 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 			return "", fmt.Errorf("unknown chat %q", chatQuery)
 		}
 	}
-	// A channel conversation belongs to the platform: ask the adapter for the
-	// real history so the Bot can see beyond what this process observed.
+	// A channel conversation belongs to the platform, so try the adapter's own
+	// history first. Bot accounts cannot read it (BOT_METHOD_INVALID), in which
+	// case fall back to what this Bot has received.
 	if c.ChannelID != "" {
-		return a.channelHistoryTool(ctx, c, limit)
+		if out, err := a.channelHistoryTool(ctx, c, limit); err == nil {
+			return out, nil
+		}
 	}
+	return a.localHistoryTool(c, limit), nil
+}
+
+// localHistoryTool reads the messages this Bot has recorded for a chat.
+func (a *App) localHistoryTool(c db.Chat, limit int) string {
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", c.ID).Order("created_at").Find(&runs)
 	ids := make([]string, len(runs))
@@ -129,7 +137,7 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 		}
 		fmt.Fprintf(&b, "%s: %s\n", who, ev.Body)
 	}
-	return b.String(), nil
+	return b.String()
 }
 
 // channelHistoryTool reads a channel conversation's messages from the adapter

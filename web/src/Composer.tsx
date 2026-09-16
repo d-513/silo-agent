@@ -1,11 +1,19 @@
-import { ArrowUp, Paperclip, Stop, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowUp, CaretDown, Paperclip, Stop, UploadSimple, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { fmtSize } from "./fs";
+import type { ModelOption } from "./gen/silo/v1/ui_pb";
 
 export interface Attachment {
   name: string;
   path: string;
   size: number;
+}
+
+export interface Usage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
 }
 
 export interface ComposerProps {
@@ -21,6 +29,15 @@ export interface ComposerProps {
   chatId?: string;
   workerConnected?: boolean;
   botName?: string;
+  models?: ModelOption[];
+  model?: string;
+  onModel?: (model: string) => void;
+  usage?: Usage | null;
+}
+
+function fmtTokens(n: number) {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return String(n);
 }
 
 export function Composer({
@@ -36,6 +53,10 @@ export function Composer({
   chatId,
   workerConnected,
   botName,
+  models,
+  model,
+  onModel,
+  usage,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +216,33 @@ export function Composer({
                   </span>
                 )}
               </button>
+
+              {models && models.length > 0 && onModel ? (
+                <label className="relative inline-flex items-center" title="Model for this conversation">
+                  <select
+                    value={model && models.some((m) => m.id === model) ? model : models[0].id}
+                    onChange={(e) => onModel(e.target.value)}
+                    disabled={!chatId}
+                    className="max-w-[180px] cursor-pointer appearance-none truncate rounded-lg bg-transparent py-1 pl-2.5 pr-6 text-[12px] font-medium text-stone outline-none transition-colors hover:bg-cloth hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label || m.id}
+                      </option>
+                    ))}
+                  </select>
+                  <CaretDown size={11} className="pointer-events-none absolute right-1.5 text-stone" />
+                </label>
+              ) : null}
+
+              {usage && (usage.cacheRead > 0 || usage.cacheWrite > 0) ? (
+                <span
+                  className="hidden items-center gap-1 rounded-lg bg-cloth px-2 py-1 text-[11px] text-stone sm:inline-flex"
+                  title={`Input ${usage.input} · Output ${usage.output}`}
+                >
+                  cached {fmtTokens(usage.cacheRead)} / new {fmtTokens(usage.input - usage.cacheRead > 0 ? usage.input - usage.cacheRead : 0)}
+                </span>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-2">

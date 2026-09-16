@@ -20,7 +20,7 @@ func TestScreenPoint(t *testing.T) {
 
 func TestClickOutOfRange(t *testing.T) {
 	a := &App{}
-	_, _, err := a.execTool(context.Background(), "b", "r", "click", `{"x":1280,"y":10}`)
+	_, _, err := a.execTool(context.Background(), "b", "", "r", "click", `{"x":1280,"y":10}`)
 	if err == nil || !strings.Contains(err.Error(), "1280") {
 		t.Fatalf("%v", err)
 	}

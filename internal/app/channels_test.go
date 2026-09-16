@@ -66,6 +66,28 @@ func TestChannelPromptIncludesSections(t *testing.T) {
 	}
 }
 
+func TestChannelStateMergePreservesValues(t *testing.T) {
+	a := testApp(t, nil)
+	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
+	a.DB.Create(&db.Channel{ID: "ch1", BotID: "b1", Adapter: "telegram", Name: "TG"})
+	a.publishChannelState("ch1", channels.State{
+		Kind:   channels.StateSelect,
+		Values: map[string]string{"peer:user:1": `{"kind":"user","id":1}`},
+	})
+	a.publishChannelState("ch1", channels.State{Kind: channels.StateInfo, Message: "Connected"})
+	if got := a.channelState("ch1").Values["peer:user:1"]; got == "" {
+		t.Fatalf("peer value lost on status update: %#v", a.channelState("ch1").Values)
+	}
+	// And it must survive a reload (what a reboot does).
+	var row db.Channel
+	if err := a.DB.First(&row, "id = ?", "ch1").Error; err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(row.StateJSON, "peer:user:1") {
+		t.Fatalf("peer not persisted: %q", row.StateJSON)
+	}
+}
+
 func TestChannelsRuleDefaultAllow(t *testing.T) {
 	if d, ok := security.Default(security.Channels, "ch-anything"); !ok || d != security.Allow {
 		t.Fatalf("channels default = %q ok=%v", d, ok)

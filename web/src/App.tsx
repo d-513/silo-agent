@@ -19,7 +19,7 @@ import { BotConnectors, startConnectorAuth } from "./BotConnectors";
 import { BotChannels } from "./BotChannels";
 import { RulesPane } from "./Rules";
 import { AdminSkills, BotSkills, SkillHub } from "./Skills";
-import type { Approval, Bot, BotConnector, Chat, Container, SecretMeta } from "./gen/silo/v1/ui_pb";
+import type { Approval, Bot, BotConnector, Chat, Container, ModelOption, SecretMeta } from "./gen/silo/v1/ui_pb";
 
 const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
@@ -1058,6 +1058,9 @@ function BotPage() {
   const [keepDesk, setKeepDesk] = useState(tab === "desktop");
   const [keepCon, setKeepCon] = useState(tab === "console");
   const [inspect, setInspect] = useState<Artifact | null>(null);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [defaultModel, setDefaultModel] = useState("");
+  const [usage, setUsage] = useState<{ input: number; output: number; cacheRead: number; cacheWrite: number } | null>(null);
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
@@ -1105,10 +1108,22 @@ function BotPage() {
         if (!chatId && r.chats[0]) nav(`/bots/${id}/run/${r.chats[0].id}`, { replace: true });
       })
       .catch(() => {});
+    ui.listModels({ botId: id })
+      .then((r) => {
+        if (!dead) {
+          setModels(r.models);
+          setDefaultModel(r.defaultModel);
+        }
+      })
+      .catch(() => {});
     return () => {
       dead = true;
     };
   }, [id, tab, chatId, nav]);
+
+  useEffect(() => {
+    setUsage(null);
+  }, [chatId]);
 
   useEffect(() => {
     if (!id || !chatId) return;
@@ -1141,6 +1156,21 @@ function BotPage() {
             }
             if (ev.kind === "chat_title" && ev.body) {
               setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title: ev.body } : c)));
+            }
+            if (ev.kind === "usage" && ev.body) {
+              try {
+                const u = JSON.parse(ev.body) as Record<string, number>;
+                if (!dead) {
+                  setUsage({
+                    input: u.input ?? 0,
+                    output: u.output ?? 0,
+                    cacheRead: u.cache_read ?? 0,
+                    cacheWrite: u.cache_write ?? 0,
+                  });
+                }
+              } catch {
+                /* ignore malformed usage */
+              }
             }
             if (ev.kind === "done") {
               ui.listChats({ botId: id }).then((r) => {
@@ -1242,6 +1272,17 @@ function BotPage() {
         const seen = new Set(xs.map((x) => x.path));
         return [...xs, ...added.filter((a) => !seen.has(a.path))];
       });
+    }
+  }
+
+  async function pickModel(model: string) {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      const c = await ui.setChatModel({ botId: id, chatId, model });
+      setChats((xs) => xs.map((x) => (x.id === c.id ? c : x)));
+    } catch (ex) {
+      setActErr(fail(ex));
     }
   }
 
@@ -1552,6 +1593,10 @@ function BotPage() {
                 chatId={chatId}
                 workerConnected={bot.workerConnected}
                 botName={bot.name}
+                models={models}
+                model={chats.find((c) => c.id === chatId)?.model || defaultModel}
+                onModel={(m) => void pickModel(m)}
+                usage={usage}
               />
             </section>
           </>

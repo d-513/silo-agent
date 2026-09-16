@@ -66,19 +66,21 @@ func (p peerRef) inputPeer() tg.InputPeerClass {
 }
 
 type Adapter struct {
-	mu      sync.Mutex
-	clients map[string]*telegram.Client
-	selfs   map[string]*tg.User
-	peers   map[string]map[string]peerRef // channelID -> externalID -> ref
-	seen    map[string]map[int]struct{}   // channelID -> message IDs
+	mu        sync.Mutex
+	clients   map[string]*telegram.Client
+	selfs     map[string]*tg.User
+	peers     map[string]map[string]peerRef // channelID -> externalID -> ref
+	seen      map[string]map[int]struct{}   // channelID -> message IDs
+	noHistory map[string]bool               // channelID -> server rejected getHistory
 }
 
 func init() {
 	channels.Register(&Adapter{
-		clients: map[string]*telegram.Client{},
-		selfs:   map[string]*tg.User{},
-		peers:   map[string]map[string]peerRef{},
-		seen:    map[string]map[int]struct{}{},
+		clients:   map[string]*telegram.Client{},
+		selfs:     map[string]*tg.User{},
+		peers:     map[string]map[string]peerRef{},
+		seen:      map[string]map[int]struct{}{},
+		noHistory: map[string]bool{},
 	})
 }
 
@@ -152,7 +154,7 @@ func (a *Adapter) Start(ctx context.Context, ch *db.Channel, cfg channels.Config
 		a.mu.Lock()
 		a.selfs[ch.ID] = self
 		a.mu.Unlock()
-		host.PublishState(ch.ID, channels.State{Kind: channels.StateInfo, Message: "Connected as @" + self.Username})
+		host.PublishState(ch.ID, channels.State{Kind: channels.StateInfo, Message: "Connected as @" + self.Username, Values: a.peersState(ch.ID)})
 		<-ctx.Done()
 		return ctx.Err()
 	})
@@ -174,7 +176,7 @@ func (a *Adapter) Send(ctx context.Context, ch *db.Channel, cfg channels.Config,
 	sender := message.NewSender(client.API())
 	req := a.target(sender, ch, msg.ExternalID)
 	if req == nil {
-		return fmt.Errorf("no destination for telegram message")
+		return fmt.Errorf("telegram chat %q is not known yet — pick it again in Set up, or have someone message the bot once", strings.TrimSpace(ch.ExternalID))
 	}
 	text := strings.TrimSpace(msg.Text)
 	if text != "" {
@@ -216,6 +218,12 @@ func (a *Adapter) History(ctx context.Context, ch *db.Channel, _ channels.Config
 	if client == nil {
 		return nil, fmt.Errorf("telegram channel is not connected")
 	}
+	a.mu.Lock()
+	denied := a.noHistory[ch.ID]
+	a.mu.Unlock()
+	if denied {
+		return nil, fmt.Errorf("history is not available for bot accounts")
+	}
 	external := strings.TrimSpace(externalID)
 	if external == "" {
 		external = strings.TrimSpace(ch.ExternalID)
@@ -235,6 +243,12 @@ func (a *Adapter) History(ctx context.Context, ch *db.Channel, _ channels.Config
 	}
 	res, err := client.API().MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: peer, Limit: limit})
 	if err != nil {
+		if strings.Contains(err.Error(), "BOT_METHOD_INVALID") {
+			a.mu.Lock()
+			a.noHistory[ch.ID] = true
+			a.mu.Unlock()
+			return nil, fmt.Errorf("history is not available for bot accounts")
+		}
 		return nil, err
 	}
 	users := historyUsers(res)
@@ -388,7 +402,23 @@ func (a *Adapter) target(sender *message.Sender, ch *db.Channel, external string
 			}
 		}
 	}
+	// A synthetic id (user:123) cannot be resolved without the access hash we
+	// learn from an update or the picker; a username/link/deeplink can.
+	if isSyntheticPeer(external) {
+		return nil
+	}
 	return sender.Resolve(external)
+}
+
+// isSyntheticPeer reports whether an external id is one of our derived peer
+// keys rather than something the server can resolve.
+func isSyntheticPeer(s string) bool {
+	for _, p := range []string{"user:", "chat:", "channel:"} {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *Adapter) Action(ctx context.Context, ch *db.Channel, cfg channels.Config, action string, _ map[string]string) (channels.State, error) {
@@ -407,7 +437,7 @@ func (a *Adapter) Action(ctx context.Context, ch *db.Channel, cfg channels.Confi
 		if self != nil {
 			msg = "Connected as @" + self.Username
 		}
-		return channels.State{Kind: channels.StateInfo, Message: msg}, nil
+		return channels.State{Kind: channels.StateInfo, Message: msg, Values: a.peersState(ch.ID)}, nil
 	default:
 		return channels.State{}, fmt.Errorf("unknown action %q", action)
 	}
@@ -557,7 +587,11 @@ func (a *Adapter) onMessage(ch *db.Channel, cfg channels.Config, liveSince int64
 		if cur, ok := host.CurrentChannel(ch.ID); ok {
 			live = cur
 		}
-		a.putPeer(live.ID, ref)
+		if a.putPeer(live.ID, ref) {
+			// A newly seen chat becomes pickable and its access hash must
+			// survive restarts, so persist it now.
+			host.PublishState(live.ID, channels.State{Values: a.peersState(live.ID)})
+		}
 		// One channel is one chat; ignore everything else.
 		if !matchesTarget(live.ExternalID, ref) {
 			return nil
@@ -624,6 +658,7 @@ func (a *Adapter) dropClient(id string) {
 	delete(a.clients, id)
 	delete(a.selfs, id)
 	delete(a.seen, id)
+	delete(a.noHistory, id)
 	a.mu.Unlock()
 }
 
@@ -633,13 +668,18 @@ func (a *Adapter) client(id string) *telegram.Client {
 	return a.clients[id]
 }
 
-func (a *Adapter) putPeer(channelID string, ref peerRef) {
+// putPeer records a peer and reports whether it is newly learned, so callers
+// can persist the pickable list at the moment it appears.
+func (a *Adapter) putPeer(channelID string, ref peerRef) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.peers[channelID] == nil {
 		a.peers[channelID] = map[string]peerRef{}
 	}
-	a.peers[channelID][ref.externalID()] = ref
+	key := ref.externalID()
+	_, existed := a.peers[channelID][key]
+	a.peers[channelID][key] = ref
+	return !existed
 }
 
 func (a *Adapter) peer(channelID, external string) (peerRef, bool) {

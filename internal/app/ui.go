@@ -20,6 +20,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
 )
 
@@ -419,6 +420,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	} else if len(fields) > 0 {
+		allowed := a.Store.AllowedModels()
 		for k, v := range fields {
 			if !config.KnownKey(k) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown setting %q", k))
@@ -426,10 +428,47 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 			if k == "search.engine" && v != "" && !search.Known(v) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
 			}
+			if (k == "model" || k == "model_title") && v != "" {
+				if _, _, err := llm.Parse(v); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+				if len(allowed) > 0 && !llm.Allowed(v, allowed) {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("model %q is not in the allowed list", v))
+				}
+			}
 		}
 		if err := a.Store.Patch(fields); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+	}
+	s, err := a.settings()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(s), nil
+}
+
+// SetModels replaces the operator's model allowlist.
+func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if a.Store == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
+	}
+	models := make([]string, 0, len(req.Msg.GetModels()))
+	for _, m := range req.Msg.GetModels() {
+		m = strings.TrimSpace(m)
+		if m == "" {
+			continue
+		}
+		if _, _, err := llm.Parse(m); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		models = append(models, m)
+	}
+	if err := a.Store.SetModels(models); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	s, err := a.settings()
 	if err != nil {
@@ -455,11 +494,42 @@ func (a *App) settings() (*v1.Settings, error) {
 			EnvName:         f.EnvName,
 			Secret:          f.Secret,
 			RestartRequired: f.Restart,
+			Type:            f.Type,
 		})
 	}
+	out.Providers = providerProtos()
+	out.Models = modelOptionProtos(a.allowedModels())
+	cfg := a.cfg()
+	out.DefaultModel = cfg.Model
+	out.TitleModel = cfg.ModelTitle
 	out.Yaml = string(raw)
 	out.YamlPath = a.Store.Path()
 	return out, nil
+}
+
+func providerProtos() []*v1.Provider {
+	out := make([]*v1.Provider, 0, len(llm.Descriptors()))
+	for _, d := range llm.Descriptors() {
+		p := &v1.Provider{
+			Id: d.ID, Name: d.Name, Description: d.Description,
+			SupportsCache: d.SupportsCache, CacheTtls: d.CacheTTLs,
+		}
+		for _, f := range d.Settings {
+			p.Fields = append(p.Fields, &v1.ProviderField{
+				Key: f.Key, Label: f.Label, Type: f.Type, Description: f.Description, Secret: f.Secret,
+			})
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+func modelOptionProtos(opts []modelOption) []*v1.ModelOption {
+	out := make([]*v1.ModelOption, 0, len(opts))
+	for _, o := range opts {
+		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label})
+	}
+	return out
 }
 
 func sourceProto(s config.Source) v1.ConfigSource {

@@ -50,6 +50,7 @@ Keep the set small. Prefer the most specific tool.
 - `web_search` — public web results (title, URL, snippet). Use this instead of typing a `/search?q=` URL. Open a result on the desktop only when the human should see the page.
 - `channel` — send a message to one of this Bot's channels (Telegram, …). It defaults to the channel this conversation came from; pass `channel` (name) to send to a different one. Use it to cross-post or to reply from a web chat.
 - `chats` — read this Bot's chats and channel conversations. With no `chat` it lists them; with a chat id or title it returns recent messages. Always stays inside this Bot.
+- `list_models` / `switch_model` — the operator allows a set of models. Call `list_models` to see them (and which one this conversation uses), then `switch_model` to change it for this conversation. Only ids from that list are accepted; never invent a model id.
 
 In Python, `silo_runtime` is `get_secret`, desktop `look` / `click` / `type_text` / `key` / `scroll`, `web_search`, `chrome_page`, `artifact`, `send_channel`, `read_chats`, and `call` (used by connector stubs, not by you). Credentials come only from `get_secret`:
 

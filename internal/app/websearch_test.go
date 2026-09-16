@@ -121,7 +121,7 @@ func TestExecToolWebSearch(t *testing.T) {
 	t.Cleanup(func() { search.DuckDuckGoURL = "https://html.duckduckgo.com/html/" })
 	search.DuckDuckGoURL = srv.URL + "/"
 
-	out, img, err := a.execTool(context.Background(), "b1", "run1", "web_search", `{"query":"alpha","max_results":2}`)
+	out, img, err := a.execTool(context.Background(), "b1", "", "run1", "web_search", `{"query":"alpha","max_results":2}`)
 	if err != nil || img != "" {
 		t.Fatalf("%v %q", err, img)
 	}
@@ -131,7 +131,7 @@ func TestExecToolWebSearch(t *testing.T) {
 	}
 
 	a.DB.Create(&db.Rule{ID: "r1", BotID: "b1", Connector: "web", Action: "search", Decision: "deny"})
-	_, _, err = a.execTool(context.Background(), "b1", "run1", "web_search", `{"query":"alpha"}`)
+	_, _, err = a.execTool(context.Background(), "b1", "", "run1", "web_search", `{"query":"alpha"}`)
 	if err == nil || !strings.Contains(err.Error(), "denied") {
 		t.Fatalf("%v", err)
 	}
