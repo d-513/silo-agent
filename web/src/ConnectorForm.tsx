@@ -1,4 +1,5 @@
 import { CaretRight, Plugs } from "@phosphor-icons/react";
+import { ToggleRow } from "./Switch";
 import type { Connector } from "./gen/silo/v1/ui_pb";
 
 export type HeaderDraft = { name: string; value: string };
@@ -344,18 +345,13 @@ export function ConnectorFields({
         />
       </div>
       {allowAutoAttach && (
-        <label className="mb-3 flex items-start gap-2">
-          <input
-            type="checkbox"
-            className="mt-0.5 accent-bindery"
-            checked={value.autoAttach}
-            onChange={(e) => set("autoAttach", e.target.checked)}
-          />
-          <span>
-            <span className="block text-[12px] font-medium text-stone">Add to new bots by default</span>
-            <span className="block text-stone">New bots get this connector automatically. Removing it from a bot does not re-add it.</span>
-          </span>
-        </label>
+        <ToggleRow
+          className="mb-3 rounded-[10px] border border-thread bg-folio px-3 py-2.5"
+          label="Add to new bots by default"
+          hint="New bots get this connector automatically. Removing it from a bot does not re-add it."
+          on={value.autoAttach}
+          onChange={(v) => set("autoAttach", v)}
+        />
       )}
       {value.transport === "stdio" ? (
         <>

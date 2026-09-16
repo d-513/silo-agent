@@ -3,6 +3,9 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
+import { Field, Panel, inputClass } from "./Field";
+import { Select } from "./Select";
+import { ToggleRow } from "./Switch";
 import {
   ConfigSource,
   type AuditRow,
@@ -20,14 +23,6 @@ function fail(e: unknown) {
   return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
-const GROUPS: { id: string; title: string; note?: string }[] = [
-  { id: "models", title: "Models" },
-  { id: "providers", title: "Providers" },
-  { id: "search", title: "Search" },
-  { id: "server", title: "Server" },
-  { id: "bootstrap", title: "Bootstrap", note: "First admin only. Ignored after a user exists. Restart required." },
-];
-
 const LABELS: Record<string, string> = {
   model: "Default model",
   model_title: "Chat title model",
@@ -42,6 +37,8 @@ const LABELS: Record<string, string> = {
   "bootstrap.email": "Email",
   "bootstrap.password": "Password",
 };
+
+const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
   if (key === "model" || key === "model_title") return "models";
@@ -157,66 +154,47 @@ export function AdminSettings() {
   }
 
   const envFields = fields.filter((f) => f.source === ConfigSource.ENV);
+  const rowsIn = (id: string) => fields.filter((f) => groupOf(f.key) === id);
   const defaultModel = values["model"] ?? "";
   const titleModel = values["model_title"] ?? "";
 
   return (
     <div>
       {err && <p className="mb-3 text-carmine">{err}</p>}
-      {GROUPS.map((g) => {
-        if (g.id === "models") {
-          return (
-            <section key={g.id} className="mb-8">
-              <h2 className="mb-3 text-[22px] font-medium">{g.title}</h2>
-              <ModelSettings
-                models={models}
-                defaultModel={defaultModel}
-                titleModel={titleModel}
-                defaultField={fields.find((f) => f.key === "model")}
-                titleField={fields.find((f) => f.key === "model_title")}
-                onDefault={(v) => setValue("model", v)}
-                onTitle={(v) => setValue("model_title", v)}
-                onSaveModels={saveModels}
-              />
-              {saved === "models" && <span className="ml-3 text-stone">Saved</span>}
-            </section>
-          );
-        }
-        const rows = fields.filter((f) => groupOf(f.key) === g.id);
-        if (rows.length === 0) return null;
-        return (
-          <section key={g.id} className="mb-8">
-            <h2 className="mb-3 text-[22px] font-medium">{g.title}</h2>
-            {g.note ? <p className="mb-3 text-[13px] text-stone">{g.note}</p> : null}
-            {g.id === "providers"
-              ? providers.map((p) => (
-                  <ProviderBlock
-                    key={p.id}
-                    provider={p}
-                    rows={rows.filter((f) => f.key.startsWith(`providers.${p.id}.`))}
-                    values={values}
-                    engines={engines}
-                    providers={providers}
-                    onChange={setValue}
-                  />
-                ))
-              : rows.map((f) => (
-                  <FieldRow
-                    key={f.key}
-                    field={f}
-                    value={values[f.key] ?? ""}
-                    engines={engines}
-                    providers={providers}
-                    onChange={(v) => setValue(f.key, v)}
-                  />
-                ))}
-          </section>
-        );
-      })}
-      <Btn kind="primary" onClick={() => void saveForm()}>
-        Save
-      </Btn>
-      {saved === "form" && <span className="ml-3 text-stone">Saved</span>}
+      <div className="grid gap-5">
+        <ModelSettings
+          models={models}
+          defaultModel={defaultModel}
+          titleModel={titleModel}
+          defaultField={fields.find((f) => f.key === "model")}
+          titleField={fields.find((f) => f.key === "model_title")}
+          onDefault={(v) => setValue("model", v)}
+          onTitle={(v) => setValue("model_title", v)}
+          onSaveModels={saveModels}
+        />
+        {providers.map((p) => (
+          <ProviderBlock
+            key={p.id}
+            provider={p}
+            rows={rowsIn("providers").filter((f) => f.key.startsWith(`providers.${p.id}.`))}
+            values={values}
+            engines={engines}
+            providers={providers}
+            onChange={setValue}
+          />
+        ))}
+        <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
+        <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />
+        <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />
+      </div>
+
+      <div className="mt-6 flex items-center gap-3">
+        <Btn kind="primary" onClick={() => void saveForm()}>
+          Save changes
+        </Btn>
+        {saved === "form" && <span className="text-stone">Saved</span>}
+        {saved === "models" && <span className="text-stone">Saved</span>}
+      </div>
 
       <h2 className="mt-10 mb-3 text-[22px] font-medium">silo.yaml</h2>
       <p className="mb-2 font-mono text-[12px] text-stone">{yamlPath || "silo.yaml"}</p>
@@ -278,6 +256,43 @@ export function AdminSettings() {
   );
 }
 
+function FieldGroup({
+  title,
+  note,
+  rows,
+  values,
+  engines,
+  providers,
+  onChange,
+}: {
+  title: string;
+  note?: string;
+  rows: ConfigField[];
+  values: Record<string, string>;
+  engines: SearchEngine[];
+  providers: Provider[];
+  onChange: (key: string, v: string) => void;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <Panel title={title} note={note} padded={false}>
+      <div className="divide-y divide-thread-2">
+        {rows.map((f) => (
+          <div key={f.key} className="px-4 py-3">
+            <FieldRow
+              field={f}
+              value={values[f.key] ?? ""}
+              engines={engines}
+              providers={providers}
+              onChange={(v) => onChange(f.key, v)}
+            />
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 function ProviderBlock({
   provider,
   rows,
@@ -293,21 +308,23 @@ function ProviderBlock({
   providers: Provider[];
   onChange: (key: string, v: string) => void;
 }) {
+  if (rows.length === 0) return null;
   return (
-    <div className="mb-6 rounded-xl border border-thread-2 bg-folio p-4">
-      <h3 className="mb-3 text-[15px] font-medium text-iron">{provider.name}</h3>
-      {provider.description ? <p className="mb-3 text-[12px] text-stone">{provider.description}</p> : null}
-      {rows.map((f) => (
-        <FieldRow
-          key={f.key}
-          field={f}
-          value={values[f.key] ?? ""}
-          engines={engines}
-          providers={providers}
-          onChange={(v) => onChange(f.key, v)}
-        />
-      ))}
-    </div>
+    <Panel title={provider.name} note={provider.description || undefined} padded={false}>
+      <div className="divide-y divide-thread-2">
+        {rows.map((f) => (
+          <div key={f.key} className="px-4 py-3">
+            <FieldRow
+              field={f}
+              value={values[f.key] ?? ""}
+              engines={engines}
+              providers={providers}
+              onChange={(v) => onChange(f.key, v)}
+            />
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
@@ -359,51 +376,39 @@ function ModelSettings({
   const providerIDs = ["openrouter", "openai", "anthropic"];
 
   return (
-    <div>
-      <div className="mb-4 grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">Default model</div>
-          <select
-            className="h-9 w-full rounded border border-thread bg-folio px-3 disabled:bg-cloth disabled:text-stone"
+    <Panel title="Models" note="Model ids are provider/model. The allowlist drives the chat model picker.">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2">
+        <Field label="Default model">
+          <Select
             value={defaultModel}
+            onChange={onDefault}
             disabled={lockedDefault}
-            onChange={(e) => onDefault(e.target.value)}
-          >
-            <option value="">{models.length ? "Select…" : "No models allowed yet"}</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label || m.id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">Chat title model</div>
-          <select
-            className="h-9 w-full rounded border border-thread bg-folio px-3 disabled:bg-cloth disabled:text-stone"
+            placeholder={models.length ? "Select…" : "No models allowed yet"}
+            emptyLabel="No models allowed yet"
+            options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
+          />
+        </Field>
+        <Field label="Chat title model">
+          <Select
             value={titleModel}
+            onChange={onTitle}
             disabled={lockedTitle}
-            onChange={(e) => onTitle(e.target.value)}
-          >
-            <option value="">Same as default</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label || m.id}
-              </option>
-            ))}
-          </select>
-        </label>
+            placeholder="Same as default"
+            emptyLabel="Same as default"
+            options={[{ value: "", label: "Same as default" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
+          />
+        </Field>
       </div>
 
-      <div className="mb-2 text-[11px] font-medium tracking-wide text-stone">Allowed models</div>
+      <div className="mb-1.5 text-[12px] font-medium text-stone">Allowed models</div>
       {models.length === 0 ? (
         <p className="mb-3 text-[13px] text-stone">No models allowed. Add one below.</p>
       ) : (
-        <ul className="mb-3 divide-y divide-thread-2 rounded-lg border border-thread-2">
+        <ul className="mb-3 divide-y divide-thread-2 overflow-hidden rounded-[10px] border border-thread-2">
           {models.map((m) => (
             <li key={m.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
-              <span className="font-mono text-iron">{m.id}</span>
-              <span className="text-stone">{m.provider}</span>
+              <span className="min-w-0 truncate font-mono text-iron">{m.id}</span>
+              <span className="shrink-0 text-stone">{m.provider}</span>
               <span className="flex-1" />
               <button
                 type="button"
@@ -419,20 +424,12 @@ function ModelSettings({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="h-9 rounded border border-thread bg-folio px-2 text-[13px]"
-          value={provider}
-          onChange={(e) => setProvider(e.target.value)}
-        >
-          {providerIDs.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
+        <div className="w-[150px]">
+          <Select value={provider} onChange={setProvider} options={providerIDs.map((id) => ({ value: id, label: id }))} />
+        </div>
         <span className="text-stone">/</span>
         <input
-          className="h-9 flex-1 rounded border border-thread bg-folio px-3 font-mono text-[13px]"
+          className={`${inputClass} min-w-[180px] flex-1 font-mono text-[13px]`}
           placeholder="model name, e.g. gpt-5.6-luna"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -447,10 +444,22 @@ function ModelSettings({
           <Plus size={14} weight="bold" /> Add
         </Btn>
       </div>
-      <p className="mt-2 text-[12px] text-stone">
-        Model ids are <span className="font-mono">provider/model</span>. The allowlist drives the chat model picker.
-      </p>
-    </div>
+    </Panel>
+  );
+}
+
+function SourceChips({ field }: { field: ConfigField }) {
+  return (
+    <>
+      <span className="font-mono text-[11px] text-stone">{sourceWord(field.source)}</span>
+      {field.restartRequired ? <span className="text-[11px] text-stone">restart</span> : null}
+      {field.source === ConfigSource.ENV ? (
+        <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={field.envName}>
+          <Warning size={14} weight="fill" />
+          {field.envName}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -468,45 +477,35 @@ function FieldRow({
   onChange: (v: string) => void;
 }) {
   const locked = field.source === ConfigSource.ENV;
-  const inputClass =
-    "h-9 w-full rounded border border-thread bg-folio px-3 disabled:bg-cloth disabled:text-stone";
+  const label = labelOf(field.key, engines, providers);
+
+  if (field.type === "bool") {
+    return (
+      <ToggleRow
+        label={label}
+        meta={<SourceChips field={field} />}
+        on={value === "true"}
+        disabled={locked}
+        onChange={(v) => onChange(v ? "true" : "false")}
+      />
+    );
+  }
 
   let control: ReactNode;
   if (field.key === "search.engine") {
     control = (
-      <select className={inputClass} value={value} disabled={locked} onChange={(e) => onChange(e.target.value)}>
-        {engines.map((e) => (
-          <option key={e.id} value={e.id}>
-            {e.name}
-          </option>
-        ))}
-      </select>
-    );
-  } else if (field.type === "bool") {
-    control = (
-      <label className="inline-flex cursor-pointer items-center gap-2 text-[13px]">
-        <input
-          type="checkbox"
-          className="h-4 w-4 accent-bindery"
-          checked={value === "true"}
-          disabled={locked}
-          onChange={(e) => onChange(e.target.checked ? "true" : "false")}
-        />
-        <span className="text-stone">{value === "true" ? "Enabled" : "Disabled"}</span>
-      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        disabled={locked}
+        emptyLabel="No engines"
+        options={engines.map((e) => ({ value: e.id, label: e.name }))}
+      />
     );
   } else if (field.type === "select") {
     const m = /^providers\.(.+)\.cache_ttl$/.exec(field.key);
     const ttls = (m && providers.find((p) => p.id === m[1])?.cacheTtls) || [];
-    control = (
-      <select className={inputClass} value={value} disabled={locked} onChange={(e) => onChange(e.target.value)}>
-        {ttls.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-    );
+    control = <Select value={value} onChange={onChange} disabled={locked} options={ttls.map((t) => ({ value: t, label: t }))} />;
   } else {
     control = (
       <input
@@ -521,19 +520,8 @@ function FieldRow({
   }
 
   return (
-    <div className="mb-4">
-      <div className="mb-1 flex items-center gap-2">
-        <div className="text-[11px] font-medium tracking-wide text-stone">{labelOf(field.key, engines, providers)}</div>
-        <span className="font-mono text-[11px] text-stone">{sourceWord(field.source)}</span>
-        {locked ? (
-          <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={field.envName}>
-            <Warning size={14} weight="fill" />
-            {field.envName}
-          </span>
-        ) : null}
-        {field.restartRequired ? <span className="text-[11px] text-stone">restart</span> : null}
-      </div>
+    <Field label={label} headerRight={<SourceChips field={field} />}>
       {control}
-    </div>
+    </Field>
   );
 }

@@ -5,7 +5,9 @@ import { useNavigate } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
 import { Btn } from "./Btn";
-import { Switch } from "./Switch";
+import { Field, inputClass, textareaClass } from "./Field";
+import { Select } from "./Select";
+import { ToggleRow } from "./Switch";
 import { Thread, type Ev } from "./Thread";
 import type { Channel, ChannelAdapter, ChannelField, Chat } from "./gen/silo/v1/ui_pb";
 
@@ -57,28 +59,6 @@ function PageHead({ logo, title, subtitle, onBack }: { logo?: ChannelAdapter; ti
   );
 }
 
-function ToggleRow({
-  label,
-  hint,
-  on,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  on: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-[10px] border border-thread bg-folio px-3 py-2.5">
-      <div className="min-w-0">
-        <div className="text-[14px]">{label}</div>
-        <div className="text-[12px] text-stone">{hint}</div>
-      </div>
-      <Switch on={on} onChange={onChange} />
-    </div>
-  );
-}
-
 function FieldInput({
   field,
   value,
@@ -90,46 +70,40 @@ function FieldInput({
   setValue: (v: string) => void;
   isSet?: boolean;
 }) {
-  const common = "h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery";
   if (field.type === "toggle") {
     return (
       <div>
-        <ToggleRow label={field.label} hint={field.description || "On or off."} on={value === "true"} onChange={(v) => setValue(v ? "true" : "false")} />
+        <ToggleRow
+          className="rounded-[10px] border border-thread bg-folio px-3 py-2.5"
+          label={field.label}
+          hint={field.description || "On or off."}
+          on={value === "true"}
+          onChange={(v) => setValue(v ? "true" : "false")}
+        />
       </div>
     );
   }
   return (
-    <div>
-      <label className="mb-1 block text-[12px] font-medium text-stone">
-        {field.label}
-        {field.required ? " *" : ""}
-      </label>
+    <Field label={field.label} required={field.required} hint={field.description}>
       {field.type === "select" ? (
-        <select className={common} value={value} onChange={(e) => setValue(e.target.value)}>
-          <option value="">—</option>
-          {field.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      ) : field.type === "textarea" ? (
-        <textarea
-          className="min-h-[72px] w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+        <Select
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={setValue}
+          placeholder="—"
+          options={field.options.map((o) => ({ value: o.value, label: o.label }))}
         />
+      ) : field.type === "textarea" ? (
+        <textarea className={`${textareaClass} min-h-[72px]`} value={value} onChange={(e) => setValue(e.target.value)} />
       ) : (
         <input
-          className={common}
+          className={inputClass}
           type={field.secret ? "password" : field.type === "number" ? "number" : "text"}
           value={value}
           placeholder={field.secret && isSet ? "•••• set — type to replace" : ""}
           onChange={(e) => setValue(e.target.value)}
         />
       )}
-      {field.description ? <p className="mt-1 text-[12px] text-stone">{field.description}</p> : null}
-    </div>
+    </Field>
   );
 }
 
@@ -204,15 +178,9 @@ function ChannelForm({
         </details>
       ) : null}
       <div className="grid max-w-[560px] gap-4">
-        <div>
-          <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
-          <input
-            className="h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery"
-            value={name}
-            placeholder={adapter.name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
+        <Field label="Name" required>
+          <input className={inputClass} value={name} placeholder={adapter.name} onChange={(e) => setName(e.target.value)} />
+        </Field>
         {adapter.fields.map((f) => (
           <FieldInput
             key={f.key}
@@ -222,24 +190,27 @@ function ChannelForm({
             isSet={channel?.secretsSet?.includes(f.key)}
           />
         ))}
-        <ToggleRow label="Enabled" hint="Connect this channel when saved." on={enabled} onChange={setEnabled} />
         <ToggleRow
+          className="rounded-[10px] border border-thread bg-folio px-3 py-2.5"
+          label="Enabled"
+          hint="Connect this channel when saved."
+          on={enabled}
+          onChange={setEnabled}
+        />
+        <ToggleRow
+          className="rounded-[10px] border border-thread bg-folio px-3 py-2.5"
           label="Deliver messages to the Bot"
           hint="Off makes it send-only, used by tools."
           on={inbound}
           onChange={setInbound}
         />
-        <div>
-          <label className="mb-1 block text-[12px] font-medium text-stone">Prompt</label>
-          <p className="mb-1 text-[12px] text-stone">
-            Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”
-          </p>
+        <Field label="Prompt" hint="Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”">
           <textarea
-            className="h-[140px] w-full resize-y rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] leading-5 outline-none focus:border-bindery"
+            className={`${textareaClass} h-[140px] font-mono text-[13px] leading-5`}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
-        </div>
+        </Field>
 
         {err ? <p className="text-carmine">{err}</p> : null}
         <div className="flex items-center gap-2">
@@ -438,7 +409,7 @@ function ChannelSetup({
             <div className="mb-2 text-[12px] font-medium tracking-wide text-stone">Set chat directly</div>
             <div className="flex items-center gap-2">
               <input
-                className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-3 text-[13px] outline-none focus:border-bindery"
+                className={`${inputClass} min-w-0 flex-1`}
                 placeholder="@username, t.me/link, or chat id"
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}

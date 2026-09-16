@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, ArrowUp, BookOpen, Broadcast, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
+import { ArrowUp, BookOpen, Broadcast, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -14,6 +14,7 @@ import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
 import { Composer } from "./Composer";
 import { AdminLayout, AccountPage, AdminSettings, AdminSearchExtract } from "./Admin";
+import { SettingsPane } from "./Settings";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
 import { BotChannels } from "./BotChannels";
@@ -870,166 +871,6 @@ function ContainerPane({
   );
 }
 
-function PromptWell({
-  label,
-  hint,
-  value,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  onChange: (s: string) => void;
-}) {
-  const over = value.length > 8000;
-  return (
-    <div className="min-w-0">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <label className="text-[12px] font-medium text-stone">{label}</label>
-        <span className={`font-mono text-[11px] ${over ? "text-carmine" : "text-stone"}`}>{value.length}/8000</span>
-      </div>
-      <p className="mb-1 text-[12px] text-stone">{hint}</p>
-      <textarea
-        className="h-[240px] w-full resize-y rounded border border-thread bg-folio px-3 py-2 font-mono text-[13px] leading-5 outline-none focus:border-bindery"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-function SettingsPane({
-  bot,
-  onSaved,
-  onError,
-}: {
-  bot: Bot;
-  onSaved: (b: Bot) => void;
-  onError: (s: string) => void;
-}) {
-  const nav = useNavigate();
-  const { refresh } = useBots();
-  const [name, setName] = useState(bot.name);
-  const [description, setDescription] = useState(bot.description);
-  const [soul, setSoul] = useState(bot.soul);
-  const [memory, setMemory] = useState(bot.memory);
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [arm, setArm] = useState<"reset" | "delete" | "">("");
-  const [dangerBusy, setDangerBusy] = useState(false);
-  useEffect(() => {
-    setName(bot.name);
-    setDescription(bot.description);
-    setSoul(bot.soul);
-    setMemory(bot.memory);
-    setArm("");
-    setDangerBusy(false);
-  }, [bot.id]);
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setBusy(true);
-    setSaved(false);
-    onError("");
-    try {
-      const next = await ui.updateBot({
-        id: bot.id,
-        name: name.trim(),
-        description: description.trim(),
-        soul,
-        memory,
-      });
-      onSaved(next);
-      setSoul(next.soul);
-      setMemory(next.memory);
-      setSaved(true);
-    } catch (ex) {
-      onError(fail(ex));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function go(which: "reset" | "delete") {
-    if (arm !== which) {
-      setArm(which);
-      return;
-    }
-    setDangerBusy(true);
-    onError("");
-    try {
-      if (which === "reset") {
-        onSaved(await ui.resetContainer({ id: bot.id }));
-        setArm("");
-        refresh();
-      } else {
-        await ui.deleteBot({ id: bot.id });
-        refresh();
-        nav("/");
-        return;
-      }
-    } catch (ex) {
-      onError(fail(ex));
-    } finally {
-      setDangerBusy(false);
-    }
-  }
-  return (
-    <div className="silo-page pb-12">
-      <h2 className="text-[22px] font-medium tracking-tight">Settings</h2>
-      <p className="mb-6 text-stone">This Bot only. SOUL and MEMORY are in the prompt; the Bot can edit them too.</p>
-      <form onSubmit={save}>
-        <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
-        <input
-          className="mb-4 h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
-        <textarea
-          className="mb-6 h-[72px] w-full resize-y rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
-          placeholder="What this machine is for"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <div className="mb-5 grid grid-cols-1 gap-4 wide:grid-cols-2">
-          <PromptWell label="SOUL" hint="Identity, tone, hard rules." value={soul} onChange={setSoul} />
-          <PromptWell label="MEMORY" hint="Lasting facts. Compact past 8000." value={memory} onChange={setMemory} />
-        </div>
-        <div className="flex items-center gap-3">
-          <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
-            {busy ? "Saving…" : "Save"}
-          </Btn>
-          {saved && <span className="text-stone">Saved</span>}
-        </div>
-      </form>
-      <div className="mt-10">
-        <h3 className="mb-1 text-[12px] font-medium text-carmine">Dangerous</h3>
-        <p className="mb-3 text-[12px] text-stone">Second click confirms. These cannot be undone from here.</p>
-        <div className="overflow-hidden rounded-[10px] border border-thread bg-folio">
-          <div className="flex items-center gap-4 border-b border-thread-2 px-4 py-3 max-wide:flex-col max-wide:items-stretch">
-            <div className="min-w-0 flex-1">
-              <div className="font-medium">Reset container</div>
-              <p className="text-[12px] text-stone">Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one.</p>
-            </div>
-            <Btn kind="secondary" type="button" className="shrink-0" disabled={dangerBusy} icon={<ArrowCounterClockwise size={12} />} onClick={() => void go("reset")}>
-              {arm === "reset" ? "Reset?" : "Reset"}
-            </Btn>
-          </div>
-          <div className="flex items-center gap-4 px-4 py-3 max-wide:flex-col max-wide:items-stretch">
-            <div className="min-w-0 flex-1">
-              <div className="font-medium">Delete Bot</div>
-              <p className="text-[12px] text-stone">Chats, secrets, connectors, the container, and files on disk.</p>
-            </div>
-            <Btn kind="deny" type="button" className="shrink-0" disabled={dangerBusy} icon={<Trash size={12} />} onClick={() => void go("delete")}>
-              {arm === "delete" ? "Delete?" : "Delete"}
-            </Btn>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function BotPage() {
   const { id, "*": splat } = useParams();
   const nav = useNavigate();
@@ -1690,6 +1531,7 @@ function BotPage() {
                 refresh();
               }}
               onError={setActErr}
+              onRefresh={refresh}
             />
           </div>
         )}

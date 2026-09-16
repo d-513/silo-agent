@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ui } from "./api";
 import { Btn } from "./Btn";
+import { Field, Panel } from "./Field";
+import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 
 export { AdminSettings } from "./AdminSettings";
@@ -94,57 +96,60 @@ export function AdminSearchExtract() {
   return (
     <div>
       {err && <p className="mb-3 text-carmine">{err}</p>}
-      <h2 className="mb-3 text-[22px] font-medium">Search</h2>
-      <div className="mb-1 flex items-center gap-2">
-        <div className="text-[11px] font-medium tracking-wide text-stone">Engine</div>
-        {engineField ? (
-          <span className="font-mono text-[11px] text-stone">
-            {engineField.source === ConfigSource.ENV ? "env" : engineField.source === ConfigSource.YAML ? "yaml" : "default"}
-          </span>
-        ) : null}
-        {locked ? (
-          <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={engineField?.envName}>
-            <Warning size={14} weight="fill" />
-            {engineField?.envName}
-          </span>
-        ) : null}
-      </div>
-      <select
-        className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 disabled:bg-cloth disabled:text-stone"
-        value={engine}
-        disabled={locked}
-        onChange={(e) => {
-          setEngine(e.target.value);
-          setSaved(false);
-        }}
-      >
-        {engines.map((e) => (
-          <option key={e.id} value={e.id}>
-            {e.name}
-          </option>
-        ))}
-      </select>
-      {current?.description ? <p className="mb-4 text-[13px] text-stone">{current.description}</p> : null}
-      {current && current.fields.length > 0 ? (
-        <div className="mb-4 space-y-2">
-          {current.fields.map((f) => (
-            <div key={f.key}>
-              <div className="text-[13px]">
-                <span className="font-medium">{f.label}</span>
-                <span className="ml-2 font-mono text-stone">{f.key}</span>
+      <Panel title="Search" note="The engine behind the web_search tool. Extract is wired later." className="mb-6">
+        <Field
+          label="Engine"
+          headerRight={
+            <>
+              {engineField ? (
+                <span className="font-mono text-[11px] text-stone">
+                  {engineField.source === ConfigSource.ENV ? "env" : engineField.source === ConfigSource.YAML ? "yaml" : "default"}
+                </span>
+              ) : null}
+              {locked ? (
+                <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={engineField?.envName}>
+                  <Warning size={14} weight="fill" />
+                  {engineField?.envName}
+                </span>
+              ) : null}
+            </>
+          }
+        >
+          <Select
+            value={engine}
+            disabled={locked}
+            emptyLabel="No engines"
+            onChange={(v) => {
+              setEngine(v);
+              setSaved(false);
+            }}
+            options={engines.map((e) => ({ value: e.id, label: e.name }))}
+          />
+        </Field>
+        {current?.description ? <p className="mt-3 text-[13px] text-stone">{current.description}</p> : null}
+        {current && current.fields.length > 0 ? (
+          <div className="mt-3 space-y-2 border-t border-thread-2 pt-3">
+            {current.fields.map((f) => (
+              <div key={f.key}>
+                <div className="text-[13px]">
+                  <span className="font-medium">{f.label}</span>
+                  <span className="ml-2 font-mono text-stone">{f.key}</span>
+                </div>
+                {f.description ? <p className="text-[12px] text-stone">{f.description}</p> : null}
               </div>
-              {f.description ? <p className="text-[12px] text-stone">{f.description}</p> : null}
-            </div>
-          ))}
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-[13px] text-stone">No settings for this engine.</p>
+        )}
+        <div className="mt-4 flex items-center gap-3">
+          <Btn kind="primary" onClick={() => void save()} disabled={locked}>
+            Save
+          </Btn>
+          {saved && <span className="text-stone">Saved</span>}
         </div>
-      ) : (
-        <p className="mb-4 text-[13px] text-stone">No settings for this engine.</p>
-      )}
-      <Btn kind="primary" onClick={() => void save()} disabled={locked}>
-        Save
-      </Btn>
-      {saved && <span className="ml-3 text-stone">Saved</span>}
-      <h2 className="mt-10 mb-3 text-[22px] font-medium">Extract</h2>
+      </Panel>
+      <h2 className="mb-3 text-[22px] font-medium">Extract</h2>
       <p className="text-stone">Page extract is not available yet.</p>
     </div>
   );

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export function Switch({
   on,
   onChange,
@@ -30,5 +32,36 @@ export function Switch({
         }`}
       />
     </button>
+  );
+}
+
+export function ToggleRow({
+  label,
+  hint,
+  meta,
+  on,
+  onChange,
+  disabled,
+  className = "",
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  meta?: ReactNode;
+  on: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center justify-between gap-4 ${className}`}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[14px] font-medium text-iron">{label}</span>
+          {meta}
+        </div>
+        {hint ? <p className="mt-0.5 text-[12px] text-stone">{hint}</p> : null}
+      </div>
+      <Switch on={on} onChange={onChange} disabled={disabled} />
+    </div>
   );
 }

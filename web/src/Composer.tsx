@@ -1,6 +1,7 @@
-import { ArrowUp, CaretDown, Paperclip, Stop, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowUp, Paperclip, Stop, UploadSimple, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { fmtSize } from "./fs";
+import { Select } from "./Select";
 import type { ModelOption } from "./gen/silo/v1/ui_pb";
 
 export interface Attachment {
@@ -218,21 +219,16 @@ export function Composer({
               </button>
 
               {models && models.length > 0 && onModel ? (
-                <label className="relative inline-flex items-center" title="Model for this conversation">
-                  <select
-                    value={model && models.some((m) => m.id === model) ? model : models[0].id}
-                    onChange={(e) => onModel(e.target.value)}
-                    disabled={!chatId}
-                    className="max-w-[180px] cursor-pointer appearance-none truncate rounded-lg bg-transparent py-1 pl-2.5 pr-6 text-[12px] font-medium text-stone outline-none transition-colors hover:bg-cloth hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {models.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label || m.id}
-                      </option>
-                    ))}
-                  </select>
-                  <CaretDown size={11} className="pointer-events-none absolute right-1.5 text-stone" />
-                </label>
+                <Select
+                  variant="ghost"
+                  className="max-w-[200px]"
+                  title="Model for this conversation"
+                  ariaLabel="Model for this conversation"
+                  value={model && models.some((m) => m.id === model) ? model : models[0].id}
+                  onChange={onModel}
+                  disabled={!chatId}
+                  options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
+                />
               ) : null}
 
               {usage && (usage.cacheRead > 0 || usage.cacheWrite > 0) ? (
