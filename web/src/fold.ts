@@ -106,7 +106,7 @@ export function foldEvents(events: Ev[]): Block[] {
       }
       continue;
     }
-    if (e.kind === "assistant") {
+    if (e.kind === "assistant" || e.kind === "section" || e.kind === "section_live") {
       closeThinking(out);
       const last = out[out.length - 1];
       if (last?.type === "assistant" && last.streaming) {

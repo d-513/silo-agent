@@ -58,19 +58,45 @@ type Rule struct {
 }
 
 type Chat struct {
-	ID        string `gorm:"primaryKey"`
-	BotID     string `gorm:"index"`
-	Title     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID string `gorm:"primaryKey"`
+	// ChannelID is empty for a Web UI chat. Non-empty binds the thread to a
+	// channel (Telegram, …) and ExternalID is the adapter's conversation id.
+	BotID      string `gorm:"index"`
+	ChannelID  string `gorm:"index"`
+	ExternalID string
+	Title      string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Run struct {
 	ID        string `gorm:"primaryKey"`
 	BotID     string `gorm:"index"`
 	ChatID    string `gorm:"index"`
+	ChannelID string `gorm:"index"`
+	Origin    string
 	Status    string
 	CreatedAt time.Time
+}
+
+// Channel is one attached adapter instance for a Bot. Adapters are built-in;
+// ConfigJSON holds non-secret config only. Secret fields live in Secret rows
+// named channel.<channelID>.<fieldKey> and never reach the Bot.
+type Channel struct {
+	ID           string `gorm:"primaryKey"`
+	BotID        string `gorm:"index;uniqueIndex:bot_channel_name"`
+	Adapter      string
+	Name         string `gorm:"uniqueIndex:bot_channel_name"`
+	Enabled      bool
+	Inbound      bool
+	Prompt       string
+	ConfigJSON   string
+	ExternalID   string
+	TargetTitle  string
+	Status       string
+	StatusDetail string
+	StateJSON    string
+	CreatedAt    time.Time
 }
 
 type RunEvent struct {
@@ -169,7 +195,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{},
-		&Connector{}, &BotConnector{}, &BotSkill{},
+		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{},
 	)
 	if err != nil {
 		return nil, err

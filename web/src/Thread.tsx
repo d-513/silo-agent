@@ -106,7 +106,7 @@ function parseToolArgs(raw: string): Record<string, unknown> {
     /* stream */
   }
   const out: Record<string, unknown> = {};
-  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "append"]) {
+  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "append", "text", "query", "channel", "to", "chat", "name"]) {
     const v = extractStringField(raw, key);
     if (v !== undefined) out[key] = v;
   }
@@ -261,6 +261,10 @@ function toolMeta(name: string) {
         return { label: "scroll", Icon: Mouse };
       case "web_search":
         return { label: "web search", Icon: MagnifyingGlass };
+      case "channel":
+        return { label: "channel", Icon: Plugs };
+      case "chats":
+        return { label: "chats", Icon: ChatCircle };
       default:
       return { label: name, Icon: Code };
   }

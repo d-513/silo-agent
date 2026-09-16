@@ -53,7 +53,7 @@ export function Composer({
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if ((text.trim() || atts.length > 0) && chatId && !sending) {
+      if ((text.trim() || atts.length > 0) && chatId) {
         onSend();
       }
     }
@@ -88,7 +88,7 @@ export function Composer({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if ((text.trim() || atts.length > 0) && chatId && !sending) {
+    if ((text.trim() || atts.length > 0) && chatId) {
       onSend();
     }
   };
@@ -201,7 +201,7 @@ export function Composer({
               <span className="hidden select-none text-[11px] text-stone/70 sm:inline-block">
                 ↵ to send · Shift+↵ for newline
               </span>
-              {sending ? (
+              {sending && (
                 <button
                   type="button"
                   title="Stop this reply"
@@ -211,21 +211,20 @@ export function Composer({
                   <Stop size={12} weight="fill" />
                   <span>Stop</span>
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  title="Send message"
-                  disabled={!canSend}
-                  className={`inline-flex h-8 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 ${
-                    !canSend
-                      ? "cursor-not-allowed bg-cloth text-stone/40 px-3"
-                      : "bg-bindery text-plaster shadow-[0_2px_8px_rgba(42,63,95,0.25)] hover:bg-bindery-deep px-3.5"
-                  }`}
-                >
-                  <span className="mr-1 text-[12px] font-medium">Send</span>
-                  <ArrowUp size={14} weight="bold" />
-                </button>
               )}
+              <button
+                type="submit"
+                title={sending ? "Send now (joins the running reply)" : "Send message"}
+                disabled={!canSend}
+                className={`inline-flex h-8 items-center justify-center rounded-xl transition-all duration-150 active:scale-95 ${
+                  !canSend
+                    ? "cursor-not-allowed bg-cloth text-stone/40 px-3"
+                    : "bg-bindery text-plaster shadow-[0_2px_8px_rgba(42,63,95,0.25)] hover:bg-bindery-deep px-3.5"
+                }`}
+              >
+                <span className="mr-1 text-[12px] font-medium">Send</span>
+                <ArrowUp size={14} weight="bold" />
+              </button>
             </div>
           </div>
         </form>

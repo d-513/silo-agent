@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"github.com/openai/openai-go/v2/option"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -248,6 +250,29 @@ var toolDefs = []openai.ChatCompletionToolUnionParam{
 			"required": []string{"query"},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "channel",
+		Description: openai.String("Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"channel": map[string]any{"type": "string", "description": "channel name; omit for the current channel"},
+				"text":    map[string]any{"type": "string"},
+			},
+			"required": []string{"text"},
+		},
+	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "chats",
+		Description: openai.String("Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot."),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"chat":  map[string]any{"type": "string", "description": "chat id or title; omit to list chats"},
+				"limit": map[string]any{"type": "integer", "description": "max messages (default 20, max 50)"},
+			},
+		},
+	}),
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
@@ -311,10 +336,217 @@ func v1Attachments(flat []eventAttachment) []*v1.Attachment {
 	return out
 }
 
-func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment) {
+type inboxMsg struct {
+	text string
+	atts []*v1.Attachment
+}
+
+// runOrigin identifies where a run came from and how to deliver user-visible
+// sections. A nil origin or channel is a Web UI chat.
+type runOrigin struct {
+	channel  *db.Channel
+	external string
+	deliver  func(channels.Outbound) error
+}
+
+// runRequest is one call into the shared execution engine. Chats, channels,
+// and future automations all go through here.
+type runRequest struct {
+	botID  string
+	chatID string
+	text   string
+	atts   []*v1.Attachment
+	origin *runOrigin
+}
+
+// startRun records a run and launches the agent loop. Callers with a live run
+// for the conversation should inject instead.
+func (a *App) startRun(req runRequest) (string, error) {
+	var b db.Bot
+	if err := a.DB.First(&b, "id = ?", req.botID).Error; err != nil {
+		return "", fmt.Errorf("unknown bot")
+	}
+	channelID := ""
+	origin := "chat"
+	if req.origin != nil && req.origin.channel != nil {
+		channelID = req.origin.channel.ID
+		origin = "channel"
+	}
+	runID := ids.New()
+	run := db.Run{ID: runID, BotID: req.botID, ChatID: req.chatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
+	if err := a.DB.Create(&run).Error; err != nil {
+		return "", err
+	}
+	b.LastTask = req.text
+	b.Status = "working"
+	a.DB.Save(&b)
+	if !a.Hub.Connected(b.ID) {
+		cp := b
+		a.ensureRunningBg(&cp)
+	}
+	inbox := make(chan inboxMsg, 32)
+	go a.runLoop(req.botID, req.chatID, runID, req.text, req.atts, req.origin, inbox)
+	return runID, nil
+}
+
+// liveRunID returns the active run for a conversation, if any.
+func (a *App) liveRunID(botID, chatID string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for id, lr := range a.runs {
+		if lr.botID == botID && lr.chatID == chatID {
+			return id
+		}
+	}
+	return ""
+}
+
+// inject hands a new user message to a live run for a conversation, so it is
+// seen on the model's next turn instead of starting a parallel run. It reports
+// whether the message was queued.
+func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment) bool {
+	a.mu.Lock()
+	lr := a.runs[runID]
+	a.mu.Unlock()
+	if lr == nil || lr.botID != botID || lr.chatID != chatID {
+		return false
+	}
+	select {
+	case lr.inbox <- inboxMsg{text: text, atts: atts}:
+		a.emitUser(botID, chatID, runID, text, atts)
+		a.dbSaveBotWorking(botID, text)
+		return true
+	default:
+		return false
+	}
+}
+
+func (a *App) dbSaveBotWorking(botID, text string) {
+	a.DB.Model(&db.Bot{}).Where("id = ?", botID).Updates(map[string]any{"last_task": text, "status": "working"})
+}
+
+func drainInbox(msgs []openai.ChatCompletionMessageParamUnion, inbox chan inboxMsg) []openai.ChatCompletionMessageParamUnion {
+	if inbox == nil {
+		return msgs
+	}
+	for {
+		select {
+		case m := <-inbox:
+			msgs = append(msgs, openai.UserMessage(userTextWithAttachments(m.text, m.atts)))
+		default:
+			return msgs
+		}
+	}
+}
+
+func userTextWithAttachments(text string, atts []*v1.Attachment) string {
+	if len(atts) == 0 {
+		return text
+	}
+	paths := make([]string, 0, len(atts))
+	for _, at := range atts {
+		paths = append(paths, at.GetPath())
+	}
+	return text + "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
+}
+
+// emitDelivered persists one user-visible block and, on a channel origin,
+// delivers it. kind is "assistant" for a plain reply, "section" for a
+// sentinel-bounded block on the final turn, or "section_live" for one emitted
+// mid-turn (displayed and delivered but not replayed as model history).
+func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *runOrigin) {
+	if strings.TrimSpace(body) == "" {
+		return
+	}
+	a.emit(botID, chatID, runID, kind, body, "")
+	if origin != nil && origin.deliver != nil {
+		if err := origin.deliver(channels.Outbound{ExternalID: origin.external, Text: body}); err != nil {
+			a.emit(botID, chatID, runID, "error", "channel send failed: "+err.Error(), "")
+		}
+	}
+}
+
+// deliverTool forwards a present/artifact side effect to a channel by reading
+// the real bytes from the workspace and attaching them, so the human on the
+// other side gets the file itself. A skill directory is zipped.
+func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, origin *runOrigin, name, argsJSON, img string) {
+	if origin == nil || origin.deliver == nil {
+		return
+	}
+	send := func(text string, att *channels.Attachment) {
+		msg := channels.Outbound{ExternalID: origin.external, Text: text}
+		if att != nil {
+			msg.Files = []channels.Attachment{*att}
+		}
+		if err := origin.deliver(msg); err != nil {
+			a.emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
+		}
+	}
+	var args struct {
+		Path  string `json:"path"`
+		Title string `json:"title"`
+		Kind  string `json:"kind"`
+	}
+	_ = json.Unmarshal([]byte(argsJSON), &args)
+	switch name {
+	case "present":
+		if img != "" {
+			if att, ok := dataURLAttachment(args.Path, img); ok {
+				send("File: "+filepath.Base(args.Path), &att)
+				return
+			}
+		}
+		if att, err := a.workspaceAttachment(ctx, botID, args.Path); err == nil {
+			send("File: "+att.Name, &att)
+			return
+		}
+		if args.Path != "" {
+			send("Presented in the workspace: "+args.Path, nil)
+		}
+	case "artifact":
+		if info, err := a.describeArtifact(ctx, botID, args.Path, args.Kind, args.Title); err == nil {
+			if info.Type == "skill" {
+				if att, err := a.skillZipAttachment(ctx, botID, info.Path, info.Title); err == nil {
+					send("Skill: "+info.Name, &att)
+					return
+				}
+			} else if att, err := a.workspaceAttachment(ctx, botID, info.Path); err == nil {
+				send("Artifact: "+info.Title, &att)
+				return
+			}
+		}
+		title := strings.TrimSpace(args.Title)
+		if title == "" {
+			title = filepath.Base(args.Path)
+		}
+		if title != "" {
+			send("Artifact: "+title, nil)
+		}
+	}
+}
+
+func dataURLAttachment(path, dataURL string) (channels.Attachment, bool) {
+	const marker = ";base64,"
+	i := strings.Index(dataURL, marker)
+	if !strings.HasPrefix(dataURL, "data:") || i < 0 {
+		return channels.Attachment{}, false
+	}
+	mime := strings.TrimPrefix(dataURL[:i], "data:")
+	raw, err := base64.StdEncoding.DecodeString(dataURL[i+len(marker):])
+	if err != nil || len(raw) == 0 {
+		return channels.Attachment{}, false
+	}
+	name := filepath.Base(path)
+	if name == "." || name == "/" || name == "" {
+		name = "file"
+	}
+	return channels.Attachment{Name: name, Mime: mime, Data: raw}, true
+}
+
+func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment, origin *runOrigin, inbox chan inboxMsg) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	a.trackRun(botID, chatID, runID, cancel)
+	a.trackRun(botID, chatID, runID, cancel, inbox)
 	defer a.untrackRun(runID)
 	cfg := a.cfg()
 	key := cfg.OpenRouter.APIKey
@@ -340,11 +572,12 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	}
 	go a.nameChat(botID, chatID, runID, title, client, model)
 
-	sysText := a.buildSystem(botID)
+	sysText := a.buildSystem(botID, origin)
 	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(sysText)}
 	msgs = append(msgs, a.historyFromDB(chatID)...)
 
 	for {
+		msgs = drainInbox(msgs, inbox)
 		if a.stopped(ctx, botID, chatID, runID) {
 			return
 		}
@@ -355,6 +588,8 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		}
 		stream := client.Chat.Completions.NewStreaming(ctx, params)
 		acc := openai.ChatCompletionAccumulator{}
+		sp := &channels.Splitter{}
+		var sections []string
 		var think strings.Builder
 		type toolDelta struct {
 			name    string
@@ -370,6 +605,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			d := chunk.Choices[0].Delta
 			if d.Content != "" {
 				a.emit(botID, chatID, runID, "chunk", d.Content, "")
+				sections = append(sections, sp.Write(d.Content)...)
 			}
 			if r := reasoningDelta(d.RawJSON()); r != "" {
 				think.WriteString(r)
@@ -410,11 +646,25 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			return
 		}
 		msg := acc.Choices[0].Message
+		tail := sp.Flush()
 		if len(msg.ToolCalls) == 0 {
-			txt := strings.TrimSpace(msg.Content)
-			a.emit(botID, chatID, runID, "assistant", txt, "")
+			for _, sec := range sections {
+				a.emitDelivered(botID, chatID, runID, "section", sec, origin)
+			}
+			if tail != "" {
+				kind := "section"
+				if len(sections) == 0 {
+					kind = "assistant"
+				}
+				a.emitDelivered(botID, chatID, runID, kind, tail, origin)
+			}
 			a.finish(botID, chatID, runID, "done")
 			return
+		}
+		// A tool-call turn: send any section the model explicitly closed so the
+		// human gets a progress note, but keep it out of replayed history.
+		for _, sec := range sections {
+			a.emitDelivered(botID, chatID, runID, "section_live", sec, origin)
 		}
 		msgs = append(msgs, msg.ToParam())
 		for _, tc := range msg.ToolCalls {
@@ -439,8 +689,11 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 					openai.ImageContentPart(part),
 				}))
 			}
+			if origin != nil && origin.channel != nil && err == nil {
+				a.deliverTool(ctx, botID, chatID, runID, origin, fn.Name, fn.Arguments, img)
+			}
 			if fn.Name == "soul" || fn.Name == "memory" {
-				msgs[0] = openai.SystemMessage(a.buildSystem(botID))
+				msgs[0] = openai.SystemMessage(a.buildSystem(botID, origin))
 			}
 		}
 	}
@@ -544,7 +797,7 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 				}
 				msgs = append(msgs, openai.UserMessage(text))
-			case "assistant":
+			case "assistant", "section":
 				flushTools()
 				if strings.TrimSpace(ev.Body) != "" {
 					msgs = append(msgs, openai.AssistantMessage(ev.Body))
@@ -590,6 +843,27 @@ func (a *App) historyFromDB(chatID string) []openai.ChatCompletionMessageParamUn
 		flushTools()
 	}
 	return msgs
+}
+
+// waitWorker blocks until the Bot's worker connects, so a message that arrives
+// while the machine is starting still gets its tools. Bounded; callers fail the
+// tool call if it never comes up.
+func (a *App) waitWorker(ctx context.Context, botID string, d time.Duration) bool {
+	if a.Hub.Connected(botID) {
+		return true
+	}
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return a.Hub.Connected(botID)
+		case <-time.After(250 * time.Millisecond):
+		}
+		if a.Hub.Connected(botID) {
+			return true
+		}
+	}
+	return a.Hub.Connected(botID)
 }
 
 func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
@@ -641,6 +915,17 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 	}
 	if name == "web_search" && str("query") == "" {
 		return "", "", fmt.Errorf("query required")
+	}
+	if name == "channel" && str("text") == "" {
+		return "", "", fmt.Errorf("text required")
+	}
+	if name == "channel" {
+		out, err := a.channelSendTool(ctx, botID, runID, args)
+		return out, "", err
+	}
+	if name == "chats" {
+		out, err := a.chatsReadTool(ctx, botID, runID, args)
+		return out, "", err
 	}
 	conn, action, ok := chatTool(name)
 	if !ok {
@@ -718,6 +1003,9 @@ func (a *App) execTool(ctx context.Context, botID, runID, name, argsJSON string)
 		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
 	log.Printf("exec %s bot=%s run=%s", name, botID, runID)
+	if !a.waitWorker(ctx, botID, 90*time.Second) {
+		return "", "", fmt.Errorf("the Bot machine is not running yet")
+	}
 	a.mu.Lock()
 	a.cmdRun[id] = runID
 	a.mu.Unlock()

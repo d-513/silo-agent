@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
@@ -83,6 +84,9 @@ func (a *App) chatOfRun(runID string) string {
 func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error) {
 	bot := currentBot(ctx)
 	name := req.Msg.GetName()
+	if channels.IsSecretName(name) {
+		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil
+	}
 	var sec db.Secret
 	if err := a.DB.First(&sec, "bot_id = ? AND name = ?", bot.ID, name).Error; err != nil {
 		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil

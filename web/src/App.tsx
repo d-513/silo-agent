@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, ArrowUp, BookOpen, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ArrowUp, BookOpen, Broadcast, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -16,11 +16,12 @@ import { Composer } from "./Composer";
 import { AdminLayout, AccountPage, AdminSettings, AdminSearchExtract } from "./Admin";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
+import { BotChannels } from "./BotChannels";
 import { RulesPane } from "./Rules";
 import { AdminSkills, BotSkills, SkillHub } from "./Skills";
 import type { Approval, Bot, BotConnector, Chat, Container, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "connectors", "skills", "secrets", "rules", "container", "settings"] as const;
+const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
 type Tab = NavTab | "console";
 
@@ -57,6 +58,7 @@ const tabMeta: Record<NavTab, { label: string; icon: typeof ChatCircle }> = {
   desktop: { label: "Desktop", icon: Monitor },
   files: { label: "Files", icon: Folder },
   connectors: { label: "Connectors", icon: Plugs },
+  channels: { label: "Channels", icon: Broadcast },
   skills: { label: "Skills", icon: BookOpen },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
@@ -1195,7 +1197,7 @@ function BotPage() {
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
-    if (sending || !id || (!text.trim() && atts.length === 0)) return;
+    if (!id || (!text.trim() && atts.length === 0)) return;
     const msg = text.trim();
     setText("");
     setSending(true);
@@ -1575,6 +1577,11 @@ function BotPage() {
           <section className="min-h-0 min-w-0 flex-1 overflow-auto">
             <BotConnectors botId={id} onNeedAuth={setAuthPrompt} />
           </section>
+        )}
+        {tab === "channels" && id && (
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <BotChannels botId={id} sub={parts.slice(1)} />
+          </div>
         )}
         {tab === "skills" && id && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">

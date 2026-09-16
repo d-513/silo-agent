@@ -71,6 +71,13 @@ service UI {
   rpc ListSkillFiles(ListSkillFilesRequest) returns (ListFilesResponse);
   rpc ReadSkillFile(ReadSkillFileRequest) returns (ReadFileResponse);
   rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
+
+  rpc ListChannelAdapters(ListChannelAdaptersRequest) returns (ListChannelAdaptersResponse);
+  rpc ListBotChannels(ListBotChannelsRequest) returns (ListBotChannelsResponse);
+  rpc CreateChannel(CreateChannelRequest) returns (Channel);
+  rpc UpdateChannel(UpdateChannelRequest) returns (Channel);
+  rpc DeleteChannel(DeleteChannelRequest) returns (DeleteChannelResponse);
+  rpc ChannelAction(ChannelActionRequest) returns (ChannelActionResponse);
 }
 
 message SignInRequest {
@@ -153,6 +160,9 @@ message Chat {
 
 message ListChatsRequest {
   string bot_id = 1;
+  // Empty lists Web UI chats only. Set to a channel id to list that channel's
+  // conversations.
+  string channel_id = 2;
 }
 
 message ListChatsResponse {
@@ -671,4 +681,121 @@ message SaveSkillRequest {
 
 message SaveSkillResponse {
   string name = 1;
+}
+
+message ChannelFieldOption {
+  string value = 1;
+  string label = 2;
+}
+
+message ChannelField {
+  string key = 1;
+  string label = 2;
+  string description = 3;
+  string type = 4;
+  bool required = 5;
+  bool secret = 6;
+  repeated ChannelFieldOption options = 7;
+}
+
+message ChannelAdapterAction {
+  string key = 1;
+  string label = 2;
+  string description = 3;
+  string kind = 4;
+}
+
+message ChannelAdapter {
+  string slug = 1;
+  string name = 2;
+  string description = 3;
+  repeated ChannelField fields = 4;
+  string logo = 5;
+  string guide = 6;
+  bool requires_target = 7;
+  repeated ChannelAdapterAction actions = 8;
+}
+
+message ChannelState {
+  string kind = 1;
+  string message = 2;
+  string qr = 3;
+  repeated ChannelFieldOption options = 4;
+  map<string, string> values = 5;
+}
+
+message Channel {
+  string id = 1;
+  string bot_id = 2;
+  string adapter = 3;
+  string adapter_name = 4;
+  string name = 5;
+  bool enabled = 6;
+  bool inbound = 7;
+  string prompt = 8;
+  map<string, string> config = 9;
+  repeated string secrets_set = 10;
+  string status = 11;
+  string status_detail = 12;
+  ChannelState state = 13;
+  string external_id = 14;
+  string target_title = 15;
+}
+
+message ListChannelAdaptersRequest {}
+
+message ListChannelAdaptersResponse {
+  repeated ChannelAdapter adapters = 1;
+}
+
+message ListBotChannelsRequest {
+  string bot_id = 1;
+}
+
+message ListBotChannelsResponse {
+  repeated Channel channels = 1;
+}
+
+message CreateChannelRequest {
+  string bot_id = 1;
+  string adapter = 2;
+  string name = 3;
+  bool enabled = 4;
+  bool inbound = 5;
+  string prompt = 6;
+  map<string, string> config = 7;
+  map<string, string> secrets = 8;
+  string external_id = 9;
+  string target_title = 10;
+}
+
+message UpdateChannelRequest {
+  string bot_id = 1;
+  string id = 2;
+  string name = 3;
+  bool enabled = 4;
+  bool inbound = 5;
+  string prompt = 6;
+  map<string, string> config = 7;
+  map<string, string> secrets = 8;
+  string external_id = 9;
+  string target_title = 10;
+}
+
+message DeleteChannelRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteChannelResponse {}
+
+message ChannelActionRequest {
+  string bot_id = 1;
+  string id = 2;
+  string action = 3;
+  map<string, string> payload = 4;
+}
+
+message ChannelActionResponse {
+  ChannelState state = 1;
 }

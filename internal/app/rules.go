@@ -52,6 +52,23 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 	}
 	out.Sections = append(out.Sections, secSec)
 
+	var chans []db.Channel
+	a.DB.Where("bot_id = ?", botID).Order("created_at").Find(&chans)
+	chanSec := &v1.RuleSection{
+		Id:      "channels",
+		Title:   "Channels",
+		Summary: "Sending to a channel is allowed until you change it. Each channel has its own rule.",
+	}
+	if len(chans) == 0 {
+		chanSec.Summary = "Add a channel on the Channels tab. Each channel then gets its own send rule."
+	}
+	for i := range chans {
+		r := a.effectiveRule(botID, security.Channels, chans[i].ID, chans[i].Name, stored, "")
+		chanSec.Rules = append(chanSec.Rules, r)
+		out.Rules = append(out.Rules, r)
+	}
+	out.Sections = append(out.Sections, chanSec)
+
 	var attached []db.BotConnector
 	a.DB.Where("bot_id = ?", botID).Order("created_at").Find(&attached)
 	for i := range attached {
@@ -127,13 +144,19 @@ func (a *App) sweepRules(botID string) {
 	live := map[string]bool{
 		security.Python: true, security.Terminal: true, security.Files: true,
 		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true,
-		security.Web: true, security.Artifact: true,
+		security.Web: true, security.Artifact: true, security.Channels: true, security.Chats: true,
 	}
 	secretOK := map[string]bool{}
 	var secs []db.Secret
 	a.DB.Where("bot_id = ?", botID).Find(&secs)
 	for _, s := range secs {
 		secretOK[s.Name] = true
+	}
+	chanOK := map[string]bool{}
+	var chans []db.Channel
+	a.DB.Where("bot_id = ?", botID).Find(&chans)
+	for i := range chans {
+		chanOK[chans[i].ID] = true
 	}
 	var attached []db.BotConnector
 	a.DB.Where("bot_id = ?", botID).Find(&attached)
@@ -165,6 +188,12 @@ func (a *App) sweepRules(botID string) {
 		}
 		if r.Connector == security.Secrets {
 			if !secretOK[r.Action] {
+				a.DB.Delete(&r)
+			}
+			continue
+		}
+		if r.Connector == security.Channels {
+			if !chanOK[r.Action] {
 				a.DB.Delete(&r)
 			}
 			continue

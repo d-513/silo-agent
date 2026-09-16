@@ -117,9 +117,23 @@ button {
   }
 }
 
+@keyframes silo-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.silo-blink {
+  animation: silo-blink 1.3s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lamp-working,
   .animate-spin,
+  .silo-blink,
   .silo-wake::before,
   .silo-wake::after {
     animation: none;

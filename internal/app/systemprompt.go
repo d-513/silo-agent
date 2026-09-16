@@ -40,6 +40,10 @@ type promptContext struct {
 	bot        *db.Bot
 	connectors []connectorView
 	skills     []skills.Info
+	// channel is the origin channel when this run came from one; channels is
+	// every enabled channel the Bot can send to.
+	channel  *db.Channel
+	channels []db.Channel
 }
 
 // promptProvider contributes ordered sections for the current session.
@@ -51,7 +55,42 @@ func (a *App) promptProviders() []promptProvider {
 	return []promptProvider{
 		a.connectorSections,
 		a.skillSections,
+		a.channelSections,
 	}
+}
+
+// channelSections tells the model what channels exist and, when the run came
+// from one, embeds that channel's user-configured prompt plus the section
+// delivery contract.
+func (a *App) channelSections(pc promptContext) []promptSection {
+	if len(pc.channels) == 0 && pc.channel == nil {
+		return nil
+	}
+	var out []promptSection
+	if len(pc.channels) > 0 {
+		var b strings.Builder
+		b.WriteString("This Bot is reachable through these channels. Use the `channel` tool to send a message to one (it defaults to the current conversation) and the `chats` tool to read chat history.\n")
+		for i := range pc.channels {
+			c := &pc.channels[i]
+			line := fmt.Sprintf("- %s (adapter: %s)", c.Name, c.Adapter)
+			if pc.channel != nil && pc.channel.ID == c.ID {
+				line += " — this conversation"
+			}
+			b.WriteString(line + "\n")
+		}
+		out = append(out, promptSection{title: "Channels", body: b.String()})
+	}
+	if pc.channel != nil {
+		var b strings.Builder
+		fmt.Fprintf(&b, "This conversation is the %s channel “%s”.\n\n", pc.channel.Adapter, pc.channel.Name)
+		if p := strings.TrimSpace(pc.channel.Prompt); p != "" {
+			b.WriteString(p)
+			b.WriteString("\n\n")
+		}
+		b.WriteString(strings.TrimSpace(prompts.Channel))
+		out = append(out, promptSection{title: "This conversation", body: b.String()})
+	}
+	return out
 }
 
 // systemPromptBuilder assembles the system message: the base prompt, the Bot
@@ -99,8 +138,9 @@ func (b *systemPromptBuilder) String() string {
 	return s.String()
 }
 
-// buildSystem loads the session and assembles the system prompt.
-func (a *App) buildSystem(botID string) string {
+// buildSystem loads the session and assembles the system prompt. An optional
+// origin makes the prompt aware of the channel a run came from.
+func (a *App) buildSystem(botID string, origin ...*runOrigin) string {
 	if a.DB == nil {
 		return prompts.System
 	}
@@ -108,7 +148,11 @@ func (a *App) buildSystem(botID string) string {
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return prompts.System
 	}
-	pc := a.promptContext(botID, &bot)
+	var o *runOrigin
+	if len(origin) > 0 {
+		o = origin[0]
+	}
+	pc := a.promptContext(botID, &bot, o)
 	b := &systemPromptBuilder{base: prompts.System, bot: &bot}
 	for _, p := range a.promptProviders() {
 		for _, sec := range p(pc) {
@@ -119,7 +163,7 @@ func (a *App) buildSystem(botID string) string {
 }
 
 // promptContext snapshots the session state providers may depend on.
-func (a *App) promptContext(botID string, bot *db.Bot) promptContext {
+func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) promptContext {
 	pc := promptContext{bot: bot, skills: a.enabledSkills(botID)}
 	var links []db.BotConnector
 	a.DB.Where("bot_id = ?", botID).Find(&links)
@@ -129,6 +173,10 @@ func (a *App) promptContext(botID string, bot *db.Bot) promptContext {
 			continue
 		}
 		pc.connectors = append(pc.connectors, connectorView{link: links[i], conn: c})
+	}
+	pc.channels = a.enabledChannels(botID)
+	if origin != nil {
+		pc.channel = origin.channel
 	}
 	return pc
 }

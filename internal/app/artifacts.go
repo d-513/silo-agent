@@ -2,6 +2,7 @@ package app
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	siloauth "silo.agent/internal/auth"
+	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/skills"
 )
@@ -312,6 +314,89 @@ func (a *App) downloadSkillZip(w http.ResponseWriter, r *http.Request, u *db.Use
 		}
 	}
 	_ = zw.Close()
+}
+
+// workspaceAttachment reads one workspace file as a channel attachment.
+func (a *App) workspaceAttachment(ctx context.Context, botID, rel string) (channels.Attachment, error) {
+	rel = relWorkspace(rel)
+	if rel == "" {
+		return channels.Attachment{}, errors.New("path required")
+	}
+	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
+		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: presentBrowseLimit},
+	}})
+	if err != nil {
+		return channels.Attachment{}, err
+	}
+	var row struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+		Data    string `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(raw), &row); err != nil {
+		return channels.Attachment{}, err
+	}
+	data, err := decodeFileData(row.Data)
+	if err != nil {
+		return channels.Attachment{}, err
+	}
+	if len(data) == 0 {
+		data = []byte(row.Content)
+	}
+	if len(data) == 0 {
+		return channels.Attachment{}, errors.New("file is empty")
+	}
+	name := row.Name
+	if name == "" {
+		name = path.Base(rel)
+	}
+	mime := artifactMIME(name)
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+	return channels.Attachment{Name: name, Mime: mime, Data: data}, nil
+}
+
+// skillZipAttachment packs a workspace skill directory into a zip attachment.
+func (a *App) skillZipAttachment(ctx context.Context, botID, rel, title string) (channels.Attachment, error) {
+	tree, err := a.pullWorkspaceTree(ctx, botID, rel)
+	if err != nil {
+		return channels.Attachment{}, err
+	}
+	name := strings.TrimSpace(title)
+	if md, ok := tree["SKILL.md"]; ok {
+		if m, err := skills.Parse(string(md)); err == nil && m.Name != "" {
+			name = m.Name
+		}
+	}
+	if name == "" {
+		name = path.Base(strings.Trim(strings.TrimPrefix(rel, "/"), "/"))
+	}
+	if name == "" {
+		name = "skill"
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for k, v := range tree {
+		if strings.Contains(k, "..") {
+			continue
+		}
+		hdr := &zip.FileHeader{Name: k, Method: zip.Deflate}
+		hdr.SetMode(0o644)
+		part, err := zw.CreateHeader(hdr)
+		if err != nil {
+			_ = zw.Close()
+			return channels.Attachment{}, err
+		}
+		if _, err := part.Write(v); err != nil {
+			_ = zw.Close()
+			return channels.Attachment{}, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return channels.Attachment{}, err
+	}
+	return channels.Attachment{Name: safeFilename(name) + ".zip", Mime: "application/zip", Data: buf.Bytes()}, nil
 }
 
 func safeFilename(name string) string {

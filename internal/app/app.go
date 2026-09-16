@@ -18,6 +18,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/auth"
+	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -102,6 +103,8 @@ type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
 	chatID string
+	// inbox carries user messages injected while the run is live.
+	inbox chan inboxMsg
 }
 
 type App struct {
@@ -122,6 +125,14 @@ type App struct {
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
 
+	// convMu serializes the inject-or-start decision per conversation. chatMu
+	// serializes find-or-create of a channel conversation.
+	convMu     sync.Mutex
+	chatMu     sync.Mutex
+	chanMu     sync.Mutex
+	chanCancel map[string]context.CancelFunc
+	chanStates map[string]channels.State
+
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
 	bridgeTransportFn func(ctx context.Context, row *db.BotConnector, c *db.Connector) (mcp.Transport, error)
@@ -129,24 +140,27 @@ type App struct {
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a := &App{
-		Store:     store,
-		DB:        gdb,
-		Docker:    eng,
-		Hub:       hub.New(),
-		Bus:       newBus(),
-		approvals: map[string]*waiter{},
-		cmdRun:    map[string]string{},
-		runs:      map[string]*liveRun{},
-		mask:      map[string]*masker.Masker{},
-		oauth:     map[string]*oauthWait{},
-		mcp:       map[string]*mcpx.Session{},
-		bridges:   map[string]*bridgeTunnel{},
+		Store:      store,
+		DB:         gdb,
+		Docker:     eng,
+		Hub:        hub.New(),
+		Bus:        newBus(),
+		approvals:  map[string]*waiter{},
+		cmdRun:     map[string]string{},
+		runs:       map[string]*liveRun{},
+		mask:       map[string]*masker.Masker{},
+		oauth:      map[string]*oauthWait{},
+		mcp:        map[string]*mcpx.Session{},
+		bridges:    map[string]*bridgeTunnel{},
+		chanCancel: map[string]context.CancelFunc{},
+		chanStates: map[string]channels.State{},
 	}
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
 	a.resumeConnectors()
 	a.migrateSettings()
+	a.reconcileChannels()
 	return a
 }
 
@@ -225,6 +239,12 @@ func (a *App) ensureTerminalEvent(run db.Run, status string) {
 }
 
 func (a *App) Shutdown() {
+	a.chanMu.Lock()
+	for id, cancel := range a.chanCancel {
+		cancel()
+		delete(a.chanCancel, id)
+	}
+	a.chanMu.Unlock()
 	a.Hub.CloseAll()
 	a.mu.Lock()
 	for _, lr := range a.runs {
@@ -405,9 +425,9 @@ func (a *App) Handler() http.Handler {
 	return withHTTP(mux)
 }
 
-func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc) {
+func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg) {
 	a.mu.Lock()
-	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID}
+	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox}
 	a.mu.Unlock()
 }
 

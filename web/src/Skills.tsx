@@ -4,6 +4,7 @@ import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Segmented } from "./ConnectorForm";
 import { SkillBrowserOverlay } from "./FileBrowser";
+import { Switch } from "./Switch";
 import { skillSource } from "./fs";
 import type { BotSkill, Skill } from "./gen/silo/v1/ui_pb";
 
@@ -296,27 +297,6 @@ export function BotSkills({ botId }: { botId: string }) {
   );
 }
 
-function Switch({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-pressed={on}
-      aria-checked={on}
-      title={on ? "Enabled" : "Disabled"}
-      className="flex h-10 w-10 shrink-0 items-center justify-center"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      <span className={`relative block h-[22px] w-[40px] rounded-full ${on ? "bg-bindery" : "bg-thread"}`}>
-        <span className={`absolute top-[2px] h-[18px] w-[18px] rounded-full bg-folio ${on ? "left-[20px]" : "left-[2px]"}`} />
-      </span>
-    </button>
-  );
-}
-
 function Group({
   title,
   rows,
@@ -345,7 +325,7 @@ function Group({
                 <div className="font-medium">{s.name}</div>
                 <p className="text-stone">{s.description}</p>
               </div>
-              <Switch on={s.enabled} onClick={() => onToggle(s)} />
+              <Switch on={s.enabled} onChange={() => onToggle(s)} />
             </div>
           ))}
         </div>

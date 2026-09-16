@@ -30,7 +30,7 @@ func memDB(t *testing.T) *gorm.DB {
 	if err := gdb.AutoMigrate(
 		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
 		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Audit{},
-		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{},
+		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{}, &db.Channel{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -512,8 +512,8 @@ func TestStopChat(t *testing.T) {
 	a.DB.Create(&db.Approval{ID: "ap1", BotID: "b1", RunID: "r1", Status: "pending"})
 	hit := make(chan struct{}, 1)
 	other := make(chan struct{}, 1)
-	a.trackRun("b1", "c1", "r1", func() { hit <- struct{}{} })
-	a.trackRun("b1", "c2", "r2", func() { other <- struct{}{} })
+	a.trackRun("b1", "c1", "r1", func() { hit <- struct{}{} }, nil)
+	a.trackRun("b1", "c2", "r2", func() { other <- struct{}{} }, nil)
 	ch := make(chan string, 1)
 	a.mu.Lock()
 	a.approvals["ap1"] = &waiter{ch: ch, botID: "b1", runID: "r1"}

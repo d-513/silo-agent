@@ -930,8 +930,11 @@ func (x *Chat) GetUpdatedAt() string {
 }
 
 type ListChatsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	BotId string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	// Empty lists Web UI chats only. Set to a channel id to list that channel's
+	// conversations.
+	ChannelId     string `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -969,6 +972,13 @@ func (*ListChatsRequest) Descriptor() ([]byte, []int) {
 func (x *ListChatsRequest) GetBotId() string {
 	if x != nil {
 		return x.BotId
+	}
+	return ""
+}
+
+func (x *ListChatsRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
 	}
 	return ""
 }
@@ -6205,6 +6215,1150 @@ func (x *SaveSkillResponse) GetName() string {
 	return ""
 }
 
+type ChannelFieldOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelFieldOption) Reset() {
+	*x = ChannelFieldOption{}
+	mi := &file_silo_v1_ui_proto_msgTypes[103]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelFieldOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelFieldOption) ProtoMessage() {}
+
+func (x *ChannelFieldOption) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[103]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelFieldOption.ProtoReflect.Descriptor instead.
+func (*ChannelFieldOption) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *ChannelFieldOption) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *ChannelFieldOption) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+type ChannelField struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Required      bool                   `protobuf:"varint,5,opt,name=required,proto3" json:"required,omitempty"`
+	Secret        bool                   `protobuf:"varint,6,opt,name=secret,proto3" json:"secret,omitempty"`
+	Options       []*ChannelFieldOption  `protobuf:"bytes,7,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelField) Reset() {
+	*x = ChannelField{}
+	mi := &file_silo_v1_ui_proto_msgTypes[104]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelField) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelField) ProtoMessage() {}
+
+func (x *ChannelField) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[104]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelField.ProtoReflect.Descriptor instead.
+func (*ChannelField) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{104}
+}
+
+func (x *ChannelField) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ChannelField) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *ChannelField) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ChannelField) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ChannelField) GetRequired() bool {
+	if x != nil {
+		return x.Required
+	}
+	return false
+}
+
+func (x *ChannelField) GetSecret() bool {
+	if x != nil {
+		return x.Secret
+	}
+	return false
+}
+
+func (x *ChannelField) GetOptions() []*ChannelFieldOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+type ChannelAdapterAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Kind          string                 `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelAdapterAction) Reset() {
+	*x = ChannelAdapterAction{}
+	mi := &file_silo_v1_ui_proto_msgTypes[105]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelAdapterAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelAdapterAction) ProtoMessage() {}
+
+func (x *ChannelAdapterAction) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[105]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelAdapterAction.ProtoReflect.Descriptor instead.
+func (*ChannelAdapterAction) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{105}
+}
+
+func (x *ChannelAdapterAction) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ChannelAdapterAction) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *ChannelAdapterAction) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ChannelAdapterAction) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+type ChannelAdapter struct {
+	state          protoimpl.MessageState  `protogen:"open.v1"`
+	Slug           string                  `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Name           string                  `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description    string                  `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Fields         []*ChannelField         `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
+	Logo           string                  `protobuf:"bytes,5,opt,name=logo,proto3" json:"logo,omitempty"`
+	Guide          string                  `protobuf:"bytes,6,opt,name=guide,proto3" json:"guide,omitempty"`
+	RequiresTarget bool                    `protobuf:"varint,7,opt,name=requires_target,json=requiresTarget,proto3" json:"requires_target,omitempty"`
+	Actions        []*ChannelAdapterAction `protobuf:"bytes,8,rep,name=actions,proto3" json:"actions,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ChannelAdapter) Reset() {
+	*x = ChannelAdapter{}
+	mi := &file_silo_v1_ui_proto_msgTypes[106]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelAdapter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelAdapter) ProtoMessage() {}
+
+func (x *ChannelAdapter) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[106]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelAdapter.ProtoReflect.Descriptor instead.
+func (*ChannelAdapter) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{106}
+}
+
+func (x *ChannelAdapter) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *ChannelAdapter) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ChannelAdapter) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ChannelAdapter) GetFields() []*ChannelField {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+func (x *ChannelAdapter) GetLogo() string {
+	if x != nil {
+		return x.Logo
+	}
+	return ""
+}
+
+func (x *ChannelAdapter) GetGuide() string {
+	if x != nil {
+		return x.Guide
+	}
+	return ""
+}
+
+func (x *ChannelAdapter) GetRequiresTarget() bool {
+	if x != nil {
+		return x.RequiresTarget
+	}
+	return false
+}
+
+func (x *ChannelAdapter) GetActions() []*ChannelAdapterAction {
+	if x != nil {
+		return x.Actions
+	}
+	return nil
+}
+
+type ChannelState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Qr            string                 `protobuf:"bytes,3,opt,name=qr,proto3" json:"qr,omitempty"`
+	Options       []*ChannelFieldOption  `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`
+	Values        map[string]string      `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelState) Reset() {
+	*x = ChannelState{}
+	mi := &file_silo_v1_ui_proto_msgTypes[107]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelState) ProtoMessage() {}
+
+func (x *ChannelState) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[107]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelState.ProtoReflect.Descriptor instead.
+func (*ChannelState) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{107}
+}
+
+func (x *ChannelState) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ChannelState) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ChannelState) GetQr() string {
+	if x != nil {
+		return x.Qr
+	}
+	return ""
+}
+
+func (x *ChannelState) GetOptions() []*ChannelFieldOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+func (x *ChannelState) GetValues() map[string]string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+type Channel struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BotId         string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Adapter       string                 `protobuf:"bytes,3,opt,name=adapter,proto3" json:"adapter,omitempty"`
+	AdapterName   string                 `protobuf:"bytes,4,opt,name=adapter_name,json=adapterName,proto3" json:"adapter_name,omitempty"`
+	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled       bool                   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Inbound       bool                   `protobuf:"varint,7,opt,name=inbound,proto3" json:"inbound,omitempty"`
+	Prompt        string                 `protobuf:"bytes,8,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Config        map[string]string      `protobuf:"bytes,9,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	SecretsSet    []string               `protobuf:"bytes,10,rep,name=secrets_set,json=secretsSet,proto3" json:"secrets_set,omitempty"`
+	Status        string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	StatusDetail  string                 `protobuf:"bytes,12,opt,name=status_detail,json=statusDetail,proto3" json:"status_detail,omitempty"`
+	State         *ChannelState          `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"`
+	ExternalId    string                 `protobuf:"bytes,14,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	TargetTitle   string                 `protobuf:"bytes,15,opt,name=target_title,json=targetTitle,proto3" json:"target_title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Channel) Reset() {
+	*x = Channel{}
+	mi := &file_silo_v1_ui_proto_msgTypes[108]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Channel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Channel) ProtoMessage() {}
+
+func (x *Channel) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[108]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Channel.ProtoReflect.Descriptor instead.
+func (*Channel) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{108}
+}
+
+func (x *Channel) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Channel) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *Channel) GetAdapter() string {
+	if x != nil {
+		return x.Adapter
+	}
+	return ""
+}
+
+func (x *Channel) GetAdapterName() string {
+	if x != nil {
+		return x.AdapterName
+	}
+	return ""
+}
+
+func (x *Channel) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Channel) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *Channel) GetInbound() bool {
+	if x != nil {
+		return x.Inbound
+	}
+	return false
+}
+
+func (x *Channel) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *Channel) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *Channel) GetSecretsSet() []string {
+	if x != nil {
+		return x.SecretsSet
+	}
+	return nil
+}
+
+func (x *Channel) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Channel) GetStatusDetail() string {
+	if x != nil {
+		return x.StatusDetail
+	}
+	return ""
+}
+
+func (x *Channel) GetState() *ChannelState {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+func (x *Channel) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *Channel) GetTargetTitle() string {
+	if x != nil {
+		return x.TargetTitle
+	}
+	return ""
+}
+
+type ListChannelAdaptersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChannelAdaptersRequest) Reset() {
+	*x = ListChannelAdaptersRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[109]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChannelAdaptersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChannelAdaptersRequest) ProtoMessage() {}
+
+func (x *ListChannelAdaptersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[109]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChannelAdaptersRequest.ProtoReflect.Descriptor instead.
+func (*ListChannelAdaptersRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{109}
+}
+
+type ListChannelAdaptersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Adapters      []*ChannelAdapter      `protobuf:"bytes,1,rep,name=adapters,proto3" json:"adapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChannelAdaptersResponse) Reset() {
+	*x = ListChannelAdaptersResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[110]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChannelAdaptersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChannelAdaptersResponse) ProtoMessage() {}
+
+func (x *ListChannelAdaptersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[110]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChannelAdaptersResponse.ProtoReflect.Descriptor instead.
+func (*ListChannelAdaptersResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *ListChannelAdaptersResponse) GetAdapters() []*ChannelAdapter {
+	if x != nil {
+		return x.Adapters
+	}
+	return nil
+}
+
+type ListBotChannelsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotChannelsRequest) Reset() {
+	*x = ListBotChannelsRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[111]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotChannelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotChannelsRequest) ProtoMessage() {}
+
+func (x *ListBotChannelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[111]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotChannelsRequest.ProtoReflect.Descriptor instead.
+func (*ListBotChannelsRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{111}
+}
+
+func (x *ListBotChannelsRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+type ListBotChannelsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Channels      []*Channel             `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotChannelsResponse) Reset() {
+	*x = ListBotChannelsResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[112]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotChannelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotChannelsResponse) ProtoMessage() {}
+
+func (x *ListBotChannelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[112]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotChannelsResponse.ProtoReflect.Descriptor instead.
+func (*ListBotChannelsResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{112}
+}
+
+func (x *ListBotChannelsResponse) GetChannels() []*Channel {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+type CreateChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Adapter       string                 `protobuf:"bytes,2,opt,name=adapter,proto3" json:"adapter,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled       bool                   `protobuf:"varint,4,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Inbound       bool                   `protobuf:"varint,5,opt,name=inbound,proto3" json:"inbound,omitempty"`
+	Prompt        string                 `protobuf:"bytes,6,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Config        map[string]string      `protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Secrets       map[string]string      `protobuf:"bytes,8,rep,name=secrets,proto3" json:"secrets,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ExternalId    string                 `protobuf:"bytes,9,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	TargetTitle   string                 `protobuf:"bytes,10,opt,name=target_title,json=targetTitle,proto3" json:"target_title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateChannelRequest) Reset() {
+	*x = CreateChannelRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[113]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChannelRequest) ProtoMessage() {}
+
+func (x *CreateChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[113]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChannelRequest.ProtoReflect.Descriptor instead.
+func (*CreateChannelRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{113}
+}
+
+func (x *CreateChannelRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *CreateChannelRequest) GetAdapter() string {
+	if x != nil {
+		return x.Adapter
+	}
+	return ""
+}
+
+func (x *CreateChannelRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateChannelRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CreateChannelRequest) GetInbound() bool {
+	if x != nil {
+		return x.Inbound
+	}
+	return false
+}
+
+func (x *CreateChannelRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *CreateChannelRequest) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *CreateChannelRequest) GetSecrets() map[string]string {
+	if x != nil {
+		return x.Secrets
+	}
+	return nil
+}
+
+func (x *CreateChannelRequest) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *CreateChannelRequest) GetTargetTitle() string {
+	if x != nil {
+		return x.TargetTitle
+	}
+	return ""
+}
+
+type UpdateChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled       bool                   `protobuf:"varint,4,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Inbound       bool                   `protobuf:"varint,5,opt,name=inbound,proto3" json:"inbound,omitempty"`
+	Prompt        string                 `protobuf:"bytes,6,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Config        map[string]string      `protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Secrets       map[string]string      `protobuf:"bytes,8,rep,name=secrets,proto3" json:"secrets,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ExternalId    string                 `protobuf:"bytes,9,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	TargetTitle   string                 `protobuf:"bytes,10,opt,name=target_title,json=targetTitle,proto3" json:"target_title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateChannelRequest) Reset() {
+	*x = UpdateChannelRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[114]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateChannelRequest) ProtoMessage() {}
+
+func (x *UpdateChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[114]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateChannelRequest.ProtoReflect.Descriptor instead.
+func (*UpdateChannelRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{114}
+}
+
+func (x *UpdateChannelRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *UpdateChannelRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateChannelRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateChannelRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *UpdateChannelRequest) GetInbound() bool {
+	if x != nil {
+		return x.Inbound
+	}
+	return false
+}
+
+func (x *UpdateChannelRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *UpdateChannelRequest) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *UpdateChannelRequest) GetSecrets() map[string]string {
+	if x != nil {
+		return x.Secrets
+	}
+	return nil
+}
+
+func (x *UpdateChannelRequest) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *UpdateChannelRequest) GetTargetTitle() string {
+	if x != nil {
+		return x.TargetTitle
+	}
+	return ""
+}
+
+type DeleteChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteChannelRequest) Reset() {
+	*x = DeleteChannelRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[115]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteChannelRequest) ProtoMessage() {}
+
+func (x *DeleteChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[115]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteChannelRequest.ProtoReflect.Descriptor instead.
+func (*DeleteChannelRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{115}
+}
+
+func (x *DeleteChannelRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *DeleteChannelRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteChannelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteChannelResponse) Reset() {
+	*x = DeleteChannelResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[116]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteChannelResponse) ProtoMessage() {}
+
+func (x *DeleteChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[116]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteChannelResponse.ProtoReflect.Descriptor instead.
+func (*DeleteChannelResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{116}
+}
+
+type ChannelActionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
+	Payload       map[string]string      `protobuf:"bytes,4,rep,name=payload,proto3" json:"payload,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelActionRequest) Reset() {
+	*x = ChannelActionRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[117]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelActionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelActionRequest) ProtoMessage() {}
+
+func (x *ChannelActionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[117]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelActionRequest.ProtoReflect.Descriptor instead.
+func (*ChannelActionRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{117}
+}
+
+func (x *ChannelActionRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *ChannelActionRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ChannelActionRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ChannelActionRequest) GetPayload() map[string]string {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+type ChannelActionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         *ChannelState          `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelActionResponse) Reset() {
+	*x = ChannelActionResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[118]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelActionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelActionResponse) ProtoMessage() {}
+
+func (x *ChannelActionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[118]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelActionResponse.ProtoReflect.Descriptor instead.
+func (*ChannelActionResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *ChannelActionResponse) GetState() *ChannelState {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
 var File_silo_v1_ui_proto protoreflect.FileDescriptor
 
 const file_silo_v1_ui_proto_rawDesc = "" +
@@ -6263,9 +7417,11 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\tR\tupdatedAt\")\n" +
+	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"H\n" +
 	"\x10ListChatsRequest\x12\x15\n" +
-	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"8\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x02 \x01(\tR\tchannelId\"8\n" +
 	"\x11ListChatsResponse\x12#\n" +
 	"\x05chats\x18\x01 \x03(\v2\r.silo.v1.ChatR\x05chats\"*\n" +
 	"\x11CreateChatRequest\x12\x15\n" +
@@ -6654,12 +7810,127 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x15\n" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\"'\n" +
 	"\x11SaveSkillResponse\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name*w\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"@\n" +
+	"\x12ChannelFieldOption\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\"\xd7\x01\n" +
+	"\fChannelField\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1a\n" +
+	"\brequired\x18\x05 \x01(\bR\brequired\x12\x16\n" +
+	"\x06secret\x18\x06 \x01(\bR\x06secret\x125\n" +
+	"\aoptions\x18\a \x03(\v2\x1b.silo.v1.ChannelFieldOptionR\aoptions\"t\n" +
+	"\x14ChannelAdapterAction\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\"\x95\x02\n" +
+	"\x0eChannelAdapter\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
+	"\x06fields\x18\x04 \x03(\v2\x15.silo.v1.ChannelFieldR\x06fields\x12\x12\n" +
+	"\x04logo\x18\x05 \x01(\tR\x04logo\x12\x14\n" +
+	"\x05guide\x18\x06 \x01(\tR\x05guide\x12'\n" +
+	"\x0frequires_target\x18\a \x01(\bR\x0erequiresTarget\x127\n" +
+	"\aactions\x18\b \x03(\v2\x1d.silo.v1.ChannelAdapterActionR\aactions\"\xf9\x01\n" +
+	"\fChannelState\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x0e\n" +
+	"\x02qr\x18\x03 \x01(\tR\x02qr\x125\n" +
+	"\aoptions\x18\x04 \x03(\v2\x1b.silo.v1.ChannelFieldOptionR\aoptions\x129\n" +
+	"\x06values\x18\x05 \x03(\v2!.silo.v1.ChannelState.ValuesEntryR\x06values\x1a9\n" +
+	"\vValuesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8d\x04\n" +
+	"\aChannel\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x18\n" +
+	"\aadapter\x18\x03 \x01(\tR\aadapter\x12!\n" +
+	"\fadapter_name\x18\x04 \x01(\tR\vadapterName\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12\x18\n" +
+	"\aenabled\x18\x06 \x01(\bR\aenabled\x12\x18\n" +
+	"\ainbound\x18\a \x01(\bR\ainbound\x12\x16\n" +
+	"\x06prompt\x18\b \x01(\tR\x06prompt\x124\n" +
+	"\x06config\x18\t \x03(\v2\x1c.silo.v1.Channel.ConfigEntryR\x06config\x12\x1f\n" +
+	"\vsecrets_set\x18\n" +
+	" \x03(\tR\n" +
+	"secretsSet\x12\x16\n" +
+	"\x06status\x18\v \x01(\tR\x06status\x12#\n" +
+	"\rstatus_detail\x18\f \x01(\tR\fstatusDetail\x12+\n" +
+	"\x05state\x18\r \x01(\v2\x15.silo.v1.ChannelStateR\x05state\x12\x1f\n" +
+	"\vexternal_id\x18\x0e \x01(\tR\n" +
+	"externalId\x12!\n" +
+	"\ftarget_title\x18\x0f \x01(\tR\vtargetTitle\x1a9\n" +
+	"\vConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1c\n" +
+	"\x1aListChannelAdaptersRequest\"R\n" +
+	"\x1bListChannelAdaptersResponse\x123\n" +
+	"\badapters\x18\x01 \x03(\v2\x17.silo.v1.ChannelAdapterR\badapters\"/\n" +
+	"\x16ListBotChannelsRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"G\n" +
+	"\x17ListBotChannelsResponse\x12,\n" +
+	"\bchannels\x18\x01 \x03(\v2\x10.silo.v1.ChannelR\bchannels\"\xeb\x03\n" +
+	"\x14CreateChannelRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x18\n" +
+	"\aadapter\x18\x02 \x01(\tR\aadapter\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x18\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\x12\x18\n" +
+	"\ainbound\x18\x05 \x01(\bR\ainbound\x12\x16\n" +
+	"\x06prompt\x18\x06 \x01(\tR\x06prompt\x12A\n" +
+	"\x06config\x18\a \x03(\v2).silo.v1.CreateChannelRequest.ConfigEntryR\x06config\x12D\n" +
+	"\asecrets\x18\b \x03(\v2*.silo.v1.CreateChannelRequest.SecretsEntryR\asecrets\x12\x1f\n" +
+	"\vexternal_id\x18\t \x01(\tR\n" +
+	"externalId\x12!\n" +
+	"\ftarget_title\x18\n" +
+	" \x01(\tR\vtargetTitle\x1a9\n" +
+	"\vConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
+	"\fSecretsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x03\n" +
+	"\x14UpdateChannelRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x18\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\x12\x18\n" +
+	"\ainbound\x18\x05 \x01(\bR\ainbound\x12\x16\n" +
+	"\x06prompt\x18\x06 \x01(\tR\x06prompt\x12A\n" +
+	"\x06config\x18\a \x03(\v2).silo.v1.UpdateChannelRequest.ConfigEntryR\x06config\x12D\n" +
+	"\asecrets\x18\b \x03(\v2*.silo.v1.UpdateChannelRequest.SecretsEntryR\asecrets\x12\x1f\n" +
+	"\vexternal_id\x18\t \x01(\tR\n" +
+	"externalId\x12!\n" +
+	"\ftarget_title\x18\n" +
+	" \x01(\tR\vtargetTitle\x1a9\n" +
+	"\vConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
+	"\fSecretsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"=\n" +
+	"\x14DeleteChannelRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\x17\n" +
+	"\x15DeleteChannelResponse\"\xd7\x01\n" +
+	"\x14ChannelActionRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action\x12D\n" +
+	"\apayload\x18\x04 \x03(\v2*.silo.v1.ChannelActionRequest.PayloadEntryR\apayload\x1a:\n" +
+	"\fPayloadEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"D\n" +
+	"\x15ChannelActionResponse\x12+\n" +
+	"\x05state\x18\x01 \x01(\v2\x15.silo.v1.ChannelStateR\x05state*w\n" +
 	"\fConfigSource\x12\x1d\n" +
 	"\x19CONFIG_SOURCE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONFIG_SOURCE_DEFAULT\x10\x01\x12\x16\n" +
 	"\x12CONFIG_SOURCE_YAML\x10\x02\x12\x15\n" +
-	"\x11CONFIG_SOURCE_ENV\x10\x032\xcb\x1c\n" +
+	"\x11CONFIG_SOURCE_ENV\x10\x032\xa7 \n" +
 	"\x02UI\x129\n" +
 	"\x06SignIn\x12\x16.silo.v1.SignInRequest\x1a\x17.silo.v1.SignInResponse\x12<\n" +
 	"\aSignOut\x12\x17.silo.v1.SignOutRequest\x1a\x18.silo.v1.SignOutResponse\x12-\n" +
@@ -6720,7 +7991,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\vSetBotSkill\x12\x1b.silo.v1.SetBotSkillRequest\x1a\x11.silo.v1.BotSkill\x12L\n" +
 	"\x0eListSkillFiles\x12\x1e.silo.v1.ListSkillFilesRequest\x1a\x1a.silo.v1.ListFilesResponse\x12I\n" +
 	"\rReadSkillFile\x12\x1d.silo.v1.ReadSkillFileRequest\x1a\x19.silo.v1.ReadFileResponse\x12B\n" +
-	"\tSaveSkill\x12\x19.silo.v1.SaveSkillRequest\x1a\x1a.silo.v1.SaveSkillResponseB\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
+	"\tSaveSkill\x12\x19.silo.v1.SaveSkillRequest\x1a\x1a.silo.v1.SaveSkillResponse\x12`\n" +
+	"\x13ListChannelAdapters\x12#.silo.v1.ListChannelAdaptersRequest\x1a$.silo.v1.ListChannelAdaptersResponse\x12T\n" +
+	"\x0fListBotChannels\x12\x1f.silo.v1.ListBotChannelsRequest\x1a .silo.v1.ListBotChannelsResponse\x12@\n" +
+	"\rCreateChannel\x12\x1d.silo.v1.CreateChannelRequest\x1a\x10.silo.v1.Channel\x12@\n" +
+	"\rUpdateChannel\x12\x1d.silo.v1.UpdateChannelRequest\x1a\x10.silo.v1.Channel\x12N\n" +
+	"\rDeleteChannel\x12\x1d.silo.v1.DeleteChannelRequest\x1a\x1e.silo.v1.DeleteChannelResponse\x12N\n" +
+	"\rChannelAction\x12\x1d.silo.v1.ChannelActionRequest\x1a\x1e.silo.v1.ChannelActionResponseB\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
 
 var (
 	file_silo_v1_ui_proto_rawDescOnce sync.Once
@@ -6735,113 +8012,136 @@ func file_silo_v1_ui_proto_rawDescGZIP() []byte {
 }
 
 var file_silo_v1_ui_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_silo_v1_ui_proto_msgTypes = make([]protoimpl.MessageInfo, 104)
+var file_silo_v1_ui_proto_msgTypes = make([]protoimpl.MessageInfo, 127)
 var file_silo_v1_ui_proto_goTypes = []any{
-	(ConfigSource)(0),                  // 0: silo.v1.ConfigSource
-	(*SignInRequest)(nil),              // 1: silo.v1.SignInRequest
-	(*SignInResponse)(nil),             // 2: silo.v1.SignInResponse
-	(*SignOutRequest)(nil),             // 3: silo.v1.SignOutRequest
-	(*SignOutResponse)(nil),            // 4: silo.v1.SignOutResponse
-	(*MeRequest)(nil),                  // 5: silo.v1.MeRequest
-	(*MeResponse)(nil),                 // 6: silo.v1.MeResponse
-	(*User)(nil),                       // 7: silo.v1.User
-	(*Bot)(nil),                        // 8: silo.v1.Bot
-	(*ListBotsRequest)(nil),            // 9: silo.v1.ListBotsRequest
-	(*ListBotsResponse)(nil),           // 10: silo.v1.ListBotsResponse
-	(*CreateBotRequest)(nil),           // 11: silo.v1.CreateBotRequest
-	(*UpdateBotRequest)(nil),           // 12: silo.v1.UpdateBotRequest
-	(*GetBotRequest)(nil),              // 13: silo.v1.GetBotRequest
-	(*Container)(nil),                  // 14: silo.v1.Container
-	(*DeleteBotResponse)(nil),          // 15: silo.v1.DeleteBotResponse
-	(*Chat)(nil),                       // 16: silo.v1.Chat
-	(*ListChatsRequest)(nil),           // 17: silo.v1.ListChatsRequest
-	(*ListChatsResponse)(nil),          // 18: silo.v1.ListChatsResponse
-	(*CreateChatRequest)(nil),          // 19: silo.v1.CreateChatRequest
-	(*RenameChatRequest)(nil),          // 20: silo.v1.RenameChatRequest
-	(*DeleteChatRequest)(nil),          // 21: silo.v1.DeleteChatRequest
-	(*DeleteChatResponse)(nil),         // 22: silo.v1.DeleteChatResponse
-	(*Attachment)(nil),                 // 23: silo.v1.Attachment
-	(*SendRequest)(nil),                // 24: silo.v1.SendRequest
-	(*SendResponse)(nil),               // 25: silo.v1.SendResponse
-	(*StopRunRequest)(nil),             // 26: silo.v1.StopRunRequest
-	(*StopRunResponse)(nil),            // 27: silo.v1.StopRunResponse
-	(*StreamRunRequest)(nil),           // 28: silo.v1.StreamRunRequest
-	(*RunEvent)(nil),                   // 29: silo.v1.RunEvent
-	(*SecretMeta)(nil),                 // 30: silo.v1.SecretMeta
-	(*ListSecretsRequest)(nil),         // 31: silo.v1.ListSecretsRequest
-	(*ListSecretsResponse)(nil),        // 32: silo.v1.ListSecretsResponse
-	(*AddSecretRequest)(nil),           // 33: silo.v1.AddSecretRequest
-	(*DeleteSecretRequest)(nil),        // 34: silo.v1.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),       // 35: silo.v1.DeleteSecretResponse
-	(*ApprovalField)(nil),              // 36: silo.v1.ApprovalField
-	(*Approval)(nil),                   // 37: silo.v1.Approval
-	(*ListApprovalsRequest)(nil),       // 38: silo.v1.ListApprovalsRequest
-	(*ListApprovalsResponse)(nil),      // 39: silo.v1.ListApprovalsResponse
-	(*DecideApprovalRequest)(nil),      // 40: silo.v1.DecideApprovalRequest
-	(*Rule)(nil),                       // 41: silo.v1.Rule
-	(*RuleSection)(nil),                // 42: silo.v1.RuleSection
-	(*ListRulesRequest)(nil),           // 43: silo.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),          // 44: silo.v1.ListRulesResponse
-	(*SetRuleRequest)(nil),             // 45: silo.v1.SetRuleRequest
-	(*FileEntry)(nil),                  // 46: silo.v1.FileEntry
-	(*ListFilesRequest)(nil),           // 47: silo.v1.ListFilesRequest
-	(*ListFilesResponse)(nil),          // 48: silo.v1.ListFilesResponse
-	(*ReadFileRequest)(nil),            // 49: silo.v1.ReadFileRequest
-	(*ReadFileResponse)(nil),           // 50: silo.v1.ReadFileResponse
-	(*MkdirRequest)(nil),               // 51: silo.v1.MkdirRequest
-	(*RemoveFileRequest)(nil),          // 52: silo.v1.RemoveFileRequest
-	(*PutFileRequest)(nil),             // 53: silo.v1.PutFileRequest
-	(*FileOpResponse)(nil),             // 54: silo.v1.FileOpResponse
-	(*ConfigField)(nil),                // 55: silo.v1.ConfigField
-	(*Settings)(nil),                   // 56: silo.v1.Settings
-	(*SearchEngine)(nil),               // 57: silo.v1.SearchEngine
-	(*SearchEngineField)(nil),          // 58: silo.v1.SearchEngineField
-	(*GetSettingsRequest)(nil),         // 59: silo.v1.GetSettingsRequest
-	(*PutSettingsRequest)(nil),         // 60: silo.v1.PutSettingsRequest
-	(*AuditRow)(nil),                   // 61: silo.v1.AuditRow
-	(*ListAuditRequest)(nil),           // 62: silo.v1.ListAuditRequest
-	(*ListAuditResponse)(nil),          // 63: silo.v1.ListAuditResponse
-	(*HeaderKey)(nil),                  // 64: silo.v1.HeaderKey
-	(*EnvKey)(nil),                     // 65: silo.v1.EnvKey
-	(*EnvInput)(nil),                   // 66: silo.v1.EnvInput
-	(*Connector)(nil),                  // 67: silo.v1.Connector
-	(*ListConnectorsRequest)(nil),      // 68: silo.v1.ListConnectorsRequest
-	(*ListConnectorsResponse)(nil),     // 69: silo.v1.ListConnectorsResponse
-	(*HeaderInput)(nil),                // 70: silo.v1.HeaderInput
-	(*CreateConnectorRequest)(nil),     // 71: silo.v1.CreateConnectorRequest
-	(*UpdateConnectorRequest)(nil),     // 72: silo.v1.UpdateConnectorRequest
-	(*DeleteConnectorRequest)(nil),     // 73: silo.v1.DeleteConnectorRequest
-	(*DeleteConnectorResponse)(nil),    // 74: silo.v1.DeleteConnectorResponse
-	(*BotConnector)(nil),               // 75: silo.v1.BotConnector
-	(*ListBotConnectorsRequest)(nil),   // 76: silo.v1.ListBotConnectorsRequest
-	(*ListBotConnectorsResponse)(nil),  // 77: silo.v1.ListBotConnectorsResponse
-	(*AttachConnectorRequest)(nil),     // 78: silo.v1.AttachConnectorRequest
-	(*CreateBotConnectorRequest)(nil),  // 79: silo.v1.CreateBotConnectorRequest
-	(*DetachConnectorRequest)(nil),     // 80: silo.v1.DetachConnectorRequest
-	(*DetachConnectorResponse)(nil),    // 81: silo.v1.DetachConnectorResponse
-	(*RefreshBotConnectorRequest)(nil), // 82: silo.v1.RefreshBotConnectorRequest
-	(*StartConnectorAuthRequest)(nil),  // 83: silo.v1.StartConnectorAuthRequest
-	(*StartConnectorAuthResponse)(nil), // 84: silo.v1.StartConnectorAuthResponse
-	(*SeedConnectorsRequest)(nil),      // 85: silo.v1.SeedConnectorsRequest
-	(*SeedConnectorsResponse)(nil),     // 86: silo.v1.SeedConnectorsResponse
-	(*SeedSkillsRequest)(nil),          // 87: silo.v1.SeedSkillsRequest
-	(*SeedSkillsResponse)(nil),         // 88: silo.v1.SeedSkillsResponse
-	(*Skill)(nil),                      // 89: silo.v1.Skill
-	(*ListSkillsRequest)(nil),          // 90: silo.v1.ListSkillsRequest
-	(*ListSkillsResponse)(nil),         // 91: silo.v1.ListSkillsResponse
-	(*InstallSkillRequest)(nil),        // 92: silo.v1.InstallSkillRequest
-	(*InstallSkillResponse)(nil),       // 93: silo.v1.InstallSkillResponse
-	(*DeleteSkillRequest)(nil),         // 94: silo.v1.DeleteSkillRequest
-	(*DeleteSkillResponse)(nil),        // 95: silo.v1.DeleteSkillResponse
-	(*BotSkill)(nil),                   // 96: silo.v1.BotSkill
-	(*ListBotSkillsRequest)(nil),       // 97: silo.v1.ListBotSkillsRequest
-	(*ListBotSkillsResponse)(nil),      // 98: silo.v1.ListBotSkillsResponse
-	(*SetBotSkillRequest)(nil),         // 99: silo.v1.SetBotSkillRequest
-	(*ListSkillFilesRequest)(nil),      // 100: silo.v1.ListSkillFilesRequest
-	(*ReadSkillFileRequest)(nil),       // 101: silo.v1.ReadSkillFileRequest
-	(*SaveSkillRequest)(nil),           // 102: silo.v1.SaveSkillRequest
-	(*SaveSkillResponse)(nil),          // 103: silo.v1.SaveSkillResponse
-	nil,                                // 104: silo.v1.PutSettingsRequest.FieldsEntry
+	(ConfigSource)(0),                   // 0: silo.v1.ConfigSource
+	(*SignInRequest)(nil),               // 1: silo.v1.SignInRequest
+	(*SignInResponse)(nil),              // 2: silo.v1.SignInResponse
+	(*SignOutRequest)(nil),              // 3: silo.v1.SignOutRequest
+	(*SignOutResponse)(nil),             // 4: silo.v1.SignOutResponse
+	(*MeRequest)(nil),                   // 5: silo.v1.MeRequest
+	(*MeResponse)(nil),                  // 6: silo.v1.MeResponse
+	(*User)(nil),                        // 7: silo.v1.User
+	(*Bot)(nil),                         // 8: silo.v1.Bot
+	(*ListBotsRequest)(nil),             // 9: silo.v1.ListBotsRequest
+	(*ListBotsResponse)(nil),            // 10: silo.v1.ListBotsResponse
+	(*CreateBotRequest)(nil),            // 11: silo.v1.CreateBotRequest
+	(*UpdateBotRequest)(nil),            // 12: silo.v1.UpdateBotRequest
+	(*GetBotRequest)(nil),               // 13: silo.v1.GetBotRequest
+	(*Container)(nil),                   // 14: silo.v1.Container
+	(*DeleteBotResponse)(nil),           // 15: silo.v1.DeleteBotResponse
+	(*Chat)(nil),                        // 16: silo.v1.Chat
+	(*ListChatsRequest)(nil),            // 17: silo.v1.ListChatsRequest
+	(*ListChatsResponse)(nil),           // 18: silo.v1.ListChatsResponse
+	(*CreateChatRequest)(nil),           // 19: silo.v1.CreateChatRequest
+	(*RenameChatRequest)(nil),           // 20: silo.v1.RenameChatRequest
+	(*DeleteChatRequest)(nil),           // 21: silo.v1.DeleteChatRequest
+	(*DeleteChatResponse)(nil),          // 22: silo.v1.DeleteChatResponse
+	(*Attachment)(nil),                  // 23: silo.v1.Attachment
+	(*SendRequest)(nil),                 // 24: silo.v1.SendRequest
+	(*SendResponse)(nil),                // 25: silo.v1.SendResponse
+	(*StopRunRequest)(nil),              // 26: silo.v1.StopRunRequest
+	(*StopRunResponse)(nil),             // 27: silo.v1.StopRunResponse
+	(*StreamRunRequest)(nil),            // 28: silo.v1.StreamRunRequest
+	(*RunEvent)(nil),                    // 29: silo.v1.RunEvent
+	(*SecretMeta)(nil),                  // 30: silo.v1.SecretMeta
+	(*ListSecretsRequest)(nil),          // 31: silo.v1.ListSecretsRequest
+	(*ListSecretsResponse)(nil),         // 32: silo.v1.ListSecretsResponse
+	(*AddSecretRequest)(nil),            // 33: silo.v1.AddSecretRequest
+	(*DeleteSecretRequest)(nil),         // 34: silo.v1.DeleteSecretRequest
+	(*DeleteSecretResponse)(nil),        // 35: silo.v1.DeleteSecretResponse
+	(*ApprovalField)(nil),               // 36: silo.v1.ApprovalField
+	(*Approval)(nil),                    // 37: silo.v1.Approval
+	(*ListApprovalsRequest)(nil),        // 38: silo.v1.ListApprovalsRequest
+	(*ListApprovalsResponse)(nil),       // 39: silo.v1.ListApprovalsResponse
+	(*DecideApprovalRequest)(nil),       // 40: silo.v1.DecideApprovalRequest
+	(*Rule)(nil),                        // 41: silo.v1.Rule
+	(*RuleSection)(nil),                 // 42: silo.v1.RuleSection
+	(*ListRulesRequest)(nil),            // 43: silo.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),           // 44: silo.v1.ListRulesResponse
+	(*SetRuleRequest)(nil),              // 45: silo.v1.SetRuleRequest
+	(*FileEntry)(nil),                   // 46: silo.v1.FileEntry
+	(*ListFilesRequest)(nil),            // 47: silo.v1.ListFilesRequest
+	(*ListFilesResponse)(nil),           // 48: silo.v1.ListFilesResponse
+	(*ReadFileRequest)(nil),             // 49: silo.v1.ReadFileRequest
+	(*ReadFileResponse)(nil),            // 50: silo.v1.ReadFileResponse
+	(*MkdirRequest)(nil),                // 51: silo.v1.MkdirRequest
+	(*RemoveFileRequest)(nil),           // 52: silo.v1.RemoveFileRequest
+	(*PutFileRequest)(nil),              // 53: silo.v1.PutFileRequest
+	(*FileOpResponse)(nil),              // 54: silo.v1.FileOpResponse
+	(*ConfigField)(nil),                 // 55: silo.v1.ConfigField
+	(*Settings)(nil),                    // 56: silo.v1.Settings
+	(*SearchEngine)(nil),                // 57: silo.v1.SearchEngine
+	(*SearchEngineField)(nil),           // 58: silo.v1.SearchEngineField
+	(*GetSettingsRequest)(nil),          // 59: silo.v1.GetSettingsRequest
+	(*PutSettingsRequest)(nil),          // 60: silo.v1.PutSettingsRequest
+	(*AuditRow)(nil),                    // 61: silo.v1.AuditRow
+	(*ListAuditRequest)(nil),            // 62: silo.v1.ListAuditRequest
+	(*ListAuditResponse)(nil),           // 63: silo.v1.ListAuditResponse
+	(*HeaderKey)(nil),                   // 64: silo.v1.HeaderKey
+	(*EnvKey)(nil),                      // 65: silo.v1.EnvKey
+	(*EnvInput)(nil),                    // 66: silo.v1.EnvInput
+	(*Connector)(nil),                   // 67: silo.v1.Connector
+	(*ListConnectorsRequest)(nil),       // 68: silo.v1.ListConnectorsRequest
+	(*ListConnectorsResponse)(nil),      // 69: silo.v1.ListConnectorsResponse
+	(*HeaderInput)(nil),                 // 70: silo.v1.HeaderInput
+	(*CreateConnectorRequest)(nil),      // 71: silo.v1.CreateConnectorRequest
+	(*UpdateConnectorRequest)(nil),      // 72: silo.v1.UpdateConnectorRequest
+	(*DeleteConnectorRequest)(nil),      // 73: silo.v1.DeleteConnectorRequest
+	(*DeleteConnectorResponse)(nil),     // 74: silo.v1.DeleteConnectorResponse
+	(*BotConnector)(nil),                // 75: silo.v1.BotConnector
+	(*ListBotConnectorsRequest)(nil),    // 76: silo.v1.ListBotConnectorsRequest
+	(*ListBotConnectorsResponse)(nil),   // 77: silo.v1.ListBotConnectorsResponse
+	(*AttachConnectorRequest)(nil),      // 78: silo.v1.AttachConnectorRequest
+	(*CreateBotConnectorRequest)(nil),   // 79: silo.v1.CreateBotConnectorRequest
+	(*DetachConnectorRequest)(nil),      // 80: silo.v1.DetachConnectorRequest
+	(*DetachConnectorResponse)(nil),     // 81: silo.v1.DetachConnectorResponse
+	(*RefreshBotConnectorRequest)(nil),  // 82: silo.v1.RefreshBotConnectorRequest
+	(*StartConnectorAuthRequest)(nil),   // 83: silo.v1.StartConnectorAuthRequest
+	(*StartConnectorAuthResponse)(nil),  // 84: silo.v1.StartConnectorAuthResponse
+	(*SeedConnectorsRequest)(nil),       // 85: silo.v1.SeedConnectorsRequest
+	(*SeedConnectorsResponse)(nil),      // 86: silo.v1.SeedConnectorsResponse
+	(*SeedSkillsRequest)(nil),           // 87: silo.v1.SeedSkillsRequest
+	(*SeedSkillsResponse)(nil),          // 88: silo.v1.SeedSkillsResponse
+	(*Skill)(nil),                       // 89: silo.v1.Skill
+	(*ListSkillsRequest)(nil),           // 90: silo.v1.ListSkillsRequest
+	(*ListSkillsResponse)(nil),          // 91: silo.v1.ListSkillsResponse
+	(*InstallSkillRequest)(nil),         // 92: silo.v1.InstallSkillRequest
+	(*InstallSkillResponse)(nil),        // 93: silo.v1.InstallSkillResponse
+	(*DeleteSkillRequest)(nil),          // 94: silo.v1.DeleteSkillRequest
+	(*DeleteSkillResponse)(nil),         // 95: silo.v1.DeleteSkillResponse
+	(*BotSkill)(nil),                    // 96: silo.v1.BotSkill
+	(*ListBotSkillsRequest)(nil),        // 97: silo.v1.ListBotSkillsRequest
+	(*ListBotSkillsResponse)(nil),       // 98: silo.v1.ListBotSkillsResponse
+	(*SetBotSkillRequest)(nil),          // 99: silo.v1.SetBotSkillRequest
+	(*ListSkillFilesRequest)(nil),       // 100: silo.v1.ListSkillFilesRequest
+	(*ReadSkillFileRequest)(nil),        // 101: silo.v1.ReadSkillFileRequest
+	(*SaveSkillRequest)(nil),            // 102: silo.v1.SaveSkillRequest
+	(*SaveSkillResponse)(nil),           // 103: silo.v1.SaveSkillResponse
+	(*ChannelFieldOption)(nil),          // 104: silo.v1.ChannelFieldOption
+	(*ChannelField)(nil),                // 105: silo.v1.ChannelField
+	(*ChannelAdapterAction)(nil),        // 106: silo.v1.ChannelAdapterAction
+	(*ChannelAdapter)(nil),              // 107: silo.v1.ChannelAdapter
+	(*ChannelState)(nil),                // 108: silo.v1.ChannelState
+	(*Channel)(nil),                     // 109: silo.v1.Channel
+	(*ListChannelAdaptersRequest)(nil),  // 110: silo.v1.ListChannelAdaptersRequest
+	(*ListChannelAdaptersResponse)(nil), // 111: silo.v1.ListChannelAdaptersResponse
+	(*ListBotChannelsRequest)(nil),      // 112: silo.v1.ListBotChannelsRequest
+	(*ListBotChannelsResponse)(nil),     // 113: silo.v1.ListBotChannelsResponse
+	(*CreateChannelRequest)(nil),        // 114: silo.v1.CreateChannelRequest
+	(*UpdateChannelRequest)(nil),        // 115: silo.v1.UpdateChannelRequest
+	(*DeleteChannelRequest)(nil),        // 116: silo.v1.DeleteChannelRequest
+	(*DeleteChannelResponse)(nil),       // 117: silo.v1.DeleteChannelResponse
+	(*ChannelActionRequest)(nil),        // 118: silo.v1.ChannelActionRequest
+	(*ChannelActionResponse)(nil),       // 119: silo.v1.ChannelActionResponse
+	nil,                                 // 120: silo.v1.PutSettingsRequest.FieldsEntry
+	nil,                                 // 121: silo.v1.ChannelState.ValuesEntry
+	nil,                                 // 122: silo.v1.Channel.ConfigEntry
+	nil,                                 // 123: silo.v1.CreateChannelRequest.ConfigEntry
+	nil,                                 // 124: silo.v1.CreateChannelRequest.SecretsEntry
+	nil,                                 // 125: silo.v1.UpdateChannelRequest.ConfigEntry
+	nil,                                 // 126: silo.v1.UpdateChannelRequest.SecretsEntry
+	nil,                                 // 127: silo.v1.ChannelActionRequest.PayloadEntry
 }
 var file_silo_v1_ui_proto_depIdxs = []int32{
 	7,   // 0: silo.v1.SignInResponse.user:type_name -> silo.v1.User
@@ -6861,7 +8161,7 @@ var file_silo_v1_ui_proto_depIdxs = []int32{
 	55,  // 14: silo.v1.Settings.fields:type_name -> silo.v1.ConfigField
 	57,  // 15: silo.v1.Settings.search_engines:type_name -> silo.v1.SearchEngine
 	58,  // 16: silo.v1.SearchEngine.fields:type_name -> silo.v1.SearchEngineField
-	104, // 17: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
+	120, // 17: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
 	61,  // 18: silo.v1.ListAuditResponse.rows:type_name -> silo.v1.AuditRow
 	64,  // 19: silo.v1.Connector.header_keys:type_name -> silo.v1.HeaderKey
 	65,  // 20: silo.v1.Connector.env_keys:type_name -> silo.v1.EnvKey
@@ -6876,119 +8176,146 @@ var file_silo_v1_ui_proto_depIdxs = []int32{
 	66,  // 29: silo.v1.CreateBotConnectorRequest.env:type_name -> silo.v1.EnvInput
 	89,  // 30: silo.v1.ListSkillsResponse.skills:type_name -> silo.v1.Skill
 	96,  // 31: silo.v1.ListBotSkillsResponse.skills:type_name -> silo.v1.BotSkill
-	1,   // 32: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
-	3,   // 33: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
-	5,   // 34: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
-	9,   // 35: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
-	11,  // 36: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
-	12,  // 37: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
-	13,  // 38: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
-	13,  // 39: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
-	13,  // 40: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
-	13,  // 41: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
-	13,  // 42: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
-	13,  // 43: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
-	17,  // 44: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
-	19,  // 45: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
-	20,  // 46: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
-	21,  // 47: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
-	24,  // 48: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
-	26,  // 49: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
-	28,  // 50: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
-	31,  // 51: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
-	33,  // 52: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
-	34,  // 53: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
-	38,  // 54: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
-	40,  // 55: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
-	43,  // 56: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
-	45,  // 57: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
-	47,  // 58: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
-	49,  // 59: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
-	51,  // 60: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
-	52,  // 61: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
-	53,  // 62: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
-	59,  // 63: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
-	60,  // 64: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
-	62,  // 65: silo.v1.UI.ListAudit:input_type -> silo.v1.ListAuditRequest
-	68,  // 66: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
-	71,  // 67: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
-	72,  // 68: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
-	73,  // 69: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
-	76,  // 70: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
-	78,  // 71: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
-	79,  // 72: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
-	80,  // 73: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
-	82,  // 74: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
-	83,  // 75: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
-	85,  // 76: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
-	87,  // 77: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
-	90,  // 78: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
-	92,  // 79: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
-	94,  // 80: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
-	97,  // 81: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
-	99,  // 82: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
-	100, // 83: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
-	101, // 84: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
-	102, // 85: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
-	2,   // 86: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
-	4,   // 87: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
-	6,   // 88: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
-	10,  // 89: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
-	8,   // 90: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
-	8,   // 91: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
-	8,   // 92: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
-	14,  // 93: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
-	8,   // 94: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
-	8,   // 95: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
-	8,   // 96: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
-	15,  // 97: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
-	18,  // 98: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
-	16,  // 99: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
-	16,  // 100: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
-	22,  // 101: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
-	25,  // 102: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
-	27,  // 103: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
-	29,  // 104: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
-	32,  // 105: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
-	30,  // 106: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
-	35,  // 107: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
-	39,  // 108: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
-	37,  // 109: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
-	44,  // 110: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
-	41,  // 111: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
-	48,  // 112: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
-	50,  // 113: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
-	54,  // 114: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
-	54,  // 115: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
-	54,  // 116: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
-	56,  // 117: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
-	56,  // 118: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
-	63,  // 119: silo.v1.UI.ListAudit:output_type -> silo.v1.ListAuditResponse
-	69,  // 120: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
-	67,  // 121: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
-	67,  // 122: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
-	74,  // 123: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
-	77,  // 124: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
-	75,  // 125: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
-	75,  // 126: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
-	81,  // 127: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
-	75,  // 128: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
-	84,  // 129: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
-	86,  // 130: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
-	88,  // 131: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
-	91,  // 132: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
-	93,  // 133: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
-	95,  // 134: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
-	98,  // 135: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
-	96,  // 136: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
-	48,  // 137: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
-	50,  // 138: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
-	103, // 139: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
-	86,  // [86:140] is the sub-list for method output_type
-	32,  // [32:86] is the sub-list for method input_type
-	32,  // [32:32] is the sub-list for extension type_name
-	32,  // [32:32] is the sub-list for extension extendee
-	0,   // [0:32] is the sub-list for field type_name
+	104, // 32: silo.v1.ChannelField.options:type_name -> silo.v1.ChannelFieldOption
+	105, // 33: silo.v1.ChannelAdapter.fields:type_name -> silo.v1.ChannelField
+	106, // 34: silo.v1.ChannelAdapter.actions:type_name -> silo.v1.ChannelAdapterAction
+	104, // 35: silo.v1.ChannelState.options:type_name -> silo.v1.ChannelFieldOption
+	121, // 36: silo.v1.ChannelState.values:type_name -> silo.v1.ChannelState.ValuesEntry
+	122, // 37: silo.v1.Channel.config:type_name -> silo.v1.Channel.ConfigEntry
+	108, // 38: silo.v1.Channel.state:type_name -> silo.v1.ChannelState
+	107, // 39: silo.v1.ListChannelAdaptersResponse.adapters:type_name -> silo.v1.ChannelAdapter
+	109, // 40: silo.v1.ListBotChannelsResponse.channels:type_name -> silo.v1.Channel
+	123, // 41: silo.v1.CreateChannelRequest.config:type_name -> silo.v1.CreateChannelRequest.ConfigEntry
+	124, // 42: silo.v1.CreateChannelRequest.secrets:type_name -> silo.v1.CreateChannelRequest.SecretsEntry
+	125, // 43: silo.v1.UpdateChannelRequest.config:type_name -> silo.v1.UpdateChannelRequest.ConfigEntry
+	126, // 44: silo.v1.UpdateChannelRequest.secrets:type_name -> silo.v1.UpdateChannelRequest.SecretsEntry
+	127, // 45: silo.v1.ChannelActionRequest.payload:type_name -> silo.v1.ChannelActionRequest.PayloadEntry
+	108, // 46: silo.v1.ChannelActionResponse.state:type_name -> silo.v1.ChannelState
+	1,   // 47: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
+	3,   // 48: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
+	5,   // 49: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
+	9,   // 50: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
+	11,  // 51: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
+	12,  // 52: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
+	13,  // 53: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
+	13,  // 54: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
+	13,  // 55: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
+	13,  // 56: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
+	13,  // 57: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
+	13,  // 58: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
+	17,  // 59: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
+	19,  // 60: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
+	20,  // 61: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
+	21,  // 62: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
+	24,  // 63: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
+	26,  // 64: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
+	28,  // 65: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
+	31,  // 66: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
+	33,  // 67: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
+	34,  // 68: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
+	38,  // 69: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
+	40,  // 70: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
+	43,  // 71: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
+	45,  // 72: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
+	47,  // 73: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
+	49,  // 74: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
+	51,  // 75: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
+	52,  // 76: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
+	53,  // 77: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
+	59,  // 78: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
+	60,  // 79: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
+	62,  // 80: silo.v1.UI.ListAudit:input_type -> silo.v1.ListAuditRequest
+	68,  // 81: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
+	71,  // 82: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
+	72,  // 83: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
+	73,  // 84: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
+	76,  // 85: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
+	78,  // 86: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
+	79,  // 87: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
+	80,  // 88: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
+	82,  // 89: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
+	83,  // 90: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
+	85,  // 91: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
+	87,  // 92: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
+	90,  // 93: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
+	92,  // 94: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
+	94,  // 95: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
+	97,  // 96: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
+	99,  // 97: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
+	100, // 98: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
+	101, // 99: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
+	102, // 100: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
+	110, // 101: silo.v1.UI.ListChannelAdapters:input_type -> silo.v1.ListChannelAdaptersRequest
+	112, // 102: silo.v1.UI.ListBotChannels:input_type -> silo.v1.ListBotChannelsRequest
+	114, // 103: silo.v1.UI.CreateChannel:input_type -> silo.v1.CreateChannelRequest
+	115, // 104: silo.v1.UI.UpdateChannel:input_type -> silo.v1.UpdateChannelRequest
+	116, // 105: silo.v1.UI.DeleteChannel:input_type -> silo.v1.DeleteChannelRequest
+	118, // 106: silo.v1.UI.ChannelAction:input_type -> silo.v1.ChannelActionRequest
+	2,   // 107: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
+	4,   // 108: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
+	6,   // 109: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
+	10,  // 110: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
+	8,   // 111: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
+	8,   // 112: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
+	8,   // 113: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
+	14,  // 114: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
+	8,   // 115: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
+	8,   // 116: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
+	8,   // 117: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
+	15,  // 118: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
+	18,  // 119: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
+	16,  // 120: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
+	16,  // 121: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
+	22,  // 122: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
+	25,  // 123: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
+	27,  // 124: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
+	29,  // 125: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
+	32,  // 126: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
+	30,  // 127: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
+	35,  // 128: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
+	39,  // 129: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
+	37,  // 130: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
+	44,  // 131: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
+	41,  // 132: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
+	48,  // 133: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
+	50,  // 134: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
+	54,  // 135: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
+	54,  // 136: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
+	54,  // 137: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
+	56,  // 138: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
+	56,  // 139: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
+	63,  // 140: silo.v1.UI.ListAudit:output_type -> silo.v1.ListAuditResponse
+	69,  // 141: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
+	67,  // 142: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
+	67,  // 143: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
+	74,  // 144: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
+	77,  // 145: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
+	75,  // 146: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
+	75,  // 147: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
+	81,  // 148: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
+	75,  // 149: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
+	84,  // 150: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
+	86,  // 151: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
+	88,  // 152: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
+	91,  // 153: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
+	93,  // 154: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
+	95,  // 155: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
+	98,  // 156: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
+	96,  // 157: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
+	48,  // 158: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
+	50,  // 159: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
+	103, // 160: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
+	111, // 161: silo.v1.UI.ListChannelAdapters:output_type -> silo.v1.ListChannelAdaptersResponse
+	113, // 162: silo.v1.UI.ListBotChannels:output_type -> silo.v1.ListBotChannelsResponse
+	109, // 163: silo.v1.UI.CreateChannel:output_type -> silo.v1.Channel
+	109, // 164: silo.v1.UI.UpdateChannel:output_type -> silo.v1.Channel
+	117, // 165: silo.v1.UI.DeleteChannel:output_type -> silo.v1.DeleteChannelResponse
+	119, // 166: silo.v1.UI.ChannelAction:output_type -> silo.v1.ChannelActionResponse
+	107, // [107:167] is the sub-list for method output_type
+	47,  // [47:107] is the sub-list for method input_type
+	47,  // [47:47] is the sub-list for extension type_name
+	47,  // [47:47] is the sub-list for extension extendee
+	0,   // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_ui_proto_init() }
@@ -7002,7 +8329,7 @@ func file_silo_v1_ui_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_ui_proto_rawDesc), len(file_silo_v1_ui_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   104,
+			NumMessages:   127,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

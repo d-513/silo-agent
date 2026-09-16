@@ -38,7 +38,7 @@ func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, erro
 
 func (a *App) backfillChats(botID string) *db.Chat {
 	var chats []db.Chat
-	a.DB.Where("bot_id = ?", botID).Order("updated_at desc").Find(&chats)
+	a.DB.Where("bot_id = ? AND (channel_id = '' OR channel_id IS NULL)", botID).Order("updated_at desc").Find(&chats)
 	if len(chats) == 0 {
 		c := db.Chat{ID: ids.New(), BotID: botID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 		a.DB.Create(&c)
@@ -53,9 +53,15 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
-	a.backfillChats(req.Msg.GetBotId())
+	q := a.DB.Where("bot_id = ?", req.Msg.GetBotId())
+	if req.Msg.GetChannelId() == "" {
+		a.backfillChats(req.Msg.GetBotId())
+		q = q.Where("channel_id = '' OR channel_id IS NULL")
+	} else {
+		q = q.Where("channel_id = ?", req.Msg.GetChannelId())
+	}
 	var rows []db.Chat
-	a.DB.Where("bot_id = ?", req.Msg.GetBotId()).Order("updated_at desc").Find(&rows)
+	q.Order("updated_at desc").Find(&rows)
 	out := &v1.ListChatsResponse{}
 	for i := range rows {
 		out.Chats = append(out.Chats, protoChat(&rows[i]))

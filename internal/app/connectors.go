@@ -589,6 +589,41 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		out = a.Mask(bot.ID).Apply(out)
 		a.emitCallDone(bot.ID, runID, tool, capCall(out))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
+	case security.Channels:
+		if action != "send" {
+			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		args := map[string]any{}
+		_ = json.Unmarshal([]byte(argsJSON), &args)
+		name, _ := args["channel"].(string)
+		title := "Send to channel"
+		if strings.TrimSpace(name) != "" {
+			title = "Send to " + name
+		}
+		tool := security.Key(slug, action)
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
+		out, err := a.channelSendTool(ctx, bot.ID, runID, args)
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, out)
+		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
+	case security.Chats:
+		if action != "read" {
+			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		args := map[string]any{}
+		_ = json.Unmarshal([]byte(argsJSON), &args)
+		tool := security.Key(slug, action)
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", "Read chats", tool)
+		out, err := a.chatsReadTool(ctx, bot.ID, runID, args)
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
 	case security.Artifact:
 		if action != "emit" {
 			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
@@ -631,6 +666,15 @@ func capCall(s string) string {
 		return truncateUTF8(s, 2000) + "\n…truncated"
 	}
 	return s
+}
+
+// jsonResult wraps a plain string as a JSON object for the Python bus.
+func jsonResult(s string) string {
+	b, err := json.Marshal(map[string]string{"result": s})
+	if err != nil {
+		return `{"result":""}`
+	}
+	return string(b)
 }
 
 func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {

@@ -260,6 +260,10 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
 	a.reconcileStdio()
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})
+	for _, ch := range a.allChannels(b.ID) {
+		c := ch
+		a.deleteChannel(&c)
+	}
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.DB.Delete(b)
 	if dir := a.cfg().DataDir; dir != "" {
@@ -289,17 +293,11 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		}
 		ch = owned
 	}
-	run := db.Run{ID: ids.New(), BotID: b.ID, ChatID: ch.ID, Status: "running", CreatedAt: time.Now()}
-	a.DB.Create(&run)
-	b.LastTask = text
-	b.Status = "working"
-	a.DB.Save(b)
-	if !a.Hub.Connected(b.ID) {
-		cp := *b
-		a.ensureRunningBg(&cp)
+	runID, err := a.startOrInject(b.ID, ch.ID, text, atts, nil)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-	go a.runLoop(b.ID, ch.ID, run.ID, text, atts)
-	return connect.NewResponse(&v1.SendResponse{RunId: run.ID, ChatId: ch.ID}), nil
+	return connect.NewResponse(&v1.SendResponse{RunId: runID, ChatId: ch.ID}), nil
 }
 
 const maxAttachments = 20

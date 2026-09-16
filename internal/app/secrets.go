@@ -19,7 +19,7 @@ func (a *App) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecre
 		return nil, err
 	}
 	var secs []db.Secret
-	a.DB.Where("bot_id = ?", req.Msg.GetBotId()).Find(&secs)
+	a.DB.Where("bot_id = ? AND name NOT LIKE ?", req.Msg.GetBotId(), "channel.%").Find(&secs)
 	out := &v1.ListSecretsResponse{}
 	for _, s := range secs {
 		m := &v1.SecretMeta{Id: s.ID, Name: s.Name, CreatedAt: s.CreatedAt.Format(time.RFC3339)}

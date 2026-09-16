@@ -141,6 +141,18 @@ const (
 	UIReadSkillFileProcedure = "/silo.v1.UI/ReadSkillFile"
 	// UISaveSkillProcedure is the fully-qualified name of the UI's SaveSkill RPC.
 	UISaveSkillProcedure = "/silo.v1.UI/SaveSkill"
+	// UIListChannelAdaptersProcedure is the fully-qualified name of the UI's ListChannelAdapters RPC.
+	UIListChannelAdaptersProcedure = "/silo.v1.UI/ListChannelAdapters"
+	// UIListBotChannelsProcedure is the fully-qualified name of the UI's ListBotChannels RPC.
+	UIListBotChannelsProcedure = "/silo.v1.UI/ListBotChannels"
+	// UICreateChannelProcedure is the fully-qualified name of the UI's CreateChannel RPC.
+	UICreateChannelProcedure = "/silo.v1.UI/CreateChannel"
+	// UIUpdateChannelProcedure is the fully-qualified name of the UI's UpdateChannel RPC.
+	UIUpdateChannelProcedure = "/silo.v1.UI/UpdateChannel"
+	// UIDeleteChannelProcedure is the fully-qualified name of the UI's DeleteChannel RPC.
+	UIDeleteChannelProcedure = "/silo.v1.UI/DeleteChannel"
+	// UIChannelActionProcedure is the fully-qualified name of the UI's ChannelAction RPC.
+	UIChannelActionProcedure = "/silo.v1.UI/ChannelAction"
 )
 
 // UIClient is a client for the silo.v1.UI service.
@@ -199,6 +211,12 @@ type UIClient interface {
 	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
+	ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error)
+	ListBotChannels(context.Context, *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error)
+	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error)
+	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error)
+	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
+	ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error)
 }
 
 // NewUIClient constructs a client for the silo.v1.UI service. By default, it uses the Connect
@@ -536,6 +554,42 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SaveSkill")),
 			connect.WithClientOptions(opts...),
 		),
+		listChannelAdapters: connect.NewClient[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse](
+			httpClient,
+			baseURL+UIListChannelAdaptersProcedure,
+			connect.WithSchema(uIMethods.ByName("ListChannelAdapters")),
+			connect.WithClientOptions(opts...),
+		),
+		listBotChannels: connect.NewClient[v1.ListBotChannelsRequest, v1.ListBotChannelsResponse](
+			httpClient,
+			baseURL+UIListBotChannelsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBotChannels")),
+			connect.WithClientOptions(opts...),
+		),
+		createChannel: connect.NewClient[v1.CreateChannelRequest, v1.Channel](
+			httpClient,
+			baseURL+UICreateChannelProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		updateChannel: connect.NewClient[v1.UpdateChannelRequest, v1.Channel](
+			httpClient,
+			baseURL+UIUpdateChannelProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteChannel: connect.NewClient[v1.DeleteChannelRequest, v1.DeleteChannelResponse](
+			httpClient,
+			baseURL+UIDeleteChannelProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		channelAction: connect.NewClient[v1.ChannelActionRequest, v1.ChannelActionResponse](
+			httpClient,
+			baseURL+UIChannelActionProcedure,
+			connect.WithSchema(uIMethods.ByName("ChannelAction")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -595,6 +649,12 @@ type uIClient struct {
 	listSkillFiles      *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
 	readSkillFile       *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
 	saveSkill           *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
+	listChannelAdapters *connect.Client[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse]
+	listBotChannels     *connect.Client[v1.ListBotChannelsRequest, v1.ListBotChannelsResponse]
+	createChannel       *connect.Client[v1.CreateChannelRequest, v1.Channel]
+	updateChannel       *connect.Client[v1.UpdateChannelRequest, v1.Channel]
+	deleteChannel       *connect.Client[v1.DeleteChannelRequest, v1.DeleteChannelResponse]
+	channelAction       *connect.Client[v1.ChannelActionRequest, v1.ChannelActionResponse]
 }
 
 // SignIn calls silo.v1.UI.SignIn.
@@ -867,6 +927,36 @@ func (c *uIClient) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSk
 	return c.saveSkill.CallUnary(ctx, req)
 }
 
+// ListChannelAdapters calls silo.v1.UI.ListChannelAdapters.
+func (c *uIClient) ListChannelAdapters(ctx context.Context, req *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {
+	return c.listChannelAdapters.CallUnary(ctx, req)
+}
+
+// ListBotChannels calls silo.v1.UI.ListBotChannels.
+func (c *uIClient) ListBotChannels(ctx context.Context, req *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error) {
+	return c.listBotChannels.CallUnary(ctx, req)
+}
+
+// CreateChannel calls silo.v1.UI.CreateChannel.
+func (c *uIClient) CreateChannel(ctx context.Context, req *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error) {
+	return c.createChannel.CallUnary(ctx, req)
+}
+
+// UpdateChannel calls silo.v1.UI.UpdateChannel.
+func (c *uIClient) UpdateChannel(ctx context.Context, req *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error) {
+	return c.updateChannel.CallUnary(ctx, req)
+}
+
+// DeleteChannel calls silo.v1.UI.DeleteChannel.
+func (c *uIClient) DeleteChannel(ctx context.Context, req *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error) {
+	return c.deleteChannel.CallUnary(ctx, req)
+}
+
+// ChannelAction calls silo.v1.UI.ChannelAction.
+func (c *uIClient) ChannelAction(ctx context.Context, req *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error) {
+	return c.channelAction.CallUnary(ctx, req)
+}
+
 // UIHandler is an implementation of the silo.v1.UI service.
 type UIHandler interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
@@ -923,6 +1013,12 @@ type UIHandler interface {
 	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
+	ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error)
+	ListBotChannels(context.Context, *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error)
+	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error)
+	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error)
+	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
+	ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error)
 }
 
 // NewUIHandler builds an HTTP handler from the service implementation. It returns the path on which
@@ -1256,6 +1352,42 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SaveSkill")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListChannelAdaptersHandler := connect.NewUnaryHandler(
+		UIListChannelAdaptersProcedure,
+		svc.ListChannelAdapters,
+		connect.WithSchema(uIMethods.ByName("ListChannelAdapters")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBotChannelsHandler := connect.NewUnaryHandler(
+		UIListBotChannelsProcedure,
+		svc.ListBotChannels,
+		connect.WithSchema(uIMethods.ByName("ListBotChannels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateChannelHandler := connect.NewUnaryHandler(
+		UICreateChannelProcedure,
+		svc.CreateChannel,
+		connect.WithSchema(uIMethods.ByName("CreateChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateChannelHandler := connect.NewUnaryHandler(
+		UIUpdateChannelProcedure,
+		svc.UpdateChannel,
+		connect.WithSchema(uIMethods.ByName("UpdateChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteChannelHandler := connect.NewUnaryHandler(
+		UIDeleteChannelProcedure,
+		svc.DeleteChannel,
+		connect.WithSchema(uIMethods.ByName("DeleteChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIChannelActionHandler := connect.NewUnaryHandler(
+		UIChannelActionProcedure,
+		svc.ChannelAction,
+		connect.WithSchema(uIMethods.ByName("ChannelAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.UI/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UISignInProcedure:
@@ -1366,6 +1498,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIReadSkillFileHandler.ServeHTTP(w, r)
 		case UISaveSkillProcedure:
 			uISaveSkillHandler.ServeHTTP(w, r)
+		case UIListChannelAdaptersProcedure:
+			uIListChannelAdaptersHandler.ServeHTTP(w, r)
+		case UIListBotChannelsProcedure:
+			uIListBotChannelsHandler.ServeHTTP(w, r)
+		case UICreateChannelProcedure:
+			uICreateChannelHandler.ServeHTTP(w, r)
+		case UIUpdateChannelProcedure:
+			uIUpdateChannelHandler.ServeHTTP(w, r)
+		case UIDeleteChannelProcedure:
+			uIDeleteChannelHandler.ServeHTTP(w, r)
+		case UIChannelActionProcedure:
+			uIChannelActionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1589,4 +1733,28 @@ func (UnimplementedUIHandler) ReadSkillFile(context.Context, *connect.Request[v1
 
 func (UnimplementedUIHandler) SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SaveSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListChannelAdapters is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBotChannels(context.Context, *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBotChannels is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateChannel is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateChannel is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteChannel is not implemented"))
+}
+
+func (UnimplementedUIHandler) ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ChannelAction is not implemented"))
 }

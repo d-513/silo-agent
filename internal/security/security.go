@@ -29,6 +29,8 @@ const (
 	Skills   = "skills"
 	Web      = "web"
 	Artifact = "artifact"
+	Channels = "channels"
+	Chats    = "chats"
 )
 
 type Field struct {
@@ -58,6 +60,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
+	Channels: true, Chats: true,
 }
 
 var catalog = map[string]spec{
@@ -70,6 +73,31 @@ var catalog = map[string]spec{
 	"skills.load":   {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit": {title: "Artifact", mode: Allow, summary: want("show an artifact")},
 	"web.search":    {title: "Web search", mode: Allow, summary: want("search the web")},
+	"chats.read":    {title: "Read chats", mode: Allow, summary: want("read chat messages")},
+	// One rule per channel: the action is the channel ID, so channels.* is the
+	// mode for every channel until an individual rule overrides it.
+	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
+}
+
+func channelSummary(args map[string]string) string {
+	if name := strings.TrimSpace(args["channel"]); name != "" {
+		return "This Bot wants to send a message to the “" + name + "” channel."
+	}
+	return "This Bot wants to send a message to a channel."
+}
+
+func channelFields(args map[string]string) []Field {
+	var out []Field
+	if name := strings.TrimSpace(args["channel"]); name != "" {
+		out = append(out, Field{Label: "Channel", Value: name})
+	}
+	if to := strings.TrimSpace(args["to"]); to != "" {
+		out = append(out, Field{Label: "To", Value: to})
+	}
+	if text := args["text"]; text != "" {
+		out = append(out, Field{Label: "Message", Value: text})
+	}
+	return out
 }
 
 func want(s string) func(map[string]string) string {
@@ -91,6 +119,7 @@ func BuiltinRows() []Row {
 		{Skills, "load", "Load skill"},
 		{Artifact, "emit", "Artifact"},
 		{Web, "search", "Web search"},
+		{Chats, "read", "Read chats"},
 	}
 }
 

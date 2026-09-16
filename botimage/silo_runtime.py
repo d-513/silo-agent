@@ -113,6 +113,33 @@ def web_search(query: str, max_results: int | None = None) -> dict:
     return call("web", "search", args)
 
 
+def send_channel(channel: str, text: str, to: str | None = None) -> dict:
+    """Send a message to one of this Bot's channels.
+
+    channel is the channel name or id. Omit `to` to send to the current
+    conversation (or the channel's configured target). Defaults to the channel
+    the current run came from only if you pass its name.
+    """
+    args: dict = {"channel": channel, "text": text}
+    if to is not None:
+        args["to"] = to
+    return call("channels", "send", args)
+
+
+def read_chats(chat: str | None = None, limit: int | None = None) -> dict:
+    """Read this Bot's chats and channel conversations.
+
+    Without `chat` it lists them; with a chat id or title it returns the most
+    recent messages. Stays inside this Bot.
+    """
+    args: dict = {}
+    if chat is not None:
+        args["chat"] = chat
+    if limit is not None:
+        args["limit"] = limit
+    return call("chats", "read", args)
+
+
 def call(connector: str, action: str, args: dict | None = None) -> dict:
     clean = {k: v for k, v in (args or {}).items() if v is not None}
     body = {"connector": connector, "action": action, "args": clean}

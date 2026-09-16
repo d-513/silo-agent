@@ -33,7 +33,7 @@ func TestSkillBlurbAndLoad(t *testing.T) {
 	a.DB.Create(&db.User{ID: "u"})
 	a.DB.Create(&db.Bot{ID: "b1", UserID: "u"})
 	a.ensureDefaultSkills("b1")
-	blurb := a.skillSections(a.promptContext("b1", &db.Bot{ID: "b1"}))[0].body
+	blurb := a.skillSections(a.promptContext("b1", &db.Bot{ID: "b1"}, nil))[0].body
 	if !strings.Contains(blurb, "`product-self-knowledge`") || strings.Contains(blurb, "## Silo product") {
 		t.Fatal(blurb)
 	}

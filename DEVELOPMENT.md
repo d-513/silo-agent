@@ -113,7 +113,9 @@ For cross-process debugging, keep the control-plane terminal visible and inspect
 | `botimage/*`                 | rebuild the image, recreate the Bot container                                         |
 | Go (stdio bridge)            | rebuild `bin/silo-mcp-bridge`, rebuild `localhost/silo-mcp-stdio:v1`, Refresh the connector |
 | `mcpimage/*`                 | same                                                                                  |
-| `proto/**`                   | `buf generate`, then rebuild CP and worker (and the image if the worker stub changed) |
+| `proto/**`                   | `buf generate` (Go + TS), then rebuild CP and worker (and the image if the worker stub changed) |
+| `internal/channels/**`       | `go build ./cmd/silo` and restart the CP; sessions live under `data/channels/<id>/` |
+| `botimage/silo_runtime.py`   | rebuild the Bot image, recreate the Bot container |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 
 A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, `podman rm -f silo-<botId>`, then Start (or delete and create the Bot). After a host reboot or a manual `podman rm`, the ID in SQLite is stale; `GetBot` / `StartBot` recover by name (`silo-<id>`).
@@ -134,6 +136,7 @@ cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
 cmd/silo-mcp-bridge reverse tunnel from a STDIO sidecar to the CP (raw JSON-RPC)
 internal/app        UI + worker RPCs, agent loop
+internal/channels   channel adapter engine (built-in; telegram/ is gotd MTProto; each adapter's GUIDE.md is go:embed'd like SYSTEM.md)
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)
 botimage/           Containerfile, start.sh, Thunar, wallpaper, dock
