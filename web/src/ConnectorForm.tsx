@@ -116,21 +116,21 @@ export function ConnectorMark({
   size?: number;
 }) {
   if (previewUrl) {
-    return <img src={previewUrl} alt="" className="shrink-0 rounded object-cover" style={{ width: size, height: size }} />;
+    return <img src={previewUrl} alt="" className="shrink-0 rounded-[6px] object-cover" style={{ width: size, height: size }} />;
   }
   if (hasImage && id) {
     return (
       <img
         src={`/connectors/${id}/image`}
         alt=""
-        className="shrink-0 rounded object-cover"
+        className="shrink-0 rounded-[6px] object-cover"
         style={{ width: size, height: size }}
       />
     );
   }
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded bg-cloth text-stone"
+      className="flex shrink-0 items-center justify-center rounded-[6px] bg-cloth text-stone"
       style={{ width: size, height: size }}
     >
       <Plugs size={Math.round(size * 0.45)} />
@@ -139,11 +139,11 @@ export function ConnectorMark({
 }
 
 export function McpChip() {
-  return <span className="rounded bg-slate px-1.5 py-0.5 text-[11px] font-medium text-plaster">MCP</span>;
+  return <span className="rounded-[6px] bg-slate px-1.5 py-0.5 text-[11px] font-medium text-plaster">MCP</span>;
 }
 
 export function CustomChip() {
-  return <span className="rounded bg-cloth px-1.5 py-0.5 text-[11px] font-medium text-stone">Custom</span>;
+  return <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] font-medium text-stone">Custom</span>;
 }
 
 export function Segmented({
@@ -156,7 +156,7 @@ export function Segmented({
   options: { id: string; label: string; disabled?: boolean; title?: string }[];
 }) {
   return (
-    <div className="flex overflow-hidden rounded border border-thread">
+    <div className="flex overflow-hidden rounded-[6px] border border-thread">
       {options.map((o) => (
         <button
           key={o.id}
@@ -211,17 +211,17 @@ export function ConnectorFields({
   const settings = (
     <>
       <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
-      <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3" value={value.name} onChange={(e) => set("name", e.target.value)} required={!fromCatalog} />
+      <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3" value={value.name} onChange={(e) => set("name", e.target.value)} required={!fromCatalog} />
       {!fromCatalog && (
         <>
           <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
-          <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
+          <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
         </>
       )}
       <label className="mb-1 block text-[12px] font-medium text-stone">Prompt</label>
       <p className="mb-2 text-stone">Extra instructions added to the system prompt while this connector is authorized and its tools are ready.</p>
       <textarea
-        className="mb-3 min-h-24 w-full rounded border border-thread bg-folio px-3 py-2"
+        className="mb-3 min-h-24 w-full rounded-[6px] border border-thread bg-folio px-3 py-2"
         value={value.prompt}
         onChange={(e) => set("prompt", e.target.value)}
         placeholder="When to use this connector, and how."
@@ -260,7 +260,7 @@ export function ConnectorFields({
         <>
           <label className="mb-1 block text-[12px] font-medium text-stone">Command</label>
           <input
-            className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+            className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
             value={value.stdioCommand}
             onChange={(e) => set("stdioCommand", e.target.value)}
             placeholder="npx"
@@ -270,7 +270,7 @@ export function ConnectorFields({
           {value.stdioArgs.map((arg, i) => (
             <input
               key={i}
-              className="mb-2 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+              className="mb-2 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
               value={arg}
               onChange={(e) => set("stdioArgs", value.stdioArgs.map((x, j) => (j === i ? e.target.value : x)))}
               placeholder={i === 0 ? "-y" : ""}
@@ -283,7 +283,7 @@ export function ConnectorFields({
             <>
               <label className="mb-1 block text-[12px] font-medium text-stone">Image</label>
               <input
-                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
                 value={value.stdioImage}
                 onChange={(e) => set("stdioImage", e.target.value)}
                 placeholder="localhost/silo-mcp-stdio:v1"
@@ -294,7 +294,7 @@ export function ConnectorFields({
       ) : (
         <>
           <label className="mb-1 block text-[12px] font-medium text-stone">URL</label>
-          <input className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
+          <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
           <div className="mb-1 text-[12px] font-medium text-stone">Auth</div>
           <div className="mb-3">
             <Segmented
@@ -313,14 +313,14 @@ export function ConnectorFields({
               </p>
               <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client ID</label>
               <input
-                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
                 value={value.oauthClientId}
                 onChange={(e) => set("oauthClientId", e.target.value)}
                 autoComplete="off"
               />
               <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client Secret</label>
               <input
-                className="mb-3 h-9 w-full rounded border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
                 type="password"
                 value={value.oauthClientSecret}
                 onChange={(e) => set("oauthClientSecret", e.target.value)}
@@ -360,20 +360,20 @@ export function ConnectorFields({
           {value.env.map((e, i) => (
             <div key={i} className="mb-2 flex flex-wrap gap-2">
               <input
-                className="h-9 w-36 rounded border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-36 rounded-[6px] border border-thread bg-folio px-2 font-mono"
                 placeholder="NAME"
                 value={e.name}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, name: ev.target.value } : x)))}
               />
               <input
-                className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-2 font-mono"
+                className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-2 font-mono"
                 placeholder={existing ? "unchanged" : "Value"}
                 type="password"
                 value={e.value}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, value: ev.target.value } : x)))}
               />
               <input
-                className="h-9 w-36 rounded border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-36 rounded-[6px] border border-thread bg-folio px-2 font-mono"
                 placeholder="secret name"
                 value={e.secret}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, secret: ev.target.value } : x)))}
@@ -391,13 +391,13 @@ export function ConnectorFields({
           {value.headers.map((h, i) => (
             <div key={i} className="mb-2 flex gap-2">
               <input
-                className="h-9 w-40 rounded border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-40 rounded-[6px] border border-thread bg-folio px-2 font-mono"
                 placeholder="Name"
                 value={h.name}
                 onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
               />
               <input
-                className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-2 font-mono"
+                className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-2 font-mono"
                 placeholder={existing ? "unchanged" : "Value"}
                 type="password"
                 value={h.value}
@@ -433,7 +433,7 @@ export function ConnectorFields({
         </div>
       )}
       <details className="group mb-6">
-        <summary className="flex cursor-pointer items-center gap-2 rounded bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
+        <summary className="flex cursor-pointer items-center gap-2 rounded-[6px] bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
           <CaretRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
           Advanced settings
         </summary>

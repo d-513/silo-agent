@@ -246,7 +246,7 @@ export function BotConnectors({
                 {catalog.map((c) => (
                   <button
                     key={c.id}
-                    className="mb-2 flex w-full items-center gap-3 rounded border border-thread px-3 py-2 text-left hover:border-[#B9B3A6]"
+                    className="mb-2 flex w-full items-center gap-3 rounded-[6px] border border-thread px-3 py-2 text-left hover:border-hover"
                     onClick={() => chooseLibrary(c)}
                   >
                     <ConnectorMark id={c.id} hasImage={c.hasImage} size={32} />

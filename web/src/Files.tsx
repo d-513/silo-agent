@@ -101,7 +101,7 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             placeholder={draft === "dir" ? "Folder name" : "File name"}
-            className="h-9 flex-1 rounded border border-thread bg-folio px-2 outline-none focus:border-bindery"
+            className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-2 outline-none focus:border-bindery"
           />
           <Btn kind="primary" type="submit" disabled={!draftName.trim()}>
             Create

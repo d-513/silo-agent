@@ -298,7 +298,7 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
             {chats.map((c) => (
               <button
                 key={c.id}
-                className={`shrink-0 rounded px-2 py-1 text-[12px] ${
+                className={`shrink-0 rounded-[6px] px-2 py-1 text-[12px] ${
                   c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen"
                 }`}
                 onClick={() => setChatId(c.id)}
@@ -448,7 +448,7 @@ function ChannelSetup({
           </div>
         ) : null}
 
-        {state.kind === "qr" && state.qr ? <img src={state.qr} alt="QR" className="w-48 rounded border border-thread bg-folio" /> : null}
+        {state.kind === "qr" && state.qr ? <img src={state.qr} alt="QR" className="w-48 rounded-[6px] border border-thread bg-folio" /> : null}
         {state.kind === "error" ? <p className="text-carmine">{state.message}</p> : null}
         {err ? <p className="text-carmine">{err}</p> : null}
       </div>
@@ -574,7 +574,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{c.name}</span>
-                    <span className="rounded bg-cloth px-1.5 py-0.5 text-[11px] text-stone">{c.adapterName || c.adapter}</span>
+                    <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] text-stone">{c.adapterName || c.adapter}</span>
                     {!c.enabled ? <span className="text-[12px] text-stone">disabled</span> : null}
                     {!c.inbound ? <span className="text-[12px] text-stone">send-only</span> : null}
                     {a?.requiresTarget ? (
@@ -599,7 +599,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                   ) : (
                     <button
                       title="Set up"
-                      className="rounded p-2 text-stone hover:bg-linen hover:text-iron"
+                      className="rounded-[6px] p-2 text-stone hover:bg-linen hover:text-iron"
                       onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
                     >
                       <GearSix size={16} />
@@ -608,21 +608,21 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                 ) : null}
                 <button
                   title="View log"
-                  className="rounded p-2 text-stone hover:bg-linen hover:text-iron"
+                  className="rounded-[6px] p-2 text-stone hover:bg-linen hover:text-iron"
                   onClick={() => setLog(c)}
                 >
                   <ClockCounterClockwise size={16} />
                 </button>
                 <button
                   title="Configure"
-                  className="rounded p-2 text-stone hover:bg-linen hover:text-iron"
+                  className="rounded-[6px] p-2 text-stone hover:bg-linen hover:text-iron"
                   onClick={() => navigate(`/bots/${botId}/channels/${c.id}`)}
                 >
                   <PencilSimple size={16} />
                 </button>
                 <button
                   title="Delete channel"
-                  className="rounded p-2 text-stone hover:bg-linen hover:text-carmine"
+                  className="rounded-[6px] p-2 text-stone hover:bg-linen hover:text-carmine"
                   onClick={async () => {
                     await ui.deleteChannel({ botId, id: c.id });
                     void refresh();

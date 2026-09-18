@@ -47,7 +47,7 @@ const theme = EditorView.theme(
 
 export function YamlEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="overflow-hidden rounded border border-thread bg-folio">
+    <div className="overflow-hidden rounded-[6px] border border-thread bg-folio">
       <CodeMirror
         value={value}
         height="20rem"

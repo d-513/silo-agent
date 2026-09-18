@@ -161,7 +161,7 @@ export function AccountPage({ email }: { email: string }) {
       <h1 className="mb-2 text-[22px] font-medium tracking-tight">Account</h1>
       <p className="mb-6 text-stone">Your sign-in. More settings later.</p>
       <div className="mb-1 text-[12px] font-medium text-stone">Email</div>
-      <div className="rounded border border-thread bg-folio px-3 py-2">{email}</div>
+      <div className="rounded-[6px] border border-thread bg-folio px-3 py-2">{email}</div>
     </div>
   );
 }

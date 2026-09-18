@@ -12,10 +12,10 @@ export interface SelectOption {
 type Variant = "field" | "ghost";
 
 const fieldTrigger =
-  "flex h-9 w-full items-center justify-between gap-2 rounded border border-thread bg-folio px-3 text-left text-[14px] text-iron outline-none transition-colors hover:border-[#B9B3A6] focus-visible:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
+  "flex h-9 w-full items-center justify-between gap-2 rounded-[6px] border border-thread bg-folio px-3 text-left text-[14px] text-iron outline-none transition-colors hover:border-hover focus-visible:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
 
 const ghostTrigger =
-  "inline-flex max-w-full items-center gap-1.5 rounded-lg bg-transparent py-1 pl-2.5 pr-2 text-[12px] font-medium text-stone outline-none transition-colors hover:bg-cloth hover:text-iron focus-visible:bg-cloth focus-visible:text-iron disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-transparent py-1 pl-2.5 pr-2 text-[12px] font-medium text-stone outline-none transition-colors duration-150 hover:bg-cloth hover:text-iron focus-visible:bg-cloth focus-visible:text-iron disabled:cursor-not-allowed disabled:opacity-40";
 
 export function Select({
   value,
@@ -64,7 +64,7 @@ export function Select({
     const below = window.innerHeight - r.bottom;
     const above = r.top;
     const up = below < Math.min(options.length * 36 + 16, 220) && above > below;
-    const width = Math.max(r.width, variant === "field" ? r.width : 200);
+    const width = Math.max(r.width, variant === "field" ? r.width : 280);
     const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
     setBox({ top: up ? r.top - gap : r.bottom + gap, left, width, up });
   }
@@ -170,7 +170,7 @@ export function Select({
             <div
               ref={menuRef}
               role="listbox"
-              className={`fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_12px_34px_-10px_rgba(30,33,38,0.28),0_2px_6px_rgba(30,33,38,0.06)] ${menuClassName}`}
+              className={`silo-enter fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_12px_34px_-10px_rgba(30,33,38,0.28),0_2px_6px_rgba(30,33,38,0.06)] ${menuClassName}`}
               style={style}
             >
               <div className="max-h-[280px] overflow-y-auto overscroll-contain">

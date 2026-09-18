@@ -4,9 +4,9 @@ export type BtnKind = "primary" | "secondary" | "deny" | "ghost";
 
 const kindClass: Record<BtnKind, string> = {
   primary: "border border-transparent bg-bindery text-plaster hover:bg-bindery-deep",
-  secondary: "border border-thread bg-folio text-iron hover:border-[#B9B3A6] hover:bg-linen",
+  secondary: "border border-thread bg-folio text-iron hover:border-hover hover:bg-linen",
   deny: "border border-transparent bg-carmine text-plaster hover:bg-[#6E2230]",
-  ghost: "border border-transparent text-stone hover:text-iron",
+  ghost: "border border-transparent text-stone hover:bg-cloth hover:text-iron",
 };
 
 const glyphWell: Record<BtnKind, string> = {
@@ -18,9 +18,9 @@ const glyphWell: Record<BtnKind, string> = {
 
 export function btnClass(kind: BtnKind = "secondary", extra = "") {
   return [
-    "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded px-3 text-[14px] font-medium outline-none",
-    "transition-[transform,background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]",
-    "active:scale-[0.98] focus-visible:border-bindery disabled:opacity-50",
+    "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[6px] px-3 text-[14px] font-medium outline-none",
+    "transition-[transform,background-color,border-color] duration-200 ease-quiet",
+    "active:scale-[0.98] focus-visible:border-bindery disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
     kindClass[kind],
     extra,
   ].join(" ");

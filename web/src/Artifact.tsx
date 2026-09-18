@@ -91,7 +91,7 @@ export function ArtifactCard({
       {pending && onSave ? (
         <button
           type="button"
-          className="h-8 shrink-0 rounded bg-bindery px-2.5 text-[13px] font-medium text-plaster hover:bg-bindery-deep"
+          className="h-8 shrink-0 rounded-[6px] bg-bindery px-2.5 text-[13px] font-medium text-plaster hover:bg-bindery-deep"
           onClick={(e) => {
             e.stopPropagation();
             onSave();

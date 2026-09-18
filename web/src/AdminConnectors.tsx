@@ -73,7 +73,7 @@ function CatalogList() {
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-[10px] border border-thread bg-folio px-3 py-3 hover:border-[#B9B3A6]">
+            <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-[10px] border border-thread bg-folio px-3 py-3 hover:border-hover">
               <Link to={`/admin/connectors/${c.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                 <ConnectorMark id={c.id} hasImage={c.hasImage} />
                 <div className="min-w-0 flex-1">
@@ -81,7 +81,7 @@ function CatalogList() {
                     <span className="font-medium">{c.name}</span>
                     <McpChip />
                     {c.autoAttach && (
-                      <span className="rounded bg-bindery-pale px-1.5 py-0.5 text-[11px] font-medium text-bindery">Default</span>
+                      <span className="rounded-[6px] bg-bindery-pale px-1.5 py-0.5 text-[11px] font-medium text-bindery">Default</span>
                     )}
                   </div>
                   <p className="truncate text-stone">{c.description || c.httpUrl || c.stdioCommand}</p>

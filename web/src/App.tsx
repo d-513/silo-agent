@@ -9,6 +9,7 @@ import { ArtifactOverlay, type Artifact } from "./Artifact";
 import { ApprovalSlip, ConnectorAuthSlip } from "./Approval";
 import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
+import { inputClass, textareaClass } from "./Field";
 import { joinPath } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
@@ -85,12 +86,9 @@ function SiloGlyph({ className }: { className?: string }) {
 
 function SiloMark() {
   return (
-    <div className="flex shrink-0 items-center gap-2 px-3 text-iron max-wide:h-12 wide:flex-col wide:gap-1 wide:px-2 wide:pt-4">
+    <div className="flex shrink-0 items-center gap-2 px-3 text-iron max-wide:h-12 wide:flex-col wide:gap-1.5 wide:px-2 wide:pt-5">
       <SiloGlyph className="max-wide:h-5 max-wide:w-5 wide:h-7 wide:w-7" />
-      <div className="font-medium max-wide:text-[13px] wide:px-1 wide:text-center wide:text-[11px] wide:leading-tight wide:tracking-wide">
-        <span className="wide:hidden">Silo</span>
-        <span className="hidden wide:inline">Silo Agent</span>
-      </div>
+      <span className="font-medium tracking-[0.02em] max-wide:text-[13px] wide:text-[12px]">Silo</span>
     </div>
   );
 }
@@ -139,8 +137,8 @@ function BotsProvider({ children }: { children: ReactNode }) {
 }
 
 function railHit(active: boolean, extra = "") {
-  return `relative flex h-10 w-10 shrink-0 items-center justify-center rounded max-wide:mx-0 wide:mx-2 ${
-    active ? "bg-bindery-pale text-iron" : "text-stone hover:text-iron"
+  return `relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] transition-colors duration-150 ease-quiet max-wide:mx-0 wide:mx-2 ${
+    active ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen/70 hover:text-iron"
   } ${extra}`;
 }
 
@@ -241,43 +239,62 @@ function SignIn() {
   const [email, setEm] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setErr("");
+    setBusy(true);
     try {
       const r = await ui.signIn({ email, password });
       setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
       nav("/");
     } catch (ex) {
       setErr(fail(ex));
+      setBusy(false);
     }
   }
   return (
     <div className="flex min-h-dvh items-start justify-center bg-plaster px-4 pt-[18vh]">
-      <form onSubmit={onSubmit} className="w-full max-w-[400px] rounded-[10px] border border-thread bg-folio p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <SiloGlyph className="h-7 w-7 text-iron" />
-          <span className="text-[13px] font-medium">Silo Agent</span>
+      <form onSubmit={onSubmit} className="silo-enter w-full max-w-[400px] rounded-[10px] border border-thread bg-folio p-8">
+        <div className="mb-7 flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-cloth text-iron">
+            <SiloGlyph className="h-5 w-5" />
+          </span>
+          <span className="text-[14px] font-medium">Silo Agent</span>
         </div>
-        <h1 className="mb-6 text-[22px] font-medium tracking-tight">Sign in</h1>
-        <label className="mb-1 block text-[12px] font-medium text-stone">Email</label>
+        <h1 className="mb-6 text-[22px] font-medium">Sign in</h1>
+        <label htmlFor="silo-email" className="mb-1.5 block text-[12px] font-medium text-stone">
+          Email
+        </label>
         <input
-          className="mb-4 w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          id="silo-email"
+          className={`${inputClass} mb-4`}
           value={email}
           onChange={(e) => setEm(e.target.value)}
           autoComplete="username"
+          autoFocus
+          required
         />
-        <label className="mb-1 block text-[12px] font-medium text-stone">Password</label>
+        <label htmlFor="silo-pass" className="mb-1.5 block text-[12px] font-medium text-stone">
+          Password
+        </label>
         <input
+          id="silo-pass"
           type="password"
-          className="mb-6 w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          className={`${inputClass} mb-6`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
+          required
         />
-        {err && <p className="mb-3 text-carmine">{err}</p>}
-        <Btn kind="primary" className="w-full justify-center" type="submit">
-          Sign in
+        {err && (
+          <p role="alert" className="mb-3 flex items-start gap-2 text-[13px] text-carmine">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-carmine" />
+            <span>{err}</span>
+          </p>
+        )}
+        <Btn kind="primary" className="w-full justify-center" type="submit" disabled={busy}>
+          {busy ? "Signing in…" : "Sign in"}
         </Btn>
       </form>
     </div>
@@ -286,60 +303,71 @@ function SignIn() {
 
 function FolioSkeleton() {
   return (
-    <div className="flex gap-4 rounded-[10px] border border-thread bg-folio p-4">
+    <div className="relative flex gap-4 overflow-hidden rounded-[10px] border border-thread bg-folio p-4">
       <div className="h-14 w-14 shrink-0 rounded-[14px] bg-cloth" />
-      <div className="min-w-0 flex-1 py-1">
-        <div className="mb-2 h-4 w-28 rounded bg-linen" />
-        <div className="h-3.5 w-44 rounded bg-cloth" />
+      <div className="min-w-0 flex-1 py-1.5">
+        <div className="mb-2.5 h-3.5 w-28 rounded-[4px] bg-linen" />
+        <div className="h-3 w-44 rounded-[4px] bg-cloth" />
       </div>
+      <span aria-hidden className="silo-shimmer pointer-events-none absolute inset-0" />
     </div>
   );
 }
 
 function BotsPage() {
   const { bots, err } = useBots();
+  const loading = bots === null;
   return (
     <div className="p-4 wide:p-7">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <h1 className="text-[22px] font-medium tracking-tight">Bots</h1>
+        <h1 className="text-[22px] font-medium">Bots</h1>
         <Link to="/new" className={btnClass("primary")}>
-          <Plus size={16} />
+          <Plus size={16} weight="bold" />
           New Bot
         </Link>
       </div>
-      <p className="mb-6 text-stone">Machines you can open.</p>
-      {err && <p className="mb-4 text-carmine">{err}</p>}
-      {bots === null ? (
-        <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+      <p className="mb-6 text-[13px] text-stone">Machines you can open.</p>
+      {err && (
+        <p role="alert" className="mb-4 text-[13px] text-carmine">
+          {err}
+        </p>
+      )}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-5 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
           <FolioSkeleton />
           <FolioSkeleton />
           <FolioSkeleton />
         </div>
       ) : bots.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="mb-2 text-[28px] font-medium tracking-tight wide:text-[40px]">No Bots yet</p>
-          <p className="mb-6 text-stone">A Bot is its own machine. It does not share files with the others.</p>
+        <div className="silo-enter py-20 text-center">
+          <div className="mb-7 flex justify-center opacity-20">
+            <Crest index={packCrest(0, 10)} size={88} />
+          </div>
+          <p className="mb-2 text-[28px] font-medium wide:text-[40px]">No Bots yet</p>
+          <p className="mb-7 text-[13px] text-stone">A Bot is its own machine. It does not share files with the others.</p>
           <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} />
+            <Plus size={16} weight="bold" />
             New Bot
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
-          {bots.map((b) => (
+        <div className="grid grid-cols-1 gap-5 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+          {bots.map((b, i) => (
             <Link
               key={b.id}
               to={`/bots/${b.id}/run`}
-              className={`flex gap-4 rounded-[10px] border border-thread bg-folio p-4 hover:border-[#B9B3A6] ${
-                b.status === "needs_you" ? "border-l-2 border-l-carmine" : ""
-              }`}
+              style={{ animationDelay: `${Math.min(i * 45, 270)}ms` }}
+              className="silo-enter group relative flex gap-4 overflow-hidden rounded-[10px] border border-thread bg-folio p-4 transition-[border-color,background-color,transform] duration-200 ease-quiet hover:border-hover hover:bg-folio active:scale-[0.995]"
             >
+              {b.status === "needs_you" ? (
+                <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-carmine" />
+              ) : null}
               <Crest index={b.crest} size={56} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-[16px] font-medium">{b.name}</div>
-                {b.description ? <div className="truncate text-stone">{b.description}</div> : null}
-                <div className="mt-1 flex items-center gap-2 text-[12px] font-medium">
-                  <span className={`inline-block h-[7px] w-[7px] rounded-full ${lampClass(b.status)}`} />
+                {b.description ? <div className="mt-0.5 truncate text-[13px] text-stone">{b.description}</div> : null}
+                <div className="mt-1.5 flex items-center gap-2 text-[12px] font-medium">
+                  <span className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${lampClass(b.status)}`} />
                   <span className={statusWord(b.status)}>{statusLabel(b.status)}</span>
                 </div>
               </div>
@@ -374,32 +402,43 @@ function NewBotPage() {
     }
   }
   return (
-    <div className="silo-page silo-page-sm">
-      <h1 className="mb-6 text-[22px] font-medium tracking-tight">New Bot</h1>
+    <div className="silo-page silo-page-sm silo-enter">
+      <h1 className="mb-6 text-[22px] font-medium">New Bot</h1>
       <form onSubmit={create}>
-        <div className="mb-5 flex flex-col items-center">
+        <div className="mb-5 flex flex-col items-center gap-4">
           <Crest index={crest} size={88} />
+          <span className="text-[12px] text-stone">Pick a crest for this machine</span>
         </div>
         <div className="mb-6">
           <CrestPicker value={crest} onChange={setCrest} />
         </div>
-        <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
+        <label htmlFor="bot-name" className="mb-1.5 block text-[12px] font-medium text-stone">
+          Name
+        </label>
         <input
-          className="mb-2 h-9 w-full rounded border border-thread bg-folio px-3 outline-none focus:border-bindery"
+          id="bot-name"
+          className={`${inputClass} mb-4`}
           placeholder="Scout"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
         />
-        <label className="mb-1 mt-4 block text-[12px] font-medium text-stone">Description</label>
+        <label htmlFor="bot-desc" className="mb-1.5 block text-[12px] font-medium text-stone">
+          Description
+        </label>
         <textarea
-          className="mb-2 min-h-[72px] w-full rounded border border-thread bg-folio px-3 py-2 outline-none focus:border-bindery"
+          id="bot-desc"
+          className={`${textareaClass} mb-3 min-h-[72px]`}
           placeholder="What this machine is for"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <p className="mb-6 text-stone">A Bot is its own machine. It does not share files with the others.</p>
-        {err && <p className="mb-3 text-carmine">{err}</p>}
+        <p className="mb-6 text-[13px] text-stone">A Bot is its own machine. It does not share files with the others.</p>
+        {err && (
+          <p role="alert" className="mb-3 text-[13px] text-carmine">
+            {err}
+          </p>
+        )}
         <div className="flex gap-2">
           <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
             {busy ? "Creating…" : "Create Bot"}
@@ -623,7 +662,7 @@ function FadeScroll({
 }
 
 function tabClass(on: boolean, compact?: boolean) {
-  return `flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[14px] ${
+  return `flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[14px] transition-colors duration-150 ease-quiet ${
     compact && !on ? "min-w-10 justify-center px-2" : "px-3"
   } ${on ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`;
 }
@@ -754,7 +793,7 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
         createPortal(
           <div
             ref={menu}
-            className="z-50 w-40 rounded border border-thread bg-folio py-1"
+            className="z-50 w-40 rounded-[6px] border border-thread bg-folio py-1"
             style={{ position: "fixed", top: box.top, left: box.left }}
           >
             <Link
@@ -1059,7 +1098,7 @@ function BotPage() {
       <div className="flex h-full flex-col">
         <div className="flex h-11 items-center gap-3 border-b border-thread-2 px-4 wide:h-14">
           <div className="hidden h-7 w-7 rounded-[8px] bg-cloth wide:block" />
-          <div className="hidden h-5 w-32 rounded bg-linen wide:block" />
+          <div className="hidden h-5 w-32 rounded-[6px] bg-linen wide:block" />
         </div>
         <div className="p-4 text-stone">Opening…</div>
       </div>
@@ -1213,7 +1252,7 @@ function BotPage() {
         <span className="hidden wide:inline-flex">
           <Crest index={bot.crest} size={28} />
         </span>
-        <h1 className="sr-only min-w-0 truncate text-[22px] font-medium tracking-tight wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
+        <h1 className="sr-only min-w-0 truncate text-[16px] font-medium wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
         <span className={`hidden h-[7px] w-[7px] shrink-0 rounded-full wide:inline-block ${lampClass(bot.status)}`} />
         <span className={`hidden shrink-0 text-[12px] font-medium wide:inline ${statusWord(bot.status)}`}>{statusLabel(bot.status)}</span>
         <FadeScroll className="hidden min-h-0 flex-1 self-stretch wide:block" innerClass="flex h-full items-stretch gap-1">
@@ -1257,10 +1296,10 @@ function BotPage() {
               <div className="flex items-center justify-between px-3 py-3">
                 <span className="text-[11px] font-medium tracking-wide text-stone">Chats</span>
                 <button
-                  className="inline-flex items-center gap-1 text-[12px] text-bindery hover:text-bindery-deep"
+                  className="inline-flex items-center gap-1 rounded-[4px] px-1 py-0.5 text-[12px] font-medium text-bindery transition-colors duration-150 ease-quiet hover:text-bindery-deep"
                   onClick={() => newChat().catch((e) => setActErr(fail(e)))}
                 >
-                  <Plus size={14} />
+                  <Plus size={13} weight="bold" />
                   New
                 </button>
               </div>
@@ -1271,7 +1310,7 @@ function BotPage() {
                     {editingChat === c.id ? (
                       <input
                         autoFocus
-                        className="min-w-0 flex-1 rounded bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
+                        className="min-w-0 flex-1 rounded-[6px] bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         onBlur={() => {
@@ -1300,7 +1339,7 @@ function BotPage() {
                           setEditingChat(c.id);
                           setEditTitle(c.title || "");
                         }}
-                        className={`min-w-0 flex-1 truncate rounded px-2 py-1.5 ${
+                        className={`min-w-0 flex-1 truncate rounded-[6px] px-2 py-1.5 transition-colors duration-150 ease-quiet ${
                           c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen hover:text-iron"
                         }`}
                       >
@@ -1310,7 +1349,7 @@ function BotPage() {
                     {editingChat !== c.id && (
                       <button
                         title="Rename chat"
-                        className="hidden px-1 text-stone hover:text-iron group-hover:block"
+                        className="hidden px-1 text-stone transition-colors duration-150 hover:text-iron group-hover:block"
                         onClick={(e) => {
                           e.preventDefault();
                           setEditingChat(c.id);
@@ -1322,7 +1361,7 @@ function BotPage() {
                     )}
                     <button
                       title="Delete chat"
-                      className="hidden px-1 text-stone hover:text-carmine group-hover:block"
+                      className="hidden px-1 text-stone transition-colors duration-150 hover:text-carmine group-hover:block"
                       onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
                     >
                       <Trash size={14} />
@@ -1343,14 +1382,14 @@ function BotPage() {
                 {chats.map((c) => (
                   <div
                     key={c.id}
-                    className={`flex shrink-0 items-center rounded ${
+                    className={`flex shrink-0 items-center rounded-[6px] ${
                       c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone"
                     }`}
                   >
                     {editingChat === c.id ? (
                       <input
                         autoFocus
-                        className="w-36 rounded bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
+                        className="w-36 rounded-[6px] bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         onBlur={() => {
@@ -1380,7 +1419,7 @@ function BotPage() {
                           setEditTitle(c.title || "");
                         }}
                         className={`max-w-[10rem] truncate px-2.5 py-1.5 ${
-                          c.id === chatId ? "" : "rounded hover:bg-linen hover:text-iron"
+                          c.id === chatId ? "" : "rounded-[6px] hover:bg-linen hover:text-iron"
                         }`}
                       >
                         {c.title || "New chat"}
@@ -1481,7 +1520,7 @@ function BotPage() {
             <p className="mb-4 text-stone">Handed to the Bot only after you allow it. Masked before the model sees output.</p>
             {secrets.length === 0 && <p className="mb-4 text-stone">No secrets on this Bot yet.</p>}
             {secrets.map((s) => (
-              <div key={s.id} className="mb-2 flex items-center justify-between rounded border border-thread bg-folio px-3 py-2">
+              <div key={s.id} className="mb-2 flex items-center justify-between rounded-[6px] border border-thread bg-folio px-3 py-2">
                 <div>
                   <div className="font-medium">{s.name}</div>
                   <div className="font-mono text-stone">•••••••• · {s.lastUsedAt || "never used"}</div>
@@ -1508,8 +1547,8 @@ function BotPage() {
                 setSecrets((await ui.listSecrets({ botId: id })).secrets);
               }}
             >
-              <input className="h-9 flex-1 rounded border border-thread bg-folio px-3" placeholder="Name" value={secName} onChange={(e) => setSecName(e.target.value)} />
-              <input type="password" className="h-9 flex-1 rounded border border-thread bg-folio px-3" placeholder="Value" value={secVal} onChange={(e) => setSecVal(e.target.value)} />
+              <input className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-3" placeholder="Name" value={secName} onChange={(e) => setSecName(e.target.value)} />
+              <input type="password" className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-3" placeholder="Value" value={secVal} onChange={(e) => setSecVal(e.target.value)} />
               <Btn kind="primary" type="submit" icon={<Plus size={12} />}>
                 Add
               </Btn>

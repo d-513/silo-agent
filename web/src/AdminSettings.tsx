@@ -204,7 +204,7 @@ export function AdminSettings() {
           <span>Overridden by env and will not apply until unset: {envFields.map((f) => f.envName).join(", ")}</span>
         </p>
       ) : null}
-      <Suspense fallback={<div className="h-80 rounded border border-thread bg-folio" />}>
+      <Suspense fallback={<div className="h-80 rounded-[6px] border border-thread bg-folio" />}>
         <YamlEditor
           value={yamlText}
           onChange={(v) => {
@@ -413,7 +413,7 @@ function ModelSettings({
               <button
                 type="button"
                 title="Remove"
-                className="rounded p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
+                className="rounded-[6px] p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
                 onClick={() => remove(m.id)}
               >
                 <Trash size={14} />

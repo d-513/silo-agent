@@ -67,7 +67,7 @@ export function InstallField({
   return (
     <form className="mb-4 flex flex-wrap items-start gap-2" onSubmit={(e) => void go(e)}>
       <input
-        className="h-9 min-w-0 flex-1 rounded border border-thread bg-folio px-3 outline-none focus:border-bindery wide:min-w-[240px]"
+        className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-3 outline-none focus:border-bindery wide:min-w-[240px]"
         placeholder="GitHub URL or owner/repo"
         value={url}
         onChange={(e) => setUrl(e.target.value)}

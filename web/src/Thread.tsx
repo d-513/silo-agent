@@ -202,7 +202,7 @@ function CopyButton({ text, className = "" }: { text: string; className?: string
       type="button"
       onClick={copy}
       title={copied ? "Copied to clipboard!" : "Copy code"}
-      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-stone transition-colors hover:bg-linen hover:text-iron active:scale-95 ${className}`}
+      className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 text-[11px] font-medium text-stone transition-colors hover:bg-linen hover:text-iron active:scale-95 ${className}`}
     >
       {copied ? <Check size={12} className="text-pine" /> : <Copy size={12} />}
       <span>{copied ? "Copied" : "Copy"}</span>
@@ -316,7 +316,7 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
     );
   } else if (name === "read" && (path || offset != null || limit != null)) {
     body = (
-      <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
+      <div className="space-y-1 rounded-[6px] bg-cloth p-3 font-mono text-[13px]">
         {path ? <div>{path}</div> : null}
         {offset != null ? <div className="text-stone">offset {asStr(offset)}</div> : null}
         {limit != null ? <div className="text-stone">limit {asStr(limit)}</div> : null}
@@ -330,7 +330,7 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
       ].join("\n");
       body = <CodeBlock code={lines} lang="diff" />;
     } else {
-      body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
+      body = <div className="whitespace-pre-wrap rounded-[6px] bg-cloth p-3 font-mono text-[13px]">{content || append}</div>;
     }
   } else if (name === "skill") {
     const skillName = asStr(a.name);
@@ -357,12 +357,12 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
       </div>
     );
   } else if (name === "type" && typeText) {
-    body = <div className="whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{typeText}</div>;
+    body = <div className="whitespace-pre-wrap rounded-[6px] bg-cloth p-3 font-mono text-[13px]">{typeText}</div>;
   } else if (name === "key" && keyName) {
     body = <div className="font-mono text-[13px]">{keyName}</div>;
   } else if (name === "grep" && (pattern || path || include)) {
     body = (
-      <div className="space-y-1 rounded bg-cloth p-3 font-mono text-[13px]">
+      <div className="space-y-1 rounded-[6px] bg-cloth p-3 font-mono text-[13px]">
         {pattern ? <div>{pattern}</div> : null}
         {path ? <div className="text-stone">{path}</div> : null}
         {include ? <div className="text-stone">{include}</div> : null}
@@ -383,7 +383,7 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
   if (running && !Object.keys(a).length) return null;
   const dump = Object.keys(a).length ? JSON.stringify(a, null, 2) : prettyJson(args);
   if (!dump) return null;
-  return <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-cloth p-3 font-mono text-[13px]">{dump}</pre>;
+  return <pre className="overflow-x-auto whitespace-pre-wrap rounded-[6px] bg-cloth p-3 font-mono text-[13px]">{dump}</pre>;
 }
 
 function ToolResult({ text }: { text: string }) {
@@ -410,15 +410,15 @@ function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNo
   const [open, setOpen] = useState(false);
   return (
     <details
-      className="group max-w-full rounded-xl border border-thread-2/80 bg-folio transition-colors hover:border-thread"
+      className="group max-w-full rounded-[10px] border border-thread-2 bg-folio transition-colors duration-150 ease-quiet hover:border-hover"
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-[12px] font-medium tracking-wide text-stone transition-colors hover:text-iron">
+      <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-[12px] font-medium tracking-wide text-stone transition-colors duration-150 hover:text-iron">
         <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
         {summary}
       </summary>
-      <div className="border-t border-thread-2/50 bg-cloth/30 p-3 space-y-2">{children}</div>
+      <div className="space-y-2 border-t border-thread-2 bg-cloth/30 p-3">{children}</div>
     </details>
   );
 }
@@ -489,7 +489,7 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
     );
   }
   return (
-    <div className="max-w-full space-y-2 rounded-xl border border-thread bg-folio p-3 shadow-sm">
+    <div className="max-w-full space-y-2 rounded-[10px] border border-thread bg-folio p-3">
       <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-stone">
         <FrameCorners size={14} />
         <span className="min-w-0 flex-1 truncate">{name}</span>
@@ -566,26 +566,26 @@ export function Thread({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4"
+      className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5"
     >
-      <div className="mx-auto max-w-3xl xl:max-w-4xl space-y-4">
+      <div className="mx-auto max-w-2xl space-y-4">
         {blocks.length === 0 && !sending && (
-          <div className="my-auto flex flex-col items-center justify-center px-4 py-12 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cloth/80 border border-thread-2 shadow-sm">
+          <div className="silo-enter my-auto flex flex-col items-center justify-center px-4 py-12 text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[14px] border border-thread-2 bg-folio">
               {botCrest !== undefined ? (
-                <Crest index={botCrest} size={36} />
+                <Crest index={botCrest} size={40} />
               ) : (
-                <ChatCircle size={28} className="text-bindery" />
+                <ChatCircle size={30} className="text-bindery" />
               )}
             </div>
-            <h2 className="text-[18px] font-medium tracking-tight text-iron">
+            <h2 className="text-[18px] font-medium text-iron">
               {botName ? botName : "Silo Bot"}
             </h2>
-            <p className="mt-1 max-w-md text-[13px] text-stone">
+            <p className="mt-1.5 max-w-md text-[13px] leading-6 text-stone">
               Ready for your prompt. Run code in the container, inspect files, or command the browser and desktop.
             </p>
             {onSelectPrompt && (
-              <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+              <div className="mt-7 flex max-w-lg flex-wrap justify-center gap-2">
                 {[
                   "What files are in /workspace?",
                   "Run a Python script to check system info",
@@ -596,7 +596,7 @@ export function Thread({
                     key={prompt}
                     type="button"
                     onClick={() => onSelectPrompt(prompt)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-thread-2 bg-folio px-3 py-1.5 text-[12px] text-iron shadow-sm transition-all hover:border-bindery hover:bg-linen active:scale-95"
+                    className="inline-flex items-center gap-1.5 rounded-[8px] border border-thread-2 bg-folio px-3 py-1.5 text-[12px] text-iron transition-[border-color,background-color,transform] duration-200 ease-quiet hover:border-bindery hover:bg-linen active:scale-[0.97]"
                   >
                     <Sparkle size={12} className="text-bindery" />
                     <span>{prompt}</span>
@@ -611,20 +611,16 @@ export function Thread({
             return (
               <div
                 key={b.key}
-                className="max-w-full break-words whitespace-pre-wrap rounded-2xl border border-thread-2/80 border-l-[3.5px] border-l-bindery bg-folio p-3.5 shadow-[0_1px_3px_rgba(30,33,38,0.03)]"
+                className="silo-enter w-fit max-w-full rounded-[10px] border border-thread-2 border-l-[4px] border-l-bindery bg-folio px-4 py-3"
               >
-                <div className="mb-1 flex items-center gap-1 text-[11px] font-medium tracking-wider text-stone uppercase">
-                  <User size={12} className="text-bindery" />
-                  <span>You</span>
-                </div>
-                <div className="text-[14px] leading-relaxed text-iron">{b.text}</div>
+                <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-iron">{b.text}</div>
                 {b.attachments?.length ? (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-thread-2/50 pt-2">
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-thread-2 pt-3">
                     {b.attachments.map((a) => (
                       <span
                         key={a.path}
                         title={a.path}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-thread-2 bg-cloth px-2.5 py-1 text-[12px] text-iron"
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border border-thread-2 bg-cloth px-2 py-1 text-[12px] text-iron"
                       >
                         <Paperclip size={12} className="text-bindery" />
                         <span className="truncate">{a.name}</span>
@@ -639,22 +635,22 @@ export function Thread({
           if (b.type === "thinking") {
             if (b.streaming && sending) {
               return (
-                <div key={b.key} className="rounded-xl border border-thread-2/70 bg-cloth/30 p-3 space-y-2 text-stone">
+                <div key={b.key} className="silo-enter space-y-2 rounded-[10px] border border-thread-2 bg-cloth/40 px-3 py-2.5 text-stone">
                   <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-bindery">
                     <CircleNotch size={14} className="animate-spin" />
                     Thinking…
                   </div>
-                  {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px] text-stone/90 leading-relaxed">{b.text}</div> : null}
+                  {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div> : null}
                 </div>
               );
             }
             return (
-              <details key={b.key} className="group max-w-full rounded-xl border border-thread-2/60 bg-cloth/20 text-stone">
-                <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium tracking-wide hover:text-iron">
+              <details key={b.key} className="group max-w-full rounded-[10px] border border-thread-2 bg-cloth/30 text-stone">
+                <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium tracking-wide transition-colors duration-150 hover:text-iron">
                   <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
                   <span>Thought</span>
                 </summary>
-                <div className="border-t border-thread-2/50 p-3 break-words whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div>
+                <div className="whitespace-pre-wrap break-words border-t border-thread-2 p-3 font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div>
               </details>
             );
           }
@@ -769,22 +765,23 @@ export function Thread({
           }
           if (b.type === "assistant") {
             return (
-              <div key={b.key} className="min-w-0 space-y-1">
+              <div key={b.key} className="silo-enter min-w-0 space-y-1">
                 <Md text={b.text} />
                 {b.streaming ? (
-                  <span className="ml-1 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-bindery align-middle" />
+                  <span className="ml-1 inline-block h-[15px] w-[2px] translate-y-[3px] animate-pulse bg-bindery align-middle" />
                 ) : null}
               </div>
             );
           }
           return (
-            <div key={b.key} className="rounded-xl border border-carmine/30 bg-carmine/10 p-3 text-carmine text-[13px]">
-              {b.text}
+            <div key={b.key} className="silo-enter flex items-start gap-2 rounded-[10px] border border-carmine/30 bg-carmine/10 px-3 py-2.5 text-[13px] text-carmine">
+              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-carmine" />
+              <span className="min-w-0 break-words">{b.text}</span>
             </div>
           );
         })}
         {working ? (
-          <div className="flex items-center gap-2 text-stone">
+          <div className="flex items-center gap-2 pl-1 text-[13px] text-stone">
             <CircleNotch size={14} className="animate-spin text-bindery" />
             <span>Working…</span>
           </div>
@@ -796,7 +793,7 @@ export function Thread({
         <button
           type="button"
           onClick={scrollToBottom}
-          className="fixed bottom-24 right-8 z-20 flex items-center gap-1.5 rounded-full border border-thread bg-folio px-3 py-1.5 text-[12px] font-medium text-iron shadow-[0_4px_16px_rgba(30,33,38,0.12)] transition-all hover:bg-linen active:scale-95"
+          className="fixed bottom-24 right-8 z-20 flex items-center gap-1.5 rounded-full border border-thread bg-folio px-3 py-1.5 text-[12px] font-medium text-iron shadow-[0_6px_20px_-8px_rgba(30,33,38,0.35)] transition-all duration-200 ease-quiet hover:bg-linen active:scale-95"
         >
           <ArrowDown size={13} weight="bold" />
           <span>Latest</span>

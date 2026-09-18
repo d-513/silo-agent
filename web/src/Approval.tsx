@@ -45,27 +45,30 @@ export function NeedYouSlip({
   children: ReactNode;
 }) {
   return (
-    <aside className="z-20 flex flex-col overflow-auto bg-folio p-5 max-wide:fixed max-wide:inset-x-0 max-wide:bottom-0 max-wide:max-h-[80dvh] max-wide:rounded-t-[10px] max-wide:border-t max-wide:border-thread max-wide:pb-[max(1.25rem,env(safe-area-inset-bottom))] wide:absolute wide:top-0 wide:right-0 wide:h-full wide:w-[400px] wide:border-l wide:border-thread">
+    <aside className="silo-slip z-20 flex flex-col overflow-auto bg-folio p-5 max-wide:fixed max-wide:inset-x-0 max-wide:bottom-0 max-wide:max-h-[80dvh] max-wide:rounded-t-[10px] max-wide:border-t max-wide:border-thread max-wide:pb-[max(1.25rem,env(safe-area-inset-bottom))] wide:absolute wide:top-0 wide:right-0 wide:h-full wide:w-[400px] wide:border-l wide:border-thread">
       <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-thread wide:hidden" />
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-2.5">
         <Crest index={bot.crest} size={28} />
         <span className="font-medium">{bot.name}</span>
-        <span className="text-carmine">Needs you</span>
+        <span className="ml-0.5 flex items-center gap-1.5 text-[12px] font-medium text-carmine">
+          <span className="h-[7px] w-[7px] rounded-full bg-carmine" />
+          Needs you
+        </span>
       </div>
       <h2 className="mb-2 text-[22px] font-medium">{title}</h2>
-      <p className="mb-4 text-stone">{summary}</p>
+      <p className="mb-4 text-[13px] leading-6 text-stone">{summary}</p>
       {fields && fields.length > 0 && (
-        <dl className="mb-4 space-y-2 rounded-[10px] bg-cloth p-3">
+        <dl className="mb-4 space-y-3 rounded-[10px] border border-thread-2 bg-cloth p-3">
           {fields.map((f) => (
             <div key={f.label}>
-              <dt className="text-[11px] font-medium tracking-wide text-stone">{f.label}</dt>
-              <dd className="whitespace-pre-wrap font-mono text-[13px]">{f.value}</dd>
+              <dt className="text-[10px] font-medium tracking-[0.12em] text-stone uppercase">{f.label}</dt>
+              <dd className="mt-0.5 whitespace-pre-wrap break-words font-mono text-[13px] text-iron">{f.value}</dd>
             </div>
           ))}
         </dl>
       )}
-      {note && <p className="mb-4 text-stone">{note}</p>}
-      {children}
+      {note && <p className="mb-4 text-[13px] text-stone">{note}</p>}
+      <div className="mt-auto flex flex-col pt-2">{children}</div>
     </aside>
   );
 }

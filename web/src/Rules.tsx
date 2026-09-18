@@ -55,7 +55,7 @@ function RuleDecisionSegment({
             key={m.id}
             type="button"
             disabled={disabled}
-            className={`flex flex-1 items-center justify-center gap-1 rounded transition-[transform,background-color,color] duration-150 active:scale-[0.96] ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-[6px] transition-[transform,background-color,color] duration-150 active:scale-[0.96] ${
               size === "sm" ? "h-7 px-2 text-[12px]" : "h-8 px-2.5 text-[13px]"
             } ${
               active ? activeStyle : `text-stone ${inactiveHover}`
@@ -187,7 +187,7 @@ export function RulesPane({ botId }: { botId: string }) {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter rules..."
-              className="h-8 w-full rounded border border-thread bg-folio pr-7 pl-8 text-[13px] text-iron placeholder:text-stone/70 focus:border-bindery focus:outline-none"
+              className="h-8 w-full rounded-[6px] border border-thread bg-folio pr-7 pl-8 text-[13px] text-iron placeholder:text-stone/70 focus:border-bindery focus:outline-none"
             />
             {filter && (
               <button
@@ -256,7 +256,7 @@ export function RulesPane({ botId }: { botId: string }) {
                 <div className="flex items-center gap-2">
                   <h3 className="text-[16px] font-medium text-iron">{s.title}</h3>
                   {s.rules.length > 0 && (
-                    <span className="rounded bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
+                    <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
                       {s.rules.length} {s.rules.length === 1 ? "action" : "actions"}
                     </span>
                   )}
@@ -332,12 +332,12 @@ export function RulesPane({ botId }: { botId: string }) {
                               r.action &&
                               r.title !== r.action &&
                               r.action !== "*" && (
-                                <span className="rounded bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
+                                <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
                                   {r.action}
                                 </span>
                               )}
                             {r.connector === "secrets" && (
-                              <span className="rounded bg-cloth px-1.5 py-0.5 text-[11px] text-stone">
+                              <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] text-stone">
                                 Secret
                               </span>
                             )}

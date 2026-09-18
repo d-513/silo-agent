@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
 export const inputClass =
-  "h-9 w-full rounded border border-thread bg-folio px-3 text-[14px] text-iron outline-none transition-colors placeholder:text-stone/60 hover:border-[#B9B3A6] focus:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
+  "h-9 w-full rounded-[6px] border border-thread bg-folio px-3 text-[14px] text-iron outline-none transition-colors duration-150 placeholder:text-stone/60 hover:border-hover focus:border-bindery focus-visible:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
 
 export const textareaClass =
-  "w-full resize-y rounded border border-thread bg-folio px-3 py-2 text-[14px] leading-relaxed text-iron outline-none transition-colors placeholder:text-stone/60 hover:border-[#B9B3A6] focus:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
+  "w-full resize-y rounded-[6px] border border-thread bg-folio px-3 py-2 text-[14px] leading-relaxed text-iron outline-none transition-colors duration-150 placeholder:text-stone/60 hover:border-hover focus:border-bindery focus-visible:border-bindery disabled:cursor-not-allowed disabled:bg-cloth disabled:text-stone";
 
 export function Field({
   label,
