@@ -44,7 +44,7 @@ Container ID in SQLite is the last box. `GetBot`/`ListBots` inspect Docker (and 
 
 ## Commits
 
-Commit with **Conventional Commits** per [DEVELOPMENT.md § Commits](DEVELOPMENT.md#commits): `<type>(<scope>): <summary>`. Keep each commit atomic — one logical change, not a mega-commit bundling unrelated work.
+Commit with **Conventional Commits** per [DEVELOPMENT.md § Commits](DEVELOPMENT.md#commits): `<type>(<scope>): <summary>`. Keep each commit atomic — one logical change, not a mega-commit bundling unrelated work. Every commit made with a model's help carries an `Assisted-by: <model name>` trailer naming the model that made it (e.g. `Assisted-by: DeepSeek V4.1 Flash`).
 
 While changes are unpushed the log is yours to rewrite: if the user is not satisfied with a change, amend, rebase, squash, or reorder to fix it up cleanly instead of stacking `fix`/`wip` commits. Never rewrite pushed history.
 
