@@ -42,6 +42,12 @@ Container ID in SQLite is the last box. `GetBot`/`ListBots` inspect Docker (and 
 - `make dev` — tmux session with `watch-control` (watchexec, 750 ms debounce, SIGTERM + 5 s grace) and Vite; `make attach` reattaches.
 - `make reset-data` — deletes `./data`; destructive, only when asked.
 
+## Commits
+
+Commit with **Conventional Commits** per [DEVELOPMENT.md § Commits](DEVELOPMENT.md#commits): `<type>(<scope>): <summary>`. Keep each commit atomic — one logical change, not a mega-commit bundling unrelated work.
+
+While changes are unpushed the log is yours to rewrite: if the user is not satisfied with a change, amend, rebase, squash, or reorder to fix it up cleanly instead of stacking `fix`/`wip` commits. Never rewrite pushed history.
+
 ## Who runs what
 
 - **Never start the frontend or the control plane yourself.** The user owns those processes (`make dev` or their own tmux). Do not run `make dev` / `run-control` / `run-frontend` / `watch-control`, and do not kill or clean up their background processes.

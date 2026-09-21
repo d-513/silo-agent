@@ -119,6 +119,37 @@ make test
 
 The explicit package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. See [TESTING.md](TESTING.md) for tiers and live checks.
 
+## Commits
+
+Use **Conventional Commits**: `<type>(<scope>): <imperative summary>` — lowercase, no trailing period, ≤72 characters.
+
+| Type | Use for |
+| --- | --- |
+| `feat` | new user-visible capability |
+| `fix` | bug fix |
+| `refactor` | behavior-preserving change |
+| `perf` | speed/resource work |
+| `docs` | `*.md` and comments |
+| `test` | tests only |
+| `build` | Makefile, Containerfiles, dependencies, images |
+| `chore` | housekeeping with no src/logic change |
+
+**Scopes** mirror the layout: `app`, `worker`, `bridge`, `mcp`, `channels`, `llm`, `search`, `security`, `catalog`, `prompts`, `proto`, `web`, `botimage`, `mcpimage`, `config`. Omit the scope for cross-cutting changes.
+
+The body (optional) explains what and why, not how, wrapped at 72 columns. Footers carry `BREAKING CHANGE:` and issue references.
+
+```
+feat(channels): bind Telegram rows to a single chat
+
+requires_target adapters now persist external_id/target_title from
+set_target, and only that chat is read or written. Bot accounts cannot
+enumerate dialogs, so the picker lists seen chats or accepts @username.
+
+Fixes #42
+```
+
+Keep commits atomic: one logical change each, not a mega-commit that bundles unrelated work.
+
 ## Layout
 
 ```
