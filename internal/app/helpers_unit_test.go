@@ -2,8 +2,10 @@ package app
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
@@ -67,5 +69,23 @@ func TestMergeHeadersKeepsSecret(t *testing.T) {
 	}
 	if !strings.Contains(got, `"A":"one"`) || !strings.Contains(got, `"B":"two"`) {
 		t.Fatalf("mergeHeaders %s", got)
+	}
+}
+
+// TestStampUserTextUsesLocalTime guards the date/time marker that rides on user
+// messages: it must render in the machine's local zone and leave the original
+// text intact.
+func TestStampUserTextUsesLocalTime(t *testing.T) {
+	when := time.Date(2026, 9, 21, 14, 30, 5, 0, time.UTC)
+	got := stampUserText("hello", when)
+	if !strings.HasSuffix(got, " hello") || !strings.HasPrefix(got, "[") {
+		t.Fatalf("stampUserText %q", got)
+	}
+	want := "[" + when.Local().Format("Mon, 2006-01-02 15:04:05 MST") + "] hello"
+	if got != want {
+		t.Fatalf("stampUserText = %q, want %q", got, want)
+	}
+	if !regexp.MustCompile(`^\[\w{3}, \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \S+\] hello$`).MatchString(got) {
+		t.Fatalf("marker shape %q", got)
 	}
 }

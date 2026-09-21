@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -91,11 +92,15 @@ debug: true
 		t.Fatal("debug flag not reported")
 	}
 	var sawChat bool
+	marker := regexp.MustCompile(`\[\w{3}, \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \S+\] Test_Debug_Input`)
 	for _, l := range res.Msg.GetLogs() {
 		if l.GetLabel() == "chat" && strings.Contains(l.GetRequest(), "Test_Debug_Input") {
 			sawChat = true
 			if !strings.Contains(l.GetResponse(), "Test_Debug_Output") {
 				t.Fatalf("response not captured: %q", l.GetResponse())
+			}
+			if !marker.MatchString(l.GetRequest()) {
+				t.Fatalf("chat request missing local date/time marker:\n%s", l.GetRequest())
 			}
 		}
 	}

@@ -371,11 +371,25 @@ func drainInbox(msgs []llm.Message, inbox chan inboxMsg) []llm.Message {
 	for {
 		select {
 		case m := <-inbox:
-			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: userTextWithAttachments(m.text, m.atts)})
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(userTextWithAttachments(m.text, m.atts), time.Now())})
 		default:
 			return msgs
 		}
 	}
+}
+
+// messageTimeStamp renders t in the machine's local timezone as a compact
+// marker the model can read. The date and time ride on the user message rather
+// than the system prompt so the cached prompt prefix is never invalidated.
+func messageTimeStamp(t time.Time) string {
+	return "[" + t.Local().Format("Mon, 2006-01-02 15:04:05 MST") + "] "
+}
+
+// stampUserText prefixes a user message with the moment it was sent. History
+// keeps its original timestamp (stable across runs, so prompt caches hold) and
+// the newest message carries the current local time.
+func stampUserText(text string, t time.Time) string {
+	return messageTimeStamp(t) + text
 }
 
 func userTextWithAttachments(text string, atts []*v1.Attachment) string {
@@ -762,7 +776,7 @@ func (a *App) historyFromDB(chatID string) []llm.Message {
 					}
 					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 				}
-				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, ev.CreatedAt)})
 			case "assistant", "section":
 				flushTools()
 				if strings.TrimSpace(ev.Body) != "" {
