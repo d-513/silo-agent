@@ -46,7 +46,7 @@ import { Crest } from "./Crest";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
 import { foldEvents, type Ev } from "./fold";
-import { normalizeLatex } from "./latex";
+import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
 
 export type { Ev };
 
@@ -427,19 +427,67 @@ function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNo
   );
 }
 
+function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode }) {
+  const display = isDisplayMath(node);
+  const tex = mathTex(node);
+  const [copied, setCopied] = useState(false);
+  const classes = classNames(node?.properties).filter((c) => c !== "silo-math");
+  const copy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(tex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <span className={[...classes, "silo-math", "group/math", "relative", display ? "block" : "inline"].join(" ")}>
+      {children}
+      {tex ? (
+        <button
+          type="button"
+          title={copied ? "Copied LaTeX" : "Copy LaTeX"}
+          aria-label={copied ? "Copied LaTeX" : "Copy LaTeX"}
+          onClick={copy}
+          className={`silo-math-copy absolute z-10 inline-flex items-center justify-center rounded-[4px] border border-thread-2 bg-folio text-stone shadow-sm transition-[opacity,color,background-color] duration-150 hover:bg-linen hover:text-iron ${
+            display
+              ? "h-5 w-5 top-1 right-1"
+              : "h-4 w-4 -top-2.5 -right-1.5 opacity-0 focus-visible:opacity-100 group-hover/math:opacity-100"
+          }`}
+        >
+          {copied ? (
+            <Check size={display ? 11 : 10} weight="bold" className="text-pine" />
+          ) : (
+            <Copy size={display ? 11 : 10} />
+          )}
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
 function Md({ text }: { text: string }) {
   if (!text) return null;
   return (
     <div className="silo-md">
       <Markdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex, ...mdHighlight]}
+        rehypePlugins={[rehypeKatex, rehypeMathCopy, ...mdHighlight]}
         components={{
           table: ({ children }) => (
             <div className="silo-md-table">
               <table>{children}</table>
             </div>
           ),
+          span: ({ node, children, ...rest }) => {
+            if (classNames(node?.properties).includes("silo-math")) {
+              return <MathCopy node={node}>{children}</MathCopy>;
+            }
+            return <span {...rest}>{children}</span>;
+          },
         }}
       >
         {normalizeLatex(text)}
