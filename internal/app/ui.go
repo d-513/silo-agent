@@ -85,6 +85,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Description:     b.Description,
 		Soul:            b.Soul,
 		Memory:          b.Memory,
+		AutoApprove:     b.AutoApprove,
 	}
 }
 
@@ -164,6 +165,7 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	b.Description = clipDesc(req.Msg.GetDescription())
 	b.Soul = req.Msg.GetSoul()
 	b.Memory = req.Msg.GetMemory()
+	b.AutoApprove = req.Msg.GetAutoApprove()
 	if err := a.DB.Save(b).Error; err != nil {
 		return nil, err
 	}
@@ -250,6 +252,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 		a.DB.Where("run_id = ?", r.ID).Delete(&db.RunEvent{})
 	}
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Run{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.LLMLog{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
@@ -428,7 +431,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 			if k == "search.engine" && v != "" && !search.Known(v) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
 			}
-			if (k == "model" || k == "model_title") && v != "" {
+			if (k == "model" || k == "model_title" || k == "model_approval") && v != "" {
 				if _, _, err := llm.Parse(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}

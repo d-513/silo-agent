@@ -91,7 +91,33 @@ func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error
 }
 
 func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, error) {
+	if v := verdictFrom(req); v != "" {
+		return llm.Response{Text: v, Usage: llm.Usage{InputTokens: 8, OutputTokens: 1}}, nil
+	}
 	return llm.Response{Text: "Dummy Title", Usage: llm.Usage{InputTokens: 8, OutputTokens: 2}}, nil
+}
+
+// verdictFrom lets a test drive the auto-approval gate: a request carrying one
+// of these tokens in its system prompt or messages answers with that verdict.
+// Nothing else uses it, so the title path still returns "Dummy Title".
+func verdictFrom(req llm.Request) string {
+	hay := ""
+	for _, blk := range req.System {
+		hay += blk.Text + "\n"
+	}
+	for _, m := range req.Messages {
+		hay += m.Text + "\n"
+	}
+	switch {
+	case strings.Contains(hay, "Test_Approve"):
+		return "approve"
+	case strings.Contains(hay, "Test_Deny"):
+		return "deny"
+	case strings.Contains(hay, "Test_Ask"):
+		return "ask"
+	default:
+		return ""
+	}
 }
 
 // resolveTurn picks the scripted turn for this request. The scenario key is the

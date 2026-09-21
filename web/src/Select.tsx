@@ -170,15 +170,19 @@ export function Select({
             <div
               ref={menuRef}
               role="listbox"
-              className={`silo-enter fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_12px_34px_-10px_rgba(30,33,38,0.28),0_2px_6px_rgba(30,33,38,0.06)] ${menuClassName}`}
+              className={`fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_12px_34px_-10px_rgba(30,33,38,0.28),0_2px_6px_rgba(30,33,38,0.06)] ${menuClassName}`}
               style={style}
             >
-              <div className="max-h-[280px] overflow-y-auto overscroll-contain">
+              {/* The entrance animation lives on the inner box: an animated
+                  transform on the positioned element would override the
+                  translateY(-100%) that flips an upward menu into place. */}
+              <div className={`silo-enter max-h-[280px] overflow-y-auto overscroll-contain ${variant === "ghost" ? "text-[12px]" : ""}`}>
                 {options.length === 0 ? (
                   <div className="px-2.5 py-2 text-[13px] text-stone">{emptyLabel}</div>
                 ) : (
                   options.map((o, i) => {
                     const selected = o.value === value;
+                    const compact = variant === "ghost";
                     return (
                       <button
                         key={o.value}
@@ -189,7 +193,9 @@ export function Select({
                         disabled={o.disabled}
                         onMouseEnter={() => !o.disabled && setActive(i)}
                         onClick={() => pick(o)}
-                        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors ${
+                        className={`flex w-full items-center gap-2 rounded-md text-left transition-colors ${
+                          compact ? "px-2 py-1" : "px-2.5 py-1.5"
+                        } ${
                           o.disabled
                             ? "cursor-not-allowed text-stone/50"
                             : selected
@@ -200,10 +206,10 @@ export function Select({
                         }`}
                       >
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13px]">{o.label}</span>
-                          {o.hint ? <span className="block truncate text-[11px] text-stone">{o.hint}</span> : null}
+                          <span className={`block truncate ${compact ? "text-[12px]" : "text-[13px]"}`}>{o.label}</span>
+                          {o.hint ? <span className={`block truncate text-stone ${compact ? "text-[10px]" : "text-[11px]"}`}>{o.hint}</span> : null}
                         </span>
-                        {selected ? <Check size={14} weight="bold" className="shrink-0 text-bindery" /> : null}
+                        {selected ? <Check size={compact ? 12 : 14} weight="bold" className="shrink-0 text-bindery" /> : null}
                       </button>
                     );
                   })

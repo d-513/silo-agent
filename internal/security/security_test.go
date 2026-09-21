@@ -80,6 +80,15 @@ func TestVote(t *testing.T) {
 	}
 }
 
+func TestRuleAuto(t *testing.T) {
+	if Rule("auto") != Auto {
+		t.Fatal("auto must be a first-class decision")
+	}
+	if Rule("bogus") != Ask {
+		t.Fatal("unknown decisions fall back to ask")
+	}
+}
+
 func TestReserved(t *testing.T) {
 	if !Reserved("desktop") || !Reserved("secrets") || !Reserved("skills") || !Reserved("web") || !Reserved("artifact") || Reserved("github") {
 		t.Fatal("reserved")

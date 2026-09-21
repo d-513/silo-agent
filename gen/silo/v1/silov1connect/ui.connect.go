@@ -107,6 +107,8 @@ const (
 	UISetModelsProcedure = "/silo.v1.UI/SetModels"
 	// UIListAuditProcedure is the fully-qualified name of the UI's ListAudit RPC.
 	UIListAuditProcedure = "/silo.v1.UI/ListAudit"
+	// UIListLLMLogsProcedure is the fully-qualified name of the UI's ListLLMLogs RPC.
+	UIListLLMLogsProcedure = "/silo.v1.UI/ListLLMLogs"
 	// UIListConnectorsProcedure is the fully-qualified name of the UI's ListConnectors RPC.
 	UIListConnectorsProcedure = "/silo.v1.UI/ListConnectors"
 	// UICreateConnectorProcedure is the fully-qualified name of the UI's CreateConnector RPC.
@@ -200,6 +202,7 @@ type UIClient interface {
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
 	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -461,6 +464,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListAudit")),
 			connect.WithClientOptions(opts...),
 		),
+		listLLMLogs: connect.NewClient[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse](
+			httpClient,
+			baseURL+UIListLLMLogsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListLLMLogs")),
+			connect.WithClientOptions(opts...),
+		),
 		listConnectors: connect.NewClient[v1.ListConnectorsRequest, v1.ListConnectorsResponse](
 			httpClient,
 			baseURL+UIListConnectorsProcedure,
@@ -659,6 +668,7 @@ type uIClient struct {
 	putSettings         *connect.Client[v1.PutSettingsRequest, v1.Settings]
 	setModels           *connect.Client[v1.SetModelsRequest, v1.Settings]
 	listAudit           *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	listLLMLogs         *connect.Client[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse]
 	listConnectors      *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
 	createConnector     *connect.Client[v1.CreateConnectorRequest, v1.Connector]
 	updateConnector     *connect.Client[v1.UpdateConnectorRequest, v1.Connector]
@@ -872,6 +882,11 @@ func (c *uIClient) ListAudit(ctx context.Context, req *connect.Request[v1.ListAu
 	return c.listAudit.CallUnary(ctx, req)
 }
 
+// ListLLMLogs calls silo.v1.UI.ListLLMLogs.
+func (c *uIClient) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
+	return c.listLLMLogs.CallUnary(ctx, req)
+}
+
 // ListConnectors calls silo.v1.UI.ListConnectors.
 func (c *uIClient) ListConnectors(ctx context.Context, req *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
 	return c.listConnectors.CallUnary(ctx, req)
@@ -1041,6 +1056,7 @@ type UIHandler interface {
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
 	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -1298,6 +1314,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ListAudit")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListLLMLogsHandler := connect.NewUnaryHandler(
+		UIListLLMLogsProcedure,
+		svc.ListLLMLogs,
+		connect.WithSchema(uIMethods.ByName("ListLLMLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListConnectorsHandler := connect.NewUnaryHandler(
 		UIListConnectorsProcedure,
 		svc.ListConnectors,
@@ -1530,6 +1552,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISetModelsHandler.ServeHTTP(w, r)
 		case UIListAuditProcedure:
 			uIListAuditHandler.ServeHTTP(w, r)
+		case UIListLLMLogsProcedure:
+			uIListLLMLogsHandler.ServeHTTP(w, r)
 		case UIListConnectorsProcedure:
 			uIListConnectorsHandler.ServeHTTP(w, r)
 		case UICreateConnectorProcedure:
@@ -1737,6 +1761,10 @@ func (UnimplementedUIHandler) SetModels(context.Context, *connect.Request[v1.Set
 
 func (UnimplementedUIHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAudit is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListLLMLogs is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {

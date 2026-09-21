@@ -92,6 +92,7 @@ export function SettingsPane({
         description: description.trim(),
         soul,
         memory,
+        autoApprove: bot.autoApprove,
       });
       onSaved(next);
       setSoul(next.soul);

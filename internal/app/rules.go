@@ -229,6 +229,8 @@ func modeWord(s string) string {
 		return "Allow"
 	case security.Deny:
 		return "Deny"
+	case security.Auto:
+		return "Auto"
 	default:
 		return "Ask"
 	}

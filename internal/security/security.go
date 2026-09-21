@@ -11,7 +11,10 @@ const (
 	Allow = "allow"
 	Ask   = "ask"
 	Deny  = "deny"
-	Star  = "*"
+	// Auto routes the action through the approval model with the Bot's
+	// auto-approval policy before it runs.
+	Auto = "auto"
+	Star = "*"
 )
 
 const (
@@ -148,7 +151,7 @@ func Key(connector, action string) string {
 
 func Rule(s string) string {
 	switch s {
-	case Allow, Deny:
+	case Allow, Deny, Auto:
 		return s
 	default:
 		return Ask

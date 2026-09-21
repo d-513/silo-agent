@@ -14,7 +14,7 @@ import { joinPath } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
 import { Composer } from "./Composer";
-import { AdminLayout, AccountPage, AdminSettings, AdminSearchExtract } from "./Admin";
+import { AdminLayout, AccountPage, AdminDebug, AdminSettings, AdminSearchExtract } from "./Admin";
 import { SettingsPane } from "./Settings";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
@@ -1590,6 +1590,20 @@ function BotPage() {
               await ui.decideApproval({ id: pending[0].id, decision });
               setPending((xs) => xs.slice(1));
             }}
+            onAutoApprove={async () => {
+              try {
+                await ui.setRule({
+                  botId: bot.id,
+                  connector: pending[0].connector,
+                  action: pending[0].action,
+                  decision: "auto",
+                });
+                await ui.decideApproval({ id: pending[0].id, decision: "allow_once" });
+                setPending((xs) => xs.slice(1));
+              } catch (e) {
+                setActErr(fail(e));
+              }
+            }}
           />
         ) : (
           authPrompt?.connector && (
@@ -1672,6 +1686,7 @@ function Authed() {
           <Route path="connectors/*" element={<AdminConnectors />} />
           <Route path="skills" element={<AdminSkills />} />
           <Route path="search-extract" element={<AdminSearchExtract />} />
+          <Route path="debug" element={<AdminDebug />} />
         </Route>
         <Route
           path="/account"

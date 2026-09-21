@@ -77,10 +77,12 @@ export function ApprovalSlip({
   bot,
   approval,
   onDecide,
+  onAutoApprove,
 }: {
   bot: Bot;
   approval: Approval;
   onDecide: (decision: "allow_once" | "always" | "deny") => void;
+  onAutoApprove?: () => void;
 }) {
   const d = describeApproval(approval);
   const waiting = approval.runId ? "This run is paused until you choose." : "Waiting for your choice.";
@@ -92,6 +94,16 @@ export function ApprovalSlip({
       <Btn kind="secondary" className="mb-2 w-full justify-center" onClick={() => onDecide("always")}>
         Always allow this action
       </Btn>
+      {onAutoApprove && (
+        <Btn
+          kind="secondary"
+          className="mb-2 w-full justify-center"
+          title="Set this action to Auto and let the approval model decide from now on. This run is allowed once."
+          onClick={onAutoApprove}
+        >
+          Auto-approve this action
+        </Btn>
+      )}
       <Btn kind="deny" className="w-full justify-center" onClick={() => onDecide("deny")}>
         Deny
       </Btn>

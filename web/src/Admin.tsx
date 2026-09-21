@@ -8,6 +8,7 @@ import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 
 export { AdminSettings } from "./AdminSettings";
+export { AdminDebug } from "./AdminDebug";
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -15,6 +16,12 @@ function fail(e: unknown) {
 }
 
 export function AdminLayout() {
+  const [debug, setDebug] = useState(false);
+  useEffect(() => {
+    ui.getSettings({})
+      .then((x) => setDebug(x.fields.some((f) => f.key === "debug" && f.value === "true")))
+      .catch(() => {});
+  }, []);
   return (
     <div className="silo-page">
       <h1 className="text-[22px] font-medium tracking-tight">Admin</h1>
@@ -51,6 +58,16 @@ export function AdminLayout() {
         >
           Search & Extract
         </NavLink>
+        {debug && (
+          <NavLink
+            to="/admin/debug"
+            className={({ isActive }) =>
+              `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            }
+          >
+            Debug
+          </NavLink>
+        )}
       </nav>
       <Outlet />
     </div>

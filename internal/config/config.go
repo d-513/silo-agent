@@ -82,7 +82,9 @@ type Config struct {
 	MCPStdioImage string              `koanf:"mcp_stdio_image"`
 	Model         string              `koanf:"model"`
 	ModelTitle    string              `koanf:"model_title"`
+	ModelApproval string              `koanf:"model_approval"`
 	Models        []string            `koanf:"models"`
+	Debug         bool                `koanf:"debug"`
 	Bootstrap     Bootstrap           `koanf:"bootstrap"`
 	Providers     map[string]Provider `koanf:"providers"`
 	Search        Search              `koanf:"search"`
@@ -108,15 +110,27 @@ func (c Config) TitleModel() string {
 	return DefaultModel
 }
 
+// ApprovalModel returns the model used to decide auto-approval rules, falling
+// back to the title model and then the main default model.
+func (c Config) ApprovalModel() string {
+	if m := strings.TrimSpace(c.ModelApproval); m != "" {
+		return m
+	}
+	return c.TitleModel()
+}
+
 type fieldMeta struct {
 	Key     string
 	Secret  bool
 	Restart bool
+	Type    string
 }
 
 var fieldDefs = []fieldMeta{
 	{Key: "model"},
 	{Key: "model_title"},
+	{Key: "model_approval"},
+	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
 	{Key: "http_addr", Restart: true},
 	{Key: "public_url"},
@@ -340,7 +354,7 @@ func (s *Store) Fields() []Field {
 		}
 		out = append(out, Field{
 			Key: m.Key, Value: val, Source: s.sourceLocked(m.Key),
-			EnvName: EnvName(m.Key), Secret: m.Secret, Restart: m.Restart,
+			EnvName: EnvName(m.Key), Secret: m.Secret, Restart: m.Restart, Type: m.Type,
 		})
 	}
 	for _, d := range search.Descriptors() {
@@ -480,7 +494,7 @@ func validateYAML(raw []byte) error {
 			return fmt.Errorf("invalid model %q: %w", m, err)
 		}
 	}
-	for _, key := range []string{"model", "model_title"} {
+	for _, key := range []string{"model", "model_title", "model_approval"} {
 		if v := strings.TrimSpace(k.String(key)); v != "" {
 			if _, _, err := llm.Parse(v); err != nil {
 				return fmt.Errorf("%s: %w", key, err)

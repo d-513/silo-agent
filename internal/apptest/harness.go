@@ -367,7 +367,7 @@ func memDB(t *testing.T) *gorm.DB {
 	}
 	if err := gdb.AutoMigrate(
 		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
-		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Audit{},
+		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Audit{}, &db.LLMLog{},
 		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{}, &db.Channel{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)

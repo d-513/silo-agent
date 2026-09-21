@@ -38,8 +38,10 @@ func (a *App) titleModel(chatID string) string {
 	return a.resolveModel(chatID)
 }
 
-// modelClient builds a provider client for a provider/model id.
-func (a *App) modelClient(modelID string) (llm.Client, string, string, error) {
+// modelClient builds a provider client for a provider/model id. Every client
+// is wrapped by the engine's observer so the debug log sees every model call
+// (chat, title, auto-approval) with the label naming its feature.
+func (a *App) modelClient(modelID, botID, label string) (llm.Client, string, string, error) {
 	provider, model, err := llm.Parse(modelID)
 	if err != nil {
 		return nil, "", "", err
@@ -58,7 +60,7 @@ func (a *App) modelClient(modelID string) (llm.Client, string, string, error) {
 	if err != nil {
 		return nil, provider, model, err
 	}
-	return client, provider, model, nil
+	return llm.Observe(client, provider, func(rec llm.Record) { a.recordLLM(botID, label, rec) }), provider, model, nil
 }
 
 // cachePolicy turns a provider's settings into a request cache policy. Caching

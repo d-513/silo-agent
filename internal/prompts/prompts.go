@@ -9,3 +9,9 @@ var System string
 //
 //go:embed CHANNEL.md
 var Channel string
+
+// Approval is the base system prompt for the auto-approval model. The Bot's
+// own policy is appended to it.
+//
+//go:embed APPROVAL.md
+var Approval string

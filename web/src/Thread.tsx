@@ -23,6 +23,9 @@ import {
   User,
 } from "@phosphor-icons/react";
 import hljs from "highlight.js/lib/core";
+import "katex/dist/katex.min.css";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 import bash from "highlight.js/lib/languages/bash";
 import diff from "highlight.js/lib/languages/diff";
 import go from "highlight.js/lib/languages/go";
@@ -43,6 +46,7 @@ import { Crest } from "./Crest";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
 import { foldEvents, type Ev } from "./fold";
+import { normalizeLatex } from "./latex";
 
 export type { Ev };
 
@@ -428,8 +432,8 @@ function Md({ text }: { text: string }) {
   return (
     <div className="silo-md">
       <Markdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={mdHighlight}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex, ...mdHighlight]}
         components={{
           table: ({ children }) => (
             <div className="silo-md-table">
@@ -438,7 +442,7 @@ function Md({ text }: { text: string }) {
           ),
         }}
       >
-        {text}
+        {normalizeLatex(text)}
       </Markdown>
     </div>
   );

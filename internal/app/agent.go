@@ -591,7 +591,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	defer a.untrackRun(runID)
 
 	modelID := a.resolveModel(chatID)
-	client, provider, model, err := a.modelClient(modelID)
+	client, provider, model, err := a.modelClient(modelID, botID, "chat")
 	if err != nil {
 		a.emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
@@ -617,7 +617,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		// Re-resolve each turn so a switch_model tool call takes effect on the
 		// next model call without restarting the run.
 		if m := a.resolveModel(chatID); m != modelID {
-			if c, pr, mo, e := a.modelClient(m); e == nil {
+			if c, pr, mo, e := a.modelClient(m, botID, "chat"); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
 			}
@@ -697,7 +697,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if len(snippet) > 800 {
 		snippet = truncateUTF8(snippet, 800)
 	}
-	client, provider, model, err := a.modelClient(a.titleModel(chatID))
+	client, provider, model, err := a.modelClient(a.titleModel(chatID), botID, "title")
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)
 		return

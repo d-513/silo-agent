@@ -11,9 +11,15 @@ mcp_stdio_image: localhost/silo-mcp-stdio:v1
 model: openrouter/openai/gpt-5.6-luna
 # Chat title model. Leave empty to use the default model.
 model_title: ""
+# Auto-approval model. Decides rules set to "auto". Empty uses model_title.
+model_approval: ""
 # Operator allowlist: only these models appear in the chat model picker.
 models:
   - openrouter/openai/gpt-5.6-luna
+
+# Debug logging. When true, every model request/response is stored and shown
+# on the Admin → Debug tab. Off by default. Env: SILO_DEBUG.
+debug: false
 
 # First admin only. Wipe data/ to recreate. Not OpenRouter.
 bootstrap:

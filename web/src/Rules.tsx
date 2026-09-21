@@ -1,6 +1,8 @@
-import { CaretRight, Check, MagnifyingGlass, Question, X } from "@phosphor-icons/react";
+import { CaretRight, Check, MagnifyingGlass, Question, Robot, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { ui } from "./api";
+import { Btn } from "./Btn";
+import { Panel, textareaClass } from "./Field";
 import type { Rule, RuleSection } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
@@ -27,6 +29,7 @@ function RuleDecisionSegment({
 }) {
   const modes = [
     { id: "allow", label: "Allow", icon: Check },
+    { id: "auto", label: "Auto", icon: Robot },
     { id: "ask", label: "Ask", icon: Question },
     { id: "deny", label: "Deny", icon: X },
   ];
@@ -42,6 +45,9 @@ function RuleDecisionSegment({
         if (m.id === "allow") {
           activeStyle = "bg-pine text-plaster shadow-xs font-medium";
           inactiveHover = "hover:text-pine hover:bg-linen/60";
+        } else if (m.id === "auto") {
+          activeStyle = "bg-slate text-plaster shadow-xs font-medium";
+          inactiveHover = "hover:text-slate hover:bg-linen/60";
         } else if (m.id === "deny") {
           activeStyle = "bg-carmine text-plaster shadow-xs font-medium";
           inactiveHover = "hover:text-carmine hover:bg-carmine/10";
@@ -56,7 +62,7 @@ function RuleDecisionSegment({
             type="button"
             disabled={disabled}
             className={`flex flex-1 items-center justify-center gap-1 rounded-[6px] transition-[transform,background-color,color] duration-150 active:scale-[0.96] ${
-              size === "sm" ? "h-7 px-2 text-[12px]" : "h-8 px-2.5 text-[13px]"
+              size === "sm" ? "h-7 px-1.5 text-[11px]" : "h-8 px-1.5 text-[12px]"
             } ${
               active ? activeStyle : `text-stone ${inactiveHover}`
             } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
@@ -80,15 +86,45 @@ export function RulesPane({ botId }: { botId: string }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ bot: true });
   const [filter, setFilter] = useState("");
   const [err, setErr] = useState("");
+  const [policy, setPolicy] = useState("");
+  const [savedPolicy, setSavedPolicy] = useState("");
+  const [savingPolicy, setSavingPolicy] = useState(false);
+  const [policySaved, setPolicySaved] = useState(false);
 
   async function load() {
-    const r = await ui.listRules({ botId });
+    const [r, b] = await Promise.all([ui.listRules({ botId }), ui.getBot({ id: botId })]);
     setSections(r.sections);
+    setPolicy(b.autoApprove);
+    setSavedPolicy(b.autoApprove);
   }
 
   useEffect(() => {
     load().catch((e) => setErr(fail(e)));
   }, [botId]);
+
+  async function savePolicy() {
+    setErr("");
+    setSavingPolicy(true);
+    setPolicySaved(false);
+    try {
+      const b = await ui.getBot({ id: botId });
+      const next = await ui.updateBot({
+        id: botId,
+        name: b.name,
+        description: b.description,
+        soul: b.soul,
+        memory: b.memory,
+        autoApprove: policy,
+      });
+      setPolicy(next.autoApprove);
+      setSavedPolicy(next.autoApprove);
+      setPolicySaved(true);
+    } catch (e) {
+      setErr(fail(e));
+    } finally {
+      setSavingPolicy(false);
+    }
+  }
 
   async function setDecision(r: Rule, decision: string) {
     setErr("");
@@ -204,12 +240,19 @@ export function RulesPane({ botId }: { botId: string }) {
       </div>
 
       <div className="mb-5 rounded-[10px] border border-thread-2 bg-cloth/40 p-3.5">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-start gap-2.5">
             <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-pine" />
             <div>
               <div className="text-[13px] font-medium text-iron">Allow</div>
               <div className="text-[12px] leading-snug text-stone">Runs immediately without asking</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-slate" />
+            <div>
+              <div className="text-[13px] font-medium text-iron">Auto</div>
+              <div className="text-[12px] leading-snug text-stone">The approval model decides from your policy</div>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
@@ -228,6 +271,28 @@ export function RulesPane({ botId }: { botId: string }) {
           </div>
         </div>
       </div>
+
+      <Panel
+        title="Auto-approve policy"
+        note="Read by the approval model when a rule is set to Auto. Write the actions this Bot may run without a human. Empty means every Auto rule asks."
+        className="mb-5"
+      >
+        <textarea
+          className={`${textareaClass} h-[120px] font-mono text-[13px] leading-5`}
+          placeholder="e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret."
+          value={policy}
+          onChange={(e) => {
+            setPolicy(e.target.value);
+            setPolicySaved(false);
+          }}
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <Btn kind="primary" onClick={() => void savePolicy()} disabled={savingPolicy || policy === savedPolicy}>
+            {savingPolicy ? "Saving…" : "Save policy"}
+          </Btn>
+          {policySaved && <span className="text-stone">Saved</span>}
+        </div>
+      </Panel>
 
       {err && <p className="mb-3 text-carmine">{err}</p>}
 
@@ -280,7 +345,7 @@ export function RulesPane({ botId }: { botId: string }) {
                     </span>
                   )}
                   <div
-                    className="w-full wide:w-[210px] wide:shrink-0"
+                    className="w-full wide:w-[260px] wide:shrink-0"
                     title={
                       sectionDecision(s) === ""
                         ? "Mixed. Pick one to apply to every action below."
@@ -344,7 +409,7 @@ export function RulesPane({ botId }: { botId: string }) {
                           </div>
                         </div>
                       </div>
-                      <div className="w-full wide:w-[220px] wide:shrink-0">
+                      <div className="w-full wide:w-[260px] wide:shrink-0">
                         <RuleDecisionSegment
                           value={r.decision}
                           onChange={(v) => void setDecision(r, v)}

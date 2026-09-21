@@ -53,6 +53,8 @@ service UI {
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
 
+  rpc ListLLMLogs(ListLLMLogsRequest) returns (ListLLMLogsResponse);
+
   rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse);
   rpc CreateConnector(CreateConnectorRequest) returns (Connector);
   rpc UpdateConnector(UpdateConnectorRequest) returns (Connector);
@@ -120,6 +122,9 @@ message Bot {
   string description = 7;
   string soul = 8;
   string memory = 9;
+  // AutoApprove is this Bot's free-text auto-approval policy. Rules set to
+  // "auto" consult the approval model with this text.
+  string auto_approve = 10;
 }
 
 message ListBotsRequest {}
@@ -140,6 +145,7 @@ message UpdateBotRequest {
   string description = 3;
   string soul = 4;
   string memory = 5;
+  string auto_approve = 6;
 }
 
 message GetBotRequest {
@@ -482,6 +488,33 @@ message ListAuditRequest {}
 
 message ListAuditResponse {
   repeated AuditRow rows = 1;
+}
+
+message LLMLog {
+  string id = 1;
+  string at = 2;
+  string bot_id = 3;
+  // Label is the calling feature: chat, title, or approval.
+  string label = 4;
+  string provider = 5;
+  string model = 6;
+  string request = 7;
+  string response = 8;
+  string error = 9;
+  int32 input_tokens = 10;
+  int32 output_tokens = 11;
+  int64 duration_ms = 12;
+}
+
+message ListLLMLogsRequest {
+  // Empty lists every Bot's logs.
+  string bot_id = 1;
+}
+
+message ListLLMLogsResponse {
+  repeated LLMLog logs = 1;
+  // Enabled mirrors the operator's debug flag.
+  bool enabled = 2;
 }
 
 message HeaderKey {

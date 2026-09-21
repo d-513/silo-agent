@@ -32,6 +32,9 @@ type Bot struct {
 	Description string
 	Soul        string
 	Memory      string
+	// AutoApprove is the free-text policy the approval model reads when a rule
+	// decision is "auto".
+	AutoApprove string
 	TokenHash   string `gorm:"uniqueIndex"`
 	ContainerID string
 	Status      string
@@ -123,6 +126,23 @@ type Approval struct {
 	CreatedAt time.Time
 }
 
+// LLMLog is one model request/response captured while debug is on. It is the
+// raw debug view, not run history.
+type LLMLog struct {
+	ID         string `gorm:"primaryKey"`
+	At         time.Time
+	BotID      string `gorm:"index"`
+	Label      string
+	Provider   string
+	Model      string
+	Request    string
+	Response   string
+	Error      string
+	InputTok   int
+	OutputTok  int
+	DurationMs int64
+}
+
 type Audit struct {
 	ID        string `gorm:"primaryKey"`
 	BotID     string
@@ -197,7 +217,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	}
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
-		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{},
+		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{},
 	)
 	if err != nil {

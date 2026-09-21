@@ -26,6 +26,8 @@ function fail(e: unknown) {
 const LABELS: Record<string, string> = {
   model: "Default model",
   model_title: "Chat title model",
+  model_approval: "Auto-approval model",
+  debug: "Debug logging",
   "search.engine": "Engine",
   http_addr: "Listen address",
   public_url: "Public URL",
@@ -41,7 +43,7 @@ const LABELS: Record<string, string> = {
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
-  if (key === "model" || key === "model_title") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval") return "models";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
@@ -157,6 +159,7 @@ export function AdminSettings() {
   const rowsIn = (id: string) => fields.filter((f) => groupOf(f.key) === id);
   const defaultModel = values["model"] ?? "";
   const titleModel = values["model_title"] ?? "";
+  const approvalModel = values["model_approval"] ?? "";
 
   return (
     <div>
@@ -166,10 +169,13 @@ export function AdminSettings() {
           models={models}
           defaultModel={defaultModel}
           titleModel={titleModel}
+          approvalModel={approvalModel}
           defaultField={fields.find((f) => f.key === "model")}
           titleField={fields.find((f) => f.key === "model_title")}
+          approvalField={fields.find((f) => f.key === "model_approval")}
           onDefault={(v) => setValue("model", v)}
           onTitle={(v) => setValue("model_title", v)}
+          onApproval={(v) => setValue("model_approval", v)}
           onSaveModels={saveModels}
         />
         {providers.map((p) => (
@@ -332,19 +338,25 @@ function ModelSettings({
   models,
   defaultModel,
   titleModel,
+  approvalModel,
   defaultField,
   titleField,
+  approvalField,
   onDefault,
   onTitle,
+  onApproval,
   onSaveModels,
 }: {
   models: ModelOption[];
   defaultModel: string;
   titleModel: string;
+  approvalModel: string;
   defaultField?: ConfigField;
   titleField?: ConfigField;
+  approvalField?: ConfigField;
   onDefault: (v: string) => void;
   onTitle: (v: string) => void;
+  onApproval: (v: string) => void;
   onSaveModels: (list: string[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(models.map((m) => m.id).join("\n"));
@@ -357,6 +369,7 @@ function ModelSettings({
   const allowed = models.map((m) => m.id);
   const lockedDefault = defaultField?.source === ConfigSource.ENV;
   const lockedTitle = titleField?.source === ConfigSource.ENV;
+  const lockedApproval = approvalField?.source === ConfigSource.ENV;
 
   function add() {
     const id = `${provider}/${name.trim()}`.replace(/\/+$/, "");
@@ -377,7 +390,7 @@ function ModelSettings({
 
   return (
     <Panel title="Models" note="Model ids are provider/model. The allowlist drives the chat model picker.">
-      <div className="mb-5 grid gap-4 sm:grid-cols-2">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Default model">
           <Select
             value={defaultModel}
@@ -396,6 +409,16 @@ function ModelSettings({
             placeholder="Same as default"
             emptyLabel="Same as default"
             options={[{ value: "", label: "Same as default" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
+          />
+        </Field>
+        <Field label="Auto-approval model" hint="Decides rules set to Auto.">
+          <Select
+            value={approvalModel}
+            onChange={onApproval}
+            disabled={lockedApproval}
+            placeholder="Same as title model"
+            emptyLabel="Same as title model"
+            options={[{ value: "", label: "Same as title model" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
           />
         </Field>
       </div>
