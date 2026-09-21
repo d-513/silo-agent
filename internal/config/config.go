@@ -202,10 +202,47 @@ func Load() (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	return LoadPath(path)
+}
+
+// LoadPath loads a Store from an explicit YAML path. Environment overrides
+// still apply (SILO_*), matching Load.
+func LoadPath(path string) (*Store, error) {
 	s := &Store{path: path}
 	if err := s.reload(); err != nil {
 		return nil, err
 	}
+	return s, nil
+}
+
+// FromYAML builds a Store from in-memory YAML with no file access and no
+// environment overrides. Tests use it to get a deterministic config that cannot
+// be perturbed by a stray SILO_* variable in the shell. Patch and WriteYAML are
+// unavailable on a store with no path and return an error.
+func FromYAML(raw []byte) (*Store, error) {
+	s := &Store{}
+	y := koanf.New(".")
+	if len(bytes.TrimSpace(raw)) > 0 {
+		if err := y.Load(yamlBytes(raw), yaml.Parser()); err != nil {
+			return nil, fmt.Errorf("invalid yaml: %w", err)
+		}
+	}
+	m := koanf.New(".")
+	setDefaults(m)
+	if err := m.Merge(y); err != nil {
+		return nil, err
+	}
+	var c Config
+	if err := m.Unmarshal("", &c); err != nil {
+		return nil, err
+	}
+	if c.DockerHost == "" {
+		c.DockerHost = os.Getenv("DOCKER_HOST")
+	}
+	s.yaml = y
+	s.env = koanf.New(".")
+	s.merged = m
+	s.live = c
 	return s, nil
 }
 

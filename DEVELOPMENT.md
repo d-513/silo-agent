@@ -45,7 +45,11 @@ Run `make help` to list everything.
 | `make build-cp`      | `bin/silo`                                                        |
 | `make build-all`     | `bin/silo`, `bin/silo-worker`, `bin/silo-mcp-bridge`              |
 | `make images`        | Bot + STDIO MCP images                                            |
-| `make test`          | `go test ./cmd/... ./internal/...`                                |
+| `make test`          | Full Go suite: units + feature tests + real-container tier        |
+| `make test-fast`     | Go suite without the container tier (no Podman needed)            |
+| `make test-containers` | Only the real Bot-image tests; fails if Podman is missing       |
+| `make test-integration` | Go client integration tests against a running CP              |
+| `make e2e`           | Playwright against an already-running `make dev` stack            |
 | `make fmt` / `vet`   | `go fmt` / `go vet`                                               |
 | `make proto`         | `buf generate`                                                    |
 | `make cleanup`       | Force-remove every `silo-*` container                             |
@@ -114,10 +118,12 @@ A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, 
 ## Tests
 
 ```
-make test
+make test          # full suite, including the real-container tier (run `make images` first)
+make test-fast     # skip the container tier (no Podman needed)
+make e2e           # Playwright against the already-running `make dev` stack
 ```
 
-The explicit package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. See [TESTING.md](TESTING.md) for tiers and live checks.
+The explicit Go package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. Feature tests use the deterministic DummyLLM provider (`internal/llm/dummy`) and the `internal/apptest` harness; the container tier boots the real Bot image and cleans up everything it creates. See [TESTING.md](TESTING.md) for tiers, environment knobs, and live checks.
 
 ## Commits
 

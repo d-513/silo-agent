@@ -83,6 +83,31 @@ func Known(id string) bool {
 	return ok
 }
 
+// Register adds a search engine to the registry. It is the seam test and
+// embedder packages use to plug in an engine without editing the built-in
+// list; production code never calls it.
+func Register(desc Descriptor, newFn func(Settings) Engine) {
+	for i, r := range registry {
+		if r.desc.ID == desc.ID {
+			registry[i] = registered{desc: desc, new: newFn}
+			return
+		}
+	}
+	registry = append(registry, registered{desc: desc, new: newFn})
+}
+
+// Unregister removes a search engine from the registry.
+func Unregister(id string) {
+	id = strings.TrimSpace(id)
+	out := registry[:0]
+	for _, r := range registry {
+		if r.desc.ID != id {
+			out = append(out, r)
+		}
+	}
+	registry = out
+}
+
 func New(id string, settings Settings) (Engine, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {

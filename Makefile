@@ -37,7 +37,8 @@ WATCH_OPTS  := \
 
 .PHONY: help install deps web-install build build-cp build-worker \
 	build-bridge build-all images bot-image stdio-image run run-control \
-	run-frontend watch-control dev attach test fmt vet tidy proto rebuild \
+	run-frontend watch-control dev attach test test-fast test-containers \
+	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data
 
 ## ---------------------------------------------------------------------------
@@ -115,8 +116,20 @@ attach: ## Attach to the running dev tmux session
 
 ## --- quality ---------------------------------------------------------------
 
-test: ## Run the Go test suite
+test: ## Run the full Go suite (includes the real-container tier; needs images)
 	$(GO) test ./cmd/... ./internal/...
+
+test-fast: ## Run the Go suite without the container tier (no Podman needed)
+	SILO_SKIP_CONTAINERS=1 $(GO) test ./cmd/... ./internal/...
+
+test-containers: ## Run only the real-container tests and fail if Podman is missing
+	SILO_REQUIRE_CONTAINERS=1 $(GO) test ./internal/app -run 'TestContainer' -count=1 -v
+
+test-integration: ## Run the Go client integration tests against a running CP
+	SILO_INTEGRATION=1 $(GO) test -tags integration ./integration/... -count=1 -v
+
+e2e: ## Run Playwright against the already-running dev stack (make dev)
+	$(PNPM) --dir web exec playwright test
 
 fmt: ## Format Go sources
 	$(GO) fmt ./cmd/... ./internal/...

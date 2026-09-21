@@ -277,6 +277,37 @@ func New(id string, settings Settings) (Client, error) {
 	return nil, fmt.Errorf("unknown model provider %q", id)
 }
 
+// Register adds a provider to the registry. It is the seam test and embedder
+// packages use to plug in a provider without editing the built-in list; a
+// production control plane never calls it. Registering an id that already
+// exists replaces the factory but keeps the original descriptor unless the new
+// one is non-empty.
+func Register(desc Descriptor, newFn func(Settings) (Client, error)) {
+	for i, r := range registry {
+		if r.desc.ID == desc.ID {
+			if desc.Name != "" || len(desc.Settings) > 0 {
+				registry[i].desc = desc
+			}
+			registry[i].new = newFn
+			return
+		}
+	}
+	registry = append(registry, registered{desc: desc, new: newFn})
+}
+
+// Unregister removes a provider from the registry. Tests use it to keep a
+// process-scoped registration from leaking into another test binary's run.
+func Unregister(id string) {
+	id = strings.TrimSpace(id)
+	out := registry[:0]
+	for _, r := range registry {
+		if r.desc.ID != id {
+			out = append(out, r)
+		}
+	}
+	registry = out
+}
+
 // Split parses a "provider/model" id on the first slash. The model part may
 // itself contain slashes (e.g. "openrouter/openai/gpt-5.6-luna").
 func Split(modelID string) (provider, model string, ok bool) {
