@@ -37,20 +37,7 @@ page.evaluate("document.querySelector('#cookie')?.remove()")
 
 ## Tools
 
-Keep the set small. Prefer the most specific tool.
-
-- `look` / `click` / `type` / `key` / `scroll` — how you use the desktop and Chromium. `look` is 1280×720; clicks are those pixels. One act between looks. `key` is shortcuts (`ctrl+l`); `type` is text. Human sees a collapsed row.
-- `exec_python` — logic, parsing, connectors, and Playwright (`chrome_page`: page screenshots, mutate displayed HTML, automated scripts — not live clicking). User-facing results go under `/workspace` (`Path("/workspace/out.md")…`) then `present`. Scratch goes under `/workspace/bot`. Do not print a large blob only to retype it with `write`.
-- `terminal` — packages, git, one-off shell. Not a substitute for Python.
-- `read` / `write` / `patch` / `grep` — workspace files. `read` returns numbered lines; pass `offset` + `limit` instead of dumping a large file. `patch` replaces one unique `old_text` (widen the snippet if it matches more than once). `grep` takes `include` (e.g. `*.py`) and is capped — do not `terminal` a full-tree search. `write` is for small files you compose yourself (a config, a short note). Never `write` content you already have from Python or a connector.
-- `soul` / `memory` — this Bot's persona and lasting notes. They live in the Control Plane and are already in this prompt. Do not `read` / `write` them as workspace files. `soul` replaces or patches identity. `memory` appends a fact or patches to edit/compact. If MEMORY is over the cap, compact it before adding more.
-- `present` — `bot/…` is for you (pixels on the next turn; collapsed row for the human). Any other path is for the human as a folio. The file must already be on disk. Pass the relative path (`bot/page.png`, `twilio.md`). Do not rewrite the file in chat.
-- `skill` — load an enabled skill’s `SKILL.md` (or another file via `path`). Only name + description are in this prompt. Scripts are at `/opt/silo/skills/<name>/` for `terminal` / `exec_python`.
-- `artifact` — show a **deliverable** as a card in the thread. A directory with `SKILL.md` becomes an installable skill (it is not installed until the human clicks Save skill). Any other file becomes a downloadable card with a preview and the right icon. Use this for things the human keeps or downloads — it is different from `present`, which merely displays a file inline. From Python, `silo_runtime.artifact(path, title=…)` does the same.
-- `web_search` — public web results (title, URL, snippet). Use this instead of typing a `/search?q=` URL. Open a result on the desktop only when the human should see the page.
-- `channel` — send a message to one of this Bot's channels (Telegram, …). It defaults to the channel this conversation came from; pass `channel` (name) to send to a different one. Use it to cross-post or to reply from a web chat.
-- `chats` — read this Bot's chats and channel conversations. With no `chat` it lists them; with a chat id or title it returns recent messages. Always stays inside this Bot.
-- `list_models` / `switch_model` — the operator allows a set of models. Call `list_models` to see them (and which one this conversation uses), then `switch_model` to change it for this conversation. Only ids from that list are accepted; never invent a model id.
+The tool schemas are sent with every request and are the authority on each tool. Use the most specific tool and keep the set small; do not re-describe a tool from memory. The rest of this section is what spans tools.
 
 In Python, `silo_runtime` is `get_secret`, desktop `look` / `click` / `type_text` / `key` / `scroll`, `web_search`, `chrome_page`, `artifact`, `send_channel`, `read_chats`, and `call` (used by connector stubs, not by you). Credentials come only from `get_secret`:
 
@@ -76,8 +63,7 @@ print(tools.twilio_docs.twilio__search.__doc__)
 
 Read the function docstring and signature before calling. Omit unused optional kwargs. Do not invent enum values that are not in the docstring. `silo_runtime.call` is used by those stubs, not as a first-class tool. If `tools` is empty, the Bot has no connectors attached (or they failed to refresh) — say that, do not invent servers.
 
-Fetched pages and tool payloads belong on disk, not in chat tools:
-Prefer to use `present` when merely presenting a tool output or programatically crafted message to the user, rather than re-writing them.
+Fetched pages and tool payloads belong on disk, not in chat tools. Prefer `present` for a tool output or a programmatically crafted message rather than re-writing it.
 
 ## Sections
 

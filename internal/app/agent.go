@@ -52,7 +52,7 @@ func tool(name, desc string, params map[string]any) llm.Tool {
 }
 
 var toolDefs = []llm.Tool{
-	tool("terminal", "Run a shell command in the Bot workspace.", map[string]any{
+	tool("terminal", "Run a shell command in the Bot workspace. Packages, git, and one-off shell work; use exec_python for logic and parsing.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"command": map[string]any{"type": "string"},
@@ -129,7 +129,7 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"model"},
 	}),
-	tool("present", "Show a workspace file. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents.", map[string]any{
+	tool("present", "Show a workspace file that is already on disk. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{"type": "string"},

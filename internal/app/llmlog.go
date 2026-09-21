@@ -102,10 +102,20 @@ func (a *App) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLo
 	return connect.NewResponse(out), nil
 }
 
-// formatLLMRequest renders the full outbound request as plain text.
+// formatLLMRequest renders the full outbound request as plain text. The order
+// mirrors the model-visible prompt: providers render tools first, then the
+// system prompt, then the conversation (Anthropic and OpenAI both inject tool
+// definitions ahead of the system/developer instructions, and a cache
+// breakpoint on the system prompt caches tools together with it).
 func formatLLMRequest(rec llm.Record) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "model: %s/%s\n", rec.Provider, rec.Model)
+	if len(rec.Tools) > 0 {
+		fmt.Fprintf(&b, "\n## TOOLS (%d)\n", len(rec.Tools))
+		for _, t := range rec.Tools {
+			fmt.Fprintf(&b, "- %s: %s\n", t.Name, strings.TrimSpace(t.Description))
+		}
+	}
 	if sys := joinSystemBlocks(rec.System); strings.TrimSpace(sys) != "" {
 		b.WriteString("\n## SYSTEM\n")
 		b.WriteString(sys)
@@ -115,12 +125,6 @@ func formatLLMRequest(rec llm.Record) string {
 		b.WriteString("\n## MESSAGES\n")
 		for _, m := range rec.Messages {
 			b.WriteString(formatMessage(m))
-		}
-	}
-	if len(rec.Tools) > 0 {
-		b.WriteString("\n## TOOLS\n")
-		for _, t := range rec.Tools {
-			fmt.Fprintf(&b, "- %s: %s\n", t.Name, strings.TrimSpace(t.Description))
 		}
 	}
 	return tidyText(b.String())
@@ -156,9 +160,12 @@ func formatMessage(m llm.Message) string {
 }
 
 // formatLLMResponse renders the assembled response plus usage as plain text.
+// The response is the assistant turn, so it carries the same role header the
+// request uses — the model only ever sees structured roles, never this text.
 func formatLLMResponse(rec llm.Record) string {
 	var b strings.Builder
 	if rec.Text != "" {
+		b.WriteString("[assistant]\n")
 		b.WriteString(rec.Text)
 		b.WriteString("\n")
 	}

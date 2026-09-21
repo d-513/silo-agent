@@ -53,3 +53,27 @@ func TestFormatLLMRequestIncludesSystemAndMessages(t *testing.T) {
 		}
 	}
 }
+
+// TestFormatLLMRequestToolOrderMatchesProviderRender guards the prompt order the
+// providers actually cache: tools render first, then system, then messages. A
+// debug view that puts tools after the user turn misrepresents the cached
+// prefix and hides tool/schema changes that invalidate it.
+func TestFormatLLMRequestToolOrderMatchesProviderRender(t *testing.T) {
+	rec := llm.Record{
+		Provider: "openrouter",
+		Model:    "openai/gpt",
+		System:   []llm.SystemBlock{{Text: "BASE"}},
+		Messages: []llm.Message{{Role: llm.RoleUser, Text: "hello"}},
+		Tools:    []llm.Tool{{Name: "read", Description: "read a file"}},
+	}
+	out := formatLLMRequest(rec)
+	tools := strings.Index(out, "## TOOLS")
+	system := strings.Index(out, "## SYSTEM")
+	messages := strings.Index(out, "## MESSAGES")
+	if tools < 0 || system < 0 || messages < 0 {
+		t.Fatalf("formatLLMRequest missing a section:\n%s", out)
+	}
+	if !(tools < system && system < messages) {
+		t.Fatalf("sections out of render order tools=%d system=%d messages=%d:\n%s", tools, system, messages, out)
+	}
+}
