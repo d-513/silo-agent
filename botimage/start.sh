@@ -59,7 +59,7 @@ cp /opt/silo/mimeapps.list /home/silo/.config/mimeapps.list
 chown silo:silo /home/silo /home/silo/chrome-profile
 chown -R silo:silo /home/silo/.config /opt/silo/ubol
 
-run Xvfb :1 -screen 0 1280x720x24 -ac +extension RANDR >/tmp/xvfb.log 2>&1
+run Xvfb :1 -screen 0 1600x900x24 -ac +extension RANDR >/tmp/xvfb.log 2>&1
 ok=0
 for _ in $(seq 1 50); do
   if xset q >/dev/null 2>&1; then

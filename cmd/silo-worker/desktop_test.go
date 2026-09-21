@@ -13,10 +13,10 @@ func TestScreenPoint(t *testing.T) {
 	if err := screenPoint(0, 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := screenPoint(1279, 719); err != nil {
+	if err := screenPoint(1599, 899); err != nil {
 		t.Fatal(err)
 	}
-	if screenPoint(1280, 0) == nil || screenPoint(-1, 10) == nil || screenPoint(0, 720) == nil {
+	if screenPoint(1600, 0) == nil || screenPoint(-1, 10) == nil || screenPoint(0, 900) == nil {
 		t.Fatal("expected out of range")
 	}
 }

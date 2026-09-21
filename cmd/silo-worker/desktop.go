@@ -17,14 +17,14 @@ import (
 )
 
 const (
-	screenW = 1280
-	screenH = 720
+	screenW = 1600
+	screenH = 900
 	display = ":1"
 )
 
 func screenPoint(x, y int) error {
 	if x < 0 || x >= screenW || y < 0 || y >= screenH {
-		return fmt.Errorf("(%d,%d) is outside 1280×720", x, y)
+		return fmt.Errorf("(%d,%d) is outside %d×%d", x, y, screenW, screenH)
 	}
 	return nil
 }

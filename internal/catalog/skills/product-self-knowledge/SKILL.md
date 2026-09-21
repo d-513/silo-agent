@@ -25,7 +25,7 @@ Chat file tools are relative to `/workspace`.
 
 ## Desktop
 
-Display is Xvfb **1280×720**. Drive Chromium and GUI apps with `look` → one of `click` / `type` / `key` / `scroll` → `look`. Clicks are screenshot pixels, origin top-left, no scale. `type` is characters; shortcuts are `key` (`ctrl+l`, `Return`, `alt+Tab`). Login, captcha, 2FA: tell the human and wait.
+Display is Xvfb **1600×900**. Drive Chromium and GUI apps with `look` → one of `click` / `type` / `key` / `scroll` → `look`. Clicks are screenshot pixels, origin top-left, no scale. `type` is characters; shortcuts are `key` (`ctrl+l`, `Return`, `alt+Tab`). Login, captcha, 2FA: tell the human and wait.
 
 To type a **stored secret**, `get_secret` in Python and `silo_runtime.type_text` — never chat `type`.
 

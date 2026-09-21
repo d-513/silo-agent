@@ -136,11 +136,11 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"path"},
 	}),
-	tool("look", "Primary GUI: screenshot the 1280×720 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels.", map[string]any{
+	tool("look", "Primary GUI: screenshot the 1600×900 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels.", map[string]any{
 		"type":       "object",
 		"properties": map[string]any{},
 	}),
-	tool("click", "Click the desktop at screenshot pixels. Image is 1280×720. Optional button: left (default), right, double.", map[string]any{
+	tool("click", "Click the desktop at screenshot pixels. Image is 1600×900. Optional button: left (default), right, double.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"x":      map[string]any{"type": "integer"},
@@ -1004,10 +1004,10 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 }
 
 const (
-	screenW      = 1280
-	screenH      = 720
+	screenW      = 1600
+	screenH      = 900
 	lookPath     = "bot/screen.png"
-	lookCoordLaw = "Image is 1280×720. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
+	lookCoordLaw = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
 
 func chatTool(name string) (conn, action string, ok bool) {
@@ -1039,7 +1039,7 @@ func chatTool(name string) (conn, action string, ok bool) {
 
 func screenPoint(x, y int) error {
 	if x < 0 || x >= screenW || y < 0 || y >= screenH {
-		return fmt.Errorf("(%d,%d) is outside 1280×720", x, y)
+		return fmt.Errorf("(%d,%d) is outside %d×%d", x, y, screenW, screenH)
 	}
 	return nil
 }

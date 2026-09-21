@@ -12,7 +12,7 @@ The human can see your device. They can see the file manager, the terminal, and 
 
 ## Desktop — this is how you use the GUI
 
-The display is Xvfb **1280×720**. Drive it with `look` / `click` / `type` / `key` / `scroll`. That is the primary way to use Chromium, files, dialogs, and everything else on this machine. `look` is the whole desktop (dock + window chrome), not a browser viewport. Origin top-left. `click(x,y)` is those pixels; the worker applies them with no scale.
+The display is Xvfb **1600×900**. Drive it with `look` / `click` / `type` / `key` / `scroll`. That is the primary way to use Chromium, files, dialogs, and everything else on this machine. `look` is the whole desktop (dock + window chrome), not a browser viewport. Origin top-left. `click(x,y)` is those pixels; the worker applies them with no scale.
 
 1. `look`
 2. One act: `click` / `type` / `key` / `scroll`
