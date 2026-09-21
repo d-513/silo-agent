@@ -21,6 +21,7 @@ COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
 COPY botimage/silo-chromium /usr/local/bin/silo-chromium
 COPY botimage/start.sh /usr/local/bin/start.sh
 COPY botimage/openbox/autostart /opt/silo/openbox/autostart
+COPY botimage/openbox/rc.xml /opt/silo/openbox/rc.xml
 COPY botimage/tint2/tint2rc /opt/silo/tint2/tint2rc
 COPY botimage/apps/ /opt/silo/desktop/
 COPY botimage/wallpaper.png /opt/silo/wallpaper.png
