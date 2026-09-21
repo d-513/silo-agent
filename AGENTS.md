@@ -50,7 +50,7 @@ While changes are unpushed the log is yours to rewrite: if the user is not satis
 
 ## Who runs what
 
-- **Never start the frontend or the control plane yourself.** The user owns those processes (`make dev` or their own tmux). Do not run `make dev` / `run-control` / `run-frontend` / `watch-control`, and do not kill or clean up their background processes.
+- **Never start the frontend or the control plane yourself.** The user owns those processes (`make dev` or their own tmux). Do not run `make dev` / `run-control` / `run-frontend` / `watch-control`, and do not kill or clean up their background processes. If `make dev` is not up but you need it for something (eg tests), FAIL early and tell the user to start it up.
 - **You may** run builds (`make build-*`, `make images`), tests, `make proto`, and container cleanup (`make cleanup`, `make clean-images`).
 - **You may** attach to the user's already-running tmux for debugging: inspect with `tmux ls` and `tmux capture-pane -p -t silo`, or attach (`make attach`) when you have a TTY. Do not start a second session under the same name.
 
