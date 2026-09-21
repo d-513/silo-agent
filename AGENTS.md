@@ -2,7 +2,7 @@
 
 Token-conserving multi-user agent. Each **Bot** is a durable container with a GUI. Architecture: `docs/Description.md`. UI: `DESIGN.md`.
 
-How to build and run: [DEVELOPMENT.md](DEVELOPMENT.md).
+How to build and run: [DEVELOPMENT.md](DEVELOPMENT.md). `Makefile` is the command surface — `make help` lists every target. Never start the dev servers yourself; see Dev below.
 
 Operator config: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Koanf **defaults → `silo.yaml` → `SILO_*` env**. Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`). Admin Settings edits `silo.yaml` (form + YAML editor). Env still wins; the UI warns and disables those fields. Providers carry `api_key`/`base_url`/`cache`/`cache_ttl`; `models` is the allowlist, `model` the default (`provider/model`), `model_title` the title model. Default model when unset: `openrouter/openai/gpt-5.6-luna`. Default search engine when unset: `duckduckgo_scraper`.
 
@@ -30,16 +30,25 @@ Container ID in SQLite is the last box. `GetBot`/`ListBots` inspect Docker (and 
 
 # Dev
 
+## Commands
+
+`make help` is the list; these are the ones you will actually need.
+
+- `make build-cp` / `make build-all` / `make images` — `bin/silo`, worker, bridge; then bot + STDIO images (worker/bridge must exist before the image builds).
+- `make rebuild MODE=cp|bot|stdio|all` — wraps `rebuild.sh`. `all` rebuilds everything and `rm -f`s every `silo-*` container; `cp`/`bot`/`stdio` leave containers alone.
+- `make test` — `go test ./cmd/... ./internal/...` (never `./...`: it walks `data/`).
+- `make proto` — `buf generate` (Go + TS) after any `.proto` change, then rebuild the CP and worker.
+- `make cleanup` — `podman rm -f` every `silo-*` container. `make clean-images` drops the local images.
+- `make dev` — tmux session with `watch-control` (watchexec, 750 ms debounce, SIGTERM + 5 s grace) and Vite; `make attach` reattaches.
+- `make reset-data` — deletes `./data`; destructive, only when asked.
+
+## Who runs what
+
+- **Never start the frontend or the control plane yourself.** The user owns those processes (`make dev` or their own tmux). Do not run `make dev` / `run-control` / `run-frontend` / `watch-control`, and do not kill or clean up their background processes.
+- **You may** run builds (`make build-*`, `make images`), tests, `make proto`, and container cleanup (`make cleanup`, `make clean-images`).
+- **You may** attach to the user's already-running tmux for debugging: inspect with `tmux ls` and `tmux capture-pane -p -t silo`, or attach (`make attach`) when you have a TTY. Do not start a second session under the same name.
+
 ## Debug via Chromium
 
-Debug and test your stuff with chromium unless its a quick fix.
-Use localhost, not 127.0.0.1. Something is wrong with the ip.
-
-## Rebuild
-
-Just run rebuild.sh, it removes containers and cleans up stuff
-
-## Rule
-
-DO NOT start the frontend or backend yourself and clean up any processes in the bg.
-THE USER will start the actual backend/frontend. You just check and build.
+Debug and test your stuff with chromium MCP for MAJOR CHANGES.
+Use localhost as the actual URL of the Silo Agent, not 127.0.0.1. Something is wrong with the ip.
