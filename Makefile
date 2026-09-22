@@ -64,8 +64,6 @@ web-install: ## Install frontend dependencies
 
 ## --- build -----------------------------------------------------------------
 
-build: build-cp ## Build the control plane (alias for build-cp)
-
 build-cp: ## Build the control plane to bin/silo
 	$(GO) build -o bin/silo ./cmd/silo
 
@@ -75,7 +73,7 @@ build-worker: ## Cross-build the in-container worker to bin/silo-worker
 build-bridge: ## Cross-build the STDIO MCP bridge to bin/silo-mcp-bridge
 	GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
 
-build-all: build-cp build-worker build-bridge ## Build control plane, worker, and bridge
+build-all: build-cp build-worker build-bridge bot-image stdio-image ## Build control plane, worker, and bridge
 
 images: bot-image stdio-image ## Build both container images
 
@@ -85,12 +83,7 @@ bot-image: build-worker ## Build the local bot image
 stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
 	$(PODMAN) build -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
 
-rebuild: ## Full image rebuild via rebuild.sh (MODE=cp|bot|stdio|all)
-	./rebuild.sh $(or $(MODE),all)
-
 ## --- run -------------------------------------------------------------------
-
-run: run-control ## Alias for run-control
 
 run-control: build-cp ## Build and run the control plane on :8080
 	./bin/silo
