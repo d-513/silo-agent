@@ -105,6 +105,9 @@ type liveRun struct {
 	chatID string
 	// inbox carries user messages injected while the run is live.
 	inbox chan inboxMsg
+	// done closes when the run's goroutine exits, so callers can wait for a
+	// stopped run to finish writing before truncating history.
+	done chan struct{}
 }
 
 type App struct {
@@ -425,10 +428,22 @@ func (a *App) Handler() http.Handler {
 	return withHTTP(mux)
 }
 
-func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg) {
+func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) {
 	a.mu.Lock()
-	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox}
+	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done}
 	a.mu.Unlock()
+}
+
+// liveRunFor returns the active run for a conversation, if any.
+func (a *App) liveRunFor(botID, chatID string) *liveRun {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, lr := range a.runs {
+		if lr.botID == botID && lr.chatID == chatID {
+			return lr
+		}
+	}
+	return nil
 }
 
 func (a *App) untrackRun(runID string) {

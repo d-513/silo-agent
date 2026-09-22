@@ -597,16 +597,15 @@ func clipDesc(s string) string {
 }
 
 func eventsAfter(rows []db.RunEvent, after string) []db.RunEvent {
-	skip := after != ""
-	var out []db.RunEvent
-	for _, r := range rows {
-		if skip {
-			if r.ID == after {
-				skip = false
-			}
-			continue
-		}
-		out = append(out, r)
+	if after == "" {
+		return rows
 	}
-	return out
+	for i := range rows {
+		if rows[i].ID == after {
+			return rows[i+1:]
+		}
+	}
+	// The anchor was truncated by an edit/delete. Replay everything so the
+	// client does not stall on an open run.
+	return rows
 }

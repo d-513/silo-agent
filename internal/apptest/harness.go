@@ -293,6 +293,67 @@ func (h *H) Send(botID, chatID, text string) (string, string) {
 	return res.Msg.GetRunId(), res.Msg.GetChatId()
 }
 
+// EditMessage edits the last user message and returns the replacement run id.
+func (h *H) EditMessage(botID, chatID, eventID, text string) string {
+	h.T.Helper()
+	res, err := h.Client.EditMessage(h.Ctx(), connect.NewRequest(&v1.EditMessageRequest{
+		BotId: botID, ChatId: chatID, EventId: eventID, Text: text,
+	}))
+	if err != nil {
+		h.T.Fatalf("EditMessage: %v", err)
+	}
+	return res.Msg.GetRunId()
+}
+
+// DeleteMessage removes the last user message and everything after it.
+func (h *H) DeleteMessage(botID, chatID, eventID string) {
+	h.T.Helper()
+	if _, err := h.Client.DeleteMessage(h.Ctx(), connect.NewRequest(&v1.DeleteMessageRequest{
+		BotId: botID, ChatId: chatID, EventId: eventID,
+	})); err != nil {
+		h.T.Fatalf("DeleteMessage: %v", err)
+	}
+}
+
+// DivergeChat copies the context before eventID into a new chat.
+func (h *H) DivergeChat(botID, chatID, eventID string) *v1.Chat {
+	h.T.Helper()
+	res, err := h.Client.DivergeChat(h.Ctx(), connect.NewRequest(&v1.DivergeChatRequest{
+		BotId: botID, ChatId: chatID, EventId: eventID,
+	}))
+	if err != nil {
+		h.T.Fatalf("DivergeChat: %v", err)
+	}
+	return res.Msg.GetChat()
+}
+
+// ChatEvents returns every persisted event of a chat in conversational order.
+func (h *H) ChatEvents(chatID string) []db.RunEvent {
+	h.T.Helper()
+	var runs []db.Run
+	h.DB.Where("chat_id = ?", chatID).Order("created_at").Order("id").Find(&runs)
+	var out []db.RunEvent
+	for _, r := range runs {
+		var evs []db.RunEvent
+		h.DB.Where("run_id = ?", r.ID).Order("created_at").Order("id").Find(&evs)
+		out = append(out, evs...)
+	}
+	return out
+}
+
+// LastUserEvent returns the most recent user message in a chat.
+func (h *H) LastUserEvent(chatID string) db.RunEvent {
+	h.T.Helper()
+	events := h.ChatEvents(chatID)
+	for i := len(events) - 1; i >= 0; i-- {
+		if events[i].Kind == "user" {
+			return events[i]
+		}
+	}
+	h.T.Fatalf("chat %s has no user message", chatID)
+	return db.RunEvent{}
+}
+
 // WaitRun blocks until the run has a terminal event, then returns its events in
 // order. It fails the test on timeout.
 func (h *H) WaitRun(runID string) []db.RunEvent {

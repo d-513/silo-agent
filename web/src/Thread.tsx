@@ -10,6 +10,7 @@ import {
   File,
   Eye,
   FrameCorners,
+  GitBranch,
   GitDiff,
   Keyboard,
   MagnifyingGlass,
@@ -20,6 +21,7 @@ import {
   Plugs,
   Sparkle,
   Terminal,
+  Trash,
   User,
 } from "@phosphor-icons/react";
 import hljs from "highlight.js/lib/core";
@@ -569,8 +571,27 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
   );
 }
 
-function UserBubble({ text, attachments }: { text: string; attachments?: Attachment[] }) {
+function UserBubble({
+  text,
+  attachments,
+  isLast,
+  busy,
+  onEdit,
+  onDelete,
+  onDiverge,
+}: {
+  text: string;
+  attachments?: Attachment[];
+  isLast?: boolean;
+  busy?: boolean;
+  onEdit?: (text: string, attachments?: Attachment[]) => void;
+  onDelete?: () => void;
+  onDiverge?: () => void;
+}) {
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const onCopy = async () => {
     try {
@@ -582,37 +603,136 @@ function UserBubble({ text, attachments }: { text: string; attachments?: Attachm
     }
   };
 
+  const startEdit = () => {
+    setDraft(text);
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    const next = draft.trim();
+    if ((!next && !attachments?.length) || next === text) {
+      setEditing(false);
+      return;
+    }
+    setEditing(false);
+    onEdit?.(next, attachments);
+  };
+
+  const requestDelete = () => {
+    if (confirmDel) {
+      setConfirmDel(false);
+      onDelete?.();
+    } else {
+      setConfirmDel(true);
+      setTimeout(() => setConfirmDel(false), 3000);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="silo-enter flex w-full justify-end">
+        <div className="w-full max-w-[88%] sm:max-w-[80%] min-[1200px]:max-w-[70%]">
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                saveEdit();
+              }
+              if (e.key === "Escape") setEditing(false);
+            }}
+            rows={Math.min(12, Math.max(2, draft.split("\n").length))}
+            className="w-full resize-none rounded-[18px] rounded-br-[4px] border border-bindery/60 bg-cloth px-4 py-3 text-[14px] leading-relaxed text-iron shadow-2xs outline-none focus:border-bindery"
+          />
+          <div className="mt-1.5 flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded-[6px] border border-thread bg-folio px-2.5 py-1 text-[12px] text-stone transition-colors duration-150 hover:border-hover hover:text-iron"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              className="rounded-[6px] border border-bindery bg-bindery px-2.5 py-1 text-[12px] font-medium text-white transition-opacity duration-150 hover:opacity-90"
+            >
+              Save & resend
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="silo-enter flex w-full justify-end">
-      <div className="group relative flex max-w-[88%] sm:max-w-[80%] min-[1200px]:max-w-[70%] items-start gap-1.5">
+    <div className="silo-enter group flex w-full flex-col items-end gap-1.5">
+      <div className="min-w-0 max-w-[88%] rounded-[18px] rounded-br-[4px] border border-thread bg-cloth px-4 py-3 text-iron shadow-2xs transition-[border-color,background-color] duration-150 hover:border-hover sm:max-w-[80%] min-[1200px]:max-w-[70%]">
+        <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed select-text">
+          {text}
+        </div>
+        {attachments?.length ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-thread-2/60 pt-2.5">
+            {attachments.map((a) => (
+              <span
+                key={a.path}
+                title={a.path}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border border-thread bg-folio/90 px-2.5 py-1 text-[12px] text-iron shadow-2xs"
+              >
+                <Paperclip size={12} className="shrink-0 text-bindery" />
+                <span className="truncate max-w-[180px] font-medium">{a.name}</span>
+                <span className="shrink-0 font-mono text-[11px] text-stone">{fmtSize(a.size)}</span>
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button
           type="button"
           onClick={onCopy}
           title={copied ? "Copied" : "Copy prompt"}
-          className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone opacity-0 shadow-xs transition-all duration-150 hover:border-hover hover:text-iron group-hover:opacity-100"
+          className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone shadow-xs transition-all duration-150 hover:border-hover hover:text-iron"
         >
           {copied ? <Check size={13} weight="bold" className="text-pine" /> : <Copy size={13} />}
         </button>
-        <div className="min-w-0 rounded-[18px] rounded-br-[4px] border border-thread bg-cloth px-4 py-3 text-iron shadow-2xs transition-[border-color,background-color] duration-150 hover:border-hover">
-          <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed select-text">
-            {text}
-          </div>
-          {attachments?.length ? (
-            <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-thread-2/60 pt-2.5">
-              {attachments.map((a) => (
-                <span
-                  key={a.path}
-                  title={a.path}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border border-thread bg-folio/90 px-2.5 py-1 text-[12px] text-iron shadow-2xs"
-                >
-                  <Paperclip size={12} className="shrink-0 text-bindery" />
-                  <span className="truncate max-w-[180px] font-medium">{a.name}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-stone">{fmtSize(a.size)}</span>
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        {onEdit && isLast ? (
+          <button
+            type="button"
+            onClick={startEdit}
+            disabled={busy}
+            title={busy ? "Stop the bot to edit" : "Edit and resend"}
+            className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone shadow-xs transition-all duration-150 hover:border-hover hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <PencilSimple size={13} />
+          </button>
+        ) : null}
+        {onDelete && isLast ? (
+          <button
+            type="button"
+            onClick={requestDelete}
+            disabled={busy}
+            title={busy ? "Stop the bot to delete" : confirmDel ? "Click again to delete" : "Delete"}
+            className={`flex h-7 w-7 items-center justify-center rounded-[6px] border bg-folio shadow-xs transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
+              confirmDel ? "border-carmine text-carmine" : "border-thread text-stone hover:border-hover hover:text-carmine"
+            }`}
+          >
+            <Trash size={13} />
+          </button>
+        ) : null}
+        {onDiverge ? (
+          <button
+            type="button"
+            onClick={onDiverge}
+            disabled={busy}
+            title="Diverge into a new chat"
+            className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone shadow-xs transition-all duration-150 hover:border-hover hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <GitBranch size={13} />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -628,6 +748,9 @@ export function Thread({
   onInspectArtifact,
   onSaveSkill,
   onSelectPrompt,
+  onEditMessage,
+  onDeleteMessage,
+  onDivergeChat,
 }: {
   botId: string;
   botName?: string;
@@ -638,6 +761,9 @@ export function Thread({
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
   onSelectPrompt?: (prompt: string) => void;
+  onEditMessage?: (eventId: string, text: string, attachments?: Attachment[]) => void;
+  onDeleteMessage?: (eventId: string) => void;
+  onDivergeChat?: (eventId: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -645,6 +771,13 @@ export function Thread({
   const lastKey = useRef<string | undefined>(undefined);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const blocks = foldEvents(events);
+  let lastUserKey: string | undefined;
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    if (blocks[i].type === "user") {
+      lastUserKey = blocks[i].key;
+      break;
+    }
+  }
 
   const scrollToBottom = (smooth = false) => {
     const el = containerRef.current;
@@ -723,7 +856,19 @@ export function Thread({
         )}
         {blocks.map((b) => {
           if (b.type === "user") {
-            return <UserBubble key={b.key} text={b.text} attachments={b.attachments} />;
+            const id = b.id;
+            return (
+              <UserBubble
+                key={b.key}
+                text={b.text}
+                attachments={b.attachments}
+                isLast={b.key === lastUserKey}
+                busy={sending}
+                onEdit={onEditMessage && id ? (t, a) => onEditMessage(id, t, a) : undefined}
+                onDelete={onDeleteMessage && id ? () => onDeleteMessage(id) : undefined}
+                onDiverge={onDivergeChat && id ? () => onDivergeChat(id) : undefined}
+              />
+            );
           }
           if (b.type === "thinking") {
             if (b.streaming && sending) {

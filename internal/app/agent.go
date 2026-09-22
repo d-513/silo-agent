@@ -324,7 +324,8 @@ func (a *App) startRun(req runRequest) (string, error) {
 		a.ensureRunningBg(&cp)
 	}
 	inbox := make(chan inboxMsg, 32)
-	go a.runLoop(req.botID, req.chatID, runID, req.text, req.atts, req.origin, inbox)
+	done := make(chan struct{})
+	go a.runLoop(req.botID, req.chatID, runID, req.text, req.atts, req.origin, inbox, done)
 	return runID, nil
 }
 
@@ -598,10 +599,11 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush()}, nil
 }
 
-func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment, origin *runOrigin, inbox chan inboxMsg) {
+func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment, origin *runOrigin, inbox chan inboxMsg, done chan struct{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	a.trackRun(botID, chatID, runID, cancel, inbox)
+	a.trackRun(botID, chatID, runID, cancel, inbox, done)
+	defer close(done)
 	defer a.untrackRun(runID)
 
 	modelID := a.resolveModel(chatID)

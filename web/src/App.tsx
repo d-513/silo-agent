@@ -941,6 +941,7 @@ function BotPage() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
   const [usage, setUsage] = useState<{ input: number; output: number; cacheRead: number; cacheWrite: number } | null>(null);
+  const [streamNonce, setStreamNonce] = useState(0);
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
@@ -1057,6 +1058,14 @@ function BotPage() {
                 if (!dead) setChats(r.chats);
               }).catch(() => {});
             }
+            if (ev.kind === "reset") {
+              // History was truncated by an edit/delete elsewhere; drop the
+              // cached events and replay from scratch.
+              setEvents([]);
+              setSending(false);
+              setStreamNonce((n) => n + 1);
+              return;
+            }
             if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId, attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })) });
           }
         } catch {
@@ -1073,7 +1082,7 @@ function BotPage() {
       dead = true;
       ac.abort();
     };
-  }, [id, chatId]);
+  }, [id, chatId, streamNonce]);
 
   useEffect(() => {
     if (!id || tab !== "secrets") return;
@@ -1124,6 +1133,55 @@ function BotPage() {
       ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
     } catch (ex) {
       setSending(false);
+      setActErr(fail(ex));
+    }
+  }
+
+  function resync() {
+    setEvents([]);
+    setSending(false);
+    setStreamNonce((n) => n + 1);
+  }
+
+  async function editMessage(eventId: string, text: string, attachments?: { name: string; path: string; size: number }[]) {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      await ui.editMessage({
+        botId: id,
+        chatId,
+        eventId,
+        text,
+        attachments: (attachments ?? []).map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+      });
+      resync();
+      ui.getBot({ id }).then(setBot);
+      ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
+    } catch (ex) {
+      setActErr(fail(ex));
+    }
+  }
+
+  async function deleteMessage(eventId: string) {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      await ui.deleteMessage({ botId: id, chatId, eventId });
+      resync();
+    } catch (ex) {
+      setActErr(fail(ex));
+    }
+  }
+
+  async function divergeChat(eventId: string) {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      const res = await ui.divergeChat({ botId: id, chatId, eventId });
+      if (!res.chat) return;
+      ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
+      nav(`/bots/${id}/run/${res.chat.id}`);
+    } catch (ex) {
       setActErr(fail(ex));
     }
   }
@@ -1460,6 +1518,9 @@ function BotPage() {
                 onInspectArtifact={setInspect}
                 onSaveSkill={(a) => void saveSkill(a)}
                 onSelectPrompt={(p) => setText(p)}
+                onEditMessage={(eid, t, a) => void editMessage(eid, t, a)}
+                onDeleteMessage={(eid) => void deleteMessage(eid)}
+                onDivergeChat={(eid) => void divergeChat(eid)}
               />
               <Composer
                 text={text}

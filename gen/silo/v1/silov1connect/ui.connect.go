@@ -75,6 +75,12 @@ const (
 	UIStopRunProcedure = "/silo.v1.UI/StopRun"
 	// UIStreamRunProcedure is the fully-qualified name of the UI's StreamRun RPC.
 	UIStreamRunProcedure = "/silo.v1.UI/StreamRun"
+	// UIEditMessageProcedure is the fully-qualified name of the UI's EditMessage RPC.
+	UIEditMessageProcedure = "/silo.v1.UI/EditMessage"
+	// UIDeleteMessageProcedure is the fully-qualified name of the UI's DeleteMessage RPC.
+	UIDeleteMessageProcedure = "/silo.v1.UI/DeleteMessage"
+	// UIDivergeChatProcedure is the fully-qualified name of the UI's DivergeChat RPC.
+	UIDivergeChatProcedure = "/silo.v1.UI/DivergeChat"
 	// UIListSecretsProcedure is the fully-qualified name of the UI's ListSecrets RPC.
 	UIListSecretsProcedure = "/silo.v1.UI/ListSecrets"
 	// UIAddSecretProcedure is the fully-qualified name of the UI's AddSecret RPC.
@@ -186,6 +192,9 @@ type UIClient interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
+	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
+	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
+	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -366,6 +375,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIStreamRunProcedure,
 			connect.WithSchema(uIMethods.ByName("StreamRun")),
+			connect.WithClientOptions(opts...),
+		),
+		editMessage: connect.NewClient[v1.EditMessageRequest, v1.SendResponse](
+			httpClient,
+			baseURL+UIEditMessageProcedure,
+			connect.WithSchema(uIMethods.ByName("EditMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteMessage: connect.NewClient[v1.DeleteMessageRequest, v1.DeleteMessageResponse](
+			httpClient,
+			baseURL+UIDeleteMessageProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		divergeChat: connect.NewClient[v1.DivergeChatRequest, v1.DivergeChatResponse](
+			httpClient,
+			baseURL+UIDivergeChatProcedure,
+			connect.WithSchema(uIMethods.ByName("DivergeChat")),
 			connect.WithClientOptions(opts...),
 		),
 		listSecrets: connect.NewClient[v1.ListSecretsRequest, v1.ListSecretsResponse](
@@ -652,6 +679,9 @@ type uIClient struct {
 	send                *connect.Client[v1.SendRequest, v1.SendResponse]
 	stopRun             *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun           *connect.Client[v1.StreamRunRequest, v1.RunEvent]
+	editMessage         *connect.Client[v1.EditMessageRequest, v1.SendResponse]
+	deleteMessage       *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
+	divergeChat         *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
 	listSecrets         *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret           *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
 	deleteSecret        *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
@@ -800,6 +830,21 @@ func (c *uIClient) StopRun(ctx context.Context, req *connect.Request[v1.StopRunR
 // StreamRun calls silo.v1.UI.StreamRun.
 func (c *uIClient) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error) {
 	return c.streamRun.CallServerStream(ctx, req)
+}
+
+// EditMessage calls silo.v1.UI.EditMessage.
+func (c *uIClient) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error) {
+	return c.editMessage.CallUnary(ctx, req)
+}
+
+// DeleteMessage calls silo.v1.UI.DeleteMessage.
+func (c *uIClient) DeleteMessage(ctx context.Context, req *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error) {
+	return c.deleteMessage.CallUnary(ctx, req)
+}
+
+// DivergeChat calls silo.v1.UI.DivergeChat.
+func (c *uIClient) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error) {
+	return c.divergeChat.CallUnary(ctx, req)
 }
 
 // ListSecrets calls silo.v1.UI.ListSecrets.
@@ -1040,6 +1085,9 @@ type UIHandler interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
+	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
+	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
+	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -1216,6 +1264,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIStreamRunProcedure,
 		svc.StreamRun,
 		connect.WithSchema(uIMethods.ByName("StreamRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIEditMessageHandler := connect.NewUnaryHandler(
+		UIEditMessageProcedure,
+		svc.EditMessage,
+		connect.WithSchema(uIMethods.ByName("EditMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteMessageHandler := connect.NewUnaryHandler(
+		UIDeleteMessageProcedure,
+		svc.DeleteMessage,
+		connect.WithSchema(uIMethods.ByName("DeleteMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDivergeChatHandler := connect.NewUnaryHandler(
+		UIDivergeChatProcedure,
+		svc.DivergeChat,
+		connect.WithSchema(uIMethods.ByName("DivergeChat")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListSecretsHandler := connect.NewUnaryHandler(
@@ -1520,6 +1586,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStopRunHandler.ServeHTTP(w, r)
 		case UIStreamRunProcedure:
 			uIStreamRunHandler.ServeHTTP(w, r)
+		case UIEditMessageProcedure:
+			uIEditMessageHandler.ServeHTTP(w, r)
+		case UIDeleteMessageProcedure:
+			uIDeleteMessageHandler.ServeHTTP(w, r)
+		case UIDivergeChatProcedure:
+			uIDivergeChatHandler.ServeHTTP(w, r)
 		case UIListSecretsProcedure:
 			uIListSecretsHandler.ServeHTTP(w, r)
 		case UIAddSecretProcedure:
@@ -1697,6 +1769,18 @@ func (UnimplementedUIHandler) StopRun(context.Context, *connect.Request[v1.StopR
 
 func (UnimplementedUIHandler) StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StreamRun is not implemented"))
+}
+
+func (UnimplementedUIHandler) EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.EditMessage is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteMessage is not implemented"))
+}
+
+func (UnimplementedUIHandler) DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DivergeChat is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {

@@ -7,7 +7,7 @@ export type NestedCall = { key: string; title: string; name: string; result?: st
 export type ToolBlock = { key: string; type: "tool"; name: string; args: string; result?: string; running?: boolean; runId?: string; calls?: NestedCall[] };
 
 export type Block =
-  | { key: string; type: "user"; text: string; attachments?: Attachment[] }
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[] }
   | { key: string; type: "assistant"; text: string; streaming?: boolean }
   | { key: string; type: "thinking"; text: string; streaming?: boolean }
   | ToolBlock
@@ -72,7 +72,7 @@ export function foldEvents(events: Ev[]): Block[] {
     if (e.kind === "error" && staleKey.test(e.body)) continue;
     const key = `${e.kind}-${i++}`;
     if (e.kind === "user") {
-      push({ key, type: "user", text: e.body, attachments: e.attachments });
+      push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments });
       continue;
     }
     if (e.kind === "thinking_chunk") {

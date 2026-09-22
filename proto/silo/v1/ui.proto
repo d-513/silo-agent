@@ -30,6 +30,9 @@ service UI {
   rpc Send(SendRequest) returns (SendResponse);
   rpc StopRun(StopRunRequest) returns (StopRunResponse);
   rpc StreamRun(StreamRunRequest) returns (stream RunEvent);
+  rpc EditMessage(EditMessageRequest) returns (SendResponse);
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+  rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
   rpc AddSecret(AddSecretRequest) returns (SecretMeta);
@@ -259,6 +262,37 @@ message RunEvent {
   string chat_id = 5;
   string id = 6;
   repeated Attachment attachments = 7;
+}
+
+// EditMessage truncates this chat at the last user message and re-sends the
+// edited text as a fresh turn. Only the trailing user message can be edited;
+// earlier points use DivergeChat.
+message EditMessageRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string event_id = 3;
+  string text = 4;
+  repeated Attachment attachments = 5;
+}
+
+// DeleteMessage truncates this chat at the last user message and stops there.
+message DeleteMessageRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string event_id = 3;
+}
+
+message DeleteMessageResponse {}
+
+// DivergeChat copies the context before a message into a new chat.
+message DivergeChatRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string event_id = 3;
+}
+
+message DivergeChatResponse {
+  Chat chat = 1;
 }
 
 message SecretMeta {

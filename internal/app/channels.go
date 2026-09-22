@@ -360,6 +360,12 @@ func (a *App) findOrCreateConversation(ch *db.Channel, external, title string) (
 func (a *App) startOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *runOrigin) (string, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
+	return a.startOrInjectLocked(botID, chatID, text, atts, origin)
+}
+
+// startOrInjectLocked is startOrInject with convMu already held, so callers can
+// truncate history and start the replacement run atomically.
+func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *runOrigin) (string, error) {
 	if runID := a.liveRunID(botID, chatID); runID != "" {
 		if a.inject(botID, chatID, runID, text, atts) {
 			return runID, nil
