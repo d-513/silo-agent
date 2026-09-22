@@ -185,9 +185,9 @@ Weights 400–550.
 
 ### Buttons
 
-Height 36px. Radius 6px. Primary: bindery fill, plaster label. Secondary: Folio fill, Thread border, iron label. Ghost: Stone label, iron on hover. Deny: carmine fill, plaster label — approval slip only.
+Height 36px. Radius 6px. Primary: Signal Cobalt fill, white label (`text-white`). Secondary: Optic White fill, Hairline Thread border, obsidian label. Ghost: Slate label, obsidian on hover. Deny: Signal Vermilion fill, white label — approval slip only.
 
-Start Bot / Stop Bot and Send nest a 20px square glyph on the right (power for the machine, arrow for Send). Never a media stop-square on the header — that reads as abort-the-reply. Header Stop Bot is ghost. Press `scale(0.98)`. Focus is 1px bindery, no glow.
+Start Bot / Stop Bot and Send nest a 20px square glyph on the right (power for the machine, arrow for Send). Never a media stop-square on the header — that reads as abort-the-reply. Header Stop Bot is ghost. Press `scale(0.98)`. Focus is 2px Signal Cobalt, no glow.
 
 No pills. Rail icons are 40px hits with tooltips.
 
@@ -195,29 +195,29 @@ No pills. Rail icons are 40px hits with tooltips.
 
 Not dashboard tiles.
 
-- Folio fill, 10px radius, 1px Thread.
+- Optic White fill, 10px radius, 1px Hairline Thread, subtle elevation (`shadow-xs`).
 - Left: 56px crest (the shape, no plate).
-- Name, optional one-line description in Stone, 7px lamp.
-- Hover: border to `#B9B3A6`. No shadow, no lift.
-- Needs you: 2px carmine ribbon on the left edge only.
+- Name, optional one-line description in Slate, 7px lamp.
+- Hover: border to `#CBD5E1`, `shadow-sm`.
+- Needs you: 2px Signal Vermilion ribbon on the left edge only.
 
-Empty archive: outline of a crest, display line “No Bots yet”, one bindery button “New Bot”. No rockets.
+Empty archive: outline of a crest, display line “No Bots yet”, one Signal Cobalt button “New Bot”. No rockets.
 
 ### Navigation
 
-64px rail, Cloth, Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Then **Bots**, a scrollable stack of 28px crests (one per Bot), **+** for New Bot. Bottom: **wrench** Admin (admins only), **user** Account, **sign-out**. No names in the rail; `title` tooltips only.
+64px rail, Technical Slate, Hairline Thread on the right. Top: Silo mark — one vertical rounded-rect + `Silo` 13/500, stacked. Then **Bots**, a scrollable stack of 28px crests (one per Bot), **+** for New Bot. Bottom: **wrench** Admin (admins only), **user** Account, **sign-out**. No names in the rail; `title` tooltips only.
 
-Active home/Admin: Bindery Pale well, 2px bindery bar on the left of the icon. Active crest: same well + bar. Needs you: 2px carmine ribbon instead of the bindery bar, plus the lamp. Icons 20px, 1.75 stroke, iron. Crest lamp is 7px on the shape.
+Active home/Admin: Cobalt Pale well, 2px Signal Cobalt bar on the left of the icon. Active crest: same well + bar. Needs you: 2px Signal Vermilion ribbon instead of the cobalt bar, plus the lamp. Icons 20px, 1.75 stroke, obsidian. Crest lamp is 7px on the shape.
 
 ### Inputs
 
-Folio or Cloth fill, 1px Thread, 6px radius. Label above, 12/500 Stone, always visible. Focus: 1px bindery, no glow. Error: carmine border + 12px sentence.
+Optic White or Technical Slate fill, 1px Hairline Thread, 6px radius. Label above, 12/500 Slate, always visible. Focus: 1px Signal Cobalt, no glow. Error: Signal Vermilion border + 12px sentence.
 
 Secret values never render. `••••••••` in mono. No eye. No copy. Rotate / delete only.
 
 ### Bot crests
 
-Picked on New Bot: one of eight silhouettes (circle, blob, squircle, pill, triangle, hex, cloud, drop) and a rainbow of fills. Same two small dots on every shape. Packed as `color * 8 + shape` in the `crest` int.
+Picked on New Bot: one of eight silhouettes (circle, blob, squircle, pill, triangle, hex, cloud, drop) and a calibrated rainbow of fills. Same two small dots on every shape. Packed as `color * 8 + shape` in the `crest` int.
 
 Sizes: 20 / 28 / 56 / 88. The lamp is never a substitute for the crest. No generate / upload.
 
@@ -225,21 +225,21 @@ Sizes: 20 / 28 / 56 / 88. The lamp is never a substitute for the crest. No gener
 
 The VNC surface is a dark window in a light room.
 
-- Outer: iron (`#1E2126`), 10px radius.
-- 8px inner matte `#12141A`.
-- Top strip 32px, iron: crest 20px, name, `Desktop` or `Console`, 6px lamp, spacer, status in mono (plaster at 80%).
-- Framebuffer or the PTY fills the rest. Console uses IBM Plex Mono on the matte.
-- Worker down: one `NeedMachine` well (Files, Desktop, Console). Cloth, centered Stone sentence, larger bindery Start Bot. While starting: dual bindery/pine ring + elapsed seconds — not a disabled “Starting…”.
+- Outer: Obsidian (`#0F172A`), 10px radius.
+- 8px inner matte `#0B0F19`.
+- Top strip 32px, obsidian: crest 20px, name, `Desktop` or `Console`, 6px lamp, spacer, status in Geist Mono (white at 80%).
+- Framebuffer or the PTY fills the rest. Console uses Geist Mono on the matte.
+- Worker down: one `NeedMachine` well (Files, Desktop, Console). Technical Slate, centered Slate sentence, larger Signal Cobalt Start Bot. While starting: dual cobalt/emerald ring + elapsed seconds — not a disabled “Starting…”.
 
 ### Approval slip
 
-A 400px Folio panel from the right, Thread on the left. Paper, not a modal dim-to-black.
+A 400px Optic White panel from the right, Hairline Thread on the left with elevation shadow. Clean paper, not a modal dim-to-black.
 
-- Crest, Bot name, `Needs you` in carmine
+- Crest, Bot name, `Needs you` in Signal Vermilion
 - Title from the security catalog (`Read a secret`), not a raw key. Each secret is its own action.
-- One Stone sentence, then labeled fields on Cloth (Secret → `TEST`). No raw JSON.
-- **Allow once** (bindery), **Always allow this action** (secondary), **Deny** (carmine)
-- Stone: “This run is paused until you choose.”
+- One Slate sentence, then labeled fields on Technical Slate (Secret → `TEST`). No raw JSON.
+- **Allow once** (Signal Cobalt), **Always allow this action** (secondary), **Deny** (Signal Vermilion)
+- Slate: “This run is paused until you choose.”
 
 No `confirm()`. No toast.
 
@@ -247,18 +247,18 @@ No `confirm()`. No toast.
 
 The Chat tab. Not a marketing chat.
 
-- User: folio well, 4px bindery bar on the left. The product’s “bubble” — left spine, not iMessage.
-- Assistant: iron, no well. Markdown (headings, lists, tables, fenced code).
+- User: Optic White well, 4px Signal Cobalt bar on the left. The product’s “bubble” — left spine, not iMessage.
+- Assistant: Obsidian, no well. Markdown (headings, lists, tables, fenced code).
 - Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
-- Tool lines: left-aligned cloth row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
-- `present`: a user-facing path is the file itself in a folio well (same preview as Files). Not collapsed. A `bot/…` path is scratch — a collapsed “Looked at …” row the human can open. The model still gets image pixels. The model does not retype it.
+- Tool lines: left-aligned technical row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).
+- `present`: a user-facing path is the file itself in a white card well (same preview as Files). Not collapsed. A `bot/…` path is scratch — a collapsed “Looked at …” row the human can open. The model still gets image pixels. The model does not retype it.
 - `look`: collapsed “Looked at screen” (same scratch fold as `present bot/…`). Clicks are 1600×900 screenshot pixels.
 - Artifact: hatch card in the thread (type icon, name, muted type label, download). A skill is a scroll mark + “Skill” and **Save skill** while pending; a file is its kind icon + label (PDF, Image, Document, Spreadsheet, …) and is download-only. `artifact` is Allow — show the card, do not install. Clicking opens the hatch overlay: the skill browser for a skill, a full-fidelity file preview for a file. Skill download is a `.zip` of the whole skill directory; file download streams the bytes. Save on the card copies it to personal; after save, checkmark, no Save. No Needs-you slip for this.
-- Composer: Cloth well, placeholder “Ask this Bot…”, bindery send. While a run is live, Send becomes Stop (filled square) — `StopRun` cancels that chat’s run, not the Bot.
+- Composer: Optic White well with subtle shadow, placeholder “Ask this Bot…”, Signal Cobalt send. While a run is live, Send becomes Stop (filled square in Signal Vermilion) — `StopRun` cancels that chat’s run, not the Bot.
 
 ### Status lamp
 
-7px circle on the crest corner (cloth ring), never on the account initial. Color = state. Online is pine, solid. Working is the only pulse.
+7px circle on the crest corner (slate ring), never on the account initial. Color = state. Online is Precision Emerald, solid. Working is the only pulse.
 
 ## 5. Layout Principles
 
@@ -270,7 +270,7 @@ Desktop-first, 1280 and 1440. Settings pages max 960. The Bot run view is the re
 
 **Bots:** padding 28. Header `Bots` + `New Bot`. Grid: 3 columns at 1440, 2 at 1100, 1 below.
 
-**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 | thread `1fr`. Chat titles: generated from the first prompt; pencil or double-click to rename. The composer has a paperclip (disabled until the worker is online) that uploads to `/workspace/tmp`; the message renders attachment chips. Tabs: `Chat`, `Desktop` (caret → folio menu with only the other view; the tab itself becomes Console while that view is open), `Files`, `Connectors`, `Channels`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. Channels lists adapter instances (logo, status lamp, adapter chip, send-only badge), Add opens an adapter picker (logo, name, description), and the form is generated from the adapter's declared fields plus Name / Enabled / “Deliver messages to the Bot” / Prompt, with the adapter's markdown **Setup instructions** in a collapsible well (open by default). Add/edit/Setup are their own routes (`/channels/new`, `/channels/new/:adapter`, `/channels/:id`, `/channels/:id/setup`) so the browser back button works. Adapters declare interactive **Setup** actions (`pick` / `run` / `qr`); a channel that still needs its target shows a primary **Set up** button with a blinking gear, otherwise a plain gear, opening the Setup page that runs those actions generically — the chat picker lives there, not in the edit form. On/off rows use the shared `Switch`. Each row has a **View log** that opens that channel's conversations in a read-only hatch overlay. Dynamic adapter state (QR, chat picker) renders in the same form. The hatch lives on `Desktop` / `Console`, full main column. Console is the same iron hatch with a PTY instead of VNC. Files is a workspace `FileBrowser`: tree sidebar + preview (images, PDF, media, markdown, code, docx), breadcrumbs in the header, upload / new / download. Delete is a second click, not `confirm()`. Skill inspect (Hub, Admin library, Bot Skills, Artifact) is the same tree+preview in a **hatch overlay** — iron chrome, folio preview pane, open `SKILL.md` first, readonly. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Skills: bindery switch (no On/Off labels); click the row to inspect. `catalog` chip only on embed library names. Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then a folio **Dangerous** well (Reset / Delete, second click).
+**Bot chat:** header 56px (crest, name, lamp, tabs, Start Bot / Stop Bot). Body: chats list 240 on Technical Slate | thread `1fr` on Optic Mist. Chat titles: generated from the first prompt; pencil or double-click to rename. The composer has a paperclip (disabled until the worker is online) that uploads to `/workspace/tmp`; the message renders attachment chips. Tabs: `Chat`, `Desktop` (caret → folio menu with only the other view; the tab itself becomes Console while that view is open), `Files`, `Connectors`, `Channels`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. Channels lists adapter instances (logo, status lamp, adapter chip, send-only badge), Add opens an adapter picker (logo, name, description), and the form is generated from the adapter's declared fields plus Name / Enabled / “Deliver messages to the Bot” / Prompt, with the adapter's markdown **Setup instructions** in a collapsible well (open by default). Add/edit/Setup are their own routes (`/channels/new`, `/channels/new/:adapter`, `/channels/:id`, `/channels/:id/setup`) so the browser back button works. Adapters declare interactive **Setup** actions (`pick` / `run` / `qr`); a channel that still needs its target shows a primary **Set up** button with a blinking gear, otherwise a plain gear, opening the Setup page that runs those actions generically — the chat picker lives there, not in the edit form. On/off rows use the shared `Switch`. Each row has a **View log** that opens that channel's conversations in a read-only hatch overlay. Dynamic adapter state (QR, chat picker) renders in the same form. The hatch lives on `Desktop` / `Console`, full main column. Console is the same obsidian hatch with a PTY instead of VNC. Files is a workspace `FileBrowser`: tree sidebar + preview (images, PDF, media, markdown, code, docx), breadcrumbs in the header, upload / new / download. Delete is a second click, not `confirm()`. Skill inspect (Hub, Admin library, Bot Skills, Artifact) is the same tree+preview in a **hatch overlay** — obsidian chrome, white preview pane, open `SKILL.md` first, readonly. Connectors attach a copy from the Admin library or add a custom MCP (Library | Custom switch; same form as Admin). Skills: toggle switch (no On/Off labels); click the row to inspect. `catalog` chip only on embed library names. Settings is a scrolling 760px column: name, description, SOUL | MEMORY two-up with char counts, Save, then an elevated **Dangerous** well (Reset / Delete, second click).
 
 **Settings / admin:** header + one 720–800px column. Admin sub-nav: Settings | Connectors Library | Skills Library | Search & Extract. Lists. Bot Settings: name, description, SOUL | MEMORY two-up, then Dangerous well. Folio tabs (Settings, Secrets, Rules, Container, Connectors, Channels, Skills) scroll inside the hatch; do not clip.
 
@@ -296,9 +296,9 @@ No separate marketing site.
 
 ### Language to Use
 
-Say: plaster, iron, folio, crest, hatch, ribbon, slip, bindery, pine, cloth, stone.
+Say: optic mist, optic white, obsidian, folio, crest, hatch, vermilion, slip, cobalt, emerald, technical slate, cool slate.
 
-Do not say: dashboard, kiln, ochre, lamp black, bay, AI copilot, glassmorphism, neon, vibrant, sleek, gradient hero.
+Do not say: dashboard, plaster, bindery, cloth, antique paper, kiln, ochre, warm brown, neon, vibrant, sleek, gradient hero.
 
 Do not use orange, amber, gold, rust, or warm brown — even as a hover.
 
@@ -306,7 +306,7 @@ One screen per prompt. Apply this design system at the project level; do not res
 
 ### Color References
 
-Plaster page. Folio cards. Iron type. Stone secondary. Bindery blue for primary and focus. Pine for working. Carmine only for “Needs you” and Deny.
+Optic Mist canvas. Optic White cards. Obsidian type. Cool Slate secondary. Signal Cobalt for primary and focus. Precision Emerald for working. Signal Vermilion only for “Needs you” and Deny.
 
 ### Screen map
 
@@ -337,28 +337,28 @@ Paste these one at a time. Attach the crest sheet on screens 2–6.
 
 ```
 Desktop web, sign-in for Silo.
-Full plaster canvas. No rail.
-A 400px folio card, centered but slightly above true center, 1px thread border.
-Silo mark: one vertical rounded rectangle and the word Silo, iron.
+Full optic mist canvas (#F8FAFC). No rail.
+A 400px optic white card, centered but slightly above true center, 1px hairline thread border (#E2E8F0), subtle shadow.
+Silo mark: one vertical rounded rectangle and the word Silo, obsidian (#0F172A).
 Title: Sign in. Two fields, labels above: Email, Password.
-Primary button bindery blue: Sign in.
+Primary button Signal Cobalt (#1D4ED8): Sign in.
 No hero, no marketing line, no gradient, no orange.
 ```
 
 **2 · Bots**
 
 ```
-Desktop web, 1440 wide. 64px left rail on cloth (Silo mark, Bots active, crest stack, +, Admin, user initial at bottom).
-Main plaster: header “Bots” left, primary “New Bot” right.
-Stone subtitle: “Machines you can open.”
-A 3-column grid of folio cards. Six Bots. Use the attached crests. Each has a name, one-line description, 7px lamp.
+Desktop web, 1440 wide. 64px left rail on Technical Slate (#F1F5F9) (Silo mark, Bots active, crest stack, +, Admin, user initial at bottom).
+Main Optic Mist: header “Bots” left, primary “New Bot” right.
+Slate subtitle: “Machines you can open.”
+A 3-column grid of white cards. Six Bots. Use the attached crests. Each has a name, one-line description, 7px lamp.
 
 Populate:
 - Owl (Mail) — Idle — “Reads the house inbox”
-- Fox (Scout) — Working — “Vendor pricing and captchas”
-- Scarab (Crawler) — Needs you — “Walks the supplier catalog” — carmine left ribbon
+- Fox (Scout) — Working — “Vendor pricing and captchas” — emerald pulsing lamp
+- Scarab (Crawler) — Needs you — “Walks the supplier catalog” — vermilion left ribbon
 - Kettle (House) — Idle — “Kitchen orders and deliveries”
-- Fish (Ledger) — Working — “Monthly reconcile”
+- Fish (Ledger) — Working — “Monthly reconcile” — emerald pulsing lamp
 - Key (Vault) — Stopped — “Holds the spare keys”
 
 No KPI row. No search. No orange. The hatch is not on this screen.
@@ -367,20 +367,20 @@ No KPI row. No search. No orange. The hatch is not on this screen.
 **3 · New Bot**
 
 ```
-Same shell. Main column 560px on plaster.
+Same shell. Main column 560px on Optic Mist.
 Title: New Bot.
-An 88px crest preview, then a folio picker: 4×2 shapes, a row of color dots. Bindery ring on the active shape and color.
+An 88px crest preview, then a white card picker: 4×2 shapes, a row of color dots. Cobalt ring on the active shape and color.
 Field: Name (placeholder “Scout”). Description (placeholder “What this machine is for”).
-Stone hint: “A Bot is its own machine. It does not share files with the others.”
-Primary: Create Bot. Ghost: Cancel.
+Slate hint: “A Bot is its own machine. It does not share files with the others.”
+Primary: Create Bot (Signal Cobalt). Ghost: Cancel.
 No model picker, no tags, no orange.
 ```
 
 **4 · Bot · Chat**
 
 ```
-Same shell. Header 56px: fox crest, “Scout”, pine lamp, “Working”, tabs (Chat active, Desktop, Secrets, Rules), Stop.
-Body split: left 240px chats list on cloth (titles generated from the first prompt; double-click or pencil to rename); thread on plaster. No hatch on this tab.
+Same shell. Header 56px: fox crest, “Scout”, emerald lamp, “Working”, tabs (Chat active, Desktop, Secrets, Rules), Stop Bot.
+Body split: left 240px chats list on Technical Slate (titles generated from the first prompt; double-click or pencil to rename); thread on Optic Mist. No hatch on this tab.
 
 Thread:
 - User: “Log into the vendor site and download last month’s invoice.”
@@ -393,13 +393,13 @@ Thread:
 
 ```
 Same Scout chat screen.
-A 400px folio slip from the right. Plaster/folio, not a black overlay.
-Header: crest, Scout, “Needs you” in carmine.
+A 400px white slip from the right with elevation shadow. Clean paper, not a black overlay.
+Header: crest, Scout, “Needs you” in Signal Vermilion.
 Title: Read a secret
-Stone: This Bot wants the stored secret “vendor_password”. The value is not shown here.
-Cloth fields: Secret → vendor_password
-Stone: This run is paused until you choose.
-Buttons: Allow once (bindery), Always allow this action (secondary), Deny (carmine).
+Slate: This Bot wants the stored secret “vendor_password”. The value is not shown here.
+Technical Slate fields: Secret → vendor_password
+Slate: This run is paused until you choose.
+Buttons: Allow once (Signal Cobalt), Always allow this action (secondary), Deny (Signal Vermilion).
 Thread stays visible, slightly dimmed. No orange.
 ```
 
@@ -407,9 +407,9 @@ Thread stays visible, slightly dimmed. No orange.
 
 ```
 Same shell. Tab Desktop active.
-Thread gone. The iron hatch fills the main column, 8px matte.
-Top strip: crest, Scout, Desktop, pine lamp.
-Chrome mid-task inside. Stone caption under the hatch, left: “Same browser the Bot uses. You can type and click.”
+Thread gone. The obsidian hatch fills the main column, 8px matte (#0B0F19).
+Top strip: crest, Scout, Desktop, emerald lamp.
+Chrome mid-task inside. Slate caption under the hatch, left: “Same browser the Bot uses. You can type and click.”
 ```
 
 **7 · Bot · Connectors**
@@ -417,9 +417,9 @@ Chrome mid-task inside. Stone caption under the hatch, left: “Same browser the
 ```
 Same shell, Scout, tab Connectors.
 Column 760px. “Connectors” and primary “Add connector”. Add opens Library | Custom. Each row has ghost Edit, Refresh (re-list tools) and Remove.
-Two list rows on folio:
+Two list rows on white cards:
 1) gmail — slate chip “MCP” — “3 auto · 1 ask” — last call 2h ago
-2) imap_home — pine chip “Python” — “Ask every time” — commit 9f2a1c0 in mono
+2) imap_home — emerald chip “Python” — “Ask every time” — commit 9f2a1c0 in mono
 Hairline hover only. No card carnival.
 ```
 
@@ -428,7 +428,7 @@ Hairline hover only. No card carnival.
 ```
 Same shell. Title: Add preset (Admin library) or Add connector (Bot, Custom). Column 560px.
 Shared form. Fields: Name, URL (mono), Auth None|OAuth, optional OAuth Client ID/Secret (servers without DCR), Default Allow|Ask|Deny, extra headers (values hidden).
-Bot add also has segmented Library | Custom. Library is a picker; clicking a preset shows mark + large name, then a bindery-edged cloth well with the catalog `guide` (iron, not a field). Settings sit in collapsed Advanced settings.
+Bot add also has segmented Library | Custom. Library is a picker; clicking a preset shows mark + large name, then a cobalt-edged technical well with the catalog `guide` (obsidian, not a field). Settings sit in collapsed Advanced settings.
 Primary: Add to library / Add connector. Ghost: Cancel. Back returns to the picker.
 ```
 
@@ -436,7 +436,7 @@ Primary: Add to library / Add connector. Ghost: Cancel. Back returns to the pick
 
 ```
 Same shell, tab Secrets. Column 760px.
-Title Secrets. Stone: “Handed to the Bot only after you allow it. Masked before the model sees output.”
+Title Secrets. Slate: “Handed to the Bot only after you allow it. Masked before the model sees output.”
 Primary: Add secret.
 Rows: vendor_password · added Apr 2 · used 12m ago; imap_password · added Jan 11 · never used.
 Values are mono bullets. Rotate, Delete. No eye, no copy.
@@ -448,7 +448,7 @@ Add well: Name, Value (password), Add.
 ```
 Same shell, tab Rules. Column 760px.
 Intro: Allow runs without asking. Ask pauses and opens the slip (Allow once / Always / Deny). Deny refuses. Always keeps only that action or secret.
-Folio sections, not one table. Each section is a collapsible card (caret); This Bot starts open. This Bot: Python, Terminal, Files, Desktop, Soul, Memory (segmented Allow / Ask / Deny). Secrets: one row per stored secret (empty: add them on Secrets). Then one section per attached connector; actions from the tool list; unset uses the connector default. Authorize-needed connectors say so instead of inventing rows.
+White card sections, not one table. Each section is a collapsible card (caret); This Bot starts open. This Bot: Python, Terminal, Files, Desktop, Soul, Memory (segmented Allow / Ask / Deny). Secrets: one row per stored secret (empty: add them on Secrets). Then one section per attached connector; actions from the tool list; unset uses the connector default. Authorize-needed connectors say so instead of inventing rows.
 No ghost rows after detach or deleting a secret.
 ```
 
@@ -457,7 +457,7 @@ No ghost rows after detach or deleting a secret.
 ```
 Same shell, Admin active.
 Title: Admin. Column 640px. Operator config: silo.yaml.
-Groups match YAML: Models, Providers, Search, Server, Bootstrap. Models holds the allowlist plus Default and Title pickers; Providers holds one block per provider (key, base URL, cache toggle). Each field shows source (default / yaml / env). Env-set fields are disabled with a carmine warning.
+Groups match YAML: Models, Providers, Search, Server, Bootstrap. Models holds the allowlist plus Default and Title pickers; Providers holds one block per provider (key, base URL, cache toggle). Each field shows source (default / yaml / env). Env-set fields are disabled with a vermilion warning.
 YAML editor below (syntax highlighted). Save writes silo.yaml only.
 Primary: Save.
 ```
@@ -473,7 +473,7 @@ No graphs. Action in mono.
 
 ### Incremental Iteration
 
-Generate **Bots** first. If anything comes back orange, amber, or dark-warm, stop and restated: plaster page, bindery primary, carmine ribbon only. Then **Run** and **Needs you** — the hatch in the plaster wall is the test. Then 6–12.
+Generate **Bots** first. If anything comes back orange, amber, or dark-warm, stop and restate: optic mist page, cobalt primary, vermilion ribbon only. Then **Run** and **Needs you** — the optical hatch in the mist console is the test. Then 6–12.
 
 If Stitch adds KPI cards, a warm accent, or a sky-blue hover, remove them.
 
@@ -481,7 +481,7 @@ If Stitch adds KPI cards, a warm accent, or a sky-blue hover, remove them.
 
 - Orange, ochre, amber, gold, rust, terracotta, “warm highlight”.
 - Purple, cyan, electric green.
-- Inter, Geist, Space Grotesk. Plex only.
+- IBM Plex, Comic Sans, decorative serifs. Geist and Geist Mono only.
 - Glass, blur, drop shadows, gradient text.
 - 3D robots, illustrated mascots. Two-dot eyes on a flat shape are the crest, not a face library.
 - Showing a secret.
