@@ -310,7 +310,7 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
         ) : null}
         <div className="flex min-h-0 flex-1 flex-col">
           {chatId ? (
-            <Thread botId={botId} events={events} sending={false} />
+            <Thread botId={botId} chatId={chatId} events={events} sending={false} />
           ) : (
             <div className="flex h-full items-center justify-center text-stone">No conversations yet.</div>
           )}

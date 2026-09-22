@@ -573,6 +573,7 @@ export function Thread({
   botId,
   botName,
   botCrest,
+  chatId,
   events,
   sending,
   onInspectArtifact,
@@ -582,30 +583,43 @@ export function Thread({
   botId: string;
   botName?: string;
   botCrest?: number;
+  chatId?: string;
   events: Ev[];
   sending: boolean;
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
   onSelectPrompt?: (prompt: string) => void;
 }) {
-  const end = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
+  const conversation = useRef(chatId);
+  const lastKey = useRef<string | undefined>(undefined);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const blocks = foldEvents(events);
 
+  const scrollToBottom = (smooth = false) => {
+    const el = containerRef.current;
+    if (!el) return;
+    pinned.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  };
+
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [events, sending]);
+    const switched = chatId !== conversation.current;
+    const last = blocks[blocks.length - 1];
+    const sent = last?.type === "user" && last.key !== lastKey.current;
+    conversation.current = chatId;
+    lastKey.current = last?.key;
+    if (switched || sent) pinned.current = true;
+    if (pinned.current) scrollToBottom();
+  }, [events, sending, chatId]);
 
   const handleScroll = () => {
     const el = containerRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    pinned.current = distanceToBottom <= 80;
     setShowScrollBottom(distanceToBottom > 160);
-  };
-
-  const scrollToBottom = () => {
-    end.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const working =
@@ -838,13 +852,12 @@ export function Thread({
             <span>Working…</span>
           </div>
         ) : null}
-        <div ref={end} />
       </div>
 
       {showScrollBottom && (
         <button
           type="button"
-          onClick={scrollToBottom}
+          onClick={() => scrollToBottom(true)}
           className="fixed bottom-24 right-8 z-20 flex items-center gap-1.5 rounded-full border border-thread bg-folio px-3 py-1.5 text-[12px] font-medium text-iron shadow-[0_6px_20px_-8px_rgba(30,33,38,0.35)] transition-all duration-200 ease-quiet hover:bg-linen active:scale-95"
         >
           <ArrowDown size={13} weight="bold" />

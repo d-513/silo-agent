@@ -1454,6 +1454,7 @@ function BotPage() {
                 botId={id!}
                 botName={bot.name}
                 botCrest={bot.crest}
+                chatId={chatId}
                 events={events}
                 sending={sending}
                 onInspectArtifact={setInspect}
