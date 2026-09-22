@@ -724,7 +724,7 @@ export function Thread({
                   }
                 >
                   {!b.running && b.result && !b.result.startsWith("error:") ? (
-                    <PresentFile botId={botId} path="bot/screen.png" quiet />
+                    <PresentFile botId={botId} path="bot/screen.jpg" quiet />
                   ) : b.result ? (
                     <ToolResult text={b.result} />
                   ) : null}

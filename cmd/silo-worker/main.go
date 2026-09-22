@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -120,6 +121,23 @@ type worker struct {
 	sendMu    sync.Mutex
 	pending   map[string]*job
 	rpc       silov1connect.BotWorkerClient
+	// shotSeq counts desktop captures. A command that bumps it (a Python or
+	// terminal `look`) reports the fresh screen back on CmdDone.image so the
+	// CP can attach pixels without a second round trip.
+	shotSeq atomic.Int64
+}
+
+// screenDataURL reads the latest model-facing screenshot as a data: URL.
+func (w *worker) screenDataURL() string {
+	full, err := w.resolve(screenShot)
+	if err != nil {
+		return ""
+	}
+	raw, err := os.ReadFile(full)
+	if err != nil || len(raw) == 0 {
+		return ""
+	}
+	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(raw)
 }
 
 func (w *worker) send(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], ev *v1.CmdEvent) error {
@@ -185,6 +203,7 @@ func (w *worker) run(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], cmd *
 		ev.Id = cmd.GetId()
 		_ = w.send(st, ev)
 	}
+	shots := w.shotSeq.Load()
 	out, err := w.exec(ctx, cmd, func(chunk string) {
 		send(&v1.CmdEvent{Body: &v1.CmdEvent_Chunk{Chunk: &v1.OutputChunk{Text: validUTF8(w.mask.Apply(chunk))}}})
 	})
@@ -192,7 +211,22 @@ func (w *worker) run(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], cmd *
 		send(&v1.CmdEvent{Body: &v1.CmdEvent_Error{Error: &v1.CmdError{Message: validUTF8(err.Error())}}})
 		return
 	}
-	send(&v1.CmdEvent{Body: &v1.CmdEvent_Done{Done: &v1.CmdDone{Result: validUTF8(w.mask.Apply(out))}}})
+	done := &v1.CmdDone{Result: validUTF8(w.mask.Apply(out))}
+	if w.shotSeq.Load() != shots && cmdTakesShot(cmd) {
+		done.Image = w.screenDataURL()
+	}
+	send(&v1.CmdEvent{Body: &v1.CmdEvent_Done{Done: done}})
+}
+
+// cmdTakesShot reports whether a command can take a desktop look as a side
+// effect. Cmd_Look already returns the image in its result JSON.
+func cmdTakesShot(cmd *v1.Cmd) bool {
+	switch cmd.GetBody().(type) {
+	case *v1.Cmd_ExecPython, *v1.Cmd_Terminal:
+		return true
+	default:
+		return false
+	}
 }
 
 // validUTF8 replaces invalid UTF-8 so protobuf string fields stay marshalable.

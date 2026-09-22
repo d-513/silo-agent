@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image/png"
+	"image/jpeg"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +20,9 @@ const (
 	screenW = 1600
 	screenH = 900
 	display = ":1"
+	// screenShot is the model-facing screenshot. JPEG q85 keeps the same
+	// 1600×900 pixels (clicks stay unscaled) at a fraction of the PNG bytes.
+	screenShot = "bot/screen.jpg"
 )
 
 func screenPoint(x, y int) error {
@@ -123,13 +126,13 @@ func normalizeKey(s string) (string, error) {
 	return strings.Join(parts, "+"), nil
 }
 
-func pngSize(path string) (int, int, error) {
+func imageSize(path string) (int, int, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer f.Close()
-	cfg, err := png.DecodeConfig(f)
+	cfg, err := jpeg.DecodeConfig(f)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -140,27 +143,28 @@ func (w *worker) look(ctx context.Context) (string, error) {
 	if err := w.lookShot(ctx); err != nil {
 		return "", err
 	}
-	return w.browseFile("bot/screen.png", 0)
+	return w.browseFile(screenShot, presentLimit)
 }
 
 func (w *worker) lookShot(ctx context.Context) error {
-	dest, err := w.resolve("bot/screen.png")
+	dest, err := w.resolve(screenShot)
 	if err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
-	if err := w.x11(ctx, "scrot", "-z", "-o", dest); err != nil {
+	if err := w.x11(ctx, "scrot", "-z", "-o", "-q", "85", dest); err != nil {
 		return err
 	}
-	ww, hh, err := pngSize(dest)
+	ww, hh, err := imageSize(dest)
 	if err != nil {
 		return err
 	}
 	if ww != screenW || hh != screenH {
 		return fmt.Errorf("screenshot is %dx%d, want %dx%d", ww, hh, screenW, screenH)
 	}
+	w.shotSeq.Add(1)
 	return nil
 }
 
@@ -270,7 +274,7 @@ func (w *worker) runDesktop(ctx context.Context, action string, args map[string]
 		if err := w.lookShot(ctx); err != nil {
 			return "", err
 		}
-		return `{"path":"bot/screen.png"}`, nil
+		return `{"path":"` + screenShot + `"}`, nil
 	case "click":
 		return w.click(ctx, &v1.ClickCmd{X: int32(intArg(args, "x")), Y: int32(intArg(args, "y")), Button: strArg(args, "button")})
 	case "type":

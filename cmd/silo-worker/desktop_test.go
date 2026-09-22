@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"image"
-	"image/png"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"testing"
@@ -76,19 +76,19 @@ func TestRunDesktopUnknown(t *testing.T) {
 	}
 }
 
-func TestPNGSize(t *testing.T) {
+func TestImageSize(t *testing.T) {
 	dir := t.TempDir()
-	p := filepath.Join(dir, "screen.png")
+	p := filepath.Join(dir, "screen.jpg")
 	img := image.NewRGBA(image.Rect(0, 0, screenW, screenH))
 	f, err := os.Create(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := png.Encode(f, img); err != nil {
+	if err := jpeg.Encode(f, img, &jpeg.Options{Quality: 85}); err != nil {
 		t.Fatal(err)
 	}
 	_ = f.Close()
-	w, h, err := pngSize(p)
+	w, h, err := imageSize(p)
 	if err != nil || w != screenW || h != screenH {
 		t.Fatalf("%dx%d %v", w, h, err)
 	}

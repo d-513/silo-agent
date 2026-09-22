@@ -15,7 +15,10 @@ var (
 
 type Result struct {
 	Out string
-	Err error
+	// Image is an optional data: URL of a fresh desktop screenshot taken while
+	// the command ran (Python/terminal look). Empty when there is none.
+	Image string
+	Err   error
 }
 
 // ConsoleMsg is one console websocket payload: PTY bytes and/or a resize.
@@ -89,13 +92,13 @@ func (s *Session) Expect(id string) chan Result {
 	return ch
 }
 
-func (s *Session) Resolve(id, out string, err error) {
+func (s *Session) Resolve(id, out, image string, err error) {
 	s.mu.Lock()
 	ch := s.wait[id]
 	delete(s.wait, id)
 	s.mu.Unlock()
 	if ch != nil {
-		ch <- Result{Out: out, Err: err}
+		ch <- Result{Out: out, Image: image, Err: err}
 	}
 }
 
@@ -342,28 +345,35 @@ func (s *Session) ConsoleGone() <-chan struct{} {
 }
 
 func (h *Hub) Exec(ctx context.Context, botID string, cmd *v1.Cmd) (string, error) {
+	r, err := h.ExecResult(ctx, botID, cmd)
+	return r.Out, err
+}
+
+// ExecResult is Exec with the full result, including any screenshot the worker
+// captured while the command ran.
+func (h *Hub) ExecResult(ctx context.Context, botID string, cmd *v1.Cmd) (Result, error) {
 	s := h.Get(botID)
 	if s == nil {
-		return "", ErrNoWorker
+		return Result{}, ErrNoWorker
 	}
 	ch := s.Expect(cmd.GetId())
 	select {
 	case s.Send <- cmd:
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return Result{}, ctx.Err()
 	case <-s.dead:
-		return "", ErrClosed
+		return Result{}, ErrClosed
 	}
 	select {
 	case r := <-ch:
-		return r.Out, r.Err
+		return r, r.Err
 	case <-ctx.Done():
 		select {
 		case s.Send <- &v1.Cmd{Id: cmd.GetId() + "-stop", Body: &v1.Cmd_Cancel{Cancel: &v1.CancelCmd{CmdId: cmd.GetId()}}}:
 		default:
 		}
-		return "", ctx.Err()
+		return Result{}, ctx.Err()
 	case <-s.dead:
-		return "", ErrClosed
+		return Result{}, ErrClosed
 	}
 }

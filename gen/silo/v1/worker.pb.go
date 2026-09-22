@@ -1826,8 +1826,11 @@ func (x *OutputChunk) GetText() string {
 }
 
 type CmdDone struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        string                 `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Result string                 `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	// image is a data: URL of a fresh desktop screenshot captured while the
+	// command ran (Python/terminal look). Empty when the screen did not change.
+	Image         string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1865,6 +1868,13 @@ func (*CmdDone) Descriptor() ([]byte, []int) {
 func (x *CmdDone) GetResult() string {
 	if x != nil {
 		return x.Result
+	}
+	return ""
+}
+
+func (x *CmdDone) GetImage() string {
+	if x != nil {
+		return x.Image
 	}
 	return ""
 }
@@ -2237,9 +2247,10 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"\x04body\"\v\n" +
 	"\tHeartbeat\"!\n" +
 	"\vOutputChunk\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"!\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"7\n" +
 	"\aCmdDone\x12\x16\n" +
-	"\x06result\x18\x01 \x01(\tR\x06result\"$\n" +
+	"\x06result\x18\x01 \x01(\tR\x06result\x12\x14\n" +
+	"\x05image\x18\x02 \x01(\tR\x05image\"$\n" +
 	"\bCmdError\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"6\n" +
 	"\tSecretReq\x12\x12\n" +

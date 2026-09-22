@@ -69,9 +69,14 @@ def chrome_page():
 
 
 def look() -> str:
+    """Screenshot the 1600x900 desktop. The pixels are returned to the model.
+
+    Use it to verify a chain of desktop actions in one `exec_python` call.
+    Returns the workspace path of the screenshot (`bot/screen.jpg`).
+    """
     data = call("desktop", "look", {})
     path = data.get("path") if isinstance(data, dict) else None
-    return path if isinstance(path, str) and path else "bot/screen.png"
+    return path if isinstance(path, str) and path else "bot/screen.jpg"
 
 
 def click(x: int, y: int, button: str = "left") -> dict:

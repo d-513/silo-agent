@@ -622,6 +622,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	go a.nameChat(botID, chatID, runID, title)
 
 	msgs := a.historyFromDB(chatID)
+	var lastLook string
 
 	for {
 		msgs = drainInbox(msgs, inbox)
@@ -686,8 +687,16 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 			if img != "" {
-				itype, vimg := visionImage(tc.Name, img)
-				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
+				if img == lastLook && isLookTool(tc.Name) {
+					msgs[len(msgs)-1].Text += " (screen unchanged since the last look)"
+				} else {
+					itype, vimg := visionImage(tc.Name, img)
+					if isLookTool(tc.Name) {
+						pruneLookImages(msgs)
+						lastLook = img
+					}
+					msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
+				}
 			}
 			if origin != nil && origin.channel != nil && err == nil {
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
@@ -995,34 +1004,64 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		delete(a.cmdRun, id)
 		a.mu.Unlock()
 	}()
-	out, err := a.Hub.Exec(ctx, botID, cmd)
+	out, err := a.Hub.ExecResult(ctx, botID, cmd)
 	if err != nil {
 		return "", "", err
 	}
 	switch name {
 	case "read":
-		return formatRead(out, num(args, "offset"), num(args, "limit")), "", nil
+		return formatRead(out.Out, num(args, "offset"), num(args, "limit")), "", nil
 	case "grep":
 		max := num(args, "max_hits")
 		if max <= 0 {
 			max = 80
 		}
-		return capHits(out, max), "", nil
+		return capHits(out.Out, max), "", nil
 	case "present":
-		return presentAck(path, out), presentImageURL(path, out), nil
+		return presentAck(path, out.Out), presentImageURL(path, out.Out), nil
 	case "look":
-		return lookAck(out), presentImageURL(lookPath, out), nil
+		return lookAck(out.Out), presentImageURL(lookPath, out.Out), nil
 	default:
-		return out, "", nil
+		// Python/terminal commands may have taken a desktop look; the worker
+		// reports the fresh screenshot as a data: URL on the done event.
+		return out.Out, out.Image, nil
 	}
 }
 
 const (
 	screenW      = 1600
 	screenH      = 900
-	lookPath     = "bot/screen.png"
+	lookPath     = "bot/screen.jpg"
 	lookCoordLaw = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
+
+// isLookImage reports whether a user turn carries a live desktop screenshot.
+// The text is the coordinate law set by visionImage.
+func isLookImage(m llm.Message) bool {
+	return m.Role == llm.RoleUser && len(m.Images) > 0 && strings.HasPrefix(strings.TrimSpace(m.Text), "Image is 1600×900")
+}
+
+// pruneLookImages drops pixels from earlier screenshots so a long GUI run does
+// not re-send every frame on each model call. Only the newest look is kept.
+func pruneLookImages(msgs []llm.Message) {
+	for i := range msgs {
+		if isLookImage(msgs[i]) {
+			msgs[i].Images = nil
+			msgs[i].Text = "Earlier screenshot omitted — act on the current one."
+		}
+	}
+}
+
+// isLookTool reports whether a tool call's image is the desktop, not a
+// presented file. Python and terminal can take a look as a side effect.
+func isLookTool(name string) bool {
+	switch name {
+	case "look", "exec_python", "terminal":
+		return true
+	default:
+		return false
+	}
+}
 
 func chatTool(name string) (conn, action string, ok bool) {
 	switch name {
@@ -1060,7 +1099,7 @@ func screenPoint(x, y int) error {
 
 func visionImage(tool, url string) (string, llm.Image) {
 	img := imageFromDataURL(url)
-	if tool == "look" {
+	if isLookTool(tool) {
 		return lookCoordLaw, img
 	}
 	img.Detail = "high"
@@ -1087,10 +1126,12 @@ func lookAck(raw string) string {
 
 func presentImageURL(path, raw string) string {
 	var row struct {
-		Name string `json:"name"`
-		Data string `json:"data"`
+		Name      string `json:"name"`
+		Data      string `json:"data"`
+		Truncated bool   `json:"truncated"`
 	}
-	if json.Unmarshal([]byte(raw), &row) != nil || row.Data == "" {
+	if json.Unmarshal([]byte(raw), &row) != nil || row.Data == "" || row.Truncated {
+		// A truncated payload is a broken image; never attach it.
 		return ""
 	}
 	mime := imageMIME(path)

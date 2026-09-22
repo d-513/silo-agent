@@ -171,6 +171,9 @@ message OutputChunk {
 
 message CmdDone {
   string result = 1;
+  // image is a data: URL of a fresh desktop screenshot captured while the
+  // command ran (Python/terminal look). Empty when the screen did not change.
+  string image = 2;
 }
 
 message CmdError {

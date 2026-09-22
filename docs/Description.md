@@ -80,7 +80,7 @@ This hop is same-container only. It must not know the CP exists.
 ```python
 # silo_runtime — the only file that knows the socket
 def get_secret(name: str) -> str: ...
-def look() -> str: ...  # writes bot/screen.png
+def look() -> str: ...  # captures the screen; pixels go back to the model
 def click(x, y, button="left"): ...
 def type_text(text: str): ...  # not type — that shadows Python
 def key(name: str): ...
@@ -170,7 +170,7 @@ Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium`
 
 ### Computer use
 
-`look` grabs `DISPLAY=:1` root to `/workspace/bot/screen.png` and attaches the PNG (no `detail: high`). Coordinate law on every look: image is 1600×900, origin top-left, `click(x,y)` in those pixels. Prompt ladder: look → one act → look. The same actions exist on `silo_runtime` for programmatic sequences (type a secret into a field). Playwright is screenshots / DOM edits / scripts, not the click loop.
+`look` grabs `DISPLAY=:1` root to `/workspace/bot/screen.jpg` (JPEG q85, same 1600×900 pixels) and attaches it (no `detail: high`). Coordinate law on every look: image is 1600×900, origin top-left, `click(x,y)` in those pixels. Prompt ladder: look → one act → look, or batch known steps in one `exec_python` and end with `silo_runtime.look()` (its pixels come back to the model). Only the newest look stays in the prompt; older screenshots are pruned. The same actions exist on `silo_runtime` for programmatic sequences (type a secret into a field). Playwright is screenshots / DOM edits / scripts, not the click loop.
 
 ### Images
 

@@ -40,9 +40,9 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 				runID := a.runOfCmd(ev.GetId())
 				a.emit(bot.ID, a.chatOfRun(runID), runID, "tool_chunk", b.Chunk.GetText(), "")
 			case *v1.CmdEvent_Done:
-				sess.Resolve(ev.GetId(), a.Mask(bot.ID).Apply(b.Done.GetResult()), nil)
+				sess.Resolve(ev.GetId(), a.Mask(bot.ID).Apply(b.Done.GetResult()), b.Done.GetImage(), nil)
 			case *v1.CmdEvent_Error:
-				sess.Resolve(ev.GetId(), "", errors.New(b.Error.GetMessage()))
+				sess.Resolve(ev.GetId(), "", "", errors.New(b.Error.GetMessage()))
 			}
 		}
 	}()

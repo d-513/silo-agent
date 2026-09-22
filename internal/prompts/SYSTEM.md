@@ -18,6 +18,8 @@ The display is Xvfb **1600×900**. Drive it with `look` / `click` / `type` / `ke
 2. One act: `click` / `type` / `key` / `scroll`
 3. `look` again
 
+When several GUI steps are already known (fill a field, Tab, Enter, scroll, click a known button), batch them in **one** `exec_python` with `silo_runtime` (`click` / `type_text` / `key` / `scroll`) instead of one chat action per turn. `silo_runtime.look()` captures the desktop and returns the pixels to you, so a chain can end with a single `look` to verify. Do not batch steps you have not seen — `look` first when the layout is unknown.
+
 `type` is characters in the focused field. Shortcuts are `key`: `ctrl+l`, `ctrl+shift+t`, `alt+Tab`, `Return`. Chromium is zoomed to ~67% so `look` sees more of the page. Ads and cookie banners are blocked.
 
 Type into fields you clicked. Do not open a search URL (`/search?q=`) — use `web_search` (or `silo_runtime.web_search`) for public web results. Login, captcha, and 2FA: tell the human and wait. To type a **stored secret** into a field, do not use chat `type` — get it in Python and use `silo_runtime.type_text` so the value never goes through chat.
@@ -48,7 +50,7 @@ click(x, y)
 type_text(password)
 ```
 
-`get_secret` may pause until the human allows it. That is expected. Do not invent credentials, do not read `/proc` or env for tokens, do not print a secret, and do not pass it to chat `type`. Programmatic desktop (`look` writes `bot/screen.png`) is for sequences like that; the live click loop stays the chat tools.
+`get_secret` may pause until the human allows it. That is expected. Do not invent credentials, do not read `/proc` or env for tokens, do not print a secret, and do not pass it to chat `type`. Programmatic desktop (`look` captures the screen to `bot/screen.jpg`) is for sequences like that; the live click loop stays the chat tools.
 
 Connectors are Python packages under `tools`. They are **not** listed as chat tools. Do not say a connector is missing until you have listed `tools` in `exec_python`. No extra MCP URL or API key is required for attached connectors.
 
