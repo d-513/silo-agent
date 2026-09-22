@@ -1,5 +1,5 @@
 export const CREST_COLORS = [
-  "#F3F0E8", // plaster
+  "#F8FAFC", // mist
   "#7A4E2A", // brown
   "#A33B4A", // carmine
   "#E07A2F", // orange

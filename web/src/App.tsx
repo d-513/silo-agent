@@ -491,7 +491,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
         const next = new RFB(el, `${proto}://${location.host}/vnc?bot=${botId}`, { shared: true });
         next.scaleViewport = true;
         next.clipViewport = true;
-        next.background = "#12141A";
+        next.background = "#0B0F19";
         next.addEventListener("connect", () => {
           if (cancelled) return;
           clearTimeout(hang);

@@ -1,93 +1,93 @@
 ---
 name: Silo
-description: Daylight archive for isolated Bots. Plaster, iron type, bindery blue. Each Bot is a folio with a picked crest; its desktop is a dark hatch set into the page.
+description: Precision Instrument for isolated Bots. Optic mist canvas, obsidian type, signal cobalt. Each Bot is a dedicated hardware apparatus with a picked crest; its desktop is a dark optical hatch set into the console.
 colors:
-  surface: '#F3F0E8'
-  surface-dim: '#E4E0D6'
-  surface-bright: '#F8F6F0'
-  surface-container-lowest: '#FFFcf7'
-  surface-container-low: '#F8F6F0'
-  surface-container: '#EDE9DF'
-  surface-container-high: '#E4E0D6'
-  surface-container-highest: '#D8D3C8'
-  on-surface: '#1E2126'
-  on-surface-variant: '#5F5E58'
-  inverse-surface: '#1E2126'
-  inverse-on-surface: '#F3F0E8'
-  outline: '#C9C3B6'
-  outline-variant: '#DDD8CE'
-  surface-tint: '#2A3F5F'
-  primary: '#2A3F5F'
-  on-primary: '#F3F0E8'
-  primary-container: '#D7DEE8'
-  on-primary-container: '#1A2A42'
-  inverse-primary: '#9AADC8'
-  secondary: '#3D6F6A'
-  on-secondary: '#F3F0E8'
-  secondary-container: '#D5E4E1'
-  on-secondary-container: '#1E3A37'
-  tertiary: '#5C6B7A'
-  on-tertiary: '#F3F0E8'
-  tertiary-container: '#D8DEE4'
-  on-tertiary-container: '#2A333C'
-  error: '#A33B4A'
-  on-error: '#F3F0E8'
-  error-container: '#F0D4D7'
-  on-error-container: '#6E2230'
-  primary-fixed: '#D7DEE8'
-  primary-fixed-dim: '#9AADC8'
-  on-primary-fixed: '#1A2A42'
-  on-primary-fixed-variant: '#2A3F5F'
-  secondary-fixed: '#D5E4E1'
-  secondary-fixed-dim: '#8FB0AB'
-  on-secondary-fixed: '#1E3A37'
-  on-secondary-fixed-variant: '#3D6F6A'
-  tertiary-fixed: '#D8DEE4'
-  tertiary-fixed-dim: '#9AABBA'
-  on-tertiary-fixed: '#2A333C'
-  on-tertiary-fixed-variant: '#5C6B7A'
-  background: '#F3F0E8'
-  on-background: '#1E2126'
-  surface-variant: '#EDE9DF'
+  surface: '#F8FAFC'
+  surface-dim: '#E2E8F0'
+  surface-bright: '#FFFFFF'
+  surface-container-lowest: '#FFFFFF'
+  surface-container-low: '#F8FAFC'
+  surface-container: '#F1F5F9'
+  surface-container-high: '#E2E8F0'
+  surface-container-highest: '#CBD5E1'
+  on-surface: '#0F172A'
+  on-surface-variant: '#64748B'
+  inverse-surface: '#0F172A'
+  inverse-on-surface: '#F8FAFC'
+  outline: '#E2E8F0'
+  outline-variant: '#CBD5E1'
+  surface-tint: '#1D4ED8'
+  primary: '#1D4ED8'
+  on-primary: '#FFFFFF'
+  primary-container: '#DBEAFE'
+  on-primary-container: '#1E40AF'
+  inverse-primary: '#93C5FD'
+  secondary: '#059669'
+  on-secondary: '#FFFFFF'
+  secondary-container: '#D1FAE5'
+  on-secondary-container: '#065F46'
+  tertiary: '#475569'
+  on-tertiary: '#FFFFFF'
+  tertiary-container: '#E2E8F0'
+  on-tertiary-container: '#1E293B'
+  error: '#DC2626'
+  on-error: '#FFFFFF'
+  error-container: '#FEE2E2'
+  on-error-container: '#991B1B'
+  primary-fixed: '#DBEAFE'
+  primary-fixed-dim: '#93C5FD'
+  on-primary-fixed: '#1E40AF'
+  on-primary-fixed-variant: '#1D4ED8'
+  secondary-fixed: '#D1FAE5'
+  secondary-fixed-dim: '#6EE7B7'
+  on-secondary-fixed: '#065F46'
+  on-secondary-fixed-variant: '#059669'
+  tertiary-fixed: '#E2E8F0'
+  tertiary-fixed-dim: '#94A3B8'
+  on-tertiary-fixed: '#1E293B'
+  on-tertiary-fixed-variant: '#475569'
+  background: '#F8FAFC'
+  on-background: '#0F172A'
+  surface-variant: '#F1F5F9'
 typography:
   display-lg:
-    fontFamily: IBM Plex Sans
+    fontFamily: Geist, sans-serif
     fontSize: 40px
     fontWeight: '500'
     lineHeight: 48px
     letterSpacing: -0.02em
   headline-md:
-    fontFamily: IBM Plex Sans
+    fontFamily: Geist, sans-serif
     fontSize: 22px
     fontWeight: '500'
     lineHeight: 28px
     letterSpacing: -0.015em
   body-base:
-    fontFamily: IBM Plex Sans
+    fontFamily: Geist, sans-serif
     fontSize: 14px
     fontWeight: '400'
     lineHeight: 22px
     letterSpacing: '0'
   body-bold:
-    fontFamily: IBM Plex Sans
+    fontFamily: Geist, sans-serif
     fontSize: 14px
     fontWeight: '550'
     lineHeight: 22px
     letterSpacing: '0'
   label-caps:
-    fontFamily: IBM Plex Sans
+    fontFamily: Geist, sans-serif
     fontSize: 11px
     fontWeight: '500'
     lineHeight: 16px
     letterSpacing: 0.08em
   stat-lg:
-    fontFamily: IBM Plex Mono
+    fontFamily: Geist Mono, monospace
     fontSize: 20px
     fontWeight: '500'
     lineHeight: 28px
     letterSpacing: -0.02em
   mono:
-    fontFamily: IBM Plex Mono
+    fontFamily: Geist Mono, monospace
     fontSize: 13px
     fontWeight: '400'
     lineHeight: 20px
@@ -95,8 +95,8 @@ typography:
 rounded:
   sm: 0.25rem
   DEFAULT: 0.375rem
-  md: 0.625rem
-  lg: 0.875rem
+  md: 0.5rem
+  lg: 0.75rem
   xl: 1rem
   full: 9999px
 spacing:
@@ -113,7 +113,7 @@ spacing:
 
 # Design System: Silo
 
-Desktop web app. Light by default. A clerk’s desk looking into sealed machines — not a dark ops room, not a chat product.
+Desktop web app. Light mode first. A precision instrument console looking into sealed machines — not a dark ops room, not an antique paper archive.
 
 The previous pass was a warm kiln (lamp black + ochre). That is retired. No orange, amber, gold, rust, or “safety yellow” anywhere.
 
@@ -121,61 +121,60 @@ Bot crests are flat colored shapes with two small dots, picked on New Bot.
 
 ## 1. Visual Theme & Atmosphere
 
-An archive in daylight. The page is plaster — a cool paper, slightly toothy, never white-hot. Type is iron. The one structural color is **bindery blue**, the ink a bookbinder uses on cloth: deep, dry, a little grey. It is for primary actions, the active rail, and focus. It is not a sky and not a neon link.
+Precision Instrument in daylight. The canvas is Optic Mist (`#F8FAFC`) — a clean, cool technical surface with zero yellowing. Typography is Obsidian (`#0F172A`) — crisp, surgical, and high-contrast. The primary structural color is **Signal Cobalt** (`#1D4ED8`), calibrated for high confidence and immediate clarity. It is for primary actions, active tabs, rail indicators, and focus.
 
-Each Bot is a **folio**: a crest (a simple colored shape with two dots), a name, a short last line, a 7px lamp. Open a folio and the live desktop appears as a **hatch** — a dark rectangle set into the plaster, like a night window in a light room. That contrast is the product. The Bot’s machine is the only darkness on the page.
+Each Bot is a **folio apparatus**: a crest (a clean colored mark with two dots), a name, a concise status line, and a 7px status lamp. Open a bot and the live desktop appears as a **hatch** — an obsidian technical viewport (`#0B0F19`) set into the console, creating stark contrast against the clean surrounding shell.
 
-When a Bot needs a human, a **carmine ribbon** marks the folio (2px left edge + lamp). Carmine is a wax-seal red, used nowhere else except Deny. Working is pine, a quiet green, lamp only.
+When a Bot needs a human, a **Signal Vermilion ribbon** (`#DC2626`) marks the folio (2px left edge + lamp). Working is Precision Emerald (`#059669`), a calibrated hardware LED with a subtle pulse.
 
-No glass, no glow, no gradient, no purple, no orange. No 3D robots. Personality is the crest and the name.
+No muddy gradients, no yellow parchment, no AI-purple glows. Personality is the crest, the crisp typography, and surgical tool finishes.
 
 ## 2. Color Palette & Roles
 
 ### Primary Foundation
 
-- **Plaster** (`#F3F0E8`) — app background. The room.
-- **Folio** (`#FFFcf7`) — cards, drawers, the approval slip.
-- **Cloth** (`#EDE9DF`) — rail, inset wells, table header.
-- **Linen** (`#E4E0D6`) — pressed / selected wells.
-- **Thread** (`#C9C3B6` / `#DDD8CE`) — hairline borders. Structural only.
+- **Optic Mist** (`#F8FAFC`) — app canvas and background.
+- **Optic White** (`#FFFFFF`) — cards, drawers, dialogs, the approval slip.
+- **Technical Slate** (`#F1F5F9`) — rail, inset wells, table headers.
+- **Linen Slate** (`#E2E8F0`) — pressed / selected wells.
+- **Hairline Thread** (`#E2E8F0` / `#CBD5E1`) — crisp 1px structural borders.
 
 ### Accent & Interactive
 
-- **Bindery Blue** (`#2A3F5F`) — primary buttons, active nav, focus ring. The ink.
-- **Bindery Pale** (`#D7DEE8`) — selected row, quiet well.
-- Do not introduce a second blue. Hover darkens bindery slightly (`#1A2A42`), it does not lighten into sky.
+- **Signal Cobalt** (`#1D4ED8`) — primary buttons, active nav, focus rings. The signal ink.
+- **Cobalt Pale** (`#DBEAFE`) — active row highlight, selection well.
+- Hover deepens to `#1E40AF`.
 
 ### Typography & Text Hierarchy
 
-- **Iron** (`#1E2126`) — titles, Bot names, body.
-- **Stone** (`#5F5E58`) — timestamps, hints, inactive rail, masked secrets as `••••`.
+- **Obsidian** (`#0F172A`) — titles, Bot names, body.
+- **Cool Slate** (`#64748B`) — timestamps, hints, inactive nav, masked secrets.
 
 ### Functional States
 
-- **Online** — **Pine** (`#3D6F6A`) lamp, no pulse. Worker is up. Never label this Idle.
-- **Working** — Pine lamp, small pulse (1.5s, opacity 1 → 0.45).
-- **Needs you** — **Carmine** (`#A33B4A`) lamp + 2px carmine ribbon on the folio’s left edge.
-- **Stopped** — Thread lamp, Stone name.
-- The rail lamp is a pip on the crest corner (cloth ring), not on the account initial.
-- **Deny / error** — Carmine fill, plaster label. Same red as the ribbon, never orange.
-- **MCP badge** — Slate (`#5C6B7A`) cloth chip.
-- **Python badge** — Pine cloth chip.
+- **Online** — **Precision Emerald** (`#059669`) lamp, solid. Worker is up.
+- **Working** — Precision Emerald lamp, small pulse (1.5s, opacity 1 → 0.45).
+- **Needs you** — **Signal Vermilion** (`#DC2626`) lamp + 2px vermilion indicator ribbon.
+- **Stopped** — Hairline Thread lamp, Slate name.
+- **Deny / error** — Signal Vermilion fill, white label.
+- **MCP badge** — Slate (`#475569`) chip.
+- **Python badge** — Emerald (`#059669`) chip.
 
-Crests are a filled shape plus two small dots — a mark, not a face. Eight shapes. Fills are a rainbow: plaster, brown, carmine, orange, yellow, green, pine, bindery, purple, pink, stone, iron. Palette colors where they already sit on the wheel; plain hues for the rest. Light fills get a thread stroke.
+Crests are a filled shape plus two small dots. Fills: mist, brown, vermilion, orange, yellow, green, emerald, cobalt, purple, pink, slate, obsidian.
 
 ## 3. Typography Rules
 
 ### Hierarchy & Weights
 
-**IBM Plex Sans** for UI. **IBM Plex Mono** for run IDs, paths, `gmail.send`, secret names, terminal, approval args. Mono at the same size as nearby UI.
+**Geist** for UI. **Geist Mono** for run IDs, paths, `gmail.send`, secret names, terminal, approval args, and code. Tabular numbers enabled for metrics and statistics.
 
-Weights 400–550. No black, no ultra.
+Weights 400–550.
 
-- Display 40/500 — empty archive, sign-in only.
-- Page title 22/500 — `Bots`, the Bot name in the hatch header.
-- Body 14/400, 22px line.
-- Section labels 11/500, +0.08em, Stone. Title case.
-- Bot name on a folio: 16/500 Iron.
+- Display 40/500, tracking -0.02em — empty state, sign-in.
+- Page title 22/500, tracking -0.015em — `Bots`, Bot name in header.
+- Body 14/400, 22px line height.
+- Section labels 11/500, +0.08em tracking, Slate.
+- Bot name on card: 16/500 Obsidian.
 - Status word: 12/500, color of the lamp.
 
 ### Spacing Principles

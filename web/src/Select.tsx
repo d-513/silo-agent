@@ -170,7 +170,7 @@ export function Select({
             <div
               ref={menuRef}
               role="listbox"
-              className={`fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_12px_34px_-10px_rgba(30,33,38,0.28),0_2px_6px_rgba(30,33,38,0.06)] ${menuClassName}`}
+              className={`fixed z-50 rounded-[10px] border border-thread bg-folio p-1 shadow-[0_10px_25px_-5px_rgba(15,23,42,0.12),0_8px_10px_-6px_rgba(15,23,42,0.06)] ${menuClassName}`}
               style={style}
             >
               {/* The entrance animation lives on the inner box: an animated

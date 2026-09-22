@@ -26,16 +26,16 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     setPhase("connecting");
     const termInst = new Terminal({
       cursorBlink: true,
-      fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+      fontFamily: '"Geist Mono Variable", "Geist Mono", "IBM Plex Mono", ui-monospace, monospace',
       fontSize: 13,
       lineHeight: 1.4,
       theme: {
-        background: "#12141A",
-        foreground: "#F3F0E8",
-        cursor: "#F3F0E8",
-        cursorAccent: "#12141A",
-        selectionBackground: "#2A3F5F",
-        selectionForeground: "#F3F0E8",
+        background: "#0B0F19",
+        foreground: "#F8FAFC",
+        cursor: "#F8FAFC",
+        cursorAccent: "#0B0F19",
+        selectionBackground: "#1D4ED8",
+        selectionForeground: "#FFFFFF",
       },
     });
     const fit = new FitAddon();

@@ -3,17 +3,17 @@ import { type ButtonHTMLAttributes, type ReactNode } from "react";
 export type BtnKind = "primary" | "secondary" | "deny" | "ghost";
 
 const kindClass: Record<BtnKind, string> = {
-  primary: "border border-transparent bg-bindery text-plaster hover:bg-bindery-deep",
-  secondary: "border border-thread bg-folio text-iron hover:border-hover hover:bg-linen",
-  deny: "border border-transparent bg-carmine text-plaster hover:bg-[#6E2230]",
+  primary: "border border-transparent bg-bindery text-white hover:bg-bindery-deep shadow-xs",
+  secondary: "border border-thread bg-folio text-iron hover:border-hover hover:bg-cloth shadow-xs",
+  deny: "border border-transparent bg-carmine text-white hover:bg-[#b91c1c] shadow-xs",
   ghost: "border border-transparent text-stone hover:bg-cloth hover:text-iron",
 };
 
 const glyphWell: Record<BtnKind, string> = {
-  primary: "bg-bindery-deep/45",
-  secondary: "bg-linen",
-  deny: "bg-plaster/20",
-  ghost: "bg-linen",
+  primary: "bg-white/20 text-white",
+  secondary: "bg-cloth text-stone",
+  deny: "bg-white/20 text-white",
+  ghost: "bg-cloth text-stone",
 };
 
 export function btnClass(kind: BtnKind = "secondary", extra = "") {

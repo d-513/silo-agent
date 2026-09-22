@@ -252,10 +252,10 @@ export function Composer({
                   type="button"
                   title="Stop this reply"
                   onClick={onStop}
-                  className="inline-flex h-8 items-center gap-2 rounded-[6px] bg-carmine px-3 text-[12px] font-medium text-plaster transition-[background-color,transform] duration-200 ease-quiet hover:bg-[#8f3341] active:scale-[0.97]"
+                  className="inline-flex h-8 items-center gap-2 rounded-[6px] bg-carmine px-3 text-[12px] font-medium text-white shadow-xs transition-[background-color,transform] duration-200 ease-quiet hover:bg-[#b91c1c] active:scale-[0.97]"
                 >
                   <span>Stop</span>
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-plaster/20">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-white/20">
                     <Stop size={12} weight="fill" />
                   </span>
                 </button>
@@ -264,14 +264,14 @@ export function Composer({
                   type="submit"
                   title="Send message"
                   disabled={!canSend}
-                  className={`inline-flex h-8 items-center justify-center gap-2 rounded-[6px] px-2.5 text-[12px] font-medium transition-[background-color,transform] duration-200 ease-quiet ${
+                  className={`inline-flex h-8 items-center justify-center gap-2 rounded-[6px] px-2.5 text-[12px] font-medium shadow-xs transition-[background-color,transform] duration-200 ease-quiet ${
                     !canSend
-                      ? "cursor-not-allowed bg-cloth text-stone/50"
-                      : "bg-bindery text-plaster hover:bg-bindery-deep active:scale-[0.97]"
+                      ? "cursor-not-allowed bg-cloth text-stone/50 shadow-none"
+                      : "bg-bindery text-white hover:bg-bindery-deep active:scale-[0.97]"
                   }`}
                 >
                   <span>Send</span>
-                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${!canSend ? "bg-linen" : "bg-bindery-deep/45"}`}>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${!canSend ? "bg-linen" : "bg-white/20"}`}>
                     <ArrowUp size={13} weight="bold" />
                   </span>
                 </button>

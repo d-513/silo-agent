@@ -5,41 +5,41 @@ import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 
 const highlight = HighlightStyle.define([
-  { tag: t.comment, color: "#5f5e58" },
-  { tag: t.lineComment, color: "#5f5e58" },
-  { tag: t.keyword, color: "#2a3f5f" },
-  { tag: t.atom, color: "#2a3f5f" },
-  { tag: t.bool, color: "#2a3f5f" },
-  { tag: t.number, color: "#2a3f5f" },
-  { tag: t.string, color: "#3d6f6a" },
-  { tag: t.propertyName, color: "#1e2126" },
-  { tag: t.definition(t.propertyName), color: "#1e2126" },
-  { tag: t.separator, color: "#5f5e58" },
+  { tag: t.comment, color: "#64748b" },
+  { tag: t.lineComment, color: "#64748b" },
+  { tag: t.keyword, color: "#1d4ed8" },
+  { tag: t.atom, color: "#1d4ed8" },
+  { tag: t.bool, color: "#1d4ed8" },
+  { tag: t.number, color: "#1d4ed8" },
+  { tag: t.string, color: "#059669" },
+  { tag: t.propertyName, color: "#0f172a" },
+  { tag: t.definition(t.propertyName), color: "#0f172a" },
+  { tag: t.separator, color: "#64748b" },
 ]);
 
 const theme = EditorView.theme(
   {
     "&": {
-      backgroundColor: "#fffcf7",
-      color: "#1e2126",
+      backgroundColor: "#ffffff",
+      color: "#0f172a",
       fontSize: "13px",
     },
     ".cm-content": {
-      fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-      caretColor: "#1e2126",
+      fontFamily: '"Geist Mono Variable", "Geist Mono", "IBM Plex Mono", ui-monospace, monospace',
+      caretColor: "#0f172a",
       minHeight: "16rem",
     },
     ".cm-gutters": {
-      backgroundColor: "#ede9df",
-      color: "#5f5e58",
-      borderRight: "1px solid #c9c3b6",
+      backgroundColor: "#f1f5f9",
+      color: "#64748b",
+      borderRight: "1px solid #e2e8f0",
     },
-    ".cm-activeLine": { backgroundColor: "rgba(237, 233, 223, 0.5)" },
-    ".cm-activeLineGutter": { backgroundColor: "#ede9df" },
+    ".cm-activeLine": { backgroundColor: "rgba(241, 245, 249, 0.6)" },
+    ".cm-activeLineGutter": { backgroundColor: "#e2e8f0" },
     "&.cm-focused": { outline: "none" },
-    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#1e2126" },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#0f172a" },
     "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: "#d7dee8",
+      backgroundColor: "#dbeafe",
     },
   },
   { dark: false },

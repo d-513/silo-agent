@@ -1,3 +1,5 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-mono/400.css";
@@ -5,25 +7,25 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --color-plaster: #f3f0e8;
-  --color-folio: #fffcf7;
-  --color-cloth: #ede9df;
-  --color-linen: #e4e0d6;
-  --color-thread: #c9c3b6;
-  --color-thread-2: #ddd8ce;
-  --color-iron: #1e2126;
-  --color-stone: #5f5e58;
-  --color-bindery: #2a3f5f;
-  --color-bindery-deep: #1a2a42;
-  --color-bindery-pale: #d7dee8;
-  --color-pine: #3d6f6a;
-  --color-carmine: #a33b4a;
-  --color-slate: #5c6b7a;
-  --color-hatch: #1e2126;
-  --color-matte: #12141a;
-  --color-hover: #b9b3a6;
+  --font-sans: "Geist Variable", "Geist", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --color-plaster: #f8fafc;
+  --color-folio: #ffffff;
+  --color-cloth: #f1f5f9;
+  --color-linen: #e2e8f0;
+  --color-thread: #e2e8f0;
+  --color-thread-2: #cbd5e1;
+  --color-iron: #0f172a;
+  --color-stone: #64748b;
+  --color-bindery: #1d4ed8;
+  --color-bindery-deep: #1e40af;
+  --color-bindery-pale: #dbeafe;
+  --color-pine: #059669;
+  --color-carmine: #dc2626;
+  --color-slate: #475569;
+  --color-hatch: #0f172a;
+  --color-matte: #0b0f19;
+  --color-hover: #cbd5e1;
   --breakpoint-wide: 960px;
   --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
@@ -147,7 +149,7 @@ body,
   background-image: linear-gradient(
     90deg,
     transparent 20%,
-    rgba(255, 252, 247, 0.85) 50%,
+    rgba(255, 255, 255, 0.85) 50%,
     transparent 80%
   );
   background-size: 200% 100%;
