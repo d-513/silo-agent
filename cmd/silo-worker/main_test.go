@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -293,5 +294,108 @@ func TestSyncSkills(t *testing.T) {
 	}
 	if _, err := w.syncSkills([]*v1.SkillFile{{Path: "../x", Data: []byte("no")}}); err == nil {
 		t.Fatal("escape")
+	}
+}
+
+func TestReadFileSlice(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("a\nb\nc\nd\ne\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{workspace: dir}
+	raw, err := w.readFileSlice("f.txt", 2, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v readView
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Content != "b\nc\n" || !v.Truncated || v.NextOffset != 4 {
+		t.Fatalf("slice=%+v", v)
+	}
+	raw, err = w.readFileSlice("f.txt", 1, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = json.Unmarshal([]byte(raw), &v)
+	if v.Content != "a\nb\nc\nd\ne\n" || v.TotalLines != 5 {
+		t.Fatalf("full=%+v", v)
+	}
+	raw, err = w.readFileSlice("f.txt", 10, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = json.Unmarshal([]byte(raw), &v)
+	if v.Content != "" {
+		t.Fatalf("past-eof=%+v", v)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bin"), []byte("ok\x00bad"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.readFileSlice("bin", 1, 10); err == nil {
+		t.Fatal("binary not rejected")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "crlf.txt"), []byte("x\r\ny\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = w.readFileSlice("crlf.txt", 1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = json.Unmarshal([]byte(raw), &v)
+	if v.Content != "x\r\ny\r\n" {
+		t.Fatalf("crlf=%q", v.Content)
+	}
+}
+
+func TestGrepArgs(t *testing.T) {
+	args := strings.Join(grepArgs("foo|bar", "sub", "*.py", 80), " ")
+	for _, want := range []string{"--line-number", "--sort path", "-e foo|bar", "-- sub", "--glob *.py", "!**/node_modules/**"} {
+		if !strings.Contains(args, want) {
+			t.Fatalf("missing %q in %q", want, args)
+		}
+	}
+	if strings.Contains(args, "!**/tmp/**") || strings.Contains(args, "!**/bot/**") {
+		t.Fatalf("tmp/bot must stay searchable: %q", args)
+	}
+}
+
+func TestGrepRG(t *testing.T) {
+	if _, err := exec.LookPath("rg"); err != nil {
+		t.Skip("rg not installed")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("alpha\nbeta\ngamma\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "other.md"), []byte("gamma here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{workspace: dir}
+	out, err := w.grep(context.Background(), &v1.GrepCmd{Pattern: "gamma"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "notes.txt:3:gamma") || !strings.Contains(out, "other.md:1:gamma") {
+		t.Fatalf("grep=%q", out)
+	}
+	out, err = w.grep(context.Background(), &v1.GrepCmd{Pattern: "gamma", Include: "*.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "notes.txt") || strings.Contains(out, "other.md") {
+		t.Fatalf("include=%q", out)
+	}
+	out, err = w.grep(context.Background(), &v1.GrepCmd{Pattern: "nomatch_xyz"})
+	if err != nil || out != "" {
+		t.Fatalf("nomatch=%q %v", out, err)
+	}
+	out, err = w.grep(context.Background(), &v1.GrepCmd{Pattern: "gamma", MaxHits: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out, "\n") != 1 {
+		t.Fatalf("cap=%q", out)
 	}
 }

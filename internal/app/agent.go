@@ -66,7 +66,7 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"code"},
 	}),
-	tool("read", "Read a workspace file. Returns numbered lines. Use offset (1-based line) and limit to read a slice — do not dump large files.", map[string]any{
+	tool("read", "Read a workspace file. Returns numbered lines as `N|content`. N is the file's absolute line number, so offset=2 starts the output at `2|` (the first line shown is line 2 of the file, not line 1). offset is 1-based. Use offset and limit to read a slice — do not dump large files. A truncated read ends with a `read offset=N for more` hint.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path":   map[string]any{"type": "string"},
@@ -91,6 +91,13 @@ var toolDefs = []llm.Tool{
 			"new_text": map[string]any{"type": "string"},
 		},
 		"required": []string{"path", "old_text", "new_text"},
+	}),
+	tool("delete", "Delete a workspace file or directory (directories are removed recursively). Destructive and not undoable — use only for files the human asked you to remove, or scratch you created. Never delete the workspace root.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path": map[string]any{"type": "string"},
+		},
+		"required": []string{"path"},
 	}),
 	tool("grep", "Search workspace files. Prefer include (e.g. *.py) over a full-tree scan. Results are capped.", map[string]any{
 		"type": "object",
@@ -625,6 +632,9 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 
 	msgs := a.historyFromDB(chatID)
 	var lastLook string
+	// seen counts identical read/grep calls this run so a stuck loop does not
+	// re-send content the model already has. Mutating tools clear it.
+	seen := map[string]int{}
 
 	for {
 		msgs = drainInbox(msgs, inbox)
@@ -675,6 +685,19 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		}
 		msgs = append(msgs, res.assistant)
 		for _, tc := range res.assistant.ToolCalls {
+			if tc.Name == "write" || tc.Name == "patch" || tc.Name == "delete" || tc.Name == "terminal" || tc.Name == "exec_python" {
+				clear(seen)
+			}
+			if tc.Name == "read" || tc.Name == "grep" {
+				key := tc.Name + "\x00" + tc.Arguments
+				seen[key]++
+				if seen[key] >= 3 {
+					out := "unchanged since your last identical " + tc.Name + " — use the result you already have"
+					a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
+					msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
+					continue
+				}
+			}
 			out, img, err := a.execTool(ctx, botID, chatID, runID, tc.Name, tc.Arguments)
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
@@ -891,6 +914,9 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	if name == "present" && path == "" {
 		return "", "", fmt.Errorf("path required")
 	}
+	if name == "delete" && path == "" {
+		return "", "", fmt.Errorf("path required")
+	}
 	if name == "skill" && str("name") == "" {
 		return "", "", fmt.Errorf("name required")
 	}
@@ -967,6 +993,8 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileWrite{FileWrite: &v1.FileWriteCmd{Path: path, Content: str("content")}}}
 	case "patch":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FilePatch{FilePatch: &v1.FilePatchCmd{Path: path, OldText: str("old_text"), NewText: str("new_text")}}}
+	case "delete":
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Remove{Remove: &v1.RemoveCmd{Path: path}}}
 	case "grep":
 		max := int32(num(args, "max_hits"))
 		if max <= 0 {
@@ -1012,7 +1040,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	switch name {
 	case "read":
-		return formatRead(out.Out, num(args, "offset"), num(args, "limit")), "", nil
+		return formatRead(out.Out, num(args, "offset")), "", nil
 	case "grep":
 		max := num(args, "max_hits")
 		if max <= 0 {
@@ -1071,7 +1099,7 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Python, "run", true
 	case "terminal":
 		return security.Terminal, "run", true
-	case "read", "write", "patch", "grep", "present":
+	case "read", "write", "patch", "grep", "delete", "present":
 		return security.Files, name, true
 	case "look", "click", "type", "key", "scroll":
 		return security.Desktop, name, true
@@ -1252,30 +1280,51 @@ func num(args map[string]any, k string) int {
 	}
 }
 
-func formatRead(raw string, offset, limit int) string {
-	raw = strings.TrimRight(raw, "\n")
+// readResult is the Worker's sliced-read payload (see worker readFileSlice).
+type readResult struct {
+	Content    string `json:"content"`
+	NextOffset int    `json:"next_offset"`
+	TotalLines int    `json:"total_lines"`
+	Truncated  bool   `json:"truncated"`
+}
+
+// formatRead numbers the already-sliced Worker read and appends a continuation
+// hint. A non-JSON body (older worker) falls through unchanged.
+func formatRead(raw string, offset int) string {
+	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return ""
 	}
-	lines := strings.Split(raw, "\n")
-	start := 0
-	if offset > 1 {
-		start = offset - 1
+	res := readResult{}
+	if strings.HasPrefix(raw, "{") {
+		if err := json.Unmarshal([]byte(raw), &res); err != nil {
+			return raw
+		}
+	} else {
+		res.Content = raw
 	}
-	if start > len(lines) {
-		start = len(lines)
+	content := strings.TrimRight(res.Content, "\n")
+	if content == "" {
+		return ""
 	}
-	end := len(lines)
-	if limit > 0 && start+limit < end {
-		end = start + limit
+	lines := strings.Split(content, "\n")
+	if offset < 1 {
+		offset = 1
 	}
-	width := len(fmt.Sprintf("%d", max(end, 1)))
+	last := offset + len(lines) - 1
+	width := len(fmt.Sprintf("%d", max(max(last, res.TotalLines), 1)))
 	var b strings.Builder
-	for i := start; i < end; i++ {
-		fmt.Fprintf(&b, "%*d|%s\n", width, i+1, lines[i])
+	for i, line := range lines {
+		fmt.Fprintf(&b, "%*d|%s\n", width, offset+i, line)
 	}
-	if start > 0 || end < len(lines) {
-		fmt.Fprintf(&b, "… lines %d–%d of %d\n", start+1, end, len(lines))
+	if res.Truncated {
+		if res.TotalLines > 0 {
+			fmt.Fprintf(&b, "… lines %d–%d of %d; read offset=%d for more\n", offset, last, res.TotalLines, res.NextOffset)
+		} else {
+			fmt.Fprintf(&b, "… lines %d–%d; read offset=%d for more\n", offset, last, res.NextOffset)
+		}
+	} else if offset > 1 || res.TotalLines > last {
+		fmt.Fprintf(&b, "… lines %d–%d of %d\n", offset, last, res.TotalLines)
 	}
 	return b.String()
 }

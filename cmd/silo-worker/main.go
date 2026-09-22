@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -245,12 +246,7 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 	case *v1.Cmd_ExecPython:
 		return w.python(ctx, cmd.GetRunId(), b.ExecPython.GetCode(), chunk)
 	case *v1.Cmd_FileRead:
-		p, err := w.resolve(b.FileRead.GetPath())
-		if err != nil {
-			return "", err
-		}
-		raw, err := os.ReadFile(p)
-		return string(raw), err
+		return w.readFileSlice(b.FileRead.GetPath(), int(b.FileRead.GetOffset()), int(b.FileRead.GetLimit()))
 	case *v1.Cmd_FileWrite:
 		p, err := w.resolve(b.FileWrite.GetPath())
 		if err != nil {
@@ -281,19 +277,7 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		s = strings.Replace(s, old, b.FilePatch.GetNewText(), 1)
 		return "ok", os.WriteFile(p, []byte(s), 0o644)
 	case *v1.Cmd_Grep:
-		path := b.Grep.GetPath()
-		if path == "" {
-			path = "."
-		}
-		q := "grep -R -n"
-		if inc := b.Grep.GetInclude(); inc != "" {
-			q += " --include=" + shellQuote(inc)
-		}
-		q += " -- " + shellQuote(b.Grep.GetPattern()) + " " + shellQuote(path)
-		if max := b.Grep.GetMaxHits(); max > 0 {
-			q += fmt.Sprintf(" | head -n %d", max)
-		}
-		return w.shell(ctx, cmd.GetRunId(), q, chunk)
+		return w.grep(ctx, b.Grep)
 	case *v1.Cmd_Cancel:
 		w.cancelJob(b.Cancel.GetCmdId())
 		return "ok", nil
@@ -328,10 +312,6 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 	}
 }
 
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
-}
-
 func (w *worker) resolve(p string) (string, error) {
 	p = strings.TrimSpace(filepath.ToSlash(p))
 	ws := filepath.ToSlash(filepath.Clean(w.workspace))
@@ -363,6 +343,202 @@ const (
 	presentLimit = 32 << 20 // explicit high budget the CP asks for on present
 	putLimit     = 50 << 20 // uploads via PutFile
 )
+
+// Read slicing happens on the Worker so a huge file never crosses the RPC
+// whole; the CP only adds line numbers.
+const (
+	readDefaultLimit = 2000
+	readMaxBytes     = 2 << 20
+)
+
+// readView is the JSON the CP parses for the `read` tool. next_offset/total_lines
+// are omitted when unknown (the slice stopped before EOF).
+type readView struct {
+	Content    string `json:"content"`
+	NextOffset int    `json:"next_offset,omitempty"`
+	TotalLines int    `json:"total_lines,omitempty"`
+	Truncated  bool   `json:"truncated,omitempty"`
+}
+
+// scanLinesKeepCR is bufio.ScanLines without dropping a trailing carriage
+// return, so a CRLF file round-trips through read -> patch unchanged.
+func scanLinesKeepCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		return i + 1, data[:i], nil
+	}
+	if atEOF {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+// readFileSlice returns a slice of a workspace file. offset is 1-based; a
+// missing/zero limit defaults to readDefaultLimit lines. The slice is capped at
+// readMaxBytes so a minified or binary file cannot exhaust memory.
+func (w *worker) readFileSlice(p string, offset, limit int) (string, error) {
+	full, err := w.resolve(p)
+	if err != nil {
+		return "", err
+	}
+	st, err := os.Stat(full)
+	if err != nil {
+		return "", err
+	}
+	if st.IsDir() {
+		return "", errors.New("is a directory")
+	}
+	if offset < 1 {
+		offset = 1
+	}
+	if limit <= 0 {
+		limit = readDefaultLimit
+	}
+	f, err := os.Open(full)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 64*1024), readMaxBytes)
+	// Keep a trailing \r so a CRLF file read back through `patch` still matches.
+	sc.Split(scanLinesKeepCR)
+	var b strings.Builder
+	line, kept := 0, 0
+	stopped := false
+	for sc.Scan() {
+		text := sc.Text()
+		line++
+		if line < offset {
+			continue
+		}
+		if strings.IndexByte(text, 0) >= 0 {
+			return "", errors.New("binary file; use terminal to inspect it")
+		}
+		if kept >= limit || b.Len()+len(text)+1 > readMaxBytes {
+			stopped = true
+			break
+		}
+		b.WriteString(text)
+		b.WriteByte('\n')
+		kept++
+	}
+	scanErr := sc.Err()
+	if errors.Is(scanErr, bufio.ErrTooLong) {
+		return "", errors.New("a line is too long to read (over 2 MB); use terminal to inspect it")
+	}
+	if scanErr != nil {
+		return "", scanErr
+	}
+	view := readView{Content: b.String()}
+	if stopped {
+		view.Truncated = true
+		view.NextOffset = offset + kept
+	} else {
+		view.TotalLines = line
+	}
+	out, err := json.Marshal(view)
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+const grepDefaultMax = 80
+
+// grepPruneDirs are heavyweight trees rg should not descend into. Hidden dirs
+// (.git, .cache) are already skipped by rg's default ignore.
+var grepPruneDirs = []string{
+	"node_modules", ".venv", "venv", "__pycache__", "chrome-profile",
+	"dist", "build", "target",
+}
+
+// grepArgs builds the rg argv. No shell: the pattern and path are single argv
+// entries, so metacharacters are data, not commands. --sort path makes output
+// deterministic and grouped by file.
+func grepArgs(pattern, path, include string, maxHits int) []string {
+	if path == "" {
+		path = "."
+	}
+	args := []string{
+		"--line-number", "--no-heading", "--with-filename",
+		"--color=never", "--sort", "path",
+		"--max-columns", "2000", "--max-columns-preview",
+	}
+	for _, d := range grepPruneDirs {
+		args = append(args, "--glob", "!**/"+d+"/**")
+	}
+	if include != "" {
+		args = append(args, "--glob", include)
+	}
+	return append(args, "-e", pattern, "--", path)
+}
+
+// grep runs ripgrep and reads at most maxHits lines, killing rg once the cap is
+// reached so a broad scan cannot flood the run. It does not go through the shell
+// path, so no tool_chunk events are emitted for it.
+func (w *worker) grep(ctx context.Context, g *v1.GrepCmd) (string, error) {
+	if strings.TrimSpace(g.GetPattern()) == "" {
+		return "", errors.New("pattern required")
+	}
+	max := int(g.GetMaxHits())
+	if max <= 0 {
+		max = grepDefaultMax
+	}
+	c := exec.CommandContext(ctx, "rg", grepArgs(g.GetPattern(), g.GetPath(), g.GetInclude(), max)...)
+	c.Dir = w.workspace
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	var stderr bytes.Buffer
+	c.Stderr = &stderr
+	if err := c.Start(); err != nil {
+		return "", fmt.Errorf("search unavailable: %w", err)
+	}
+	sc := bufio.NewScanner(stdout)
+	sc.Buffer(make([]byte, 64*1024), 1<<20)
+	var b strings.Builder
+	hits := 0
+	early := false
+	for sc.Scan() {
+		if hits >= max {
+			early = true
+			break
+		}
+		b.WriteString(sc.Text())
+		b.WriteByte('\n')
+		hits++
+	}
+	if early && c.Process != nil {
+		_ = c.Process.Kill()
+	}
+	waitErr := c.Wait()
+	if early {
+		return b.String(), nil
+	}
+	if sc.Err() != nil {
+		return "", sc.Err()
+	}
+	var ee *exec.ExitError
+	if errors.As(waitErr, &ee) {
+		if ee.ExitCode() == 1 { // no matches is not an error
+			return "", nil
+		}
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = ee.Error()
+		}
+		return "", fmt.Errorf("search failed: %s", msg)
+	}
+	if waitErr != nil {
+		return "", waitErr
+	}
+	return b.String(), nil
+}
 
 type dirEnt struct {
 	Name     string `json:"name"`

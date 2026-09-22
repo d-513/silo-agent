@@ -86,6 +86,69 @@ func TestPresentFile(t *testing.T) {
 	}
 }
 
+func TestReadRepeatGuard(t *testing.T) {
+	dummy.Reset()
+	read := `{"path":"loop.txt"}`
+	dummy.Script("Test_40",
+		dummy.Turn{ToolCalls: []llm.ToolCall{
+			{Name: "write", Arguments: `{"path":"loop.txt","content":"only line\n"}`},
+			{Name: "read", Arguments: read},
+			{Name: "read", Arguments: read},
+			{Name: "read", Arguments: read},
+			{Name: "read", Arguments: read},
+		}},
+		dummy.Turn{Text: "done"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Repeat")
+	h.StartWorker(bot.GetId())
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_40_Input")
+	h.WaitRun(runID)
+
+	stubbed := 0
+	for _, ev := range h.Events(runID) {
+		if ev.Kind == "tool_result" && ev.Tool == "read" && strings.Contains(ev.Body, "unchanged") {
+			stubbed++
+		}
+	}
+	if stubbed != 2 {
+		t.Fatalf("expected 2 stubbed reads, got %d", stubbed)
+	}
+}
+
+func TestDeleteTool(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_41",
+		dummy.Turn{ToolCalls: []llm.ToolCall{
+			{Name: "write", Arguments: `{"path":"scratch/a.txt","content":"x"}`},
+			{Name: "delete", Arguments: `{"path":"scratch"}`},
+			{Name: "read", Arguments: `{"path":"scratch/a.txt"}`},
+			{Name: "delete", Arguments: `{"path":""}`},
+		}},
+		dummy.Turn{Text: "deleted"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Delete")
+	h.StartWorker(bot.GetId())
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_41_Input")
+	h.WaitRun(runID)
+
+	var dels []string
+	for _, ev := range h.Events(runID) {
+		if ev.Kind == "tool_result" && ev.Tool == "delete" {
+			dels = append(dels, ev.Body)
+		}
+	}
+	if len(dels) != 2 || dels[0] != "ok" || !strings.Contains(dels[1], "path required") {
+		t.Fatalf("delete results %q", dels)
+	}
+	if res := toolResults(h, runID)["read"]; !strings.Contains(res, "error") {
+		t.Fatalf("read after delete = %q", res)
+	}
+}
+
 func TestArtifactSkillCard(t *testing.T) {
 	skillMD := "---\nname: my-skill\ndescription: a demo skill\n---\n# My Skill\n"
 	dummy.Reset()

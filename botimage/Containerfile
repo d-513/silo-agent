@@ -1,10 +1,10 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip \
+    python3 python3-pip python-is-python3 \
     python3-requests python3-matplotlib python3-numpy python3-pil \
     python3-bs4 python3-lxml python3-yaml python3-pandas \
     xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
-    scrot xdotool imagemagick unzip \
+    scrot xdotool imagemagick unzip ripgrep \
     x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
     ca-certificates fonts-liberation fonts-dejavu fonts-liberation2 \
     fonts-noto-core fonts-noto-color-emoji fonts-freefont-ttf sudo \
