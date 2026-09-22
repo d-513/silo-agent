@@ -247,7 +247,7 @@ No `confirm()`. No toast.
 
 The Chat tab. Not a marketing chat.
 
-- User: Optic White well, 4px Signal Cobalt bar on the left. The product’s “bubble” — left spine, not iMessage.
+- User: right-aligned speech bubble in Technical Slate (`rounded-[18px] rounded-br-[4px]`), 1px Hairline Thread border, copy micro-action on hover.
 - Assistant: Obsidian, no well. Markdown (headings, lists, tables, fenced code).
 - Thinking: spinner + “Thinking” while streaming; collapsed “Thought” when done.
 - Tool lines: left-aligned technical row **below** the text (not a centered divider). Icon + `Using Python` / `Used Python`. Collapsed by default; click to expand. Pretty body: Python shows the code as it streams, patch shows a +/− diff, terminal shows the command. No raw JSON as the primary view. Connector calls made from Python (`import tools`) sit **above** that Python row (`Used Twilio Docs · retrieve`).

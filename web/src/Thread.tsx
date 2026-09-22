@@ -45,7 +45,7 @@ import { ArtifactCard, downloadArtifact, type Artifact } from "./Artifact";
 import { Crest } from "./Crest";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
-import { foldEvents, type Ev } from "./fold";
+import { foldEvents, type Attachment, type Ev } from "./fold";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
 
 export type { Ev };
@@ -569,6 +569,55 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
   );
 }
 
+function UserBubble({ text, attachments }: { text: string; attachments?: Attachment[] }) {
+  const [copied, setCopied] = useState(false);
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div className="silo-enter flex w-full justify-end">
+      <div className="group relative flex max-w-[88%] sm:max-w-[80%] min-[1200px]:max-w-[70%] items-start gap-1.5">
+        <button
+          type="button"
+          onClick={onCopy}
+          title={copied ? "Copied" : "Copy prompt"}
+          className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone opacity-0 shadow-xs transition-all duration-150 hover:border-hover hover:text-iron group-hover:opacity-100"
+        >
+          {copied ? <Check size={13} weight="bold" className="text-pine" /> : <Copy size={13} />}
+        </button>
+        <div className="min-w-0 rounded-[18px] rounded-br-[4px] border border-thread bg-cloth px-4 py-3 text-iron shadow-2xs transition-[border-color,background-color] duration-150 hover:border-hover">
+          <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed select-text">
+            {text}
+          </div>
+          {attachments?.length ? (
+            <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-thread-2/60 pt-2.5">
+              {attachments.map((a) => (
+                <span
+                  key={a.path}
+                  title={a.path}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border border-thread bg-folio/90 px-2.5 py-1 text-[12px] text-iron shadow-2xs"
+                >
+                  <Paperclip size={12} className="shrink-0 text-bindery" />
+                  <span className="truncate max-w-[180px] font-medium">{a.name}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-stone">{fmtSize(a.size)}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Thread({
   botId,
   botName,
@@ -634,7 +683,7 @@ export function Thread({
       onScroll={handleScroll}
       className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4"
     >
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="mx-auto max-w-4xl space-y-6">
         {blocks.length === 0 && !sending && (
           <div className="silo-enter my-auto flex flex-col items-center justify-center px-4 py-12 text-center">
             <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[14px] border border-thread-2 bg-folio">
@@ -674,29 +723,7 @@ export function Thread({
         )}
         {blocks.map((b) => {
           if (b.type === "user") {
-            return (
-              <div
-                key={b.key}
-                className="silo-enter w-fit max-w-full rounded-[10px] border border-thread-2 border-l-[4px] border-l-bindery bg-folio px-4 py-3"
-              >
-                <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-iron">{b.text}</div>
-                {b.attachments?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-thread-2 pt-3">
-                    {b.attachments.map((a) => (
-                      <span
-                        key={a.path}
-                        title={a.path}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border border-thread-2 bg-cloth px-2 py-1 text-[12px] text-iron"
-                      >
-                        <Paperclip size={12} className="text-bindery" />
-                        <span className="truncate">{a.name}</span>
-                        <span className="shrink-0 font-mono text-[11px] text-stone">{fmtSize(a.size)}</span>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            );
+            return <UserBubble key={b.key} text={b.text} attachments={b.attachments} />;
           }
           if (b.type === "thinking") {
             if (b.streaming && sending) {
