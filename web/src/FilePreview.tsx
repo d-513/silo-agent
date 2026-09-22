@@ -140,7 +140,7 @@ export function FilePreview({
     return <img src={url} alt={name} className="max-h-[32rem] max-w-full object-contain" />;
   }
   if (kind === "pdf" && url) {
-    return <iframe title={name} src={url} className="h-full min-h-[24rem] w-full border-0 bg-folio" />;
+    return <iframe title={name} src={url} className="h-[70vh] min-h-[26rem] w-full border-0 bg-folio" />;
   }
   if (kind === "video" && url) {
     return <video src={url} controls className="max-h-full max-w-full" />;

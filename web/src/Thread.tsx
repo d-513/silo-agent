@@ -632,9 +632,9 @@ export function Thread({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5"
+      className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4"
     >
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="mx-auto max-w-4xl space-y-4">
         {blocks.length === 0 && !sending && (
           <div className="silo-enter my-auto flex flex-col items-center justify-center px-4 py-12 text-center">
             <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[14px] border border-thread-2 bg-folio">

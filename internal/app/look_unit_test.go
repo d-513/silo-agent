@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/base64"
+	"strings"
 	"testing"
 
 	"silo.agent/internal/llm"
@@ -49,5 +50,33 @@ func TestPresentImageURLDropsTruncated(t *testing.T) {
 	trunc := `{"name":"x.png","data":"` + data + `","truncated":true}`
 	if got := presentImageURL("x.png", trunc); got != "" {
 		t.Fatalf("truncated payload must not attach, got %q", got)
+	}
+}
+
+func TestHasInlinePreview(t *testing.T) {
+	for _, name := range []string{"report.md", "page.png", "doc.pdf", "book.csv", "notes.txt", "deck.docx", "clip.mp4", "LICENSE"} {
+		if !hasInlinePreview(name) {
+			t.Fatalf("%s should have an inline preview", name)
+		}
+	}
+	for _, name := range []string{"deck.pptx", "book.xlsx", "bundle.zip", "app.bin", "slides.odp"} {
+		if hasInlinePreview(name) {
+			t.Fatalf("%s should not have an inline preview", name)
+		}
+	}
+}
+
+func TestPresentAckNudgesArtifact(t *testing.T) {
+	raw := `{"name":"deck.pptx","size":2048}`
+	got := presentAck("deck.pptx", raw)
+	if !strings.Contains(got, "use artifact") {
+		t.Fatalf("non-previewable present should point at artifact, got %q", got)
+	}
+	if !strings.Contains(got, "presented deck.pptx") {
+		t.Fatalf("ack should still confirm the present, got %q", got)
+	}
+	previewable := presentAck("report.md", `{"name":"report.md","size":12}`)
+	if strings.Contains(previewable, "use artifact") {
+		t.Fatalf("previewable present should not nudge artifact, got %q", previewable)
 	}
 }

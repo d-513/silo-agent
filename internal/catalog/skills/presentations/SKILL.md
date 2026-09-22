@@ -94,4 +94,4 @@ Match placeholder text before editing; iterate `slide.placeholders` and set `.te
 
 ## Output
 
-Write the deck to `/workspace` and `present` the relative path (a folio). Summarize; do not dump every slide into chat. Do not claim you saw a rendered slide you did not render.
+Write the deck to `/workspace` and `artifact` the relative path so the human gets a downloadable card — the thread cannot preview `.pptx`. If you rendered a slide to PNG, `present` that image instead. Summarize; do not dump every slide into chat. Do not claim you saw a rendered slide you did not render.

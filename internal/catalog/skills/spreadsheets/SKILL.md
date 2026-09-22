@@ -95,6 +95,6 @@ Markdown reads best in the thread:
 open("/workspace/book.md", "w").write(df.to_markdown(index=False))
 ```
 
-Then `present book.md`. For a large or wide sheet, summarize in markdown and put the full workbook or CSV at `/workspace` instead.
+Then `present book.md` — Markdown previews inline. For a large or wide sheet, summarize in markdown and `artifact` the full workbook at `/workspace` (the thread cannot preview `.xlsx`).
 
 Never paste thousands of rows into chat.

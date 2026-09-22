@@ -129,7 +129,7 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"model"},
 	}),
-	tool("present", "Show a workspace file that is already on disk. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Do not retype the contents.", map[string]any{
+	tool("present", "Show a workspace file that is already on disk. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Only previewable types render inline in the thread (images, PDF, Markdown, CSV, JSON, code/text, DOCX, video, audio) — for anything else such as decks, workbooks, or archives use artifact so the human gets a downloadable card. Do not retype the contents.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{"type": "string"},
@@ -1159,6 +1159,31 @@ func imageMIME(name string) string {
 	}
 }
 
+// previewExts are the extensions the thread renders inline (keep in sync with
+// web/src/fileKind.ts). Anything else has no preview, so a present of it
+// should have gone through artifact instead.
+var previewExts = map[string]bool{
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".bmp": true, ".svg": true, ".ico": true, ".avif": true,
+	".pdf": true,
+	".mp4": true, ".webm": true, ".ogv": true, ".mov": true,
+	".mp3": true, ".wav": true, ".ogg": true, ".m4a": true, ".flac": true, ".aac": true,
+	".md": true, ".markdown": true, ".csv": true, ".tsv": true, ".json": true, ".docx": true,
+	".ts": true, ".tsx": true, ".js": true, ".jsx": true, ".py": true, ".go": true, ".rs": true, ".rb": true,
+	".java": true, ".kt": true, ".c": true, ".h": true, ".cpp": true, ".cc": true,
+	".sh": true, ".bash": true, ".zsh": true, ".css": true, ".html": true, ".htm": true,
+	".xml": true, ".yml": true, ".yaml": true, ".toml": true, ".sql": true,
+	".txt": true, ".log": true, ".env": true, ".cfg": true, ".ini": true, ".conf": true,
+	".gitignore": true, ".dockerfile": true,
+}
+
+func hasInlinePreview(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	if ext == "" {
+		return true // extensionless files render as text
+	}
+	return previewExts[ext]
+}
+
 func presentAck(path, raw string) string {
 	var row struct {
 		Name      string `json:"name"`
@@ -1185,6 +1210,9 @@ func presentAck(path, raw string) string {
 	msg := fmt.Sprintf("presented %s (%s). Shown in the thread — do not retype it.", row.Name, formatSize(row.Size))
 	if row.Truncated {
 		msg += " Preview is truncated."
+	}
+	if !hasInlinePreview(row.Name) {
+		msg += " This type has no inline preview — use artifact instead so the human gets a downloadable card."
 	}
 	return msg
 }

@@ -119,7 +119,7 @@ export function Composer({
 
   return (
     <div className="shrink-0 bg-plaster p-3 pt-2 max-wide:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-4xl">
         <form
           onSubmit={handleSubmit}
           className={`@container group relative flex flex-col rounded-[12px] border bg-folio transition-[border-color,background-color] duration-200 ease-quiet ${
