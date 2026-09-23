@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/ids"
 )
 
 // FakeHost is an in-process dockerx.Host. It records lifecycle calls and lets
@@ -91,6 +92,9 @@ func (f *FakeHost) Create(_ context.Context, botID, token string) (string, error
 	id := "cid-" + botID
 	f.mu.Lock()
 	f.tokens[botID] = token
+	// Mirror Docker: the container carries SILO_BOT_TOKEN, so EnvTokenHash
+	// reports the hash of the token it was created with.
+	f.envHash[id] = ids.Hash(token)
 	st := dockerx.State{ID: id, Running: true}
 	f.inspect[id] = st
 	f.inspect[dockerx.Name(botID)] = st
@@ -251,4 +255,14 @@ func (f *FakeHost) Forget(botID string) {
 	defer f.mu.Unlock()
 	delete(f.inspect, "cid-"+botID)
 	delete(f.inspect, dockerx.Name(botID))
+}
+
+// Gone reports whether the fake container for a bot no longer exists under
+// either its id or its name.
+func (f *FakeHost) Gone(botID string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, byID := f.inspect["cid-"+botID]
+	_, byName := f.inspect[dockerx.Name(botID)]
+	return !byID && !byName
 }

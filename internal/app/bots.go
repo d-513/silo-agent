@@ -37,7 +37,21 @@ func (a *App) lockBot(id string) func() {
 func (a *App) live(ctx context.Context, b *db.Bot) bool {
 	unlock := a.lockBot(b.ID)
 	defer unlock()
+	// Re-read under the lock: the caller's row can predate a concurrent
+	// create/start, and acting on a stale TokenHash would drop the box that was
+	// just created and clobber the token ensureRunning stored.
+	a.reloadBot(b)
 	return a.liveLocked(ctx, b)
+}
+
+// reloadBot replaces b with the current row. Callers hold lockBot so the
+// lifecycle fields they act on match the ones ensureRunning writes.
+func (a *App) reloadBot(b *db.Bot) {
+	var cur db.Bot
+	if err := a.DB.First(&cur, "id = ?", b.ID).Error; err != nil {
+		return
+	}
+	*b = cur
 }
 
 func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
@@ -98,6 +112,30 @@ func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) 
 func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
 	unlock := a.lockBot(b.ID)
 	defer unlock()
+	// Another ensure/start may have created a box since this row was loaded;
+	// reload so the token-hash check and the writes below do not undo it.
+	a.reloadBot(b)
+	if a.Hub.Connected(b.ID) {
+		// A worker session can outlive its container (removed out of band, a
+		// daemon restart, a failed recreate). Confirm the box with Docker
+		// before trusting the session; when it is gone, drop the stale session
+		// so the recreate path below can bring the Bot back.
+		st, err := a.inspectBot(ctx, b)
+		switch {
+		case err == nil && st.Running:
+			if b.ContainerID != st.ID {
+				b.ContainerID = st.ID
+				a.DB.Save(b)
+			}
+			return nil
+		case err != nil && !dockerx.IsNotFound(err):
+			// Docker is unreachable: keep trusting the live worker rather than
+			// tearing down a working session on a transient error.
+			return nil
+		default:
+			a.Hub.Drop(b.ID)
+		}
+	}
 	if a.liveLocked(ctx, b) {
 		if b.Status == "stopped" {
 			b.Status = "starting"

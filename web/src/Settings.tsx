@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
-import type { Bot } from "./gen/silo/v1/ui_pb";
+import { Select } from "./Select";
+import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -66,6 +67,8 @@ export function SettingsPane({
   const [description, setDescription] = useState(bot.description);
   const [soul, setSoul] = useState(bot.soul);
   const [memory, setMemory] = useState(bot.memory);
+  const [model, setModel] = useState(bot.model);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [arm, setArm] = useState<"reset" | "delete" | "">("");
@@ -76,9 +79,24 @@ export function SettingsPane({
     setDescription(bot.description);
     setSoul(bot.soul);
     setMemory(bot.memory);
+    setModel(bot.model);
     setArm("");
     setDangerBusy(false);
   }, [bot.id]);
+  useEffect(() => {
+    let dead = false;
+    ui.listModels({ botId: bot.id })
+      .then((r) => {
+        if (!dead) setModels(r.models);
+      })
+      .catch(() => {});
+    return () => {
+      dead = true;
+    };
+  }, [bot.id]);
+  // Drop a stored model the operator has since removed from the allowlist, so
+  // saving an unrelated field does not fail validation.
+  const selectedModel = models.length === 0 || models.some((m) => m.id === model) ? model : "";
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -93,10 +111,12 @@ export function SettingsPane({
         soul,
         memory,
         autoApprove: bot.autoApprove,
+        model: selectedModel,
       });
       onSaved(next);
       setSoul(next.soul);
       setMemory(next.memory);
+      setModel(next.model);
       setSaved(true);
     } catch (ex) {
       onError(fail(ex));
@@ -147,6 +167,24 @@ export function SettingsPane({
               />
             </Field>
           </div>
+        </Panel>
+
+        <Panel title="Model" note="Default for this Bot's chats. From the operator's allowed list; a conversation can still override it from the composer.">
+          <Field label="Default model">
+            <Select
+              value={selectedModel}
+              onChange={setModel}
+              emptyLabel="No models allowed"
+              options={[
+                { value: "", label: "Operator default" },
+                ...models.map((m) => ({
+                  value: m.id,
+                  label: m.label || m.id,
+                  hint: m.label && m.label !== m.id ? m.id : undefined,
+                })),
+              ]}
+            />
+          </Field>
         </Panel>
 
         <Panel title="Prompt" note="Injected into the system prompt every run. The Bot can rewrite both.">

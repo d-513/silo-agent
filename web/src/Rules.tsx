@@ -115,6 +115,7 @@ export function RulesPane({ botId }: { botId: string }) {
         soul: b.soul,
         memory: b.memory,
         autoApprove: policy,
+        model: b.model,
       });
       setPolicy(next.autoApprove);
       setSavedPolicy(next.autoApprove);

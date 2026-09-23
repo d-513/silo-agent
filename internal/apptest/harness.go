@@ -344,14 +344,23 @@ func (h *H) ChatEvents(chatID string) []db.RunEvent {
 // LastUserEvent returns the most recent user message in a chat.
 func (h *H) LastUserEvent(chatID string) db.RunEvent {
 	h.T.Helper()
+	ev, ok := h.FindLastUserEvent(chatID)
+	if !ok {
+		h.T.Fatalf("chat %s has no user message", chatID)
+	}
+	return ev
+}
+
+// FindLastUserEvent returns the most recent user message and whether one
+// exists, so a caller can poll without failing the test on the first read.
+func (h *H) FindLastUserEvent(chatID string) (db.RunEvent, bool) {
 	events := h.ChatEvents(chatID)
 	for i := len(events) - 1; i >= 0; i-- {
 		if events[i].Kind == "user" {
-			return events[i]
+			return events[i], true
 		}
 	}
-	h.T.Fatalf("chat %s has no user message", chatID)
-	return db.RunEvent{}
+	return db.RunEvent{}, false
 }
 
 // WaitRun blocks until the run has a terminal event, then returns its events in

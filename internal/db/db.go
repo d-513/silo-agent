@@ -32,6 +32,9 @@ type Bot struct {
 	Description string
 	Soul        string
 	Memory      string
+	// Model is the per-bot provider/model default; empty falls back to the
+	// operator default. A chat override still wins for its conversation.
+	Model string
 	// AutoApprove is the free-text policy the approval model reads when a rule
 	// decision is "auto".
 	AutoApprove string

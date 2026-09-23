@@ -202,8 +202,9 @@ func TestDeleteStopsLiveRun(t *testing.T) {
 	var ev db.RunEvent
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		ev = h.LastUserEvent(chat)
-		if ev.Body == "Test_64 go" {
+		got, ok := h.FindLastUserEvent(chat)
+		if ok && got.Body == "Test_64 go" {
+			ev = got
 			break
 		}
 		if time.Now().After(deadline) {

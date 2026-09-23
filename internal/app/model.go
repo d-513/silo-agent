@@ -10,32 +10,28 @@ import (
 	"silo.agent/internal/llm"
 )
 
-// resolveModel picks the model for a conversation: the chat's own model when it
-// is still allowed, otherwise the operator default.
-func (a *App) resolveModel(chatID string) string {
-	cfg := a.cfg()
+// resolveModel picks the model for a conversation: the chat's own model when
+// it is still allowed, then the Bot's default, otherwise the operator default.
+func (a *App) resolveModel(botID, chatID string) string {
 	if chatID != "" {
 		var c db.Chat
 		if a.DB.First(&c, "id = ?", chatID).Error == nil {
-			if m := strings.TrimSpace(c.Model); m != "" && llm.Allowed(m, cfg.Models) {
+			if m := strings.TrimSpace(c.Model); m != "" && llm.Allowed(m, a.cfg().Models) {
 				return m
 			}
 		}
 	}
-	if m := strings.TrimSpace(cfg.Model); m != "" {
-		return m
-	}
-	return config.DefaultModel
+	return a.botDefaultModel(botID)
 }
 
 // titleModel picks the model used to name a chat. The dedicated setting wins
 // when it is allowed, otherwise the conversation's model is used.
-func (a *App) titleModel(chatID string) string {
+func (a *App) titleModel(botID, chatID string) string {
 	cfg := a.cfg()
 	if m := strings.TrimSpace(cfg.ModelTitle); m != "" && llm.Allowed(m, cfg.Models) {
 		return m
 	}
-	return a.resolveModel(chatID)
+	return a.resolveModel(botID, chatID)
 }
 
 // modelClient builds a provider client for a provider/model id. Every client
@@ -114,21 +110,39 @@ func (a *App) allowedModels() []modelOption {
 }
 
 // listModelsTool is the bot-facing list_models tool.
-func (a *App) listModelsTool(chatID string) (string, error) {
+func (a *App) listModelsTool(botID, chatID string) (string, error) {
 	cfg := a.cfg()
 	models := make([]string, 0, len(cfg.Models))
 	for _, o := range a.allowedModels() {
 		models = append(models, o.ID)
 	}
 	body, err := json.Marshal(map[string]any{
-		"current": a.resolveModel(chatID),
-		"default": cfg.Model,
+		"current": a.resolveModel(botID, chatID),
+		"default": a.botDefaultModel(botID),
 		"models":  models,
 	})
 	if err != nil {
 		return "", err
 	}
 	return string(body), nil
+}
+
+// botDefaultModel is the provider/model a Bot uses when a chat has no override:
+// the Bot's own setting when still allowed, otherwise the operator default.
+func (a *App) botDefaultModel(botID string) string {
+	cfg := a.cfg()
+	if botID != "" {
+		var b db.Bot
+		if a.DB.First(&b, "id = ?", botID).Error == nil {
+			if m := strings.TrimSpace(b.Model); m != "" && llm.Allowed(m, cfg.Models) {
+				return m
+			}
+		}
+	}
+	if m := strings.TrimSpace(cfg.Model); m != "" {
+		return m
+	}
+	return config.DefaultModel
 }
 
 // switchModelTool is the bot-facing switch_model tool. It persists the choice

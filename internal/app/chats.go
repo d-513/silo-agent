@@ -117,13 +117,14 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 // ListModels returns the operator's model allowlist for the chat model picker.
 // It is available to any owner of the Bot, not just admins.
 func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
 		return nil, err
 	}
 	cfg := a.cfg()
 	return connect.NewResponse(&v1.ListModelsResponse{
 		Models:       modelOptionProtos(a.allowedModels()),
-		DefaultModel: cfg.Model,
+		DefaultModel: a.botDefaultModel(b.ID),
 		TitleModel:   cfg.ModelTitle,
 	}), nil
 }

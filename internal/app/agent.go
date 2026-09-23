@@ -325,11 +325,16 @@ func (a *App) startRun(req runRequest) (string, error) {
 	}
 	b.LastTask = req.text
 	b.Status = "working"
-	a.DB.Save(&b)
-	if !a.Hub.Connected(b.ID) {
-		cp := b
-		a.ensureRunningBg(&cp)
-	}
+	// Only touch the run fields: saving the whole row here could clobber a
+	// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
+	a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
+		"last_task": req.text,
+		"status":    "working",
+	})
+	// Always ensure the box: a message must start a stopped Bot, and a worker
+	// session can outlive a container that was removed out of band.
+	cp := b
+	a.ensureRunningBg(&cp)
 	inbox := make(chan inboxMsg, 32)
 	done := make(chan struct{})
 	go a.runLoop(req.botID, req.chatID, runID, req.text, req.atts, req.origin, inbox, done)
@@ -613,7 +618,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	defer close(done)
 	defer a.untrackRun(runID)
 
-	modelID := a.resolveModel(chatID)
+	modelID := a.resolveModel(botID, chatID)
 	client, provider, model, err := a.modelClient(modelID, botID, "chat")
 	if err != nil {
 		a.emit(botID, chatID, runID, "error", err.Error(), "")
@@ -643,7 +648,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		}
 		// Re-resolve each turn so a switch_model tool call takes effect on the
 		// next model call without restarting the run.
-		if m := a.resolveModel(chatID); m != modelID {
+		if m := a.resolveModel(botID, chatID); m != modelID {
 			if c, pr, mo, e := a.modelClient(m, botID, "chat"); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
@@ -745,7 +750,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if len(snippet) > 800 {
 		snippet = truncateUTF8(snippet, 800)
 	}
-	client, provider, model, err := a.modelClient(a.titleModel(chatID), botID, "title")
+	client, provider, model, err := a.modelClient(a.titleModel(botID, chatID), botID, "title")
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)
 		return
@@ -953,7 +958,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return out, "", err
 	}
 	if name == "list_models" {
-		out, err := a.listModelsTool(chatID)
+		out, err := a.listModelsTool(botID, chatID)
 		return out, "", err
 	}
 	if name == "switch_model" {

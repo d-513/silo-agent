@@ -128,6 +128,9 @@ message Bot {
   // AutoApprove is this Bot's free-text auto-approval policy. Rules set to
   // "auto" consult the approval model with this text.
   string auto_approve = 10;
+  // Model is this Bot's default provider/model. Empty falls back to the
+  // operator default; a chat override still wins for its conversation.
+  string model = 11;
 }
 
 message ListBotsRequest {}
@@ -149,6 +152,7 @@ message UpdateBotRequest {
   string soul = 4;
   string memory = 5;
   string auto_approve = 6;
+  string model = 7;
 }
 
 message GetBotRequest {

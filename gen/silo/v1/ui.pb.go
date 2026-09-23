@@ -402,7 +402,10 @@ type Bot struct {
 	Memory          string                 `protobuf:"bytes,9,opt,name=memory,proto3" json:"memory,omitempty"`
 	// AutoApprove is this Bot's free-text auto-approval policy. Rules set to
 	// "auto" consult the approval model with this text.
-	AutoApprove   string `protobuf:"bytes,10,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
+	AutoApprove string `protobuf:"bytes,10,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
+	// Model is this Bot's default provider/model. Empty falls back to the
+	// operator default; a chat override still wins for its conversation.
+	Model         string `protobuf:"bytes,11,opt,name=model,proto3" json:"model,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -503,6 +506,13 @@ func (x *Bot) GetMemory() string {
 func (x *Bot) GetAutoApprove() string {
 	if x != nil {
 		return x.AutoApprove
+	}
+	return ""
+}
+
+func (x *Bot) GetModel() string {
+	if x != nil {
+		return x.Model
 	}
 	return ""
 }
@@ -655,6 +665,7 @@ type UpdateBotRequest struct {
 	Soul          string                 `protobuf:"bytes,4,opt,name=soul,proto3" json:"soul,omitempty"`
 	Memory        string                 `protobuf:"bytes,5,opt,name=memory,proto3" json:"memory,omitempty"`
 	AutoApprove   string                 `protobuf:"bytes,6,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
+	Model         string                 `protobuf:"bytes,7,opt,name=model,proto3" json:"model,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -727,6 +738,13 @@ func (x *UpdateBotRequest) GetMemory() string {
 func (x *UpdateBotRequest) GetAutoApprove() string {
 	if x != nil {
 		return x.AutoApprove
+	}
+	return ""
+}
+
+func (x *UpdateBotRequest) GetModel() string {
+	if x != nil {
+		return x.Model
 	}
 	return ""
 }
@@ -8385,7 +8403,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
-	"\x05admin\x18\x03 \x01(\bR\x05admin\"\x90\x02\n" +
+	"\x05admin\x18\x03 \x01(\bR\x05admin\"\xa6\x02\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -8397,21 +8415,23 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04soul\x18\b \x01(\tR\x04soul\x12\x16\n" +
 	"\x06memory\x18\t \x01(\tR\x06memory\x12!\n" +
 	"\fauto_approve\x18\n" +
-	" \x01(\tR\vautoApprove\"\x11\n" +
+	" \x01(\tR\vautoApprove\x12\x14\n" +
+	"\x05model\x18\v \x01(\tR\x05model\"\x11\n" +
 	"\x0fListBotsRequest\"4\n" +
 	"\x10ListBotsResponse\x12 \n" +
 	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"^\n" +
 	"\x10CreateBotRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x02 \x01(\x05R\x05crest\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xa7\x01\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xbd\x01\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
 	"\x04soul\x18\x04 \x01(\tR\x04soul\x12\x16\n" +
 	"\x06memory\x18\x05 \x01(\tR\x06memory\x12!\n" +
-	"\fauto_approve\x18\x06 \x01(\tR\vautoApprove\"\x1f\n" +
+	"\fauto_approve\x18\x06 \x01(\tR\vautoApprove\x12\x14\n" +
+	"\x05model\x18\a \x01(\tR\x05model\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +

@@ -86,6 +86,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Soul:            b.Soul,
 		Memory:          b.Memory,
 		AutoApprove:     b.AutoApprove,
+		Model:           b.Model,
 	}
 }
 
@@ -166,6 +167,16 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	b.Soul = req.Msg.GetSoul()
 	b.Memory = req.Msg.GetMemory()
 	b.AutoApprove = req.Msg.GetAutoApprove()
+	model := strings.TrimSpace(req.Msg.GetModel())
+	if model != "" {
+		if _, _, err := llm.Parse(model); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if !llm.Allowed(model, a.cfg().Models) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("model is not in the allowed list"))
+		}
+	}
+	b.Model = model
 	if err := a.DB.Save(b).Error; err != nil {
 		return nil, err
 	}
