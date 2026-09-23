@@ -292,7 +292,7 @@ export function BotConnectors({
   }
 
   return (
-    <div className="silo-page pb-16">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
       {/* Header & Page Description */}
       <div className="mb-6 space-y-1.5">
         <h1 className="text-[22px] font-medium tracking-tight text-iron">Connectors</h1>
@@ -457,7 +457,7 @@ export function BotConnectors({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {filteredAttached.map((row) => {
                 const c = row.connector;
                 if (!c) return null;
@@ -465,26 +465,28 @@ export function BotConnectors({
                 return (
                   <div
                     key={row.id}
-                    className="flex flex-col justify-between rounded-xl border border-thread bg-folio p-4 shadow-2xs transition-all hover:border-hover"
+                    className="flex flex-col justify-between rounded-xl border border-thread bg-folio p-5 shadow-2xs transition-all hover:border-hover hover:shadow-xs min-h-[140px]"
                   >
                     <div>
                       {/* Card Top: Mark + Title/Badges + Status */}
-                      <div className="flex items-start gap-3.5">
-                        <ConnectorMark id={c.id} hasImage={c.hasImage} size={42} />
+                      <div className="flex items-start gap-4">
+                        <div className="shrink-0 pt-0.5">
+                          <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
+                        </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-semibold text-sm text-iron">{c.name}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</span>
                             <McpChip />
                             {isCustom(c) && <CustomChip />}
                             {c.category && <CategoryChip label={c.category} />}
                           </div>
 
-                          <p className="mt-1 line-clamp-2 text-xs text-stone">
+                          <p className="mt-1.5 line-clamp-2 text-xs text-stone leading-relaxed">
                             {c.description || (c.transport === "http" ? c.httpUrl : c.stdioCommand)}
                           </p>
 
                           {/* Status line */}
-                          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-stone">
+                          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-stone">
                             {row.authStatus === "initializing" ? (
                               <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-thread border-t-bindery" />
                             ) : (
@@ -505,7 +507,7 @@ export function BotConnectors({
                     </div>
 
                     {/* Card Bottom: Actions */}
-                    <div className="mt-4 flex items-center justify-between border-t border-thread/80 pt-3">
+                    <div className="mt-4 flex items-center justify-between border-t border-thread/80 pt-3.5">
                       <div className="text-[11px] font-mono text-stone uppercase tracking-wider">
                         {c.transport} · {c.auth}
                       </div>
@@ -617,27 +619,27 @@ export function BotConnectors({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {items.map((c) => {
                       const count = attachedCountFor(c.id);
                       return (
                         <div
                           key={c.id}
-                          className="group flex items-start justify-between gap-3.5 rounded-xl border border-thread bg-folio p-4 shadow-2xs transition-all hover:border-hover hover:shadow-sm"
+                          className="group flex items-start justify-between gap-4 rounded-xl border border-thread bg-folio p-5 shadow-2xs transition-all hover:border-hover hover:shadow-xs min-h-[130px]"
                         >
-                          <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                            <div className="shrink-0 p-0.5">
-                              <ConnectorMark id={c.id} hasImage={c.hasImage} size={44} />
+                          <div className="flex min-w-0 flex-1 items-start gap-4">
+                            <div className="shrink-0 pt-0.5">
+                              <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <h4 className="font-semibold text-sm text-iron">{c.name}</h4>
-                                <ShieldCheck size={14} className="text-bindery" weight="fill" />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</h4>
+                                <ShieldCheck size={15} className="text-bindery shrink-0" weight="fill" />
                                 <McpChip />
                                 {c.category && <CategoryChip label={c.category} />}
                               </div>
-                              <p className="mt-1 line-clamp-2 text-xs text-stone">{c.description}</p>
-                              <div className="mt-2 flex items-center gap-2 text-[11px] text-stone">
+                              <p className="mt-1.5 line-clamp-2 text-xs text-stone leading-relaxed">{c.description}</p>
+                              <div className="mt-2.5 flex items-center gap-2 text-[11px] text-stone">
                                 <span className="font-mono uppercase">{c.transport}</span>
                                 <span>·</span>
                                 <span className="capitalize">{c.auth}</span>
@@ -656,11 +658,11 @@ export function BotConnectors({
 
                           <button
                             type="button"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-thread bg-folio text-stone shadow-2xs transition-colors hover:border-bindery hover:bg-bindery-pale hover:text-bindery"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-thread bg-folio text-stone shadow-2xs transition-all hover:border-bindery hover:bg-bindery-pale hover:text-bindery"
                             onClick={() => openLibraryModal(c)}
                             title={`Add ${c.name}`}
                           >
-                            <Plus size={15} weight="bold" />
+                            <Plus size={16} weight="bold" />
                           </button>
                         </div>
                       );
@@ -675,27 +677,27 @@ export function BotConnectors({
               <div className="flex items-center justify-between text-xs text-stone">
                 <span>Showing {filteredCatalog.length} connector{filteredCatalog.length === 1 ? "" : "s"}</span>
               </div>
-              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredCatalog.map((c) => {
                   const count = attachedCountFor(c.id);
                   return (
                     <div
                       key={c.id}
-                      className="group flex items-start justify-between gap-3.5 rounded-xl border border-thread bg-folio p-4 shadow-2xs transition-all hover:border-hover hover:shadow-sm"
+                      className="group flex items-start justify-between gap-4 rounded-xl border border-thread bg-folio p-5 shadow-2xs transition-all hover:border-hover hover:shadow-xs min-h-[130px]"
                     >
-                      <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                        <div className="shrink-0 p-0.5">
-                          <ConnectorMark id={c.id} hasImage={c.hasImage} size={44} />
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <div className="shrink-0 pt-0.5">
+                          <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <h4 className="font-semibold text-sm text-iron">{c.name}</h4>
-                            <ShieldCheck size={14} className="text-bindery" weight="fill" />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</h4>
+                            <ShieldCheck size={15} className="text-bindery shrink-0" weight="fill" />
                             <McpChip />
                             {c.category && <CategoryChip label={c.category} />}
                           </div>
-                          <p className="mt-1 line-clamp-2 text-xs text-stone">{c.description}</p>
-                          <div className="mt-2 flex items-center gap-2 text-[11px] text-stone">
+                          <p className="mt-1.5 line-clamp-2 text-xs text-stone leading-relaxed">{c.description}</p>
+                          <div className="mt-2.5 flex items-center gap-2 text-[11px] text-stone">
                             <span className="font-mono uppercase">{c.transport}</span>
                             <span>·</span>
                             <span className="capitalize">{c.auth}</span>
@@ -714,11 +716,11 @@ export function BotConnectors({
 
                       <button
                         type="button"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-thread bg-folio text-stone shadow-2xs transition-colors hover:border-bindery hover:bg-bindery-pale hover:text-bindery"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-thread bg-folio text-stone shadow-2xs transition-all hover:border-bindery hover:bg-bindery-pale hover:text-bindery"
                         onClick={() => openLibraryModal(c)}
                         title={`Add ${c.name}`}
                       >
-                        <Plus size={15} weight="bold" />
+                        <Plus size={16} weight="bold" />
                       </button>
                     </div>
                   );

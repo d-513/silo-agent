@@ -153,7 +153,7 @@ export function CustomChip() {
 export function CategoryChip({ label }: { label: string }) {
   if (!label) return null;
   return (
-    <span className="inline-flex items-center rounded-[6px] border border-thread bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[6px] border border-thread bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
       {label}
     </span>
   );
