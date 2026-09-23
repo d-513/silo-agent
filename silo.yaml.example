@@ -44,3 +44,13 @@ providers:
 # Web search engine. Env: SILO_SEARCH__ENGINE
 search:
   engine: duckduckgo_scraper
+
+# Operator-defined connector variables. Connectors reference these as ${NAME}
+# in their URL, headers, OAuth fields, STDIO command/args/image, env values,
+# and prompt. Env: SILO_CONNECTOR_VARS__NAME (keys are lowercased).
+#
+# These are plain variables, NOT secrets: they live in silo.yaml in clear text
+# and are not protected. Use a Bot Secret for credentials.
+# connector_vars:
+#   TENANT: acme
+#   MCP_HOST: mcp.internal.example.com

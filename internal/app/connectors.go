@@ -21,6 +21,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
@@ -401,6 +402,7 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 	if c.Auth != authOAuth {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("connector does not use oauth"))
 	}
+	c = *a.resolveConnector(&c)
 	redirect := a.publicURL(ctx) + "/oauth/callback"
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -521,7 +523,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	if c.Auth == authOAuth && bc.AuthStatus != statusOK {
 		return connect.NewResponse(&v1.ToolRes{Error: "connector is not authorized"}), nil
 	}
-	if hdr, err := mcpx.HeadersFromJSON(c.HeadersJSON); err == nil {
+	if hdr, err := mcpx.HeadersFromJSON(a.resolveConnector(c).HeadersJSON); err == nil {
 		for _, v := range hdr {
 			a.Mask(bot.ID).Add(v)
 		}
@@ -899,7 +901,8 @@ func (a *App) connectorSections(pc promptContext) []promptSection {
 				fmt.Fprintf(&b, "- `import tools.%s` — %s\n", slug, strings.Join(names, ", "))
 			}
 			if v.link.AuthStatus == statusOK && strings.TrimSpace(v.conn.Prompt) != "" {
-				for _, line := range strings.Split(strings.TrimSpace(v.conn.Prompt), "\n") {
+				prompt := config.ExpandVars(v.conn.Prompt, a.connectorVars())
+				for _, line := range strings.Split(strings.TrimSpace(prompt), "\n") {
 					fmt.Fprintf(&b, "  %s\n", strings.TrimRight(line, "\r"))
 				}
 			}
@@ -917,6 +920,7 @@ func (a *App) mcpSession(ctx context.Context, row *db.BotConnector, c *db.Connec
 		return s, nil
 	}
 	a.mu.Unlock()
+	c = a.resolveConnector(c)
 	var h mcpauth.OAuthHandler
 	if c.Auth == authOAuth {
 		oh, err := a.oauthHandler(c, row, a.redirectURL(), nil)

@@ -3,6 +3,8 @@ package app_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -219,5 +221,61 @@ func TestOAuthClientCopiedOnAttach(t *testing.T) {
 	h.DB.First(&inst, "id = ?", inst.ID)
 	if inst.OAuthClientSecret != "s3cret" {
 		t.Fatal("blank update wiped the stored oauth secret")
+	}
+}
+
+// TestConnectorVarsResolveAtConnect attaches a connector whose URL is a
+// ${NAME} reference and checks the CP connects using the resolved value.
+func TestConnectorVarsResolveAtConnect(t *testing.T) {
+	mcpSrv := echoHTTPServer(t)
+	dir := t.TempDir()
+	y := apptest.DefaultYAML(dir) + "connector_vars:\n  ECHO_URL: \"" + mcpSrv.URL + "\"\n"
+	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithYAML(y))
+	bot := h.CreateBot("Vars")
+	if _, err := h.Client.CreateBotConnector(h.Ctx(), connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: bot.GetId(), Name: "Echo", Transport: "http", HttpUrl: "${ECHO_URL}",
+		Auth: "none", DefaultMode: "allow",
+	})); err != nil {
+		t.Fatalf("CreateBotConnector: %v", err)
+	}
+	row := h.WaitConnector(bot.GetId(), "Echo")
+	if row.GetAuthStatus() != "authorized" {
+		t.Fatalf("auth status %q error %q", row.GetAuthStatus(), row.GetLastError())
+	}
+	wc := h.WorkerClient(bot.GetId())
+	res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{
+		Connector: toolsgen.Slug("Echo"), Action: "echo", ArgsJson: `{"q":"vars-ok"}`,
+	}))
+	if err != nil || res.Msg.GetError() != "" {
+		t.Fatalf("CallTool: %v %+v", err, res.Msg)
+	}
+	if res.Msg.GetResultJson() != "vars-ok" {
+		t.Fatalf("result %q", res.Msg.GetResultJson())
+	}
+}
+
+func TestSetConnectorVarsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "silo.yaml")
+	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := apptest.New(t, apptest.WithConfigPath(path))
+	got, err := h.Client.SetConnectorVars(h.Ctx(), connect.NewRequest(&v1.SetConnectorVarsRequest{
+		ConnectorVars: []*v1.ConnectorVar{{Name: "TENANT", Value: "acme"}},
+	}))
+	if err != nil {
+		t.Fatalf("SetConnectorVars: %v", err)
+	}
+	if len(got.Msg.GetConnectorVars()) != 1 || got.Msg.GetConnectorVars()[0].GetValue() != "acme" {
+		t.Fatalf("settings vars %+v", got.Msg.GetConnectorVars())
+	}
+	if got.Msg.GetConnectorVars()[0].GetEnvName() != "SILO_CONNECTOR_VARS__TENANT" {
+		t.Fatalf("env name %q", got.Msg.GetConnectorVars()[0].GetEnvName())
+	}
+	if _, err := h.Client.SetConnectorVars(h.Ctx(), connect.NewRequest(&v1.SetConnectorVarsRequest{
+		ConnectorVars: []*v1.ConnectorVar{{Name: "1BAD", Value: "x"}},
+	})); err == nil {
+		t.Fatal("invalid name should be rejected")
 	}
 }

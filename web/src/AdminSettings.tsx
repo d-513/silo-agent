@@ -10,6 +10,7 @@ import {
   ConfigSource,
   type AuditRow,
   type ConfigField,
+  type ConnectorVar,
   type ModelOption,
   type Provider,
   type SearchEngine,
@@ -82,6 +83,7 @@ function applySettings(
   setEngines: (e: SearchEngine[]) => void,
   setProviders: (p: Provider[]) => void,
   setModels: (m: ModelOption[]) => void,
+  setConnVars: (v: ConnectorVar[]) => void,
 ) {
   setFields(x.fields);
   setValues(Object.fromEntries(x.fields.map((f) => [f.key, f.value])));
@@ -90,6 +92,7 @@ function applySettings(
   setEngines(x.searchEngines);
   setProviders(x.providers);
   setModels(x.models);
+  setConnVars(x.connectorVars);
 }
 
 export function AdminSettings() {
@@ -98,13 +101,14 @@ export function AdminSettings() {
   const [engines, setEngines] = useState<SearchEngine[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [models, setModels] = useState<ModelOption[]>([]);
+  const [connVars, setConnVars] = useState<ConnectorVar[]>([]);
   const [yamlText, setYamlText] = useState("");
   const [yamlPath, setYamlPath] = useState("");
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [saved, setSaved] = useState("");
   const [err, setErr] = useState("");
 
-  const apply = (x: Settings) => applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels);
+  const apply = (x: Settings) => applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels, setConnVars);
 
   useEffect(() => {
     ui.getSettings({}).then(apply).catch((e) => setErr(fail(e)));
@@ -155,6 +159,16 @@ export function AdminSettings() {
     }
   }
 
+  async function saveConnVars(list: { name: string; value: string }[]) {
+    setErr("");
+    try {
+      apply(await ui.setConnectorVars({ connectorVars: list.map((v) => ({ name: v.name, value: v.value, source: ConfigSource.DEFAULT, envName: "" })) }));
+      setSaved("vars");
+    } catch (ex) {
+      setErr(fail(ex));
+    }
+  }
+
   const envFields = fields.filter((f) => f.source === ConfigSource.ENV);
   const rowsIn = (id: string) => fields.filter((f) => groupOf(f.key) === id);
   const defaultModel = values["model"] ?? "";
@@ -178,6 +192,7 @@ export function AdminSettings() {
           onApproval={(v) => setValue("model_approval", v)}
           onSaveModels={saveModels}
         />
+        <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
         {providers.map((p) => (
           <ProviderBlock
             key={p.id}
@@ -200,6 +215,7 @@ export function AdminSettings() {
         </Btn>
         {saved === "form" && <span className="text-stone">Saved</span>}
         {saved === "models" && <span className="text-stone">Saved</span>}
+        {saved === "vars" && <span className="text-stone">Saved</span>}
       </div>
 
       <h2 className="mt-10 mb-3 text-[22px] font-medium">silo.yaml</h2>
@@ -465,6 +481,99 @@ function ModelSettings({
         />
         <Btn kind="primary" onClick={add}>
           <Plus size={14} /> Add
+        </Btn>
+      </div>
+    </Panel>
+  );
+}
+
+type VarDraft = { name: string; value: string; source: ConfigSource; envName: string };
+
+function ConnectorVarsPanel({
+  vars,
+  onSave,
+}: {
+  vars: ConnectorVar[];
+  onSave: (list: { name: string; value: string }[]) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<VarDraft[]>([]);
+  useEffect(() => {
+    setDraft(vars.map((v) => ({ name: v.name, value: v.value, source: v.source, envName: v.envName })));
+  }, [vars]);
+
+  function update(i: number, patch: Partial<VarDraft>) {
+    setDraft((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  }
+
+  function save() {
+    const out = draft
+      .filter((r) => r.source !== ConfigSource.ENV)
+      .map((r) => ({ name: r.name.trim(), value: r.value }))
+      .filter((r) => r.name);
+    void onSave(out);
+  }
+
+  return (
+    <Panel
+      title="Connector variables"
+      note="Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}."
+    >
+      <p className="mb-4 flex items-start gap-2 rounded-[6px] border-l-4 border-carmine bg-cloth px-3 py-2 text-[13px] text-iron">
+        <TriangleAlert className="mt-0.5 shrink-0 text-carmine" size={16} />
+        <span>
+          These are variables, not secrets. Values are stored in plain text in <span className="font-mono">silo.yaml</span> and are not
+          protected — anyone who can read the config can see them. Use a Bot Secret for credentials.
+        </span>
+      </p>
+      {draft.length === 0 ? (
+        <p className="mb-3 text-[13px] text-stone">No variables yet.</p>
+      ) : (
+        <div className="mb-3 grid gap-2">
+          {draft.map((r, i) => {
+            const locked = r.source === ConfigSource.ENV;
+            return (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <input
+                  className={`${inputClass} w-48 font-mono text-[13px]`}
+                  placeholder="NAME"
+                  value={r.name}
+                  disabled={locked}
+                  onChange={(e) => update(i, { name: e.target.value })}
+                />
+                <span className="text-stone">=</span>
+                <input
+                  className={`${inputClass} min-w-[160px] flex-1 font-mono text-[13px]`}
+                  placeholder="value"
+                  value={r.value}
+                  disabled={locked}
+                  onChange={(e) => update(i, { value: e.target.value })}
+                />
+                {locked ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={r.envName}>
+                    <TriangleAlert size={14} />
+                    {r.envName}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    title="Remove"
+                    className="rounded-[6px] p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
+                    onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <Btn onClick={() => setDraft((prev) => [...prev, { name: "", value: "", source: ConfigSource.DEFAULT, envName: "" }])}>
+          <Plus size={14} /> Add variable
+        </Btn>
+        <Btn kind="primary" onClick={save}>
+          Save variables
         </Btn>
       </div>
     </Panel>

@@ -69,6 +69,34 @@ func setNodeList(doc *yaml.Node, key string, values []string) error {
 	return nil
 }
 
+// setNodeMap replaces a top-level key with a YAML mapping of string values,
+// preserving any comments on the existing key. Used for connector variables.
+func setNodeMap(doc *yaml.Node, key string, vars []NamedVar) error {
+	m := mappingOf(doc)
+	if m.Kind != yaml.MappingNode {
+		*m = yaml.Node{Kind: yaml.MappingNode}
+	}
+	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	for _, v := range vars {
+		node.Content = append(node.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v.Name},
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v.Value, Style: quoteStyle(v.Value)},
+		)
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value != key {
+			continue
+		}
+		node.HeadComment = m.Content[i+1].HeadComment
+		node.LineComment = m.Content[i+1].LineComment
+		node.FootComment = m.Content[i+1].FootComment
+		m.Content[i+1] = node
+		return nil
+	}
+	m.Content = append(m.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, node)
+	return nil
+}
+
 func setPath(m *yaml.Node, parts []string, value string) error {
 	if m.Kind != yaml.MappingNode {
 		*m = yaml.Node{Kind: yaml.MappingNode, HeadComment: m.HeadComment, LineComment: m.LineComment, FootComment: m.FootComment}

@@ -53,6 +53,7 @@ service UI {
   rpc GetSettings(GetSettingsRequest) returns (Settings);
   rpc PutSettings(PutSettingsRequest) returns (Settings);
   rpc SetModels(SetModelsRequest) returns (Settings);
+  rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
 
@@ -465,6 +466,7 @@ message Settings {
   repeated ModelOption models = 6;
   string default_model = 7;
   string title_model = 8;
+  repeated ConnectorVar connector_vars = 9;
 }
 
 message Provider {
@@ -486,6 +488,19 @@ message ProviderField {
 
 message SetModelsRequest {
   repeated string models = 1;
+}
+
+// ConnectorVar is one operator-defined connector variable. These are plain
+// values, not secrets, and are shown in full when the caller is an admin.
+message ConnectorVar {
+  string name = 1;
+  string value = 2;
+  ConfigSource source = 3;
+  string env_name = 4;
+}
+
+message SetConnectorVarsRequest {
+  repeated ConnectorVar connector_vars = 1;
 }
 
 message SearchEngine {

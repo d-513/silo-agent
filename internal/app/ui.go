@@ -491,6 +491,35 @@ func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRe
 	return connect.NewResponse(s), nil
 }
 
+// SetConnectorVars replaces the operator's connector variables.
+func (a *App) SetConnectorVars(ctx context.Context, req *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if a.Store == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
+	}
+	vars := make([]config.NamedVar, 0, len(req.Msg.GetConnectorVars()))
+	for _, v := range req.Msg.GetConnectorVars() {
+		name := strings.TrimSpace(v.GetName())
+		if name == "" {
+			continue
+		}
+		if !config.ValidVarName(name) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid variable name %q", name))
+		}
+		vars = append(vars, config.NamedVar{Name: name, Value: v.GetValue()})
+	}
+	if err := a.Store.SetConnectorVars(vars); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	s, err := a.settings()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(s), nil
+}
+
 func (a *App) settings() (*v1.Settings, error) {
 	out := &v1.Settings{SearchEngines: searchEngineProtos()}
 	if a.Store == nil {
@@ -513,6 +542,14 @@ func (a *App) settings() (*v1.Settings, error) {
 	}
 	out.Providers = providerProtos()
 	out.Models = modelOptionProtos(a.allowedModels())
+	for _, v := range a.Store.ConnectorVars() {
+		out.ConnectorVars = append(out.ConnectorVars, &v1.ConnectorVar{
+			Name:    v.Name,
+			Value:   v.Value,
+			Source:  sourceProto(a.Store.ConnectorVarSource(v.Name)),
+			EnvName: config.EnvName("connector_vars." + v.Name),
+		})
+	}
 	cfg := a.cfg()
 	out.DefaultModel = cfg.Model
 	out.TitleModel = cfg.ModelTitle

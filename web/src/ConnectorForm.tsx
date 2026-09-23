@@ -287,6 +287,10 @@ export function ConnectorFields({
           ]}
         />
       </div>
+      <p className="mb-3 rounded-[6px] bg-cloth px-3 py-2 text-[12px] text-stone">
+        You can reference operator connector variables as <span className="font-mono">{"${NAME}"}</span> in the URL, headers, OAuth
+        fields, command, arguments, and env values. Set them under Admin → Settings.
+      </p>
       {value.transport === "stdio" ? (
         <>
           <label className="mb-1 block text-[12px] font-medium text-stone">Command</label>
