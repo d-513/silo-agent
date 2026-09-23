@@ -33,6 +33,24 @@ func TestLoad(t *testing.T) {
 				t.Fatal(e.Key, err)
 			}
 		}
+		switch e.transportOf() {
+		case "http":
+			if e.HTTPURL == "" {
+				t.Fatalf("%s: http entry needs http_url", e.Key)
+			}
+			if e.StdioCommand != "" {
+				t.Fatalf("%s: http entry must not set stdio_command", e.Key)
+			}
+		case "stdio":
+			if e.StdioCommand == "" {
+				t.Fatalf("%s: stdio entry needs stdio_command", e.Key)
+			}
+			if e.HTTPURL != "" {
+				t.Fatalf("%s: stdio entry must not set http_url", e.Key)
+			}
+		default:
+			t.Fatalf("%s: unknown transport", e.Key)
+		}
 	}
 	if !seen["github"] {
 		t.Fatal("github preset missing")
@@ -59,7 +77,7 @@ func TestSeedIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := gdb.AutoMigrate(&db.Connector{}); err != nil {
+	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := Seed(gdb); err != nil {
@@ -97,6 +115,133 @@ func TestSeedIdempotent(t *testing.T) {
 	gdb.First(&again, "seed_key = ?", "github")
 	if again.Name != "GitHub (edited)" {
 		t.Fatal(again.Name)
+	}
+}
+
+func TestSeedStdio(t *testing.T) {
+	gdb, err := gorm.Open(sqlite.Open("file:catalog_stdio?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var row db.Connector
+	if err := gdb.First(&row, "seed_key = ?", "email").Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Transport != "stdio" || row.StdioCommand != "npx" || row.Auth != "none" {
+		t.Fatalf("unexpected stdio seed %+v", row)
+	}
+	if !strings.Contains(row.StdioArgsJSON, "@codefuturist/email-mcp") {
+		t.Fatalf("args not persisted: %q", row.StdioArgsJSON)
+	}
+	if row.HTTPURL != "" {
+		t.Fatalf("stdio seed kept an http url %q", row.HTTPURL)
+	}
+}
+
+func TestSeedRemovedStaysGone(t *testing.T) {
+	gdb, err := gorm.Open(sqlite.Open("file:catalog_removed?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	gdb.Model(&db.Connector{}).Count(&n)
+	// An admin removes a preset. The seed log keeps remembering it.
+	if err := gdb.Where("seed_key = ?", "github").Delete(&db.Connector{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	gdb.Model(&db.Connector{}).Where("seed_key = ?", "github").Count(&count)
+	if count != 0 {
+		t.Fatal("removed preset was re-added")
+	}
+	var n2 int64
+	gdb.Model(&db.Connector{}).Count(&n2)
+	if n2 != n-1 {
+		t.Fatalf("unexpected connector count %d -> %d", n, n2)
+	}
+}
+
+func TestSeedAddsUnknownKey(t *testing.T) {
+	gdb, err := gorm.Open(sqlite.Open("file:catalog_unknown?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	// Forget a key entirely, as if it had never been seeded upstream.
+	if err := gdb.Where("key = ?", "email").Delete(&db.CatalogSeed{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var row db.Connector
+	if err := gdb.First(&row, "seed_key = ?", "email").Error; err != nil {
+		t.Fatalf("unknown key not seeded: %v", err)
+	}
+	var logged int64
+	gdb.Model(&db.CatalogSeed{}).Where("key = ?", "email").Count(&logged)
+	if logged != 1 {
+		t.Fatal("seed key was not logged")
+	}
+}
+
+func TestSeedBackfillsLog(t *testing.T) {
+	gdb, err := gorm.Open(sqlite.Open("file:catalog_backfill?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	gdb.Model(&db.Connector{}).Count(&n)
+	// Simulate an install seeded before the log table existed.
+	if err := gdb.Where("1 = 1").Delete(&db.CatalogSeed{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var n2 int64
+	gdb.Model(&db.Connector{}).Count(&n2)
+	if n2 != n {
+		t.Fatalf("backfill re-added presets %d -> %d", n, n2)
+	}
+	var logged int64
+	gdb.Model(&db.CatalogSeed{}).Count(&logged)
+	if logged != n {
+		t.Fatalf("seed log not backfilled from rows: %d vs %d", logged, n)
 	}
 }
 

@@ -208,6 +208,14 @@ type BotSkill struct {
 	CreatedAt time.Time
 }
 
+// CatalogSeed records every library preset key that has ever been seeded. It is
+// the durable memory that keeps a preset an admin removed from being re-added,
+// while still letting newly published presets get seeded on the next run.
+type CatalogSeed struct {
+	Key      string `gorm:"primaryKey"`
+	SeededAt time.Time
+}
+
 func Open(dataDir string) (*gorm.DB, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, err
@@ -222,7 +230,7 @@ func Open(dataDir string) (*gorm.DB, error) {
 	err = gdb.AutoMigrate(
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
-		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{},
+		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 	)
 	if err != nil {
 		return nil, err
