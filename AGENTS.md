@@ -61,3 +61,5 @@ While changes are unpushed the log is yours to rewrite: if the user is not satis
 
 Debug and test your stuff with chromium MCP for MAJOR CHANGES.
 Use localhost as the actual URL of the Silo Agent, not 127.0.0.1. Something is wrong with the ip.
+**DO NOT** Start another automation browser, only use your mcp, never start some custom aah browser in some random aah folder
+If the chromium MCP is offline, just tell the user. It usually simply means this task will be tested manually.
