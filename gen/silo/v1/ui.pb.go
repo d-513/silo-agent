@@ -4867,6 +4867,7 @@ type Connector struct {
 	EnvKeys              []*EnvKey              `protobuf:"bytes,20,rep,name=env_keys,json=envKeys,proto3" json:"env_keys,omitempty"`
 	Prompt               string                 `protobuf:"bytes,21,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	AutoAttach           bool                   `protobuf:"varint,22,opt,name=auto_attach,json=autoAttach,proto3" json:"auto_attach,omitempty"`
+	Category             string                 `protobuf:"bytes,23,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -5055,6 +5056,13 @@ func (x *Connector) GetAutoAttach() bool {
 	return false
 }
 
+func (x *Connector) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
 type ListConnectorsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -5206,6 +5214,7 @@ type CreateConnectorRequest struct {
 	Env               []*EnvInput            `protobuf:"bytes,15,rep,name=env,proto3" json:"env,omitempty"`
 	Prompt            string                 `protobuf:"bytes,16,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	AutoAttach        bool                   `protobuf:"varint,17,opt,name=auto_attach,json=autoAttach,proto3" json:"auto_attach,omitempty"`
+	Category          string                 `protobuf:"bytes,18,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -5359,6 +5368,13 @@ func (x *CreateConnectorRequest) GetAutoAttach() bool {
 	return false
 }
 
+func (x *CreateConnectorRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
 type UpdateConnectorRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -5380,6 +5396,7 @@ type UpdateConnectorRequest struct {
 	Env               []*EnvInput            `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
 	Prompt            string                 `protobuf:"bytes,18,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	AutoAttach        bool                   `protobuf:"varint,19,opt,name=auto_attach,json=autoAttach,proto3" json:"auto_attach,omitempty"`
+	Category          string                 `protobuf:"bytes,20,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -5545,6 +5562,13 @@ func (x *UpdateConnectorRequest) GetAutoAttach() bool {
 		return x.AutoAttach
 	}
 	return false
+}
+
+func (x *UpdateConnectorRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
 }
 
 type DeleteConnectorRequest struct {
@@ -5871,6 +5895,7 @@ type CreateBotConnectorRequest struct {
 	StdioImage        string                 `protobuf:"bytes,16,opt,name=stdio_image,json=stdioImage,proto3" json:"stdio_image,omitempty"`
 	Env               []*EnvInput            `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
 	Prompt            string                 `protobuf:"bytes,18,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Category          string                 `protobuf:"bytes,19,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -6027,6 +6052,13 @@ func (x *CreateBotConnectorRequest) GetEnv() []*EnvInput {
 func (x *CreateBotConnectorRequest) GetPrompt() string {
 	if x != nil {
 		return x.Prompt
+	}
+	return ""
+}
+
+func (x *CreateBotConnectorRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
 	}
 	return ""
 }
@@ -8717,7 +8749,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bEnvInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12\x16\n" +
-	"\x06secret\x18\x03 \x01(\tR\x06secret\"\xc5\x05\n" +
+	"\x06secret\x18\x03 \x01(\tR\x06secret\"\xe1\x05\n" +
 	"\tConnector\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -8746,7 +8778,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\benv_keys\x18\x14 \x03(\v2\x0f.silo.v1.EnvKeyR\aenvKeys\x12\x16\n" +
 	"\x06prompt\x18\x15 \x01(\tR\x06prompt\x12\x1f\n" +
 	"\vauto_attach\x18\x16 \x01(\bR\n" +
-	"autoAttach\"\x17\n" +
+	"autoAttach\x12\x1a\n" +
+	"\bcategory\x18\x17 \x01(\tR\bcategory\"\x17\n" +
 	"\x15ListConnectorsRequest\"L\n" +
 	"\x16ListConnectorsResponse\x122\n" +
 	"\n" +
@@ -8754,7 +8787,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"connectors\"7\n" +
 	"\vHeaderInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xbe\x04\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xda\x04\n" +
 	"\x16CreateConnectorRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x14\n" +
@@ -8777,7 +8810,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x03env\x18\x0f \x03(\v2\x11.silo.v1.EnvInputR\x03env\x12\x16\n" +
 	"\x06prompt\x18\x10 \x01(\tR\x06prompt\x12\x1f\n" +
 	"\vauto_attach\x18\x11 \x01(\bR\n" +
-	"autoAttach\"\xef\x04\n" +
+	"autoAttach\x12\x1a\n" +
+	"\bcategory\x18\x12 \x01(\tR\bcategory\"\x8b\x05\n" +
 	"\x16UpdateConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -8803,7 +8837,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x03env\x18\x11 \x03(\v2\x11.silo.v1.EnvInputR\x03env\x12\x16\n" +
 	"\x06prompt\x18\x12 \x01(\tR\x06prompt\x12\x1f\n" +
 	"\vauto_attach\x18\x13 \x01(\bR\n" +
-	"autoAttach\"(\n" +
+	"autoAttach\x12\x1a\n" +
+	"\bcategory\x18\x14 \x01(\tR\bcategory\"(\n" +
 	"\x16DeleteConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x19\n" +
 	"\x17DeleteConnectorResponse\"\xcc\x01\n" +
@@ -8824,7 +8859,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"connectors\"R\n" +
 	"\x16AttachConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12!\n" +
-	"\fconnector_id\x18\x02 \x01(\tR\vconnectorId\"\xd4\x04\n" +
+	"\fconnector_id\x18\x02 \x01(\tR\vconnectorId\"\xf0\x04\n" +
 	"\x19CreateBotConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -8847,7 +8882,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\vstdio_image\x18\x10 \x01(\tR\n" +
 	"stdioImage\x12#\n" +
 	"\x03env\x18\x11 \x03(\v2\x11.silo.v1.EnvInputR\x03env\x12\x16\n" +
-	"\x06prompt\x18\x12 \x01(\tR\x06prompt\"?\n" +
+	"\x06prompt\x18\x12 \x01(\tR\x06prompt\x12\x1a\n" +
+	"\bcategory\x18\x13 \x01(\tR\bcategory\"?\n" +
 	"\x16DetachConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\x19\n" +

@@ -8,6 +8,7 @@ export type EnvDraft = { name: string; value: string; secret: string };
 export type ConnectorDraft = {
   name: string;
   description: string;
+  category: string;
   prompt: string;
   autoAttach: boolean;
   httpUrl: string;
@@ -34,6 +35,7 @@ export function emptyDraft(): ConnectorDraft {
   return {
     name: "",
     description: "",
+    category: "Custom",
     prompt: "",
     autoAttach: false,
     httpUrl: "",
@@ -58,6 +60,7 @@ export function draftFrom(c: Connector): ConnectorDraft {
   return {
     name: c.name,
     description: c.description,
+    category: c.category || "General",
     prompt: c.prompt || "",
     autoAttach: c.autoAttach,
     httpUrl: c.httpUrl,
@@ -85,6 +88,7 @@ export function specOf(d: ConnectorDraft) {
   return {
     name: d.name,
     description: d.description,
+    category: d.category,
     prompt: d.prompt,
     autoAttach: d.autoAttach,
     httpUrl: d.httpUrl,
@@ -144,6 +148,15 @@ export function McpChip() {
 
 export function CustomChip() {
   return <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] font-medium text-stone">Custom</span>;
+}
+
+export function CategoryChip({ label }: { label: string }) {
+  if (!label) return null;
+  return (
+    <span className="inline-flex items-center rounded-[6px] border border-thread bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+      {label}
+    </span>
+  );
 }
 
 export function Segmented({
@@ -216,6 +229,24 @@ export function ConnectorFields({
         <>
           <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
           <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
+          <label className="mb-1 block text-[12px] font-medium text-stone">Category</label>
+          <input
+            className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3"
+            value={value.category}
+            onChange={(e) => set("category", e.target.value)}
+            placeholder="e.g. Developer Tools, Productivity, Custom"
+            list="connector-category-suggestions"
+          />
+          <datalist id="connector-category-suggestions">
+            <option value="Developer Tools" />
+            <option value="Project Management" />
+            <option value="Productivity" />
+            <option value="Finance" />
+            <option value="DevOps & Monitoring" />
+            <option value="Documentation" />
+            <option value="Communication" />
+            <option value="Custom" />
+          </datalist>
         </>
       )}
       <label className="mb-1 block text-[12px] font-medium text-stone">Prompt</label>
@@ -421,8 +452,9 @@ export function ConnectorFields({
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} size={72} />
         <div className="min-w-0">
           <div className="text-[22px] font-medium tracking-tight">{value.name}</div>
-          <div className="mt-1">
+          <div className="mt-1 flex items-center gap-2">
             <McpChip />
+            {value.category && <CategoryChip label={value.category} />}
           </div>
         </div>
       </div>

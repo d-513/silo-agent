@@ -424,9 +424,9 @@ function ChannelSetup({
           </div>
         ) : null}
 
-        {state.message ? <p className="text-[12px] text-stone">{state.message}</p> : null}
+        {state?.message ? <p className="text-[12px] text-stone">{state.message}</p> : null}
 
-        {state.kind === "select" && state.options.length > 0 ? (
+        {state?.kind === "select" && state.options.length > 0 ? (
           <div>
             <div className="mb-2 text-[12px] font-medium tracking-wide text-stone">Pick a chat</div>
             <div className="grid max-h-[320px] gap-1.5 overflow-auto">
@@ -448,8 +448,8 @@ function ChannelSetup({
           </div>
         ) : null}
 
-        {state.kind === "qr" && state.qr ? <img src={state.qr} alt="QR" className="w-48 rounded-[6px] border border-thread bg-folio" /> : null}
-        {state.kind === "error" ? <p className="text-carmine">{state.message}</p> : null}
+        {state?.kind === "qr" && state.qr ? <img src={state.qr} alt="QR" className="w-48 rounded-[6px] border border-thread bg-folio" /> : null}
+        {state?.kind === "error" ? <p className="text-carmine">{state.message}</p> : null}
         {err ? <p className="text-carmine">{err}</p> : null}
       </div>
     </div>

@@ -28,6 +28,7 @@ type entry struct {
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Category    string `json:"category"`
 	Guide       string `json:"guide"`
 	Prompt      string `json:"prompt"`
 	HTTPURL     string `json:"http_url"`
@@ -112,6 +113,9 @@ func Seed(gdb *gorm.DB) error {
 			return err
 		}
 		if n > 0 {
+			if e.Category != "" {
+				gdb.Model(&db.Connector{}).Where("seed_key = ? AND (category = '' OR category IS NULL)", e.Key).Update("category", e.Category)
+			}
 			continue
 		}
 		img, typ, err := imageOf(e.Image)
@@ -124,7 +128,7 @@ func Seed(gdb *gorm.DB) error {
 		}
 		row := db.Connector{
 			ID: ids.New(), Kind: KindLibrary, SeedKey: e.Key, Type: typeMCP,
-			Name: e.Name, Description: e.Description, Image: img, ImageType: typ,
+			Name: e.Name, Description: e.Description, Category: e.Category, Image: img, ImageType: typ,
 			Transport: "http", HTTPURL: e.HTTPURL, Auth: auth,
 			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach,
 			CreatedAt: time.Now(),

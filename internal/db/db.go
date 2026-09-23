@@ -166,6 +166,7 @@ type Connector struct {
 	Type              string
 	Name              string
 	Description       string
+	Category          string `gorm:"index"`
 	Image             []byte
 	ImageType         string
 	Transport         string

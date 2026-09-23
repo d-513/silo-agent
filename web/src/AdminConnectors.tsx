@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
-import { ConnectorFields, ConnectorMark, McpChip, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./ConnectorForm";
+import { ConnectorFields, ConnectorMark, McpChip, CategoryChip, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./ConnectorForm";
 import type { Connector } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
@@ -80,6 +80,7 @@ function CatalogList() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{c.name}</span>
                     <McpChip />
+                    {c.category && <CategoryChip label={c.category} />}
                     {c.autoAttach && (
                       <span className="rounded-[6px] bg-bindery-pale px-1.5 py-0.5 text-[11px] font-medium text-bindery">Default</span>
                     )}

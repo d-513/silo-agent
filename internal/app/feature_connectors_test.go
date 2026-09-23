@@ -91,10 +91,13 @@ func TestLibraryConnectorAttachCopies(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Library")
 	lib, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
-		Name: "Docs", Description: "d", Transport: "http", HttpUrl: "http://127.0.0.1:1",
+		Name: "Docs", Description: "d", Category: "Documentation", Transport: "http", HttpUrl: "http://127.0.0.1:1",
 	}))
 	if err != nil {
 		t.Fatalf("CreateConnector: %v", err)
+	}
+	if lib.Msg.GetCategory() != "Documentation" {
+		t.Fatalf("expected category Documentation, got %q", lib.Msg.GetCategory())
 	}
 	att, err := h.Client.AttachConnector(h.Ctx(), connect.NewRequest(&v1.AttachConnectorRequest{
 		BotId: bot.GetId(), ConnectorId: lib.Msg.GetId(),
@@ -104,6 +107,9 @@ func TestLibraryConnectorAttachCopies(t *testing.T) {
 	}
 	if att.Msg.GetConnector().GetKind() != "custom" || att.Msg.GetConnector().GetSourceId() != lib.Msg.GetId() {
 		t.Fatalf("attach shape %+v", att.Msg.GetConnector())
+	}
+	if att.Msg.GetConnector().GetCategory() != "Documentation" {
+		t.Fatalf("expected attached connector category Documentation, got %q", att.Msg.GetConnector().GetCategory())
 	}
 	// The library row set is unchanged; attach copies rather than shares.
 	listed, _ := h.Client.ListConnectors(h.Ctx(), connect.NewRequest(&v1.ListConnectorsRequest{}))

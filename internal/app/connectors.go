@@ -65,7 +65,7 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 	}
 	m := req.Msg
 	row, err := parseConnector(connectorIn{
-		Name: m.GetName(), Desc: m.GetDescription(), Transport: m.GetTransport(),
+		Name: m.GetName(), Desc: m.GetDescription(), Category: m.GetCategory(), Transport: m.GetTransport(),
 		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
 		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
 		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
@@ -108,6 +108,9 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	}
 	row.Description = strings.TrimSpace(m.GetDescription())
 	row.Prompt = strings.TrimSpace(m.GetPrompt())
+	if m.GetCategory() != "" {
+		row.Category = strings.TrimSpace(m.GetCategory())
+	}
 	if row.Kind == catalog.KindLibrary {
 		row.AutoAttach = m.GetAutoAttach()
 	}
@@ -249,7 +252,7 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
 	row, err := parseConnector(connectorIn{
-		Name: m.GetName(), Desc: m.GetDescription(), Transport: m.GetTransport(),
+		Name: m.GetName(), Desc: m.GetDescription(), Category: m.GetCategory(), Transport: m.GetTransport(),
 		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
 		Image: m.GetImage(), ImageType: m.GetImageType(), Headers: m.GetHeaders(),
 		StdioCommand: m.GetStdioCommand(), StdioArgs: m.GetStdioArgs(), StdioImage: m.GetStdioImage(),
@@ -280,6 +283,9 @@ func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.Header
 		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
 	row.SourceID = lib.ID
+	if row.Category == "" {
+		row.Category = lib.Category
+	}
 	if len(row.Image) == 0 {
 		row.Image = append([]byte(nil), lib.Image...)
 		row.ImageType = lib.ImageType
@@ -1148,7 +1154,7 @@ func parseConnector(in connectorIn) (db.Connector, error) {
 	}
 	row := db.Connector{
 		ID: ids.New(), Type: connTypeMCP, Name: strings.TrimSpace(in.Name),
-		Description: strings.TrimSpace(in.Desc), Image: img, ImageType: imgType,
+		Description: strings.TrimSpace(in.Desc), Category: strings.TrimSpace(in.Category), Image: img, ImageType: imgType,
 		Transport: tr, DefaultMode: security.Rule(in.Mode), Prompt: strings.TrimSpace(in.Prompt),
 		CreatedAt: time.Now(),
 	}
@@ -1204,17 +1210,17 @@ func parseConnector(in connectorIn) (db.Connector, error) {
 }
 
 type connectorIn struct {
-	Name, Desc, Transport, HTTPURL, Auth, Mode string
-	Image                                      []byte
-	ImageType                                  string
-	Headers                                    []*v1.HeaderInput
-	StdioCommand                               string
-	StdioArgs                                  []string
-	StdioImage                                 string
-	Env                                        []*v1.EnvInput
-	Prompt                                     string
-	AllowImage                                 bool
-	RequireComplete                            bool
+	Name, Desc, Category, Transport, HTTPURL, Auth, Mode string
+	Image                                                []byte
+	ImageType                                            string
+	Headers                                              []*v1.HeaderInput
+	StdioCommand                                         string
+	StdioArgs                                            []string
+	StdioImage                                           string
+	Env                                                  []*v1.EnvInput
+	Prompt                                               string
+	AllowImage                                           bool
+	RequireComplete                                      bool
 }
 
 func checkTransport(tr string) error {
@@ -1229,7 +1235,7 @@ func checkTransport(tr string) error {
 func cloneLibrary(lib *db.Connector, botID string) db.Connector {
 	return db.Connector{
 		ID: ids.New(), Kind: catalog.KindCustom, BotID: botID, SourceID: lib.ID,
-		Type: lib.Type, Name: lib.Name, Description: lib.Description,
+		Type: lib.Type, Name: lib.Name, Description: lib.Description, Category: lib.Category,
 		Image: append([]byte(nil), lib.Image...), ImageType: lib.ImageType,
 		Transport: lib.Transport, HTTPURL: lib.HTTPURL, Auth: lib.Auth,
 		OAuthClientID: lib.OAuthClientID, OAuthClientSecret: lib.OAuthClientSecret,
@@ -1384,6 +1390,7 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 	}
 	out := &v1.Connector{
 		Id: c.ID, Type: c.Type, Name: c.Name, Description: c.Description,
+		Category: c.Category,
 		HasImage: len(c.Image) > 0, Transport: c.Transport, HttpUrl: c.HTTPURL, Auth: c.Auth,
 		DefaultMode: security.Rule(c.DefaultMode), CreatedAt: c.CreatedAt.Format(time.RFC3339),
 		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),

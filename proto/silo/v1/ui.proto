@@ -594,6 +594,7 @@ message Connector {
   repeated EnvKey env_keys = 20;
   string prompt = 21;
   bool auto_attach = 22;
+  string category = 23;
 }
 
 message ListConnectorsRequest {}
@@ -625,6 +626,7 @@ message CreateConnectorRequest {
   repeated EnvInput env = 15;
   string prompt = 16;
   bool auto_attach = 17;
+  string category = 18;
 }
 
 message UpdateConnectorRequest {
@@ -647,6 +649,7 @@ message UpdateConnectorRequest {
   repeated EnvInput env = 17;
   string prompt = 18;
   bool auto_attach = 19;
+  string category = 20;
 }
 
 message DeleteConnectorRequest {
@@ -696,6 +699,7 @@ message CreateBotConnectorRequest {
   string stdio_image = 16;
   repeated EnvInput env = 17;
   string prompt = 18;
+  string category = 19;
 }
 
 message DetachConnectorRequest {
