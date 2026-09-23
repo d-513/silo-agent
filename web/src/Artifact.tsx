@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CircleNotch, DownloadSimple, Scroll, X } from "@phosphor-icons/react";
+import { Check, Download, LoaderCircle, ScrollText, X } from "lucide-react";
 import { FilePreview } from "./FilePreview";
 import { SkillBrowserOverlay, TypeIcon } from "./FileBrowser";
 import { isTextKind, kindLabel } from "./fileKind";
@@ -62,7 +62,7 @@ export function ArtifactCard({
     <div className="flex max-w-[440px] items-center gap-3 rounded-[10px] bg-hatch px-3 py-2.5 text-plaster">
       <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={onOpen}>
         {artifact.type === "skill" ? (
-          <Scroll size={22} className="shrink-0 text-plaster/70" />
+          <ScrollText size={22} className="shrink-0 text-plaster/70" />
         ) : (
           <span className="shrink-0 text-plaster/70">
             <TypeIcon name={artifact.name || artifact.path} dir={false} size={22} />
@@ -86,7 +86,7 @@ export function ArtifactCard({
           onDownload?.();
         }}
       >
-        <DownloadSimple size={16} />
+        <Download size={16} />
       </button>
       {pending && onSave ? (
         <button
@@ -218,7 +218,7 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
             title="Download"
             onClick={() => downloadArtifact(botId, artifact)}
           >
-            <DownloadSimple size={16} />
+            <Download size={16} />
           </button>
           <button type="button" className="shrink-0 text-plaster/70 hover:text-plaster" title="Close" onClick={onClose}>
             <X size={16} />
@@ -229,7 +229,7 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
             <p className="text-[13px] text-carmine">{err}</p>
           ) : !data ? (
             <div className="flex items-center gap-2 text-stone">
-              <CircleNotch size={14} className="animate-spin" />
+              <LoaderCircle size={14} className="animate-spin" />
               <span className="text-[13px]">Opening…</span>
             </div>
           ) : (

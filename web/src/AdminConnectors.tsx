@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, Plus, Trash } from "@phosphor-icons/react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
@@ -55,7 +55,7 @@ function CatalogList() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[22px] font-medium">Connectors Library</h2>
         <div className="flex flex-wrap gap-2">
-          <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<ArrowCounterClockwise size={12} />}>
+          <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
             Re-add defaults
           </Btn>
           <Link to="/admin/connectors/new" className={btnClass("primary")}>
@@ -93,7 +93,7 @@ function CatalogList() {
                 kind="deny"
                 type="button"
                 className="shrink-0"
-                icon={<Trash size={12} />}
+                icon={<Trash2 size={12} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

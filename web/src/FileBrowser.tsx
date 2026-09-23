@@ -1,25 +1,4 @@
-import {
-  CaretRight,
-  DownloadSimple,
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileCss,
-  FileCsv,
-  FileDoc,
-  FileHtml,
-  FileImage,
-  FileJs,
-  FilePdf,
-  FilePy,
-  FileText,
-  FileTs,
-  FileVideo,
-  Folder,
-  Trash,
-  X,
-} from "@phosphor-icons/react";
+import { ChevronRight, Download, File, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileType, FileVideo, Folder, Trash2, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Btn } from "./Btn";
 import { downloadFile, FilePreview } from "./FilePreview";
@@ -31,18 +10,18 @@ export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean;
   if (dir) return <Folder size={size} className={cls} />;
   const e = extOf(name);
   const k = kindOf(name);
-  if (k === "pdf") return <FilePdf size={size} className={cls} />;
+  if (k === "pdf") return <FileText size={size} className={cls} />;
   if (k === "image") return <FileImage size={size} className={cls} />;
   if (k === "video") return <FileVideo size={size} className={cls} />;
   if (k === "audio") return <FileAudio size={size} className={cls} />;
-  if (k === "csv") return <FileCsv size={size} className={cls} />;
-  if (k === "docx") return <FileDoc size={size} className={cls} />;
+  if (k === "csv") return <FileSpreadsheet size={size} className={cls} />;
+  if (k === "docx") return <FileType size={size} className={cls} />;
   if (e === "zip" || e === "gz" || e === "tgz" || e === "tar" || e === "7z") return <FileArchive size={size} className={cls} />;
-  if (e === "py") return <FilePy size={size} className={cls} />;
-  if (e === "ts" || e === "tsx") return <FileTs size={size} className={cls} />;
-  if (e === "js" || e === "jsx") return <FileJs size={size} className={cls} />;
-  if (e === "css") return <FileCss size={size} className={cls} />;
-  if (e === "html" || e === "htm") return <FileHtml size={size} className={cls} />;
+  if (e === "py") return <FileCode size={size} className={cls} />;
+  if (e === "ts" || e === "tsx") return <FileCode size={size} className={cls} />;
+  if (e === "js" || e === "jsx") return <FileCode size={size} className={cls} />;
+  if (e === "css") return <FileCode size={size} className={cls} />;
+  if (e === "html" || e === "htm") return <FileCode size={size} className={cls} />;
   if (k === "code" || k === "json") return <FileCode size={size} className={cls} />;
   if (k === "markdown" || k === "text") return <FileText size={size} className={cls} />;
   return <File size={size} className={cls} />;
@@ -175,7 +154,7 @@ export function FileBrowser({
             title="Download"
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
-            <DownloadSimple size={16} />
+            <Download size={16} />
           </button>
         )}
         {headerRight}
@@ -248,7 +227,7 @@ function Tree({
             >
               {e.dir ? (
                 <button type="button" className="shrink-0 text-current opacity-50" onClick={() => onToggle(e.path)}>
-                  <CaretRight size={12} className={expanded ? "rotate-90" : ""} />
+                  <ChevronRight size={12} className={expanded ? "rotate-90" : ""} />
                 </button>
               ) : (
                 <span className="inline-block w-3 shrink-0" />
@@ -269,7 +248,7 @@ function Tree({
                   title={pendingDel === e.path ? "Click again to delete" : "Delete"}
                   onClick={() => onDelete(e)}
                 >
-                  {pendingDel === e.path ? "Delete?" : <Trash size={12} />}
+                  {pendingDel === e.path ? "Delete?" : <Trash2 size={12} />}
                 </button>
               )}
             </div>

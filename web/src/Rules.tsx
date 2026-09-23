@@ -1,4 +1,4 @@
-import { CaretRight, Check, MagnifyingGlass, Question, Robot, X } from "@phosphor-icons/react";
+import { Bot, Check, ChevronRight, CircleHelp, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -29,8 +29,8 @@ function RuleDecisionSegment({
 }) {
   const modes = [
     { id: "allow", label: "Allow", icon: Check },
-    { id: "auto", label: "Auto", icon: Robot },
-    { id: "ask", label: "Ask", icon: Question },
+    { id: "auto", label: "Auto", icon: Bot },
+    { id: "ask", label: "Ask", icon: CircleHelp },
     { id: "deny", label: "Deny", icon: X },
   ];
 
@@ -72,7 +72,7 @@ function RuleDecisionSegment({
               onChange(m.id);
             }}
           >
-            <Icon size={size === "sm" ? 11 : 12} weight="bold" className={active ? "opacity-90" : "opacity-50"} />
+            <Icon size={size === "sm" ? 11 : 12} className={active ? "opacity-90" : "opacity-50"} />
             <span>{m.label}</span>
           </button>
         );
@@ -215,7 +215,7 @@ export function RulesPane({ botId }: { botId: string }) {
         </div>
         {totalRules > 5 && (
           <div className="relative w-full sm:w-[220px]">
-            <MagnifyingGlass
+            <Search
               size={14}
               className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-stone"
             />
@@ -233,7 +233,7 @@ export function RulesPane({ botId }: { botId: string }) {
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-stone hover:text-iron"
                 title="Clear filter"
               >
-                <X size={12} weight="bold" />
+                <X size={12} />
               </button>
             )}
           </div>
@@ -317,7 +317,7 @@ export function RulesPane({ botId }: { botId: string }) {
             }}
           >
             <summary className="flex cursor-pointer list-none flex-wrap items-start gap-3 p-4 transition-colors hover:bg-cloth/30 [&::-webkit-details-marker]:hidden">
-              <CaretRight size={14} className="mt-1.5 shrink-0 text-stone transition-transform group-open:rotate-90" />
+              <ChevronRight size={14} className="mt-1.5 shrink-0 text-stone transition-transform group-open:rotate-90" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-[16px] font-medium text-iron">{s.title}</h3>

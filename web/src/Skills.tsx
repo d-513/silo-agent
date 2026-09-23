@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, Plus, Trash, UploadSimple } from "@phosphor-icons/react";
+import { Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -75,7 +75,7 @@ export function InstallField({
       <Btn kind="primary" type="submit" disabled={busy || !url.trim()} icon={<Plus size={12} />}>
         {busy ? "Installing…" : "Install"}
       </Btn>
-      <Btn kind="secondary" type="button" disabled={busy} icon={<UploadSimple size={12} />} onClick={() => file.current?.click()}>
+      <Btn kind="secondary" type="button" disabled={busy} icon={<Upload size={12} />} onClick={() => file.current?.click()}>
         Upload zip
       </Btn>
       <input
@@ -128,7 +128,7 @@ export function SkillRows({
               kind="deny"
               type="button"
               className="shrink-0"
-              icon={<Trash size={12} />}
+              icon={<Trash2 size={12} />}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -187,7 +187,7 @@ export function AdminSkills() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="text-[22px] font-medium">Skills Library</h2>
-        <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<ArrowCounterClockwise size={12} />}>
+        <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
           Re-add defaults
         </Btn>
       </div>

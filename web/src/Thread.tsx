@@ -1,29 +1,4 @@
-import {
-  ArrowDown,
-  CaretRight,
-  ChatCircle,
-  Check,
-  CircleNotch,
-  Code,
-  Copy,
-  DownloadSimple,
-  File,
-  Eye,
-  FrameCorners,
-  GitBranch,
-  GitDiff,
-  Keyboard,
-  MagnifyingGlass,
-  Mouse,
-  Notebook,
-  Paperclip,
-  PencilSimple,
-  Plugs,
-  Sparkle,
-  Terminal,
-  Trash,
-  User,
-} from "@phosphor-icons/react";
+import { ArrowDown, Check, ChevronRight, Code, Copy, Download, Eye, File, GitBranch, GitCompare, Keyboard, LoaderCircle, Maximize, MessageCircle, Mouse, Notebook, Paperclip, Pencil, Plug, Search, Sparkles, Terminal, Trash2, User } from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import "katex/dist/katex.min.css";
 import rehypeKatex from "rehype-katex";
@@ -236,13 +211,13 @@ function toolMeta(name: string) {
     case "exec_python":
       return { label: "Python", Icon: Code };
     case "patch":
-      return { label: "patch", Icon: GitDiff };
+      return { label: "patch", Icon: GitCompare };
     case "write":
-      return { label: "write", Icon: PencilSimple };
+      return { label: "write", Icon: Pencil };
     case "read":
       return { label: "read", Icon: File };
     case "grep":
-      return { label: "grep", Icon: MagnifyingGlass };
+      return { label: "grep", Icon: Search };
     case "terminal":
       return { label: "terminal", Icon: Terminal };
     case "soul":
@@ -254,7 +229,7 @@ function toolMeta(name: string) {
     case "artifact":
       return { label: "artifact", Icon: Notebook };
     case "present":
-      return { label: "present", Icon: FrameCorners };
+      return { label: "present", Icon: Maximize };
     case "look":
       return { label: "look", Icon: Eye };
     case "click":
@@ -266,11 +241,11 @@ function toolMeta(name: string) {
       case "scroll":
         return { label: "scroll", Icon: Mouse };
       case "web_search":
-        return { label: "web search", Icon: MagnifyingGlass };
+        return { label: "web search", Icon: Search };
       case "channel":
-        return { label: "channel", Icon: Plugs };
+        return { label: "channel", Icon: Plug };
       case "chats":
-        return { label: "chats", Icon: ChatCircle };
+        return { label: "chats", Icon: MessageCircle };
       default:
       return { label: name, Icon: Code };
   }
@@ -421,7 +396,7 @@ function ToolFold({ summary, children }: { summary: ReactNode; children: ReactNo
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
       <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-[12px] font-medium tracking-wide text-stone transition-colors duration-150 hover:text-iron">
-        <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
+        <ChevronRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
         {summary}
       </summary>
       <div className="space-y-2 border-t border-thread-2 bg-cloth/30 p-3">{children}</div>
@@ -461,7 +436,7 @@ function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode })
           }`}
         >
           {copied ? (
-            <Check size={display ? 11 : 10} weight="bold" className="text-pine" />
+            <Check size={display ? 11 : 10} className="text-pine" />
           ) : (
             <Copy size={display ? 11 : 10} />
           )}
@@ -534,7 +509,7 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
         {err ? <p className="text-carmine">{err}</p> : null}
         {!file && !err ? (
           <div className="flex items-center gap-2 text-stone">
-            <CircleNotch size={14} className="animate-spin" />
+            <LoaderCircle size={14} className="animate-spin" />
             Opening…
           </div>
         ) : null}
@@ -545,7 +520,7 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
   return (
     <div className="max-w-full space-y-2 rounded-[10px] border border-thread bg-folio p-3">
       <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-stone">
-        <FrameCorners size={14} />
+        <Maximize size={14} />
         <span className="min-w-0 flex-1 truncate">{name}</span>
         {file && (
           <button
@@ -554,7 +529,7 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
             title="Download"
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
-            <DownloadSimple size={14} />
+            <Download size={14} />
           </button>
         )}
       </div>
@@ -562,7 +537,7 @@ function PresentFile({ botId, path, quiet }: { botId: string; path: string; quie
       {err ? <p className="text-carmine">{err}</p> : null}
       {!file && !err ? (
         <div className="flex items-center gap-2 text-stone">
-          <CircleNotch size={14} className="animate-spin" />
+          <LoaderCircle size={14} className="animate-spin" />
           Opening…
         </div>
       ) : null}
@@ -696,7 +671,7 @@ function UserBubble({
           title={copied ? "Copied" : "Copy prompt"}
           className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone shadow-xs transition-all duration-150 hover:border-hover hover:text-iron"
         >
-          {copied ? <Check size={13} weight="bold" className="text-pine" /> : <Copy size={13} />}
+          {copied ? <Check size={13} className="text-pine" /> : <Copy size={13} />}
         </button>
         {onEdit && isLast ? (
           <button
@@ -706,7 +681,7 @@ function UserBubble({
             title={busy ? "Stop the bot to edit" : "Edit and resend"}
             className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-thread bg-folio text-stone shadow-xs transition-all duration-150 hover:border-hover hover:text-iron disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <PencilSimple size={13} />
+            <Pencil size={13} />
           </button>
         ) : null}
         {onDelete && isLast ? (
@@ -719,7 +694,7 @@ function UserBubble({
               confirmDel ? "border-carmine text-carmine" : "border-thread text-stone hover:border-hover hover:text-carmine"
             }`}
           >
-            <Trash size={13} />
+            <Trash2 size={13} />
           </button>
         ) : null}
         {onDiverge ? (
@@ -823,7 +798,7 @@ export function Thread({
               {botCrest !== undefined ? (
                 <Crest index={botCrest} size={40} />
               ) : (
-                <ChatCircle size={30} className="text-bindery" />
+                <MessageCircle size={30} className="text-bindery" />
               )}
             </div>
             <h2 className="text-[18px] font-medium text-iron">
@@ -846,7 +821,7 @@ export function Thread({
                     onClick={() => onSelectPrompt(prompt)}
                     className="inline-flex items-center gap-1.5 rounded-[8px] border border-thread-2 bg-folio px-3 py-1.5 text-[12px] text-iron transition-[border-color,background-color,transform] duration-200 ease-quiet hover:border-bindery hover:bg-linen active:scale-[0.97]"
                   >
-                    <Sparkle size={12} className="text-bindery" />
+                    <Sparkles size={12} className="text-bindery" />
                     <span>{prompt}</span>
                   </button>
                 ))}
@@ -875,7 +850,7 @@ export function Thread({
               return (
                 <div key={b.key} className="silo-enter space-y-2 rounded-[10px] border border-thread-2 bg-cloth/40 px-3 py-2.5 text-stone">
                   <div className="flex items-center gap-2 text-[12px] font-medium tracking-wide text-bindery">
-                    <CircleNotch size={14} className="animate-spin" />
+                    <LoaderCircle size={14} className="animate-spin" />
                     Thinking…
                   </div>
                   {b.text ? <div className="whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div> : null}
@@ -885,7 +860,7 @@ export function Thread({
             return (
               <details key={b.key} className="group max-w-full rounded-[10px] border border-thread-2 bg-cloth/30 text-stone">
                 <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium tracking-wide transition-colors duration-150 hover:text-iron">
-                  <CaretRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
+                  <ChevronRight size={12} className="shrink-0 transition-transform duration-150 group-open:rotate-90" />
                   <span>Thought</span>
                 </summary>
                 <div className="whitespace-pre-wrap break-words border-t border-thread-2 p-3 font-mono text-[13px] leading-relaxed text-stone/90">{b.text}</div>
@@ -904,7 +879,7 @@ export function Thread({
                   summary={
                     <>
                       <Eye size={14} className="text-bindery" />
-                      {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                      {b.running ? <LoaderCircle size={14} className="animate-spin" /> : null}
                       {b.running ? "Looking at" : "Looked at"} screen
                     </>
                   }
@@ -924,8 +899,8 @@ export function Thread({
                   key={b.key}
                   summary={
                     <>
-                      <FrameCorners size={14} className="text-bindery" />
-                      {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                      <Maximize size={14} className="text-bindery" />
+                      {b.running ? <LoaderCircle size={14} className="animate-spin" /> : null}
                       {b.running ? "Looking at" : "Looked at"} {name}
                     </>
                   }
@@ -949,7 +924,7 @@ export function Thread({
                 summary={
                   <>
                     <Icon size={14} className={b.name === "exec_python" ? "text-pine" : ""} />
-                    {b.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                    {b.running ? <LoaderCircle size={14} className="animate-spin" /> : null}
                     {b.running ? "Using" : "Used"} {label}
                   </>
                 }
@@ -966,8 +941,8 @@ export function Thread({
                     key={c.key}
                     summary={
                       <>
-                        <Plugs size={14} className="text-slate" />
-                        {c.running ? <CircleNotch size={14} className="animate-spin" /> : null}
+                        <Plug size={14} className="text-slate" />
+                        {c.running ? <LoaderCircle size={14} className="animate-spin" /> : null}
                         {c.running ? "Using" : "Used"} {c.title}
                       </>
                     }
@@ -1020,7 +995,7 @@ export function Thread({
         })}
         {working ? (
           <div className="flex items-center gap-2 pl-1 text-[13px] text-stone">
-            <CircleNotch size={14} className="animate-spin text-bindery" />
+            <LoaderCircle size={14} className="animate-spin text-bindery" />
             <span>Working…</span>
           </div>
         ) : null}
@@ -1032,7 +1007,7 @@ export function Thread({
           onClick={() => scrollToBottom(true)}
           className="fixed bottom-24 right-8 z-20 flex items-center gap-1.5 rounded-full border border-thread bg-folio px-3 py-1.5 text-[12px] font-medium text-iron shadow-[0_6px_20px_-8px_rgba(30,33,38,0.35)] transition-all duration-200 ease-quiet hover:bg-linen active:scale-95"
         >
-          <ArrowDown size={13} weight="bold" />
+          <ArrowDown size={13} />
           <span>Latest</span>
         </button>
       )}

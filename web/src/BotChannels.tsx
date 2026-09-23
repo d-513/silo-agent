@@ -1,16 +1,4 @@
-import {
-  ArrowLeft,
-  Broadcast,
-  Check,
-  CheckCircle,
-  ClockCounterClockwise,
-  GearSix,
-  PencilSimple,
-  Plus,
-  Trash,
-  WarningCircle,
-  X,
-} from "@phosphor-icons/react";
+import { ArrowLeft, Check, CircleAlert, CircleCheck, History, Pencil, Plus, Radio, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -44,7 +32,7 @@ function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: 
       className="flex shrink-0 items-center justify-center rounded-lg border border-thread bg-bindery-pale text-bindery shadow-2xs"
       style={{ width: size, height: size }}
     >
-      <Broadcast size={Math.round(size * 0.5)} />
+      <Radio size={Math.round(size * 0.5)} />
     </div>
   );
 }
@@ -356,7 +344,7 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
         <div className="flex shrink-0 items-center justify-between border-b border-thread px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-bindery-pale text-bindery">
-              <Broadcast size={16} />
+              <Radio size={16} />
             </div>
             <div>
               <span className="font-semibold text-sm text-iron">{channel.name} Log</span>
@@ -477,12 +465,12 @@ function ChannelSetup({
             <p className="text-[14px]">
               {target.id ? (
                 <span className="flex items-center gap-1.5 text-iron font-medium">
-                  <CheckCircle size={16} className="text-pine shrink-0" weight="fill" />
+                  <CircleCheck size={16} className="text-pine shrink-0" />
                   Bound to <span className="font-semibold">{target.title || target.id}</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-carmine">
-                  <WarningCircle size={16} className="shrink-0" weight="fill" />
+                  <CircleAlert size={16} className="shrink-0" />
                   No chat picked yet — this channel is currently inactive.
                 </span>
               )}
@@ -548,7 +536,7 @@ function ChannelSetup({
                     onClick={() => void choose(o.value, o.label)}
                   >
                     <span className="truncate">{o.label}</span>
-                    {isSelected ? <CheckCircle size={16} className="shrink-0 text-bindery" weight="fill" /> : null}
+                    {isSelected ? <CircleCheck size={16} className="shrink-0 text-bindery" /> : null}
                   </button>
                 );
               })}
@@ -697,7 +685,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
           className={btnClass("primary")}
           onClick={() => navigate(newPath)}
         >
-          <Plus size={15} weight="bold" />
+          <Plus size={15} />
           <span>Add channel</span>
         </button>
       </div>
@@ -711,7 +699,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
       {channels.length === 0 ? (
         <div className="rounded-xl border border-dashed border-thread bg-folio p-12 text-center shadow-2xs">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cloth text-stone">
-            <Broadcast size={28} />
+            <Radio size={28} />
           </div>
           <h3 className="text-base font-semibold text-iron">No channels connected yet</h3>
           <p className="mx-auto mt-1 max-w-md text-[13px] text-stone">
@@ -723,7 +711,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
               className={btnClass("primary")}
               onClick={() => navigate(newPath)}
             >
-              <Plus size={15} weight="bold" />
+              <Plus size={15} />
               Add channel
             </button>
           </div>
@@ -768,7 +756,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-semibold text-carmine">
-                              <WarningCircle size={13} weight="fill" /> Needs setup
+                              <CircleAlert size={13} /> Needs setup
                             </span>
                           )}
                         </div>
@@ -798,7 +786,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                           type="button"
                           onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
                         >
-                          <GearSix size={14} className="silo-blink" />
+                          <Settings size={14} className="silo-blink" />
                           <span>Set up</span>
                         </Btn>
                       ) : (
@@ -807,7 +795,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                           type="button"
                           onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
                         >
-                          <GearSix size={14} />
+                          <Settings size={14} />
                           <span>Set up</span>
                         </Btn>
                       )
@@ -821,7 +809,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       onClick={() => setLog(c)}
                       title="View conversation log"
                     >
-                      <ClockCounterClockwise size={14} />
+                      <History size={14} />
                       <span>Log</span>
                     </Btn>
 
@@ -831,7 +819,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       onClick={() => navigate(`/bots/${botId}/channels/${c.id}`)}
                       title="Configure channel"
                     >
-                      <PencilSimple size={14} />
+                      <Pencil size={14} />
                       <span>Configure</span>
                     </Btn>
 
@@ -850,7 +838,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       }}
                       title="Delete channel"
                     >
-                      <Trash size={14} />
+                      <Trash2 size={14} />
                       <span>{armDelete === c.id ? "Confirm?" : "Delete"}</span>
                     </Btn>
                   </div>

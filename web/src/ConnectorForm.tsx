@@ -1,4 +1,4 @@
-import { CaretRight, Plugs } from "@phosphor-icons/react";
+import { ChevronRight, Plug } from "lucide-react";
 import { ToggleRow } from "./Switch";
 import type { Connector } from "./gen/silo/v1/ui_pb";
 
@@ -137,7 +137,7 @@ export function ConnectorMark({
       className="flex shrink-0 items-center justify-center rounded-[6px] bg-cloth text-stone"
       style={{ width: size, height: size }}
     >
-      <Plugs size={Math.round(size * 0.45)} />
+      <Plug size={Math.round(size * 0.45)} />
     </span>
   );
 }
@@ -466,7 +466,7 @@ export function ConnectorFields({
       )}
       <details className="group mb-6">
         <summary className="flex cursor-pointer items-center gap-2 rounded-[6px] bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
-          <CaretRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+          <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
           Advanced settings
         </summary>
         <div className="mt-4">{settings}</div>

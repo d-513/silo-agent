@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, Trash } from "@phosphor-icons/react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ui } from "./api";
@@ -217,7 +217,7 @@ export function SettingsPane({
               kind="secondary"
               type="button"
               disabled={dangerBusy}
-              icon={<ArrowCounterClockwise size={12} />}
+              icon={<RotateCcw size={12} />}
               onClick={() => void go("reset")}
             >
               {arm === "reset" ? "Reset?" : "Reset"}
@@ -232,7 +232,7 @@ export function SettingsPane({
               kind="deny"
               type="button"
               disabled={dangerBusy}
-              icon={<Trash size={12} />}
+              icon={<Trash2 size={12} />}
               onClick={() => void go("delete")}
             >
               {arm === "delete" ? "Delete?" : "Delete"}

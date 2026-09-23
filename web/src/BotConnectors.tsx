@@ -1,14 +1,4 @@
-import {
-  ArrowClockwise,
-  Check,
-  MagnifyingGlass,
-  PencilSimple,
-  Plugs,
-  Plus,
-  ShieldCheck,
-  Trash,
-  X,
-} from "@phosphor-icons/react";
+import { Check, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
@@ -365,7 +355,7 @@ export function BotConnectors({
             }`}
             onClick={() => setTab("custom")}
           >
-            <Plus size={14} weight="bold" />
+            <Plus size={14} />
             <span>Custom</span>
           </button>
         </div>
@@ -374,7 +364,7 @@ export function BotConnectors({
         <div className="flex items-center gap-2.5">
           <div className="relative w-full sm:w-72">
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone">
-              <MagnifyingGlass size={15} />
+              <Search size={15} />
             </span>
             <input
               ref={searchInputRef}
@@ -408,7 +398,7 @@ export function BotConnectors({
               className={btnClass("primary")}
               onClick={() => setTab("library")}
             >
-              <Plus size={15} weight="bold" />
+              <Plus size={15} />
               <span>Add connector</span>
             </button>
           )}
@@ -421,7 +411,7 @@ export function BotConnectors({
           {attached.length === 0 ? (
             <div className="rounded-xl border border-dashed border-thread bg-folio p-12 text-center shadow-2xs">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cloth text-stone">
-                <Plugs size={28} />
+                <Plug size={28} />
               </div>
               <h3 className="text-base font-semibold text-iron">No connectors in use yet</h3>
               <p className="mx-auto mt-1 max-w-md text-[13px] text-stone">
@@ -433,7 +423,7 @@ export function BotConnectors({
                   className={btnClass("primary")}
                   onClick={() => setTab("library")}
                 >
-                  <Plus size={15} weight="bold" />
+                  <Plus size={15} />
                   Browse Library
                 </button>
                 <button
@@ -525,7 +515,7 @@ export function BotConnectors({
                             setEditDraft(draftFrom(c));
                           }}
                         >
-                          <PencilSimple size={13} />
+                          <Pencil size={13} />
                           <span>Edit</span>
                         </Btn>
                         <Btn
@@ -534,7 +524,7 @@ export function BotConnectors({
                           onClick={() => refresh(row.id)}
                           title="Refresh status"
                         >
-                          <ArrowClockwise size={13} className={isBusy ? "animate-spin" : ""} />
+                          <RefreshCw size={13} className={isBusy ? "animate-spin" : ""} />
                           <span>Refresh</span>
                         </Btn>
                         <Btn
@@ -542,7 +532,7 @@ export function BotConnectors({
                           className="text-carmine hover:text-carmine"
                           onClick={() => handleDetach(row.id)}
                         >
-                          <Trash size={13} />
+                          <Trash2 size={13} />
                           <span>{armDetach === row.id ? "Remove?" : "Remove"}</span>
                         </Btn>
                       </div>
@@ -634,7 +624,7 @@ export function BotConnectors({
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <h4 className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</h4>
-                                <ShieldCheck size={15} className="text-bindery shrink-0" weight="fill" />
+                                <ShieldCheck size={15} className="text-bindery shrink-0" />
                                 <McpChip />
                                 {c.category && <CategoryChip label={c.category} />}
                               </div>
@@ -647,7 +637,7 @@ export function BotConnectors({
                                   <>
                                     <span>·</span>
                                     <span className="inline-flex items-center gap-1 font-medium text-pine">
-                                      <Check size={11} weight="bold" />
+                                      <Check size={11} />
                                       {count === 1 ? "In use" : `${count} in use`}
                                     </span>
                                   </>
@@ -662,7 +652,7 @@ export function BotConnectors({
                             onClick={() => openLibraryModal(c)}
                             title={`Add ${c.name}`}
                           >
-                            <Plus size={16} weight="bold" />
+                            <Plus size={16} />
                           </button>
                         </div>
                       );
@@ -692,7 +682,7 @@ export function BotConnectors({
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</h4>
-                            <ShieldCheck size={15} className="text-bindery shrink-0" weight="fill" />
+                            <ShieldCheck size={15} className="text-bindery shrink-0" />
                             <McpChip />
                             {c.category && <CategoryChip label={c.category} />}
                           </div>
@@ -705,7 +695,7 @@ export function BotConnectors({
                               <>
                                 <span>·</span>
                                 <span className="inline-flex items-center gap-1 font-medium text-pine">
-                                  <Check size={11} weight="bold" />
+                                  <Check size={11} />
                                   {count === 1 ? "In use" : `${count} in use`}
                                 </span>
                               </>
@@ -720,7 +710,7 @@ export function BotConnectors({
                         onClick={() => openLibraryModal(c)}
                         title={`Add ${c.name}`}
                       >
-                        <Plus size={16} weight="bold" />
+                        <Plus size={16} />
                       </button>
                     </div>
                   );
@@ -733,7 +723,7 @@ export function BotConnectors({
           <div className="rounded-xl border border-dashed border-thread bg-cloth p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-bindery-pale text-bindery">
-                <Plugs size={20} />
+                <Plug size={20} />
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-iron">Need a private or in-house connector?</h4>
@@ -748,7 +738,7 @@ export function BotConnectors({
                 className={btnClass("primary")}
                 onClick={() => setTab("custom")}
               >
-                <Plus size={14} weight="bold" />
+                <Plus size={14} />
                 Connect Custom MCP
               </button>
             </div>

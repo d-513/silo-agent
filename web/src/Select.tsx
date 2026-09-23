@@ -1,4 +1,4 @@
-import { CaretDown, Check } from "@phosphor-icons/react";
+import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
@@ -163,7 +163,7 @@ export function Select({
         onKeyDown={onKeyDown}
       >
         <span className={`min-w-0 flex-1 truncate ${!current && !value ? "text-stone/70" : ""}`}>{label}</span>
-        <CaretDown size={variant === "ghost" ? 11 : 14} weight="bold" className="shrink-0 text-stone" />
+        <ChevronDown size={variant === "ghost" ? 11 : 14} className="shrink-0 text-stone" />
       </button>
       {open
         ? createPortal(
@@ -209,7 +209,7 @@ export function Select({
                           <span className={`block truncate ${compact ? "text-[12px]" : "text-[13px]"}`}>{o.label}</span>
                           {o.hint ? <span className={`block truncate text-stone ${compact ? "text-[10px]" : "text-[11px]"}`}>{o.hint}</span> : null}
                         </span>
-                        {selected ? <Check size={compact ? 12 : 14} weight="bold" className="shrink-0 text-bindery" /> : null}
+                        {selected ? <Check size={compact ? 12 : 14} className="shrink-0 text-bindery" /> : null}
                       </button>
                     );
                   })

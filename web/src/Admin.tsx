@@ -1,4 +1,4 @@
-import { Warning } from "@phosphor-icons/react";
+import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ui } from "./api";
@@ -125,7 +125,7 @@ export function AdminSearchExtract() {
               ) : null}
               {locked ? (
                 <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={engineField?.envName}>
-                  <Warning size={14} weight="fill" />
+                  <TriangleAlert size={14} />
                   {engineField?.envName}
                 </span>
               ) : null}

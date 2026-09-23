@@ -1,4 +1,4 @@
-import { ArrowUp, BookOpen, Broadcast, CaretDown, CaretLeft, CaretRight, ChatCircle, Cube, Folder, Key, ListChecks, Monitor, Paperclip, PencilSimple, Plugs, Plus, Power, SignOut, SlidersHorizontal, SquaresFour, Stop, TerminalWindow, Trash, User, Wrench, X } from "@phosphor-icons/react";
+import { ArrowUp, Book, Box, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -55,16 +55,16 @@ function statusLabel(status: string) {
   return status.replaceAll("_", " ");
 }
 
-const tabMeta: Record<NavTab, { label: string; icon: typeof ChatCircle }> = {
-  run: { label: "Chat", icon: ChatCircle },
+const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
+  run: { label: "Chat", icon: MessageCircle },
   desktop: { label: "Desktop", icon: Monitor },
   files: { label: "Files", icon: Folder },
-  connectors: { label: "Connectors", icon: Plugs },
-  channels: { label: "Channels", icon: Broadcast },
-  skills: { label: "Skills", icon: BookOpen },
+  connectors: { label: "Connectors", icon: Plug },
+  channels: { label: "Channels", icon: Radio },
+  skills: { label: "Skills", icon: Book },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
-  container: { label: "Container", icon: Cube },
+  container: { label: "Container", icon: Box },
   settings: { label: "Settings", icon: SlidersHorizontal },
 };
 
@@ -166,11 +166,11 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
       <nav className="flex min-h-0 min-w-0 flex-1 items-center max-wide:flex-row wide:mt-6 wide:flex-col">
         <Link to="/" title="Bots" className={railHit(homeActive)}>
           {railBar(homeActive)}
-          <SquaresFour size={20} weight="regular" />
+          <LayoutGrid size={20} />
         </Link>
         <Link to="/skills" title="Skills" className={railHit(page === "skills") + " wide:mt-1"}>
           {railBar(page === "skills")}
-          <BookOpen size={20} weight="regular" />
+          <Book size={20} />
         </Link>
         <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 max-wide:flex-row max-wide:items-center wide:mt-2 wide:flex-col wide:overflow-x-hidden wide:overflow-y-auto">
           {(bots ?? []).map((b) => {
@@ -195,19 +195,19 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
         </div>
         <Link to="/new" title="New Bot" className={railHit(loc.pathname === "/new") + " wide:mt-1"}>
           {railBar(loc.pathname === "/new")}
-          <Plus size={20} weight="regular" />
+          <Plus size={20} />
         </Link>
       </nav>
       <div className="flex items-center max-wide:pr-1 wide:mb-4 wide:flex-col wide:gap-1">
         {admin && (
           <Link to="/admin" title="Admin" className={railHit(page === "admin")}>
             {railBar(page === "admin")}
-            <Wrench size={20} weight="regular" />
+            <Wrench size={20} />
           </Link>
         )}
         <Link to="/account" title="Account" className={railHit(page === "account")}>
           {railBar(page === "account")}
-          <User size={20} weight="regular" />
+          <User size={20} />
         </Link>
         <button
           title="Sign out"
@@ -217,7 +217,7 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
             setSession(null);
           }}
         >
-          <SignOut size={20} weight="regular" />
+          <LogOut size={20} />
         </button>
       </div>
     </aside>
@@ -322,7 +322,7 @@ function BotsPage() {
       <div className="mb-1 flex items-center justify-between gap-3">
         <h1 className="text-[22px] font-medium">Bots</h1>
         <Link to="/new" className={btnClass("primary")}>
-          <Plus size={16} weight="bold" />
+          <Plus size={16} />
           New Bot
         </Link>
       </div>
@@ -346,7 +346,7 @@ function BotsPage() {
           <p className="mb-2 text-[28px] font-medium wide:text-[40px]">No Bots yet</p>
           <p className="mb-7 text-[13px] text-stone">A Bot is its own machine. It does not share files with the others.</p>
           <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} weight="bold" />
+            <Plus size={16} />
             New Bot
           </Link>
         </div>
@@ -641,7 +641,7 @@ function FadeScroll({
             className="flex w-8 items-center justify-center text-stone hover:text-iron"
             onClick={() => nudge(-1)}
           >
-            <CaretLeft size={14} />
+            <ChevronLeft size={14} />
           </button>
         </div>
       ) : null}
@@ -653,7 +653,7 @@ function FadeScroll({
             className="flex w-8 items-center justify-center text-stone hover:text-iron"
             onClick={() => nudge(1)}
           >
-            <CaretRight size={14} />
+            <ChevronRight size={14} />
           </button>
         </div>
       ) : null}
@@ -676,7 +676,7 @@ function TabLink({
 }: {
   to: string;
   on: boolean;
-  icon: typeof ChatCircle;
+  icon: typeof MessageCircle;
   label: string;
   compact?: boolean;
 }) {
@@ -709,7 +709,7 @@ function BotTabs({
             return (
               <span key="machine" className="contents">
                 <TabLink to={`/bots/${id}/desktop`} on={tab === "desktop"} icon={Monitor} label="Desktop" compact={compact} />
-                <TabLink to={`/bots/${id}/console`} on={tab === "console"} icon={TerminalWindow} label="Console" compact={compact} />
+                <TabLink to={`/bots/${id}/console`} on={tab === "console"} icon={SquareTerminal} label="Console" compact={compact} />
               </span>
             );
           }
@@ -739,11 +739,11 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
   const onMachine = tab === "desktop" || tab === "console";
   const onConsole = tab === "console";
   const label = onConsole ? "Console" : "Desktop";
-  const Icon = onConsole ? TerminalWindow : Monitor;
+  const Icon = onConsole ? SquareTerminal : Monitor;
   const href = onConsole ? `/bots/${id}/console` : `/bots/${id}/desktop`;
   const other = onConsole ? `/bots/${id}/desktop` : `/bots/${id}/console`;
   const otherLabel = onConsole ? "Desktop" : "Console";
-  const OtherIcon = onConsole ? Monitor : TerminalWindow;
+  const OtherIcon = onConsole ? Monitor : SquareTerminal;
   useEffect(() => {
     if (!open) return;
     const r = wrap.current?.getBoundingClientRect();
@@ -787,7 +787,7 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
         className={`flex items-center px-1 ${onMachine ? "text-iron" : "text-stone hover:text-iron"}`}
         onClick={() => setOpen((v) => !v)}
       >
-        <CaretDown size={12} />
+        <ChevronDown size={12} />
       </button>
       {open &&
         createPortal(
@@ -1357,7 +1357,7 @@ function BotPage() {
                   className="inline-flex items-center gap-1 rounded-[4px] px-1 py-0.5 text-[12px] font-medium text-bindery transition-colors duration-150 ease-quiet hover:text-bindery-deep"
                   onClick={() => newChat().catch((e) => setActErr(fail(e)))}
                 >
-                  <Plus size={13} weight="bold" />
+                  <Plus size={13} />
                   New
                 </button>
               </div>
@@ -1414,7 +1414,7 @@ function BotPage() {
                           setEditTitle(c.title || "");
                         }}
                       >
-                        <PencilSimple size={14} />
+                        <Pencil size={14} />
                       </button>
                     )}
                     <button
@@ -1422,7 +1422,7 @@ function BotPage() {
                       className="hidden px-1 text-stone transition-colors duration-150 hover:text-carmine group-hover:block"
                       onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
                     >
-                      <Trash size={14} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
@@ -1493,7 +1493,7 @@ function BotPage() {
                           setEditTitle(c.title || "");
                         }}
                       >
-                        <PencilSimple size={14} />
+                        <Pencil size={14} />
                       </button>
                     )}
                     {c.id === chatId && (
@@ -1502,7 +1502,7 @@ function BotPage() {
                         className="py-1.5 pr-2 pl-0.5 text-stone hover:text-carmine"
                         onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
                       >
-                        <Trash size={14} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>

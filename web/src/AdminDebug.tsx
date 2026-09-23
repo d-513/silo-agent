@@ -1,4 +1,4 @@
-import { ArrowsClockwise } from "@phosphor-icons/react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -126,7 +126,7 @@ export function AdminDebug() {
               options={[{ value: "", label: "All Bots" }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
             />
           </div>
-          <Btn kind="secondary" icon={<ArrowsClockwise size={12} />} onClick={() => void load()}>
+          <Btn kind="secondary" icon={<RefreshCw size={12} />} onClick={() => void load()}>
             Refresh
           </Btn>
         </div>

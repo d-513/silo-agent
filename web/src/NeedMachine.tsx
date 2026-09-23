@@ -1,4 +1,4 @@
-import { Power } from "@phosphor-icons/react";
+import { Power } from "lucide-react";
 import { useEffect, useState } from "react";
 import { btnClass } from "./Btn";
 

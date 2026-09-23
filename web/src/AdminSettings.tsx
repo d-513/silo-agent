@@ -1,4 +1,4 @@
-import { Plus, Trash, Warning } from "@phosphor-icons/react";
+import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -206,7 +206,7 @@ export function AdminSettings() {
       <p className="mb-2 font-mono text-[12px] text-stone">{yamlPath || "silo.yaml"}</p>
       {envFields.length > 0 ? (
         <p className="mb-3 flex items-start gap-2 text-[13px] text-carmine">
-          <Warning className="mt-0.5 shrink-0" size={16} weight="fill" />
+          <TriangleAlert className="mt-0.5 shrink-0" size={16} />
           <span>Overridden by env and will not apply until unset: {envFields.map((f) => f.envName).join(", ")}</span>
         </p>
       ) : null}
@@ -439,7 +439,7 @@ function ModelSettings({
                 className="rounded-[6px] p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
                 onClick={() => remove(m.id)}
               >
-                <Trash size={14} />
+                <Trash2 size={14} />
               </button>
             </li>
           ))}
@@ -464,7 +464,7 @@ function ModelSettings({
           }}
         />
         <Btn kind="primary" onClick={add}>
-          <Plus size={14} weight="bold" /> Add
+          <Plus size={14} /> Add
         </Btn>
       </div>
     </Panel>
@@ -478,7 +478,7 @@ function SourceChips({ field }: { field: ConfigField }) {
       {field.restartRequired ? <span className="text-[11px] text-stone">restart</span> : null}
       {field.source === ConfigSource.ENV ? (
         <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={field.envName}>
-          <Warning size={14} weight="fill" />
+          <TriangleAlert size={14} />
           {field.envName}
         </span>
       ) : null}

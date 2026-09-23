@@ -1,4 +1,4 @@
-import { FolderPlus, Plus, UploadSimple, X } from "@phosphor-icons/react";
+import { FolderPlus, Plus, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -131,7 +131,7 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
               <Plus size={16} />
             </button>
             <button className="text-stone hover:text-iron" title="Upload" onClick={() => upload.current?.click()}>
-              <UploadSimple size={16} />
+              <Upload size={16} />
             </button>
             <input ref={upload} type="file" multiple className="hidden" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />
           </>

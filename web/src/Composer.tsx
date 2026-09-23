@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Stop, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowUp, Paperclip, Square, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { fmtSize } from "./fs";
 import { Select } from "./Select";
@@ -135,7 +135,7 @@ export function Composer({
         >
           {isDragging && (
             <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[12px] border-2 border-dashed border-pine bg-folio font-medium text-[13px] text-pine">
-              <UploadSimple size={20} />
+              <Upload size={20} />
               <span>Drop files to attach to /workspace/tmp</span>
             </div>
           )}
@@ -157,7 +157,7 @@ export function Composer({
                     className="ml-0.5 rounded-[6px] p-0.5 text-stone transition-colors hover:bg-linen hover:text-carmine"
                     onClick={() => onRemoveAtt(a.path)}
                   >
-                    <X size={12} weight="bold" />
+                    <X size={12} />
                   </button>
                 </span>
               ))}
@@ -256,7 +256,7 @@ export function Composer({
                 >
                   <span>Stop</span>
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-white/20">
-                    <Stop size={12} weight="fill" />
+                    <Square size={12} />
                   </span>
                 </button>
               ) : (
@@ -272,7 +272,7 @@ export function Composer({
                 >
                   <span>Send</span>
                   <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${!canSend ? "bg-linen" : "bg-white/20"}`}>
-                    <ArrowUp size={13} weight="bold" />
+                    <ArrowUp size={13} />
                   </span>
                 </button>
               )}
