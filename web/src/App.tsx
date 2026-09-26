@@ -1,16 +1,18 @@
-import { ArrowUp, Book, Box, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { ArrowUp, Book, Box, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
+import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
 import { ArtifactOverlay, type Artifact } from "./Artifact";
-import { ApprovalSlip, ConnectorAuthSlip } from "./Approval";
+import { ApprovalSlip, ConnectorAuthSlip, SlipPresence } from "./Approval";
 import { ConsoleTerm } from "./Console";
 import { FilesPane } from "./Files";
-import { inputClass, textareaClass } from "./Field";
+import { Field, inputClass, Panel, SkeletonRows, textareaClass } from "./Field";
 import { joinPath } from "./fs";
+import { Lamp, StatusWord, statusText } from "./Lamp";
 import { NeedMachine } from "./NeedMachine";
 import { Thread, type Ev } from "./Thread";
 import { Composer } from "./Composer";
@@ -36,23 +38,21 @@ function fail(e: unknown) {
   return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
-function lampClass(status: string) {
-  if (status === "working") return "bg-pine lamp-working";
-  if (status === "needs_you") return "bg-carmine";
-  if (status === "online" || status === "idle") return "bg-pine";
-  if (status === "stopped" || status === "starting") return "bg-thread";
-  return "bg-stone";
-}
-
-function statusWord(status: string) {
-  if (status === "working" || status === "online" || status === "idle") return "text-pine";
-  if (status === "needs_you") return "text-carmine";
-  return "text-stone";
-}
-
-function statusLabel(status: string) {
-  if (status === "idle") return "online";
-  return status.replaceAll("_", " ");
+// Chat-row meta: "Just now", "12 min ago", "09:12", "Yesterday", "Tue", "Mar 4".
+function when(iso: string) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const d = new Date(t);
+  const now = new Date();
+  const mins = Math.floor((now.getTime() - t) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(now) - day(d)) / 86400000);
+  if (days === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (days === 1) return "Yesterday";
+  if (days < 7) return d.toLocaleDateString([], { weekday: "short" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
 const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
@@ -86,9 +86,9 @@ function SiloGlyph({ className }: { className?: string }) {
 
 function SiloMark() {
   return (
-    <div className="flex shrink-0 items-center gap-2 px-3 text-iron max-wide:h-12 wide:flex-col wide:gap-1.5 wide:px-2 wide:pt-5">
-      <SiloGlyph className="max-wide:h-5 max-wide:w-5 wide:h-7 wide:w-7" />
-      <span className="font-medium tracking-[0.02em] max-wide:text-[13px] wide:text-[12px]">Silo</span>
+    <div className="flex shrink-0 items-center gap-2 px-3 text-ink max-wide:h-12 wide:flex-col wide:gap-1 wide:px-2 wide:pt-4">
+      <SiloGlyph className="max-wide:h-5 max-wide:w-5 wide:h-[26px] wide:w-[26px]" />
+      <span className="font-semibold max-wide:text-[13px] wide:text-[11px] wide:leading-4">Silo</span>
     </div>
   );
 }
@@ -136,43 +136,46 @@ function BotsProvider({ children }: { children: ReactNode }) {
   return <BotsCtx.Provider value={{ bots, err, refresh }}>{children}</BotsCtx.Provider>;
 }
 
+// Rail items: 40px hit areas. The active one is a lifted surface well with a
+// 3px cobalt bar on the leading edge (bottom edge in the narrow top bar).
 function railHit(active: boolean, extra = "") {
-  return `relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] transition-colors duration-150 ease-quiet max-wide:mx-0 wide:mx-2 ${
-    active ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen/70 hover:text-iron"
+  return `relative flex h-10 w-10 shrink-0 items-center justify-center rounded-control transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
+    active ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
   } ${extra}`;
 }
 
-function railBar(on: boolean, needsYou = false) {
-  if (!on && !needsYou) return null;
+function railBar(on: boolean) {
+  if (!on) return null;
   return (
     <span
-      className={`absolute max-wide:inset-x-1.5 max-wide:bottom-0.5 max-wide:h-0.5 wide:top-1 wide:bottom-1 wide:left-0 wide:w-0.5 ${
-        needsYou ? "bg-carmine" : "bg-bindery"
-      }`}
+      aria-hidden
+      className="absolute rounded-full bg-cobalt max-wide:inset-x-2.5 max-wide:-bottom-1 max-wide:h-[3px] wide:inset-y-2.5 wide:-left-3 wide:w-[3px]"
     />
   );
 }
 
 function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
-  const { admin, setSession } = useAuth();
+  const { admin, email, setSession } = useAuth();
   const { bots } = useBots();
   const loc = useLocation();
   const botMatch = loc.pathname.match(/^\/bots\/([^/]+)/);
   const activeBotId = botMatch?.[1];
   const homeActive = page === "bots" && !activeBotId && loc.pathname !== "/new";
+  const initial = (email.trim()[0] ?? "?").toUpperCase();
   return (
-    <aside className="flex shrink-0 border-thread-2 bg-cloth max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:border-b max-wide:pt-[env(safe-area-inset-top)] wide:w-16 wide:flex-col wide:items-center wide:border-r">
+    <aside className="flex shrink-0 bg-well max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center">
       <SiloMark />
-      <nav className="flex min-h-0 min-w-0 flex-1 items-center max-wide:flex-row wide:mt-6 wide:flex-col">
+      <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
         <Link to="/" title="Bots" className={railHit(homeActive)}>
           {railBar(homeActive)}
           <LayoutGrid size={20} />
         </Link>
-        <Link to="/skills" title="Skills" className={railHit(page === "skills") + " wide:mt-1"}>
+        <Link to="/skills" title="Skills" className={railHit(page === "skills")}>
           {railBar(page === "skills")}
           <Book size={20} />
         </Link>
-        <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 max-wide:flex-row max-wide:items-center wide:mt-2 wide:flex-col wide:overflow-x-hidden wide:overflow-y-auto">
+        <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />
+        <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 gap-1 max-wide:flex-row max-wide:items-center max-wide:py-1 wide:flex-col wide:items-center wide:overflow-x-hidden wide:overflow-y-auto wide:px-3 wide:py-0.5">
           {(bots ?? []).map((b) => {
             const on = b.id === activeBotId;
             return (
@@ -180,36 +183,35 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
                 key={b.id}
                 to={`/bots/${b.id}/run`}
                 title={b.name}
-                className={railHit(on, "wide:mb-1")}
+                className={railHit(on, `blink ${b.status === "working" ? "blink-idle" : ""}`)}
               >
-                {railBar(on, b.status === "needs_you")}
-                <span className="relative">
+                {railBar(on)}
+                <span className="relative flex h-7 w-7">
                   <Crest index={b.crest} size={28} />
-                  <span
-                    className={`absolute -right-0.5 -bottom-0.5 h-[8px] w-[8px] rounded-full ring-2 ring-cloth ${lampClass(b.status)}`}
-                  />
+                  <Lamp status={b.status} onCrest={on ? "surface" : "well"} className="absolute -right-0.5 -bottom-0.5" />
                 </span>
               </Link>
             );
           })}
+          <Link to="/new" title="New Bot" className={railHit(loc.pathname === "/new")}>
+            {railBar(loc.pathname === "/new")}
+            <Plus size={20} />
+          </Link>
         </div>
-        <Link to="/new" title="New Bot" className={railHit(loc.pathname === "/new") + " wide:mt-1"}>
-          {railBar(loc.pathname === "/new")}
-          <Plus size={20} />
-        </Link>
       </nav>
-      <div className="flex items-center max-wide:pr-1 wide:mb-4 wide:flex-col wide:gap-1">
+      <div className="flex items-center gap-1 max-wide:pr-2 wide:mb-4 wide:flex-col">
         {admin && (
           <Link to="/admin" title="Admin" className={railHit(page === "admin")}>
             {railBar(page === "admin")}
             <Wrench size={20} />
           </Link>
         )}
-        <Link to="/account" title="Account" className={railHit(page === "account")}>
+        <Link to="/account" title={email ? `Account · ${email}` : "Account"} className={railHit(page === "account")}>
           {railBar(page === "account")}
-          <User size={20} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-white">{initial}</span>
         </Link>
         <button
+          type="button"
           title="Sign out"
           className={railHit(false)}
           onClick={async () => {
@@ -217,7 +219,7 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
             setSession(null);
           }}
         >
-          <LogOut size={20} />
+          <LogOut size={18} />
         </button>
       </div>
     </aside>
@@ -254,16 +256,16 @@ function SignIn() {
     }
   }
   return (
-    <div className="flex min-h-dvh items-start justify-center bg-plaster px-4 pt-[18vh]">
-      <form onSubmit={onSubmit} className="silo-enter w-full max-w-[400px] rounded-[10px] border border-thread bg-folio p-8">
+    <div className="flex min-h-dvh items-start justify-center bg-canvas px-4 pt-[18vh]">
+      <form onSubmit={onSubmit} className="rise w-full max-w-[400px] rounded-card shadow-card bg-surface p-8">
         <div className="mb-7 flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-cloth text-iron">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-well text-ink">
             <SiloGlyph className="h-5 w-5" />
           </span>
           <span className="text-[14px] font-medium">Silo Agent</span>
         </div>
-        <h1 className="mb-6 text-[22px] font-medium">Sign in</h1>
-        <label htmlFor="silo-email" className="mb-1.5 block text-[12px] font-medium text-stone">
+        <h1 className="mb-6 text-[22px] leading-7 font-medium tracking-[-0.015em]">Sign in</h1>
+        <label htmlFor="silo-email" className="mb-1.5 block text-[12px] font-medium text-ink-3">
           Email
         </label>
         <input
@@ -275,7 +277,7 @@ function SignIn() {
           autoFocus
           required
         />
-        <label htmlFor="silo-pass" className="mb-1.5 block text-[12px] font-medium text-stone">
+        <label htmlFor="silo-pass" className="mb-1.5 block text-[12px] font-medium text-ink-3">
           Password
         </label>
         <input
@@ -288,8 +290,8 @@ function SignIn() {
           required
         />
         {err && (
-          <p role="alert" className="mb-3 flex items-start gap-2 text-[13px] text-carmine">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-carmine" />
+          <p role="alert" className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
             <span>{err}</span>
           </p>
         )}
@@ -303,13 +305,13 @@ function SignIn() {
 
 function FolioSkeleton() {
   return (
-    <div className="relative flex gap-4 overflow-hidden rounded-[10px] border border-thread bg-folio p-4">
-      <div className="h-14 w-14 shrink-0 rounded-[14px] bg-cloth" />
-      <div className="min-w-0 flex-1 py-1.5">
-        <div className="mb-2.5 h-3.5 w-28 rounded-[4px] bg-linen" />
-        <div className="h-3 w-44 rounded-[4px] bg-cloth" />
+    <div className="flex gap-4 rounded-card bg-surface p-5 shadow-card" aria-hidden>
+      <div className="skeleton h-14 w-14 shrink-0 rounded-card" />
+      <div className="min-w-0 flex-1 py-1">
+        <div className="skeleton mb-2.5 h-4 w-28 rounded-xs" />
+        <div className="skeleton mb-2.5 h-3 w-44 rounded-xs" />
+        <div className="skeleton h-3 w-16 rounded-xs" />
       </div>
-      <span aria-hidden className="silo-shimmer pointer-events-none absolute inset-0" />
     </div>
   );
 }
@@ -317,58 +319,60 @@ function FolioSkeleton() {
 function BotsPage() {
   const { bots, err } = useBots();
   const loading = bots === null;
+  const empty = !loading && bots.length === 0;
   return (
     <div className="p-4 wide:p-7">
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <h1 className="text-[22px] font-medium">Bots</h1>
-        <Link to="/new" className={btnClass("primary")}>
-          <Plus size={16} />
-          New Bot
-        </Link>
-      </div>
-      <p className="mb-6 text-[13px] text-stone">Machines you can open.</p>
+      {!empty ? (
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Bots</h1>
+            <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">Machines you can open.</p>
+          </div>
+          <Link to="/new" className={btnClass("primary")}>
+            <Plus size={16} />
+            New Bot
+          </Link>
+        </div>
+      ) : null}
       {err && (
-        <p role="alert" className="mb-4 text-[13px] text-carmine">
+        <p role="alert" className="mb-4 text-[13px] text-vermilion">
           {err}
         </p>
       )}
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
           <FolioSkeleton />
           <FolioSkeleton />
           <FolioSkeleton />
         </div>
-      ) : bots.length === 0 ? (
-        <div className="silo-enter py-20 text-center">
-          <div className="mb-7 flex justify-center opacity-20">
-            <Crest index={packCrest(0, 10)} size={88} />
-          </div>
-          <p className="mb-2 text-[28px] font-medium wide:text-[40px]">No Bots yet</p>
-          <p className="mb-7 text-[13px] text-stone">A Bot is its own machine. It does not share files with the others.</p>
+      ) : empty ? (
+        <div className="rise pt-[12vh]">
+          <p className="mb-2 text-[40px] leading-[48px] font-medium tracking-[-0.02em]">No Bots yet</p>
+          <p className="mb-7 text-[14px] text-ink-2">A Bot is its own machine. It does not share files with the others.</p>
           <Link to="/new" className={btnClass("primary")}>
             <Plus size={16} />
             New Bot
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
           {bots.map((b, i) => (
             <Link
               key={b.id}
               to={`/bots/${b.id}/run`}
               style={{ animationDelay: `${Math.min(i * 45, 270)}ms` }}
-              className="silo-enter group relative flex gap-4 overflow-hidden rounded-[10px] border border-thread bg-folio p-4 transition-[border-color,background-color,transform] duration-200 ease-quiet hover:border-hover hover:bg-folio active:scale-[0.995]"
+              className="rise blink group relative flex items-center gap-4 overflow-hidden rounded-card bg-surface p-5 shadow-card transition-[box-shadow,transform] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float active:scale-[.995] active:duration-[70ms] motion-reduce:hover:translate-y-0"
             >
               {b.status === "needs_you" ? (
-                <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-carmine" />
+                <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-vermilion" />
               ) : null}
               <Crest index={b.crest} size={56} />
               <div className="min-w-0 flex-1">
-                <div className="text-[16px] font-medium">{b.name}</div>
-                {b.description ? <div className="mt-0.5 truncate text-[13px] text-stone">{b.description}</div> : null}
-                <div className="mt-1.5 flex items-center gap-2 text-[12px] font-medium">
-                  <span className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${lampClass(b.status)}`} />
-                  <span className={statusWord(b.status)}>{statusLabel(b.status)}</span>
+                <div className="truncate text-[15px] leading-5 font-semibold tracking-[-0.01em]">{b.name}</div>
+                {b.description ? <div className="mt-0.5 truncate text-[12.5px] leading-[18px] text-ink-2">{b.description}</div> : null}
+                <div className="mt-2 flex items-center gap-2">
+                  <Lamp status={b.status} />
+                  <StatusWord status={b.status} />
                 </div>
               </div>
             </Link>
@@ -402,17 +406,17 @@ function NewBotPage() {
     }
   }
   return (
-    <div className="silo-page silo-page-sm silo-enter">
-      <h1 className="mb-6 text-[22px] font-medium">New Bot</h1>
+    <div className="silo-page silo-page-sm rise">
+      <h1 className="mb-6 text-[22px] leading-7 font-medium tracking-[-0.015em]">New Bot</h1>
       <form onSubmit={create}>
         <div className="mb-5 flex flex-col items-center gap-4">
           <Crest index={crest} size={88} />
-          <span className="text-[12px] text-stone">Pick a crest for this machine</span>
+          <span className="text-[12px] text-ink-3">Pick a crest for this machine</span>
         </div>
         <div className="mb-6">
           <CrestPicker value={crest} onChange={setCrest} />
         </div>
-        <label htmlFor="bot-name" className="mb-1.5 block text-[12px] font-medium text-stone">
+        <label htmlFor="bot-name" className="mb-1.5 block text-[12px] font-medium text-ink-3">
           Name
         </label>
         <input
@@ -423,7 +427,7 @@ function NewBotPage() {
           onChange={(e) => setName(e.target.value)}
           autoFocus
         />
-        <label htmlFor="bot-desc" className="mb-1.5 block text-[12px] font-medium text-stone">
+        <label htmlFor="bot-desc" className="mb-1.5 block text-[12px] font-medium text-ink-3">
           Description
         </label>
         <textarea
@@ -433,9 +437,9 @@ function NewBotPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <p className="mb-6 text-[13px] text-stone">A Bot is its own machine. It does not share files with the others.</p>
+        <p className="mb-6 text-[13px] text-ink-2">A Bot is its own machine. It does not share files with the others.</p>
         {err && (
-          <p role="alert" className="mb-3 text-[13px] text-carmine">
+          <p role="alert" className="mb-3 text-[13px] text-vermilion">
             {err}
           </p>
         )}
@@ -491,7 +495,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
         const next = new RFB(el, `${proto}://${location.host}/vnc?bot=${botId}`, { shared: true });
         next.scaleViewport = true;
         next.clipViewport = true;
-        next.background = "#0B0F19";
+        next.background = "var(--color-matte)";
         next.addEventListener("connect", () => {
           if (cancelled) return;
           clearTimeout(hang);
@@ -544,7 +548,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
     <div className="relative h-full min-h-0 w-full bg-matte">
       <div ref={ref} className="silo-hatch h-full min-h-[320px] w-full" />
       {phase !== "connected" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[13px] text-stone">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
           {phase === "off" ? "Desktop not connected" : phase === "connecting" ? "Opening desktop…" : "Desktop lost"}
         </div>
       )}
@@ -574,36 +578,40 @@ function MachinePane({
     );
   }
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] bg-hatch">
-      <div className="flex h-8 shrink-0 items-center gap-2 px-3 text-[13px] text-plaster/80">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-hatch">
+      <div className="flex h-9 shrink-0 items-center gap-2 px-3 text-[13px] text-white/80">
         <Crest index={bot.crest} size={20} />
         <span className="min-w-0 truncate">{bot.name}</span>
-        <span className="text-plaster/50">{label}</span>
-        <span className={`inline-block h-1.5 w-1.5 rounded-full ${lampClass(bot.status)}`} />
-        <span className="ml-auto font-mono text-[12px] text-plaster/80">{statusLabel(bot.status)}</span>
+        <span className="font-mono text-[12px] text-white/60">{label}</span>
+        <Lamp status={bot.status} />
+        <span className="ml-auto font-mono text-[12px] text-white/80">{statusText(bot.status)}</span>
       </div>
-      <div className="min-h-0 flex-1 bg-matte p-2">
+      <div className="mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-sm bg-matte">
         {kind === "console" ? <ConsoleTerm botId={bot.id} live visible={visible} /> : <Hatch botId={bot.id} live visible={visible} />}
       </div>
     </div>
   );
 }
 
+// Under 1280px the header's Start/Stop shows only the power glyph.
 const machineBtnCompact =
-  "@max-[1280px]:h-10 @max-[1280px]:w-10 @max-[1280px]:justify-center @max-[1280px]:gap-0 @max-[1280px]:px-0 @max-[1280px]:pr-0";
+  "@max-[1280px]:w-10 @max-[1280px]:justify-center @max-[1280px]:gap-0 @max-[1280px]:px-0 @max-[1280px]:pr-0 @max-[1280px]:[&>span:last-child]:bg-transparent";
 
 function FadeScroll({
   className = "",
   innerClass = "",
-  fade = "from-plaster",
+  fade = "from-canvas",
+  innerRef,
   children,
 }: {
   className?: string;
   innerClass?: string;
-  fade?: "from-plaster" | "from-cloth";
+  fade?: "from-canvas" | "from-well";
+  innerRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const own = useRef<HTMLDivElement>(null);
+  const ref = innerRef ?? own;
   const [edge, setEdge] = useState({ start: false, end: false });
   useEffect(() => {
     const el = ref.current;
@@ -622,7 +630,7 @@ function FadeScroll({
       el.removeEventListener("scroll", tick);
       ro.disconnect();
     };
-  }, []);
+  }, [ref]);
   function nudge(dir: -1 | 1) {
     const el = ref.current;
     if (!el) return;
@@ -630,7 +638,7 @@ function FadeScroll({
   }
   return (
     <div className={`relative min-w-0 ${className}`}>
-      <div ref={ref} className={`silo-scroll-x h-full ${innerClass}`}>
+      <div ref={ref} className={`silo-scroll-x relative h-full ${innerClass}`}>
         {children}
       </div>
       {edge.start ? (
@@ -638,7 +646,7 @@ function FadeScroll({
           <button
             type="button"
             title="Previous"
-            className="flex w-8 items-center justify-center text-stone hover:text-iron"
+            className="flex w-8 items-center justify-center text-ink-2 hover:text-ink"
             onClick={() => nudge(-1)}
           >
             <ChevronLeft size={14} />
@@ -650,7 +658,7 @@ function FadeScroll({
           <button
             type="button"
             title="Next"
-            className="flex w-8 items-center justify-center text-stone hover:text-iron"
+            className="flex w-8 items-center justify-center text-ink-2 hover:text-ink"
             onClick={() => nudge(1)}
           >
             <ChevronRight size={14} />
@@ -662,9 +670,9 @@ function FadeScroll({
 }
 
 function tabClass(on: boolean, compact?: boolean) {
-  return `flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[14px] transition-colors duration-150 ease-quiet ${
-    compact && !on ? "min-w-10 justify-center px-2" : "px-3"
-  } ${on ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`;
+  return `flex h-8 shrink-0 items-center gap-1.5 self-center whitespace-nowrap rounded-sm text-[13px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet ${
+    compact && !on ? "min-w-10 justify-center px-2" : "px-2.5"
+  } ${on ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"}`;
 }
 
 function TabLink({
@@ -681,10 +689,66 @@ function TabLink({
   compact?: boolean;
 }) {
   return (
-    <NavLink to={to} title={label} className={tabClass(on, compact)}>
-      <Icon size={16} />
+    <NavLink to={to} title={label} data-tab-on={on || undefined} className={tabClass(on, compact)}>
+      <Icon size={15} />
       {(!compact || on) && label}
     </NavLink>
+  );
+}
+
+// One 2px cobalt underline that slides to the active tab. It measures the tab
+// marked data-tab-on, and re-measures on resize and once fonts settle.
+function TabUnderline({ strip, tab }: { strip: RefObject<HTMLDivElement | null>; tab: string }) {
+  const [box, setBox] = useState<{ x: number; w: number } | null>(null);
+  const [live, setLive] = useState(false);
+  useLayoutEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const measure = () => {
+      const on = el.querySelector<HTMLElement>("[data-tab-on]");
+      if (!on) {
+        setBox(null);
+        return;
+      }
+      setBox((cur) => (cur && cur.x === on.offsetLeft && cur.w === on.offsetWidth ? cur : { x: on.offsetLeft, w: on.offsetWidth }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const c of Array.from(el.children)) ro.observe(c);
+    let dead = false;
+    void document.fonts?.ready.then(() => {
+      if (!dead) measure();
+    });
+    return () => {
+      dead = true;
+      ro.disconnect();
+    };
+  }, [strip, tab]);
+  useEffect(() => {
+    // Skip the slide on first placement; animate every move after.
+    if (!box || live) return;
+    const r = requestAnimationFrame(() => setLive(true));
+    return () => cancelAnimationFrame(r);
+  }, [box, live]);
+  if (!box) return null;
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute bottom-0 left-0 h-[2px] rounded-full bg-cobalt ${ live ? "transition-[transform,width] duration-[280ms] ease-quiet motion-reduce:transition-none" : ""
+      }`}
+      style={{ width: box.w, transform: `translateX(${box.x}px)` }}
+    />
+  );
+}
+
+function TabStrip({ className, innerClass, children, tab }: { className: string; innerClass: string; children: ReactNode; tab: string }) {
+  const strip = useRef<HTMLDivElement>(null);
+  return (
+    <FadeScroll className={className} innerClass={innerClass} innerRef={strip}>
+      {children}
+      <TabUnderline strip={strip} tab={tab} />
+    </FadeScroll>
   );
 }
 
@@ -747,7 +811,7 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
   useEffect(() => {
     if (!open) return;
     const r = wrap.current?.getBoundingClientRect();
-    if (r) setBox({ top: r.bottom + 4, left: r.left });
+    if (r) setBox({ top: r.bottom + 6, left: r.left });
     const close = () => setOpen(false);
     const onDoc = (e: MouseEvent) => {
       const t = e.target;
@@ -767,41 +831,36 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
   return (
     <div
       ref={wrap}
-      className={`relative flex h-full shrink-0 items-stretch border-b-2 ${
-        onMachine ? "border-bindery" : "border-transparent"
+      data-tab-on={onMachine || undefined}
+      className={`group/machine flex h-8 shrink-0 items-stretch self-center rounded-sm transition-colors duration-[160ms] ease-quiet ${ onMachine ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"
       }`}
     >
-      <NavLink
-        to={href}
-        className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 text-[14px] ${
-          onMachine ? "text-iron" : "text-stone hover:text-iron"
-        }`}
-      >
-        <Icon size={16} />
+      <NavLink to={href} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pr-1 pl-2.5 text-[13px] font-medium">
+        <Icon size={15} />
         {label}
       </NavLink>
       <button
         type="button"
         title={otherLabel}
         aria-expanded={open}
-        className={`flex items-center px-1 ${onMachine ? "text-iron" : "text-stone hover:text-iron"}`}
+        className="flex items-center rounded-sm pr-2 pl-0.5"
         onClick={() => setOpen((v) => !v)}
       >
-        <ChevronDown size={12} />
+        <ChevronDown size={12} className={`transition-transform duration-[200ms] ease-quiet ${open ? "rotate-180" : ""}`} />
       </button>
       {open &&
         createPortal(
           <div
             ref={menu}
-            className="z-50 w-40 rounded-[6px] border border-thread bg-folio py-1"
+            className="rise z-50 w-44 rounded-control bg-surface p-1 shadow-slip"
             style={{ position: "fixed", top: box.top, left: box.left }}
           >
             <Link
               to={other}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-3 py-1.5 text-[14px] text-iron hover:bg-linen"
+              className="flex h-8 items-center gap-2 rounded-sm px-2.5 text-[13px] font-medium text-ink transition-colors duration-[160ms] hover:bg-well"
             >
-              <OtherIcon size={16} />
+              <OtherIcon size={15} />
               {otherLabel}
             </Link>
           </div>,
@@ -831,8 +890,8 @@ function fmtBytes(n: number) {
 function Meter({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-linen">
-      <div className="h-full bg-bindery" style={{ width: `${pct}%` }} />
+    <div className="h-1.5 overflow-hidden rounded-full bg-pressed">
+      <div className="h-full rounded-full bg-ink transition-[width] duration-[280ms] ease-quiet" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -874,24 +933,24 @@ function ContainerPane({
   const cpu = box?.cpuPercent ?? 0;
   return (
     <div className="silo-page">
-      <h2 className="text-[22px] font-medium">Container</h2>
-      <p className="mb-6 text-stone">This Bot’s machine. Usage from Docker.</p>
-      {err && <p className="mb-4 text-carmine">{err}</p>}
+      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Container</h2>
+      <p className="mb-6 text-ink-2">This Bot’s machine. Usage from Docker.</p>
+      {err && <p className="mb-4 text-vermilion">{err}</p>}
       <div className="mb-6 flex items-center gap-3">
-        <span className={`inline-block h-[7px] w-[7px] rounded-full ${lampClass(bot.status)}`} />
-        <span className={`text-[12px] font-medium ${statusWord(bot.status)}`}>{statusLabel(bot.status)}</span>
+        <Lamp status={bot.status} />
+        <StatusWord status={bot.status} />
       </div>
       <div className="mb-6 grid max-w-[560px] gap-4">
-        <div className="rounded-[10px] border border-thread bg-folio p-4">
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">CPU</div>
-          <div className="mb-2 font-mono text-[20px] font-medium tracking-tight">
+        <div className="rounded-card bg-surface p-5 shadow-card">
+          <div className="mb-1 text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">CPU</div>
+          <div className="mb-2 font-mono text-[20px] font-medium tabular-nums tracking-tight">
             {box?.running ? `${cpu.toFixed(1)}%` : "—"}
           </div>
           <Meter value={box?.running ? cpu : 0} max={100} />
         </div>
-        <div className="rounded-[10px] border border-thread bg-folio p-4">
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-stone">RAM</div>
-          <div className="mb-2 font-mono text-[20px] font-medium tracking-tight">
+        <div className="rounded-card bg-surface p-5 shadow-card">
+          <div className="mb-1 text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">RAM</div>
+          <div className="mb-2 font-mono text-[20px] font-medium tabular-nums tracking-tight">
             {box?.running ? `${fmtBytes(mem)}${cap ? ` / ${fmtBytes(cap)}` : ""}` : "—"}
           </div>
           <Meter value={mem} max={cap} />
@@ -925,7 +984,8 @@ function BotPage() {
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<Approval[]>([]);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
-  const [secrets, setSecrets] = useState<SecretMeta[]>([]);
+  const [secrets, setSecrets] = useState<SecretMeta[] | null>(null);
+  const secretSaver = useSave();
   const [chats, setChats] = useState<Chat[]>([]);
   const [editingChat, setEditingChat] = useState("");
   const [editTitle, setEditTitle] = useState("");
@@ -942,6 +1002,9 @@ function BotPage() {
   const [defaultModel, setDefaultModel] = useState("");
   const [usage, setUsage] = useState<{ input: number; output: number; cacheRead: number; cacheWrite: number } | null>(null);
   const [streamNonce, setStreamNonce] = useState(0);
+  // User messages sent from this tab glide in; history does not animate.
+  const sentAt = useRef(0);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
@@ -1066,7 +1129,12 @@ function BotPage() {
               setStreamNonce((n) => n + 1);
               return;
             }
-            if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId, attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })) });
+            if (ev.kind === "user" && ev.id && sentAt.current && Date.now() - sentAt.current < 15000) {
+              sentAt.current = 0;
+              const sid = ev.id;
+              setFresh((xs) => new Set(xs).add(sid));
+            }
+            if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId, at: Date.now(), attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })) });
           }
         } catch {
           if (!dead) setSending(false);
@@ -1086,7 +1154,10 @@ function BotPage() {
 
   useEffect(() => {
     if (!id || tab !== "secrets") return;
-    ui.listSecrets({ botId: id }).then((r) => setSecrets(r.secrets)).catch(console.error);
+    ui.listSecrets({ botId: id }).then((r) => setSecrets(r.secrets)).catch((e) => {
+      setSecrets([]);
+      setActErr(fail(e));
+    });
   }, [id, tab]);
 
   if (!id) return <Navigate to="/" />;
@@ -1095,8 +1166,8 @@ function BotPage() {
   if (loadErr) {
     return (
       <div className="p-7">
-        <p className="mb-3 text-carmine">{loadErr}</p>
-        <Link to="/" className="text-bindery">
+        <p className="mb-3 text-vermilion">{loadErr}</p>
+        <Link to="/" className="text-cobalt">
           Back to Bots
         </Link>
       </div>
@@ -1105,14 +1176,22 @@ function BotPage() {
   if (!bot) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex h-11 items-center gap-3 border-b border-thread-2 px-4 wide:h-14">
-          <div className="hidden h-7 w-7 rounded-[8px] bg-cloth wide:block" />
-          <div className="hidden h-5 w-32 rounded-[6px] bg-linen wide:block" />
+        <div className="flex h-12 items-center gap-3 px-4 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14">
+          <div className="skeleton hidden h-7 w-7 rounded-sm wide:block" />
+          <div className="skeleton hidden h-4 w-32 rounded-xs wide:block" />
         </div>
-        <div className="p-4 text-stone">Opening…</div>
+        <div className="flex min-h-0 flex-1">
+          <div className="hidden w-[248px] shrink-0 bg-well p-2 pt-12 wide:block">
+            <SkeletonRows rows={4} height={52} />
+          </div>
+          <div className="flex-1" />
+        </div>
       </div>
     );
   }
+
+  const chatRuns = new Set(events.map((e) => e.runId).filter(Boolean));
+  const waiting = pending.some((p) => p.runId && chatRuns.has(p.runId));
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
@@ -1120,6 +1199,7 @@ function BotPage() {
     const msg = text.trim();
     setText("");
     setSending(true);
+    sentAt.current = Date.now();
     setActErr("");
     try {
       await ui.send({
@@ -1306,207 +1386,246 @@ function BotPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="@container flex h-11 shrink-0 items-center gap-1 border-b border-thread-2 px-2 wide:h-14 wide:gap-3 wide:px-4">
-        <span className="hidden wide:inline-flex">
+      <header className="@container flex h-12 shrink-0 items-center gap-1 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:gap-3 wide:px-4">
+        <span className="blink hidden wide:inline-flex">
           <Crest index={bot.crest} size={28} />
         </span>
-        <h1 className="sr-only min-w-0 truncate text-[16px] font-medium wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
-        <span className={`hidden h-[7px] w-[7px] shrink-0 rounded-full wide:inline-block ${lampClass(bot.status)}`} />
-        <span className={`hidden shrink-0 text-[12px] font-medium wide:inline ${statusWord(bot.status)}`}>{statusLabel(bot.status)}</span>
-        <FadeScroll className="hidden min-h-0 flex-1 self-stretch wide:block" innerClass="flex h-full items-stretch gap-1">
+        <h1 className="sr-only min-w-0 truncate text-[15px] leading-5 font-semibold tracking-[-0.01em] wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
+        <span className="hidden shrink-0 items-center gap-2 wide:inline-flex">
+          <Lamp status={bot.status} />
+          <StatusWord status={bot.status} />
+        </span>
+        <TabStrip tab={tab} className="hidden min-h-0 flex-1 self-stretch wide:ml-2 wide:block" innerClass="flex h-full items-stretch gap-0.5">
           <BotTabs id={id} tab={tab} chatId={chatId} />
-        </FadeScroll>
-        <FadeScroll className="min-h-0 flex-1 self-stretch wide:hidden" innerClass="flex h-full items-stretch gap-0.5">
+        </TabStrip>
+        <TabStrip tab={tab} className="min-h-0 flex-1 self-stretch wide:hidden" innerClass="flex h-full items-stretch gap-0.5">
           <BotTabs id={id} tab={tab} chatId={chatId} splitMachine compact />
-        </FadeScroll>
+        </TabStrip>
         <div className="shrink-0">
-            {bot.workerConnected ? (
-              <Btn
-                kind="ghost"
-                title="Stop Bot"
-                aria-label="Stop Bot"
-                onClick={stop}
-                className={machineBtnCompact}
-                icon={<Power size={12} />}
-              >
-                <span className="@max-[1280px]:hidden">Stop Bot</span>
-              </Btn>
-            ) : (
-              <Btn
-                kind="primary"
-                title={bot.status === "starting" ? "Starting…" : "Start Bot"}
-                aria-label={bot.status === "starting" ? "Starting" : "Start Bot"}
-                onClick={start}
-                disabled={bot.status === "starting"}
-                className={machineBtnCompact}
-                icon={<Power size={12} />}
-              >
-                <span className="@max-[1280px]:hidden">{bot.status === "starting" ? "Starting…" : "Start Bot"}</span>
-              </Btn>
-            )}
+          {bot.workerConnected ? (
+            <Btn
+              kind="ghost"
+              title="Stop Bot"
+              aria-label="Stop Bot"
+              onClick={stop}
+              className={machineBtnCompact}
+              icon={<Power size={13} />}
+            >
+              <span className="@max-[1280px]:hidden">Stop Bot</span>
+            </Btn>
+          ) : (
+            <Btn
+              kind="ghost"
+              title={bot.status === "starting" ? "Starting…" : "Start Bot"}
+              aria-label={bot.status === "starting" ? "Starting" : "Start Bot"}
+              onClick={start}
+              disabled={bot.status === "starting"}
+              className={machineBtnCompact}
+              icon={<Power size={13} />}
+            >
+              <span className="@max-[1280px]:hidden">{bot.status === "starting" ? "Starting…" : "Start Bot"}</span>
+            </Btn>
+          )}
         </div>
       </header>
-      {actErr && <div className="border-b border-thread-2 bg-folio px-4 py-2 text-carmine">{actErr}</div>}
-      <div className="relative flex min-h-0 flex-1">
+      {actErr && (
+        <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-[13px] text-vermilion">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
+          <span className="min-w-0 flex-1">{actErr}</span>
+          <button type="button" title="Dismiss" className="rounded-xs p-1 hover:bg-white/60" onClick={() => setActErr("")}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
+      <div
+        className="relative flex min-h-0 flex-1"
+        style={{ "--wash-left": tab === "run" ? "248px" : "0px" } as CSSProperties}
+      >
         {tab === "run" && (
           <>
-            <aside className="hidden w-[240px] shrink-0 flex-col border-r border-thread-2 bg-cloth wide:flex">
-              <div className="flex items-center justify-between px-3 py-3">
-                <span className="text-[11px] font-medium tracking-wide text-stone">Chats</span>
-                <button
-                  className="inline-flex items-center gap-1 rounded-[4px] px-1 py-0.5 text-[12px] font-medium text-bindery transition-colors duration-150 ease-quiet hover:text-bindery-deep"
+            <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
+              <div className="flex h-12 items-center justify-between pr-2 pl-4">
+                <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">Chats</span>
+                <Btn
+                  kind="ghost"
+                  size="sm"
+                  iconOnly
+                  title="New chat"
+                  aria-label="New chat"
+                  icon={<SquarePen size={15} />}
                   onClick={() => newChat().catch((e) => setActErr(fail(e)))}
-                >
-                  <Plus size={13} />
-                  New
-                </button>
+                />
               </div>
-              <div className="min-h-0 flex-1 overflow-auto px-2 pb-3">
-                {chats.length === 0 && <p className="px-2 py-2 text-stone">No chats</p>}
-                {chats.map((c) => (
-                  <div key={c.id} className="group mb-0.5 flex items-center">
-                    {editingChat === c.id ? (
-                      <input
-                        autoFocus
-                        className="min-w-0 flex-1 rounded-[6px] bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        onBlur={() => {
-                          if (renameCancel.current) {
-                            renameCancel.current = false;
-                            return;
-                          }
-                          void renameChat(c.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void renameChat(c.id);
-                          }
-                          if (e.key === "Escape") {
-                            renameCancel.current = true;
-                            setEditingChat("");
-                          }
-                        }}
-                      />
-                    ) : (
-                      <NavLink
-                        to={`/bots/${id}/run/${c.id}`}
-                        onDoubleClick={(e) => {
-                          e.preventDefault();
-                          setEditingChat(c.id);
-                          setEditTitle(c.title || "");
-                        }}
-                        className={`min-w-0 flex-1 truncate rounded-[6px] px-2 py-1.5 transition-colors duration-150 ease-quiet ${
-                          c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone hover:bg-linen hover:text-iron"
-                        }`}
-                      >
-                        {c.title || "New chat"}
-                      </NavLink>
-                    )}
-                    {editingChat !== c.id && (
-                      <button
-                        title="Rename chat"
-                        className="hidden px-1 text-stone transition-colors duration-150 hover:text-iron group-hover:block"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setEditingChat(c.id);
-                          setEditTitle(c.title || "");
-                        }}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                    <button
-                      title="Delete chat"
-                      className="hidden px-1 text-stone transition-colors duration-150 hover:text-carmine group-hover:block"
-                      onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
+              <div className="min-h-0 flex-1 space-y-0.5 overflow-auto px-2 pb-3">
+                {chats.length === 0 && <p className="px-2 py-2 text-[12.5px] text-ink-3">No chats</p>}
+                {chats.map((c) => {
+                  const on = c.id === chatId;
+                  const live = on && (waiting || sending);
+                  return (
+                    <div
+                      key={c.id}
+                      className={`group relative rounded-control transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${ on ? "bg-surface shadow-card" : "hover:bg-pressed"
+                      }`}
                     >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+                      {editingChat === c.id ? (
+                        <div className="px-1.5 py-1.5">
+                          <input
+                            autoFocus
+                            className={`${inputClass} h-8 px-2 text-[13.5px]`}
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onBlur={() => {
+                              if (renameCancel.current) {
+                                renameCancel.current = false;
+                                return;
+                              }
+                              void renameChat(c.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void renameChat(c.id);
+                              }
+                              if (e.key === "Escape") {
+                                renameCancel.current = true;
+                                setEditingChat("");
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <NavLink
+                          to={`/bots/${id}/run/${c.id}`}
+                          onDoubleClick={(e) => {
+                            e.preventDefault();
+                            setEditingChat(c.id);
+                            setEditTitle(c.title || "");
+                          }}
+                          className="block min-w-0 rounded-control px-3 py-2 pr-14"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-[13.5px] leading-5 font-medium text-ink">{c.title || "New chat"}</span>
+                            {live ? <Lamp status={waiting ? "needs_you" : "working"} /> : null}
+                          </span>
+                          <span className={`block truncate text-[12.5px] leading-[18px] ${waiting && on ? "text-vermilion" : "text-ink-3"}`}>
+                            {on && waiting ? "Waiting for you" : on && sending ? "Working…" : when(c.updatedAt)}
+                          </span>
+                        </NavLink>
+                      )}
+                      {editingChat !== c.id && (
+                        <span className="absolute top-1.5 right-1.5 hidden items-center group-focus-within:flex group-hover:flex">
+                          <button
+                            type="button"
+                            title="Rename chat"
+                            className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setEditingChat(c.id);
+                              setEditTitle(c.title || "");
+                            }}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete chat"
+                            className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion"
+                            onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </aside>
             <section className="flex min-w-0 flex-1 flex-col">
-              <FadeScroll className="shrink-0 border-b border-thread-2 bg-cloth wide:hidden" innerClass="flex items-center gap-1 px-2 py-1.5" fade="from-cloth">
-                <button
-                  className="inline-flex shrink-0 items-center gap-1 px-2 py-1.5 text-[12px] text-bindery hover:text-bindery-deep"
+              <FadeScroll className="shrink-0 bg-well shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden" innerClass="flex items-center gap-1 px-2 py-1.5" fade="from-well">
+                <Btn
+                  kind="ghost"
+                  size="sm"
+                  iconOnly
+                  title="New chat"
+                  aria-label="New chat"
+                  className="h-10 w-10"
+                  icon={<SquarePen size={15} />}
                   onClick={() => newChat().catch((e) => setActErr(fail(e)))}
-                >
-                  <Plus size={14} />
-                  New
-                </button>
-                {chats.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`flex shrink-0 items-center rounded-[6px] ${
-                      c.id === chatId ? "bg-bindery-pale text-iron" : "text-stone"
-                    }`}
-                  >
-                    {editingChat === c.id ? (
-                      <input
-                        autoFocus
-                        className="w-36 rounded-[6px] bg-folio px-2 py-1.5 text-[14px] outline-none ring-1 ring-bindery"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        onBlur={() => {
-                          if (renameCancel.current) {
-                            renameCancel.current = false;
-                            return;
-                          }
-                          void renameChat(c.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
+                />
+                {chats.map((c) => {
+                  const on = c.id === chatId;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`flex h-10 shrink-0 items-center rounded-control text-[13px] font-medium ${ on ? "bg-surface text-ink shadow-card" : "text-ink-2"
+                      }`}
+                    >
+                      {editingChat === c.id ? (
+                        <input
+                          autoFocus
+                          className={`${inputClass} h-8 w-40 px-2`}
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onBlur={() => {
+                            if (renameCancel.current) {
+                              renameCancel.current = false;
+                              return;
+                            }
                             void renameChat(c.id);
-                          }
-                          if (e.key === "Escape") {
-                            renameCancel.current = true;
-                            setEditingChat("");
-                          }
-                        }}
-                      />
-                    ) : (
-                      <NavLink
-                        to={`/bots/${id}/run/${c.id}`}
-                        onDoubleClick={(e) => {
-                          e.preventDefault();
-                          setEditingChat(c.id);
-                          setEditTitle(c.title || "");
-                        }}
-                        className={`max-w-[10rem] truncate px-2.5 py-1.5 ${
-                          c.id === chatId ? "" : "rounded-[6px] hover:bg-linen hover:text-iron"
-                        }`}
-                      >
-                        {c.title || "New chat"}
-                      </NavLink>
-                    )}
-                    {c.id === chatId && editingChat !== c.id && (
-                      <button
-                        title="Rename chat"
-                        className="px-1 py-1.5 text-stone hover:text-iron"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setEditingChat(c.id);
-                          setEditTitle(c.title || "");
-                        }}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                    {c.id === chatId && (
-                      <button
-                        title="Delete chat"
-                        className="py-1.5 pr-2 pl-0.5 text-stone hover:text-carmine"
-                        onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void renameChat(c.id);
+                            }
+                            if (e.key === "Escape") {
+                              renameCancel.current = true;
+                              setEditingChat("");
+                            }
+                          }}
+                        />
+                      ) : (
+                        <NavLink
+                          to={`/bots/${id}/run/${c.id}`}
+                          onDoubleClick={(e) => {
+                            e.preventDefault();
+                            setEditingChat(c.id);
+                            setEditTitle(c.title || "");
+                          }}
+                          className={`flex h-10 max-w-[11rem] items-center gap-2 px-3 ${on ? "" : "rounded-control hover:bg-pressed hover:text-ink"}`}
+                        >
+                          <span className="truncate">{c.title || "New chat"}</span>
+                          {on && (waiting || sending) ? <Lamp status={waiting ? "needs_you" : "working"} /> : null}
+                        </NavLink>
+                      )}
+                      {on && editingChat !== c.id && (
+                        <button
+                          type="button"
+                          title="Rename chat"
+                          className="flex h-10 w-8 items-center justify-center text-ink-2 hover:text-ink"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setEditingChat(c.id);
+                            setEditTitle(c.title || "");
+                          }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {on && (
+                        <button
+                          type="button"
+                          title="Delete chat"
+                          className="flex h-10 w-8 items-center justify-center text-ink-2 hover:text-vermilion"
+                          onClick={() => deleteChat(c.id).catch((e) => setActErr(fail(e)))}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </FadeScroll>
               <Thread
                 botId={id!}
@@ -1515,6 +1634,7 @@ function BotPage() {
                 chatId={chatId}
                 events={events}
                 sending={sending}
+                fresh={fresh}
                 onInspectArtifact={setInspect}
                 onSaveSkill={(a) => void saveSkill(a)}
                 onSelectPrompt={(p) => setText(p)}
@@ -1546,13 +1666,13 @@ function BotPage() {
         {tab === "desktop" || keepDesk ? (
           <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "desktop" ? "flex" : "hidden"}`}>
             <MachinePane bot={bot} onStart={start} visible={tab === "desktop"} kind="desktop" />
-            <p className="mt-2 text-stone">Same browser the Bot uses. You can type and click.</p>
+            <p className="mt-2 text-[12.5px] text-ink-2">Same browser the Bot uses. You can type and click.</p>
           </section>
         ) : null}
         {tab === "console" || keepCon ? (
           <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "console" ? "flex" : "hidden"}`}>
             <MachinePane bot={bot} onStart={start} visible={tab === "console"} kind="console" />
-            <p className="mt-2 text-stone">A shell on this Bot, started in /workspace.</p>
+            <p className="mt-2 text-[12.5px] text-ink-2">A shell on this Bot, started in /workspace.</p>
           </section>
         ) : null}
         {tab === "files" && (
@@ -1578,43 +1698,60 @@ function BotPage() {
         {tab === "secrets" && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">
           <div className="silo-page">
-            <h2 className="text-[22px] font-medium">Secrets</h2>
-            <p className="mb-4 text-stone">Handed to the Bot only after you allow it. Masked before the model sees output.</p>
-            {secrets.length === 0 && <p className="mb-4 text-stone">No secrets on this Bot yet.</p>}
-            {secrets.map((s) => (
-              <div key={s.id} className="mb-2 flex items-center justify-between rounded-[6px] border border-thread bg-folio px-3 py-2">
-                <div>
-                  <div className="font-medium">{s.name}</div>
-                  <div className="font-mono text-stone">•••••••• · {s.lastUsedAt || "never used"}</div>
-                </div>
-                <Btn
-                  kind="ghost"
-                  className="text-carmine hover:text-carmine"
-                  onClick={async () => {
-                    await ui.deleteSecret({ botId: id, id: s.id });
-                    setSecrets((xs) => xs.filter((x) => x.id !== s.id));
-                  }}
-                >
-                  Delete
-                </Btn>
-              </div>
-            ))}
-            <form
-              className="mt-6 flex flex-col gap-2 wide:flex-row"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                await ui.addSecret({ botId: id, name: secName, value: secVal });
-                setSecName("");
-                setSecVal("");
-                setSecrets((await ui.listSecrets({ botId: id })).secrets);
-              }}
-            >
-              <input className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-3" placeholder="Name" value={secName} onChange={(e) => setSecName(e.target.value)} />
-              <input type="password" className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-3" placeholder="Value" value={secVal} onChange={(e) => setSecVal(e.target.value)} />
-              <Btn kind="primary" type="submit" icon={<Plus size={12} />}>
-                Add
-              </Btn>
-            </form>
+            <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Secrets</h2>
+            <p className="mb-6 text-ink-2">Handed to the Bot only after you allow it. Masked before the model sees output.</p>
+            <Panel title="Stored secrets" padded={false}>
+              {secrets === null ? (
+                <SkeletonRows rows={2} height={52} className="p-3" />
+              ) : secrets.length === 0 ? (
+                <p className="px-5 py-4 text-[13px] text-ink-3">No secrets on this Bot yet.</p>
+              ) : (
+                secrets.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
+                    <div className="min-w-0">
+                      <div className="truncate font-mono text-[13px] font-medium">{s.name}</div>
+                      <div className="font-mono text-[12px] text-ink-3">•••••••• · {s.lastUsedAt || "never used"}</div>
+                    </div>
+                    <ArmedButton
+                      kind="ghost"
+                      size="sm"
+                      onConfirm={async () => {
+                        await ui.deleteSecret({ botId: id, id: s.id });
+                        setSecrets((xs) => (xs ?? []).filter((x) => x.id !== s.id));
+                      }}
+                    >
+                      Delete
+                    </ArmedButton>
+                  </div>
+                ))
+              )}
+            </Panel>
+            <Panel title="Add a secret" className="mt-4">
+              <form
+                className="flex flex-col gap-3 wide:flex-row wide:items-end"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await secretSaver.run(() => ui.addSecret({ botId: id, name: secName, value: secVal }));
+                    setSecName("");
+                    setSecVal("");
+                    setSecrets((await ui.listSecrets({ botId: id })).secrets);
+                  } catch (ex) {
+                    setActErr(fail(ex));
+                  }
+                }}
+              >
+                <Field label="Name" className="flex-1">
+                  <input className={`${inputClass} font-mono`} placeholder="vendor_password" value={secName} onChange={(e) => setSecName(e.target.value)} />
+                </Field>
+                <Field label="Value" className="flex-1">
+                  <input type="password" className={`${inputClass} font-mono`} placeholder="••••••••" value={secVal} onChange={(e) => setSecVal(e.target.value)} />
+                </Field>
+                <SaveButton type="submit" state={secretSaver.state} savedLabel="Added" disabled={!secName.trim() || !secVal}>
+                  Add
+                </SaveButton>
+              </form>
+            </Panel>
           </div>
           </div>
         )}
@@ -1641,34 +1778,32 @@ function BotPage() {
             <RulesPane botId={id} />
           </div>
         )}
-        {(pending[0] || authPrompt?.connector) && (
-          <div className="pointer-events-none absolute inset-0 z-[9] bg-iron/15 wide:bg-transparent" />
-        )}
-        {pending[0] ? (
-          <ApprovalSlip
-            bot={bot}
-            approval={pending[0]}
-            onDecide={async (decision) => {
-              await ui.decideApproval({ id: pending[0].id, decision });
-              setPending((xs) => xs.slice(1));
-            }}
-            onAutoApprove={async () => {
-              try {
-                await ui.setRule({
-                  botId: bot.id,
-                  connector: pending[0].connector,
-                  action: pending[0].action,
-                  decision: "auto",
-                });
-                await ui.decideApproval({ id: pending[0].id, decision: "allow_once" });
+        <SlipPresence show={!!(pending[0] || authPrompt?.connector)}>
+          {pending[0] ? (
+            <ApprovalSlip
+              key={pending[0].id}
+              bot={bot}
+              approval={pending[0]}
+              onDecide={async (decision) => {
+                await ui.decideApproval({ id: pending[0].id, decision });
                 setPending((xs) => xs.slice(1));
-              } catch (e) {
-                setActErr(fail(e));
-              }
-            }}
-          />
-        ) : (
-          authPrompt?.connector && (
+              }}
+              onAutoApprove={async () => {
+                try {
+                  await ui.setRule({
+                    botId: bot.id,
+                    connector: pending[0].connector,
+                    action: pending[0].action,
+                    decision: "auto",
+                  });
+                  await ui.decideApproval({ id: pending[0].id, decision: "allow_once" });
+                  setPending((xs) => xs.slice(1));
+                } catch (e) {
+                  setActErr(fail(e));
+                }
+              }}
+            />
+          ) : authPrompt?.connector ? (
             <ConnectorAuthSlip
               bot={bot}
               name={authPrompt.connector.name}
@@ -1682,8 +1817,8 @@ function BotPage() {
               }}
               onLater={() => setAuthPrompt(null)}
             />
-          )
-        )}
+          ) : null}
+        </SlipPresence>
         {inspect && id ? (
           <ArtifactOverlay botId={id} artifact={inspect} onSave={(a) => void saveSkill(a)} onClose={() => setInspect(null)} />
         ) : null}

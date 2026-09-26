@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Btn } from "./Btn";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, kindOf } from "./fileKind";
+import { SkeletonRows } from "./Field";
 import { crumbs, fmtSize, type FsEntry, type FsFile, type FsSource } from "./fs";
 
 export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean; size?: number }) {
@@ -29,7 +30,7 @@ export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean;
 
 export function FileBrowser({
   source,
-  chrome = "folio",
+  chrome = "surface",
   initialFile = "",
   headerLeft,
   headerRight,
@@ -39,7 +40,7 @@ export function FileBrowser({
   refreshKey = 0,
 }: {
   source: FsSource;
-  chrome?: "folio" | "hatch";
+  chrome?: "surface" | "hatch";
   initialFile?: string;
   headerLeft?: ReactNode;
   headerRight?: ReactNode;
@@ -123,11 +124,11 @@ export function FileBrowser({
     void toggleDir(path);
   }
   const treeCls = hatch
-    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-plaster max-wide:w-full max-wide:border-r-0"
-    : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-thread text-iron max-wide:w-full max-wide:border-r-0";
+    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-canvas max-wide:w-full max-wide:border-r-0"
+    : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink max-wide:w-full max-wide:border-r-0";
   const headCls = hatch
-    ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-plaster"
-    : "flex h-10 shrink-0 items-center gap-2 border-b border-thread-2 px-3 text-[13px]";
+    ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-canvas"
+    : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -136,10 +137,10 @@ export function FileBrowser({
         <div className="silo-scroll-x flex min-w-0 flex-1 items-center gap-2">
           {trail.map((c, i) => (
             <span key={c.path || "root"} className="flex items-center gap-2">
-              {i > 0 && <span className={hatch ? "text-plaster/40" : "text-thread"}>/</span>}
+              {i > 0 && <span className={hatch ? "text-canvas/40" : "text-line"}>/</span>}
               <button
                 type="button"
-                className={i === trail.length - 1 ? (hatch ? "text-plaster" : "text-iron") : hatch ? "text-plaster/60 hover:text-plaster" : "text-stone hover:text-iron"}
+                className={i === trail.length - 1 ? (hatch ? "text-canvas" : "text-ink") : hatch ? "text-canvas/60 hover:text-canvas" : "text-ink-2 hover:text-ink"}
                 onClick={() => goCrumb(c.path, i)}
               >
                 {c.label}
@@ -150,7 +151,7 @@ export function FileBrowser({
         {file && (
           <button
             type="button"
-            className={hatch ? "text-plaster/70 hover:text-plaster" : "text-stone hover:text-iron"}
+            className={hatch ? "text-canvas/70 hover:text-canvas" : "text-ink-2 hover:text-ink"}
             title="Download"
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
@@ -159,7 +160,7 @@ export function FileBrowser({
         )}
         {headerRight}
       </div>
-      {err && <p className={`px-4 py-2 ${hatch ? "text-carmine" : "text-carmine"}`}>{err}</p>}
+      {err && <p className={`px-4 py-2 ${hatch ? "text-vermilion" : "text-vermilion"}`}>{err}</p>}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <nav className={`${treeCls} ${file ? "max-wide:hidden" : ""}`}>
           <Tree
@@ -175,12 +176,12 @@ export function FileBrowser({
             onDelete={onDelete}
           />
         </nav>
-        <section className={`flex min-w-0 flex-1 flex-col bg-folio text-iron ${file ? "" : "max-wide:hidden"}`}>
-          {file?.truncated && <p className="border-b border-thread-2 px-3 py-1 text-[12px] text-stone">Showing the first 2 MB.</p>}
+        <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "max-wide:hidden"}`}>
+          {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">Showing the first 2 MB.</p>}
           <div className="min-h-0 flex-1 overflow-auto p-3">
-            {busy ? <p className="text-stone">Opening…</p> : null}
+            {busy ? <p className="text-ink-2">Opening…</p> : null}
             {!busy && file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
-            {!busy && !file && !err ? <p className="text-stone">Select a file.</p> : null}
+            {!busy && !file && !err ? <p className="text-ink-2">Select a file.</p> : null}
           </div>
         </section>
       </div>
@@ -212,8 +213,8 @@ function Tree({
   onDelete?: (e: FsEntry) => void;
 }) {
   const ents = kids[path];
-  if (!ents) return depth === 0 ? <p className="px-3 py-4 text-stone">Loading…</p> : null;
-  if (ents.length === 0 && depth === 0) return <p className="px-3 py-4 text-stone">This folder is empty.</p>;
+  if (!ents) return depth === 0 ? <SkeletonRows rows={5} height={28} className="p-2" /> : null;
+  if (ents.length === 0 && depth === 0) return <p className="px-3 py-4 text-ink-2">This folder is empty.</p>;
   return (
     <ul>
       {ents.map((e) => {
@@ -222,7 +223,7 @@ function Tree({
         return (
           <li key={e.path}>
             <div
-              className={`group flex h-8 items-center gap-1 pr-2 ${active ? (hatch ? "bg-white/10" : "bg-cloth") : hatch ? "hover:bg-white/5" : "hover:bg-cloth"}`}
+              className={`group flex h-8 items-center gap-1 pr-2 ${active ? (hatch ? "bg-white/10" : "bg-well") : hatch ? "hover:bg-white/5" : "hover:bg-well"}`}
               style={{ paddingLeft: 8 + depth * 12 }}
             >
               {e.dir ? (
@@ -244,7 +245,7 @@ function Tree({
               {onDelete && (
                 <button
                   type="button"
-                  className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-carmine opacity-100" : hatch ? "text-plaster/70 hover:text-carmine" : "text-stone hover:text-carmine"}`}
+                  className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-canvas/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
                   title={pendingDel === e.path ? "Click again to delete" : "Delete"}
                   onClick={() => onDelete(e)}
                 >
@@ -296,7 +297,7 @@ export function SkillBrowserOverlay({
                   Save skill
                 </Btn>
               )}
-              <button type="button" className="text-plaster/70 hover:text-plaster" title="Close" onClick={onClose}>
+              <button type="button" className="text-canvas/70 hover:text-canvas" title="Close" onClick={onClose}>
                 <X size={16} />
               </button>
             </>

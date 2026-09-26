@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Download, LoaderCircle, ScrollText, X } from "lucide-react";
+import { btnClass } from "./Btn";
 import { FilePreview } from "./FilePreview";
 import { SkillBrowserOverlay, TypeIcon } from "./FileBrowser";
-import { isTextKind, kindLabel } from "./fileKind";
+import { extOf, isTextKind, kindLabel } from "./fileKind";
 import { fmtSize, skillSource, workspaceDirSource, type FsSource } from "./fs";
 
 export type Artifact = {
@@ -45,6 +46,28 @@ export function artifactSource(botId: string, a: Artifact): FsSource {
   return skillSource(a.scope || "personal", a.name);
 }
 
+// Type badge for file cards: the extension in a small well; PDFs are
+// vermilion-pale with a vermilion label. Skills show a scroll mark.
+export function TypeBadge({ name, skill }: { name: string; skill?: boolean }) {
+  if (skill) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">
+        <ScrollText size={18} />
+      </span>
+    );
+  }
+  const ext = extOf(name).toUpperCase().slice(0, 4) || "FILE";
+  const pdf = ext === "PDF";
+  return (
+    <span
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-[10px] leading-none font-semibold tracking-[0.04em] ${ pdf ? "bg-vermilion-pale text-vermilion" : "bg-well text-ink-2"
+      }`}
+    >
+      {ext}
+    </span>
+  );
+}
+
 export function ArtifactCard({
   artifact,
   onOpen,
@@ -56,31 +79,30 @@ export function ArtifactCard({
   onSave?: () => void;
   onDownload?: () => void;
 }) {
-  const pending = artifact.type === "skill" && artifact.status === "pending";
-  const saved = artifact.type === "skill" && artifact.status === "saved";
+  const skill = artifact.type === "skill";
+  const pending = skill && artifact.status === "pending";
+  const saved = skill && artifact.status === "saved";
+  const name = artifact.name || artifact.path;
   return (
-    <div className="flex max-w-[440px] items-center gap-3 rounded-[10px] bg-hatch px-3 py-2.5 text-plaster">
+    <div className="group flex w-full max-w-[380px] items-center gap-3 rounded-card bg-surface p-3 shadow-card transition-[box-shadow,transform] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float motion-reduce:hover:translate-y-0">
       <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={onOpen}>
-        {artifact.type === "skill" ? (
-          <ScrollText size={22} className="shrink-0 text-plaster/70" />
-        ) : (
-          <span className="shrink-0 text-plaster/70">
-            <TypeIcon name={artifact.name || artifact.path} dir={false} size={22} />
-          </span>
-        )}
+        <TypeBadge name={name} skill={skill} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{artifact.title || artifact.name}</span>
-          <span className="block text-[12px] text-plaster/50">
-            {artifact.type === "skill"
-              ? "Skill"
-              : `${kindLabel(artifact.name || artifact.path)}${artifact.size ? ` · ${fmtSize(artifact.size)}` : ""}`}
+          <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{artifact.title || artifact.name}</span>
+          <span className="block truncate text-[12.5px] leading-[18px] text-ink-3">
+            {skill
+              ? saved
+                ? "Skill · saved to your skills"
+                : "Skill"
+              : `${kindLabel(name)}${artifact.size ? ` · ${fmtSize(artifact.size)}` : ""} · saved to Files`}
           </span>
         </span>
       </button>
       <button
         type="button"
-        className="shrink-0 text-plaster/60 hover:text-plaster"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]"
         title="Download"
+        aria-label="Download"
         onClick={(e) => {
           e.stopPropagation();
           onDownload?.();
@@ -91,7 +113,7 @@ export function ArtifactCard({
       {pending && onSave ? (
         <button
           type="button"
-          className="h-8 shrink-0 rounded-[6px] bg-bindery px-2.5 text-[13px] font-medium text-plaster hover:bg-bindery-deep"
+          className={btnClass("primary", "", "sm")}
           onClick={(e) => {
             e.stopPropagation();
             onSave();
@@ -100,7 +122,11 @@ export function ArtifactCard({
           Save skill
         </button>
       ) : null}
-      {saved ? <Check size={16} className="shrink-0 text-pine" /> : null}
+      {saved ? (
+        <span className="pop flex h-8 w-8 shrink-0 items-center justify-center text-emerald" title="Saved">
+          <Check size={17} strokeWidth={2.25} />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -207,29 +233,29 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-hatch p-0 wide:p-3">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-hatch ring-1 ring-white/10 wide:rounded-[10px]">
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 text-plaster">
-          <span className="text-plaster/70">
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 text-canvas">
+          <span className="text-canvas/70">
             <TypeIcon name={name} dir={false} size={18} />
           </span>
           <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{artifact.title || name}</span>
           <button
             type="button"
-            className="shrink-0 text-plaster/70 hover:text-plaster"
+            className="shrink-0 text-canvas/70 hover:text-canvas"
             title="Download"
             onClick={() => downloadArtifact(botId, artifact)}
           >
             <Download size={16} />
           </button>
-          <button type="button" className="shrink-0 text-plaster/70 hover:text-plaster" title="Close" onClick={onClose}>
+          <button type="button" className="shrink-0 text-canvas/70 hover:text-canvas" title="Close" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-4">
           {err ? (
-            <p className="text-[13px] text-carmine">{err}</p>
+            <p className="text-[13px] text-vermilion">{err}</p>
           ) : !data ? (
-            <div className="flex items-center gap-2 text-stone">
-              <LoaderCircle size={14} className="animate-spin" />
+            <div className="flex items-center gap-2 text-ink-3">
+              <LoaderCircle size={14} className="spin" />
               <span className="text-[13px]">Opening…</span>
             </div>
           ) : (

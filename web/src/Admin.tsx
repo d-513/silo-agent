@@ -2,6 +2,7 @@ import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ui } from "./api";
+import { SaveButton, useSave } from "./Feedback";
 import { Btn } from "./Btn";
 import { Field, Panel } from "./Field";
 import { Select } from "./Select";
@@ -24,12 +25,12 @@ export function AdminLayout() {
   }, []);
   return (
     <div className="silo-page">
-      <h1 className="text-[22px] font-medium tracking-tight">Admin</h1>
-      <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 border-b border-thread-2">
+      <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Admin</h1>
+      <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 shadow-[inset_0_-1px_0_var(--color-line)]">
         <NavLink
           to="/admin/settings"
           className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
           }
         >
           Settings
@@ -37,7 +38,7 @@ export function AdminLayout() {
         <NavLink
           to="/admin/connectors"
           className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
           }
         >
           Connectors Library
@@ -45,7 +46,7 @@ export function AdminLayout() {
         <NavLink
           to="/admin/skills"
           className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
           }
         >
           Skills Library
@@ -53,7 +54,7 @@ export function AdminLayout() {
         <NavLink
           to="/admin/search-extract"
           className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
           }
         >
           Search & Extract
@@ -62,7 +63,7 @@ export function AdminLayout() {
           <NavLink
             to="/admin/debug"
             className={({ isActive }) =>
-              `shrink-0 whitespace-nowrap border-b-2 px-3 py-2 ${isActive ? "border-bindery text-iron" : "border-transparent text-stone hover:text-iron"}`
+              `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
             }
           >
             Debug
@@ -82,7 +83,7 @@ export function AdminSearchExtract() {
   const [engine, setEngine] = useState("");
   const [engines, setEngines] = useState<SearchEngine[]>([]);
   const [engineField, setEngineField] = useState<ConfigField | undefined>();
-  const [saved, setSaved] = useState(false);
+  const saver = useSave();
   const [err, setErr] = useState("");
   useEffect(() => {
     ui.getSettings({})
@@ -96,14 +97,12 @@ export function AdminSearchExtract() {
   }, []);
   async function save() {
     setErr("");
-    setSaved(false);
     try {
-      const x = await ui.putSettings({ fields: { "search.engine": engine } });
+      const x = await saver.run(() => ui.putSettings({ fields: { "search.engine": engine } }));
       const f = fieldOf(x.fields, "search.engine");
       setEngineField(f);
       setEngine(f?.value || engine);
       setEngines(x.searchEngines);
-      setSaved(true);
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -112,19 +111,19 @@ export function AdminSearchExtract() {
   const locked = engineField?.source === ConfigSource.ENV;
   return (
     <div>
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
       <Panel title="Search" note="The engine behind the web_search tool. Extract is wired later." className="mb-6">
         <Field
           label="Engine"
           headerRight={
             <>
               {engineField ? (
-                <span className="font-mono text-[11px] text-stone">
+                <span className="font-mono text-[11px] text-ink-3">
                   {engineField.source === ConfigSource.ENV ? "env" : engineField.source === ConfigSource.YAML ? "yaml" : "default"}
                 </span>
               ) : null}
               {locked ? (
-                <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={engineField?.envName}>
+                <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={engineField?.envName}>
                   <TriangleAlert size={14} />
                   {engineField?.envName}
                 </span>
@@ -136,38 +135,32 @@ export function AdminSearchExtract() {
             value={engine}
             disabled={locked}
             emptyLabel="No engines"
-            onChange={(v) => {
-              setEngine(v);
-              setSaved(false);
-            }}
+            onChange={(v) => setEngine(v)}
             options={engines.map((e) => ({ value: e.id, label: e.name }))}
           />
         </Field>
-        {current?.description ? <p className="mt-3 text-[13px] text-stone">{current.description}</p> : null}
+        {current?.description ? <p className="mt-3 text-[13px] text-ink-2">{current.description}</p> : null}
         {current && current.fields.length > 0 ? (
-          <div className="mt-3 space-y-2 border-t border-thread-2 pt-3">
+          <div className="mt-3 space-y-2 border-t border-line-strong pt-3">
             {current.fields.map((f) => (
               <div key={f.key}>
                 <div className="text-[13px]">
                   <span className="font-medium">{f.label}</span>
-                  <span className="ml-2 font-mono text-stone">{f.key}</span>
+                  <span className="ml-2 font-mono text-ink-3">{f.key}</span>
                 </div>
-                {f.description ? <p className="text-[12px] text-stone">{f.description}</p> : null}
+                {f.description ? <p className="text-[12px] text-ink-3">{f.description}</p> : null}
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-[13px] text-stone">No settings for this engine.</p>
+          <p className="mt-3 text-[13px] text-ink-2">No settings for this engine.</p>
         )}
         <div className="mt-4 flex items-center gap-3">
-          <Btn kind="primary" onClick={() => void save()} disabled={locked}>
-            Save
-          </Btn>
-          {saved && <span className="text-stone">Saved</span>}
+          <SaveButton state={saver.state} onClick={() => void save()} disabled={locked} />
         </div>
       </Panel>
-      <h2 className="mb-3 text-[22px] font-medium">Extract</h2>
-      <p className="text-stone">Page extract is not available yet.</p>
+      <h2 className="mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">Extract</h2>
+      <p className="text-ink-2">Page extract is not available yet.</p>
     </div>
   );
 }
@@ -175,10 +168,10 @@ export function AdminSearchExtract() {
 export function AccountPage({ email }: { email: string }) {
   return (
     <div className="silo-page silo-page-sm">
-      <h1 className="mb-2 text-[22px] font-medium tracking-tight">Account</h1>
-      <p className="mb-6 text-stone">Your sign-in. More settings later.</p>
-      <div className="mb-1 text-[12px] font-medium text-stone">Email</div>
-      <div className="rounded-[6px] border border-thread bg-folio px-3 py-2">{email}</div>
+      <h1 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">Account</h1>
+      <p className="mb-6 text-ink-2">Your sign-in. More settings later.</p>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">Email</div>
+      <div className="rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 py-2">{email}</div>
     </div>
   );
 }

@@ -120,21 +120,21 @@ export function ConnectorMark({
   size?: number;
 }) {
   if (previewUrl) {
-    return <img src={previewUrl} alt="" className="shrink-0 rounded-[6px] object-cover" style={{ width: size, height: size }} />;
+    return <img src={previewUrl} alt="" className="shrink-0 rounded-sm object-cover" style={{ width: size, height: size }} />;
   }
   if (hasImage && id) {
     return (
       <img
         src={`/connectors/${id}/image`}
         alt=""
-        className="shrink-0 rounded-[6px] object-cover"
+        className="shrink-0 rounded-sm object-cover"
         style={{ width: size, height: size }}
       />
     );
   }
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-[6px] bg-cloth text-stone"
+      className="flex shrink-0 items-center justify-center rounded-sm bg-well text-ink-3"
       style={{ width: size, height: size }}
     >
       <Plug size={Math.round(size * 0.45)} />
@@ -143,17 +143,17 @@ export function ConnectorMark({
 }
 
 export function McpChip() {
-  return <span className="rounded-[6px] bg-slate px-1.5 py-0.5 text-[11px] font-medium text-plaster">MCP</span>;
+  return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-[11px] font-medium text-canvas">MCP</span>;
 }
 
 export function CustomChip() {
-  return <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] font-medium text-stone">Custom</span>;
+  return <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">Custom</span>;
 }
 
 export function CategoryChip({ label }: { label: string }) {
   if (!label) return null;
   return (
-    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[6px] border border-thread bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
       {label}
     </span>
   );
@@ -169,14 +169,14 @@ export function Segmented({
   options: { id: string; label: string; disabled?: boolean; title?: string }[];
 }) {
   return (
-    <div className="flex overflow-hidden rounded-[6px] border border-thread">
+    <div className="flex overflow-hidden rounded-sm border border-line">
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           disabled={o.disabled}
           title={o.title}
-          className={`h-9 flex-1 ${o.disabled ? "bg-linen text-stone" : value === o.id ? "bg-bindery-pale" : "bg-folio text-stone"}`}
+          className={`h-9 flex-1 ${o.disabled ? "bg-pressed text-ink-3" : value === o.id ? "bg-cobalt-pale" : "bg-surface text-ink-3"}`}
           onClick={() => onChange(o.id)}
         >
           {o.label}
@@ -223,15 +223,15 @@ export function ConnectorFields({
 
   const settings = (
     <>
-      <label className="mb-1 block text-[12px] font-medium text-stone">Name</label>
-      <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3" value={value.name} onChange={(e) => set("name", e.target.value)} required={!fromCatalog} />
+      <label className="mb-1 block text-[12px] font-medium text-ink-3">Name</label>
+      <input className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3" value={value.name} onChange={(e) => set("name", e.target.value)} required={!fromCatalog} />
       {!fromCatalog && (
         <>
-          <label className="mb-1 block text-[12px] font-medium text-stone">Description</label>
-          <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
-          <label className="mb-1 block text-[12px] font-medium text-stone">Category</label>
+          <label className="mb-1 block text-[12px] font-medium text-ink-3">Description</label>
+          <input className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3" value={value.description} onChange={(e) => set("description", e.target.value)} />
+          <label className="mb-1 block text-[12px] font-medium text-ink-3">Category</label>
           <input
-            className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3"
+            className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3"
             value={value.category}
             onChange={(e) => set("category", e.target.value)}
             placeholder="e.g. Developer Tools, Productivity, Custom"
@@ -249,22 +249,22 @@ export function ConnectorFields({
           </datalist>
         </>
       )}
-      <label className="mb-1 block text-[12px] font-medium text-stone">Prompt</label>
-      <p className="mb-2 text-stone">Extra instructions added to the system prompt while this connector is authorized and its tools are ready.</p>
+      <label className="mb-1 block text-[12px] font-medium text-ink-3">Prompt</label>
+      <p className="mb-2 text-ink-2">Extra instructions added to the system prompt while this connector is authorized and its tools are ready.</p>
       <textarea
-        className="mb-3 min-h-24 w-full rounded-[6px] border border-thread bg-folio px-3 py-2"
+        className="mb-3 min-h-24 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 py-2"
         value={value.prompt}
         onChange={(e) => set("prompt", e.target.value)}
         placeholder="When to use this connector, and how."
       />
-      <label className="mb-1 block text-[12px] font-medium text-stone">Image</label>
+      <label className="mb-1 block text-[12px] font-medium text-ink-3">Image</label>
       <div className="mb-3 flex items-center gap-3">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} />
         <input type="file" accept="image/*" onChange={(e) => void onFile(e.target.files?.[0])} />
         {value.hasImage && !value.clearImage && (
           <button
             type="button"
-            className="text-stone hover:text-carmine"
+            className="text-ink-2 hover:text-vermilion"
             onClick={() => {
               if (value.previewUrl) URL.revokeObjectURL(value.previewUrl);
               onChange({ ...value, clearImage: true, image: undefined, hasImage: false, previewUrl: undefined });
@@ -274,9 +274,9 @@ export function ConnectorFields({
           </button>
         )}
       </div>
-      <div className="mb-1 text-[12px] font-medium text-stone">Type</div>
-      <p className="mb-3 text-stone">MCP</p>
-      <div className="mb-1 text-[12px] font-medium text-stone">Transport</div>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">Type</div>
+      <p className="mb-3 text-ink-2">MCP</p>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">Transport</div>
       <div className="mb-3">
         <Segmented
           value={value.transport}
@@ -287,38 +287,38 @@ export function ConnectorFields({
           ]}
         />
       </div>
-      <p className="mb-3 rounded-[6px] bg-cloth px-3 py-2 text-[12px] text-stone">
+      <p className="mb-3 rounded-sm bg-well px-3 py-2 text-[12px] text-ink-3">
         You can reference operator connector variables as <span className="font-mono">{"${NAME}"}</span> in the URL, headers, OAuth
         fields, command, arguments, and env values. Set them under Admin → Settings.
       </p>
       {value.transport === "stdio" ? (
         <>
-          <label className="mb-1 block text-[12px] font-medium text-stone">Command</label>
+          <label className="mb-1 block text-[12px] font-medium text-ink-3">Command</label>
           <input
-            className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
+            className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
             value={value.stdioCommand}
             onChange={(e) => set("stdioCommand", e.target.value)}
             placeholder="npx"
             required={!fromCatalog}
           />
-          <p className="mb-2 text-stone">Arguments, one per field. The command runs directly, without a shell.</p>
+          <p className="mb-2 text-ink-2">Arguments, one per field. The command runs directly, without a shell.</p>
           {value.stdioArgs.map((arg, i) => (
             <input
               key={i}
-              className="mb-2 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
+              className="mb-2 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
               value={arg}
               onChange={(e) => set("stdioArgs", value.stdioArgs.map((x, j) => (j === i ? e.target.value : x)))}
               placeholder={i === 0 ? "-y" : ""}
             />
           ))}
-          <button type="button" className="mb-3 text-bindery" onClick={() => set("stdioArgs", [...value.stdioArgs, ""])}>
+          <button type="button" className="mb-3 text-cobalt" onClick={() => set("stdioArgs", [...value.stdioArgs, ""])}>
             Add argument
           </button>
           {allowStdioImage && (
             <>
-              <label className="mb-1 block text-[12px] font-medium text-stone">Image</label>
+              <label className="mb-1 block text-[12px] font-medium text-ink-3">Image</label>
               <input
-                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
                 value={value.stdioImage}
                 onChange={(e) => set("stdioImage", e.target.value)}
                 placeholder="localhost/silo-mcp-stdio:v1"
@@ -328,9 +328,9 @@ export function ConnectorFields({
         </>
       ) : (
         <>
-          <label className="mb-1 block text-[12px] font-medium text-stone">URL</label>
-          <input className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
-          <div className="mb-1 text-[12px] font-medium text-stone">Auth</div>
+          <label className="mb-1 block text-[12px] font-medium text-ink-3">URL</label>
+          <input className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono" value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder="https://…" required={!fromCatalog} />
+          <div className="mb-1 text-[12px] font-medium text-ink-3">Auth</div>
           <div className="mb-3">
             <Segmented
               value={value.auth}
@@ -343,19 +343,19 @@ export function ConnectorFields({
           </div>
           {value.auth === "oauth" && (
             <>
-              <p className="mb-2 text-stone">
+              <p className="mb-2 text-ink-2">
                 Leave blank when the server registers clients itself. GitHub and similar need a pre-registered OAuth App whose callback is <span className="font-mono">/oauth/callback</span> on this Silo.
               </p>
-              <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client ID</label>
+              <label className="mb-1 block text-[12px] font-medium text-ink-3">OAuth Client ID</label>
               <input
-                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
                 value={value.oauthClientId}
                 onChange={(e) => set("oauthClientId", e.target.value)}
                 autoComplete="off"
               />
-              <label className="mb-1 block text-[12px] font-medium text-stone">OAuth Client Secret</label>
+              <label className="mb-1 block text-[12px] font-medium text-ink-3">OAuth Client Secret</label>
               <input
-                className="mb-3 h-9 w-full rounded-[6px] border border-thread bg-folio px-3 font-mono"
+                className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
                 type="password"
                 value={value.oauthClientSecret}
                 onChange={(e) => set("oauthClientSecret", e.target.value)}
@@ -366,8 +366,8 @@ export function ConnectorFields({
           )}
         </>
       )}
-      <div className="mb-1 text-[12px] font-medium text-stone">Default for tools</div>
-      <p className="mb-2 text-stone">Used when there is no rule for an action. Rules can still override.</p>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">Default for tools</div>
+      <p className="mb-2 text-ink-2">Used when there is no rule for an action. Rules can still override.</p>
       <div className="mb-3">
         <Segmented
           value={value.defaultMode}
@@ -381,7 +381,7 @@ export function ConnectorFields({
       </div>
       {allowAutoAttach && (
         <ToggleRow
-          className="mb-3 rounded-[10px] border border-thread bg-folio px-3 py-2.5"
+          className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"
           label="Add to new bots by default"
           hint="New bots get this connector automatically. Removing it from a bot does not re-add it."
           on={value.autoAttach}
@@ -390,49 +390,49 @@ export function ConnectorFields({
       )}
       {value.transport === "stdio" ? (
         <>
-          <div className="mb-1 text-[12px] font-medium text-stone">Environment</div>
-          <p className="mb-2 text-stone">Values stay on the Control Plane. A secret name reads that Bot secret when the sidecar starts. Docker inspect can still see injected env.</p>
+          <div className="mb-1 text-[12px] font-medium text-ink-3">Environment</div>
+          <p className="mb-2 text-ink-2">Values stay on the Control Plane. A secret name reads that Bot secret when the sidecar starts. Docker inspect can still see injected env.</p>
           {value.env.map((e, i) => (
             <div key={i} className="mb-2 flex flex-wrap gap-2">
               <input
-                className="h-9 w-36 rounded-[6px] border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-36 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 font-mono"
                 placeholder="NAME"
                 value={e.name}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, name: ev.target.value } : x)))}
               />
               <input
-                className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-2 font-mono"
+                className="h-9 min-w-0 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 font-mono"
                 placeholder={existing ? "unchanged" : "Value"}
                 type="password"
                 value={e.value}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, value: ev.target.value } : x)))}
               />
               <input
-                className="h-9 w-36 rounded-[6px] border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-36 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 font-mono"
                 placeholder="secret name"
                 value={e.secret}
                 onChange={(ev) => set("env", value.env.map((x, j) => (j === i ? { ...x, secret: ev.target.value } : x)))}
               />
             </div>
           ))}
-          <button type="button" className="mb-6 text-bindery" onClick={() => set("env", [...value.env, { name: "", value: "", secret: "" }])}>
+          <button type="button" className="mb-6 text-cobalt" onClick={() => set("env", [...value.env, { name: "", value: "", secret: "" }])}>
             Add env
           </button>
         </>
       ) : (
         <>
-          <div className="mb-1 text-[12px] font-medium text-stone">Extra headers</div>
-          <p className="mb-2 text-stone">Values are stored on the Control Plane and never shown again.</p>
+          <div className="mb-1 text-[12px] font-medium text-ink-3">Extra headers</div>
+          <p className="mb-2 text-ink-2">Values are stored on the Control Plane and never shown again.</p>
           {value.headers.map((h, i) => (
             <div key={i} className="mb-2 flex gap-2">
               <input
-                className="h-9 w-40 rounded-[6px] border border-thread bg-folio px-2 font-mono"
+                className="h-9 w-40 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 font-mono"
                 placeholder="Name"
                 value={h.name}
                 onChange={(e) => set("headers", value.headers.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
               />
               <input
-                className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-2 font-mono"
+                className="h-9 min-w-0 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 font-mono"
                 placeholder={existing ? "unchanged" : "Value"}
                 type="password"
                 value={h.value}
@@ -440,7 +440,7 @@ export function ConnectorFields({
               />
             </div>
           ))}
-          <button type="button" className="mb-6 text-bindery" onClick={() => set("headers", [...value.headers, { name: "", value: "" }])}>
+          <button type="button" className="mb-6 text-cobalt" onClick={() => set("headers", [...value.headers, { name: "", value: "" }])}>
             Add header
           </button>
         </>
@@ -455,7 +455,7 @@ export function ConnectorFields({
       <div className="mb-5 flex items-center gap-4">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} size={72} />
         <div className="min-w-0">
-          <div className="text-[22px] font-medium tracking-tight">{value.name}</div>
+          <div className="text-[22px] leading-7 font-medium tracking-[-0.015em]">{value.name}</div>
           <div className="mt-1 flex items-center gap-2">
             <McpChip />
             {value.category && <CategoryChip label={value.category} />}
@@ -463,13 +463,13 @@ export function ConnectorFields({
         </div>
       </div>
       {catalogGuide && (
-        <div className="mb-5 rounded-[10px] border-l-4 border-bindery bg-cloth px-4 py-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-bindery">Before you add</p>
-          <p className="whitespace-pre-wrap text-[15px] leading-6 text-iron">{catalogGuide}</p>
+        <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Before you add</p>
+          <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{catalogGuide}</p>
         </div>
       )}
       <details className="group mb-6">
-        <summary className="flex cursor-pointer items-center gap-2 rounded-[6px] bg-cloth px-3 py-2 text-[12px] font-medium tracking-wide text-stone">
+        <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
           <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
           Advanced settings
         </summary>

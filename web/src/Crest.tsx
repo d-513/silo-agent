@@ -1,17 +1,22 @@
-export const CREST_COLORS = [
-  "#F8FAFC", // mist
-  "#7A4E2A", // brown
-  "#A33B4A", // carmine
-  "#E07A2F", // orange
-  "#E4C04A", // yellow
-  "#4A8F4A", // green
-  "#3D6F6A", // pine
-  "#2A3F5F", // bindery
-  "#6B4C8A", // purple
-  "#D47A8C", // pink
-  "#5F5E58", // stone
-  "#1E2126", // iron
-] as const;
+// The order is packed into `crest` as color * 8 + shape. Never reorder, only
+// restyle. `eyes` follows DESIGN.md: ink on the two light fills, canvas on
+// the rest; mist also takes a line-strong outline.
+export const CREST_FILLS = [
+  { name: "mist", fill: "#F3F2EF", eyes: "ink", outline: true },
+  { name: "brown", fill: "#8B5A3C", eyes: "canvas" },
+  { name: "wine", fill: "#9F1239", eyes: "canvas" },
+  { name: "orange", fill: "#EA580C", eyes: "canvas" },
+  { name: "yellow", fill: "#E0AE1C", eyes: "ink" },
+  { name: "green", fill: "#16A34A", eyes: "canvas" },
+  { name: "emerald", fill: "#0F7A55", eyes: "canvas" },
+  { name: "cobalt", fill: "#2B4FC7", eyes: "canvas" },
+  { name: "purple", fill: "#6D28D9", eyes: "canvas" },
+  { name: "pink", fill: "#DB2777", eyes: "canvas" },
+  { name: "graphite", fill: "#55534E", eyes: "canvas" },
+  { name: "ink", fill: "#1A1917", eyes: "canvas" },
+] as const satisfies readonly { name: string; fill: string; eyes: "ink" | "canvas"; outline?: boolean }[];
+
+export const CREST_COLORS = CREST_FILLS.map((c) => c.fill);
 
 export const SHAPE_COUNT = 8;
 export const COLOR_COUNT = CREST_COLORS.length;
@@ -30,17 +35,9 @@ export function unpackCrest(index: number) {
   return { shape: i % SHAPE_COUNT, color: Math.floor(i / SHAPE_COUNT) };
 }
 
-function luminance(hex: string) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return (r * 299 + g * 587 + b * 114) / 1000;
-}
-
 function Eyes({ cx, cy, fill, spread = 4.6 }: { cx: number; cy: number; fill: string; spread?: number }) {
   return (
-    <g fill={fill}>
+    <g className="crest-eyes" style={{ fill }}>
       <circle cx={cx - spread} cy={cy} r="1.65" />
       <circle cx={cx + spread} cy={cy} r="1.65" />
     </g>
@@ -48,7 +45,7 @@ function Eyes({ cx, cy, fill, spread = 4.6 }: { cx: number; cy: number; fill: st
 }
 
 function body(fill: string, stroke?: string) {
-  return { fill, stroke: stroke ?? "none", strokeWidth: stroke ? 1.4 : 0 };
+  return { fill, style: stroke ? { stroke } : undefined, strokeWidth: stroke ? 1.4 : 0 };
 }
 
 function ShapeMark({ shape, fill, eyes, stroke }: { shape: number; fill: string; eyes: string; stroke?: string }) {
@@ -122,12 +119,15 @@ function ShapeMark({ shape, fill, eyes, stroke }: { shape: number; fill: string;
 
 export function Crest({ index, size }: { index: number; size: number }) {
   const { shape, color } = unpackCrest(index);
-  const fill = CREST_COLORS[color];
-  const light = luminance(fill) > 140;
-  const eyes = light ? "#1E2126" : "#F3F0E8";
+  const c: { fill: string; eyes: "ink" | "canvas"; outline?: boolean } = CREST_FILLS[color];
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className="shrink-0" aria-hidden>
-      <ShapeMark shape={shape} fill={fill} eyes={eyes} stroke={light ? "#C9C3B6" : undefined} />
+    <svg width={size} height={size} viewBox="0 0 48 48" className="shrink-0 overflow-visible" aria-hidden>
+      <ShapeMark
+        shape={shape}
+        fill={c.fill}
+        eyes={`var(--color-${c.eyes})`}
+        stroke={c.outline ? "var(--color-line-strong)" : undefined}
+      />
     </svg>
   );
 }
@@ -135,8 +135,8 @@ export function Crest({ index, size }: { index: number; size: number }) {
 export function CrestPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const { shape, color } = unpackCrest(value);
   return (
-    <div className="rounded-[10px] border border-thread bg-folio p-3">
-      <div className="mb-2 text-[11px] font-medium tracking-wide text-stone">Shape</div>
+    <div className="rounded-card bg-surface p-4 shadow-card">
+      <div className="mb-2 text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase">Shape</div>
       <div className="mb-4 grid grid-cols-4 gap-1.5">
         {NAMES.map((name, i) => {
           const on = i === shape;
@@ -148,8 +148,8 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
               aria-label={name}
               aria-pressed={on}
               onClick={() => onChange(packCrest(i, color))}
-              className={`flex h-14 items-center justify-center rounded-lg outline-none transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-                on ? "bg-bindery-pale shadow-[inset_0_0_0_1px_#2A3F5F]" : "hover:bg-cloth"
+              className={`blink flex h-14 items-center justify-center rounded-control transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
+                on ? "bg-cobalt-pale shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "hover:bg-well"
               }`}
             >
               <Crest index={packCrest(i, color)} size={40} />
@@ -157,20 +157,22 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
           );
         })}
       </div>
-      <div className="mb-2 text-[11px] font-medium tracking-wide text-stone">Color</div>
+      <div className="mb-2 text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase">Color</div>
       <div className="flex flex-wrap gap-2 px-0.5">
-        {CREST_COLORS.map((hex, i) => {
+        {CREST_FILLS.map(({ name, fill: hex }, i) => {
           const on = i === color;
           return (
             <button
-              key={hex}
+              key={name}
               type="button"
-              title={hex}
+              title={name}
               aria-label={`color ${i + 1}`}
               aria-pressed={on}
               onClick={() => onChange(packCrest(shape, i))}
-              className={`h-7 w-7 rounded-full outline-none transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.96] ${
-                on ? "shadow-[0_0_0_2px_#F3F0E8,0_0_0_4px_#2A3F5F]" : "shadow-[inset_0_0_0_1px_#C9C3B6]"
+              className={`h-7 w-7 rounded-full transition-[box-shadow,transform] duration-[200ms] ease-quiet active:scale-[.94] active:duration-[70ms] ${
+                on
+                  ? "shadow-[0_0_0_2px_var(--color-surface),0_0_0_4px_var(--color-cobalt)]"
+                  : "shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
               }`}
               style={{ background: hex }}
             />

@@ -31,12 +31,12 @@ test("create bot, send a message, see the reply", async ({ page }) => {
   // An assistant block (rendered markdown) must show the reply.
   await expect(page.locator(".silo-md", { hasText: "PONG" })).toBeVisible({ timeout: 3 * 60_000 });
 
-  // Clean up: Settings → Delete (two-click arm).
+  // Clean up: Settings → Delete (armed: first click arms, second deletes).
   const botId = page.url().match(/\/bots\/([^/]+)/)?.[1];
   if (botId) {
     await page.goto(`/bots/${botId}/settings`);
     await page.getByRole("button", { name: /^delete$/i }).click();
-    await page.getByRole("button", { name: /^delete\?$/i }).click();
+    await page.getByRole("button", { name: /^click again to delete$/i }).click();
     await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   }
 });

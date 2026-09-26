@@ -48,3 +48,45 @@ if (file.length !== 1 || file[0].type !== "artifact" || file[0].artifactType !==
 }
 
 console.log("ok");
+
+// An approval pauses the running tool; the decision leaves a receipt and a
+// deny marks the row; a Stop cuts off what is still running.
+{
+  const r = "run1";
+  const evs: Ev[] = [
+    { kind: "tool", body: '{"command":"ls"}', tool: "terminal", runId: r },
+    { kind: "approval", body: "ap1", tool: "terminal.run", runId: r },
+  ];
+  let bs = foldEvents(evs);
+  const t0 = bs.find((b) => b.type === "tool");
+  if (!t0 || t0.type !== "tool" || !t0.waiting) throw new Error("tool not waiting on approval");
+  evs.push({ kind: "decision", body: '{"approval_id":"ap1","decision":"deny","title":"Run a command","target":"ls"}', tool: "terminal.run", runId: r });
+  evs.push({ kind: "tool_result", body: "error: denied", tool: "terminal", runId: r });
+  bs = foldEvents(evs);
+  const t1 = bs.find((b) => b.type === "tool");
+  if (!t1 || t1.type !== "tool" || t1.waiting || t1.outcome !== "denied") throw new Error("deny not recorded on tool");
+  const rc = bs.find((b) => b.type === "receipt");
+  if (!rc || rc.type !== "receipt" || rc.decision !== "deny" || rc.title !== "Run a command" || rc.target !== "ls") {
+    throw new Error(`receipt ${JSON.stringify(rc)}`);
+  }
+}
+{
+  const r = "run2";
+  const bs = foldEvents([
+    { kind: "tool", body: '{"code":"x"}', tool: "exec_python", runId: r },
+    { kind: "done", body: "stopped", tool: "", runId: r },
+  ]);
+  const t = bs.find((b) => b.type === "tool");
+  if (!t || t.type !== "tool" || t.running || t.outcome !== "stopped") throw new Error("stop did not cut the tool");
+  const rc = bs[bs.length - 1];
+  if (rc.type !== "receipt" || rc.decision !== "stopped") throw new Error("no stop receipt");
+}
+{
+  // Streamed deltas keep their start offsets until the reply settles.
+  const bs = foldEvents([ev("chunk", "Hello "), ev("chunk", "there")]);
+  const a = bs[0];
+  if (a.type !== "assistant" || JSON.stringify(a.bounds) !== "[0,6]") throw new Error(`bounds ${JSON.stringify(a)}`);
+  const done = foldEvents([ev("chunk", "Hello "), ev("chunk", "there"), ev("assistant", "Hello there")]);
+  if (done[0].type !== "assistant" || done[0].bounds || done[0].streaming) throw new Error("settled reply kept bounds");
+}
+console.log("fold ok");

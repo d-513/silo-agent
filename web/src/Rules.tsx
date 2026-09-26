@@ -2,7 +2,8 @@ import { Bot, Check, ChevronRight, CircleHelp, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
-import { Panel, textareaClass } from "./Field";
+import { SaveButton, useSave } from "./Feedback";
+import { Panel, SkeletonRows, textareaClass } from "./Field";
 import type { Rule, RuleSection } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
@@ -35,44 +36,31 @@ function RuleDecisionSegment({
   ];
 
   return (
-    <div className="flex select-none items-center rounded-[6px] border border-thread/80 bg-cloth p-0.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
+    <div role="radiogroup" className="flex select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
       {modes.map((m) => {
         const active = value === m.id;
         const Icon = m.icon;
-
-        let activeStyle = "";
-        let inactiveHover = "";
-        if (m.id === "allow") {
-          activeStyle = "bg-pine text-plaster shadow-xs font-medium";
-          inactiveHover = "hover:text-pine hover:bg-linen/60";
-        } else if (m.id === "auto") {
-          activeStyle = "bg-slate text-plaster shadow-xs font-medium";
-          inactiveHover = "hover:text-slate hover:bg-linen/60";
-        } else if (m.id === "deny") {
-          activeStyle = "bg-carmine text-plaster shadow-xs font-medium";
-          inactiveHover = "hover:text-carmine hover:bg-carmine/10";
-        } else {
-          activeStyle = "bg-folio text-iron font-medium border border-thread/80 shadow-xs";
-          inactiveHover = "hover:text-iron hover:bg-linen/60";
-        }
-
+        // Selected segment is a surface chip; only the text carries the tone.
+        const tone = m.id === "allow" ? "text-emerald" : m.id === "deny" ? "text-vermilion" : m.id === "auto" ? "text-ink-2" : "text-ink";
         return (
           <button
             key={m.id}
             type="button"
+            role="radio"
+            aria-checked={active}
             disabled={disabled}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-[6px] transition-[transform,background-color,color] duration-150 active:scale-[0.96] ${
-              size === "sm" ? "h-7 px-1.5 text-[11px]" : "h-8 px-1.5 text-[12px]"
-            } ${
-              active ? activeStyle : `text-stone ${inactiveHover}`
-            } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-sm font-medium transition-[transform,background-color,color,box-shadow] duration-[200ms] ease-quiet active:scale-[.97] active:duration-[70ms] ${
+              size === "sm" ? "h-7 px-1.5 text-[11.5px]" : "h-8 px-2 text-[12.5px]"
+            } ${active ? `bg-surface shadow-card ${tone}` : "text-ink-3 hover:bg-pressed hover:text-ink"} ${
+              disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onChange(m.id);
             }}
           >
-            <Icon size={size === "sm" ? 11 : 12} className={active ? "opacity-90" : "opacity-50"} />
+            <Icon size={size === "sm" ? 11 : 12} />
             <span>{m.label}</span>
           </button>
         );
@@ -83,17 +71,18 @@ function RuleDecisionSegment({
 
 export function RulesPane({ botId }: { botId: string }) {
   const [sections, setSections] = useState<RuleSection[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState<Record<string, boolean>>({ bot: true });
   const [filter, setFilter] = useState("");
   const [err, setErr] = useState("");
   const [policy, setPolicy] = useState("");
   const [savedPolicy, setSavedPolicy] = useState("");
-  const [savingPolicy, setSavingPolicy] = useState(false);
-  const [policySaved, setPolicySaved] = useState(false);
+  const saver = useSave();
 
   async function load() {
     const [r, b] = await Promise.all([ui.listRules({ botId }), ui.getBot({ id: botId })]);
     setSections(r.sections);
+    setLoaded(true);
     setPolicy(b.autoApprove);
     setSavedPolicy(b.autoApprove);
   }
@@ -104,11 +93,10 @@ export function RulesPane({ botId }: { botId: string }) {
 
   async function savePolicy() {
     setErr("");
-    setSavingPolicy(true);
-    setPolicySaved(false);
     try {
+      const next = await saver.run(async () => {
       const b = await ui.getBot({ id: botId });
-      const next = await ui.updateBot({
+      return ui.updateBot({
         id: botId,
         name: b.name,
         description: b.description,
@@ -117,13 +105,11 @@ export function RulesPane({ botId }: { botId: string }) {
         autoApprove: policy,
         model: b.model,
       });
+      });
       setPolicy(next.autoApprove);
       setSavedPolicy(next.autoApprove);
-      setPolicySaved(true);
     } catch (e) {
       setErr(fail(e));
-    } finally {
-      setSavingPolicy(false);
     }
   }
 
@@ -210,27 +196,27 @@ export function RulesPane({ botId }: { botId: string }) {
     <div className="silo-page">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-medium text-iron">Rules</h2>
-          <p className="mt-0.5 text-stone">Permissions for tools, secrets, and system actions</p>
+          <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Rules</h2>
+          <p className="mt-0.5 text-ink-2">Permissions for tools, secrets, and system actions</p>
         </div>
         {totalRules > 5 && (
           <div className="relative w-full sm:w-[220px]">
             <Search
               size={14}
-              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-stone"
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3"
             />
             <input
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter rules..."
-              className="h-8 w-full rounded-[6px] border border-thread bg-folio pr-7 pl-8 text-[13px] text-iron placeholder:text-stone/70 focus:border-bindery focus:outline-none"
+              className="h-8 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface pr-7 pl-8 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
             />
             {filter && (
               <button
                 type="button"
                 onClick={() => setFilter("")}
-                className="absolute top-1/2 right-2 -translate-y-1/2 text-stone hover:text-iron"
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-2 hover:text-ink"
                 title="Clear filter"
               >
                 <X size={12} />
@@ -240,34 +226,34 @@ export function RulesPane({ botId }: { botId: string }) {
         )}
       </div>
 
-      <div className="mb-5 rounded-[10px] border border-thread-2 bg-cloth/40 p-3.5">
+      <div className="mb-5 rounded-card bg-well p-3.5">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-start gap-2.5">
-            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-pine" />
+            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-lamp" />
             <div>
-              <div className="text-[13px] font-medium text-iron">Allow</div>
-              <div className="text-[12px] leading-snug text-stone">Runs immediately without asking</div>
+              <div className="text-[13px] font-medium text-ink">Allow</div>
+              <div className="text-[12px] leading-snug text-ink-3">Runs immediately without asking</div>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-slate" />
+            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-ink-2" />
             <div>
-              <div className="text-[13px] font-medium text-iron">Auto</div>
-              <div className="text-[12px] leading-snug text-stone">The approval model decides from your policy</div>
+              <div className="text-[13px] font-medium text-ink">Auto</div>
+              <div className="text-[12px] leading-snug text-ink-3">The approval model decides from your policy</div>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-thread" />
+            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-line" />
             <div>
-              <div className="text-[13px] font-medium text-iron">Ask</div>
-              <div className="text-[12px] leading-snug text-stone">Pauses run and opens an approval slip</div>
+              <div className="text-[13px] font-medium text-ink">Ask</div>
+              <div className="text-[12px] leading-snug text-ink-3">Pauses run and opens an approval slip</div>
             </div>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-carmine" />
+            <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-vermilion" />
             <div>
-              <div className="text-[13px] font-medium text-iron">Deny</div>
-              <div className="text-[12px] leading-snug text-stone">Refuses execution automatically</div>
+              <div className="text-[13px] font-medium text-ink">Deny</div>
+              <div className="text-[12px] leading-snug text-ink-3">Refuses execution automatically</div>
             </div>
           </div>
         </div>
@@ -282,23 +268,21 @@ export function RulesPane({ botId }: { botId: string }) {
           className={`${textareaClass} h-[120px] font-mono text-[13px] leading-5`}
           placeholder="e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret."
           value={policy}
-          onChange={(e) => {
-            setPolicy(e.target.value);
-            setPolicySaved(false);
-          }}
+          onChange={(e) => setPolicy(e.target.value)}
         />
         <div className="mt-3 flex items-center gap-3">
-          <Btn kind="primary" onClick={() => void savePolicy()} disabled={savingPolicy || policy === savedPolicy}>
-            {savingPolicy ? "Saving…" : "Save policy"}
-          </Btn>
-          {policySaved && <span className="text-stone">Saved</span>}
+          <SaveButton state={saver.state} onClick={() => void savePolicy()} disabled={saver.state === "idle" && policy === savedPolicy}>
+            Save policy
+          </SaveButton>
         </div>
       </Panel>
 
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
 
-      {visibleSections.length === 0 && (
-        <div className="rounded-[10px] border border-dashed border-thread bg-folio p-8 text-center text-stone">
+      {!loaded && !err ? <SkeletonRows rows={4} height={52} /> : null}
+
+      {loaded && visibleSections.length === 0 && (
+        <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
           No matching rules found for &ldquo;{filter}&rdquo;
         </div>
       )}
@@ -308,7 +292,7 @@ export function RulesPane({ botId }: { botId: string }) {
         return (
           <details
             key={s.id}
-            className="group mb-5 rounded-[10px] border border-thread bg-folio shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+            className="group mb-5 rounded-card shadow-card bg-surface"
             open={isOpen}
             onToggle={(e) => {
               if (query) return;
@@ -316,18 +300,18 @@ export function RulesPane({ botId }: { botId: string }) {
               setOpen((o) => (o[s.id] === next ? o : { ...o, [s.id]: next }));
             }}
           >
-            <summary className="flex cursor-pointer list-none flex-wrap items-start gap-3 p-4 transition-colors hover:bg-cloth/30 [&::-webkit-details-marker]:hidden">
-              <ChevronRight size={14} className="mt-1.5 shrink-0 text-stone transition-transform group-open:rotate-90" />
+            <summary className="flex cursor-pointer list-none flex-wrap items-start gap-3 p-4 transition-colors hover:bg-well [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={14} className="mt-1.5 shrink-0 text-ink-3 transition-transform group-open:rotate-90" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-[16px] font-medium text-iron">{s.title}</h3>
+                  <h3 className="text-[16px] font-medium text-ink">{s.title}</h3>
                   {s.rules.length > 0 && (
-                    <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
+                    <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">
                       {s.rules.length} {s.rules.length === 1 ? "action" : "actions"}
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-[13px] text-stone">{s.summary}</p>
+                <p className="mt-1 text-[13px] text-ink-2">{s.summary}</p>
               </div>
               {s.rules.length > 0 && (
                 <div
@@ -337,11 +321,11 @@ export function RulesPane({ botId }: { botId: string }) {
                     e.stopPropagation();
                   }}
                 >
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-stone wide:hidden">
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3 wide:hidden">
                     All
                   </span>
                   {sectionDecision(s) === "" && (
-                    <span className="hidden text-[11px] font-medium text-stone wide:inline">
+                    <span className="hidden text-[11px] font-medium text-ink-3 wide:inline">
                       Mixed
                     </span>
                   )}
@@ -364,7 +348,7 @@ export function RulesPane({ botId }: { botId: string }) {
             </summary>
             <div className="px-4 pb-4">
               {s.rules.length === 0 ? (
-                <p className="py-2 text-stone">Nothing to set here yet.</p>
+                <p className="py-2 text-ink-2">Nothing to set here yet.</p>
               ) : (
                 s.rules.map((r) => {
                   const isAllow = r.decision === "allow";
@@ -373,22 +357,16 @@ export function RulesPane({ botId }: { botId: string }) {
                   return (
                     <div
                       key={`${r.connector}.${r.action}`}
-                      className="group/row -mx-2.5 flex flex-col gap-2 rounded-md border-t border-thread-2 px-2.5 py-2.5 transition-colors hover:bg-cloth/40 wide:flex-row wide:items-center wide:gap-4"
+                      className="group/row -mx-2.5 flex flex-col gap-2 rounded-sm border-t border-line px-2.5 py-2.5 transition-colors hover:bg-well wide:flex-row wide:items-center wide:gap-4"
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                        <span
-                          className={`h-2 w-2 shrink-0 rounded-full transition-colors ${
-                            isAllow ? "bg-pine" : isDeny ? "bg-carmine" : "bg-thread"
-                          }`}
-                          title={`Status: ${r.decision || "Ask"}`}
-                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span
                               className={
                                 r.connector === "secrets"
-                                  ? "font-mono text-[13px] font-medium text-iron"
-                                  : "text-[14px] font-medium text-iron"
+                                  ? "font-mono text-[13px] font-medium text-ink"
+                                  : "text-[14px] font-medium text-ink"
                               }
                             >
                               {r.title || r.action}
@@ -398,12 +376,12 @@ export function RulesPane({ botId }: { botId: string }) {
                               r.action &&
                               r.title !== r.action &&
                               r.action !== "*" && (
-                                <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 font-mono text-[11px] text-stone">
+                                <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">
                                   {r.action}
                                 </span>
                               )}
                             {r.connector === "secrets" && (
-                              <span className="rounded-[6px] bg-cloth px-1.5 py-0.5 text-[11px] text-stone">
+                              <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-3">
                                 Secret
                               </span>
                             )}

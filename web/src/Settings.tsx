@@ -2,7 +2,7 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ui } from "./api";
-import { Btn } from "./Btn";
+import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
 import { Select } from "./Select";
 import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
@@ -29,7 +29,7 @@ function PromptWell({
       label={label}
       hint={hint}
       className="min-w-0"
-      headerRight={<span className={`font-mono text-[11px] ${over ? "text-carmine" : "text-stone"}`}>{value.length}/8000</span>}
+      headerRight={<span className={`font-mono text-[11px] ${over ? "text-vermilion" : "text-ink-3"}`}>{value.length}/8000</span>}
     >
       <textarea
         className={`${textareaClass} h-[220px] font-mono text-[13px] leading-5`}
@@ -42,10 +42,10 @@ function PromptWell({
 
 function DangerRow({ title, note, action }: { title: string; note: string; action: ReactNode }) {
   return (
-    <div className="flex items-center gap-4 border-b border-thread-2 px-4 py-3 last:border-b-0 max-wide:flex-col max-wide:items-stretch">
+    <div className="flex items-center gap-4 px-5 py-4 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none max-wide:flex-col max-wide:items-stretch">
       <div className="min-w-0 flex-1">
         <div className="font-medium">{title}</div>
-        <p className="text-[12px] text-stone">{note}</p>
+        <p className="text-[12.5px] leading-[18px] text-ink-2">{note}</p>
       </div>
       <div className="shrink-0">{action}</div>
     </div>
@@ -69,9 +69,7 @@ export function SettingsPane({
   const [memory, setMemory] = useState(bot.memory);
   const [model, setModel] = useState(bot.model);
   const [models, setModels] = useState<ModelOption[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [arm, setArm] = useState<"reset" | "delete" | "">("");
+  const saver = useSave();
   const [dangerBusy, setDangerBusy] = useState(false);
   const nav = useNavigate();
   useEffect(() => {
@@ -80,7 +78,6 @@ export function SettingsPane({
     setSoul(bot.soul);
     setMemory(bot.memory);
     setModel(bot.model);
-    setArm("");
     setDangerBusy(false);
   }, [bot.id]);
   useEffect(() => {
@@ -100,11 +97,9 @@ export function SettingsPane({
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setBusy(true);
-    setSaved(false);
     onError("");
     try {
-      const next = await ui.updateBot({
+      const next = await saver.run(() => ui.updateBot({
         id: bot.id,
         name: name.trim(),
         description: description.trim(),
@@ -112,29 +107,21 @@ export function SettingsPane({
         memory,
         autoApprove: bot.autoApprove,
         model: selectedModel,
-      });
+      }));
       onSaved(next);
       setSoul(next.soul);
       setMemory(next.memory);
       setModel(next.model);
-      setSaved(true);
     } catch (ex) {
       onError(fail(ex));
-    } finally {
-      setBusy(false);
     }
   }
   async function go(which: "reset" | "delete") {
-    if (arm !== which) {
-      setArm(which);
-      return;
-    }
     setDangerBusy(true);
     onError("");
     try {
       if (which === "reset") {
         onSaved(await ui.resetContainer({ id: bot.id }));
-        setArm("");
         onRefresh();
       } else {
         await ui.deleteBot({ id: bot.id });
@@ -150,8 +137,8 @@ export function SettingsPane({
   }
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-[22px] font-medium tracking-tight">Settings</h2>
-      <p className="mb-6 text-stone">This Bot only. SOUL and MEMORY are in the prompt; the Bot can edit them too.</p>
+      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Settings</h2>
+      <p className="mb-6 text-ink-2">This Bot only. SOUL and MEMORY are in the prompt; the Bot can edit them too.</p>
       <form onSubmit={save} className="grid gap-4">
         <Panel title="Identity" note="Shown on the folio and in the run header.">
           <div className="grid gap-4">
@@ -195,16 +182,15 @@ export function SettingsPane({
         </Panel>
 
         <div className="flex items-center gap-3">
-          <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
-            {busy ? "Saving…" : "Save changes"}
-          </Btn>
-          {saved && <span className="text-stone">Saved</span>}
+          <SaveButton type="submit" state={saver.state} disabled={!name.trim()}>
+            Save changes
+          </SaveButton>
         </div>
       </form>
 
       <Panel
         title="Dangerous"
-        note="Second click confirms. These cannot be undone from here."
+        note="The first click arms, the second acts. These cannot be undone from here."
         tone="danger"
         padded={false}
         className="mt-8"
@@ -213,30 +199,27 @@ export function SettingsPane({
           title="Reset container"
           note="Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one."
           action={
-            <Btn
-              kind="secondary"
-              type="button"
+            <ArmedButton
               disabled={dangerBusy}
-              icon={<RotateCcw size={12} />}
-              onClick={() => void go("reset")}
+              armedLabel="Click again to reset"
+              icon={<RotateCcw size={14} />}
+              onConfirm={() => void go("reset")}
             >
-              {arm === "reset" ? "Reset?" : "Reset"}
-            </Btn>
+              Reset
+            </ArmedButton>
           }
         />
         <DangerRow
           title="Delete Bot"
           note="Chats, secrets, connectors, the container, and files on disk."
           action={
-            <Btn
-              kind="deny"
-              type="button"
+            <ArmedButton
               disabled={dangerBusy}
-              icon={<Trash2 size={12} />}
-              onClick={() => void go("delete")}
+              icon={<Trash2 size={14} />}
+              onConfirm={() => void go("delete")}
             >
-              {arm === "delete" ? "Delete?" : "Delete"}
-            </Btn>
+              Delete
+            </ArmedButton>
           }
         />
       </Panel>

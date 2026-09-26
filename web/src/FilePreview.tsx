@@ -80,7 +80,7 @@ function CsvTable({ text }: { text: string }) {
       <table className="w-max min-w-full border-collapse text-left text-[13px]">
         <tbody>
           {rows.map((line, i) => (
-            <tr key={i} className="border-b border-thread-2">
+            <tr key={i} className="border-b border-line-strong">
               {line.split(delim).map((cell, j) => (
                 <td key={j} className={`px-2 py-1 break-words ${i === 0 ? "font-medium" : ""}`}>
                   {cell}
@@ -115,8 +115,8 @@ function DocxView({ data }: { data: Uint8Array }) {
       dead = true;
     };
   }, [data]);
-  if (err) return <p className="text-carmine">{err}</p>;
-  if (!html) return <p className="text-stone">Opening…</p>;
+  if (err) return <p className="text-vermilion">{err}</p>;
+  if (!html) return <p className="text-ink-2">Opening…</p>;
   return <div className="silo-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -140,7 +140,7 @@ export function FilePreview({
     return <img src={url} alt={name} className="max-h-[32rem] max-w-full object-contain" />;
   }
   if (kind === "pdf" && url) {
-    return <iframe title={name} src={url} className="h-[70vh] min-h-[26rem] w-full border-0 bg-folio" />;
+    return <iframe title={name} src={url} className="h-[70vh] min-h-[26rem] w-full border-0 bg-surface" />;
   }
   if (kind === "video" && url) {
     return <video src={url} controls className="max-h-full max-w-full" />;
@@ -196,5 +196,5 @@ export function FilePreview({
   if (!binary && text) {
     return <pre className="whitespace-pre-wrap font-mono text-[13px]">{text}</pre>;
   }
-  return <p className="text-stone">No preview for this type. Download it instead.</p>;
+  return <p className="text-ink-2">No preview for this type. Download it instead.</p>;
 }

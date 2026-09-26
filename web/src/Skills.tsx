@@ -1,6 +1,8 @@
 import { Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ui } from "./api";
+import { ArmedButton } from "./Feedback";
+import { SkeletonRows } from "./Field";
 import { Btn } from "./Btn";
 import { Segmented } from "./ConnectorForm";
 import { SkillBrowserOverlay } from "./FileBrowser";
@@ -67,7 +69,7 @@ export function InstallField({
   return (
     <form className="mb-4 flex flex-wrap items-start gap-2" onSubmit={(e) => void go(e)}>
       <input
-        className="h-9 min-w-0 flex-1 rounded-[6px] border border-thread bg-folio px-3 outline-none focus:border-bindery wide:min-w-[240px]"
+        className="h-9 min-w-0 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 outline-none wide:min-w-[240px]"
         placeholder="GitHub URL or owner/repo"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
@@ -88,8 +90,8 @@ export function InstallField({
           e.target.value = "";
         }}
       />
-      {err && <p className="w-full text-carmine">{err}</p>}
-      {note && <p className="w-full text-stone">{note}</p>}
+      {err && <p className="w-full text-vermilion">{err}</p>}
+      {note && <p className="w-full text-ink-2">{note}</p>}
     </form>
   );
 }
@@ -103,45 +105,36 @@ export function SkillRows({
   onRemove?: (name: string) => void;
   onOpen?: (s: Skill) => void;
 }) {
-  const [arm, setArm] = useState("");
   if (rows.length === 0) {
-    return <p className="text-stone">No skills here yet.</p>;
+    return <p className="text-ink-2">No skills here yet.</p>;
   }
   return (
     <div className="flex flex-col gap-2">
       {rows.map((s) => (
         <div
           key={s.kind + s.name}
-          className={`flex items-start gap-3 rounded-[10px] border border-thread bg-folio px-3 py-3 ${onOpen ? "cursor-pointer hover:border-bindery" : ""}`}
+          className={`flex items-start gap-3 rounded-card shadow-card bg-surface px-3 py-3 ${onOpen ? "cursor-pointer hover:border-cobalt" : ""}`}
           onClick={() => onOpen?.(s)}
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">{s.name}</span>
-              {s.seeded ? <span className="font-mono text-[11px] text-stone">catalog</span> : null}
+              {s.seeded ? <span className="font-mono text-[11px] text-ink-3">catalog</span> : null}
             </div>
-            <p className="text-stone">{s.description}</p>
-            {s.source ? <p className="truncate font-mono text-[11px] text-stone">{s.source}</p> : null}
+            <p className="text-ink-2">{s.description}</p>
+            {s.source ? <p className="truncate font-mono text-[11px] text-ink-3">{s.source}</p> : null}
           </div>
           {onRemove && (
-            <Btn
-              kind="deny"
-              type="button"
+            <ArmedButton
+              kind="ghost"
+              size="sm"
               className="shrink-0"
-              icon={<Trash2 size={12} />}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (arm !== s.name) {
-                  setArm(s.name);
-                  return;
-                }
-                setArm("");
-                onRemove(s.name);
-              }}
+              armedLabel="Click again to remove"
+              icon={<Trash2 size={13} />}
+              onConfirm={() => onRemove(s.name)}
             >
-              {arm === s.name ? "Remove?" : "Remove"}
-            </Btn>
+              Remove
+            </ArmedButton>
           )}
         </div>
       ))}
@@ -186,16 +179,16 @@ export function AdminSkills() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="text-[22px] font-medium">Skills Library</h2>
+        <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills Library</h2>
         <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
           Re-add defaults
         </Btn>
       </div>
-      <p className="mb-4 text-stone">Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.</p>
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      <p className="mb-4 text-ink-2">Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.</p>
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
       <InstallField scope="library" onDone={() => void load()} />
       {rows === null ? (
-        <p className="text-stone">Loading…</p>
+        <SkeletonRows rows={3} height={64} />
       ) : (
         <SkillRows rows={rows} onRemove={(n) => void remove(n)} onOpen={(s) => setOpen(s.name)} />
       )}
@@ -229,8 +222,8 @@ export function SkillHub() {
   }
   return (
     <div className="silo-page">
-      <h1 className="text-[22px] font-medium tracking-tight">Skills</h1>
-      <p className="mb-4 text-stone">Personal skills are yours. Library skills are site-wide; enable them on a Bot.</p>
+      <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills</h1>
+      <p className="mb-4 text-ink-2">Personal skills are yours. Library skills are site-wide; enable them on a Bot.</p>
       <div className="mb-4 w-full max-w-[280px]">
         <Segmented
           value={scope}
@@ -241,10 +234,10 @@ export function SkillHub() {
           ]}
         />
       </div>
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
       {scope === "personal" && <InstallField scope="personal" onDone={() => void load()} />}
       {rows === null ? (
-        <p className="text-stone">Loading…</p>
+        <SkeletonRows rows={3} height={64} />
       ) : (
         <SkillRows
           rows={rows}
@@ -281,11 +274,11 @@ export function BotSkills({ botId }: { botId: string }) {
   const personal = (rows ?? []).filter((s) => s.kind === "personal");
   return (
     <div className="silo-page">
-      <h2 className="mb-2 text-[22px] font-medium">Skills</h2>
-      <p className="mb-4 text-stone">Enabled skills show as name + description in the prompt. The Bot loads the rest with `skill`.</p>
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      <h2 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills</h2>
+      <p className="mb-4 text-ink-2">Enabled skills show as name + description in the prompt. The Bot loads the rest with `skill`.</p>
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
       {rows === null ? (
-        <p className="text-stone">Loading…</p>
+        <SkeletonRows rows={3} height={64} />
       ) : (
         <>
           <Group title="Library" rows={library} onToggle={(s) => void toggle(s)} onOpen={setOpen} />
@@ -310,20 +303,20 @@ function Group({
 }) {
   return (
     <div className="mb-6">
-      <h3 className="mb-2 text-[12px] font-medium tracking-wide text-stone">{title}</h3>
+      <h3 className="mb-2 text-[12px] font-medium tracking-wide text-ink-3">{title}</h3>
       {rows.length === 0 ? (
-        <p className="text-stone">None.</p>
+        <p className="text-ink-2">None.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((s) => (
             <div
               key={s.kind + s.name}
-              className="flex cursor-pointer items-start gap-3 rounded-[10px] border border-thread bg-folio px-3 py-3 hover:border-bindery"
+              className="flex cursor-pointer items-start gap-3 rounded-card shadow-card bg-surface px-3 py-3 hover:shadow-float"
               onClick={() => onOpen(s)}
             >
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{s.name}</div>
-                <p className="text-stone">{s.description}</p>
+                <p className="text-ink-2">{s.description}</p>
               </div>
               <Switch on={s.enabled} onChange={() => onToggle(s)} />
             </div>

@@ -4,8 +4,9 @@ import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
+import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Btn, btnClass } from "./Btn";
-import { Field, inputClass, textareaClass } from "./Field";
+import { Field, inputClass, SkeletonRows, textareaClass } from "./Field";
 import { Select } from "./Select";
 import { ToggleRow } from "./Switch";
 import { Thread, type Ev } from "./Thread";
@@ -20,7 +21,7 @@ function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: 
   if (adapter?.logo) {
     return (
       <div
-        className="flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-thread bg-cloth shadow-2xs"
+        className="flex shrink-0 items-center justify-center overflow-hidden rounded-sm bg-well"
         style={{ width: size, height: size }}
       >
         <img src={adapter.logo} alt="" className="h-full w-full object-cover" />
@@ -29,7 +30,7 @@ function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: 
   }
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-lg border border-thread bg-bindery-pale text-bindery shadow-2xs"
+      className="flex shrink-0 items-center justify-center rounded-sm bg-well text-ink-2"
       style={{ width: size, height: size }}
     >
       <Radio size={Math.round(size * 0.5)} />
@@ -38,10 +39,10 @@ function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: 
 }
 
 function statusDot(status: string) {
-  if (status === "connected") return "bg-pine";
-  if (status === "starting") return "bg-pine animate-pulse";
-  if (status === "error") return "bg-carmine";
-  return "bg-stone";
+  if (status === "connected") return "bg-lamp";
+  if (status === "starting") return "bg-lamp breathe";
+  if (status === "error") return "bg-vermilion";
+  return "bg-ink-3";
 }
 
 function statusLabel(status: string) {
@@ -58,15 +59,15 @@ function Opening({ onBack }: { onBack: () => void }) {
       <div className="mb-4 flex items-center gap-3">
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-thread bg-folio text-stone hover:border-bindery hover:text-iron shadow-2xs transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 hover:shadow-float hover:text-ink transition-colors"
           onClick={onBack}
           title="Back"
         >
           <ArrowLeft size={16} />
         </button>
-        <h2 className="text-[22px] font-medium tracking-tight text-iron">Channels</h2>
+        <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Channels</h2>
       </div>
-      <p className="text-stone text-[13px]">Opening…</p>
+      <p className="text-ink-2 text-[13px]">Opening…</p>
     </div>
   );
 }
@@ -86,7 +87,7 @@ function PageHead({
     <div className="mb-6 flex items-center gap-3.5">
       <button
         type="button"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-thread bg-folio text-stone hover:border-bindery hover:text-iron shadow-2xs transition-colors"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 hover:shadow-float hover:text-ink transition-colors"
         onClick={onBack}
         title="Back"
       >
@@ -94,8 +95,8 @@ function PageHead({
       </button>
       <AdapterLogo adapter={logo} size={40} />
       <div className="min-w-0">
-        <h2 className="truncate text-[20px] font-semibold tracking-tight text-iron">{title}</h2>
-        {subtitle ? <div className="text-[12px] text-stone mt-0.5">{subtitle}</div> : null}
+        <h2 className="truncate text-[20px] font-semibold tracking-tight text-ink">{title}</h2>
+        {subtitle ? <div className="text-[12px] text-ink-3 mt-0.5">{subtitle}</div> : null}
       </div>
     </div>
   );
@@ -116,7 +117,7 @@ function FieldInput({
     return (
       <div>
         <ToggleRow
-          className="rounded-xl border border-thread bg-folio px-3.5 py-3 shadow-2xs"
+          className="rounded-card shadow-card bg-surface px-3.5 py-3"
           label={field.label}
           hint={field.description || "On or off."}
           on={value === "true"}
@@ -167,6 +168,7 @@ function ChannelForm({
   const [config, setConfig] = useState<Record<string, string>>(() => ({ ...(channel?.config ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const saver = useSave();
   const [err, setErr] = useState("");
 
   const setCfg = (k: string, v: string) => setConfig((c) => ({ ...c, [k]: v }));
@@ -175,6 +177,7 @@ function ChannelForm({
     setBusy(true);
     setErr("");
     try {
+      await saver.run(async () => {
       const cleanSecrets: Record<string, string> = {};
       for (const [k, v] of Object.entries(secrets)) if (v.trim()) cleanSecrets[k] = v;
       if (channel) {
@@ -193,6 +196,7 @@ function ChannelForm({
       } else {
         await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
       }
+      });
       onBack();
     } catch (e) {
       setErr(fail(e));
@@ -212,17 +216,17 @@ function ChannelForm({
 
       <div className="max-w-2xl space-y-6">
         {adapter.guide ? (
-          <details open className="rounded-xl border border-thread bg-cloth/40 p-4 shadow-2xs">
-            <summary className="cursor-pointer select-none font-medium text-xs text-stone tracking-wide uppercase">
+          <details open className="rounded-card bg-well p-4">
+            <summary className="cursor-pointer select-none font-medium text-xs text-ink-3 tracking-wide uppercase">
               Setup Instructions & Guide
             </summary>
-            <div className="silo-md border-t border-thread/80 mt-3 pt-3 text-[13px] leading-relaxed">
+            <div className="silo-md border-t border-line/80 mt-3 pt-3 text-[13px] leading-relaxed">
               <Markdown remarkPlugins={[remarkGfm]}>{adapter.guide}</Markdown>
             </div>
           </details>
         ) : null}
 
-        <div className="rounded-xl border border-thread bg-folio p-6 shadow-2xs space-y-5">
+        <div className="rounded-card shadow-card bg-surface p-6 space-y-5">
           <Field label="Name" required>
             <input className={inputClass} value={name} placeholder={adapter.name} onChange={(e) => setName(e.target.value)} />
           </Field>
@@ -238,7 +242,7 @@ function ChannelForm({
           ))}
 
           <ToggleRow
-            className="rounded-xl border border-thread bg-folio px-3.5 py-3 shadow-2xs"
+            className="rounded-card shadow-card bg-surface px-3.5 py-3"
             label="Enabled"
             hint="Connect this channel when saved."
             on={enabled}
@@ -246,7 +250,7 @@ function ChannelForm({
           />
 
           <ToggleRow
-            className="rounded-xl border border-thread bg-folio px-3.5 py-3 shadow-2xs"
+            className="rounded-card shadow-card bg-surface px-3.5 py-3"
             label="Deliver messages to the Bot"
             hint="Off makes it send-only, used by tools."
             on={inbound}
@@ -263,15 +267,15 @@ function ChannelForm({
           </Field>
 
           {err && (
-            <div className="rounded-lg border border-carmine/20 bg-carmine/10 p-3 text-[13px] text-carmine">
+            <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
               {err}
             </div>
           )}
 
           <div className="flex items-center gap-2.5 pt-2">
-            <Btn kind="primary" type="button" disabled={busy || (!channel && !name.trim())} onClick={() => void save()}>
-              {busy ? "Saving…" : channel ? "Save changes" : "Add channel"}
-            </Btn>
+            <SaveButton type="button" state={saver.state} disabled={busy || (!channel && !name.trim())} onClick={() => void save()}>
+              {channel ? "Save changes" : "Add channel"}
+            </SaveButton>
             <Btn kind="ghost" type="button" onClick={onBack}>
               Cancel
             </Btn>
@@ -336,26 +340,26 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
   }, [botId, chatId]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-iron/30 backdrop-blur-xs p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/30 backdrop-blur-xs p-4" onClick={onClose}>
       <div
-        className="flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-thread bg-folio shadow-xl"
+        className="flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-card shadow-card bg-surface shadow-slip"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-thread px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-bindery-pale text-bindery">
+            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-well text-ink-2">
               <Radio size={16} />
             </div>
             <div>
-              <span className="font-semibold text-sm text-iron">{channel.name} Log</span>
-              <span className="ml-2 rounded-full bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+              <span className="font-semibold text-sm text-ink">{channel.name} Log</span>
+              <span className="ml-2 rounded-full bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
                 {chats.length} {chats.length === 1 ? "conversation" : "conversations"}
               </span>
             </div>
           </div>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-stone hover:bg-cloth hover:text-iron transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-sm text-ink-2 hover:bg-well hover:text-ink transition-colors"
             onClick={onClose}
           >
             <X size={16} />
@@ -363,15 +367,13 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
         </div>
 
         {chats.length > 1 ? (
-          <div className="silo-scroll-x flex shrink-0 gap-1.5 border-b border-thread bg-cloth/40 px-4 py-2">
+          <div className="silo-scroll-x flex shrink-0 gap-1.5 border-b border-line bg-well px-4 py-2">
             {chats.map((c) => (
               <button
                 key={c.id}
                 type="button"
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                  c.id === chatId
-                    ? "bg-folio font-semibold text-iron shadow-2xs border border-thread"
-                    : "text-stone hover:text-iron hover:bg-folio/60"
+                className={`shrink-0 rounded-sm px-3 py-1.5 text-xs transition-colors ${ c.id === chatId ? "bg-surface font-semibold text-ink shadow-2xs border border-line"
+                    : "text-ink-2 hover:text-ink hover:bg-surface/60"
                 }`}
                 onClick={() => setChatId(c.id)}
               >
@@ -381,11 +383,11 @@ function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Chann
           </div>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col bg-plaster">
+        <div className="flex min-h-0 flex-1 flex-col bg-canvas">
           {chatId ? (
             <Thread botId={botId} chatId={chatId} events={events} sending={false} />
           ) : (
-            <div className="flex h-full items-center justify-center text-stone text-[13px]">
+            <div className="flex h-full items-center justify-center text-ink-3 text-[13px]">
               No conversations recorded yet.
             </div>
           )}
@@ -451,25 +453,25 @@ function ChannelSetup({
         onBack={onBack}
       />
 
-      <div className="max-w-2xl rounded-xl border border-thread bg-folio p-6 shadow-2xs space-y-5">
+      <div className="max-w-2xl rounded-card shadow-card bg-surface p-6 space-y-5">
         {/* Status line */}
-        <div className="flex items-center gap-2 rounded-lg border border-thread bg-cloth/50 px-3.5 py-2.5 text-[12px] font-medium text-stone">
+        <div className="flex items-center gap-2 rounded-sm bg-well px-3.5 py-2.5 text-[12px] font-medium text-ink-3">
           <span className={`inline-block h-2.5 w-2.5 rounded-full ${statusDot(channel.status)}`} />
-          <span className="text-iron">{statusLabel(channel.status)}</span>
-          {channel.statusDetail && <span className="text-stone">· {channel.statusDetail}</span>}
+          <span className="text-ink">{statusLabel(channel.status)}</span>
+          {channel.statusDetail && <span className="text-ink-3">· {channel.statusDetail}</span>}
         </div>
 
         {adapter.requiresTarget ? (
-          <div className="rounded-xl border border-thread bg-cloth/30 p-4">
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-stone">Target Chat</div>
+          <div className="rounded-card bg-well p-4">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3">Target Chat</div>
             <p className="text-[14px]">
               {target.id ? (
-                <span className="flex items-center gap-1.5 text-iron font-medium">
-                  <CircleCheck size={16} className="text-pine shrink-0" />
+                <span className="flex items-center gap-1.5 text-ink font-medium">
+                  <CircleCheck size={16} className="text-emerald shrink-0" />
                   Bound to <span className="font-semibold">{target.title || target.id}</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-carmine">
+                <span className="flex items-center gap-1.5 text-vermilion">
                   <CircleAlert size={16} className="shrink-0" />
                   No chat picked yet — this channel is currently inactive.
                 </span>
@@ -480,7 +482,7 @@ function ChannelSetup({
 
         {adapter.actions?.length ? (
           <div className="space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-stone">Actions</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Actions</div>
             <div className="flex flex-wrap items-center gap-2.5">
               {adapter.actions.map((a) => (
                 <Btn key={a.key} kind="secondary" type="button" disabled={busy} onClick={() => void run(a.key)}>
@@ -492,8 +494,8 @@ function ChannelSetup({
         ) : null}
 
         {adapter.requiresTarget ? (
-          <div className="space-y-2 pt-1 border-t border-thread/80">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-stone">Set chat directly</div>
+          <div className="space-y-2 pt-1 border-t border-line/80">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Set chat directly</div>
             <div className="flex items-center gap-2">
               <input
                 className={`${inputClass} min-w-0 flex-1`}
@@ -512,14 +514,14 @@ function ChannelSetup({
         ) : null}
 
         {state?.message ? (
-          <div className="rounded-lg border border-thread bg-cloth/50 p-3 text-[13px] text-stone">
+          <div className="rounded-sm bg-well p-3 text-[13px] text-ink-3">
             {state.message}
           </div>
         ) : null}
 
         {state?.kind === "select" && state.options.length > 0 ? (
-          <div className="space-y-2 pt-2 border-t border-thread/80">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-stone">Available chats</div>
+          <div className="space-y-2 pt-2 border-t border-line/80">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Available chats</div>
             <div className="grid max-h-[320px] gap-2 overflow-auto">
               {state.options.map((o) => {
                 const isSelected = o.value === target.id;
@@ -528,15 +530,13 @@ function ChannelSetup({
                     key={o.value}
                     type="button"
                     disabled={busy}
-                    className={`flex items-center justify-between rounded-lg border p-3 text-left text-[13px] transition-all shadow-2xs ${
-                      isSelected
-                        ? "border-bindery bg-bindery-pale text-iron font-medium"
-                        : "border-thread bg-folio hover:border-bindery"
+                    className={`flex items-center justify-between rounded-sm border p-3 text-left text-[13px] transition-[background-color,color,box-shadow] ${ isSelected ? "border-cobalt bg-cobalt-pale text-ink font-medium"
+                        : "border-line bg-surface hover:border-cobalt"
                     }`}
                     onClick={() => void choose(o.value, o.label)}
                   >
                     <span className="truncate">{o.label}</span>
-                    {isSelected ? <CircleCheck size={16} className="shrink-0 text-bindery" /> : null}
+                    {isSelected ? <CircleCheck size={16} className="shrink-0 text-cobalt" /> : null}
                   </button>
                 );
               })}
@@ -545,20 +545,20 @@ function ChannelSetup({
         ) : null}
 
         {state?.kind === "qr" && state.qr ? (
-          <div className="flex flex-col items-center gap-3 pt-3 border-t border-thread/80">
-            <img src={state.qr} alt="Scan QR" className="w-52 rounded-xl border border-thread bg-folio p-2 shadow-sm" />
-            <span className="text-xs text-stone">Scan with Telegram or your camera app</span>
+          <div className="flex flex-col items-center gap-3 pt-3 border-t border-line/80">
+            <img src={state.qr} alt="Scan QR" className="w-52 rounded-card shadow-card bg-surface p-2" />
+            <span className="text-xs text-ink-3">Scan with Telegram or your camera app</span>
           </div>
         ) : null}
 
         {state?.kind === "error" ? (
-          <div className="rounded-lg border border-carmine/20 bg-carmine/10 p-3 text-[13px] text-carmine">
+          <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
             {state.message}
           </div>
         ) : null}
 
         {err && (
-          <div className="rounded-lg border border-carmine/20 bg-carmine/10 p-3 text-[13px] text-carmine">
+          <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
             {err}
           </div>
         )}
@@ -573,7 +573,6 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [log, setLog] = useState<Channel | null>(null);
-  const [armDelete, setArmDelete] = useState<string>("");
   const [err, setErr] = useState("");
 
   const back = () => navigate(`/bots/${botId}/channels`);
@@ -609,9 +608,9 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
         <PageHead title="Add a channel" subtitle="Choose a built-in adapter to connect with this Bot." onBack={back} />
         {!loaded ? (
-          <p className="text-stone text-[13px]">Loading adapters…</p>
+          <SkeletonRows rows={2} height={72} />
         ) : adapters.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-thread bg-folio p-12 text-center text-stone">
+          <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center text-ink-3">
             No channel adapters available on this system.
           </div>
         ) : (
@@ -620,16 +619,16 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
               <button
                 key={a.slug}
                 type="button"
-                className="group flex items-start gap-4 rounded-xl border border-thread bg-folio p-5 text-left transition-all hover:border-bindery hover:shadow-xs"
+                className="group flex items-start gap-4 rounded-card shadow-card bg-surface p-5 text-left transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs"
                 onClick={() => navigate(`/bots/${botId}/channels/new/${a.slug}`)}
               >
                 <AdapterLogo adapter={a} size={44} />
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-[15px] text-iron group-hover:text-bindery transition-colors">
+                  <div className="font-semibold text-[15px] text-ink group-hover:text-ink transition-colors">
                     {a.name}
                   </div>
                   {a.description ? (
-                    <div className="mt-1 text-xs text-stone leading-relaxed line-clamp-2">{a.description}</div>
+                    <div className="mt-1 text-xs text-ink-3 leading-relaxed line-clamp-2">{a.description}</div>
                   ) : null}
                 </div>
               </button>
@@ -670,12 +669,12 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-[22px] font-medium tracking-tight text-iron">Channels</h1>
-            <span className="rounded-full bg-cloth px-2 py-0.5 text-[11px] font-semibold text-stone">
+            <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Channels</h1>
+            <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">
               {channels.length}
             </span>
           </div>
-          <p className="max-w-3xl text-[13px] leading-relaxed text-stone">
+          <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
             Ways to talk to this Bot. Connect Telegram, Slack, or other platforms to talk with this Bot from your favorite chat apps.
           </p>
         </div>
@@ -691,18 +690,18 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
       </div>
 
       {err ? (
-        <div className="mb-4 rounded-lg border border-carmine/20 bg-carmine/10 p-3.5 text-[13px] text-carmine">
+        <div className="mb-4 rounded-sm bg-vermilion-pale p-3.5 text-[13px] text-vermilion">
           {err}
         </div>
       ) : null}
 
       {channels.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-thread bg-folio p-12 text-center shadow-2xs">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cloth text-stone">
+        <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Radio size={28} />
           </div>
-          <h3 className="text-base font-semibold text-iron">No channels connected yet</h3>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-stone">
+          <h3 className="text-base font-semibold text-ink">No channels connected yet</h3>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">
             Connect external chat adapters to talk with this Bot directly from mobile or desktop messengers.
           </p>
           <div className="mt-6">
@@ -724,24 +723,24 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
             return (
               <div
                 key={c.id}
-                className="flex flex-col justify-between rounded-xl border border-thread bg-folio p-5 shadow-2xs transition-all hover:border-hover hover:shadow-xs min-h-[140px]"
+                className="flex flex-col justify-between rounded-card shadow-card bg-surface p-5 transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs min-h-[140px]"
               >
                 <div>
                   <div className="flex items-start gap-4">
                     <AdapterLogo adapter={a} size={48} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-[15px] text-iron tracking-tight">{c.name}</span>
-                        <span className="rounded-[6px] border border-thread bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+                        <span className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</span>
+                        <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
                           {c.adapterName || c.adapter}
                         </span>
                         {!c.enabled && (
-                          <span className="rounded-[6px] bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+                          <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
                             Disabled
                           </span>
                         )}
                         {!c.inbound && (
-                          <span className="rounded-[6px] bg-cloth px-2 py-0.5 text-[11px] font-medium text-stone">
+                          <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
                             Send-only
                           </span>
                         )}
@@ -751,11 +750,11 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       {a?.requiresTarget && (
                         <div className="mt-1.5 text-xs">
                           {c.externalId ? (
-                            <span className="text-stone">
-                              Chat: <span className="font-medium text-iron">{c.targetTitle || c.externalId}</span>
+                            <span className="text-ink-3">
+                              Chat: <span className="font-medium text-ink">{c.targetTitle || c.externalId}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 font-semibold text-carmine">
+                            <span className="inline-flex items-center gap-1 font-semibold text-vermilion">
                               <CircleAlert size={13} /> Needs setup
                             </span>
                           )}
@@ -763,13 +762,13 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       )}
 
                       {/* Status */}
-                      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-stone">
+                      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-ink-3">
                         <span className={`inline-block h-2 w-2 rounded-full ${statusDot(c.status)}`} />
-                        <span className={c.status === "error" ? "text-carmine" : "text-stone"}>
+                        <span className={c.status === "error" ? "text-vermilion" : "text-ink-3"}>
                           {statusLabel(c.status)}
                         </span>
                         {c.statusDetail && (
-                          <span className="truncate text-stone">· {c.statusDetail}</span>
+                          <span className="truncate text-ink-3">· {c.statusDetail}</span>
                         )}
                       </div>
                     </div>
@@ -777,7 +776,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                 </div>
 
                 {/* Bottom Actions Toolbar */}
-                <div className="mt-4 flex items-center justify-between border-t border-thread/80 pt-3.5">
+                <div className="mt-4 flex items-center justify-between border-t border-line/80 pt-3.5">
                   <div>
                     {a?.actions?.length ? (
                       needsSetup ? (
@@ -786,7 +785,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                           type="button"
                           onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
                         >
-                          <Settings size={14} className="silo-blink" />
+                          <Settings size={14} className="breathe" />
                           <span>Set up</span>
                         </Btn>
                       ) : (
@@ -823,24 +822,17 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                       <span>Configure</span>
                     </Btn>
 
-                    <Btn
+                    <ArmedButton
                       kind="ghost"
-                      type="button"
-                      className="text-carmine hover:text-carmine"
-                      onClick={async () => {
-                        if (armDelete !== c.id) {
-                          setArmDelete(c.id);
-                          return;
-                        }
-                        setArmDelete("");
+                      title="Delete channel"
+                      icon={<Trash2 size={14} />}
+                      onConfirm={async () => {
                         await ui.deleteChannel({ botId, id: c.id });
                         void refresh();
                       }}
-                      title="Delete channel"
                     >
-                      <Trash2 size={14} />
-                      <span>{armDelete === c.id ? "Confirm?" : "Delete"}</span>
-                    </Btn>
+                      Delete
+                    </ArmedButton>
                   </div>
                 </div>
               </div>

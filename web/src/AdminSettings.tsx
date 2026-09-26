@@ -1,6 +1,7 @@
 import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { ui } from "./api";
+import { SaveButton, useSave } from "./Feedback";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
 import { Field, Panel, inputClass } from "./Field";
@@ -105,7 +106,8 @@ export function AdminSettings() {
   const [yamlText, setYamlText] = useState("");
   const [yamlPath, setYamlPath] = useState("");
   const [audit, setAudit] = useState<AuditRow[]>([]);
-  const [saved, setSaved] = useState("");
+  const formSaver = useSave();
+  const yamlSaver = useSave();
   const [err, setErr] = useState("");
 
   const apply = (x: Settings) => applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels, setConnVars);
@@ -120,7 +122,6 @@ export function AdminSettings() {
 
   function setValue(key: string, v: string) {
     setValues((prev) => ({ ...prev, [key]: v }));
-    setSaved("");
   }
 
   async function saveForm() {
@@ -132,8 +133,7 @@ export function AdminSettings() {
       if (v !== f.value) patch[f.key] = v;
     }
     try {
-      apply(await ui.putSettings({ fields: patch }));
-      setSaved("form");
+      apply(await formSaver.run(() => ui.putSettings({ fields: patch })));
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -142,8 +142,7 @@ export function AdminSettings() {
   async function saveYaml() {
     setErr("");
     try {
-      apply(await ui.putSettings({ yaml: yamlText }));
-      setSaved("yaml");
+      apply(await yamlSaver.run(() => ui.putSettings({ yaml: yamlText })));
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -153,7 +152,6 @@ export function AdminSettings() {
     setErr("");
     try {
       apply(await ui.setModels({ models: list }));
-      setSaved("models");
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -163,9 +161,9 @@ export function AdminSettings() {
     setErr("");
     try {
       apply(await ui.setConnectorVars({ connectorVars: list.map((v) => ({ name: v.name, value: v.value, source: ConfigSource.DEFAULT, envName: "" })) }));
-      setSaved("vars");
     } catch (ex) {
       setErr(fail(ex));
+      throw ex;
     }
   }
 
@@ -177,7 +175,7 @@ export function AdminSettings() {
 
   return (
     <div>
-      {err && <p className="mb-3 text-carmine">{err}</p>}
+      {err && <p className="mb-3 text-vermilion">{err}</p>}
       <div className="grid gap-5">
         <ModelSettings
           models={models}
@@ -210,45 +208,38 @@ export function AdminSettings() {
       </div>
 
       <div className="mt-6 flex items-center gap-3">
-        <Btn kind="primary" onClick={() => void saveForm()}>
+        <SaveButton state={formSaver.state} onClick={() => void saveForm()}>
           Save changes
-        </Btn>
-        {saved === "form" && <span className="text-stone">Saved</span>}
-        {saved === "models" && <span className="text-stone">Saved</span>}
-        {saved === "vars" && <span className="text-stone">Saved</span>}
+        </SaveButton>
       </div>
 
-      <h2 className="mt-10 mb-3 text-[22px] font-medium">silo.yaml</h2>
-      <p className="mb-2 font-mono text-[12px] text-stone">{yamlPath || "silo.yaml"}</p>
+      <h2 className="mt-10 mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">silo.yaml</h2>
+      <p className="mb-2 font-mono text-[12px] text-ink-3">{yamlPath || "silo.yaml"}</p>
       {envFields.length > 0 ? (
-        <p className="mb-3 flex items-start gap-2 text-[13px] text-carmine">
+        <p className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
           <TriangleAlert className="mt-0.5 shrink-0" size={16} />
           <span>Overridden by env and will not apply until unset: {envFields.map((f) => f.envName).join(", ")}</span>
         </p>
       ) : null}
-      <Suspense fallback={<div className="h-80 rounded-[6px] border border-thread bg-folio" />}>
+      <Suspense fallback={<div className="h-80 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface" />}>
         <YamlEditor
           value={yamlText}
-          onChange={(v) => {
-            setYamlText(v);
-            setSaved("");
-          }}
+          onChange={(v) => setYamlText(v)}
         />
       </Suspense>
       <div className="mt-3">
-        <Btn kind="primary" onClick={() => void saveYaml()}>
+        <SaveButton state={yamlSaver.state} onClick={() => void saveYaml()}>
           Save YAML
-        </Btn>
-        {saved === "yaml" && <span className="ml-3 text-stone">Saved</span>}
+        </SaveButton>
       </div>
 
-      <h2 className="mt-10 mb-3 text-[22px] font-medium">Audit</h2>
+      <h2 className="mt-10 mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">Audit</h2>
       {audit.length === 0 ? (
-        <p className="text-stone">No decisions yet.</p>
+        <p className="text-ink-2">No decisions yet.</p>
       ) : (
         <div className="silo-scroll-x">
           <table className="w-full min-w-[36rem] text-left text-[13px]">
-            <thead className="bg-cloth text-stone">
+            <thead className="bg-well text-ink-3">
               <tr>
                 <th className="p-2">When</th>
                 <th className="p-2">Bot</th>
@@ -259,7 +250,7 @@ export function AdminSettings() {
             </thead>
             <tbody>
               {audit.map((r) => (
-                <tr key={r.id} className="border-b border-thread-2">
+                <tr key={r.id} className="border-b border-line-strong">
                   <td className="p-2">{r.at}</td>
                   <td className="flex items-center gap-2 p-2">
                     <Crest index={r.crest} size={20} />
@@ -298,7 +289,7 @@ function FieldGroup({
   if (rows.length === 0) return null;
   return (
     <Panel title={title} note={note} padded={false}>
-      <div className="divide-y divide-thread-2">
+      <div className="divide-y divide-line-strong">
         {rows.map((f) => (
           <div key={f.key} className="px-4 py-3">
             <FieldRow
@@ -333,7 +324,7 @@ function ProviderBlock({
   if (rows.length === 0) return null;
   return (
     <Panel title={provider.name} note={provider.description || undefined} padded={false}>
-      <div className="divide-y divide-thread-2">
+      <div className="divide-y divide-line-strong">
         {rows.map((f) => (
           <div key={f.key} className="px-4 py-3">
             <FieldRow
@@ -439,20 +430,20 @@ function ModelSettings({
         </Field>
       </div>
 
-      <div className="mb-1.5 text-[12px] font-medium text-stone">Allowed models</div>
+      <div className="mb-1.5 text-[12px] font-medium text-ink-3">Allowed models</div>
       {models.length === 0 ? (
-        <p className="mb-3 text-[13px] text-stone">No models allowed. Add one below.</p>
+        <p className="mb-3 text-[13px] text-ink-2">No models allowed. Add one below.</p>
       ) : (
-        <ul className="mb-3 divide-y divide-thread-2 overflow-hidden rounded-[10px] border border-thread-2">
+        <ul className="mb-3 divide-y divide-line-strong overflow-hidden rounded-card border border-line-strong">
           {models.map((m) => (
             <li key={m.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
-              <span className="min-w-0 truncate font-mono text-iron">{m.id}</span>
-              <span className="shrink-0 text-stone">{m.provider}</span>
+              <span className="min-w-0 truncate font-mono text-ink">{m.id}</span>
+              <span className="shrink-0 text-ink-3">{m.provider}</span>
               <span className="flex-1" />
               <button
                 type="button"
                 title="Remove"
-                className="rounded-[6px] p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
+                className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
                 onClick={() => remove(m.id)}
               >
                 <Trash2 size={14} />
@@ -466,7 +457,7 @@ function ModelSettings({
         <div className="w-[150px]">
           <Select value={provider} onChange={setProvider} options={providerIDs.map((id) => ({ value: id, label: id }))} />
         </div>
-        <span className="text-stone">/</span>
+        <span className="text-ink-3">/</span>
         <input
           className={`${inputClass} min-w-[180px] flex-1 font-mono text-[13px]`}
           placeholder="model name, e.g. gpt-5.6-luna"
@@ -497,6 +488,7 @@ function ConnectorVarsPanel({
   onSave: (list: { name: string; value: string }[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<VarDraft[]>([]);
+  const varSaver = useSave();
   useEffect(() => {
     setDraft(vars.map((v) => ({ name: v.name, value: v.value, source: v.source, envName: v.envName })));
   }, [vars]);
@@ -510,7 +502,7 @@ function ConnectorVarsPanel({
       .filter((r) => r.source !== ConfigSource.ENV)
       .map((r) => ({ name: r.name.trim(), value: r.value }))
       .filter((r) => r.name);
-    void onSave(out);
+    void varSaver.run(() => onSave(out)).catch(() => {});
   }
 
   return (
@@ -518,15 +510,15 @@ function ConnectorVarsPanel({
       title="Connector variables"
       note="Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}."
     >
-      <p className="mb-4 flex items-start gap-2 rounded-[6px] border-l-4 border-carmine bg-cloth px-3 py-2 text-[13px] text-iron">
-        <TriangleAlert className="mt-0.5 shrink-0 text-carmine" size={16} />
+      <p className="mb-4 flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-[13px] text-ink">
+        <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={16} />
         <span>
           These are variables, not secrets. Values are stored in plain text in <span className="font-mono">silo.yaml</span> and are not
           protected — anyone who can read the config can see them. Use a Bot Secret for credentials.
         </span>
       </p>
       {draft.length === 0 ? (
-        <p className="mb-3 text-[13px] text-stone">No variables yet.</p>
+        <p className="mb-3 text-[13px] text-ink-2">No variables yet.</p>
       ) : (
         <div className="mb-3 grid gap-2">
           {draft.map((r, i) => {
@@ -540,7 +532,7 @@ function ConnectorVarsPanel({
                   disabled={locked}
                   onChange={(e) => update(i, { name: e.target.value })}
                 />
-                <span className="text-stone">=</span>
+                <span className="text-ink-3">=</span>
                 <input
                   className={`${inputClass} min-w-[160px] flex-1 font-mono text-[13px]`}
                   placeholder="value"
@@ -549,7 +541,7 @@ function ConnectorVarsPanel({
                   onChange={(e) => update(i, { value: e.target.value })}
                 />
                 {locked ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={r.envName}>
+                  <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={r.envName}>
                     <TriangleAlert size={14} />
                     {r.envName}
                   </span>
@@ -557,7 +549,7 @@ function ConnectorVarsPanel({
                   <button
                     type="button"
                     title="Remove"
-                    className="rounded-[6px] p-1 text-stone transition-colors hover:bg-linen hover:text-carmine"
+                    className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
                     onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))}
                   >
                     <Trash2 size={14} />
@@ -572,9 +564,9 @@ function ConnectorVarsPanel({
         <Btn onClick={() => setDraft((prev) => [...prev, { name: "", value: "", source: ConfigSource.DEFAULT, envName: "" }])}>
           <Plus size={14} /> Add variable
         </Btn>
-        <Btn kind="primary" onClick={save}>
+        <SaveButton state={varSaver.state} onClick={save}>
           Save variables
-        </Btn>
+        </SaveButton>
       </div>
     </Panel>
   );
@@ -583,10 +575,10 @@ function ConnectorVarsPanel({
 function SourceChips({ field }: { field: ConfigField }) {
   return (
     <>
-      <span className="font-mono text-[11px] text-stone">{sourceWord(field.source)}</span>
-      {field.restartRequired ? <span className="text-[11px] text-stone">restart</span> : null}
+      <span className="font-mono text-[11px] text-ink-3">{sourceWord(field.source)}</span>
+      {field.restartRequired ? <span className="text-[11px] text-ink-3">restart</span> : null}
       {field.source === ConfigSource.ENV ? (
-        <span className="inline-flex items-center gap-1 text-[11px] text-carmine" title={field.envName}>
+        <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={field.envName}>
           <TriangleAlert size={14} />
           {field.envName}
         </span>

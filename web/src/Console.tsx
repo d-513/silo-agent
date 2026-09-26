@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { palette } from "./tokens";
 
 export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -26,16 +27,16 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     setPhase("connecting");
     const termInst = new Terminal({
       cursorBlink: true,
-      fontFamily: '"Geist Mono Variable", "Geist Mono", "IBM Plex Mono", ui-monospace, monospace',
+      fontFamily: '"Geist Mono Variable", "Geist Mono", ui-monospace, monospace',
       fontSize: 13,
       lineHeight: 1.4,
       theme: {
-        background: "#0B0F19",
-        foreground: "#F8FAFC",
-        cursor: "#F8FAFC",
-        cursorAccent: "#0B0F19",
-        selectionBackground: "#1D4ED8",
-        selectionForeground: "#FFFFFF",
+        background: palette.matte,
+        foreground: palette.canvas,
+        cursor: palette.canvas,
+        cursorAccent: palette.matte,
+        selectionBackground: palette.cobalt,
+        selectionForeground: palette.white,
       },
     });
     const fit = new FitAddon();
@@ -107,7 +108,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     <div className="relative h-full min-h-0 w-full bg-matte">
       <div ref={ref} className="silo-console h-full min-h-[320px] w-full" onMouseDown={() => termRef.current?.focus()} />
       {phase !== "connected" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[13px] text-stone">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
           {phase === "off" ? "Console not connected" : phase === "connecting" ? "Opening console…" : "Console lost"}
         </div>
       )}

@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"context"
 	"strings"
 	"testing"
@@ -348,6 +349,57 @@ func TestApprovalDeny(t *testing.T) {
 	}
 	if !strings.Contains(result, "denied") {
 		t.Fatalf("denied tool result %q", result)
+	}
+}
+
+// A decision leaves a persisted receipt in the run log so the thread can show
+// it after a reload: a "decision" event carrying the vote and the catalog
+// title, emitted before the tool resumes.
+func TestApprovalDecisionReceipt(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_16r",
+		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "terminal", Arguments: `{"command":"echo secret"}`}}},
+		dummy.Turn{Text: "gave up"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Receipt")
+	h.StartWorker(bot.GetId())
+	chat := h.FirstChat(bot.GetId())
+	h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+		BotId: bot.GetId(), Connector: "terminal", Action: "run", Decision: "ask",
+	}))
+	runID, _ := h.Send(bot.GetId(), chat, "Test_16r_Input")
+	ap := h.WaitApproval(bot.GetId())
+	if _, err := h.Client.DecideApproval(h.Ctx(), connect.NewRequest(&v1.DecideApprovalRequest{
+		Id: ap.GetId(), Decision: "deny",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	events := h.WaitRun(runID)
+	decision, result := -1, -1
+	var body map[string]string
+	for i, ev := range events {
+		switch ev.Kind {
+		case "decision":
+			decision = i
+			if ev.Tool != "terminal.run" {
+				t.Fatalf("decision tool %q", ev.Tool)
+			}
+			if err := json.Unmarshal([]byte(ev.Body), &body); err != nil {
+				t.Fatalf("decision body %q: %v", ev.Body, err)
+			}
+		case "tool_result":
+			result = i
+		}
+	}
+	if decision < 0 {
+		t.Fatal("no decision event in the run log")
+	}
+	if result >= 0 && result < decision {
+		t.Fatalf("decision at %d after tool_result at %d", decision, result)
+	}
+	if body["decision"] != "deny" || body["approval_id"] != ap.GetId() || body["title"] == "" {
+		t.Fatalf("decision body %v", body)
 	}
 }
 

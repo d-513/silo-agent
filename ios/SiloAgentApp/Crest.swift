@@ -1,6 +1,19 @@
 import SwiftUI
 
 let CREST_COLORS: [Color] = [
+    Color(hex: 0xF3F2EF), // mist
+    Color(hex: 0x8B5A3C), // brown
+    Color(hex: 0x9F1239), // wine
+    Color(hex: 0xEA580C), // orange
+    Color(hex: 0xE0AE1C), // yellow
+    Color(hex: 0x16A34A), // green
+    Color(hex: 0x0F7A55), // emerald
+    Color(hex: 0x2B4FC7), // cobalt
+    Color(hex: 0x6D28D9), // purple
+    Color(hex: 0xDB2777), // pink
+    Color(hex: 0x55534E), // graphite
+    Color(hex: 0x1A1917), // ink
+] = [
     Color(hex: 0xF3F0E8), // plaster
     Color(hex: 0x7A4E2A), // brown
     Color(hex: 0xA33B4A), // carmine
@@ -42,16 +55,10 @@ extension Color {
     }
 }
 
+// Ink eyes on the two light fills (mist, yellow); canvas eyes on the rest.
 private func crestIsLight(_ index: Int32) -> Bool {
     let color = unpackCrest(index).color
-    let n = UInt32([
-        0xF3F0E8, 0x7A4E2A, 0xA33B4A, 0xE07A2F, 0xE4C04A, 0x4A8F4A,
-        0x3D6F6A, 0x2A3F5F, 0x6B4C8A, 0xD47A8C, 0x5F5E58, 0x1E2126,
-    ][color])
-    let r = Double((n >> 16) & 0xFF)
-    let g = Double((n >> 8) & 0xFF)
-    let b = Double(n & 0xFF)
-    return (r * 299 + g * 587 + b * 114) / 1000 > 140
+    return color == 0 || color == 4
 }
 
 /// The crest body, drawn in a 48x48 design space and scaled to `rect`.
@@ -155,10 +162,11 @@ struct CrestView: View {
         let shape = unpackCrest(index).shape
         let fill = CREST_COLORS[unpackCrest(index).color]
         let light = crestIsLight(index)
-        let eyeColor = light ? Color(hex: 0x1E2126) : Color(hex: 0xF3F0E8)
+        let eyeColor = light ? Color(hex: 0x1A1917) : Color(hex: 0xFAF9F7)
         ZStack {
-            if light {
-                CrestShape(shape: shape).stroke(Color(hex: 0xC9C3B6), lineWidth: max(1, size / 48))
+            // Only mist takes the hairline outline (line-strong on canvas).
+            if unpackCrest(index).color == 0 {
+                CrestShape(shape: shape).stroke(Color(hex: 0xD8D7D4), lineWidth: max(1, size / 48))
             }
             CrestShape(shape: shape).fill(fill)
             CrestEyes(shape: shape).fill(eyeColor)

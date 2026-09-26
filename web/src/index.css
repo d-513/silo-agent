@@ -1,42 +1,93 @@
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
 @import "tailwindcss";
 
+/* Source Serif 4 (replies only): Latin + Latin-ext, variable wght + opsz. */
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(@fontsource-variable/source-serif-4/files/source-serif-4-latin-ext-opsz-normal.woff2) format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-normal.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(@fontsource-variable/source-serif-4/files/source-serif-4-latin-ext-opsz-italic.woff2) format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-italic.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @theme {
-  --font-sans: "Geist Variable", "Geist", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono Variable", "Geist Mono", "IBM Plex Mono", ui-monospace, monospace;
-  --color-plaster: #f8fafc;
-  --color-folio: #ffffff;
-  --color-cloth: #f1f5f9;
-  --color-linen: #e2e8f0;
-  --color-thread: #e2e8f0;
-  --color-thread-2: #cbd5e1;
-  --color-iron: #0f172a;
-  --color-stone: #64748b;
-  --color-bindery: #1d4ed8;
-  --color-bindery-deep: #1e40af;
-  --color-bindery-pale: #dbeafe;
-  --color-pine: #059669;
-  --color-carmine: #dc2626;
-  --color-slate: #475569;
-  --color-hatch: #0f172a;
-  --color-matte: #0b0f19;
-  --color-hover: #cbd5e1;
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
+  --font-serif: "Source Serif 4 Variable", "Source Serif 4", Georgia, serif;
+
+  --color-canvas: #faf9f7;
+  --color-surface: #ffffff;
+  --color-well: #f3f2ef;
+  --color-pressed: #eae8e4;
+  --color-line: rgb(26 25 23 / 0.09);
+  --color-line-strong: rgb(26 25 23 / 0.16);
+  --color-ink: #1a1917;
+  --color-ink-2: #55534e;
+  --color-ink-3: #6b6862;
+  --color-cobalt: #2b4fc7;
+  --color-cobalt-deep: #2340a8;
+  --color-cobalt-pale: #e8edfb;
+  --color-emerald: #0f7a55;
+  --color-lamp: #16a06f;
+  --color-vermilion: #c4372b;
+  --color-vermilion-deep: #a82e24;
+  --color-vermilion-pale: #fbeae8;
+  --color-hatch: #141413;
+  --color-matte: #0e0e0d;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-bubble: 18px;
+
+  --shadow-card: 0 0 0 1px rgb(26 25 23 / 0.09);
+  --shadow-float: 0 0 0 1px rgb(26 25 23 / 0.09), 0 1px 2px rgb(20 18 14 / 0.04), 0 6px 20px -8px rgb(20 18 14 / 0.08);
+  --shadow-float-focus: 0 0 0 1px rgb(26 25 23 / 0.16), 0 1px 2px rgb(20 18 14 / 0.04), 0 10px 30px -10px rgb(20 18 14 / 0.16);
+  --shadow-slip: 0 0 0 1px rgb(26 25 23 / 0.09), 0 24px 60px -20px rgb(20 18 14 / 0.22), 0 2px 8px rgb(20 18 14 / 0.05);
+
   --breakpoint-wide: 960px;
-  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html,
 body,
 #root {
   min-height: 100%;
-  background: var(--color-plaster);
-  color: var(--color-iron);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 22px;
@@ -54,22 +105,22 @@ body,
     letter-spacing: -0.015em;
   }
   ::selection {
-    background: var(--color-bindery-pale);
-    color: var(--color-iron);
+    background: var(--color-cobalt-pale);
+    color: var(--color-ink);
   }
   input,
   textarea {
-    caret-color: var(--color-bindery);
+    caret-color: var(--color-cobalt);
   }
   :focus-visible {
-    outline: 2px solid var(--color-bindery);
+    outline: 2px solid var(--color-cobalt);
     outline-offset: 2px;
   }
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-thread) transparent;
+  scrollbar-color: var(--color-pressed) transparent;
 }
 ::-webkit-scrollbar {
   height: 10px;
@@ -79,45 +130,167 @@ body,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-thread);
+  background: var(--color-pressed);
   background-clip: padding-box;
   border: 3px solid transparent;
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-hover);
-  background-clip: padding-box;
-  border: 3px solid transparent;
+
+button {
+  cursor: pointer;
 }
 
-@keyframes silo-settle {
+/* ---------------------------------------------------------------- motion
+ * DESIGN.md §5. Two curves only. The Working lamp's breathe is the one
+ * ambient loop; everything else answers something the operator did. */
+
+@keyframes silo-rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.silo-enter {
-  animation: silo-settle 320ms var(--ease-settle) both;
-}
-.silo-rise {
-  animation: silo-settle 420ms var(--ease-settle) both;
+.rise {
+  animation: silo-rise 420ms var(--ease-settle) both;
 }
 
-@keyframes silo-slip-wide {
+@keyframes silo-glide {
   from {
     opacity: 0;
-    transform: translateX(16px);
+    transform: translateY(56px) scale(0.96);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes silo-slip-narrow {
+.glide {
+  animation: silo-glide 520ms var(--ease-settle) both;
+  transform-origin: 100% 100%;
+}
+
+@keyframes silo-chunk {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+.chunk {
+  animation: silo-chunk 360ms var(--ease-settle) both;
+}
+
+@keyframes silo-shimmer-text {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.shimmer-text {
+  animation: silo-shimmer-text 1.6s linear infinite;
+  background-image: linear-gradient(
+    90deg,
+    var(--color-ink-3) 0%,
+    var(--color-ink-3) 35%,
+    var(--color-ink) 50%,
+    var(--color-ink-3) 65%,
+    var(--color-ink-3) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@keyframes silo-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.breathe {
+  animation: silo-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes silo-ping {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(4.2);
+  }
+}
+.ping {
+  animation: silo-ping 900ms var(--ease-quiet) both;
+}
+
+/* Crest blink: eyes squash and open. `blink` on a hover host blinks once on
+ * hover; `blink-idle` (Working Bots in the rail) blinks about every 6s. */
+.crest-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes silo-blink {
+  0%,
+  100% {
+    transform: none;
+  }
+  45% {
+    transform: scaleY(0.12);
+  }
+}
+@keyframes silo-blink-idle {
+  0%,
+  95%,
+  100% {
+    transform: none;
+  }
+  96.8% {
+    transform: scaleY(0.12);
+  }
+}
+.blink:hover .crest-eyes {
+  animation: silo-blink 220ms var(--ease-quiet);
+}
+.blink-idle .crest-eyes {
+  animation: silo-blink-idle 6s var(--ease-quiet) infinite;
+}
+
+@keyframes silo-slip-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes silo-slip-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+@keyframes silo-sheet-in {
   from {
     opacity: 0;
     transform: translateY(16px);
@@ -127,16 +300,104 @@ body,
     transform: none;
   }
 }
-.silo-slip {
-  animation: silo-slip-narrow 320ms var(--ease-settle) both;
+@keyframes silo-sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.slip-in {
+  animation: silo-sheet-in 420ms var(--ease-settle) both;
+}
+.slip-out {
+  animation: silo-sheet-out 260ms var(--ease-quiet) both;
 }
 @media (min-width: 960px) {
-  .silo-slip {
-    animation-name: silo-slip-wide;
+  .slip-in {
+    animation-name: silo-slip-in;
+  }
+  .slip-out {
+    animation-name: silo-slip-out;
   }
 }
 
-@keyframes silo-shimmer {
+@keyframes silo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes silo-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+.wash-in {
+  animation: silo-fade-in 280ms var(--ease-quiet) both;
+}
+.wash-out {
+  animation: silo-fade-out 260ms var(--ease-quiet) both;
+}
+
+/* Status word crossfade: old word out, new word up 4px. */
+@keyframes silo-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.word-in {
+  animation: silo-word-in 240ms var(--ease-quiet) both;
+}
+.word-out {
+  animation: silo-fade-out 240ms var(--ease-quiet) both;
+}
+
+@keyframes silo-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.drain {
+  animation: silo-drain 3s linear both;
+  transform-origin: left center;
+}
+
+@keyframes silo-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop {
+  animation: silo-pop 300ms var(--ease-settle) both;
+}
+
+@keyframes silo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.spin {
+  animation: silo-spin 0.8s linear infinite;
+}
+
+/* Skeleton rows: a slow shimmer over `well`, never a spinner. */
+@keyframes silo-skeleton {
   from {
     background-position: 200% 0;
   }
@@ -144,16 +405,89 @@ body,
     background-position: -200% 0;
   }
 }
-.silo-shimmer {
-  animation: silo-shimmer 1.5s linear infinite;
-  background-image: linear-gradient(
-    90deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.85) 50%,
-    transparent 80%
-  );
+.skeleton {
+  background-color: var(--color-well);
+  background-image: linear-gradient(90deg, transparent 20%, rgb(255 255 255 / 0.7) 50%, transparent 80%);
   background-size: 200% 100%;
+  animation: silo-skeleton 2.2s linear infinite;
 }
+
+/* Starting ring on NeedMachine: cobalt + emerald on a pressed track. */
+.silo-wake {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+.silo-wake::before,
+.silo-wake::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+}
+.silo-wake::before {
+  inset: 0;
+  border: 2px solid var(--color-pressed);
+  border-top-color: var(--color-cobalt);
+  animation: silo-spin 0.85s var(--ease-quiet) infinite;
+}
+.silo-wake::after {
+  inset: 9px;
+  border: 2px solid transparent;
+  border-right-color: var(--color-emerald);
+  animation: silo-spin 1.55s var(--ease-quiet) infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Transforms and loops go; crossfades stay at 120ms or less. */
+  .rise,
+  .glide,
+  .chunk,
+  .pop,
+  .slip-in,
+  .wash-in,
+  .word-in {
+    animation: silo-fade-in 120ms linear both !important;
+    filter: none;
+  }
+  .slip-out,
+  .wash-out,
+  .word-out {
+    animation: silo-fade-out 120ms linear both !important;
+  }
+  .breathe,
+  .silo-live .silo-md *::after,
+  .ping,
+  .shimmer-text,
+  .blink:hover .crest-eyes,
+  .blink-idle .crest-eyes,
+  .drain,
+  .spin,
+  .animate-spin,
+  .skeleton,
+  .silo-wake::before,
+  .silo-wake::after {
+    animation: none !important;
+  }
+  .ping,
+  .drain {
+    display: none;
+  }
+  .shimmer-text {
+    color: var(--color-ink-3);
+    background: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 120ms !important;
+  }
+  button:active,
+  a:active {
+    transform: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------- layout */
 
 .silo-page {
   width: 100%;
@@ -181,93 +515,6 @@ body,
   display: none;
 }
 
-button {
-  cursor: pointer;
-}
-
-@keyframes lamp-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.lamp-working {
-  animation: lamp-pulse 1.5s ease-in-out infinite;
-}
-
-.silo-need-go {
-  height: 44px;
-  padding-left: 20px;
-  padding-right: 8px;
-  font-size: 16px;
-}
-
-.silo-wake {
-  position: relative;
-  width: 44px;
-  height: 44px;
-}
-.silo-wake::before,
-.silo-wake::after {
-  content: "";
-  position: absolute;
-  border-radius: 999px;
-}
-.silo-wake::before {
-  inset: 0;
-  border: 2px solid var(--color-thread);
-  border-top-color: var(--color-bindery);
-  animation: silo-wake-spin 0.85s cubic-bezier(0.32, 0.72, 0, 1) infinite;
-}
-.silo-wake::after {
-  inset: 9px;
-  border: 2px solid transparent;
-  border-right-color: var(--color-pine);
-  animation: silo-wake-spin 1.55s cubic-bezier(0.32, 0.72, 0, 1) infinite reverse;
-}
-@keyframes silo-wake-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@keyframes silo-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
-.silo-blink {
-  animation: silo-blink 1.3s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lamp-working,
-  .animate-spin,
-  .silo-blink,
-  .silo-wake::before,
-  .silo-wake::after,
-  .silo-enter,
-  .silo-rise,
-  .silo-slip,
-  .silo-shimmer {
-    animation: none;
-  }
-  button {
-    transition: none;
-  }
-  button:active {
-    transform: none;
-  }
-}
-
 .silo-hatch {
   min-height: 0;
 }
@@ -290,6 +537,39 @@ details > summary {
 }
 details > summary::-webkit-details-marker {
   display: none;
+}
+
+/* Composer textarea: auto-grow natively where supported (JS fallback). */
+.silo-grow {
+  field-sizing: content;
+  min-height: 26px;
+  max-height: 168px;
+}
+
+/* ---------------------------------------------------------------- prose */
+
+/* The Bot's voice: Source Serif 4, `reply` type style. */
+.silo-reply {
+  font-family: var(--font-serif);
+  font-size: 16.5px;
+  line-height: 28px;
+  letter-spacing: -0.003em;
+  font-optical-sizing: auto;
+  color: var(--color-ink);
+}
+
+/* The breathing ink dot at the end of a streaming reply. */
+.silo-live .silo-md > :last-child:not(ul, ol, pre, table, .silo-md-table)::after,
+.silo-live .silo-md > :is(ul, ol):last-child > li:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  vertical-align: 0.05em;
+  animation: silo-breathe 2.4s ease-in-out infinite;
 }
 
 .silo-md {
@@ -316,28 +596,31 @@ details > summary::-webkit-details-marker {
   line-height: 28px;
 }
 .silo-md h2 {
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 18px;
+  line-height: 26px;
 }
 .silo-md h3,
 .silo-md h4,
 .silo-md h5,
 .silo-md h6 {
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 1em;
+  line-height: inherit;
 }
 .silo-md p,
 .silo-md ul,
 .silo-md ol,
 .silo-md pre,
 .silo-md blockquote {
-  margin: 0.5em 0;
+  margin: 0.6em 0;
 }
 .silo-md-table {
-  margin: 0.5em 0;
+  margin: 0.6em 0;
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 22px;
 }
 .silo-md ul {
   list-style: disc;
@@ -351,19 +634,24 @@ details > summary::-webkit-details-marker {
   margin: 0.15em 0;
 }
 .silo-md a {
-  color: var(--color-bindery);
+  color: var(--color-cobalt);
   text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 160ms var(--ease-quiet);
+}
+.silo-md a:hover {
+  color: var(--color-cobalt-deep);
 }
 .silo-md :not(pre) > code {
-  background: var(--color-cloth);
-  border-radius: 0.25rem;
+  background: var(--color-well);
+  border-radius: var(--radius-xs);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 0.8em;
   padding: 0.1em 0.35em;
 }
 .silo-md pre {
-  background: var(--color-cloth);
-  border-radius: 0.375rem;
+  background: var(--color-well);
+  border-radius: var(--radius-sm);
   overflow-x: hidden;
   padding: 0.75rem;
   white-space: pre-wrap;
@@ -372,7 +660,7 @@ details > summary::-webkit-details-marker {
 .silo-md pre code {
   background: none;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 20px;
   padding: 0;
 }
@@ -383,40 +671,42 @@ details > summary::-webkit-details-marker {
 }
 .silo-md th,
 .silo-md td {
-  border: 1px solid var(--color-thread-2);
-  padding: 0.35em 0.6em;
+  box-shadow: inset 0 -1px 0 var(--color-line);
+  padding: 0.4em 0.7em;
   text-align: left;
   vertical-align: top;
   overflow-wrap: anywhere;
 }
 .silo-md th {
-  background: var(--color-cloth);
+  background: var(--color-well);
   font-weight: 500;
   white-space: nowrap;
 }
 .silo-md blockquote {
-  border-left: 2px solid var(--color-thread);
-  color: var(--color-stone);
-  padding-left: 0.75rem;
+  box-shadow: inset 2px 0 0 var(--color-line-strong);
+  color: var(--color-ink-2);
+  padding-left: 0.85rem;
 }
 .silo-md hr {
   border: 0;
-  border-top: 1px solid var(--color-thread-2);
-  margin: 0.75em 0;
+  border-top: 1px solid var(--color-line);
+  margin: 0.9em 0;
 }
 .silo-md strong {
-  font-weight: 500;
+  font-weight: 600;
 }
+
+/* ---------------------------------------------------------------- code */
 
 .hljs {
   background: transparent;
-  color: var(--color-iron);
+  color: var(--color-ink);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .hljs-comment,
 .hljs-quote {
-  color: var(--color-stone);
+  color: var(--color-ink-3);
 }
 .hljs-keyword,
 .hljs-selector-tag,
@@ -427,21 +717,19 @@ details > summary::-webkit-details-marker {
 .hljs-title.class_,
 .hljs-title.function_,
 .hljs-type,
-.hljs-meta .hljs-keyword {
-  color: var(--color-bindery);
-}
-.hljs-string,
-.hljs-regexp,
-.hljs-addition,
-.hljs-template-tag {
-  color: var(--color-pine);
-}
+.hljs-meta .hljs-keyword,
 .hljs-number,
 .hljs-literal,
 .hljs-symbol,
 .hljs-bullet,
 .hljs-link {
-  color: var(--color-bindery);
+  color: var(--color-cobalt);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-template-tag {
+  color: var(--color-emerald);
 }
 .hljs-attr,
 .hljs-attribute,
@@ -449,18 +737,12 @@ details > summary::-webkit-details-marker {
 .hljs-template-variable,
 .hljs-property,
 .hljs-params {
-  color: var(--color-iron);
+  color: var(--color-ink);
 }
 .hljs-deletion {
-  color: var(--color-carmine);
+  color: var(--color-vermilion);
 }
 .hljs-meta,
 .hljs-built_in {
-  color: var(--color-stone);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-spin {
-    animation: none;
-  }
+  color: var(--color-ink-3);
 }

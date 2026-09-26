@@ -95,23 +95,23 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {draft && (
-        <form onSubmit={make} className="flex items-center gap-2 border-b border-thread-2 px-3 py-2">
+        <form onSubmit={make} className="flex items-center gap-2 border-b border-line-strong px-3 py-2">
           <input
             autoFocus
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             placeholder={draft === "dir" ? "Folder name" : "File name"}
-            className="h-9 flex-1 rounded-[6px] border border-thread bg-folio px-2 outline-none focus:border-bindery"
+            className="h-9 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 outline-none"
           />
           <Btn kind="primary" type="submit" disabled={!draftName.trim()}>
             Create
           </Btn>
-          <button type="button" className="text-stone hover:text-iron" onClick={() => setDraft(null)}>
+          <button type="button" className="text-ink-2 hover:text-ink" onClick={() => setDraft(null)}>
             <X size={14} />
           </button>
         </form>
       )}
-      {err && <p className="px-4 py-2 text-carmine">{err}</p>}
+      {err && <p className="px-4 py-2 text-vermilion">{err}</p>}
       <FileBrowser
         key={bot.id}
         source={source}
@@ -124,13 +124,13 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
         }}
         headerRight={
           <>
-            <button className="text-stone hover:text-iron" title="New folder" onClick={() => { setDraft("dir"); setDraftName(""); }}>
+            <button className="text-ink-2 hover:text-ink" title="New folder" onClick={() => { setDraft("dir"); setDraftName(""); }}>
               <FolderPlus size={16} />
             </button>
-            <button className="text-stone hover:text-iron" title="New file" onClick={() => { setDraft("file"); setDraftName(""); }}>
+            <button className="text-ink-2 hover:text-ink" title="New file" onClick={() => { setDraft("file"); setDraftName(""); }}>
               <Plus size={16} />
             </button>
-            <button className="text-stone hover:text-iron" title="Upload" onClick={() => upload.current?.click()}>
+            <button className="text-ink-2 hover:text-ink" title="Upload" onClick={() => upload.current?.click()}>
               <Upload size={16} />
             </button>
             <input ref={upload} type="file" multiple className="hidden" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />

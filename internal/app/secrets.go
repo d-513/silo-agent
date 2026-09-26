@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -120,6 +121,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 			a.DB.Save(&rule)
 		}
 	}
+	a.emitDecision(&row, dec)
 	a.mu.Lock()
 	w := a.approvals[row.ID]
 	delete(a.approvals, row.ID)
@@ -132,6 +134,30 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	}
 	a.recomputeStatus(row.BotID)
 	return connect.NewResponse(protoApproval(&row)), nil
+}
+
+// emitDecision writes the human's vote into the run log so the thread keeps a
+// receipt across reloads. It carries the catalog title and the first visible
+// field (never args_json), and is emitted before the waiting tool resumes.
+func (a *App) emitDecision(row *db.Approval, dec string) {
+	if row.RunID == "" {
+		return
+	}
+	p := security.Describe(row.Connector, row.Action, row.ArgsJSON)
+	target := ""
+	if len(p.Fields) > 0 {
+		target = strings.Join(strings.Fields(p.Fields[0].Value), " ")
+		if r := []rune(target); len(r) > 80 {
+			target = string(r[:79]) + "…"
+		}
+	}
+	body, _ := json.Marshal(map[string]string{
+		"approval_id": row.ID,
+		"decision":    dec,
+		"title":       p.Title,
+		"target":      target,
+	})
+	a.emit(row.BotID, a.chatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
 }
 
 func (a *App) setBotStatus(id, st string) {
