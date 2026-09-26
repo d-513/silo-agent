@@ -54,6 +54,28 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+// Lightpanda is the shared web reader: attached to every new Bot, pointed at
+// the operator's LIGHTPANDA_URL, and prompted as the primary way to read pages.
+func TestLightpandaPreset(t *testing.T) {
+	xs, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range xs {
+		if e.Key != "lightpanda" {
+			continue
+		}
+		if !e.AutoAttach || e.transportOf() != "http" || e.HTTPURL != "${LIGHTPANDA_URL}/mcp" {
+			t.Fatalf("%+v", e)
+		}
+		if !strings.Contains(e.Prompt, "markdown") || e.DefaultMode != "allow" {
+			t.Fatalf("%+v", e)
+		}
+		return
+	}
+	t.Fatal("lightpanda preset missing")
+}
+
 func TestGuide(t *testing.T) {
 	if Guide("") != "" || Guide("nope") != "" {
 		t.Fatal("empty")

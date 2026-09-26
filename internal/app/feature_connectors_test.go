@@ -137,33 +137,57 @@ func TestLibraryConnectorAttachCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	xs, _ := h.Client.ListBotConnectors(h.Ctx(), connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: bot.GetId()}))
-	if len(xs.Msg.GetConnectors()) != 1 {
-		t.Fatalf("expected one attachment left, got %d", len(xs.Msg.GetConnectors()))
+	if n := len(copiesOf(xs.Msg.GetConnectors(), lib.Msg.GetId())); n != 1 {
+		t.Fatalf("expected one attachment left, got %d", n)
 	}
+}
+
+// copiesOf filters a Bot's attachments to those copied from one library row,
+// so seeded auto-attach presets (Lightpanda) do not skew counts.
+func copiesOf(xs []*v1.BotConnector, libID string) []*v1.BotConnector {
+	var out []*v1.BotConnector
+	for _, x := range xs {
+		if x.GetConnector().GetSourceId() == libID {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 func TestAutoAttachCopiedOnce(t *testing.T) {
 	h := apptest.New(t)
-	if _, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
+	lib, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
 		Name: "AutoDocs", Transport: "http", HttpUrl: "http://127.0.0.1:1",
 		AutoAttach: true, Prompt: "Use for docs.",
-	})); err != nil {
+	}))
+	if err != nil {
 		t.Fatal(err)
 	}
 	bot := h.CreateBot("Auto")
 	xs, _ := h.Client.ListBotConnectors(h.Ctx(), connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: bot.GetId()}))
-	if len(xs.Msg.GetConnectors()) != 1 || !strings.HasPrefix(xs.Msg.GetConnectors()[0].GetConnector().GetName(), "AutoDocs") {
+	docs := copiesOf(xs.Msg.GetConnectors(), lib.Msg.GetId())
+	if len(docs) != 1 || !strings.HasPrefix(docs[0].GetConnector().GetName(), "AutoDocs") {
 		t.Fatalf("auto attach %+v", xs.Msg.GetConnectors())
 	}
+	// The seeded Lightpanda preset is auto-attached too, URL left as the variable.
+	lightpanda := false
+	for _, x := range xs.Msg.GetConnectors() {
+		if x.GetConnector().GetName() == "Lightpanda" && x.GetConnector().GetHttpUrl() == "${LIGHTPANDA_URL}/mcp" {
+			lightpanda = true
+		}
+	}
+	if !lightpanda {
+		t.Fatalf("lightpanda not auto-attached: %+v", xs.Msg.GetConnectors())
+	}
 	if _, err := h.Client.DetachConnector(h.Ctx(), connect.NewRequest(&v1.DetachConnectorRequest{
-		BotId: bot.GetId(), Id: xs.Msg.GetConnectors()[0].GetId(),
+		BotId: bot.GetId(), Id: docs[0].GetId(),
 	})); err != nil {
 		t.Fatal(err)
 	}
 	// A second ListBots/CreateBot must not re-add a preset the human removed.
 	again, _ := h.Client.ListBotConnectors(h.Ctx(), connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: bot.GetId()}))
-	if len(again.Msg.GetConnectors()) != 0 {
-		t.Fatalf("removed auto-attach came back: %+v", again.Msg.GetConnectors())
+	if left := copiesOf(again.Msg.GetConnectors(), lib.Msg.GetId()); len(left) != 0 {
+		t.Fatalf("removed auto-attach came back: %+v", left)
 	}
 }
 

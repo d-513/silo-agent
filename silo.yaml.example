@@ -56,3 +56,4 @@ search:
 # connector_vars:
 #   TENANT: acme
 #   MCP_HOST: mcp.internal.example.com
+#   LIGHTPANDA_URL: http://localhost:9223   # Lightpanda preset (make db-up)

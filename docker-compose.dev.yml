@@ -1,5 +1,6 @@
 # Dev dependencies only. The control plane and Vite run locally (`make dev`).
-#   make db-up     start Postgres (pgvector) on localhost:5433
+#   make db-up     start Postgres (pgvector) on localhost:5433 and the shared
+#                  Lightpanda MCP (HTTP) on localhost:9223/mcp
 #   make db-psql   open psql
 #   make db-reset  drop the volume (all data)
 name: silodb
@@ -25,6 +26,17 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+    restart: unless-stopped
+
+  # One shared headless browser for every Bot's Lightpanda connector. HTTP MCP
+  # gives each client session its own browsing context. The preset URL is
+  # ${LIGHTPANDA_URL}/mcp; set LIGHTPANDA_URL=http://localhost:9223 in Admin.
+  lightpanda:
+    image: docker.io/lightpanda/browser:nightly
+    container_name: silodb-lightpanda
+    command: ["/bin/lightpanda", "mcp", "--host", "0.0.0.0", "--port", "9223", "--block-private-networks"]
+    ports:
+      - "127.0.0.1:9223:9223"
     restart: unless-stopped
 
 volumes:

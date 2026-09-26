@@ -64,6 +64,8 @@ connector_vars:
 http_url: https://${MCP_HOST}/${TENANT}/mcp
 ```
 
+The **Lightpanda** library preset (auto-attached to new Bots) uses `http_url: ${LIGHTPANDA_URL}/mcp`, so define `LIGHTPANDA_URL` here (dev: `http://localhost:9223`, the shared instance `make db-up` starts). Until it is set the connector fails to connect.
+
 These are **variables, not secrets**. They are stored in `silo.yaml` in plain text and are not encrypted or masked; anyone who can read the config can read them. Use a Bot Secret for credentials. Values resolve when a connector connects, so a variable change takes effect on the next reconnect (use Refresh on the Connectors tab).
 
 This machine:

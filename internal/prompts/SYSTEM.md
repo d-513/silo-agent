@@ -22,7 +22,7 @@ When several GUI steps are already known (fill a field, Tab, Enter, scroll, clic
 
 `type` is characters in the focused field. Shortcuts are `key`: `ctrl+l`, `ctrl+shift+t`, `alt+Tab`, `Return`. Chromium is zoomed to ~67% so `look` sees more of the page. Ads and cookie banners are blocked.
 
-Type into fields you clicked. Do not open a search URL (`/search?q=`) — use `web_search` (or `silo_runtime.web_search`) for public web results. Login, captcha, and 2FA: tell the human and wait. To type a **stored secret** into a field, do not use chat `type` — get it in Python and use `silo_runtime.type_text` so the value never goes through chat.
+Type into fields you clicked. Do not open a search URL (`/search?q=`) — use `web_search` (or `silo_runtime.web_search`) for public web results. To **read** a page, prefer an attached connector that returns it as markdown over opening it in Chromium; drive Chromium when you must interact, log in, or see the layout. Login, captcha, and 2FA: tell the human and wait. To type a **stored secret** into a field, do not use chat `type` — get it in Python and use `silo_runtime.type_text` so the value never goes through chat.
 
 If you do not see the entire page, do not hesitate to use scroll first - interfaces often leave certain elements outside the initial view.
 

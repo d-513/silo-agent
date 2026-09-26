@@ -29,7 +29,7 @@ make install
 make db-up
 ```
 
-`make db-up` starts Postgres 17 + pgvector on `localhost:5433` (`docker-compose.dev.yml`; user/password/db `silo`). It only runs the database; the CP and Vite still run locally. The container is `silodb-postgres`, deliberately not `silo-*`, so `make cleanup` leaves it alone. `deploy/postgres/init.sql` also creates `silo_test`, where every Go test gets its own throwaway schema — `make test` fails early if Postgres is down.
+`make db-up` starts Postgres 17 + pgvector on `localhost:5433` (`docker-compose.dev.yml`; user/password/db `silo`). It also starts one shared Lightpanda headless browser as an HTTP MCP server on `localhost:9223/mcp` (`silodb-lightpanda`) for the Lightpanda connector preset — set the connector variable `LIGHTPANDA_URL=http://localhost:9223` in Admin → Settings. The CP and Vite still run locally. Both containers are `silodb-*`, deliberately not `silo-*`, so `make cleanup` leaves them alone. `deploy/postgres/init.sql` also creates `silo_test`, where every Go test gets its own throwaway schema — `make test` fails early if Postgres is down.
 
 `make install` creates `silo.yaml` from the example (if missing), downloads Go modules, and installs web dependencies. Then edit `silo.yaml`: `providers.<id>.api_key`, the `models` allowlist, and `bootstrap.email` / `bootstrap.password`.
 
@@ -48,7 +48,7 @@ Run `make help` to list everything.
 | `make build-cp`      | `bin/silo`                                                        |
 | `make build-all`     | `bin/silo`, `bin/silo-worker`, `bin/silo-mcp-bridge`              |
 | `make images`        | Bot + STDIO MCP images                                            |
-| `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433`               |
+| `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433` + Lightpanda MCP on `:9223` |
 | `make db-psql`       | `psql` on the dev database                                        |
 | `make db-reset`      | Drop the Postgres volume — every user, bot, chat (asks first)     |
 | `make test`          | Full Go suite: units + feature tests + real-container tier        |
