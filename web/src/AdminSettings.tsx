@@ -1,7 +1,7 @@
 import { Plus, Trash2, TriangleAlert } from "lucide-react";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { ui } from "./api";
-import { SaveButton, useSave } from "./Feedback";
+import { SaveButton, useSave, type SaveState } from "./Feedback";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
 import { Field, Panel, inputClass } from "./Field";
@@ -137,20 +137,43 @@ export function AdminSettings() {
     setValues((prev) => ({ ...prev, [key]: v }));
   }
 
+  // patch is every form field that differs from what the server holds.
+  const patch: Record<string, string> = {};
+  for (const f of fields) {
+    if (f.source === ConfigSource.ENV) continue;
+    const v = values[f.key] ?? "";
+    if (v !== f.value) patch[f.key] = v;
+  }
+  const dirty = Object.keys(patch).length;
+
+  function discard() {
+    setErr("");
+    setValues(Object.fromEntries(fields.map((f) => [f.key, f.value])));
+  }
+
   async function saveForm() {
     setErr("");
-    const patch: Record<string, string> = {};
-    for (const f of fields) {
-      if (f.source === ConfigSource.ENV) continue;
-      const v = values[f.key] ?? "";
-      if (v !== f.value) patch[f.key] = v;
-    }
+    if (dirty === 0) return;
     try {
       apply(await formSaver.run(() => ui.putSettings({ fields: patch })));
     } catch (ex) {
       setErr(fail(ex));
     }
   }
+
+  // ⌘/Ctrl+S saves the form; the ref keeps the listener on the latest patch.
+  const saveRef = useRef(saveForm);
+  saveRef.current = saveForm;
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   async function saveYaml() {
     setErr("");
@@ -189,7 +212,6 @@ export function AdminSettings() {
 
   return (
     <div>
-      {err && <p className="mb-3 text-vermilion">{err}</p>}
       <div className="grid gap-5">
         <ModelSettings
           models={models}
@@ -225,11 +247,7 @@ export function AdminSettings() {
         <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />
       </div>
 
-      <div className="mt-6 flex items-center gap-3">
-        <SaveButton state={formSaver.state} onClick={() => void saveForm()}>
-          Save changes
-        </SaveButton>
-      </div>
+      <SaveBar dirty={dirty} state={formSaver.state} error={err} onSave={() => void saveForm()} onDiscard={discard} />
 
       <h2 className="mt-10 mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">silo.yaml</h2>
       <p className="mb-2 font-mono text-[12px] text-ink-3">{yamlPath || "silo.yaml"}</p>
@@ -283,6 +301,55 @@ export function AdminSettings() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+const SAVE_KEY = typeof navigator !== "undefined" && /Mac|iP(hone|ad)/.test(navigator.platform) ? "⌘S" : "Ctrl+S";
+
+// SaveBar pins the form's Save to the bottom of the viewport while the form is
+// in view, and settles under the last panel once the page scrolls past it. It
+// is the only save for the panels above; the model list and connector
+// variables save on their own.
+function SaveBar({
+  dirty,
+  state,
+  error,
+  onSave,
+  onDiscard,
+}: {
+  dirty: number;
+  state: SaveState;
+  error: string;
+  onSave: () => void;
+  onDiscard: () => void;
+}) {
+  const live = dirty > 0;
+  return (
+    <div className="sticky bottom-3 z-20 mt-5">
+      <div
+        className={`flex items-center gap-3 rounded-card bg-surface px-4 py-2.5 transition-shadow duration-[160ms] ease-quiet max-wide:flex-wrap ${live ? "shadow-float-focus" : "shadow-float"}`}
+      >
+        <span className={`size-2 shrink-0 rounded-full ${error ? "bg-vermilion" : live ? "bg-cobalt" : "bg-line-strong"}`} />
+        <p className={`min-w-0 flex-1 text-[13px] ${error ? "text-vermilion" : live ? "text-ink" : "text-ink-3"}`}>
+          {error
+            ? error
+            : live
+              ? `${dirty} unsaved ${dirty === 1 ? "change" : "changes"}`
+              : state === "saved"
+                ? "Saved to silo.yaml"
+                : "No unsaved changes"}
+        </p>
+        <span className="font-mono text-[11px] text-ink-3 max-wide:hidden">{SAVE_KEY}</span>
+        {live ? (
+          <Btn kind="ghost" size="sm" onClick={onDiscard} disabled={state === "saving"}>
+            Discard
+          </Btn>
+        ) : null}
+        <SaveButton size="sm" state={state} disabled={!live && state !== "saved"} onClick={onSave}>
+          Save changes
+        </SaveButton>
+      </div>
     </div>
   );
 }
