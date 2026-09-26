@@ -274,13 +274,13 @@ No bounce, and no overshoot beyond the settle curve.
 
 ### Thread
 
-- The column is 720px max, centered on `canvas`, with 18px between items. A centered `meta` date divider ("Today · 09:12") sits at the top.
+- The column is 720px max, centered on `canvas`, with 16px between items; consecutive thinking / tool / receipt rows stack 2px apart. A centered `meta` date divider ("Today · 09:12") sits at the top.
 - **User**: right-aligned `well` bubble in `body-lg`. There's no border.
 - **Assistant**: no container, `reply` serif. While streaming, text arrives in chunks of a few words, each fading from opacity 0 with 3px blur to clear over 360ms, and a small breathing `ink` dot sits at the end. When it's done, hovering the turn reveals the action row (copy, retry), which fades up 2px over 180ms.
-- **Thinking**: the word "Thinking" with a moving highlight shimmer (text gradient `ink-3 → ink → ink-3`, 1.6s linear). When it's done it becomes "Thought for Ns" with a chevron, and it folds open to show the reasoning summary.
-- **Tool row**: a 36px row with a 16px state slot, then the verb and app (`ink`, 500: "Using Browser" / "Used Browser"), then the action in `mono` `ink-3`, then a chevron.
+- **Thinking**: a lightbulb, then the word "Thinking" with a moving highlight shimmer (text gradient `ink-3 → ink → ink-3`, 1.6s linear). The reasoning streams open beneath it; when it's done it folds shut into "Thought for Ns" with a chevron.
+- **Tool row**: a 32px row with a 16px state slot, a 16px `ink-2` tool icon (the Python mark, a terminal, a file glyph, a globe for web search, a plug for connector calls, …), then the verb and app (`ink`, 500: "Using Browser" / "Used Browser"), then the action in `mono` `ink-3`, then a chevron.
   - The state slot crossfades between spinner (running), `emerald` check (done), breathing `vermilion` dot plus "Waiting for you" (paused for approval) and an `ink-3` ✕ (skipped or stopped). Each icon scales in from .6 over 300ms `ease-settle`.
-  - It's collapsed by default. When open, the row becomes a `surface` card and shows the pretty body in a `well` mono block: Python shows code, patch shows a diff, terminal shows the command. The primary view is never raw JSON.
+  - While it runs it is open and streams live: the body is capped at 220px, pinned to its newest lines, with the top fading out. When it finishes it folds shut (unless the reader toggled it). Replayed history starts collapsed. When open, the row becomes a `surface` card and shows the pretty body in a `well` mono block: Python shows code, patch shows a diff, terminal shows the command. The primary view is never raw JSON.
   - Connector calls made from Python (`import tools`) sit above that Python row.
 - **Receipt**: a one-line record of a decision. It has a shield icon (`emerald` check for allowed, `ink-3` ✕ for denied or stopped), the decision in `ink` 500, then "· action · target" in `ink-3`, a hairline filling the rest of the line, and "by you". Examples: "**Allowed once** · Read a secret · vendor_password". It rises in like any other item.
 - **File / artifact card**: a 380px `surface` card with a `line` ring. It has a type badge (PDF: `vermilion-pale` with a `vermilion` label), the name in 500, "PDF · 184 KB · saved to Files" in `meta`, and a download icon button. On hover it lifts 1px and gains `shadow-float`. Skills show a scroll mark, "Skill" and **Save skill** while pending, and a check after saving.

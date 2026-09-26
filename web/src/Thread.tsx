@@ -1,4 +1,41 @@
-import { ArrowDown, Check, ChevronRight, Copy, Download, GitBranch, MessageCircle, Paperclip, Pencil, RotateCcw, ShieldCheck, ShieldX, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  BookOpen,
+  Brain,
+  Check,
+  ChevronRight,
+  Copy,
+  Cpu,
+  Download,
+  Eye,
+  Feather,
+  FileDiff,
+  FilePen,
+  FileSearch,
+  FileText,
+  FileX,
+  GitBranch,
+  Globe,
+  Keyboard,
+  Lightbulb,
+  MessageCircle,
+  MessagesSquare,
+  Mouse,
+  MousePointerClick,
+  Package,
+  Paperclip,
+  Pencil,
+  Plug,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+  ShieldX,
+  SquareTerminal,
+  Trash2,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import "katex/dist/katex.min.css";
 import rehypeKatex from "rehype-katex";
@@ -13,7 +50,7 @@ import python from "highlight.js/lib/languages/python";
 import typescript from "highlight.js/lib/languages/typescript";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
-import { useEffect, useRef, useState, type JSX, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -227,6 +264,54 @@ function toolMeta(name: string): { app: string } {
   }
 }
 
+// The Python mark, one ink like the Lucide glyphs beside it.
+function PythonMark({ size = 14, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z" />
+    </svg>
+  );
+}
+
+const toolIcons: Record<string, LucideIcon> = {
+  terminal: SquareTerminal,
+  read: FileText,
+  write: FilePen,
+  patch: FileDiff,
+  grep: FileSearch,
+  delete: FileX,
+  present: FileText,
+  look: Eye,
+  click: MousePointerClick,
+  type: Keyboard,
+  key: Keyboard,
+  scroll: Mouse,
+  soul: Feather,
+  memory: Brain,
+  core_memory: Brain,
+  remember: Brain,
+  recall: Brain,
+  forget: Brain,
+  skill: BookOpen,
+  artifact: Package,
+  web_search: Globe,
+  channel: Send,
+  chats: MessagesSquare,
+  list_models: Cpu,
+  switch_model: Cpu,
+  call: Plug,
+};
+
+// 16px slot holding what the row is using: the Python mark, a Lucide glyph, or a plug for connectors.
+function ToolIcon({ name }: { name: string }) {
+  const Icon = toolIcons[name] ?? Wrench;
+  return (
+    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+      {name === "exec_python" ? <PythonMark size={14} /> : <Icon size={15} strokeWidth={1.75} />}
+    </span>
+  );
+}
+
 function firstLine(s: string) {
   return s.split("\n").find((l) => l.trim())?.trim() ?? "";
 }
@@ -333,19 +418,52 @@ function Fold({ open, children }: { open: boolean; children: ReactNode }) {
   );
 }
 
+// While streaming, keep the newest lines in view: the body is capped and pinned
+// to its bottom, with the top fading out once it overflows.
+function LiveTail({ live, children }: { live: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [clipped, setClipped] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!live) {
+      if (clipped) setClipped(false);
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
+    const c = el.scrollHeight > el.clientHeight + 1;
+    if (c !== clipped) setClipped(c);
+  });
+  return (
+    <div
+      ref={ref}
+      className={live ? "max-h-[220px] overflow-hidden" : ""}
+      style={clipped ? { maskImage: "linear-gradient(to bottom, transparent, #000 40px)", WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 40px)" } : undefined}
+    >
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+// A `live` row is open while it streams and folds shut when it finishes,
+// unless the reader toggled it themselves.
 function FoldRow({
   lead,
   title,
   tail,
+  live = false,
   children,
 }: {
   lead?: ReactNode;
   title: ReactNode;
   tail?: ReactNode;
+  live?: boolean;
   children?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState<boolean | null>(null);
   const has = !!children;
+  const open = has && (manual ?? live);
+  const setOpen = (f: (v: boolean) => boolean) => setManual(f(open));
   return (
     <div
       className={`max-w-full rounded-card transition-[background-color,box-shadow] duration-[200ms] ease-quiet ${
@@ -357,7 +475,7 @@ function FoldRow({
         aria-expanded={has ? open : undefined}
         disabled={!has}
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-9 w-full min-w-0 items-center gap-2.5 rounded-card px-3 text-left text-[13px] transition-colors duration-[160ms] ease-quiet disabled:cursor-default ${
+        className={`flex h-8 w-full min-w-0 items-center gap-2 rounded-card px-3 text-left text-[13px] transition-colors duration-[160ms] ease-quiet disabled:cursor-default ${
           open ? "" : "enabled:hover:bg-well"
         }`}
       >
@@ -374,7 +492,9 @@ function FoldRow({
       </button>
       {has ? (
         <Fold open={open}>
-          <div className="space-y-2 px-3 pb-3">{children}</div>
+          <div className="px-3 pb-3">
+            <LiveTail live={live && open}>{children}</LiveTail>
+          </div>
         </Fold>
       ) : null}
     </div>
@@ -383,20 +503,30 @@ function FoldRow({
 
 function ToolRow({
   state,
+  icon,
   verb,
   app,
   action,
+  live,
   children,
 }: {
   state: RowState;
+  icon: string;
   verb: string;
   app: string;
   action?: string;
+  live?: boolean;
   children?: ReactNode;
 }) {
   return (
     <FoldRow
-      lead={<StateSlot state={state} />}
+      live={live}
+      lead={
+        <>
+          <StateSlot state={state} />
+          <ToolIcon name={icon} />
+        </>
+      }
       title={
         <span className="shrink-0 font-medium text-ink">
           {verb} {app}
@@ -444,18 +574,30 @@ function Receipt({ b }: { b: ReceiptBlock }) {
   );
 }
 
+// Streams open under a shimmering "Thinking", then folds into "Thought for Ns".
 function Thinking({ text, streaming, ms }: { text: string; streaming: boolean; ms?: number }) {
-  if (streaming) {
-    return (
-      <div className="flex h-9 items-center px-3 text-[13px] font-medium">
-        <span className="shimmer-text">Thinking</span>
-      </div>
-    );
-  }
   const secs = ms && ms >= 1000 ? Math.round(ms / 1000) : 0;
   return (
-    <FoldRow title={<span className="shrink-0 font-medium text-ink-2">{secs ? `Thought for ${secs}s` : "Thought"}</span>}>
-      {text.trim() ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[22px] text-ink-2">{text}</div> : null}
+    <FoldRow
+      live={streaming}
+      lead={
+        // Empty state slot so the bulb lines up with the tool icons below it.
+        <>
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+            <Lightbulb size={15} strokeWidth={1.75} />
+          </span>
+        </>
+      }
+      title={
+        streaming ? (
+          <span className="shimmer-text shrink-0 font-medium">Thinking</span>
+        ) : (
+          <span className="shrink-0 font-medium text-ink-2">{secs ? `Thought for ${secs}s` : "Thought"}</span>
+        )
+      }
+    >
+      {text.trim() ? <div className="whitespace-pre-wrap break-words text-[13px] leading-[21px] text-ink-2">{text}</div> : null}
     </FoldRow>
   );
 }
@@ -576,8 +718,9 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
   return <pre className="overflow-x-auto whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{dump}</pre>;
 }
 
-function ToolResult({ text }: { text: string }) {
-  const sliced = text.length > 4000 ? `${text.slice(0, 4000)}…` : text;
+// Live output shows its tail (that is what is changing); finished output its head.
+function ToolResult({ text, live }: { text: string; live?: boolean }) {
+  const sliced = text.length > 4000 ? (live ? `…${text.slice(-4000)}` : `${text.slice(0, 4000)}…`) : text;
   const lang = resultLang(sliced);
   const inner = lang ? (
     <pre className="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5 text-ink-2">
@@ -587,7 +730,7 @@ function ToolResult({ text }: { text: string }) {
     <pre className="whitespace-pre-wrap font-mono text-[12.5px] leading-5 text-ink-2">{sliced}</pre>
   );
   const long = sliced.length > 800 || sliced.split("\n").length > 16;
-  if (!long) return inner;
+  if (!long || live) return inner;
   return (
     <details>
       <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">Result</summary>
@@ -688,6 +831,22 @@ function rehypeChunks(bounds: number[]) {
   };
 }
 
+// Module-level on purpose: a fresh object each render gives React new component
+// types, which remounts every span in the reply (and replays its fade) per token.
+const mdComponents: NonNullable<Parameters<typeof Markdown>[0]["components"]> = {
+  table: ({ children }) => (
+    <div className="silo-md-table">
+      <table>{children}</table>
+    </div>
+  ),
+  span: ({ node, children, ...rest }) => {
+    if (classNames(node?.properties).includes("silo-math")) {
+      return <MathCopy node={node}>{children}</MathCopy>;
+    }
+    return <span {...rest}>{children}</span>;
+  },
+};
+
 function Md({ text, bounds }: { text: string; bounds?: number[] }) {
   if (!text) return null;
   const plugins = bounds && bounds.length > 1 ? [...mdRehype, rehypeChunks(bounds)] : mdRehype;
@@ -696,19 +855,7 @@ function Md({ text, bounds }: { text: string; bounds?: number[] }) {
       <Markdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={plugins}
-        components={{
-          table: ({ children }) => (
-            <div className="silo-md-table">
-              <table>{children}</table>
-            </div>
-          ),
-          span: ({ node, children, ...rest }) => {
-            if (classNames(node?.properties).includes("silo-math")) {
-              return <MathCopy node={node}>{children}</MathCopy>;
-            }
-            return <span {...rest}>{children}</span>;
-          },
-        }}
+        components={mdComponents}
       >
         {normalizeLatex(text)}
       </Markdown>
@@ -717,6 +864,20 @@ function Md({ text, bounds }: { text: string; bounds?: number[] }) {
 }
 
 const mdRehype = [rehypeKatex, rehypeMathCopy, ...mdHighlight] as NonNullable<Parameters<typeof Markdown>[0]["rehypePlugins"]>;
+
+// One-line rows (as opposed to bubbles, replies and cards).
+function isActivity(b: Block) {
+  if (b.type === "thinking" || b.type === "receipt") return true;
+  if (b.type !== "tool") return false;
+  const path = asStr(parseToolArgs(b.args).path);
+  const card = b.name === "present" && !b.running && !!b.result && !b.result.startsWith("error:") && !!path && !isBotScratch(path);
+  return !card;
+}
+
+function gapAfter(prev: boolean | undefined, row: boolean) {
+  if (prev === undefined) return "";
+  return prev && row ? "mt-0.5" : "mt-4";
+}
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -978,8 +1139,9 @@ export function Thread({
   onDivergeChat?: (eventId: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
-  const autoAt = useRef(0);
+  const lastTop = useRef(0);
   const conversation = useRef(chatId);
   const lastKey = useRef<string | undefined>(undefined);
   const openedAt = useRef(Date.now());
@@ -1021,7 +1183,6 @@ export function Thread({
     const el = containerRef.current;
     if (!el) return;
     pinned.current = true;
-    autoAt.current = Date.now();
     el.scrollTo({ top: el.scrollHeight, behavior: smooth && !reduceMotion() ? "smooth" : "auto" });
   };
 
@@ -1035,17 +1196,37 @@ export function Thread({
       scrollToBottom(false);
       return;
     }
-    if (sent) pinned.current = true;
-    // Follow new items only when the reader was already near the bottom.
-    if (pinned.current) scrollToBottom(Date.now() - openedAt.current > 900);
+    if (sent) {
+      scrollToBottom(true);
+      return;
+    }
+    // Follow new items only when the reader was already at the bottom. Instant:
+    // a smooth scroll restarted on every token judders.
+    if (pinned.current) scrollToBottom(false);
   }, [events, sending, chatId]);
+
+  // Rows opening and folding shut change the height without a new event;
+  // stay glued to the bottom through those too.
+  useEffect(() => {
+    const el = containerRef.current;
+    const inner = innerRef.current;
+    if (!el || !inner) return;
+    const ro = new ResizeObserver(() => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, []);
 
   const handleScroll = () => {
     const el = containerRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    // Our own smooth scroll passes through intermediate offsets; ignore those.
-    if (Date.now() - autoAt.current > 700 || distanceToBottom <= 120) pinned.current = distanceToBottom <= 120;
+    // Scrolling up lets go; reaching the bottom again re-pins. Our own scrolls
+    // only ever move down.
+    if (distanceToBottom <= 24) pinned.current = true;
+    else if (el.scrollTop < lastTop.current - 1) pinned.current = false;
+    lastTop.current = el.scrollTop;
     setShowScrollBottom(distanceToBottom > 160);
   };
 
@@ -1085,16 +1266,17 @@ export function Thread({
         return null;
       }
       const state = rowState(b);
+      const live = sending && !!b.running;
       const path = asStr(parseToolArgs(b.args).path);
       const failed = !b.running && b.result?.startsWith("error:");
       if (b.name === "look" || (b.name === "present" && path && isBotScratch(path))) {
         const what = b.name === "look" ? "screen" : path.split("/").filter(Boolean).pop() || path;
         return (
-          <ToolRow state={state} verb={rowVerb(state, b.outcome, "Looking at", "Looked at")} app={what}>
+          <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, "Looking at", "Looked at")} app={what} live={live}>
             {!b.running && b.result && !failed ? (
               <QuietPreview botId={botId} path={b.name === "look" ? "bot/screen.jpg" : path} />
             ) : b.result ? (
-              <ToolResult text={b.result} />
+              <ToolResult text={b.result} live={live} />
             ) : null}
           </ToolRow>
         );
@@ -1107,24 +1289,32 @@ export function Thread({
         b.args || b.result ? (
           <>
             <ToolInput name={b.name} args={b.args} running={b.running} />
-            {b.result ? <ToolResult text={b.result} /> : null}
+            {b.result ? <ToolResult text={b.result} live={live} /> : null}
           </>
         ) : undefined;
       const python =
         b.name === "call" ? null : (
-          <ToolRow state={state} verb={rowVerb(state, b.outcome, "Using", "Used")} app={app} action={toolAction(b.name, b.args)}>
+          <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, "Using", "Used")} app={app} action={toolAction(b.name, b.args)} live={live}>
             {body}
           </ToolRow>
         );
       if (!b.calls?.length) return python;
       // Connector calls made from Python sit above that Python row.
       return (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {b.calls.map((c) => {
             const cs = rowState(c);
             return (
-              <ToolRow key={c.key} state={cs} verb={rowVerb(cs, c.outcome, "Using", "Used")} app={c.title} action={c.name && c.name !== c.title ? c.name : undefined}>
-                {c.result ? <ToolResult text={c.result} /> : undefined}
+              <ToolRow
+                key={c.key}
+                state={cs}
+                icon="call"
+                verb={rowVerb(cs, c.outcome, "Using", "Used")}
+                app={c.title}
+                action={c.name && c.name !== c.title ? c.name : undefined}
+                live={sending && !!c.running}
+              >
+                {c.result ? <ToolResult text={c.result} live={sending && !!c.running} /> : undefined}
               </ToolRow>
             );
           })}
@@ -1164,13 +1354,32 @@ export function Thread({
     );
   }
 
+  // Consecutive thinking / tool / receipt rows stack tight; everything else
+  // keeps the thread's breathing room.
+  let prevRow: boolean | undefined;
+  const rows = blocks.map((b) => {
+    const node = item(b);
+    if (!node) return null;
+    const row = isActivity(b);
+    const gap = gapAfter(prevRow, row);
+    prevRow = row;
+    return (
+      <div key={b.key} className={`min-w-0 ${gap} ${b.type === "user" ? "" : rises(b.key)}`}>
+        {node}
+      </div>
+    );
+  });
+
   return (
     <div
       ref={containerRef}
       onScroll={handleScroll}
+      onWheel={(e) => {
+        if (e.deltaY < 0) pinned.current = false;
+      }}
       className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6"
     >
-      <div className="mx-auto flex max-w-[720px] flex-col gap-[18px]">
+      <div ref={innerRef} className="mx-auto flex max-w-[720px] flex-col">
         {blocks.length === 0 && !sending && (
           <div className="rise my-auto flex flex-col items-center justify-center px-4 py-14 text-center">
             <div className="blink mb-4">
@@ -1196,17 +1405,9 @@ export function Thread({
             )}
           </div>
         )}
-        {blocks.map((b) => {
-          const node = item(b);
-          if (!node) return null;
-          return (
-            <div key={b.key} className={`min-w-0 ${b.type === "user" ? "" : rises(b.key)}`}>
-              {node}
-            </div>
-          );
-        })}
+        {rows}
         {working ? (
-          <div className="rise flex h-9 items-center px-3 text-[13px] font-medium">
+          <div className={`rise flex h-8 items-center px-3 text-[13px] font-medium ${gapAfter(prevRow, true)}`}>
             <span className="shimmer-text">Working…</span>
           </div>
         ) : null}
