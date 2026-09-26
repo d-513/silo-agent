@@ -1,6 +1,6 @@
 # Development
 
-Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus two container images.
+Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus two container images and a Postgres (pgvector) database from `docker-compose.dev.yml`.
 
 ```
 browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-worker)
@@ -15,7 +15,7 @@ Architecture: `docs/Description.md`. UI: `DESIGN.md`. Agent prompt: `internal/pr
 
 - Go 1.26+ (`CGO_ENABLED=0`)
 - pnpm + Node 22+
-- Podman (or Docker) with a socket the CP can reach
+- Podman (or Docker) with a socket the CP can reach, plus `podman compose` (or set `COMPOSE=docker compose`)
 - `tmux` for `make dev`, `watchexec` for `make watch-control`
 - `buf` only when you change `.proto` files
 - An [OpenRouter](https://openrouter.ai) API key
@@ -26,11 +26,14 @@ This machine uses rootless Podman. The Makefile defaults `DOCKER_HOST` to `unix:
 
 ```
 make install
+make db-up
 ```
 
-That creates `silo.yaml` from the example (if missing), downloads Go modules, and installs web dependencies. Then edit `silo.yaml`: `providers.<id>.api_key`, the `models` allowlist, and `bootstrap.email` / `bootstrap.password`.
+`make db-up` starts Postgres 17 + pgvector on `localhost:5433` (`docker-compose.dev.yml`; user/password/db `silo`). It only runs the database; the CP and Vite still run locally. The container is `silodb-postgres`, deliberately not `silo-*`, so `make cleanup` leaves it alone. `deploy/postgres/init.sql` also creates `silo_test`, where every Go test gets its own throwaway schema — `make test` fails early if Postgres is down.
 
-`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`). Env wins over the file; `bootstrap.*` seeds the first admin, so wipe `data/` to recreate it.
+`make install` creates `silo.yaml` from the example (if missing), downloads Go modules, and installs web dependencies. Then edit `silo.yaml`: `providers.<id>.api_key`, the `models` allowlist, and `bootstrap.email` / `bootstrap.password`.
+
+`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`). Env wins over the file; `bootstrap.*` seeds the first admin, so `make db-reset` to recreate it.
 
 ## Everyday targets
 
@@ -45,8 +48,11 @@ Run `make help` to list everything.
 | `make build-cp`      | `bin/silo`                                                        |
 | `make build-all`     | `bin/silo`, `bin/silo-worker`, `bin/silo-mcp-bridge`              |
 | `make images`        | Bot + STDIO MCP images                                            |
+| `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433`               |
+| `make db-psql`       | `psql` on the dev database                                        |
+| `make db-reset`      | Drop the Postgres volume — every user, bot, chat (asks first)     |
 | `make test`          | Full Go suite: units + feature tests + real-container tier        |
-| `make test-fast`     | Go suite without the container tier (no Podman needed)            |
+| `make test-fast`     | Go suite without the container tier (still needs `make db-up`)    |
 | `make test-containers` | Only the real Bot-image tests; fails if Podman is missing       |
 | `make test-integration` | Go client integration tests against a running CP              |
 | `make e2e`           | Playwright against an already-running `make dev` stack            |
@@ -55,7 +61,7 @@ Run `make help` to list everything.
 | `make cleanup`       | Force-remove every `silo-*` container                             |
 | `make clean-images`  | Remove the local bot and STDIO images                             |
 | `make clean`         | Remove `bin/` and `web/dist`                                      |
-| `make reset-data`    | Delete `./data` (asks first)                                      |
+| `make reset-data`    | Delete `./data` — workspaces + skills, not the DB (asks first)    |
 
 `make dev` starts a tmux session named `silo` with two panes. The left pane runs `watch-control`; the right runs Vite. Detach with `Ctrl-b d` and come back with `make attach` (or `tmux attach -t silo`). Set `SESSION=` to use another name, `DOCKER_HOST=` to point elsewhere.
 
@@ -172,5 +178,5 @@ proto/silo/v1       ui.proto, worker.proto
 gen/                Go stubs (generated)
 web/                Vite + React
 web/src/gen         TS stubs (generated)
-data/               SQLite + per-bot volumes + skills (gitignored)
+data/               per-bot volumes + skills (gitignored; the DB is Postgres)
 ```

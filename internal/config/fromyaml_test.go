@@ -26,6 +26,9 @@ func TestFromYAMLDefaultsAndOverrides(t *testing.T) {
 	if c.DataDir != "./data" {
 		t.Fatalf("default data dir %q", c.DataDir)
 	}
+	if c.DatabaseURL != DefaultDatabaseURL {
+		t.Fatalf("default database url %q", c.DatabaseURL)
+	}
 	if got := s.StringList("models"); len(got) != 1 || got[0] != "dummy/echo" {
 		t.Fatalf("models %v", got)
 	}

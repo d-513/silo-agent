@@ -2,11 +2,9 @@ package db
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/glebarez/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -109,7 +107,10 @@ type Channel struct {
 }
 
 type RunEvent struct {
-	ID        string `gorm:"primaryKey"`
+	ID string `gorm:"primaryKey"`
+	// Seq is the insert order. Postgres timestamps are microsecond and IDs are
+	// random, so events of one run can tie on CreatedAt; replay orders by Seq.
+	Seq       int64  `gorm:"autoIncrement;uniqueIndex"`
 	RunID     string `gorm:"index"`
 	Kind      string
 	Body      string
@@ -216,24 +217,37 @@ type CatalogSeed struct {
 	SeededAt time.Time
 }
 
-func Open(dataDir string) (*gorm.DB, error) {
-	if err := os.MkdirAll(dataDir, 0o700); err != nil {
-		return nil, err
-	}
-	path := filepath.Join(dataDir, "silo.db")
-	gdb, err := gorm.Open(sqlite.Open(path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: %w", err)
-	}
-	err = gdb.AutoMigrate(
+// Models is every table the Control Plane migrates, shared by Open and tests.
+func Models() []any {
+	return []any{
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-	)
+	}
+}
+
+// Open connects to Postgres (a pgvector build) and migrates the schema.
+func Open(url string) (*gorm.DB, error) {
+	gdb, err := gorm.Open(postgres.Open(url), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn),
+	})
 	if err != nil {
+		return nil, fmt.Errorf("postgres: %w", err)
+	}
+	if err := Migrate(gdb); err != nil {
 		return nil, err
 	}
 	return gdb, nil
+}
+
+// Migrate registers the text scrubber, creates the vector extension, and
+// migrates every table.
+func Migrate(gdb *gorm.DB) error {
+	if err := registerScrub(gdb); err != nil {
+		return err
+	}
+	if err := gdb.Exec("CREATE EXTENSION IF NOT EXISTS vector").Error; err != nil {
+		return fmt.Errorf("pgvector: %w", err)
+	}
+	return gdb.AutoMigrate(Models()...)
 }

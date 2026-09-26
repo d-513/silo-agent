@@ -27,7 +27,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | Key | Default | Env | What |
 |---|---|---|---|
 | `http_addr` | `:8080` | `SILO_HTTP_ADDR` | Control Plane listen address |
-| `data_dir` | `./data` | `SILO_DATA_DIR` | SQLite + per-bot volumes |
+| `data_dir` | `./data` | `SILO_DATA_DIR` | Per-bot volumes + skill bodies |
+| `database_url` | `postgres://silo:silo@localhost:5433/silo?sslmode=disable` | `SILO_DATABASE_URL` | Postgres with pgvector (`make db-up` for dev). Restart to apply |
 | `docker_host` | `$DOCKER_HOST` | `SILO_DOCKER_HOST` | Docker/Podman socket. Empty falls back to the `DOCKER_HOST` env |
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL Bot containers and STDIO sidecars use to dial the CP |
@@ -107,8 +108,8 @@ search:
 
 ## What is not config
 
-- Connector / skill libraries: SQLite + `data/skills/`
-- Bot tokens, container IDs, chats, secrets: SQLite under `data_dir`
-- A chat's model (override): SQLite `chats.model`
+- Connector / skill libraries: Postgres + `data/skills/`
+- Bot tokens, container IDs, chats, secrets: Postgres (`database_url`)
+- A chat's model (override): Postgres `chats.model`
 - Session cookie: issued at sign-in. A missing session row is a stale cookie, not a server fault
 - Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz` to `http_addr`

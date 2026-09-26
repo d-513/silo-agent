@@ -1,0 +1,31 @@
+# Dev dependencies only. The control plane and Vite run locally (`make dev`).
+#   make db-up     start Postgres (pgvector) on localhost:5433
+#   make db-psql   open psql
+#   make db-reset  drop the volume (all data)
+name: silodb
+
+services:
+  postgres:
+    image: docker.io/pgvector/pgvector:pg17
+    # Not silo-*: `make cleanup` force-removes every ^silo- container.
+    container_name: silodb-postgres
+    # Test packages run in parallel, each with its own pool.
+    command: ["postgres", "-c", "max_connections=300"]
+    environment:
+      POSTGRES_USER: silo
+      POSTGRES_PASSWORD: silo
+      POSTGRES_DB: silo
+    ports:
+      - "5433:5432"
+    volumes:
+      - silodb-pg:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silo -d silo"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  silodb-pg:

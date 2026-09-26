@@ -1,5 +1,7 @@
 http_addr: ":8080"
 data_dir: ./data
+# Postgres + pgvector. `make db-up` runs this one (docker-compose.dev.yml).
+database_url: postgres://silo:silo@localhost:5433/silo?sslmode=disable
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
 public_url: http://127.0.0.1:5173

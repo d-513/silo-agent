@@ -372,7 +372,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 		runQ = runQ.Where("chat_id = ?", chatID)
 	}
 	var rows []db.RunEvent
-	if err := a.DB.Where("run_id IN (?)", runQ).Order("created_at").Find(&rows).Error; err != nil {
+	if err := a.DB.Where("run_id IN (?)", runQ).Order("seq").Find(&rows).Error; err != nil {
 		return err
 	}
 	seen := map[string]struct{}{}

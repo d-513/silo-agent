@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 	cfg := store.Config()
-	gdb, err := db.Open(cfg.DataDir)
+	gdb, err := db.Open(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

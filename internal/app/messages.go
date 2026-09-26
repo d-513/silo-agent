@@ -28,7 +28,7 @@ func (a *App) orderedChatEvents(chatID string) []chatEvent {
 	var out []chatEvent
 	for _, run := range runs {
 		var evs []db.RunEvent
-		a.DB.Where("run_id = ?", run.ID).Order("created_at").Order("id").Find(&evs)
+		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
 		for _, ev := range evs {
 			out = append(out, chatEvent{run: run, ev: ev})
 		}

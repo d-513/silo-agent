@@ -7,16 +7,13 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/glebarez/sqlite"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
@@ -24,6 +21,7 @@ import (
 	"silo.agent/internal/auth"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/db/dbtest"
 	"silo.agent/internal/dockerx"
 
 	// Registers the deterministic "dummy" model provider for every test binary
@@ -31,9 +29,7 @@ import (
 	_ "silo.agent/internal/llm/dummy"
 )
 
-var dbSeq atomic.Int64
-
-// H is one isolated control plane: temp data dir, in-memory SQLite, the real
+// H is one isolated control plane: temp data dir, its own Postgres schema, the real
 // HTTP handler on an ephemeral h2c listener, and a signed-in UI client.
 type H struct {
 	T        *testing.T
@@ -131,7 +127,7 @@ func New(t *testing.T, opts ...Option) *H {
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
-	gdb := memDB(t)
+	gdb := dbtest.New(t)
 	if o.beforeApp != nil {
 		o.beforeApp(gdb)
 	}
@@ -335,7 +331,7 @@ func (h *H) ChatEvents(chatID string) []db.RunEvent {
 	var out []db.RunEvent
 	for _, r := range runs {
 		var evs []db.RunEvent
-		h.DB.Where("run_id = ?", r.ID).Order("created_at").Order("id").Find(&evs)
+		h.DB.Where("run_id = ?", r.ID).Order("seq").Find(&evs)
 		out = append(out, evs...)
 	}
 	return out
@@ -380,14 +376,14 @@ func (h *H) WaitRun(runID string) []db.RunEvent {
 		time.Sleep(10 * time.Millisecond)
 	}
 	var events []db.RunEvent
-	h.DB.Where("run_id = ?", runID).Order("created_at").Find(&events)
+	h.DB.Where("run_id = ?", runID).Order("seq").Find(&events)
 	return events
 }
 
 // Events returns persisted events for a run.
 func (h *H) Events(runID string) []db.RunEvent {
 	var events []db.RunEvent
-	h.DB.Where("run_id = ?", runID).Order("created_at").Find(&events)
+	h.DB.Where("run_id = ?", runID).Order("seq").Find(&events)
 	return events
 }
 
@@ -423,24 +419,4 @@ func clientAddr(ln net.Listener) string {
 		host = "127.0.0.1"
 	}
 	return net.JoinHostPort(host, port)
-}
-
-// memDB opens a fresh shared in-memory SQLite and migrates the schema.
-func memDB(t *testing.T) *gorm.DB {
-	t.Helper()
-	name := fmt.Sprintf("file:apptest-%d?mode=memory&cache=shared", dbSeq.Add(1))
-	gdb, err := gorm.Open(sqlite.Open(name), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("sqlite: %v", err)
-	}
-	if err := gdb.AutoMigrate(
-		&db.User{}, &db.Session{}, &db.Bot{}, &db.Secret{}, &db.Rule{},
-		&db.Chat{}, &db.Run{}, &db.RunEvent{}, &db.Approval{}, &db.Audit{}, &db.LLMLog{},
-		&db.Connector{}, &db.BotConnector{}, &db.BotSkill{}, &db.Channel{},
-	); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	return gdb
 }

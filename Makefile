@@ -6,6 +6,9 @@ export DOCKER_HOST ?= unix:///run/user/1000/podman/podman.sock
 GO          ?= go
 PNPM        ?= pnpm
 PODMAN      ?= podman
+COMPOSE     ?= $(PODMAN) compose
+DEV_COMPOSE := $(COMPOSE) -f docker-compose.dev.yml
+PG_CONTAINER ?= silodb-postgres
 CONTAINER_ARCH ?= $(shell $(PODMAN) info --format '{{.Host.Arch}}' 2>/dev/null || $(GO) env GOARCH)
 
 BOT_IMAGE   ?= localhost/silo-bot:v1
@@ -39,7 +42,8 @@ WATCH_OPTS  := \
 	build-bridge build-all images bot-image stdio-image run run-control \
 	run-frontend watch-control dev attach test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
-	clean clean-images cleanup reset-data
+	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
+	db-check
 
 ## ---------------------------------------------------------------------------
 
@@ -96,6 +100,7 @@ watch-control: ## Run the control plane under watchexec (auto-rebuild on change)
 
 dev: ## Start the watchexec CP + Vite in a tmux session
 	@command -v tmux >/dev/null || { echo "tmux not found" >&2; exit 1; }
+	@$(MAKE) --no-print-directory db-check || true
 	@tmux kill-session -t $(SESSION) 2>/dev/null || true
 	@tmux new-session -d -s $(SESSION) -n dev -c "$(CURDIR)" '$(MAKE) watch-control'
 	@tmux split-window -h -t $(SESSION):dev -c "$(CURDIR)" '$(MAKE) run-frontend'
@@ -109,10 +114,10 @@ attach: ## Attach to the running dev tmux session
 
 ## --- quality ---------------------------------------------------------------
 
-test: ## Run the full Go suite (includes the real-container tier; needs images)
+test: db-check ## Run the full Go suite (includes the real-container tier; needs images)
 	$(GO) test ./cmd/... ./internal/...
 
-test-fast: ## Run the Go suite without the container tier (no Podman needed)
+test-fast: db-check ## Run the Go suite without the container tier (still needs make db-up)
 	SILO_SKIP_CONTAINERS=1 $(GO) test ./cmd/... ./internal/...
 
 test-containers: ## Run only the real-container tests and fail if Podman is missing
@@ -136,6 +141,30 @@ tidy: ## Tidy go.mod / go.sum
 proto: ## Regenerate protobuf stubs (Go + TS)
 	buf generate
 
+## --- database ------------------------------------------------------------
+
+db-up: ## Start dev Postgres (pgvector) on localhost:5433
+	$(DEV_COMPOSE) up -d
+	@for i in $$(seq 1 60); do \
+		$(PODMAN) exec $(PG_CONTAINER) pg_isready -q -U silo -d silo && { echo "postgres ready on localhost:5433"; exit 0; }; \
+		sleep 1; \
+	done; echo "postgres did not become ready"; exit 1
+
+db-down: ## Stop dev Postgres (keeps the volume)
+	$(DEV_COMPOSE) down
+
+db-psql: ## Open psql on the dev database
+	$(PODMAN) exec -it $(PG_CONTAINER) psql -U silo -d silo
+
+db-reset: ## Drop dev Postgres and its volume (all data). Asks first.
+	@printf "Drop the dev Postgres volume (users, bots, chats, memories)? [y/N] "; read -r ans; \
+	[ "$$ans" = y ] || { echo "aborted"; exit 1; }; \
+	$(DEV_COMPOSE) down -v && echo "postgres volume removed"
+
+db-check:
+	@$(PODMAN) exec $(PG_CONTAINER) pg_isready -q -U silo -d silo_test 2>/dev/null || \
+		{ echo "Postgres is not running: make db-up"; exit 1; }
+
 ## --- cleanup ---------------------------------------------------------------
 
 clean: ## Remove build artifacts (bin/, web/dist)
@@ -152,7 +181,7 @@ cleanup: ## Force-remove every silo-* container
 		echo "no silo containers"; \
 	fi
 
-reset-data: ## Delete ./data (SQLite, chats, workspaces). Asks first.
-	@printf "Delete ./data (SQLite + bot workspaces)? [y/N] "; read -r ans; \
+reset-data: ## Delete ./data (workspaces, skills). The DB is make db-reset. Asks first.
+	@printf "Delete ./data (bot workspaces + skills)? [y/N] "; read -r ans; \
 	[ "$$ans" = y ] || { echo "aborted"; exit 1; }; \
 	rm -rf data && echo "data/ removed"

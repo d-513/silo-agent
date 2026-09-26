@@ -123,7 +123,7 @@ func (a *App) localHistoryTool(c db.Chat, limit int) string {
 	}
 	var evs []db.RunEvent
 	if len(ids) > 0 {
-		a.DB.Where("run_id IN ? AND kind IN ?", ids, []string{"user", "assistant", "section"}).Order("created_at").Find(&evs)
+		a.DB.Where("run_id IN ? AND kind IN ?", ids, []string{"user", "assistant", "section"}).Order("seq").Find(&evs)
 	}
 	if len(evs) > limit {
 		evs = evs[len(evs)-limit:]

@@ -20,15 +20,13 @@ import (
 	"silo.agent/internal/security"
 )
 
-// validUTF8 replaces invalid UTF-8 bytes so protobuf string fields stay
-// marshalable and SQLite text stays decodable. Command output (a docx dump,
-// terminal bytes, a masking splice) can otherwise poison a run event and make
-// the whole chat unreplayable.
+// validUTF8 replaces invalid UTF-8 bytes and drops NULs so protobuf string
+// fields stay marshalable and Postgres text accepts them. Command output (a
+// docx dump, terminal bytes, a masking splice) can otherwise poison a run event
+// and make the whole chat unreplayable. It matches what the DB layer stores, so
+// a live event and its replay are the same string.
 func validUTF8(s string) string {
-	if utf8.ValidString(s) {
-		return s
-	}
-	return strings.ToValidUTF8(s, "\uFFFD")
+	return db.CleanText(s)
 }
 
 // truncateUTF8 cuts s to at most n bytes without splitting a rune. Slicing a
@@ -782,7 +780,7 @@ func (a *App) historyFromDB(chatID string) []llm.Message {
 	var msgs []llm.Message
 	for _, run := range runs {
 		var evs []db.RunEvent
-		a.DB.Where("run_id = ?", run.ID).Order("created_at").Find(&evs)
+		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
 		var pending []llm.ToolCall
 		var lastCall string
 		var results []llm.Message

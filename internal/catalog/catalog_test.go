@@ -6,11 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-
 	"silo.agent/internal/db"
+	"silo.agent/internal/db/dbtest"
 	"silo.agent/internal/skills"
 )
 
@@ -71,15 +68,7 @@ func TestGuide(t *testing.T) {
 }
 
 func TestSeedIdempotent(t *testing.T) {
-	gdb, err := gorm.Open(sqlite.Open("file:catalog?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	if err := Seed(gdb); err != nil {
 		t.Fatal(err)
 	}
@@ -119,15 +108,7 @@ func TestSeedIdempotent(t *testing.T) {
 }
 
 func TestSeedStdio(t *testing.T) {
-	gdb, err := gorm.Open(sqlite.Open("file:catalog_stdio?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	if err := Seed(gdb); err != nil {
 		t.Fatal(err)
 	}
@@ -147,15 +128,7 @@ func TestSeedStdio(t *testing.T) {
 }
 
 func TestSeedRemovedStaysGone(t *testing.T) {
-	gdb, err := gorm.Open(sqlite.Open("file:catalog_removed?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	if err := Seed(gdb); err != nil {
 		t.Fatal(err)
 	}
@@ -181,15 +154,7 @@ func TestSeedRemovedStaysGone(t *testing.T) {
 }
 
 func TestSeedAddsUnknownKey(t *testing.T) {
-	gdb, err := gorm.Open(sqlite.Open("file:catalog_unknown?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	if err := Seed(gdb); err != nil {
 		t.Fatal(err)
 	}
@@ -212,15 +177,7 @@ func TestSeedAddsUnknownKey(t *testing.T) {
 }
 
 func TestSeedBackfillsLog(t *testing.T) {
-	gdb, err := gorm.Open(sqlite.Open("file:catalog_backfill?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gdb.AutoMigrate(&db.Connector{}, &db.CatalogSeed{}); err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	if err := Seed(gdb); err != nil {
 		t.Fatal(err)
 	}

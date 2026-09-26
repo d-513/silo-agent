@@ -28,7 +28,7 @@ is expected to test behaviour and boundaries, not one method per file.
 
 ### 2. Feature tests (`internal/app`, deterministic)
 The control plane is driven through its real ConnectRPC API on an in-process
-h2c listener, with a fresh in-memory SQLite, a temp data dir, and a **DummyLLM**
+h2c listener, with its own throwaway Postgres schema (`internal/db/dbtest`, needs `make db-up`), a temp data dir, and a **DummyLLM**
 provider. No tokens are spent.
 
 - `internal/llm/dummy` is a scripted model. A prompt containing `Test_NN_Input`

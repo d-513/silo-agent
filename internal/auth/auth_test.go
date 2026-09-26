@@ -4,13 +4,11 @@ import (
 	"testing"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/db/dbtest"
 )
 
 func TestEnsureBootstrapCreatesMissingUser(t *testing.T) {
-	gdb, err := db.Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 
 	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
 		t.Fatal(err)

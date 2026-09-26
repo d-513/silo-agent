@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/db/dbtest"
 )
 
 func TestCheckPassword(t *testing.T) {
@@ -26,10 +27,7 @@ func TestCheckPassword(t *testing.T) {
 }
 
 func TestSessionRoundTrip(t *testing.T) {
-	gdb, err := db.Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	hash, _ := HashPassword("pw")
 	u := db.User{ID: "u1", Email: "a@b.c", PasswordHash: hash}
 	if err := gdb.Create(&u).Error; err != nil {
@@ -57,10 +55,7 @@ func TestSessionRoundTrip(t *testing.T) {
 }
 
 func TestUserFromRequestExpiredAndMissing(t *testing.T) {
-	gdb, err := db.Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	gdb.Create(&db.User{ID: "u1", Email: "a@b.c"})
 	gdb.Create(&db.Session{ID: "old", UserID: "u1", ExpiresAt: time.Now().Add(-time.Hour)})
 
@@ -89,10 +84,7 @@ func TestClearSessionExpiresCookie(t *testing.T) {
 }
 
 func TestEnsureBootstrapIdempotentAndPromotes(t *testing.T) {
-	gdb, err := db.Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	gdb := dbtest.New(t)
 	hash, _ := HashPassword("pw")
 	gdb.Create(&db.User{ID: "u1", Email: "boss@local", PasswordHash: hash})
 	if err := EnsureBootstrap(gdb, "boss@local", "pw"); err != nil {

@@ -73,10 +73,14 @@ type Search struct {
 const DefaultModel = "openrouter/openai/gpt-5.6-luna"
 const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
 
+// DefaultDatabaseURL is the dev Postgres from docker-compose.dev.yml.
+const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
+
 type Config struct {
 	HTTPAddr      string              `koanf:"http_addr"`
 	PublicURL     string              `koanf:"public_url"`
 	DataDir       string              `koanf:"data_dir"`
+	DatabaseURL   string              `koanf:"database_url"`
 	DockerHost    string              `koanf:"docker_host"`
 	CPURL         string              `koanf:"cp_url"`
 	BotImage      string              `koanf:"bot_image"`
@@ -137,6 +141,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "public_url"},
 	{Key: "cp_url"},
 	{Key: "data_dir", Restart: true},
+	{Key: "database_url", Secret: true, Restart: true},
 	{Key: "docker_host", Restart: true},
 	{Key: "bot_image"},
 	{Key: "mcp_stdio_image"},
@@ -198,6 +203,7 @@ func KnownKey(key string) bool {
 func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("http_addr", ":8080")
 	_ = k.Set("data_dir", "./data")
+	_ = k.Set("database_url", DefaultDatabaseURL)
 	_ = k.Set("cp_url", "http://host.containers.internal:8080")
 	_ = k.Set("bot_image", "localhost/silo-bot:v1")
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
