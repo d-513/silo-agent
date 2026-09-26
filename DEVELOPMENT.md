@@ -78,7 +78,7 @@ make images        # localhost/silo-bot:v1 + localhost/silo-mcp-stdio:v1
 
 `make images` builds the worker/bridge binaries first; the Containerfiles copy them from `bin/`. `CONTAINER_ARCH` comes from `podman info`.
 
-Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1`, `localhost/silo-mcp-stdio:v1`). `make rebuild MODE=cp|bot|stdio|all` wraps `rebuild.sh`; `all` also removes every `silo-*` container.
+Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1`, `localhost/silo-mcp-stdio:v1`). `make bot-image` builds the worker then the bot image; `make stdio-image` builds the bridge then the sidecar image; `make images` does both. None of them remove containers (`make cleanup` does).
 
 ## Run
 
@@ -98,8 +98,8 @@ VS Code tasks and launch configs live in `.vscode/`:
 
 1. `Silo: start local stack` builds the CP and starts Vite with HMR.
 2. `Silo: control plane + browser` debugs CP Go breakpoints and UI breakpoints together.
-3. After changing `cmd/silo-worker`, `botimage/`, or worker-facing generated code, run `make rebuild MODE=bot`, then `podman rm -f silo-<bot-id>` and Start the Bot so it is recreated.
-4. After changing `cmd/silo-mcp-bridge` or `mcpimage/`, run `make rebuild MODE=stdio`, then refresh the connector.
+3. After changing `cmd/silo-worker`, `botimage/`, or worker-facing generated code, run `make bot-image`, then `podman rm -f silo-<bot-id>` and Start the Bot so it is recreated.
+4. After changing `cmd/silo-mcp-bridge` or `mcpimage/`, run `make stdio-image`, then refresh the connector.
 
 Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id>`; MCP sidecars use `podman logs -f silo-mcp-<connector-id>`. A worker change needs an image rebuild because the binary is copied in; a CP change does not.
 
@@ -110,13 +110,14 @@ Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id
 | Go (CP only)                 | `make watch-control` (or `make build-cp` and restart)                                 |
 | `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                              |
 | `internal/catalog/*`         | same — presets/skills are `go:embed`’d; restart to seed new keys                      |
-| Go (worker)                  | `make rebuild MODE=bot`, recreate the Bot container                                   |
+| Go (worker)                  | `make bot-image`, recreate the Bot container                                           |
 | `botimage/*`                 | same                                                                                  |
-| Go (stdio bridge)            | `make rebuild MODE=stdio`, Refresh the connector                                      |
+| `internal/toolsgen/*`        | same — the worker writes `/opt/silo/tools` with it                                    |
+| Go (stdio bridge)            | `make stdio-image`, Refresh the connector                                              |
 | `mcpimage/*`                 | same                                                                                  |
 | `proto/**`                   | `make proto`, then rebuild CP and worker (and the image if the worker stub changed)   |
 | `internal/channels/**`       | restart the CP; sessions live under `data/channels/<id>/`                             |
-| `botimage/silo_runtime.py`   | `make rebuild MODE=bot`, recreate the Bot container                                   |
+| `botimage/silo_runtime.py`   | `make bot-image`, recreate the Bot container                                           |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 
 A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, `podman rm -f silo-<botId>`, then Start (or delete and create the Bot). After a reboot or manual `podman rm`, the stored ID is stale; `GetBot` / `StartBot` recover by name (`silo-<id>`).

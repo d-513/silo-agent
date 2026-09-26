@@ -36,8 +36,8 @@ Container ID in the DB is the last box. `GetBot`/`ListBots` inspect Docker (and 
 
 `make help` is the list; these are the ones you will actually need.
 
-- `make build-cp` / `make build-all` / `make images` — `bin/silo`, worker, bridge; then bot + STDIO images (worker/bridge must exist before the image builds).
-- `make rebuild MODE=cp|bot|stdio|all` — wraps `rebuild.sh`. `all` rebuilds everything and `rm -f`s every `silo-*` container; `cp`/`bot`/`stdio` leave containers alone.
+- `make build-cp` / `make build-all` / `make images` — `bin/silo`, worker, bridge; then bot + STDIO images.
+- `make bot-image` (runs `build-worker` first) after worker, `botimage/`, or toolsgen changes; `make stdio-image` (runs `build-bridge`) for the bridge / `mcpimage/`. Neither touches containers: a running Bot keeps its old image until Container → Reset (or `podman rm -f silo-<id>`) and Start.
 - `make db-up` / `db-down` / `db-psql` — dev Postgres (`silodb-postgres`, not `silo-*`, so `cleanup` spares it). You may start it; `make db-reset` drops the volume (destructive, only when asked).
 - `make test` — `go test ./cmd/... ./internal/...` (never `./...`: it walks `data/`). Needs `make db-up`: `dbtest.New(t)` gives each test its own schema in `silo_test`; never open a DB by hand in a test.
 - Postgres rejects NUL and invalid UTF-8 in `text`; `internal/db` scrubs every create/update, so do not bypass GORM with raw inserts. Run events order by `seq` (timestamps tie at µs), never `created_at`.
