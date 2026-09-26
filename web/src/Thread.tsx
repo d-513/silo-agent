@@ -37,6 +37,7 @@ import {
   Wrench,
   X,
   type LucideIcon,
+  Timer,
 } from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import "katex/dist/katex.min.css";
@@ -1166,6 +1167,36 @@ function Reply({ text, bounds, streaming, onRetry }: { text: string; bounds?: nu
 
 const reduceMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// runWhen: "Today 09:12", "Yesterday 18:00", "Tue 07:30", "Mar 4 07:30".
+function runWhen(iso?: string) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return "";
+  const d = new Date(t);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(new Date()) - day(d)) / 86400000);
+  if (days === 0) return `Today ${time}`;
+  if (days === 1) return `Yesterday ${time}`;
+  if (days < 7) return `${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
+}
+
+// RunMark opens one automation run in its log: a hairline divider with when it
+// ran. The prompt is the automation's own, so it is a tooltip, not a bubble.
+function RunMark({ prompt, createdAt }: { prompt: string; createdAt?: string }) {
+  const when = runWhen(createdAt);
+  return (
+    <div className="flex items-center gap-3 pt-4 pb-1" title={prompt}>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+        <Timer size={12} />
+        {when ? `Ran ${when}` : "Ran"}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
 export function Thread({
   botId,
   botName,
@@ -1180,6 +1211,8 @@ export function Thread({
   onEditMessage,
   onDeleteMessage,
   onDivergeChat,
+  emptyState,
+  userAs = "bubble",
 }: {
   botId: string;
   botName?: string;
@@ -1195,6 +1228,11 @@ export function Thread({
   onEditMessage?: (eventId: string, text: string, attachments?: Attachment[]) => void;
   onDeleteMessage?: (eventId: string) => void;
   onDivergeChat?: (eventId: string) => void;
+  // Replaces the "Ready for your prompt" empty state.
+  emptyState?: ReactNode;
+  // "run" draws each user message as a run divider (automation logs, where the
+  // message is the automation's own prompt, not something a human typed).
+  userAs?: "bubble" | "run";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -1301,6 +1339,9 @@ export function Thread({
       : undefined;
 
   function item(b: Block): ReactNode {
+    if (b.type === "user" && userAs === "run") {
+      return <RunMark prompt={b.text} createdAt={b.createdAt} />;
+    }
     if (b.type === "user") {
       const id = b.id;
       return (
@@ -1440,7 +1481,8 @@ export function Thread({
       className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6"
     >
       <div ref={innerRef} className="mx-auto flex max-w-[720px] flex-col">
-        {blocks.length === 0 && !sending && (
+        {blocks.length === 0 && !sending && emptyState}
+        {blocks.length === 0 && !sending && !emptyState && (
           <div className="rise my-auto flex flex-col items-center justify-center px-4 py-14 text-center">
             <div className="blink mb-4">
               {botCrest !== undefined ? <Crest index={botCrest} size={56} /> : <MessageCircle size={30} className="text-ink-2" />}

@@ -63,6 +63,16 @@ const (
 	UISearchMemoriesProcedure = "/silo.v1.UI/SearchMemories"
 	// UIDeleteMemoryProcedure is the fully-qualified name of the UI's DeleteMemory RPC.
 	UIDeleteMemoryProcedure = "/silo.v1.UI/DeleteMemory"
+	// UIListAutomationsProcedure is the fully-qualified name of the UI's ListAutomations RPC.
+	UIListAutomationsProcedure = "/silo.v1.UI/ListAutomations"
+	// UICreateAutomationProcedure is the fully-qualified name of the UI's CreateAutomation RPC.
+	UICreateAutomationProcedure = "/silo.v1.UI/CreateAutomation"
+	// UIUpdateAutomationProcedure is the fully-qualified name of the UI's UpdateAutomation RPC.
+	UIUpdateAutomationProcedure = "/silo.v1.UI/UpdateAutomation"
+	// UIDeleteAutomationProcedure is the fully-qualified name of the UI's DeleteAutomation RPC.
+	UIDeleteAutomationProcedure = "/silo.v1.UI/DeleteAutomation"
+	// UIRunAutomationProcedure is the fully-qualified name of the UI's RunAutomation RPC.
+	UIRunAutomationProcedure = "/silo.v1.UI/RunAutomation"
 	// UIListChatsProcedure is the fully-qualified name of the UI's ListChats RPC.
 	UIListChatsProcedure = "/silo.v1.UI/ListChats"
 	// UICreateChatProcedure is the fully-qualified name of the UI's CreateChat RPC.
@@ -194,6 +204,11 @@ type UIClient interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
+	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
+	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
+	DeleteAutomation(context.Context, *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error)
+	RunAutomation(context.Context, *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
@@ -351,6 +366,36 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDeleteMemoryProcedure,
 			connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+			connect.WithClientOptions(opts...),
+		),
+		listAutomations: connect.NewClient[v1.ListAutomationsRequest, v1.ListAutomationsResponse](
+			httpClient,
+			baseURL+UIListAutomationsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListAutomations")),
+			connect.WithClientOptions(opts...),
+		),
+		createAutomation: connect.NewClient[v1.CreateAutomationRequest, v1.Automation](
+			httpClient,
+			baseURL+UICreateAutomationProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateAutomation")),
+			connect.WithClientOptions(opts...),
+		),
+		updateAutomation: connect.NewClient[v1.UpdateAutomationRequest, v1.Automation](
+			httpClient,
+			baseURL+UIUpdateAutomationProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateAutomation")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteAutomation: connect.NewClient[v1.DeleteAutomationRequest, v1.DeleteAutomationResponse](
+			httpClient,
+			baseURL+UIDeleteAutomationProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteAutomation")),
+			connect.WithClientOptions(opts...),
+		),
+		runAutomation: connect.NewClient[v1.RunAutomationRequest, v1.RunAutomationResponse](
+			httpClient,
+			baseURL+UIRunAutomationProcedure,
+			connect.WithSchema(uIMethods.ByName("RunAutomation")),
 			connect.WithClientOptions(opts...),
 		),
 		listChats: connect.NewClient[v1.ListChatsRequest, v1.ListChatsResponse](
@@ -709,6 +754,11 @@ type uIClient struct {
 	listMemories        *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
 	searchMemories      *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
 	deleteMemory        *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
+	listAutomations     *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
+	createAutomation    *connect.Client[v1.CreateAutomationRequest, v1.Automation]
+	updateAutomation    *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
+	deleteAutomation    *connect.Client[v1.DeleteAutomationRequest, v1.DeleteAutomationResponse]
+	runAutomation       *connect.Client[v1.RunAutomationRequest, v1.RunAutomationResponse]
 	listChats           *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
 	createChat          *connect.Client[v1.CreateChatRequest, v1.Chat]
 	renameChat          *connect.Client[v1.RenameChatRequest, v1.Chat]
@@ -840,6 +890,31 @@ func (c *uIClient) SearchMemories(ctx context.Context, req *connect.Request[v1.S
 // DeleteMemory calls silo.v1.UI.DeleteMemory.
 func (c *uIClient) DeleteMemory(ctx context.Context, req *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return c.deleteMemory.CallUnary(ctx, req)
+}
+
+// ListAutomations calls silo.v1.UI.ListAutomations.
+func (c *uIClient) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
+	return c.listAutomations.CallUnary(ctx, req)
+}
+
+// CreateAutomation calls silo.v1.UI.CreateAutomation.
+func (c *uIClient) CreateAutomation(ctx context.Context, req *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+	return c.createAutomation.CallUnary(ctx, req)
+}
+
+// UpdateAutomation calls silo.v1.UI.UpdateAutomation.
+func (c *uIClient) UpdateAutomation(ctx context.Context, req *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+	return c.updateAutomation.CallUnary(ctx, req)
+}
+
+// DeleteAutomation calls silo.v1.UI.DeleteAutomation.
+func (c *uIClient) DeleteAutomation(ctx context.Context, req *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error) {
+	return c.deleteAutomation.CallUnary(ctx, req)
+}
+
+// RunAutomation calls silo.v1.UI.RunAutomation.
+func (c *uIClient) RunAutomation(ctx context.Context, req *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error) {
+	return c.runAutomation.CallUnary(ctx, req)
 }
 
 // ListChats calls silo.v1.UI.ListChats.
@@ -1139,6 +1214,11 @@ type UIHandler interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
+	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
+	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
+	DeleteAutomation(context.Context, *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error)
+	RunAutomation(context.Context, *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
@@ -1292,6 +1372,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteMemoryProcedure,
 		svc.DeleteMemory,
 		connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListAutomationsHandler := connect.NewUnaryHandler(
+		UIListAutomationsProcedure,
+		svc.ListAutomations,
+		connect.WithSchema(uIMethods.ByName("ListAutomations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateAutomationHandler := connect.NewUnaryHandler(
+		UICreateAutomationProcedure,
+		svc.CreateAutomation,
+		connect.WithSchema(uIMethods.ByName("CreateAutomation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateAutomationHandler := connect.NewUnaryHandler(
+		UIUpdateAutomationProcedure,
+		svc.UpdateAutomation,
+		connect.WithSchema(uIMethods.ByName("UpdateAutomation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteAutomationHandler := connect.NewUnaryHandler(
+		UIDeleteAutomationProcedure,
+		svc.DeleteAutomation,
+		connect.WithSchema(uIMethods.ByName("DeleteAutomation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRunAutomationHandler := connect.NewUnaryHandler(
+		UIRunAutomationProcedure,
+		svc.RunAutomation,
+		connect.WithSchema(uIMethods.ByName("RunAutomation")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListChatsHandler := connect.NewUnaryHandler(
@@ -1662,6 +1772,16 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISearchMemoriesHandler.ServeHTTP(w, r)
 		case UIDeleteMemoryProcedure:
 			uIDeleteMemoryHandler.ServeHTTP(w, r)
+		case UIListAutomationsProcedure:
+			uIListAutomationsHandler.ServeHTTP(w, r)
+		case UICreateAutomationProcedure:
+			uICreateAutomationHandler.ServeHTTP(w, r)
+		case UIUpdateAutomationProcedure:
+			uIUpdateAutomationHandler.ServeHTTP(w, r)
+		case UIDeleteAutomationProcedure:
+			uIDeleteAutomationHandler.ServeHTTP(w, r)
+		case UIRunAutomationProcedure:
+			uIRunAutomationHandler.ServeHTTP(w, r)
 		case UIListChatsProcedure:
 			uIListChatsHandler.ServeHTTP(w, r)
 		case UICreateChatProcedure:
@@ -1841,6 +1961,26 @@ func (UnimplementedUIHandler) SearchMemories(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteMemory is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAutomations is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateAutomation is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateAutomation is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteAutomation(context.Context, *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteAutomation is not implemented"))
+}
+
+func (UnimplementedUIHandler) RunAutomation(context.Context, *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RunAutomation is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error) {

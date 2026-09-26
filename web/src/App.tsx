@@ -1,4 +1,4 @@
-import { ArrowUp, Book, Box, Brain, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -14,10 +14,12 @@ import { Field, inputClass, Panel, SkeletonRows, textareaClass } from "./Field";
 import { joinPath } from "./fs";
 import { Lamp, StatusWord, statusText } from "./Lamp";
 import { NeedMachine } from "./NeedMachine";
-import { Thread, type Ev } from "./Thread";
+import { Thread } from "./Thread";
 import { Composer } from "./Composer";
 import { AdminLayout, AccountPage, AdminDebug, AdminSettings, AdminSearchExtract } from "./Admin";
 import { SettingsPane } from "./Settings";
+import { AutomationsPane } from "./Automations";
+import { useRunStream } from "./useRunStream";
 import { MemoriesPane } from "./Memories";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
@@ -26,12 +28,24 @@ import { RulesPane } from "./Rules";
 import { AdminSkills, BotSkills, SkillHub } from "./Skills";
 import type { Approval, Bot, BotConnector, Chat, Container, ModelOption, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "memories", "secrets", "rules", "container", "settings"] as const;
+const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
-type Tab = NavTab | "console";
+// Side tabs live in the chat sidebar (the conversation lifecycle); the top
+// strip is config and machine. The Chat tab stays lit on all of them.
+const sideTabs = ["automations", "memories"] as const;
+type SideTab = (typeof sideTabs)[number];
+type Tab = NavTab | SideTab | "console";
 
 function isNavTab(s: string | undefined): s is NavTab {
   return !!s && (tabs as readonly string[]).includes(s);
+}
+
+function isSideTab(s: string | undefined): s is SideTab {
+  return !!s && (sideTabs as readonly string[]).includes(s);
+}
+
+function onChatSide(t: Tab) {
+  return t === "run" || isSideTab(t);
 }
 
 function fail(e: unknown) {
@@ -63,7 +77,6 @@ const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
   connectors: { label: "Connectors", icon: Plug },
   channels: { label: "Channels", icon: Radio },
   skills: { label: "Skills", icon: Book },
-  memories: { label: "Memories", icon: Brain },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
   container: { label: "Container", icon: Box },
@@ -458,15 +471,6 @@ function NewBotPage() {
   );
 }
 
-function chatBusy(events: Ev[]): boolean {
-  const open = new Set<string>();
-  for (const ev of events) {
-    if (ev.runId && ev.kind === "user") open.add(ev.runId);
-    if (ev.runId && (ev.kind === "done" || ev.kind === "error")) open.delete(ev.runId);
-  }
-  return open.size > 0;
-}
-
 function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<"off" | "connecting" | "connected" | "lost">("off");
@@ -786,7 +790,7 @@ function BotTabs({
           <TabLink
             key={t}
             to={t === "run" && chatId ? `/bots/${id}/run/${chatId}` : `/bots/${id}/${t}`}
-            on={tab === t}
+            on={t === "run" ? onChatSide(tab) : tab === t}
             icon={icon}
             label={label}
             compact={compact}
@@ -971,6 +975,38 @@ function ContainerPane({
   );
 }
 
+// SideLink is a one-line row above the chats list: the conversation-side pages.
+function SideLink({ to, on, icon: Icon, label }: { to: string; on: boolean; icon: typeof MessageCircle; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      className={`flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,box-shadow,color] duration-[160ms] ease-quiet ${
+        on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
+      }`}
+    >
+      <Icon size={15} />
+      {label}
+    </NavLink>
+  );
+}
+
+// SideChip is SideLink in the narrow chip strip: icon only unless active.
+function SideChip({ to, on, icon: Icon, label }: { to: string; on: boolean; icon: typeof MessageCircle; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      title={label}
+      aria-label={label}
+      className={`flex h-10 shrink-0 items-center gap-2 rounded-control px-3 text-[13px] font-medium ${
+        on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
+      }`}
+    >
+      <Icon size={15} />
+      {on && label}
+    </NavLink>
+  );
+}
+
 function BotPage() {
   const { id, "*": splat } = useParams();
   const nav = useNavigate();
@@ -978,12 +1014,11 @@ function BotPage() {
   const parts = (splat ?? "").split("/").filter(Boolean);
   const tabParam = parts[0];
   const chatId = tabParam === "run" ? parts[1] : undefined;
-  const tab: Tab = chatId ? "run" : tabParam === "console" ? "console" : isNavTab(tabParam) ? tabParam : "run";
+  const tab: Tab = chatId ? "run" : tabParam === "console" ? "console" : isNavTab(tabParam) || isSideTab(tabParam) ? tabParam : "run";
+  const chatSide = onChatSide(tab);
   const [bot, setBot] = useState<Bot | null>(null);
   const [loadErr, setLoadErr] = useState("");
   const [text, setText] = useState("");
-  const [events, setEvents] = useState<Ev[]>([]);
-  const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<Approval[]>([]);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
   const [secrets, setSecrets] = useState<SecretMeta[] | null>(null);
@@ -1002,11 +1037,15 @@ function BotPage() {
   const [inspect, setInspect] = useState<Artifact | null>(null);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
-  const [usage, setUsage] = useState<{ input: number; output: number; cacheRead: number; cacheWrite: number } | null>(null);
-  const [streamNonce, setStreamNonce] = useState(0);
-  // User messages sent from this tab glide in; history does not animate.
-  const sentAt = useRef(0);
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  const { events, sending, setSending, usage, fresh, markSent, resync } = useRunStream(id, chatId, {
+    onApproval: () => {
+      if (id) ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
+    },
+    onTitle: (title) => setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title } : c))),
+    onDone: () => {
+      if (id) ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
+    },
+  });
 
   useEffect(() => {
     setKeepDesk(tab === "desktop");
@@ -1045,13 +1084,13 @@ function BotPage() {
   }, [id, settled]);
 
   useEffect(() => {
-    if (!id || tab !== "run") return;
+    if (!id || !chatSide) return;
     let dead = false;
     ui.listChats({ botId: id })
       .then((r) => {
         if (dead) return;
         setChats(r.chats);
-        if (!chatId && r.chats[0]) nav(`/bots/${id}/run/${r.chats[0].id}`, { replace: true });
+        if (tab === "run" && !chatId && r.chats[0]) nav(`/bots/${id}/run/${r.chats[0].id}`, { replace: true });
       })
       .catch(() => {});
     ui.listModels({ botId: id })
@@ -1065,94 +1104,12 @@ function BotPage() {
     return () => {
       dead = true;
     };
-  }, [id, tab, chatId, nav]);
-
-  useEffect(() => {
-    setUsage(null);
-  }, [chatId]);
+  }, [id, tab, chatSide, chatId, nav]);
 
   useEffect(() => {
     if (!id || !chatId) return;
-    let dead = false;
-    let ac = new AbortController();
-    let after = "";
-    const seen = new Set<string>();
-    setEvents([]);
-    setSending(false);
-    const push = (ev: Ev) => {
-      setEvents((xs) => {
-        const next = [...xs, ev];
-        setSending(chatBusy(next));
-        return next;
-      });
-    };
-    (async () => {
-      while (!dead) {
-        ac = new AbortController();
-        try {
-          for await (const ev of ui.streamRun({ botId: id, chatId, afterEventId: after }, { signal: ac.signal })) {
-            if (ev.id) {
-              if (seen.has(ev.id)) continue;
-              seen.add(ev.id);
-              after = ev.id;
-            }
-            if (ev.kind === "approval") {
-              const list = await ui.listApprovals({ botId: id });
-              if (!dead) setPending(list.approvals);
-            }
-            if (ev.kind === "chat_title" && ev.body) {
-              setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title: ev.body } : c)));
-            }
-            if (ev.kind === "usage" && ev.body) {
-              try {
-                const u = JSON.parse(ev.body) as Record<string, number>;
-                if (!dead) {
-                  setUsage({
-                    input: u.input ?? 0,
-                    output: u.output ?? 0,
-                    cacheRead: u.cache_read ?? 0,
-                    cacheWrite: u.cache_write ?? 0,
-                  });
-                }
-              } catch {
-                /* ignore malformed usage */
-              }
-            }
-            if (ev.kind === "done") {
-              ui.listChats({ botId: id }).then((r) => {
-                if (!dead) setChats(r.chats);
-              }).catch(() => {});
-            }
-            if (ev.kind === "reset") {
-              // History was truncated by an edit/delete elsewhere; drop the
-              // cached events and replay from scratch.
-              setEvents([]);
-              setSending(false);
-              setStreamNonce((n) => n + 1);
-              return;
-            }
-            if (ev.kind === "user" && ev.id && sentAt.current && Date.now() - sentAt.current < 15000) {
-              sentAt.current = 0;
-              const sid = ev.id;
-              setFresh((xs) => new Set(xs).add(sid));
-            }
-            if (!dead) push({ id: ev.id, kind: ev.kind, body: ev.body, tool: ev.tool, runId: ev.runId, at: Date.now(), attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })) });
-          }
-        } catch {
-          if (!dead) setSending(false);
-        }
-        if (dead) return;
-        await new Promise((r) => setTimeout(r, 800));
-      }
-    })();
-    ui.listApprovals({ botId: id }).then((r) => {
-      if (!dead) setPending(r.approvals);
-    }).catch(() => {});
-    return () => {
-      dead = true;
-      ac.abort();
-    };
-  }, [id, chatId, streamNonce]);
+    ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
+  }, [id, chatId]);
 
   useEffect(() => {
     if (!id || tab !== "secrets") return;
@@ -1164,7 +1121,7 @@ function BotPage() {
 
   if (!id) return <Navigate to="/" />;
   if (!tabParam) return <Navigate to={`/bots/${id}/run`} replace />;
-  if (!chatId && tabParam && tabParam !== "console" && !isNavTab(tabParam)) return <Navigate to={`/bots/${id}/run`} replace />;
+  if (!chatId && tabParam && tabParam !== "console" && !isNavTab(tabParam) && !isSideTab(tabParam)) return <Navigate to={`/bots/${id}/run`} replace />;
   if (loadErr) {
     return (
       <div className="p-7">
@@ -1200,8 +1157,7 @@ function BotPage() {
     if (!id || (!text.trim() && atts.length === 0)) return;
     const msg = text.trim();
     setText("");
-    setSending(true);
-    sentAt.current = Date.now();
+    markSent();
     setActErr("");
     try {
       await ui.send({
@@ -1217,12 +1173,6 @@ function BotPage() {
       setSending(false);
       setActErr(fail(ex));
     }
-  }
-
-  function resync() {
-    setEvents([]);
-    setSending(false);
-    setStreamNonce((n) => n + 1);
   }
 
   async function editMessage(eventId: string, text: string, attachments?: { name: string; path: string; size: number }[]) {
@@ -1441,11 +1391,15 @@ function BotPage() {
       )}
       <div
         className="relative flex min-h-0 flex-1"
-        style={{ "--wash-left": tab === "run" ? "248px" : "0px" } as CSSProperties}
+        style={{ "--wash-left": chatSide ? "248px" : "0px" } as CSSProperties}
       >
-        {tab === "run" && (
+        {chatSide && (
           <>
             <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
+              <nav className="space-y-0.5 px-2 pt-2" aria-label="Conversation">
+                <SideLink to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
+                <SideLink to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
+              </nav>
               <div className="flex h-12 items-center justify-between pr-2 pl-4">
                 <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">Chats</span>
                 <Btn
@@ -1461,7 +1415,7 @@ function BotPage() {
               <div className="min-h-0 flex-1 space-y-0.5 overflow-auto px-2 pb-3">
                 {chats.length === 0 && <p className="px-2 py-2 text-[12.5px] text-ink-3">No chats</p>}
                 {chats.map((c) => {
-                  const on = c.id === chatId;
+                  const on = tab === "run" && c.id === chatId;
                   const live = on && (waiting || sending);
                   return (
                     <div
@@ -1555,8 +1509,11 @@ function BotPage() {
                   icon={<SquarePen size={15} />}
                   onClick={() => newChat().catch((e) => setActErr(fail(e)))}
                 />
+                <SideChip to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
+                <SideChip to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
+                <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />
                 {chats.map((c) => {
-                  const on = c.id === chatId;
+                  const on = tab === "run" && c.id === chatId;
                   return (
                     <div
                       key={c.id}
@@ -1629,6 +1586,23 @@ function BotPage() {
                   );
                 })}
               </FadeScroll>
+              {tab === "automations" && id && (
+                <AutomationsPane
+                  bot={bot}
+                  sub={parts.slice(1)}
+                  onError={setActErr}
+                  onApprovals={() => ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {})}
+                  onInspectArtifact={setInspect}
+                  onSaveSkill={(a) => void saveSkill(a)}
+                />
+              )}
+              {tab === "memories" && (
+                <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+                  <MemoriesPane bot={bot} onSaved={setBot} onError={setActErr} />
+                </div>
+              )}
+              {tab === "run" && (
+              <>
               <Thread
                 botId={id!}
                 botName={bot.name}
@@ -1662,6 +1636,8 @@ function BotPage() {
                 onModel={(m) => void pickModel(m)}
                 usage={usage}
               />
+              </>
+              )}
             </section>
           </>
         )}
@@ -1760,11 +1736,6 @@ function BotPage() {
         {tab === "container" && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">
             <ContainerPane bot={bot} onStart={start} onStop={stop} />
-          </div>
-        )}
-        {tab === "memories" && (
-          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <MemoriesPane bot={bot} onSaved={setBot} onError={setActErr} />
           </div>
         )}
         {tab === "settings" && (

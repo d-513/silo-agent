@@ -69,7 +69,10 @@ type Chat struct {
 	BotID      string `gorm:"index"`
 	ChannelID  string `gorm:"index"`
 	ExternalID string
-	Title      string
+	// AutomationID marks the hidden Chat that holds one automation's run log.
+	// Web chat lists and Send skip these.
+	AutomationID string `gorm:"index;default:''"`
+	Title        string
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
 	Model     string
@@ -231,13 +234,36 @@ type Memory struct {
 	LastUsedAt *time.Time
 }
 
+// Automation is a scheduled background prompt. Its runs land in ChatID (a
+// hidden Chat) and each firing starts with a fresh context. Kind "heartbeat" is
+// the pinned one every Bot has; it is created without a schedule.
+type Automation struct {
+	ID        string `gorm:"primaryKey"`
+	BotID     string `gorm:"index"`
+	Kind      string
+	Name      string
+	Prompt    string
+	Schedule  string
+	Enabled   bool
+	ChatID    string
+	CreatedBy string
+	NextRunAt *time.Time `gorm:"index"`
+	LastRunAt *time.Time
+	LastRunID string
+	// LastStatus holds a firing that never became a run ("skipped"); a real
+	// run's status is read from its Run row.
+	LastStatus string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{},
+		&Memory{}, &Automation{},
 	}
 }
 

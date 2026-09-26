@@ -37,9 +37,23 @@ func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, erro
 	return &c, nil
 }
 
+// webChats keeps Web UI chats: not a channel conversation, not an automation log.
+func webChats(q *gorm.DB) *gorm.DB {
+	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL)")
+}
+
+// writableChat refuses conversation edits on an automation's log: its runs are
+// driven by the automation's prompt, and deleting the automation drops the log.
+func writableChat(c *db.Chat) error {
+	if c.AutomationID != "" {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("an automation log is read-only; edit the automation instead"))
+	}
+	return nil
+}
+
 func (a *App) backfillChats(botID string) *db.Chat {
 	var chats []db.Chat
-	a.DB.Where("bot_id = ? AND (channel_id = '' OR channel_id IS NULL)", botID).Order("updated_at desc").Find(&chats)
+	a.DB.Where("bot_id = ?", botID).Scopes(webChats).Order("updated_at desc").Find(&chats)
 	if len(chats) == 0 {
 		c := db.Chat{ID: ids.New(), BotID: botID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 		a.DB.Create(&c)
@@ -57,7 +71,7 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 	q := a.DB.Where("bot_id = ?", req.Msg.GetBotId())
 	if req.Msg.GetChannelId() == "" {
 		a.backfillChats(req.Msg.GetBotId())
-		q = q.Where("channel_id = '' OR channel_id IS NULL")
+		q = q.Scopes(webChats)
 	} else {
 		q = q.Where("channel_id = ?", req.Msg.GetChannelId())
 	}
@@ -102,6 +116,9 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
 	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
+		return nil, err
+	}
+	if err := writableChat(c); err != nil {
 		return nil, err
 	}
 	var runs []db.Run

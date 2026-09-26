@@ -35,6 +35,9 @@ const (
 	Channels = "channels"
 	Chats    = "chats"
 	Model    = "model"
+	// Automations are scheduled background prompts. Creating or changing one
+	// asks by default: it keeps running unattended after the conversation ends.
+	Automations = "automations"
 )
 
 type Field struct {
@@ -64,25 +67,29 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true, Model: true,
+	Channels: true, Chats: true, Model: true, Automations: true,
 }
 
 var catalog = map[string]spec{
-	"python.run":      {title: "Python", mode: Allow, summary: want("run Python")},
-	"terminal.run":    {title: "Terminal", mode: Allow, summary: want("run a shell command")},
-	"files.*":         {title: "Files", mode: Allow, summary: want("use workspace files")},
-	"desktop.*":       {title: "Desktop", mode: Allow, summary: want("use the desktop"), hide: []string{"text"}},
-	"bot.soul":        {title: "Soul", mode: Allow, summary: want("edit SOUL")},
-	"bot.core_memory": {title: "Core memory", mode: Allow, summary: want("edit CORE MEMORY")},
-	"bot.remember":    {title: "Remember", mode: Allow, summary: want("save a long-term memory")},
-	"bot.recall":      {title: "Recall", mode: Allow, summary: want("search its long-term memories")},
-	"bot.forget":      {title: "Forget", mode: Allow, summary: want("delete a long-term memory")},
-	"skills.load":     {title: "Load skill", mode: Allow, summary: want("load a skill")},
-	"artifact.emit":   {title: "Artifact", mode: Allow, summary: want("show an artifact")},
-	"web.search":      {title: "Web search", mode: Allow, summary: want("search the web")},
-	"chats.read":      {title: "Read chats", mode: Allow, summary: want("read chat messages")},
-	"model.list":      {title: "List models", mode: Allow, summary: want("list the allowed models")},
-	"model.switch":    {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
+	"python.run":         {title: "Python", mode: Allow, summary: want("run Python")},
+	"terminal.run":       {title: "Terminal", mode: Allow, summary: want("run a shell command")},
+	"files.*":            {title: "Files", mode: Allow, summary: want("use workspace files")},
+	"desktop.*":          {title: "Desktop", mode: Allow, summary: want("use the desktop"), hide: []string{"text"}},
+	"bot.soul":           {title: "Soul", mode: Allow, summary: want("edit SOUL")},
+	"bot.core_memory":    {title: "Core memory", mode: Allow, summary: want("edit CORE MEMORY")},
+	"bot.remember":       {title: "Remember", mode: Allow, summary: want("save a long-term memory")},
+	"bot.recall":         {title: "Recall", mode: Allow, summary: want("search its long-term memories")},
+	"bot.forget":         {title: "Forget", mode: Allow, summary: want("delete a long-term memory")},
+	"skills.load":        {title: "Load skill", mode: Allow, summary: want("load a skill")},
+	"artifact.emit":      {title: "Artifact", mode: Allow, summary: want("show an artifact")},
+	"web.search":         {title: "Web search", mode: Allow, summary: want("search the web")},
+	"chats.read":         {title: "Read chats", mode: Allow, summary: want("read chat messages")},
+	"model.list":         {title: "List models", mode: Allow, summary: want("list the allowed models")},
+	"model.switch":       {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
+	"automations.list":   {title: "List automations", mode: Allow, summary: want("list its automations")},
+	"automations.create": {title: "Create automation", mode: Ask, summary: automationSummary("create"), fields: automationFields},
+	"automations.update": {title: "Change automation", mode: Ask, summary: automationSummary("change"), fields: automationFields},
+	"automations.delete": {title: "Delete automation", mode: Allow, summary: automationSummary("delete")},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
@@ -100,6 +107,30 @@ func switchFields(args map[string]string) []Field {
 		return []Field{{Label: "Model", Value: m}}
 	}
 	return nil
+}
+
+func automationSummary(verb string) func(map[string]string) string {
+	return func(args map[string]string) string {
+		name := strings.TrimSpace(args["name"])
+		if name == "" {
+			name = strings.TrimSpace(args["automation"])
+		}
+		if name != "" {
+			return "This Bot wants to " + verb + " the automation “" + name + "”."
+		}
+		return "This Bot wants to " + verb + " an automation."
+	}
+}
+
+func automationFields(args map[string]string) []Field {
+	var out []Field
+	if v := strings.TrimSpace(args["schedule"]); v != "" {
+		out = append(out, Field{Label: "Schedule", Value: v})
+	}
+	if v := strings.TrimSpace(args["prompt"]); v != "" {
+		out = append(out, Field{Label: "Prompt", Value: v})
+	}
+	return out
 }
 
 func channelSummary(args map[string]string) string {
@@ -148,6 +179,10 @@ func BuiltinRows() []Row {
 		{Chats, "read", "Read chats"},
 		{Model, "list", "List models"},
 		{Model, "switch", "Switch model"},
+		{Automations, "list", "List automations"},
+		{Automations, "create", "Create automation"},
+		{Automations, "update", "Change automation"},
+		{Automations, "delete", "Delete automation"},
 	}
 }
 

@@ -91,6 +91,9 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 			if c.ChannelID != "" {
 				kind = "channel"
 			}
+			if c.AutomationID != "" {
+				kind = "automation log"
+			}
 			fmt.Fprintf(&b, "- %s  %s (%s)\n", c.ID, c.Title, kind)
 		}
 		return b.String(), nil

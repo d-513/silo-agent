@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Automation, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -145,6 +145,51 @@ export const UI = {
       name: "DeleteMemory",
       I: DeleteMemoryRequest,
       O: DeleteMemoryResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListAutomations
+     */
+    listAutomations: {
+      name: "ListAutomations",
+      I: ListAutomationsRequest,
+      O: ListAutomationsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.CreateAutomation
+     */
+    createAutomation: {
+      name: "CreateAutomation",
+      I: CreateAutomationRequest,
+      O: Automation,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.UpdateAutomation
+     */
+    updateAutomation: {
+      name: "UpdateAutomation",
+      I: UpdateAutomationRequest,
+      O: Automation,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteAutomation
+     */
+    deleteAutomation: {
+      name: "DeleteAutomation",
+      I: DeleteAutomationRequest,
+      O: DeleteAutomationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RunAutomation
+     */
+    runAutomation: {
+      name: "RunAutomation",
+      I: RunAutomationRequest,
+      O: RunAutomationResponse,
       kind: MethodKind.Unary,
     },
     /**

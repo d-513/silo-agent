@@ -158,6 +158,9 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 	if err != nil {
 		return nil, err
 	}
+	if err := writableChat(ch); err != nil {
+		return nil, err
+	}
 	text := req.Msg.GetText()
 	atts := cleanAttachments(req.Msg.GetAttachments())
 	if text == "" && len(atts) == 0 {
@@ -219,6 +222,9 @@ func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeCh
 	}
 	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
 	if err != nil {
+		return nil, err
+	}
+	if err := writableChat(ch); err != nil {
 		return nil, err
 	}
 	nc, err := a.copyChatPrefix(ch.ID, req.Msg.GetEventId())

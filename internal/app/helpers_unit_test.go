@@ -89,3 +89,30 @@ func TestStampUserTextUsesLocalTime(t *testing.T) {
 		t.Fatalf("marker shape %q", got)
 	}
 }
+
+func TestAutomationSectionIsTrailingAndNamesTheRun(t *testing.T) {
+	a := &App{}
+	if got := a.automationSections(promptContext{}); len(got) != 0 {
+		t.Fatalf("no automation, no section: %v", got)
+	}
+	secs := a.automationSections(promptContext{automation: &db.Automation{Name: "Digest", Schedule: "0 9 * * *"}})
+	if len(secs) != 1 || !secs[0].trailing {
+		t.Fatalf("want one trailing section, got %v", secs)
+	}
+	if !strings.Contains(secs[0].body, "“Digest”") || !strings.Contains(secs[0].body, "0 9 * * *") || !strings.Contains(secs[0].body, "fresh context") {
+		t.Fatalf("section body %q", secs[0].body)
+	}
+}
+
+func TestParseScheduleEnforcesGap(t *testing.T) {
+	for _, ok := range []string{"", "*/5 * * * *", "0 9 * * 1-5", "@daily", "@every 1h"} {
+		if _, err := parseSchedule(ok); err != nil {
+			t.Fatalf("%q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"* * * * *", "@every 1m", "61 * * * *", "0 9 * *"} {
+		if _, err := parseSchedule(bad); err == nil {
+			t.Fatalf("%q should fail", bad)
+		}
+	}
+}

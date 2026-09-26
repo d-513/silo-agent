@@ -275,7 +275,7 @@ No bounce, and no overshoot beyond the settle curve.
 ### Thread
 
 - The column is 720px max, centered on `canvas`, with 16px between items; consecutive thinking / tool / receipt rows stack 2px apart. A centered `meta` date divider ("Today · 09:12") sits at the top.
-- **User**: right-aligned `well` bubble in `body-lg`. There's no border.
+- **User**: right-aligned `well` bubble in `body-lg`. There's no border. In an automation log the user item is instead the hairline **RunMark** divider from the Automations section.
 - **Assistant**: no container, `reply` serif. While streaming, text arrives in chunks of a few words, each fading from opacity 0 with 3px blur to clear over 360ms, and a small breathing `ink` dot sits at the end. When it's done, hovering the turn reveals the action row (copy, retry), which fades up 2px over 180ms.
 - **Thinking**: a lightbulb, then the word "Thinking" with a moving highlight shimmer (text gradient `ink-3 → ink → ink-3`, 1.6s linear). The reasoning streams open beneath it; when it's done it folds shut into "Thought for Ns" with a chevron.
 - **Tool row**: a 32px row with a 16px state slot, a 16px `ink-2` tool icon (the Python mark, a terminal, a file glyph, a globe for web search; a connector call shows that connector's own image, or a plug when it has none), then the verb and app (`ink`, 500: "Using Browser" / "Used Browser"), then the action in `mono` `ink-3`, then a chevron.
@@ -338,9 +338,16 @@ No bounce, and no overshoot beyond the settle curve.
 ### Chats list
 
 - 248px wide on `well`, headed by a `label-caps` "Chats" and a new-chat icon button.
+- Above the head sit two `control`-radius rows, **Automations** (timer) and **Memories** (brain), 15px icon and 13.5/500; the open one is a lifted `surface` row. They are peer pages to Chat, not chats.
 - Rows are 2 lines: title in 13.5/500 `ink`, meta in `ink-3` ("Just now", "Working…", "Waiting for you", "Yesterday"). A live run shows its lamp after the title.
 - The active row is lifted: `surface` fill with a `line` ring. Hover fills `pressed`.
 - Titles are generated from the first prompt. Rename with the pencil or a double-click.
+
+### Automations
+
+- The list (`/bots/:id/automations`) is a `Panel` for the lone Heartbeat, then a **Scheduled** `Panel`. The Heartbeat row sits on a `well` band (the only one) with its 8px mark lifted to `surface`, and a quiet caption beneath — "Every Bot has one, and it cannot be deleted."; tone, not a pin or the word, sets it apart. A row is an 8px mark well (timer mark), the name in 13.5/500, a line of `meta` (`describe(schedule) · Next …`, or "Paused" / "Running now" / "No schedule — never runs on its own"), and a switch on the right. A live run shows a Working lamp; a failed last run a `vermilion` "Last run failed". The switch pauses without clearing the schedule.
+- New automation (`/new`) and the inline Edit drawer share one form: Name, a Schedule picker (every N minutes / N hours, daily, chosen weekdays, monthly, or raw cron) with a plain-English line as you edit, the Prompt in the same `PromptWell` as SOUL, and an Active switch. Save is primary; Delete is an armed ghost (hidden on the Heartbeat).
+- A run's log (`/bots/:id/automations/:id`) reuses the chat `Thread`. The header carries the name, description, Edit, and **Run now** / **Stop**; the tail is the shared thread. Each run opens with a **RunMark** divider — a hairline, a timer glyph, "Ran Today 09:12" in `ink-3` — because the message is the automation's own prompt, not something a human typed (the prompt is its tooltip). No user bubble, no composer.
 
 ### Inputs
 
@@ -376,15 +383,16 @@ No bounce, and no overshoot beyond the settle curve.
 - **Shell:** the rail (64px) plus main. Break at **960** (`wide:` / `max-wide:`). Below 960, the rail becomes a 48px top bar (safe-area padded) and crests scroll sideways.
 - **Bot view:**
   - A 56px header on `canvas` with a `line` bottom edge: crest 28 + name + lamp/status, the tab strip, a spacer, then Stop Bot / Start Bot (ghost).
-  - The body is chats (248, `well`) next to the thread on `canvas`.
+  - The body is chats (248, `well`) next to the thread on `canvas`. The sidebar opens with the **Automations** and **Memories** rows above the chats head; the page body is the log or list when one is open.
   - Desktop and Console give the whole main column to the hatch. Desktop's caret opens Console.
   - Under 1280px the header's Start/Stop shows only the power glyph.
 - **Tabs:** `Chat`, `Desktop`, `Files`, `Connectors`, `Channels`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. The strip scrolls horizontally with edge fades. Add, edit and setup flows are their own routes, so the browser Back button works.
+- **Chat sidebar:** **Automations** and **Memories** are conversation-side pages, so they sit as two rows above the chats list and keep the Chat tab lit. Below 960 they are icon chips (label only when active) at the start of the chats strip, before a hairline and the chat chips.
 - **Settings / admin:** one column, 760px max (forms 560px), in `card`-radius panels. The Dangerous panel comes last, with armed destructive buttons.
 - **Bots home:** padded 28. One column below 1100px, 2 up to 1440px, 3 above that. No KPI row, no footer, no centered screens except sign-in.
 - **Below 960:**
   - Tabs become icons, with a label only on the active tab.
-  - Chats become a horizontal chip strip.
+  - Chats become a horizontal chip strip, opening with the **Automations** and **Memories** icon chips.
   - Files shows either the tree or the preview, not both.
   - The approval slip becomes a bottom sheet.
   - Hit areas are 40px.

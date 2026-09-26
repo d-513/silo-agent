@@ -148,6 +148,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	}
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
 	a.ensureDefaultSkills(id)
+	a.ensureHeartbeat(id)
 	a.attachDefaultConnectors(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
@@ -266,6 +267,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.LLMLog{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Memory{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
 	var bcs []db.BotConnector
@@ -308,6 +310,9 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 			return nil, cerr
 		}
 		ch = owned
+	}
+	if err := writableChat(ch); err != nil {
+		return nil, err
 	}
 	runID, err := a.startOrInject(b.ID, ch.ID, text, atts, nil)
 	if err != nil {
@@ -379,7 +384,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for _, r := range eventsAfter(rows, after) {
 		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: validUTF8(r.Body), Tool: validUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta))}); err != nil {
+		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: validUTF8(r.Body), Tool: validUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta)), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
 			return err
 		}
 	}

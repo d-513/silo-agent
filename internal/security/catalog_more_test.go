@@ -91,7 +91,7 @@ func TestVoteEmptyAndGrant(t *testing.T) {
 }
 
 func TestReservedSlugs(t *testing.T) {
-	for _, slug := range []string{Python, Terminal, Files, Desktop, Bot, Secrets, Skills, Web, Artifact, Channels, Chats, Model} {
+	for _, slug := range []string{Python, Terminal, Files, Desktop, Bot, Secrets, Skills, Web, Artifact, Channels, Chats, Model, Automations} {
 		if !Reserved(slug) {
 			t.Fatalf("%s should be reserved", slug)
 		}

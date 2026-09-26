@@ -47,6 +47,8 @@ type promptContext struct {
 	// every enabled channel the Bot can send to.
 	channel  *db.Channel
 	channels []db.Channel
+	// automation is set when a scheduled automation started this run.
+	automation *db.Automation
 	// recall is this run's auto-recalled memories (volatile, trailing).
 	recall string
 }
@@ -61,6 +63,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.connectorSections,
 		a.skillSections,
 		a.channelSections,
+		a.automationSections,
 		a.recallSections,
 	}
 }
@@ -246,6 +249,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 	if origin != nil {
 		pc.channel = origin.channel
 		pc.recall = origin.recall
+		pc.automation = origin.automation
 	}
 	return pc
 }

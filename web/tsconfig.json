@@ -14,5 +14,5 @@
     "paths": { "@/*": ["src/*"] }
   },
   "include": ["src"],
-  "exclude": ["src/fold_test.ts"]
+  "exclude": ["src/fold_test.ts", "src/schedule_test.ts"]
 }

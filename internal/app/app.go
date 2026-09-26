@@ -135,6 +135,9 @@ type App struct {
 	chanMu     sync.Mutex
 	chanCancel map[string]context.CancelFunc
 	chanStates map[string]channels.State
+	// stopAutomations ends the scheduler loop on Shutdown.
+	stopAutomations chan struct{}
+	stopOnce        sync.Once
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -157,6 +160,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		bridges:    map[string]*bridgeTunnel{},
 		chanCancel: map[string]context.CancelFunc{},
 		chanStates: map[string]channels.State{},
+
+		stopAutomations: make(chan struct{}),
 	}
 	a.recoverOrphans()
 	a.initConnectors()
@@ -164,6 +169,10 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.resumeConnectors()
 	a.migrateSettings()
 	a.reconcileChannels()
+	if a.DB != nil {
+		a.rescheduleAutomations()
+		go a.automationLoop(a.stopAutomations)
+	}
 	return a
 }
 
@@ -242,6 +251,7 @@ func (a *App) ensureTerminalEvent(run db.Run, status string) {
 }
 
 func (a *App) Shutdown() {
+	a.stopOnce.Do(func() { close(a.stopAutomations) })
 	a.chanMu.Lock()
 	for id, cancel := range a.chanCancel {
 		cancel()

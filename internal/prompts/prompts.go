@@ -15,3 +15,13 @@ var Channel string
 //
 //go:embed APPROVAL.md
 var Approval string
+
+// Automation is the per-run note for a run an automation started.
+//
+//go:embed AUTOMATION.md
+var Automation string
+
+// Heartbeat is the default prompt of the pinned Heartbeat automation.
+//
+//go:embed HEARTBEAT.md
+var Heartbeat string

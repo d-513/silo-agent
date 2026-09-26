@@ -21,6 +21,11 @@ service UI {
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
   rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
+  rpc ListAutomations(ListAutomationsRequest) returns (ListAutomationsResponse);
+  rpc CreateAutomation(CreateAutomationRequest) returns (Automation);
+  rpc UpdateAutomation(UpdateAutomationRequest) returns (Automation);
+  rpc DeleteAutomation(DeleteAutomationRequest) returns (DeleteAutomationResponse);
+  rpc RunAutomation(RunAutomationRequest) returns (RunAutomationResponse);
 
   rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
   rpc CreateChat(CreateChatRequest) returns (Chat);
@@ -211,6 +216,74 @@ message DeleteMemoryRequest {
 
 message DeleteMemoryResponse {}
 
+// Automation is a scheduled background prompt. Each one owns a hidden Chat
+// (chat_id) whose runs are its log; every firing starts with a fresh context.
+message Automation {
+  string id = 1;
+  string bot_id = 2;
+  string name = 3;
+  string prompt = 4;
+  // Standard 5-field cron in the Control Plane's local time. Empty never
+  // fires on its own (Run now still works).
+  string schedule = 5;
+  bool enabled = 6;
+  // "heartbeat" (pinned, one per Bot, cannot be deleted) or "custom".
+  string kind = 7;
+  string chat_id = 8;
+  // RFC 3339; empty when it never ran / will not run.
+  string last_run_at = 9;
+  string next_run_at = 10;
+  // done | error | stopped | interrupted | skipped, from the last firing.
+  string last_status = 11;
+  // A run of this automation is live now.
+  bool running = 12;
+  // "user" or "bot".
+  string created_by = 13;
+  string created_at = 14;
+}
+
+message ListAutomationsRequest {
+  string bot_id = 1;
+}
+
+message ListAutomationsResponse {
+  repeated Automation automations = 1;
+}
+
+message CreateAutomationRequest {
+  string bot_id = 1;
+  string name = 2;
+  string prompt = 3;
+  string schedule = 4;
+  bool enabled = 5;
+}
+
+message UpdateAutomationRequest {
+  string bot_id = 1;
+  string id = 2;
+  string name = 3;
+  string prompt = 4;
+  string schedule = 5;
+  bool enabled = 6;
+}
+
+message DeleteAutomationRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteAutomationResponse {}
+
+message RunAutomationRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message RunAutomationResponse {
+  string run_id = 1;
+  string chat_id = 2;
+}
+
 message Chat {
   string id = 1;
   string bot_id = 2;
@@ -309,6 +382,9 @@ message RunEvent {
   string chat_id = 5;
   string id = 6;
   repeated Attachment attachments = 7;
+  // RFC 3339 time the event was recorded. Set on user events (live and
+  // replayed) and on every replayed event.
+  string created_at = 8;
 }
 
 // EditMessage truncates this chat at the last user message and re-sends the

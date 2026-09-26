@@ -1,7 +1,8 @@
 export type Attachment = { name: string; path: string; size: number };
 
 // `at` is the client arrival time (ms); replayed history arrives in a burst.
-export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string; attachments?: Attachment[]; at?: number };
+// `createdAt` is the server's record time (RFC 3339) when it sent one.
+export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string; attachments?: Attachment[]; at?: number; createdAt?: string };
 
 // Why a tool stopped without a clean result: the human denied it, or the run
 // was stopped/interrupted around it.
@@ -29,7 +30,7 @@ export type Decision = "allow_once" | "always" | "deny" | "stopped";
 export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; title: string; target: string; runId?: string };
 
 export type Block =
-  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[] }
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; createdAt?: string }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
   | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }
@@ -111,7 +112,7 @@ export function foldEvents(events: Ev[]): Block[] {
     if (e.kind === "error" && staleKey.test(e.body)) continue;
     const key = `${e.kind}-${i++}`;
     if (e.kind === "user") {
-      push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments });
+      push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, createdAt: e.createdAt });
       continue;
     }
     if (e.kind === "thinking_chunk") {

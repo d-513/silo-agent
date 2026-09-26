@@ -232,6 +232,38 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"text"},
 	}),
+	tool("list_automations", "List this Bot's automations (scheduled background prompts), including the pinned Heartbeat, with ids, schedules, next and last runs.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}),
+	tool("create_automation", "Create an automation: a prompt this Bot runs on its own on a cron schedule, in the background. Each run starts with a fresh context (only the prompt, SOUL, and memory), so write a self-contained prompt that says what to do and where to keep state. Runs are logged on the Automations page.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name":     map[string]any{"type": "string", "description": "short unique name"},
+			"prompt":   map[string]any{"type": "string", "description": "the instruction each run receives as its message"},
+			"schedule": map[string]any{"type": "string", "description": "5-field cron in the machine's local time (minute hour day-of-month month day-of-week), e.g. `0 9 * * 1-5` for weekdays at 09:00, `*/30 * * * *` every 30 minutes. At least 5 minutes apart. Empty never fires."},
+			"enabled":  map[string]any{"type": "boolean", "description": "default true"},
+		},
+		"required": []string{"name", "prompt", "schedule"},
+	}),
+	tool("update_automation", "Change an automation by id or name. Pass only the fields to change. Use this to set the pinned Heartbeat's schedule or prompt. schedule \"\" stops it firing.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"automation": map[string]any{"type": "string", "description": "id or name"},
+			"name":       map[string]any{"type": "string"},
+			"prompt":     map[string]any{"type": "string"},
+			"schedule":   map[string]any{"type": "string", "description": "5-field cron, local time; empty never fires"},
+			"enabled":    map[string]any{"type": "boolean"},
+		},
+		"required": []string{"automation"},
+	}),
+	tool("delete_automation", "Delete an automation and its run log, by id or name. The Heartbeat cannot be deleted — clear its schedule instead.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"automation": map[string]any{"type": "string", "description": "id or name"},
+		},
+		"required": []string{"automation"},
+	}),
 	tool("chats", "Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -276,8 +308,9 @@ func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment)
 		}
 	}
 	id := ids.New()
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Meta: meta, CreatedAt: time.Now()})
-	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Attachments: atts})
+	now := time.Now()
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Meta: meta, CreatedAt: now})
+	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
 }
 
 func attachmentsFromMeta(meta string) []eventAttachment {
@@ -313,6 +346,9 @@ type runOrigin struct {
 	channel  *db.Channel
 	external string
 	deliver  func(channels.Outbound) error
+	// automation is set when a scheduled automation started the run. Its runs
+	// start from a fresh context and are not delivered anywhere.
+	automation *db.Automation
 	// recall is the auto-recalled memory note, computed once per run.
 	recall string
 }
@@ -339,6 +375,9 @@ func (a *App) startRun(req runRequest) (string, error) {
 	if req.origin != nil && req.origin.channel != nil {
 		channelID = req.origin.channel.ID
 		origin = "channel"
+	}
+	if req.origin != nil && req.origin.automation != nil {
+		origin = "automation"
 	}
 	runID := ids.New()
 	run := db.Run{ID: runID, BotID: req.botID, ChatID: req.chatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
@@ -657,7 +696,13 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	}
 	go a.nameChat(botID, chatID, runID, title)
 
-	msgs := a.historyFromDB(chatID)
+	var msgs []llm.Message
+	if origin != nil && origin.automation != nil {
+		// Each firing is independent: only this run is the model's history.
+		msgs = a.historyFromRuns([]db.Run{{ID: runID}})
+	} else {
+		msgs = a.historyFromDB(chatID)
+	}
 	if note := a.autoRecall(ctx, botID, userText); note != "" {
 		if origin == nil {
 			origin = &runOrigin{}
@@ -807,6 +852,11 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 func (a *App) historyFromDB(chatID string) []llm.Message {
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", chatID).Order("created_at").Find(&runs)
+	return a.historyFromRuns(runs)
+}
+
+// historyFromRuns replays the given runs, in order, as model messages.
+func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
 	var msgs []llm.Message
 	for _, run := range runs {
 		var evs []db.RunEvent
@@ -968,6 +1018,17 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	if name == "chats" {
 		out, err := a.chatsReadTool(ctx, botID, runID, args)
+		return out, "", err
+	}
+	if isAutomationTool(name) {
+		var bot db.Bot
+		if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+			return "", "", fmt.Errorf("unknown bot")
+		}
+		if args == nil {
+			args = map[string]any{}
+		}
+		out, err := a.automationTool(ctx, &bot, runID, name, args)
 		return out, "", err
 	}
 	conn, action, ok := chatTool(name)
