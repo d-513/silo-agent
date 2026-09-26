@@ -198,6 +198,7 @@ data_dir: %q
 cp_url: http://127.0.0.1:0
 model: dummy/echo
 model_title: dummy/echo
+embedding_model: dummy/embed
 models:
   - dummy/echo
 providers:

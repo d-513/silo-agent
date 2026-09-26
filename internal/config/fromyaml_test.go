@@ -26,6 +26,9 @@ func TestFromYAMLDefaultsAndOverrides(t *testing.T) {
 	if c.DataDir != "./data" {
 		t.Fatalf("default data dir %q", c.DataDir)
 	}
+	if c.EmbedModel != DefaultEmbeddingModel || !c.Memory.AutoRecall {
+		t.Fatalf("memory defaults %q %v", c.EmbedModel, c.Memory.AutoRecall)
+	}
 	if c.DatabaseURL != DefaultDatabaseURL {
 		t.Fatalf("default database url %q", c.DatabaseURL)
 	}

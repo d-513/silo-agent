@@ -38,6 +38,16 @@ func (a *App) titleModel(botID, chatID string) string {
 // is wrapped by the engine's observer so the debug log sees every model call
 // (chat, title, auto-approval) with the label naming its feature.
 func (a *App) modelClient(modelID, botID, label string) (llm.Client, string, string, error) {
+	client, provider, model, err := a.providerClient(modelID)
+	if err != nil {
+		return nil, provider, model, err
+	}
+	return llm.Observe(client, provider, func(rec llm.Record) { a.recordLLM(botID, label, rec) }), provider, model, nil
+}
+
+// providerClient builds the bare provider client for a provider/model id, so
+// optional interfaces such as llm.Embedder stay reachable.
+func (a *App) providerClient(modelID string) (llm.Client, string, string, error) {
 	provider, model, err := llm.Parse(modelID)
 	if err != nil {
 		return nil, "", "", err
@@ -56,7 +66,7 @@ func (a *App) modelClient(modelID, botID, label string) (llm.Client, string, str
 	if err != nil {
 		return nil, provider, model, err
 	}
-	return llm.Observe(client, provider, func(rec llm.Record) { a.recordLLM(botID, label, rec) }), provider, model, nil
+	return client, provider, model, nil
 }
 
 // cachePolicy turns a provider's settings into a request cache policy. Caching

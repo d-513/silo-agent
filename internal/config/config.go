@@ -66,12 +66,23 @@ func (p Provider) Settings() llm.Settings {
 	return out
 }
 
+// Memory configures long-term (pgvector) memories.
+type Memory struct {
+	// AutoRecall injects the closest memories to the user's message into
+	// each run's volatile prompt tail.
+	AutoRecall bool `koanf:"auto_recall"`
+}
+
 type Search struct {
 	Engine string `koanf:"engine"`
 }
 
 const DefaultModel = "openrouter/openai/gpt-5.6-luna"
 const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
+
+// DefaultEmbeddingModel embeds long-term memories. Its vectors must be
+// llm.EmbedDims wide (text-embedding-3 honours the dimensions parameter).
+const DefaultEmbeddingModel = "openrouter/openai/text-embedding-3-small"
 
 // DefaultDatabaseURL is the dev Postgres from docker-compose.dev.yml.
 const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
@@ -88,6 +99,8 @@ type Config struct {
 	Model         string              `koanf:"model"`
 	ModelTitle    string              `koanf:"model_title"`
 	ModelApproval string              `koanf:"model_approval"`
+	EmbedModel    string              `koanf:"embedding_model"`
+	Memory        Memory              `koanf:"memory"`
 	Models        []string            `koanf:"models"`
 	Debug         bool                `koanf:"debug"`
 	Bootstrap     Bootstrap           `koanf:"bootstrap"`
@@ -135,6 +148,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "model"},
 	{Key: "model_title"},
 	{Key: "model_approval"},
+	{Key: "embedding_model"},
+	{Key: "memory.auto_recall", Type: "bool"},
 	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
 	{Key: "http_addr", Restart: true},
@@ -209,6 +224,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
+	_ = k.Set("embedding_model", DefaultEmbeddingModel)
+	_ = k.Set("memory.auto_recall", true)
 }
 
 type yamlBytes []byte

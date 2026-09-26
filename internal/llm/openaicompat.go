@@ -258,3 +258,36 @@ func dataURL(img Image) string {
 	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(img.Data)
 }
+
+// Embed asks the /embeddings endpoint for EmbedDims-wide vectors, one per
+// text, in input order.
+func (c *openAICompatClient) Embed(ctx context.Context, model string, texts []string) ([][]float32, error) {
+	resp, err := c.client.Embeddings.New(ctx, openai.EmbeddingNewParams{
+		Model:      model,
+		Input:      openai.EmbeddingNewParamsInputUnion{OfArrayOfStrings: texts},
+		Dimensions: openai.Int(EmbedDims),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([][]float32, len(texts))
+	for _, d := range resp.Data {
+		if d.Index < 0 || int(d.Index) >= len(texts) {
+			return nil, fmt.Errorf("embedding index %d out of range", d.Index)
+		}
+		if len(d.Embedding) != EmbedDims {
+			return nil, fmt.Errorf("%s returned %d dimensions, need %d", model, len(d.Embedding), EmbedDims)
+		}
+		v := make([]float32, len(d.Embedding))
+		for i, f := range d.Embedding {
+			v[i] = float32(f)
+		}
+		out[d.Index] = v
+	}
+	for i, v := range out {
+		if v == nil {
+			return nil, fmt.Errorf("no embedding for input %d", i)
+		}
+	}
+	return out, nil
+}

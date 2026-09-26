@@ -47,6 +47,8 @@ type promptContext struct {
 	// every enabled channel the Bot can send to.
 	channel  *db.Channel
 	channels []db.Channel
+	// recall is this run's auto-recalled memories (volatile, trailing).
+	recall string
 }
 
 // promptProvider contributes ordered sections for the current session.
@@ -59,7 +61,14 @@ func (a *App) promptProviders() []promptProvider {
 		a.connectorSections,
 		a.skillSections,
 		a.channelSections,
+		a.recallSections,
 	}
+}
+
+// recallSections places this run's auto-recalled memories after the cache
+// breakpoints: they change with every message.
+func (a *App) recallSections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Recalled memories", body: pc.recall, trailing: true}}
 }
 
 // channelSections tells the model what channels exist and, when the run came
@@ -236,6 +245,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 	pc.channels = a.enabledChannels(botID)
 	if origin != nil {
 		pc.channel = origin.channel
+		pc.recall = origin.recall
 	}
 	return pc
 }

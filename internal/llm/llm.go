@@ -146,6 +146,16 @@ type Client interface {
 	Complete(ctx context.Context, req Request) (Response, error)
 }
 
+// EmbedDims is the vector width stored in Postgres (memories.embedding).
+// Changing it means dropping the database.
+const EmbedDims = 1536
+
+// Embedder is the optional interface a provider implements when it can turn
+// text into vectors. Anthropic does not.
+type Embedder interface {
+	Embed(ctx context.Context, model string, texts []string) ([][]float32, error)
+}
+
 // SettingDef describes one configurable provider setting for the admin UI.
 type SettingDef struct {
 	Key         string

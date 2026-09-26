@@ -25,7 +25,7 @@
 
 - Hermes: separate USER.md + MEMORY.md, 8 external memory providers (Honcho, Mem0, Hindsight, OpenViking, Supermemory…), FTS5 session search over all past conversations with scroll, background self-improvement review that saves memory/skills after a turn, memory.write_approval gate, and a "learning journey" timeline.
 - OpenClaw: vector-embedding memory / knowledge graph, daily append-only logs (memory/YYYY-MM-DD.md), compaction, /dreaming memory.
-- Silo: SOUL + MEMORY blobs in SQLite, 8k cap. No semantic search, no cross-session search, no auto-learning.
+- Silo: SOUL + MEMORY blobs (8k cap, always in prompt) plus pgvector long-term memories (`remember`/`recall`/`forget`, auto-recall per run). No cross-session search, no auto-learning yet.
 
 5. Self-improving skills
 

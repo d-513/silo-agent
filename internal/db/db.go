@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pgvector/pgvector-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -217,12 +218,26 @@ type CatalogSeed struct {
 	SeededAt time.Time
 }
 
+// Memory is one long-term fact a Bot saved with `remember`. MEMORY (bots.memory)
+// stays the small always-in-prompt set; these are searched by embedding.
+type Memory struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index"`
+	Content    string
+	Embedding  pgvector.Vector `gorm:"type:vector(1536)"`
+	EmbedModel string
+	RunID      string
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
+		&Memory{},
 	}
 }
 
@@ -249,5 +264,8 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.Exec("CREATE EXTENSION IF NOT EXISTS vector").Error; err != nil {
 		return fmt.Errorf("pgvector: %w", err)
 	}
-	return gdb.AutoMigrate(Models()...)
+	if err := gdb.AutoMigrate(Models()...); err != nil {
+		return err
+	}
+	return gdb.Exec("CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)").Error
 }

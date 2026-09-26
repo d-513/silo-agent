@@ -123,6 +123,28 @@ var toolDefs = []llm.Tool{
 			"new_text": map[string]any{"type": "string"},
 		},
 	}),
+	tool("remember", "Save one durable fact to this Bot's long-term memory (searched by meaning, not always in the prompt). One fact per call; a near-duplicate updates the existing memory.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"content": map[string]any{"type": "string", "description": "the fact, self-contained"},
+		},
+		"required": []string{"content"},
+	}),
+	tool("recall", "Search this Bot's long-term memories by meaning. Returns the closest ones with ids and dates.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query": map[string]any{"type": "string"},
+			"limit": map[string]any{"type": "integer", "description": "max memories (default 5, max 20)"},
+		},
+		"required": []string{"query"},
+	}),
+	tool("forget", "Delete one long-term memory by id (from recall).", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"id": map[string]any{"type": "string"},
+		},
+		"required": []string{"id"},
+	}),
 	tool("list_models", "List the models this Bot may switch to, with the current chat model and the operator default. Use this before switch_model.", map[string]any{
 		"type":       "object",
 		"properties": map[string]any{},
@@ -291,6 +313,8 @@ type runOrigin struct {
 	channel  *db.Channel
 	external string
 	deliver  func(channels.Outbound) error
+	// recall is the auto-recalled memory note, computed once per run.
+	recall string
 }
 
 // runRequest is one call into the shared execution engine. Chats, channels,
@@ -634,6 +658,12 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	go a.nameChat(botID, chatID, runID, title)
 
 	msgs := a.historyFromDB(chatID)
+	if note := a.autoRecall(ctx, botID, userText); note != "" {
+		if origin == nil {
+			origin = &runOrigin{}
+		}
+		origin.recall = note
+	}
 	var lastLook string
 	// seen counts identical read/grep calls this run so a stuck loop does not
 	// re-send content the model already has. Mutating tools clear it.
@@ -955,6 +985,18 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		out, err := a.execDoc(botID, name, args)
 		return out, "", err
 	}
+	if name == "remember" {
+		out, err := a.remember(ctx, botID, runID, str("content"))
+		return out, "", err
+	}
+	if name == "recall" {
+		out, err := a.recallTool(ctx, botID, args)
+		return out, "", err
+	}
+	if name == "forget" {
+		out, err := a.forget(botID, str("id"))
+		return out, "", err
+	}
 	if name == "list_models" {
 		out, err := a.listModelsTool(botID, chatID)
 		return out, "", err
@@ -1106,7 +1148,7 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Files, name, true
 	case "look", "click", "type", "key", "scroll":
 		return security.Desktop, name, true
-	case "soul", "memory":
+	case "soul", "memory", "remember", "recall", "forget":
 		return security.Bot, name, true
 	case "skill":
 		return security.Skills, "load", true
