@@ -183,3 +183,40 @@ func TestWriteArrayAndEnum(t *testing.T) {
 		t.Fatal(s)
 	}
 }
+
+// `import tools` then `tools.<slug>.fn(...)` must work without importing the
+// subpackage by name; models write it that way and got AttributeError.
+func TestToolsPackageLoadsConnectorsLazily(t *testing.T) {
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 not installed")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "tools")
+	if err := Write(dir, []*v1.ToolStub{{
+		Connector: "Lightpanda", Action: "markdown",
+		ArgsSchemaJson: `{"type":"object","properties":{"url":{"type":"string"}}}`,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "silo_runtime.py"),
+		[]byte("def call(c, a, args):\n    return {'result': [c, a, args]}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	script := `
+import tools
+print(tools.lightpanda.markdown(url="https://x")["result"])
+print("lightpanda" in dir(tools))
+print(hasattr(tools, "nope"))
+`
+	cmd := exec.Command(py, "-c", script)
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	want := "['lightpanda', 'markdown', {'url': 'https://x'}]\nTrue\nFalse\n"
+	if string(out) != want {
+		t.Fatalf("got %q", out)
+	}
+}

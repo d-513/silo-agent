@@ -97,7 +97,7 @@ func Write(dir string, stubs []*v1.ToolStub) error {
 	if err := ResetDir(dir); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, "__init__.py"), []byte(""), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "__init__.py"), []byte(RootInit), 0o644); err != nil {
 		return err
 	}
 	pkgs := map[string][]string{}
@@ -131,6 +131,29 @@ func Write(dir string, stubs []*v1.ToolStub) error {
 	}
 	return nil
 }
+
+// RootInit is tools/__init__.py. It makes `import tools` then
+// `tools.<slug>.fn()` work without an explicit `import tools.<slug>`. Loading
+// is lazy (PEP 562), so one broken connector package fails only when used,
+// not every import of tools.
+const RootInit = `import importlib as _importlib
+import pkgutil as _pkgutil
+
+
+def __getattr__(name):
+    if name.startswith("_"):
+        raise AttributeError(name)
+    try:
+        return _importlib.import_module(f"{__name__}.{name}")
+    except ModuleNotFoundError as e:
+        if e.name == f"{__name__}.{name}":
+            raise AttributeError(f"no connector {name!r} in tools; attached: {__dir__()}") from None
+        raise
+
+
+def __dir__():
+    return sorted(m.name for m in _pkgutil.iter_modules(__path__))
+`
 
 func fileBody(s *v1.ToolStub, slug, fn string) (string, error) {
 	sch, err := parseSchema(s.GetArgsSchemaJson())

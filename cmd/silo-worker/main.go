@@ -704,7 +704,7 @@ func ensureToolsDir() {
 	_ = os.MkdirAll(dir, 0o755)
 	p := filepath.Join(dir, "__init__.py")
 	if _, err := os.Stat(p); err != nil {
-		_ = os.WriteFile(p, []byte(""), 0o644)
+		_ = os.WriteFile(p, []byte(toolsgen.RootInit), 0o644)
 	}
 }
 
