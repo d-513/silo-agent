@@ -29,6 +29,8 @@ const LABELS: Record<string, string> = {
   model: "Default model",
   model_title: "Chat title model",
   model_approval: "Auto-approval model",
+  embedding_model: "Embedding model",
+  "memory.auto_recall": "Auto-recall",
   debug: "Debug logging",
   "search.engine": "Engine",
   http_addr: "Listen address",
@@ -42,10 +44,21 @@ const LABELS: Record<string, string> = {
   "bootstrap.password": "Password",
 };
 
+const HINTS: Record<string, string> = {
+  embedding_model: "For long-term memories. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly.",
+};
+
+const PLACEHOLDERS: Record<string, string> = {
+  embedding_model: "openrouter/openai/text-embedding-3-small",
+};
+
+const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the opening message into each run. The embedding model is under Models.";
+
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model") return "models";
+  if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
@@ -172,6 +185,7 @@ export function AdminSettings() {
   const defaultModel = values["model"] ?? "";
   const titleModel = values["model_title"] ?? "";
   const approvalModel = values["model_approval"] ?? "";
+  const embedModel = values["embedding_model"] ?? "";
 
   return (
     <div>
@@ -185,6 +199,9 @@ export function AdminSettings() {
           defaultField={fields.find((f) => f.key === "model")}
           titleField={fields.find((f) => f.key === "model_title")}
           approvalField={fields.find((f) => f.key === "model_approval")}
+          embedModel={embedModel}
+          embedField={fields.find((f) => f.key === "embedding_model")}
+          onEmbed={(v) => setValue("embedding_model", v)}
           onDefault={(v) => setValue("model", v)}
           onTitle={(v) => setValue("model_title", v)}
           onApproval={(v) => setValue("model_approval", v)}
@@ -202,6 +219,7 @@ export function AdminSettings() {
             onChange={setValue}
           />
         ))}
+        <FieldGroup title="Memory" note={MEMORY_NOTE} rows={rowsIn("memory")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />
@@ -352,6 +370,9 @@ function ModelSettings({
   onDefault,
   onTitle,
   onApproval,
+  embedModel,
+  embedField,
+  onEmbed,
   onSaveModels,
 }: {
   models: ModelOption[];
@@ -364,6 +385,9 @@ function ModelSettings({
   onDefault: (v: string) => void;
   onTitle: (v: string) => void;
   onApproval: (v: string) => void;
+  embedModel: string;
+  embedField?: ConfigField;
+  onEmbed: (v: string) => void;
   onSaveModels: (list: string[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(models.map((m) => m.id).join("\n"));
@@ -397,7 +421,7 @@ function ModelSettings({
 
   return (
     <Panel title="Models" note="Model ids are provider/model. The allowlist drives the chat model picker.">
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2">
         <Field label="Default model">
           <Select
             value={defaultModel}
@@ -426,6 +450,17 @@ function ModelSettings({
             placeholder="Same as title model"
             emptyLabel="Same as title model"
             options={[{ value: "", label: "Same as title model" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
+          />
+        </Field>
+        {/* Embedding models are not chat models, so this is free text, not the allowlist. */}
+        <Field label="Embedding model" hint={HINTS.embedding_model} headerRight={embedField ? <SourceChips field={embedField} /> : undefined}>
+          <input
+            className={`${inputClass} font-mono text-[13px]`}
+            autoComplete="off"
+            placeholder={PLACEHOLDERS.embedding_model}
+            value={embedModel}
+            disabled={embedField?.source === ConfigSource.ENV}
+            onChange={(e) => onEmbed(e.target.value)}
           />
         </Field>
       </div>
@@ -636,6 +671,7 @@ function FieldRow({
         className={inputClass}
         type={field.secret ? "password" : "text"}
         autoComplete="off"
+        placeholder={PLACEHOLDERS[field.key]}
         value={value}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
@@ -644,7 +680,7 @@ function FieldRow({
   }
 
   return (
-    <Field label={label} headerRight={<SourceChips field={field} />}>
+    <Field label={label} hint={HINTS[field.key]} headerRight={<SourceChips field={field} />}>
       {control}
     </Field>
   );

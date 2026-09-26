@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	memoryMax = 8000
-	soulMax   = 8000
+	coreMemoryMax = 8000
+	soulMax       = 8000
 )
 
 const defaultSoul = `Who you are, how you speak, and hard rules. You and the human both edit this.`
@@ -49,7 +49,7 @@ func applySoul(cur, content, old, neu string) (string, error) {
 	return next, nil
 }
 
-func applyMemory(cur, appendText, old, neu string) (string, error) {
+func applyCoreMemory(cur, appendText, old, neu string) (string, error) {
 	var next string
 	switch {
 	case old != "":
@@ -67,8 +67,8 @@ func applyMemory(cur, appendText, old, neu string) (string, error) {
 	default:
 		return "", errors.New("pass append, or old_text/new_text to edit or compact")
 	}
-	if len(next) > memoryMax && len(next) >= len(cur) {
-		return "", fmt.Errorf("MEMORY is %d/%d characters. Compact it: replace redundant entries with a shorter summary using old_text/new_text, then retry.", len(cur), memoryMax)
+	if len(next) > coreMemoryMax && len(next) >= len(cur) {
+		return "", fmt.Errorf("CORE MEMORY is %d/%d characters. Compact it: replace redundant entries with a shorter summary using old_text/new_text, then retry.", len(cur), coreMemoryMax)
 	}
 	return next, nil
 }
@@ -91,8 +91,8 @@ func (a *App) execDoc(botID, name string, args map[string]any) (string, error) {
 			return "", err
 		}
 		b.Soul = next
-	case "memory":
-		next, err = applyMemory(b.Memory, str("append"), str("old_text"), str("new_text"))
+	case "core_memory":
+		next, err = applyCoreMemory(b.Memory, str("append"), str("old_text"), str("new_text"))
 		if err != nil {
 			return "", err
 		}

@@ -51,3 +51,16 @@ func TestRunEventSeqKeepsInsertOrder(t *testing.T) {
 		t.Fatalf("order %v", evs)
 	}
 }
+
+func TestMigrateRenamesMemoryRule(t *testing.T) {
+	gdb := dbtest.New(t)
+	gdb.Create(&db.Rule{ID: "r1", BotID: "b1", Connector: "bot", Action: "memory", Decision: "deny"})
+	if err := db.Migrate(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var got db.Rule
+	gdb.First(&got, "id = ?", "r1")
+	if got.Action != "core_memory" || got.Decision != "deny" {
+		t.Fatalf("rule %+v", got)
+	}
+}

@@ -207,7 +207,8 @@ function toolMeta(name: string): { app: string } {
     case "soul":
       return { app: "SOUL" };
     case "memory":
-      return { app: "MEMORY" };
+    case "core_memory":
+      return { app: "CORE MEMORY" };
     case "skill":
       return { app: "Skills" };
     case "artifact":
@@ -511,7 +512,7 @@ function ToolInput({ name, args, running }: { name: string; args: string; runnin
         {limit != null ? <div className="text-ink-3">limit {asStr(limit)}</div> : null}
       </div>
     );
-  } else if ((name === "soul" || name === "memory") && (content || append || oldText || newText)) {
+  } else if ((name === "soul" || name === "memory" || name === "core_memory") && (content || append || oldText || newText)) {
     if (oldText || newText) {
       const lines = [
         ...(oldText ? oldText.split("\n").map((l) => `-${l}`) : []),

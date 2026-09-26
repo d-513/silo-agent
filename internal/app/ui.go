@@ -443,6 +443,11 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 			if k == "search.engine" && v != "" && !search.Known(v) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
 			}
+			if k == "embedding_model" && v != "" {
+				if err := a.canEmbed(v); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+			}
 			if (k == "model" || k == "model_title" || k == "model_approval") && v != "" {
 				if _, _, err := llm.Parse(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)

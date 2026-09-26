@@ -59,6 +59,8 @@ const (
 	UIDeleteBotProcedure = "/silo.v1.UI/DeleteBot"
 	// UIListMemoriesProcedure is the fully-qualified name of the UI's ListMemories RPC.
 	UIListMemoriesProcedure = "/silo.v1.UI/ListMemories"
+	// UISearchMemoriesProcedure is the fully-qualified name of the UI's SearchMemories RPC.
+	UISearchMemoriesProcedure = "/silo.v1.UI/SearchMemories"
 	// UIDeleteMemoryProcedure is the fully-qualified name of the UI's DeleteMemory RPC.
 	UIDeleteMemoryProcedure = "/silo.v1.UI/DeleteMemory"
 	// UIListChatsProcedure is the fully-qualified name of the UI's ListChats RPC.
@@ -190,6 +192,7 @@ type UIClient interface {
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
+	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
@@ -336,6 +339,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIListMemoriesProcedure,
 			connect.WithSchema(uIMethods.ByName("ListMemories")),
+			connect.WithClientOptions(opts...),
+		),
+		searchMemories: connect.NewClient[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse](
+			httpClient,
+			baseURL+UISearchMemoriesProcedure,
+			connect.WithSchema(uIMethods.ByName("SearchMemories")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteMemory: connect.NewClient[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse](
@@ -698,6 +707,7 @@ type uIClient struct {
 	resetContainer      *connect.Client[v1.GetBotRequest, v1.Bot]
 	deleteBot           *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
 	listMemories        *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
+	searchMemories      *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
 	deleteMemory        *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
 	listChats           *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
 	createChat          *connect.Client[v1.CreateChatRequest, v1.Chat]
@@ -820,6 +830,11 @@ func (c *uIClient) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBot
 // ListMemories calls silo.v1.UI.ListMemories.
 func (c *uIClient) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error) {
 	return c.listMemories.CallUnary(ctx, req)
+}
+
+// SearchMemories calls silo.v1.UI.SearchMemories.
+func (c *uIClient) SearchMemories(ctx context.Context, req *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error) {
+	return c.searchMemories.CallUnary(ctx, req)
 }
 
 // DeleteMemory calls silo.v1.UI.DeleteMemory.
@@ -1122,6 +1137,7 @@ type UIHandler interface {
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
+	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
 	ListChats(context.Context, *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error)
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
@@ -1264,6 +1280,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIListMemoriesProcedure,
 		svc.ListMemories,
 		connect.WithSchema(uIMethods.ByName("ListMemories")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISearchMemoriesHandler := connect.NewUnaryHandler(
+		UISearchMemoriesProcedure,
+		svc.SearchMemories,
+		connect.WithSchema(uIMethods.ByName("SearchMemories")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIDeleteMemoryHandler := connect.NewUnaryHandler(
@@ -1636,6 +1658,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteBotHandler.ServeHTTP(w, r)
 		case UIListMemoriesProcedure:
 			uIListMemoriesHandler.ServeHTTP(w, r)
+		case UISearchMemoriesProcedure:
+			uISearchMemoriesHandler.ServeHTTP(w, r)
 		case UIDeleteMemoryProcedure:
 			uIDeleteMemoryHandler.ServeHTTP(w, r)
 		case UIListChatsProcedure:
@@ -1809,6 +1833,10 @@ func (UnimplementedUIHandler) DeleteBot(context.Context, *connect.Request[v1.Get
 
 func (UnimplementedUIHandler) ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListMemories is not implemented"))
+}
+
+func (UnimplementedUIHandler) SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SearchMemories is not implemented"))
 }
 
 func (UnimplementedUIHandler) DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {

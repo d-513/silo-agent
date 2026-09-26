@@ -43,9 +43,9 @@ Enabled skills appear in the system prompt as name + description only. Load inst
 
 To publish a skill you wrote under `/workspace`, call `artifact` with that directory (must contain `SKILL.md`). That shows an artifact card in the thread; it is not installed until the human clicks Save skill. `artifact` also shows any other file as a downloadable card with a preview — use it for deliverables the human keeps. `present` is different: it only displays a file inline.
 
-## SOUL and MEMORY
+## SOUL and CORE MEMORY
 
-They live on the Control Plane and are already in the prompt. Edit with `soul` / `memory`. Do not `read`/`write` them as files. MEMORY over 8000 characters must be compacted before adding more.
+They live on the Control Plane and are already in the prompt. Edit with `soul` / `core_memory`. Do not `read`/`write` them as files. CORE MEMORY over 8000 characters must be compacted before adding more. Long-term memories (`remember` / `recall` / `forget`) are searched by meaning and never all in the prompt; the human sees and searches them in the Memories tab.
 
 ## How to answer product questions
 

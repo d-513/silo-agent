@@ -152,14 +152,14 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 		soul.WriteString("(empty — write it with the soul tool.)")
 	}
 	var mem strings.Builder
-	mem.WriteString("\n\n## MEMORY\n")
+	mem.WriteString("\n\n## CORE MEMORY\n")
 	if t := strings.TrimSpace(b.bot.Memory); t != "" {
 		mem.WriteString(t)
 	} else {
 		mem.WriteString("(empty)")
 	}
-	if len(b.bot.Memory) > memoryMax {
-		fmt.Fprintf(&mem, "\n\nMEMORY is over the %d-character cap (now %d). Compact it with `memory` (replace redundant facts with a shorter summary) before adding more.", memoryMax, len(b.bot.Memory))
+	if len(b.bot.Memory) > coreMemoryMax {
+		fmt.Fprintf(&mem, "\n\nCORE MEMORY is over the %d-character cap (now %d). Compact it with `core_memory` (replace redundant facts with a shorter summary) before adding more.", coreMemoryMax, len(b.bot.Memory))
 	}
 
 	raw := []llm.SystemBlock{

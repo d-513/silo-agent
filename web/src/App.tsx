@@ -1,4 +1,4 @@
-import { ArrowUp, Book, Box, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { ArrowUp, Book, Box, Brain, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -18,6 +18,7 @@ import { Thread, type Ev } from "./Thread";
 import { Composer } from "./Composer";
 import { AdminLayout, AccountPage, AdminDebug, AdminSettings, AdminSearchExtract } from "./Admin";
 import { SettingsPane } from "./Settings";
+import { MemoriesPane } from "./Memories";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
 import { BotChannels } from "./BotChannels";
@@ -25,7 +26,7 @@ import { RulesPane } from "./Rules";
 import { AdminSkills, BotSkills, SkillHub } from "./Skills";
 import type { Approval, Bot, BotConnector, Chat, Container, ModelOption, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
+const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "memories", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
 type Tab = NavTab | "console";
 
@@ -62,6 +63,7 @@ const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
   connectors: { label: "Connectors", icon: Plug },
   channels: { label: "Channels", icon: Radio },
   skills: { label: "Skills", icon: Book },
+  memories: { label: "Memories", icon: Brain },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },
   container: { label: "Container", icon: Box },
@@ -1758,6 +1760,11 @@ function BotPage() {
         {tab === "container" && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">
             <ContainerPane bot={bot} onStart={start} onStop={stop} />
+          </div>
+        )}
+        {tab === "memories" && (
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <MemoriesPane bot={bot} onSaved={setBot} onError={setActErr} />
           </div>
         )}
         {tab === "settings" && (

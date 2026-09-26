@@ -36,7 +36,7 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `mcp_stdio_image` | `localhost/silo-mcp-stdio:v1` | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
 | `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
-| `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds long-term memories (`remember`/`recall`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset` |
+| `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds long-term memories (`remember`/`recall`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models; a provider that cannot embed (Anthropic) is rejected |
 | `memory.auto_recall` | `true` | `SILO_MEMORY__AUTO_RECALL` | Inject up to 3 close long-term memories into each run's volatile prompt tail |
 | `models` | (none) | — | Allowlist of selectable models (YAML list) |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used |

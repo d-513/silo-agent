@@ -19,6 +19,7 @@ service UI {
   rpc ResetContainer(GetBotRequest) returns (Bot);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
+  rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
   rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
 
   rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
@@ -178,6 +179,8 @@ message Memory {
   string created_at = 3;
   // Empty until recall (or auto-recall) returns it.
   string last_used_at = 4;
+  // Cosine distance to the query; set only by SearchMemories.
+  double distance = 5;
 }
 
 message ListMemoriesRequest {
@@ -185,6 +188,19 @@ message ListMemoriesRequest {
 }
 
 message ListMemoriesResponse {
+  repeated Memory memories = 1;
+}
+
+// SearchMemories ranks the Bot's memories by meaning (pgvector). It does not
+// count as a recall, so last_used_at is left alone.
+message SearchMemoriesRequest {
+  string bot_id = 1;
+  string query = 2;
+  // Default 20, max 50.
+  int32 limit = 3;
+}
+
+message SearchMemoriesResponse {
   repeated Memory memories = 1;
 }
 

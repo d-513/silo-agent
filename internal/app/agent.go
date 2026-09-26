@@ -115,7 +115,7 @@ var toolDefs = []llm.Tool{
 			"new_text": map[string]any{"type": "string"},
 		},
 	}),
-	tool("memory", "Update this Bot's MEMORY (lasting facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append.", map[string]any{
+	tool("core_memory", "Update this Bot's CORE MEMORY (small, always-needed facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"append":   map[string]any{"type": "string"},
@@ -981,7 +981,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	if _, err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
 		return "", "", err
 	}
-	if name == "soul" || name == "memory" {
+	if name == "soul" || name == "core_memory" {
 		out, err := a.execDoc(botID, name, args)
 		return out, "", err
 	}
@@ -1148,7 +1148,7 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Files, name, true
 	case "look", "click", "type", "key", "scroll":
 		return security.Desktop, name, true
-	case "soul", "memory", "remember", "recall", "forget":
+	case "soul", "core_memory", "remember", "recall", "forget":
 		return security.Bot, name, true
 	case "skill":
 		return security.Skills, "load", true

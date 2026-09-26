@@ -267,5 +267,9 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.AutoMigrate(Models()...); err != nil {
 		return err
 	}
+	// The always-in-prompt MEMORY tool is now core_memory; keep the owner's rule.
+	if err := gdb.Exec("UPDATE rules SET action = 'core_memory' WHERE connector = 'bot' AND action = 'memory'").Error; err != nil {
+		return err
+	}
 	return gdb.Exec("CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)").Error
 }

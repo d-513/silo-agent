@@ -5,14 +5,14 @@ import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
 import { Select } from "./Select";
-import type { Bot, Memory, ModelOption } from "./gen/silo/v1/ui_pb";
+import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
   return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
-function PromptWell({
+export function PromptWell({
   label,
   hint,
   value,
@@ -37,76 +37,6 @@ function PromptWell({
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
-  );
-}
-
-function day(iso: string) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-}
-
-// MemoriesPanel lists the Bot's long-term (pgvector) memories. The Bot writes
-// them with `remember`; the human can only read and delete here.
-function MemoriesPanel({ botId, onError }: { botId: string; onError: (s: string) => void }) {
-  const [rows, setRows] = useState<Memory[] | null>(null);
-  useEffect(() => {
-    let dead = false;
-    setRows(null);
-    ui.listMemories({ botId })
-      .then((r) => {
-        if (!dead) setRows(r.memories);
-      })
-      .catch((e) => {
-        if (!dead) onError(fail(e));
-      });
-    return () => {
-      dead = true;
-    };
-  }, [botId]);
-  async function remove(id: string) {
-    onError("");
-    try {
-      await ui.deleteMemory({ botId, id });
-      setRows((cur) => (cur ?? []).filter((m) => m.id !== id));
-    } catch (e) {
-      onError(fail(e));
-    }
-  }
-  return (
-    <Panel
-      title="Long-term memories"
-      note="Saved by the Bot with remember and found by meaning. Only the closest few reach a run."
-      padded={false}
-      className="mt-4"
-    >
-      {rows === null ? (
-        <p className="px-5 py-4 text-ink-3">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="px-5 py-4 text-ink-3">None yet. The Bot adds them as it learns durable facts.</p>
-      ) : (
-        rows.map((m) => (
-          <div key={m.id} className="flex items-start gap-4 px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
-            <div className="min-w-0 flex-1">
-              <p className="break-words whitespace-pre-wrap">{m.content}</p>
-              <p className="mt-0.5 font-mono text-[11px] text-ink-3">
-                {day(m.createdAt)}
-                {m.lastUsedAt ? ` · recalled ${day(m.lastUsedAt)}` : ""}
-              </p>
-            </div>
-            <ArmedButton
-              kind="ghost"
-              size="sm"
-              iconOnly
-              className="shrink-0"
-              title="Delete memory"
-              icon={<Trash2 size={13} />}
-              onConfirm={() => void remove(m.id)}
-            >
-              Delete
-            </ArmedButton>
-          </div>
-        ))
-      )}
-    </Panel>
   );
 }
 
@@ -136,7 +66,6 @@ export function SettingsPane({
   const [name, setName] = useState(bot.name);
   const [description, setDescription] = useState(bot.description);
   const [soul, setSoul] = useState(bot.soul);
-  const [memory, setMemory] = useState(bot.memory);
   const [model, setModel] = useState(bot.model);
   const [models, setModels] = useState<ModelOption[]>([]);
   const saver = useSave();
@@ -146,7 +75,6 @@ export function SettingsPane({
     setName(bot.name);
     setDescription(bot.description);
     setSoul(bot.soul);
-    setMemory(bot.memory);
     setModel(bot.model);
     setDangerBusy(false);
   }, [bot.id]);
@@ -174,13 +102,13 @@ export function SettingsPane({
         name: name.trim(),
         description: description.trim(),
         soul,
-        memory,
+        // Core memory is edited on the Memories tab; send it back unchanged.
+        memory: bot.memory,
         autoApprove: bot.autoApprove,
         model: selectedModel,
       }));
       onSaved(next);
       setSoul(next.soul);
-      setMemory(next.memory);
       setModel(next.model);
     } catch (ex) {
       onError(fail(ex));
@@ -208,7 +136,7 @@ export function SettingsPane({
   return (
     <div className="silo-page pb-12">
       <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Settings</h2>
-      <p className="mb-6 text-ink-2">This Bot only. SOUL and MEMORY are in the prompt; the Bot can edit them too.</p>
+      <p className="mb-6 text-ink-2">This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories tab.</p>
       <form onSubmit={save} className="grid gap-4">
         <Panel title="Identity" note="Shown on the folio and in the run header.">
           <div className="grid gap-4">
@@ -244,11 +172,8 @@ export function SettingsPane({
           </Field>
         </Panel>
 
-        <Panel title="Prompt" note="Injected into the system prompt every run. The Bot can rewrite both.">
-          <div className="grid grid-cols-1 gap-4 wide:grid-cols-2">
-            <PromptWell label="SOUL" hint="Identity, tone, hard rules." value={soul} onChange={setSoul} />
-            <PromptWell label="MEMORY" hint="Lasting facts. Compact past 8000." value={memory} onChange={setMemory} />
-          </div>
+        <Panel title="Prompt" note="Injected into the system prompt every run. The Bot can rewrite it.">
+          <PromptWell label="SOUL" hint="Identity, tone, hard rules." value={soul} onChange={setSoul} />
         </Panel>
 
         <div className="flex items-center gap-3">
@@ -257,8 +182,6 @@ export function SettingsPane({
           </SaveButton>
         </div>
       </form>
-
-      <MemoriesPanel botId={bot.id} onError={onError} />
 
       <Panel
         title="Dangerous"

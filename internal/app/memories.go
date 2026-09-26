@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -23,6 +24,9 @@ const (
 	rememberMax = 2000
 	recallK     = 5
 	recallMaxK  = 20
+	// searchK / searchMaxK bound a human search from the Memories tab.
+	searchK    = 20
+	searchMaxK = 50
 	// dedupeDistance is the cosine distance under which a new memory replaces
 	// its nearest neighbour instead of adding a near-copy.
 	dedupeDistance = 0.05
@@ -62,6 +66,30 @@ func (a *App) embed(ctx context.Context, texts []string) ([]pgvector.Vector, str
 		out[i] = pgvector.NewVector(v)
 	}
 	return out, modelID, nil
+}
+
+// canEmbed reports whether modelID names a provider that implements
+// llm.Embedder, without needing its API key.
+func (a *App) canEmbed(modelID string) error {
+	provider, _, err := llm.Parse(modelID)
+	if err != nil {
+		return err
+	}
+	// Build a throwaway client: only its type matters, so a missing key is
+	// filled in and nothing is called.
+	settings := llm.Settings{}
+	maps.Copy(settings, a.cfg().ProviderSettings(provider))
+	if settings.Get("api_key") == "" {
+		settings["api_key"] = "probe"
+	}
+	client, err := llm.New(provider, settings)
+	if err != nil {
+		return err
+	}
+	if _, ok := client.(llm.Embedder); !ok {
+		return fmt.Errorf("%s cannot embed; pick an OpenAI-compatible provider", provider)
+	}
+	return nil
 }
 
 // nearest returns up to k of the bot's memories closest to vec, closest first,
@@ -112,20 +140,27 @@ func (a *App) remember(ctx context.Context, botID, runID, content string) (strin
 	return "remembered " + m.ID, nil
 }
 
-func (a *App) recall(ctx context.Context, botID, query string, k int, maxDist float64) ([]recalled, error) {
+var errNoQuery = errors.New("query required")
+
+// search ranks the bot's memories against query without marking them used.
+func (a *App) search(ctx context.Context, botID, query string, k int, maxDist float64) ([]recalled, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, errors.New("query required")
+		return nil, errNoQuery
 	}
-	if k <= 0 {
-		k = recallK
-	}
-	k = min(k, recallMaxK)
 	vecs, _, err := a.embed(ctx, []string{query})
 	if err != nil {
 		return nil, err
 	}
-	rows, err := a.nearest(botID, vecs[0], k, maxDist)
+	return a.nearest(botID, vecs[0], k, maxDist)
+}
+
+// recall is a search by the Bot: what it returns counts as used.
+func (a *App) recall(ctx context.Context, botID, query string, k int, maxDist float64) ([]recalled, error) {
+	if k <= 0 {
+		k = recallK
+	}
+	rows, err := a.search(ctx, botID, query, min(k, recallMaxK), maxDist)
 	if err != nil || len(rows) == 0 {
 		return rows, err
 	}
@@ -201,6 +236,44 @@ func (a *App) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemo
 		m := &v1.Memory{Id: r.ID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)}
 		if r.LastUsedAt != nil {
 			m.LastUsedAt = r.LastUsedAt.Format(time.RFC3339)
+		}
+		out.Memories = append(out.Memories, m)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (a *App) SearchMemories(ctx context.Context, req *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error) {
+	botID := req.Msg.GetBotId()
+	if _, err := a.ownBot(ctx, botID); err != nil {
+		return nil, err
+	}
+	k := int(req.Msg.GetLimit())
+	if k <= 0 {
+		k = searchK
+	}
+	rows, err := a.search(ctx, botID, req.Msg.GetQuery(), min(k, searchMaxK), 0)
+	if errors.Is(err, errNoQuery) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	memIDs := make([]string, len(rows))
+	for i, r := range rows {
+		memIDs[i] = r.ID
+	}
+	// nearest selects only what the prompt needs; fetch last_used_at for the UI.
+	used := map[string]*time.Time{}
+	var full []db.Memory
+	a.DB.Select("id, last_used_at").Where("id IN ?", memIDs).Find(&full)
+	for _, m := range full {
+		used[m.ID] = m.LastUsedAt
+	}
+	out := &v1.SearchMemoriesResponse{}
+	for _, r := range rows {
+		m := &v1.Memory{Id: r.ID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339), Distance: r.Distance}
+		if t := used[r.ID]; t != nil {
+			m.LastUsedAt = t.Format(time.RFC3339)
 		}
 		out.Memories = append(out.Memories, m)
 	}

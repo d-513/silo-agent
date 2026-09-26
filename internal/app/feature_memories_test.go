@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -172,5 +173,98 @@ func TestMemoriesListAndDeleteRPC(t *testing.T) {
 	}
 	if _, err := h.NewClient().ListMemories(h.Ctx(), connect.NewRequest(&v1.ListMemoriesRequest{BotId: bot.GetId()})); err == nil {
 		t.Fatal("unauthenticated ListMemories should fail")
+	}
+}
+
+func TestCoreMemoryTool(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_74", memCall("core_memory", `{"append":"Name is Ada"}`), dummy.Turn{Text: "ok"})
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithYAML(strings.Replace(apptest.DefaultYAML(dir), "search:", "debug: true\nsearch:", 1)))
+	bot := h.CreateBot("Core")
+	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_74_Input")
+	if res := memResults(h.WaitRun(run)); len(res) != 1 || !strings.HasPrefix(res[0], "ok") {
+		t.Fatalf("core_memory result %q\n%s", res, h.RunBody(run))
+	}
+	var b db.Bot
+	h.DB.First(&b, "id = ?", bot.GetId())
+	if b.Memory != "Name is Ada" {
+		t.Fatalf("bots.memory %q", b.Memory)
+	}
+	logs, err := h.Client.ListLLMLogs(h.Ctx(), connect.NewRequest(&v1.ListLLMLogsRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range logs.Msg.GetLogs() {
+		if l.GetLabel() != "chat" {
+			continue
+		}
+		req := l.GetRequest()
+		if !strings.Contains(req, "## CORE MEMORY") || strings.Contains(req, "## MEMORY") {
+			t.Fatalf("prompt lacks CORE MEMORY:\n%s", req)
+		}
+		return
+	}
+	t.Fatal("no chat log")
+}
+
+func TestSearchMemoriesRPC(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_75",
+		memCall("remember", `{"content":"The user's cat is named Miso"}`),
+		memCall("remember", `{"content":"Deploys happen on Fridays"}`),
+		dummy.Turn{Text: "ok"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Searcher")
+	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_75_Input")
+	h.WaitRun(run)
+
+	res, err := h.Client.SearchMemories(h.Ctx(), connect.NewRequest(&v1.SearchMemoriesRequest{BotId: bot.GetId(), Query: "what is the cat called"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ms := res.Msg.GetMemories()
+	if len(ms) != 2 || !strings.Contains(ms[0].GetContent(), "Miso") {
+		t.Fatalf("search order %v", ms)
+	}
+	if ms[0].GetDistance() > ms[1].GetDistance() {
+		t.Fatalf("distances not ascending: %v", ms)
+	}
+	var n int64
+	h.DB.Model(&db.Memory{}).Where("bot_id = ? AND last_used_at IS NOT NULL", bot.GetId()).Count(&n)
+	if n != 0 {
+		t.Fatal("a human search must not bump last_used_at")
+	}
+	if _, err := h.Client.SearchMemories(h.Ctx(), connect.NewRequest(&v1.SearchMemoriesRequest{BotId: bot.GetId(), Query: "  "})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("empty query: %v", err)
+	}
+	if _, err := h.NewClient().SearchMemories(h.Ctx(), connect.NewRequest(&v1.SearchMemoriesRequest{BotId: bot.GetId(), Query: "cat"})); err == nil {
+		t.Fatal("unauthenticated SearchMemories should fail")
+	}
+}
+
+func TestPutSettingsRejectsNonEmbeddingModel(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/silo.yaml"
+	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := apptest.New(t, apptest.WithConfigPath(path))
+	put := func(v string) error {
+		_, err := h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{Fields: map[string]string{"embedding_model": v}}))
+		return err
+	}
+	if err := put("anthropic/claude-sonnet-5"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("anthropic embedding model: %v", err)
+	}
+	if err := put("nope"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("unparseable embedding model: %v", err)
+	}
+	if err := put("openai/text-embedding-3-small"); err != nil {
+		t.Fatalf("openai embedding model: %v", err)
+	}
+	if got := h.Store.Config().EmbedModel; got != "openai/text-embedding-3-small" {
+		t.Fatalf("embedding_model %q", got)
 	}
 }
