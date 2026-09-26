@@ -652,6 +652,8 @@ message Connector {
   string prompt = 21;
   bool auto_attach = 22;
   string category = 23;
+  // The `tools.<slug>` name; a chat `call` event's tool is `<slug>.<action>`.
+  string slug = 24;
 }
 
 message ListConnectorsRequest {}

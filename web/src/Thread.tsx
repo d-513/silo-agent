@@ -16,10 +16,12 @@ import {
   FileX,
   GitBranch,
   Globe,
+  KeyRound,
   Keyboard,
   Lightbulb,
   MessageCircle,
   MessagesSquare,
+  Monitor,
   Mouse,
   MousePointerClick,
   Package,
@@ -299,15 +301,69 @@ const toolIcons: Record<string, LucideIcon> = {
   chats: MessagesSquare,
   list_models: Cpu,
   switch_model: Cpu,
-  call: Plug,
 };
 
-// 16px slot holding what the row is using: the Python mark, a Lucide glyph, or a plug for connectors.
-function ToolIcon({ name }: { name: string }) {
-  const Icon = toolIcons[name] ?? Wrench;
+// Built-in `import tools` slugs a Python `call` can hit (the rest are connectors).
+const builtinCallIcons: Record<string, LucideIcon> = {
+  desktop: Monitor,
+  web: Globe,
+  channels: Send,
+  chats: MessagesSquare,
+  artifact: Package,
+  secrets: KeyRound,
+  chromium: Globe,
+};
+
+// slug → the attached connector's mark, for `<slug>.<action>` call rows.
+type ConnectorMarks = ReadonlyMap<string, { id: string; hasImage: boolean }>;
+
+function useConnectorMarks(botId: string): ConnectorMarks {
+  const [marks, setMarks] = useState<ConnectorMarks>(new Map());
+  useEffect(() => {
+    let dead = false;
+    ui.listBotConnectors({ botId })
+      .then((r) => {
+        if (dead) return;
+        const m = new Map<string, { id: string; hasImage: boolean }>();
+        for (const x of r.connectors) {
+          const c = x.connector;
+          if (c?.slug) m.set(c.slug, { id: c.id, hasImage: c.hasImage });
+        }
+        setMarks(m);
+      })
+      .catch(() => {
+        /* rows fall back to the plug */
+      });
+    return () => {
+      dead = true;
+    };
+  }, [botId]);
+  return marks;
+}
+
+// 16px slot holding what the row is using: the Python mark, a Lucide glyph,
+// or a connector's own image (a plug when it has none).
+function ToolIcon({ name, marks }: { name: string; marks?: ConnectorMarks }) {
+  let inner: ReactNode;
+  if (name === "exec_python") {
+    inner = <PythonMark size={14} />;
+  } else if (name === "call" || name.includes(".") || builtinCallIcons[name]) {
+    const slug = name.split(".")[0];
+    const mark = marks?.get(slug);
+    const Icon = builtinCallIcons[slug] ?? Plug;
+    inner =
+      mark?.hasImage ? (
+        <img src={`/connectors/${mark.id}/image`} alt="" className="h-4 w-4 rounded-[3px] object-cover" />
+      ) : (
+        <Icon size={15} strokeWidth={1.75} />
+      );
+  } else {
+    const Icon = toolIcons[name] ?? Wrench;
+    inner = <Icon size={15} strokeWidth={1.75} />;
+  }
   return (
     <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
-      {name === "exec_python" ? <PythonMark size={14} /> : <Icon size={15} strokeWidth={1.75} />}
+      {inner}
     </span>
   );
 }
@@ -504,6 +560,7 @@ function FoldRow({
 function ToolRow({
   state,
   icon,
+  marks,
   verb,
   app,
   action,
@@ -512,6 +569,7 @@ function ToolRow({
 }: {
   state: RowState;
   icon: string;
+  marks?: ConnectorMarks;
   verb: string;
   app: string;
   action?: string;
@@ -524,7 +582,7 @@ function ToolRow({
       lead={
         <>
           <StateSlot state={state} />
-          <ToolIcon name={icon} />
+          <ToolIcon name={icon} marks={marks} />
         </>
       }
       title={
@@ -1147,6 +1205,7 @@ export function Thread({
   const openedAt = useRef(Date.now());
   const arrived = useRef(new Map<string, boolean>());
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const marks = useConnectorMarks(botId);
   const blocks = foldEvents(events);
   let lastUser: Extract<Block, { type: "user" }> | undefined;
   for (let i = blocks.length - 1; i >= 0; i--) {
@@ -1308,7 +1367,8 @@ export function Thread({
               <ToolRow
                 key={c.key}
                 state={cs}
-                icon="call"
+                icon={c.name || "call"}
+                marks={marks}
                 verb={rowVerb(cs, c.outcome, "Using", "Used")}
                 app={c.title}
                 action={c.name && c.name !== c.title ? c.name : undefined}

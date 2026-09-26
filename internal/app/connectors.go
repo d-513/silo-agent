@@ -1399,7 +1399,7 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 		DefaultMode: security.Rule(c.DefaultMode), CreatedAt: c.CreatedAt.Format(time.RFC3339),
 		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),
 		StdioCommand: c.StdioCommand, StdioArgs: mcpbridge.ParseArgs(c.StdioArgsJSON), StdioImage: c.StdioImage,
-		Prompt: c.Prompt, AutoAttach: c.AutoAttach,
+		Prompt: c.Prompt, AutoAttach: c.AutoAttach, Slug: toolsgen.Slug(c.Name),
 	}
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
 	for k := range hdr {

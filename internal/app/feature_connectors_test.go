@@ -174,6 +174,10 @@ func TestAutoAttachCopiedOnce(t *testing.T) {
 	for _, x := range xs.Msg.GetConnectors() {
 		if x.GetConnector().GetName() == "Lightpanda" && x.GetConnector().GetHttpUrl() == "${LIGHTPANDA_URL}/mcp" {
 			lightpanda = true
+			// The chat maps a `call` event's `<slug>.<action>` back to this row's mark.
+			if s := x.GetConnector().GetSlug(); s != "lightpanda" {
+				t.Fatalf("lightpanda slug %q", s)
+			}
 		}
 	}
 	if !lightpanda {

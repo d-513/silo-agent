@@ -5352,8 +5352,10 @@ type Connector struct {
 	Prompt               string                 `protobuf:"bytes,21,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	AutoAttach           bool                   `protobuf:"varint,22,opt,name=auto_attach,json=autoAttach,proto3" json:"auto_attach,omitempty"`
 	Category             string                 `protobuf:"bytes,23,opt,name=category,proto3" json:"category,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The `tools.<slug>` name; a chat `call` event's tool is `<slug>.<action>`.
+	Slug          string `protobuf:"bytes,24,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Connector) Reset() {
@@ -5543,6 +5545,13 @@ func (x *Connector) GetAutoAttach() bool {
 func (x *Connector) GetCategory() string {
 	if x != nil {
 		return x.Category
+	}
+	return ""
+}
+
+func (x *Connector) GetSlug() string {
+	if x != nil {
+		return x.Slug
 	}
 	return ""
 }
@@ -9263,7 +9272,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bEnvInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12\x16\n" +
-	"\x06secret\x18\x03 \x01(\tR\x06secret\"\xe1\x05\n" +
+	"\x06secret\x18\x03 \x01(\tR\x06secret\"\xf5\x05\n" +
 	"\tConnector\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -9293,7 +9302,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06prompt\x18\x15 \x01(\tR\x06prompt\x12\x1f\n" +
 	"\vauto_attach\x18\x16 \x01(\bR\n" +
 	"autoAttach\x12\x1a\n" +
-	"\bcategory\x18\x17 \x01(\tR\bcategory\"\x17\n" +
+	"\bcategory\x18\x17 \x01(\tR\bcategory\x12\x12\n" +
+	"\x04slug\x18\x18 \x01(\tR\x04slug\"\x17\n" +
 	"\x15ListConnectorsRequest\"L\n" +
 	"\x16ListConnectorsResponse\x122\n" +
 	"\n" +
