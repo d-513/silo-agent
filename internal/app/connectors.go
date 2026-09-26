@@ -634,6 +634,23 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		a.emitCallDone(bot.ID, runID, tool, capCall(out))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
+	case security.Bot:
+		// Python reaches the Bot's own surfaces that are not chat-only; the
+		// rest (soul, memory) stay chat tools.
+		if action != "feed" {
+			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		args := map[string]any{}
+		_ = json.Unmarshal([]byte(argsJSON), &args)
+		tool := security.Key(slug, action)
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", "Post to Feed", tool)
+		out, err := a.feedTool(ctx, bot, runID, args)
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, out)
+		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
 	case security.Artifact:
 		if action != "emit" {
 			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil

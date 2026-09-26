@@ -21,6 +21,10 @@ service UI {
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
   rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
+  rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
+  rpc MarkFeedRead(MarkFeedReadRequest) returns (MarkFeedReadResponse);
+  rpc DeleteFeedPost(DeleteFeedPostRequest) returns (DeleteFeedPostResponse);
+  rpc QuoteFeedPost(QuoteFeedPostRequest) returns (QuoteFeedPostResponse);
   rpc ListAutomations(ListAutomationsRequest) returns (ListAutomationsResponse);
   rpc CreateAutomation(CreateAutomationRequest) returns (Automation);
   rpc UpdateAutomation(UpdateAutomationRequest) returns (Automation);
@@ -140,6 +144,8 @@ message Bot {
   // Model is this Bot's default provider/model. Empty falls back to the
   // operator default; a chat override still wins for its conversation.
   string model = 11;
+  // FeedUnread counts Feed posts the owner has not seen yet.
+  int32 feed_unread = 12;
 }
 
 message ListBotsRequest {}
@@ -215,6 +221,52 @@ message DeleteMemoryRequest {
 }
 
 message DeleteMemoryResponse {}
+
+// FeedPost is one read-only message a Bot posted to its Feed with `feed`.
+message FeedPost {
+  string id = 1;
+  string body = 2; // markdown
+  string title = 3;
+  // Source names where it was posted from: "chat", "automation", or "channel".
+  string source_kind = 4;
+  // SourceName is the chat title, automation name, or channel name.
+  string source_name = 5;
+  string chat_id = 6;
+  string created_at = 7;
+  bool read = 8;
+}
+
+message ListFeedRequest {
+  string bot_id = 1;
+}
+
+message ListFeedResponse {
+  repeated FeedPost posts = 1;
+}
+
+// MarkFeedRead marks every post up to now as read.
+message MarkFeedReadRequest {
+  string bot_id = 1;
+}
+
+message MarkFeedReadResponse {}
+
+message DeleteFeedPostRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteFeedPostResponse {}
+
+// QuoteFeedPost starts a new chat whose context is the quoted post.
+message QuoteFeedPostRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message QuoteFeedPostResponse {
+  Chat chat = 1;
+}
 
 // Automation is a scheduled background prompt. Each one owns a hidden Chat
 // (chat_id) whose runs are its log; every firing starts with a fresh context.

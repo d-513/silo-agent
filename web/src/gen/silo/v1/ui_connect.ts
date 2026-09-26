@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Automation, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Automation, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -145,6 +145,42 @@ export const UI = {
       name: "DeleteMemory",
       I: DeleteMemoryRequest,
       O: DeleteMemoryResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListFeed
+     */
+    listFeed: {
+      name: "ListFeed",
+      I: ListFeedRequest,
+      O: ListFeedResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.MarkFeedRead
+     */
+    markFeedRead: {
+      name: "MarkFeedRead",
+      I: MarkFeedReadRequest,
+      O: MarkFeedReadResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteFeedPost
+     */
+    deleteFeedPost: {
+      name: "DeleteFeedPost",
+      I: DeleteFeedPostRequest,
+      O: DeleteFeedPostResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.QuoteFeedPost
+     */
+    quoteFeedPost: {
+      name: "QuoteFeedPost",
+      I: QuoteFeedPostRequest,
+      O: QuoteFeedPostResponse,
       kind: MethodKind.Unary,
     },
     /**

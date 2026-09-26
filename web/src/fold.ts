@@ -37,6 +37,8 @@ export type Block =
   | ToolBlock
   | ReceiptBlock
   | { key: string; type: "error"; text: string }
+  // A Feed post quoted into a new chat: `source` is where it was posted from.
+  | { key: string; type: "quote"; text: string; source: string; createdAt?: string }
   | {
       key: string;
       type: "artifact";
@@ -146,6 +148,10 @@ export function foldEvents(events: Ev[]): Block[] {
       } else {
         push({ key, type: "assistant", text: e.body, streaming: true, bounds: [0] });
       }
+      continue;
+    }
+    if (e.kind === "feed_quote") {
+      push({ key, type: "quote", text: e.body, source: e.tool, createdAt: e.createdAt });
       continue;
     }
     if (e.kind === "assistant" || e.kind === "section" || e.kind === "section_live") {

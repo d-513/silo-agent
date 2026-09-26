@@ -145,6 +145,18 @@ def read_chats(chat: str | None = None, limit: int | None = None) -> dict:
     return call("chats", "read", args)
 
 
+def feed(text: str, title: str | None = None) -> dict:
+    """Post a markdown message to the human's Feed (read-only inbox, unread badge).
+
+    Same as the `feed` chat tool: for results they should see later, such as
+    a digest from a script or automation. Self-contained; `title` is optional.
+    """
+    args: dict = {"text": text}
+    if title is not None:
+        args["title"] = title
+    return call("bot", "feed", args)
+
+
 def call(connector: str, action: str, args: dict | None = None) -> dict:
     clean = {k: v for k, v in (args or {}).items() if v is not None}
     body = {"connector": connector, "action": action, "args": clean}

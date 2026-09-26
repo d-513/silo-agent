@@ -90,3 +90,17 @@ console.log("ok");
   if (done[0].type !== "assistant" || done[0].bounds || done[0].streaming) throw new Error("settled reply kept bounds");
 }
 console.log("fold ok");
+
+// A quoted Feed post folds into one quote block ahead of the reply to it.
+{
+  const q = foldEvents([
+    { kind: "feed_quote", body: "**Prices** up", tool: "automation “Nightly”", createdAt: "2026-09-26T10:00:00Z" },
+    ev("user", "why?"),
+    ev("assistant", "because"),
+  ]);
+  const quote = q[0];
+  if (quote?.type !== "quote" || quote.text !== "**Prices** up" || quote.source !== "automation “Nightly”") {
+    throw new Error(`quote block ${JSON.stringify(quote)}`);
+  }
+  if (q.length !== 3 || q[1].type !== "user" || q[2].type !== "assistant") throw new Error(`blocks ${q.map((b) => b.type)}`);
+}

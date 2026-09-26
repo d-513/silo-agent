@@ -257,13 +257,29 @@ type Automation struct {
 	UpdatedAt  time.Time
 }
 
+// FeedPost is one read-only message a Bot posted to its owner's Feed with the
+// `feed` tool. ChatID/RunID name the conversation or automation log it came
+// from; ReadAt is set once the owner has seen it.
+type FeedPost struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index"`
+	Title      string
+	Body       string
+	SourceKind string
+	SourceName string
+	ChatID     string
+	RunID      string
+	ReadAt     *time.Time
+	CreatedAt  time.Time `gorm:"index"`
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &Automation{},
+		&Memory{}, &Automation{}, &FeedPost{},
 	}
 }
 

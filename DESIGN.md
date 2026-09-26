@@ -338,7 +338,7 @@ No bounce, and no overshoot beyond the settle curve.
 ### Chats list
 
 - 248px wide on `well`, headed by a `label-caps` "Chats" and a new-chat icon button.
-- Above the head sit two `control`-radius rows, **Automations** (timer) and **Memories** (brain), 15px icon and 13.5/500; the open one is a lifted `surface` row. They are peer pages to Chat, not chats.
+- Above the head sit three `control`-radius rows, **Automations** (timer), **Memories** (brain), and **Feed** (inbox), 15px icon and 13.5/500; the open one is a lifted `surface` row. They are peer pages to Chat, not chats. Feed carries a cobalt count pill (white mono 11px) while it has unread posts; the narrow chip shows an 8px cobalt dot instead.
 - Rows are 2 lines: title in 13.5/500 `ink`, meta in `ink-3` ("Just now", "Working…", "Waiting for you", "Yesterday"). A live run shows its lamp after the title.
 - The active row is lifted: `surface` fill with a `line` ring. Hover fills `pressed`.
 - Titles are generated from the first prompt. Rename with the pencil or a double-click.
@@ -383,16 +383,17 @@ No bounce, and no overshoot beyond the settle curve.
 - **Shell:** the rail (64px) plus main. Break at **960** (`wide:` / `max-wide:`). Below 960, the rail becomes a 48px top bar (safe-area padded) and crests scroll sideways.
 - **Bot view:**
   - A 56px header on `canvas` with a `line` bottom edge: crest 28 + name + lamp/status, the tab strip, a spacer, then Stop Bot / Start Bot (ghost).
-  - The body is chats (248, `well`) next to the thread on `canvas`. The sidebar opens with the **Automations** and **Memories** rows above the chats head; the page body is the log or list when one is open.
+  - The body is chats (248, `well`) next to the thread on `canvas`. The sidebar opens with the **Automations**, **Memories**, and **Feed** rows above the chats head; the page body is the log or list when one is open.
   - Desktop and Console give the whole main column to the hatch. Desktop's caret opens Console.
   - Under 1280px the header's Start/Stop shows only the power glyph.
 - **Tabs:** `Chat`, `Desktop`, `Files`, `Connectors`, `Channels`, `Skills`, `Secrets`, `Rules`, `Container`, `Settings`. The strip scrolls horizontally with edge fades. Add, edit and setup flows are their own routes, so the browser Back button works.
-- **Chat sidebar:** **Automations** and **Memories** are conversation-side pages, so they sit as two rows above the chats list and keep the Chat tab lit. Below 960 they are icon chips (label only when active) at the start of the chats strip, before a hairline and the chat chips.
+- **Chat sidebar:** **Automations**, **Memories**, and **Feed** are conversation-side pages, so they sit as rows above the chats list and keep the Chat tab lit. Below 960 they are icon chips (label only when active) at the start of the chats strip, before a hairline and the chat chips.
+- **Feed:** a `silo-page` of `surface` cards, newest first: optional title (15/600), a mono time + source line (a new post has a 6px cobalt dot for the visit), then the body in the thread's `Md`. Ghost icon actions top-right: Quote (message-square-quote) opens a new chat, Delete is armed. Read-only — no composer. A quoted post opens its chat as a `well` card with a 3px cobalt leading rule and a “Quoted from the Feed · source · time” caption.
 - **Settings / admin:** one column, 760px max (forms 560px), in `card`-radius panels. The Dangerous panel comes last, with armed destructive buttons.
 - **Bots home:** padded 28. One column below 1100px, 2 up to 1440px, 3 above that. No KPI row, no footer, no centered screens except sign-in.
 - **Below 960:**
   - Tabs become icons, with a label only on the active tab.
-  - Chats become a horizontal chip strip, opening with the **Automations** and **Memories** icon chips.
+  - Chats become a horizontal chip strip, opening with the **Automations**, **Memories**, and **Feed** icon chips.
   - Files shows either the tree or the preview, not both.
   - The approval slip becomes a bottom sheet.
   - Hit areas are 40px.

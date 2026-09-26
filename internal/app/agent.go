@@ -224,6 +224,14 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"query"},
 	}),
+	tool("feed", "Post a markdown message to the human's Feed: a read-only inbox with an unread badge that they check later. Use it for results they should see after the fact (automation findings, a finished long task, a digest) — not for replies in this chat. Self-contained: they may read it days later.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"title": map[string]any{"type": "string", "description": "optional short headline"},
+			"text":  map[string]any{"type": "string", "description": "the post, markdown"},
+		},
+		"required": []string{"text"},
+	}),
 	tool("channel", "Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -858,6 +866,7 @@ func (a *App) historyFromDB(chatID string) []llm.Message {
 // historyFromRuns replays the given runs, in order, as model messages.
 func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
 	var msgs []llm.Message
+	quoted := false
 	for _, run := range runs {
 		var evs []db.RunEvent
 		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
@@ -883,6 +892,11 @@ func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
 		}
 		for _, ev := range evs {
 			switch ev.Kind {
+			case feedQuoteKind:
+				flushTools()
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feedQuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
+				quoted = true
+				continue
 			case "user":
 				flushTools()
 				text := ev.Body
@@ -893,7 +907,14 @@ func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
 					}
 					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 				}
-				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, ev.CreatedAt)})
+				text = stampUserText(text, ev.CreatedAt)
+				// A quote is its own user turn; fold the reply into it so
+				// roles still alternate.
+				if n := len(msgs); quoted && n > 0 && msgs[n-1].Role == llm.RoleUser {
+					msgs[n-1].Text += "\n\n" + text
+				} else {
+					msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
+				}
 			case "assistant", "section":
 				flushTools()
 				if strings.TrimSpace(ev.Body) != "" {
@@ -1018,6 +1039,17 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	if name == "chats" {
 		out, err := a.chatsReadTool(ctx, botID, runID, args)
+		return out, "", err
+	}
+	if name == "feed" {
+		var bot db.Bot
+		if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+			return "", "", fmt.Errorf("unknown bot")
+		}
+		if args == nil {
+			args = map[string]any{}
+		}
+		out, err := a.feedTool(ctx, &bot, runID, args)
 		return out, "", err
 	}
 	if isAutomationTool(name) {

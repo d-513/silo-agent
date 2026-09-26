@@ -1,4 +1,4 @@
-import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, Inbox, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -20,6 +20,7 @@ import { AdminLayout, AccountPage, AdminDebug, AdminSettings, AdminSearchExtract
 import { SettingsPane } from "./Settings";
 import { AutomationsPane } from "./Automations";
 import { useRunStream } from "./useRunStream";
+import { FeedPane } from "./Feed";
 import { MemoriesPane } from "./Memories";
 import { AdminConnectors } from "./AdminConnectors";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
@@ -32,7 +33,7 @@ const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "se
 type NavTab = (typeof tabs)[number];
 // Side tabs live in the chat sidebar (the conversation lifecycle); the top
 // strip is config and machine. The Chat tab stays lit on all of them.
-const sideTabs = ["automations", "memories"] as const;
+const sideTabs = ["automations", "memories", "feed"] as const;
 type SideTab = (typeof sideTabs)[number];
 type Tab = NavTab | SideTab | "console";
 
@@ -976,7 +977,7 @@ function ContainerPane({
 }
 
 // SideLink is a one-line row above the chats list: the conversation-side pages.
-function SideLink({ to, on, icon: Icon, label }: { to: string; on: boolean; icon: typeof MessageCircle; label: string }) {
+function SideLink({ to, on, icon: Icon, label, badge = 0 }: { to: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number }) {
   return (
     <NavLink
       to={to}
@@ -985,24 +986,39 @@ function SideLink({ to, on, icon: Icon, label }: { to: string; on: boolean; icon
       }`}
     >
       <Icon size={15} />
-      {label}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {badge > 0 ? <UnreadBadge n={badge} /> : null}
     </NavLink>
   );
 }
 
+// UnreadBadge counts unseen Feed posts: a small cobalt pill.
+function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
+  const label = `${n} unread`;
+  if (dot) {
+    return <span aria-label={label} title={label} className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" />;
+  }
+  return (
+    <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-white">
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 // SideChip is SideLink in the narrow chip strip: icon only unless active.
-function SideChip({ to, on, icon: Icon, label }: { to: string; on: boolean; icon: typeof MessageCircle; label: string }) {
+function SideChip({ to, on, icon: Icon, label, badge = 0 }: { to: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number }) {
   return (
     <NavLink
       to={to}
       title={label}
       aria-label={label}
-      className={`flex h-10 shrink-0 items-center gap-2 rounded-control px-3 text-[13px] font-medium ${
+      className={`relative flex h-10 shrink-0 items-center gap-2 rounded-control px-3 text-[13px] font-medium ${
         on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
     >
       <Icon size={15} />
       {on && label}
+      {badge > 0 && !on ? <UnreadBadge n={badge} dot /> : null}
     </NavLink>
   );
 }
@@ -1399,6 +1415,7 @@ function BotPage() {
               <nav className="space-y-0.5 px-2 pt-2" aria-label="Conversation">
                 <SideLink to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
                 <SideLink to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
+                <SideLink to={`/bots/${id}/feed`} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
               </nav>
               <div className="flex h-12 items-center justify-between pr-2 pl-4">
                 <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">Chats</span>
@@ -1511,6 +1528,7 @@ function BotPage() {
                 />
                 <SideChip to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
                 <SideChip to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
+                <SideChip to={`/bots/${id}/feed`} on={tab === "feed"} icon={Inbox} label="Feed" badge={bot.feedUnread} />
                 <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />
                 {chats.map((c) => {
                   const on = tab === "run" && c.id === chatId;
@@ -1599,6 +1617,18 @@ function BotPage() {
               {tab === "memories" && (
                 <div className="min-h-0 min-w-0 flex-1 overflow-auto">
                   <MemoriesPane bot={bot} onSaved={setBot} onError={setActErr} />
+                </div>
+              )}
+              {tab === "feed" && (
+                <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+                  <FeedPane
+                    bot={bot}
+                    onError={setActErr}
+                    onQuoted={(c) => {
+                      setChats((xs) => [c, ...xs.filter((x) => x.id !== c.id)]);
+                      nav(`/bots/${id}/run/${c.id}`);
+                    }}
+                  />
                 </div>
               )}
               {tab === "run" && (

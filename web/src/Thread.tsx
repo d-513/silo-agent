@@ -15,6 +15,7 @@ import {
   FileText,
   FileX,
   GitBranch,
+  Inbox,
   Globe,
   KeyRound,
   Keyboard,
@@ -259,6 +260,8 @@ function toolMeta(name: string): { app: string } {
       return { app: "Channels" };
     case "chats":
       return { app: "Chats" };
+    case "feed":
+      return { app: "Feed" };
     case "list_models":
     case "switch_model":
       return { app: "Model" };
@@ -295,6 +298,7 @@ const toolIcons: Record<string, LucideIcon> = {
   remember: Brain,
   recall: Brain,
   forget: Brain,
+  feed: Inbox,
   skill: BookOpen,
   artifact: Package,
   web_search: Globe,
@@ -313,6 +317,7 @@ const builtinCallIcons: Record<string, LucideIcon> = {
   artifact: Package,
   secrets: KeyRound,
   chromium: Globe,
+  "bot.feed": Inbox,
 };
 
 // slug → the attached connector's mark, for `<slug>.<action>` call rows.
@@ -351,7 +356,7 @@ function ToolIcon({ name, marks }: { name: string; marks?: ConnectorMarks }) {
   } else if (name === "call" || name.includes(".") || builtinCallIcons[name]) {
     const slug = name.split(".")[0];
     const mark = marks?.get(slug);
-    const Icon = builtinCallIcons[slug] ?? Plug;
+    const Icon = builtinCallIcons[name] ?? builtinCallIcons[slug] ?? Plug;
     inner =
       mark?.hasImage ? (
         <img src={`/connectors/${mark.id}/image`} alt="" className="h-4 w-4 rounded-[3px] object-cover" />
@@ -906,7 +911,7 @@ const mdComponents: NonNullable<Parameters<typeof Markdown>[0]["components"]> = 
   },
 };
 
-function Md({ text, bounds }: { text: string; bounds?: number[] }) {
+export function Md({ text, bounds }: { text: string; bounds?: number[] }) {
   if (!text) return null;
   const plugins = bounds && bounds.length > 1 ? [...mdRehype, rehypeChunks(bounds)] : mdRehype;
   return (
@@ -1144,6 +1149,26 @@ function UserBubble({
   );
 }
 
+// FeedQuote is the Feed post a quoted chat starts from: the Bot's words, set
+// off by a cobalt rule, with where and when they were posted.
+function FeedQuote({ text, source, createdAt }: { text: string; source: string; createdAt?: string }) {
+  const at = createdAt ? new Date(createdAt) : null;
+  return (
+    <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-cobalt)]">
+      <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+        <Inbox size={12} className="shrink-0" />
+        <span className="truncate">
+          Quoted from the Feed{source ? ` · ${source}` : ""}
+          {at && !Number.isNaN(at.getTime()) ? ` · ${at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+        </span>
+      </figcaption>
+      <div className="silo-reply">
+        <Md text={text} />
+      </div>
+    </figure>
+  );
+}
+
 function Reply({ text, bounds, streaming, onRetry }: { text: string; bounds?: number[]; streaming?: boolean; onRetry?: () => void }) {
   return (
     <div className="group/reply min-w-0">
@@ -1361,6 +1386,7 @@ export function Thread({
       return <Thinking text={b.text} streaming={!!b.streaming && sending} ms={b.ms} />;
     }
     if (b.type === "receipt") return <Receipt b={b} />;
+    if (b.type === "quote") return <FeedQuote text={b.text} source={b.source} createdAt={b.createdAt} />;
     if (b.type === "tool") {
       if (b.name === "artifact" && blocks.some((x) => x.type === "artifact" && (!x.runId || !b.runId || x.runId === b.runId))) {
         return null;

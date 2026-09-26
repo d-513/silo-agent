@@ -87,6 +87,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Memory:          b.Memory,
 		AutoApprove:     b.AutoApprove,
 		Model:           b.Model,
+		FeedUnread:      a.feedUnread(b.ID),
 	}
 }
 
@@ -268,6 +269,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Memory{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
 	var bcs []db.BotConnector

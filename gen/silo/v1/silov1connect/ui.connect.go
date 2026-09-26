@@ -63,6 +63,14 @@ const (
 	UISearchMemoriesProcedure = "/silo.v1.UI/SearchMemories"
 	// UIDeleteMemoryProcedure is the fully-qualified name of the UI's DeleteMemory RPC.
 	UIDeleteMemoryProcedure = "/silo.v1.UI/DeleteMemory"
+	// UIListFeedProcedure is the fully-qualified name of the UI's ListFeed RPC.
+	UIListFeedProcedure = "/silo.v1.UI/ListFeed"
+	// UIMarkFeedReadProcedure is the fully-qualified name of the UI's MarkFeedRead RPC.
+	UIMarkFeedReadProcedure = "/silo.v1.UI/MarkFeedRead"
+	// UIDeleteFeedPostProcedure is the fully-qualified name of the UI's DeleteFeedPost RPC.
+	UIDeleteFeedPostProcedure = "/silo.v1.UI/DeleteFeedPost"
+	// UIQuoteFeedPostProcedure is the fully-qualified name of the UI's QuoteFeedPost RPC.
+	UIQuoteFeedPostProcedure = "/silo.v1.UI/QuoteFeedPost"
 	// UIListAutomationsProcedure is the fully-qualified name of the UI's ListAutomations RPC.
 	UIListAutomationsProcedure = "/silo.v1.UI/ListAutomations"
 	// UICreateAutomationProcedure is the fully-qualified name of the UI's CreateAutomation RPC.
@@ -204,6 +212,10 @@ type UIClient interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	ListFeed(context.Context, *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error)
+	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
+	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
+	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -366,6 +378,30 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDeleteMemoryProcedure,
 			connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+			connect.WithClientOptions(opts...),
+		),
+		listFeed: connect.NewClient[v1.ListFeedRequest, v1.ListFeedResponse](
+			httpClient,
+			baseURL+UIListFeedProcedure,
+			connect.WithSchema(uIMethods.ByName("ListFeed")),
+			connect.WithClientOptions(opts...),
+		),
+		markFeedRead: connect.NewClient[v1.MarkFeedReadRequest, v1.MarkFeedReadResponse](
+			httpClient,
+			baseURL+UIMarkFeedReadProcedure,
+			connect.WithSchema(uIMethods.ByName("MarkFeedRead")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteFeedPost: connect.NewClient[v1.DeleteFeedPostRequest, v1.DeleteFeedPostResponse](
+			httpClient,
+			baseURL+UIDeleteFeedPostProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteFeedPost")),
+			connect.WithClientOptions(opts...),
+		),
+		quoteFeedPost: connect.NewClient[v1.QuoteFeedPostRequest, v1.QuoteFeedPostResponse](
+			httpClient,
+			baseURL+UIQuoteFeedPostProcedure,
+			connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
 			connect.WithClientOptions(opts...),
 		),
 		listAutomations: connect.NewClient[v1.ListAutomationsRequest, v1.ListAutomationsResponse](
@@ -754,6 +790,10 @@ type uIClient struct {
 	listMemories        *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
 	searchMemories      *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
 	deleteMemory        *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
+	listFeed            *connect.Client[v1.ListFeedRequest, v1.ListFeedResponse]
+	markFeedRead        *connect.Client[v1.MarkFeedReadRequest, v1.MarkFeedReadResponse]
+	deleteFeedPost      *connect.Client[v1.DeleteFeedPostRequest, v1.DeleteFeedPostResponse]
+	quoteFeedPost       *connect.Client[v1.QuoteFeedPostRequest, v1.QuoteFeedPostResponse]
 	listAutomations     *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
 	createAutomation    *connect.Client[v1.CreateAutomationRequest, v1.Automation]
 	updateAutomation    *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
@@ -890,6 +930,26 @@ func (c *uIClient) SearchMemories(ctx context.Context, req *connect.Request[v1.S
 // DeleteMemory calls silo.v1.UI.DeleteMemory.
 func (c *uIClient) DeleteMemory(ctx context.Context, req *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return c.deleteMemory.CallUnary(ctx, req)
+}
+
+// ListFeed calls silo.v1.UI.ListFeed.
+func (c *uIClient) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error) {
+	return c.listFeed.CallUnary(ctx, req)
+}
+
+// MarkFeedRead calls silo.v1.UI.MarkFeedRead.
+func (c *uIClient) MarkFeedRead(ctx context.Context, req *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error) {
+	return c.markFeedRead.CallUnary(ctx, req)
+}
+
+// DeleteFeedPost calls silo.v1.UI.DeleteFeedPost.
+func (c *uIClient) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error) {
+	return c.deleteFeedPost.CallUnary(ctx, req)
+}
+
+// QuoteFeedPost calls silo.v1.UI.QuoteFeedPost.
+func (c *uIClient) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
+	return c.quoteFeedPost.CallUnary(ctx, req)
 }
 
 // ListAutomations calls silo.v1.UI.ListAutomations.
@@ -1214,6 +1274,10 @@ type UIHandler interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	ListFeed(context.Context, *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error)
+	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
+	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
+	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -1372,6 +1436,30 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteMemoryProcedure,
 		svc.DeleteMemory,
 		connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListFeedHandler := connect.NewUnaryHandler(
+		UIListFeedProcedure,
+		svc.ListFeed,
+		connect.WithSchema(uIMethods.ByName("ListFeed")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIMarkFeedReadHandler := connect.NewUnaryHandler(
+		UIMarkFeedReadProcedure,
+		svc.MarkFeedRead,
+		connect.WithSchema(uIMethods.ByName("MarkFeedRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteFeedPostHandler := connect.NewUnaryHandler(
+		UIDeleteFeedPostProcedure,
+		svc.DeleteFeedPost,
+		connect.WithSchema(uIMethods.ByName("DeleteFeedPost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIQuoteFeedPostHandler := connect.NewUnaryHandler(
+		UIQuoteFeedPostProcedure,
+		svc.QuoteFeedPost,
+		connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListAutomationsHandler := connect.NewUnaryHandler(
@@ -1772,6 +1860,14 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISearchMemoriesHandler.ServeHTTP(w, r)
 		case UIDeleteMemoryProcedure:
 			uIDeleteMemoryHandler.ServeHTTP(w, r)
+		case UIListFeedProcedure:
+			uIListFeedHandler.ServeHTTP(w, r)
+		case UIMarkFeedReadProcedure:
+			uIMarkFeedReadHandler.ServeHTTP(w, r)
+		case UIDeleteFeedPostProcedure:
+			uIDeleteFeedPostHandler.ServeHTTP(w, r)
+		case UIQuoteFeedPostProcedure:
+			uIQuoteFeedPostHandler.ServeHTTP(w, r)
 		case UIListAutomationsProcedure:
 			uIListAutomationsHandler.ServeHTTP(w, r)
 		case UICreateAutomationProcedure:
@@ -1961,6 +2057,22 @@ func (UnimplementedUIHandler) SearchMemories(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteMemory is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListFeed(context.Context, *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListFeed is not implemented"))
+}
+
+func (UnimplementedUIHandler) MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.MarkFeedRead is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteFeedPost is not implemented"))
+}
+
+func (UnimplementedUIHandler) QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.QuoteFeedPost is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
