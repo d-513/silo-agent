@@ -7,9 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/gorm/clause"
 
+	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -185,4 +187,32 @@ func (a *App) autoRecall(ctx context.Context, botID, userText string) string {
 		return ""
 	}
 	return "Long-term memories close to this message (use `recall` for more, `forget` for wrong ones):\n" + formatRecalled(rows)
+}
+
+func (a *App) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error) {
+	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+		return nil, err
+	}
+	var rows []db.Memory
+	a.DB.Select("id, content, created_at, last_used_at").
+		Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
+	out := &v1.ListMemoriesResponse{}
+	for _, r := range rows {
+		m := &v1.Memory{Id: r.ID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+		if r.LastUsedAt != nil {
+			m.LastUsedAt = r.LastUsedAt.Format(time.RFC3339)
+		}
+		out.Memories = append(out.Memories, m)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (a *App) DeleteMemory(ctx context.Context, req *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
+	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+		return nil, err
+	}
+	if _, err := a.forget(req.Msg.GetBotId(), req.Msg.GetId()); err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	return connect.NewResponse(&v1.DeleteMemoryResponse{}), nil
 }

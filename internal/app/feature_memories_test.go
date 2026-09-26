@@ -147,3 +147,30 @@ func TestMemoriesAutoRecallInPrompt(t *testing.T) {
 	}
 	t.Fatal("no chat log for the second run")
 }
+
+func TestMemoriesListAndDeleteRPC(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_73", memCall("remember", `{"content":"Prefers metric units"}`), dummy.Turn{Text: "ok"})
+	h := apptest.New(t)
+	bot := h.CreateBot("Listed")
+	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_73_Input")
+	h.WaitRun(run)
+
+	list, err := h.Client.ListMemories(h.Ctx(), connect.NewRequest(&v1.ListMemoriesRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Msg.GetMemories()) != 1 || list.Msg.GetMemories()[0].GetContent() != "Prefers metric units" {
+		t.Fatalf("memories %v", list.Msg.GetMemories())
+	}
+	id := list.Msg.GetMemories()[0].GetId()
+	if _, err := h.Client.DeleteMemory(h.Ctx(), connect.NewRequest(&v1.DeleteMemoryRequest{BotId: bot.GetId(), Id: id})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.DeleteMemory(h.Ctx(), connect.NewRequest(&v1.DeleteMemoryRequest{BotId: bot.GetId(), Id: id})); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("second delete: %v", err)
+	}
+	if _, err := h.NewClient().ListMemories(h.Ctx(), connect.NewRequest(&v1.ListMemoriesRequest{BotId: bot.GetId()})); err == nil {
+		t.Fatal("unauthenticated ListMemories should fail")
+	}
+}

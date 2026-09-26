@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SaveSkillRequest, SaveSkillResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, Connector, Container, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunEvent, SaveSkillRequest, SaveSkillResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StreamRunRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -118,6 +118,24 @@ export const UI = {
       name: "DeleteBot",
       I: GetBotRequest,
       O: DeleteBotResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListMemories
+     */
+    listMemories: {
+      name: "ListMemories",
+      I: ListMemoriesRequest,
+      O: ListMemoriesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteMemory
+     */
+    deleteMemory: {
+      name: "DeleteMemory",
+      I: DeleteMemoryRequest,
+      O: DeleteMemoryResponse,
       kind: MethodKind.Unary,
     },
     /**

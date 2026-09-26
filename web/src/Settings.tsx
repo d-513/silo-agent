@@ -5,7 +5,7 @@ import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
 import { Select } from "./Select";
-import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
+import type { Bot, Memory, ModelOption } from "./gen/silo/v1/ui_pb";
 
 function fail(e: unknown) {
   const m = e instanceof Error ? e.message : "failed";
@@ -37,6 +37,76 @@ function PromptWell({
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
+  );
+}
+
+function day(iso: string) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+}
+
+// MemoriesPanel lists the Bot's long-term (pgvector) memories. The Bot writes
+// them with `remember`; the human can only read and delete here.
+function MemoriesPanel({ botId, onError }: { botId: string; onError: (s: string) => void }) {
+  const [rows, setRows] = useState<Memory[] | null>(null);
+  useEffect(() => {
+    let dead = false;
+    setRows(null);
+    ui.listMemories({ botId })
+      .then((r) => {
+        if (!dead) setRows(r.memories);
+      })
+      .catch((e) => {
+        if (!dead) onError(fail(e));
+      });
+    return () => {
+      dead = true;
+    };
+  }, [botId]);
+  async function remove(id: string) {
+    onError("");
+    try {
+      await ui.deleteMemory({ botId, id });
+      setRows((cur) => (cur ?? []).filter((m) => m.id !== id));
+    } catch (e) {
+      onError(fail(e));
+    }
+  }
+  return (
+    <Panel
+      title="Long-term memories"
+      note="Saved by the Bot with remember and found by meaning. Only the closest few reach a run."
+      padded={false}
+      className="mt-4"
+    >
+      {rows === null ? (
+        <p className="px-5 py-4 text-ink-3">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="px-5 py-4 text-ink-3">None yet. The Bot adds them as it learns durable facts.</p>
+      ) : (
+        rows.map((m) => (
+          <div key={m.id} className="flex items-start gap-4 px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
+            <div className="min-w-0 flex-1">
+              <p className="break-words whitespace-pre-wrap">{m.content}</p>
+              <p className="mt-0.5 font-mono text-[11px] text-ink-3">
+                {day(m.createdAt)}
+                {m.lastUsedAt ? ` · recalled ${day(m.lastUsedAt)}` : ""}
+              </p>
+            </div>
+            <ArmedButton
+              kind="ghost"
+              size="sm"
+              iconOnly
+              className="shrink-0"
+              title="Delete memory"
+              icon={<Trash2 size={13} />}
+              onConfirm={() => void remove(m.id)}
+            >
+              Delete
+            </ArmedButton>
+          </div>
+        ))
+      )}
+    </Panel>
   );
 }
 
@@ -187,6 +257,8 @@ export function SettingsPane({
           </SaveButton>
         </div>
       </form>
+
+      <MemoriesPanel botId={bot.id} onError={onError} />
 
       <Panel
         title="Dangerous"

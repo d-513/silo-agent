@@ -18,6 +18,8 @@ service UI {
   rpc StopBot(GetBotRequest) returns (Bot);
   rpc ResetContainer(GetBotRequest) returns (Bot);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
+  rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
+  rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
 
   rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
   rpc CreateChat(CreateChatRequest) returns (Chat);
@@ -168,6 +170,30 @@ message Container {
 }
 
 message DeleteBotResponse {}
+
+// Memory is one long-term (pgvector) memory a Bot saved with `remember`.
+message Memory {
+  string id = 1;
+  string content = 2;
+  string created_at = 3;
+  // Empty until recall (or auto-recall) returns it.
+  string last_used_at = 4;
+}
+
+message ListMemoriesRequest {
+  string bot_id = 1;
+}
+
+message ListMemoriesResponse {
+  repeated Memory memories = 1;
+}
+
+message DeleteMemoryRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteMemoryResponse {}
 
 message Chat {
   string id = 1;
