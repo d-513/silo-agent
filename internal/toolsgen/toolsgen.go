@@ -218,9 +218,14 @@ func funcDoc(desc, action string, sch jsonSchema) string {
 	}
 	var b strings.Builder
 	b.WriteString(desc)
+	var renamed []string
 	for _, n := range orderedNames(sch) {
 		p := sch.Properties[n]
-		fmt.Fprintf(&b, "\n%s (%s)", n, pyType(p.Type))
+		id := pyIdent(n)
+		if id != n {
+			renamed = append(renamed, n+" → "+id)
+		}
+		fmt.Fprintf(&b, "\n%s (%s)", id, pyType(p.Type))
 		if !slices.Contains(sch.Required, n) {
 			b.WriteString(", optional")
 		}
@@ -230,6 +235,10 @@ func funcDoc(desc, action string, sch jsonSchema) string {
 		if e := enumNote(p.Enum); e != "" {
 			fmt.Fprintf(&b, " one of: %s", e)
 		}
+	}
+	// The MCP description still says `maxBytes`; the stub only takes max_bytes.
+	if len(renamed) > 0 {
+		fmt.Fprintf(&b, "\nPython kwargs are snake_case; MCP names in the text above map as: %s", strings.Join(renamed, ", "))
 	}
 	out := b.String()
 	if len(out) > 2500 {

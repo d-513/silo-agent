@@ -28,6 +28,39 @@ func TestPyName(t *testing.T) {
 	}
 }
 
+// A camelCase MCP arg is a snake_case Python kwarg; the docstring must name
+// the kwarg the signature accepts, or the model copies `maxBytes=` and gets a
+// TypeError.
+func TestDocNamesPythonKwargs(t *testing.T) {
+	dir := t.TempDir()
+	err := Write(dir, []*v1.ToolStub{{
+		Connector:      "Lightpanda",
+		Action:         "markdown",
+		Description:    "Render the page. Use `maxBytes` to cap long pages.",
+		ArgsSchemaJson: `{"type":"object","properties":{"maxBytes":{"type":"integer","description":"Soft cap."},"url":{"type":"string"}}}`,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "lightpanda", "markdown.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "max_bytes: int | None = None") {
+		t.Fatal(s)
+	}
+	if !strings.Contains(s, "max_bytes (int), optional: Soft cap.") || strings.Contains(s, "\nmaxBytes (") {
+		t.Fatal(s)
+	}
+	if !strings.Contains(s, "Python kwargs are snake_case") {
+		t.Fatal(s)
+	}
+	if !strings.Contains(s, `"maxBytes": max_bytes`) {
+		t.Fatal(s)
+	}
+}
+
 func TestWrite(t *testing.T) {
 	dir := t.TempDir()
 	err := Write(dir, []*v1.ToolStub{{
