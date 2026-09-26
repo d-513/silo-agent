@@ -1,5 +1,6 @@
-import { ArrowUp, Paperclip, Upload, X } from "lucide-react";
+import { ArrowUp, FoldVertical, Paperclip, UnfoldVertical, Upload, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
+import { setAutoExpand, useAutoExpand } from "./autoExpand";
 import { fmtSize } from "./fs";
 import { Select } from "./Select";
 import type { ModelOption } from "./gen/silo/v1/ui_pb";
@@ -62,6 +63,7 @@ export function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const autoExpand = useAutoExpand();
 
   // field-sizing: content grows the textarea natively; older engines get a
   // scrollHeight fallback clamped to the same 26–168px.
@@ -223,6 +225,19 @@ export function Composer({
                   options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
                 />
               ) : null}
+
+              <button
+                type="button"
+                title={autoExpand ? "Thinking and tools open while they run" : "Thinking and tools stay folded"}
+                aria-label="Expand thinking and tools while they run"
+                aria-pressed={autoExpand}
+                className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.94] active:duration-[70ms] ${
+                  autoExpand ? "text-ink" : "text-ink-3 hover:text-ink"
+                }`}
+                onClick={() => setAutoExpand(!autoExpand)}
+              >
+                {autoExpand ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
+              </button>
 
               {usage && (usage.cacheRead > 0 || usage.cacheWrite > 0) ? (
                 <span

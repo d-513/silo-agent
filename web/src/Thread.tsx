@@ -66,6 +66,7 @@ import { CopyButton, Spinner, useArmed } from "./Feedback";
 import { kindLabel } from "./fileKind";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { fmtSize } from "./fs";
+import { useAutoExpand } from "./autoExpand";
 import { foldEvents, type Attachment, type Block, type Decision, type Ev, type ReceiptBlock } from "./fold";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
 
@@ -510,8 +511,8 @@ function LiveTail({ live, children }: { live: boolean; children: ReactNode }) {
   );
 }
 
-// A `live` row is open while it streams and folds shut when it finishes,
-// unless the reader toggled it themselves.
+// With auto-expand on, a `live` row is open while it streams and folds shut
+// when it finishes; off, rows stay shut. The reader's own toggle always wins.
 function FoldRow({
   lead,
   title,
@@ -526,8 +527,9 @@ function FoldRow({
   children?: ReactNode;
 }) {
   const [manual, setManual] = useState<boolean | null>(null);
+  const auto = useAutoExpand();
   const has = !!children;
-  const open = has && (manual ?? live);
+  const open = has && (manual ?? (live && auto));
   const setOpen = (f: (v: boolean) => boolean) => setManual(f(open));
   return (
     <div
