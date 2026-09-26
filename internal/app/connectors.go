@@ -634,22 +634,26 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		a.emitCallDone(bot.ID, runID, tool, capCall(out))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
-	case security.Bot:
-		// Python reaches the Bot's own surfaces that are not chat-only; the
-		// rest (soul, memory) stay chat tools.
-		if action != "feed" {
+	case security.Bot, security.Automations, security.Model:
+		// Actions shared with a chat tool run the same code (runShared); the
+		// rest of these connectors (soul, core_memory, switch_model) are chat-only.
+		name, ok := sharedToolName(slug, action)
+		if !ok {
 			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
 		}
 		args := map[string]any{}
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", "Post to Feed", tool)
-		out, err := a.feedTool(ctx, bot, runID, args)
+		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
+		out, err := a.runShared(ctx, bot, runID, name, args, true)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, out)
+		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		if strings.HasPrefix(out, "{") && json.Valid([]byte(out)) {
+			return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
+		}
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
 	case security.Artifact:
 		if action != "emit" {

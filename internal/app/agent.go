@@ -1041,26 +1041,12 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		out, err := a.chatsReadTool(ctx, botID, runID, args)
 		return out, "", err
 	}
-	if name == "feed" {
+	if _, ok := sharedTools[name]; ok {
 		var bot db.Bot
 		if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 			return "", "", fmt.Errorf("unknown bot")
 		}
-		if args == nil {
-			args = map[string]any{}
-		}
-		out, err := a.feedTool(ctx, &bot, runID, args)
-		return out, "", err
-	}
-	if isAutomationTool(name) {
-		var bot db.Bot
-		if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
-			return "", "", fmt.Errorf("unknown bot")
-		}
-		if args == nil {
-			args = map[string]any{}
-		}
-		out, err := a.automationTool(ctx, &bot, runID, name, args)
+		out, err := a.runShared(ctx, &bot, runID, name, args, false)
 		return out, "", err
 	}
 	conn, action, ok := chatTool(name)
@@ -1076,22 +1062,6 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	if name == "soul" || name == "core_memory" {
 		out, err := a.execDoc(botID, name, args)
-		return out, "", err
-	}
-	if name == "remember" {
-		out, err := a.remember(ctx, botID, runID, str("content"))
-		return out, "", err
-	}
-	if name == "recall" {
-		out, err := a.recallTool(ctx, botID, args)
-		return out, "", err
-	}
-	if name == "forget" {
-		out, err := a.forget(botID, str("id"))
-		return out, "", err
-	}
-	if name == "list_models" {
-		out, err := a.listModelsTool(botID, chatID)
 		return out, "", err
 	}
 	if name == "switch_model" {
@@ -1241,7 +1211,7 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Files, name, true
 	case "look", "click", "type", "key", "scroll":
 		return security.Desktop, name, true
-	case "soul", "core_memory", "remember", "recall", "forget":
+	case "soul", "core_memory":
 		return security.Bot, name, true
 	case "skill":
 		return security.Skills, "load", true
@@ -1249,8 +1219,6 @@ func chatTool(name string) (conn, action string, ok bool) {
 		return security.Artifact, "emit", true
 	case "web_search":
 		return security.Web, "search", true
-	case "list_models":
-		return security.Model, "list", true
 	case "switch_model":
 		return security.Model, "switch", true
 	default:

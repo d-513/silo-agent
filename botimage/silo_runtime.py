@@ -157,6 +157,70 @@ def feed(text: str, title: str | None = None) -> dict:
     return call("bot", "feed", args)
 
 
+def remember(content: str) -> dict:
+    """Save one durable fact to long-term memory (same as the `remember` tool).
+
+    One self-contained fact per call; a near-duplicate updates the existing one.
+    """
+    return call("bot", "remember", {"content": content})
+
+
+def recall(query: str, limit: int | None = None) -> dict:
+    """Search long-term memories by meaning.
+
+    Returns {memories: [{id, content, created_at, distance}, ...]}, closest
+    first (distance is cosine: 0 is identical). Default 5, max 20.
+    """
+    return call("bot", "recall", {"query": query, "limit": limit})
+
+
+def forget(id: str) -> dict:
+    """Delete one long-term memory by its id (from recall)."""
+    return call("bot", "forget", {"id": id})
+
+
+def list_automations() -> dict:
+    """List this Bot's automations, including the pinned Heartbeat."""
+    return call("automations", "list", {})
+
+
+def create_automation(name: str, prompt: str, schedule: str, enabled: bool | None = None) -> dict:
+    """Create an automation: a prompt run on a 5-field cron schedule (local time).
+
+    Each run starts with a fresh context, so the prompt must be self-contained.
+    Asks the human first by default.
+    """
+    return call("automations", "create", {"name": name, "prompt": prompt, "schedule": schedule, "enabled": enabled})
+
+
+def update_automation(
+    automation: str,
+    name: str | None = None,
+    prompt: str | None = None,
+    schedule: str | None = None,
+    enabled: bool | None = None,
+) -> dict:
+    """Change an automation by id or name; pass only what changes.
+
+    schedule="" stops it firing. Use it to set the Heartbeat's schedule.
+    """
+    return call(
+        "automations",
+        "update",
+        {"automation": automation, "name": name, "prompt": prompt, "schedule": schedule, "enabled": enabled},
+    )
+
+
+def delete_automation(automation: str) -> dict:
+    """Delete an automation and its run log, by id or name (not the Heartbeat)."""
+    return call("automations", "delete", {"automation": automation})
+
+
+def list_models() -> dict:
+    """The models this Bot may use: {current, default, models: [...]}."""
+    return call("model", "list", {})
+
+
 def call(connector: str, action: str, args: dict | None = None) -> dict:
     clean = {k: v for k, v in (args or {}).items() if v is not None}
     body = {"connector": connector, "action": action, "args": clean}

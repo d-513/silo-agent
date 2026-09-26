@@ -521,14 +521,6 @@ func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name strin
 	return "", fmt.Errorf("unknown tool %s", name)
 }
 
-func isAutomationTool(name string) bool {
-	switch name {
-	case "list_automations", "create_automation", "update_automation", "delete_automation":
-		return true
-	}
-	return false
-}
-
 // automationSections adds the per-run note when an automation started the run.
 func (a *App) automationSections(pc promptContext) []promptSection {
 	if pc.automation == nil {

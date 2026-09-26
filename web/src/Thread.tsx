@@ -317,7 +317,10 @@ const builtinCallIcons: Record<string, LucideIcon> = {
   artifact: Package,
   secrets: KeyRound,
   chromium: Globe,
+  bot: Brain,
   "bot.feed": Inbox,
+  automations: Timer,
+  model: Cpu,
 };
 
 // slug → the attached connector's mark, for `<slug>.<action>` call rows.

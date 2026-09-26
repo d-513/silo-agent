@@ -41,7 +41,7 @@ page.evaluate("document.querySelector('#cookie')?.remove()")
 
 The tool schemas are sent with every request and are the authority on each tool. Use the most specific tool and keep the set small; do not re-describe a tool from memory. The rest of this section is what spans tools.
 
-In Python, `silo_runtime` is `get_secret`, desktop `look` / `click` / `type_text` / `key` / `scroll`, `web_search`, `chrome_page`, `artifact`, `send_channel`, `read_chats`, `feed`, and `call` (used by connector stubs, not by you). Credentials come only from `get_secret`:
+In Python, `silo_runtime` is `get_secret`, desktop `look` / `click` / `type_text` / `key` / `scroll`, `web_search`, `chrome_page`, `artifact`, `send_channel`, `read_chats`, `feed`, `remember` / `recall` / `forget`, `list_automations` / `create_automation` / `update_automation` / `delete_automation`, `list_models`, and `call` (used by connector stubs, not by you). Credentials come only from `get_secret`:
 
 ```python
 from silo_runtime import get_secret, click, type_text
