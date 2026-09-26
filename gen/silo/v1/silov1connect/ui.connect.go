@@ -93,6 +93,8 @@ const (
 	UISetChatModelProcedure = "/silo.v1.UI/SetChatModel"
 	// UIListModelsProcedure is the fully-qualified name of the UI's ListModels RPC.
 	UIListModelsProcedure = "/silo.v1.UI/ListModels"
+	// UITranscribeProcedure is the fully-qualified name of the UI's Transcribe RPC.
+	UITranscribeProcedure = "/silo.v1.UI/Transcribe"
 	// UISendProcedure is the fully-qualified name of the UI's Send RPC.
 	UISendProcedure = "/silo.v1.UI/Send"
 	// UIStopRunProcedure is the fully-qualified name of the UI's StopRun RPC.
@@ -227,6 +229,7 @@ type UIClient interface {
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
+	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
@@ -468,6 +471,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIListModelsProcedure,
 			connect.WithSchema(uIMethods.ByName("ListModels")),
+			connect.WithClientOptions(opts...),
+		),
+		transcribe: connect.NewClient[v1.TranscribeRequest, v1.TranscribeResponse](
+			httpClient,
+			baseURL+UITranscribeProcedure,
+			connect.WithSchema(uIMethods.ByName("Transcribe")),
 			connect.WithClientOptions(opts...),
 		),
 		send: connect.NewClient[v1.SendRequest, v1.SendResponse](
@@ -805,6 +814,7 @@ type uIClient struct {
 	deleteChat          *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
 	setChatModel        *connect.Client[v1.SetChatModelRequest, v1.Chat]
 	listModels          *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
+	transcribe          *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
 	send                *connect.Client[v1.SendRequest, v1.SendResponse]
 	stopRun             *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun           *connect.Client[v1.StreamRunRequest, v1.RunEvent]
@@ -1005,6 +1015,11 @@ func (c *uIClient) SetChatModel(ctx context.Context, req *connect.Request[v1.Set
 // ListModels calls silo.v1.UI.ListModels.
 func (c *uIClient) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
 	return c.listModels.CallUnary(ctx, req)
+}
+
+// Transcribe calls silo.v1.UI.Transcribe.
+func (c *uIClient) Transcribe(ctx context.Context, req *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
+	return c.transcribe.CallUnary(ctx, req)
 }
 
 // Send calls silo.v1.UI.Send.
@@ -1289,6 +1304,7 @@ type UIHandler interface {
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
+	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
@@ -1526,6 +1542,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIListModelsProcedure,
 		svc.ListModels,
 		connect.WithSchema(uIMethods.ByName("ListModels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uITranscribeHandler := connect.NewUnaryHandler(
+		UITranscribeProcedure,
+		svc.Transcribe,
+		connect.WithSchema(uIMethods.ByName("Transcribe")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uISendHandler := connect.NewUnaryHandler(
@@ -1890,6 +1912,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISetChatModelHandler.ServeHTTP(w, r)
 		case UIListModelsProcedure:
 			uIListModelsHandler.ServeHTTP(w, r)
+		case UITranscribeProcedure:
+			uITranscribeHandler.ServeHTTP(w, r)
 		case UISendProcedure:
 			uISendHandler.ServeHTTP(w, r)
 		case UIStopRunProcedure:
@@ -2117,6 +2141,10 @@ func (UnimplementedUIHandler) SetChatModel(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListModels is not implemented"))
+}
+
+func (UnimplementedUIHandler) Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Transcribe is not implemented"))
 }
 
 func (UnimplementedUIHandler) Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {

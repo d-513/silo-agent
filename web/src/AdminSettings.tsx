@@ -30,6 +30,7 @@ const LABELS: Record<string, string> = {
   model_title: "Chat title model",
   model_approval: "Auto-approval model",
   embedding_model: "Embedding model",
+  transcribe_model: "Speech-to-text model",
   "memory.auto_recall": "Auto-recall",
   debug: "Debug logging",
   "search.engine": "Engine",
@@ -46,10 +47,12 @@ const LABELS: Record<string, string> = {
 
 const HINTS: Record<string, string> = {
   embedding_model: "For long-term memories. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly.",
+  transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
 
 const PLACEHOLDERS: Record<string, string> = {
   embedding_model: "openrouter/openai/text-embedding-3-small",
+  transcribe_model: "openrouter/openai/whisper-1",
 };
 
 const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the opening message into each run. The embedding model is under Models.";
@@ -57,7 +60,7 @@ const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the op
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
@@ -209,6 +212,7 @@ export function AdminSettings() {
   const titleModel = values["model_title"] ?? "";
   const approvalModel = values["model_approval"] ?? "";
   const embedModel = values["embedding_model"] ?? "";
+  const voiceModel = values["transcribe_model"] ?? "";
 
   return (
     <div>
@@ -224,6 +228,9 @@ export function AdminSettings() {
           embedModel={embedModel}
           embedField={fields.find((f) => f.key === "embedding_model")}
           onEmbed={(v) => setValue("embedding_model", v)}
+          voiceModel={voiceModel}
+          voiceField={fields.find((f) => f.key === "transcribe_model")}
+          onVoice={(v) => setValue("transcribe_model", v)}
           onDefault={(v) => setValue("model", v)}
           onTitle={(v) => setValue("model_title", v)}
           onApproval={(v) => setValue("model_approval", v)}
@@ -440,6 +447,9 @@ function ModelSettings({
   embedModel,
   embedField,
   onEmbed,
+  voiceModel,
+  voiceField,
+  onVoice,
   onSaveModels,
 }: {
   models: ModelOption[];
@@ -455,6 +465,9 @@ function ModelSettings({
   embedModel: string;
   embedField?: ConfigField;
   onEmbed: (v: string) => void;
+  voiceModel: string;
+  voiceField?: ConfigField;
+  onVoice: (v: string) => void;
   onSaveModels: (list: string[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(models.map((m) => m.id).join("\n"));
@@ -528,6 +541,16 @@ function ModelSettings({
             value={embedModel}
             disabled={embedField?.source === ConfigSource.ENV}
             onChange={(e) => onEmbed(e.target.value)}
+          />
+        </Field>
+        <Field label="Speech-to-text model" hint={HINTS.transcribe_model} headerRight={voiceField ? <SourceChips field={voiceField} /> : undefined}>
+          <input
+            className={`${inputClass} font-mono text-[13px]`}
+            autoComplete="off"
+            placeholder={PLACEHOLDERS.transcribe_model}
+            value={voiceModel}
+            disabled={voiceField?.source === ConfigSource.ENV}
+            onChange={(e) => onVoice(e.target.value)}
           />
         </Field>
       </div>

@@ -25,6 +25,7 @@ var sharedTools = map[string][2]string{
 	"update_automation": {security.Automations, "update"},
 	"delete_automation": {security.Automations, "delete"},
 	"list_models":       {security.Model, "list"},
+	"transcribe":        {security.Bot, "transcribe"},
 }
 
 // sharedToolName is the chat tool behind connector.action, if it is shared.
@@ -93,6 +94,8 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		return a.forget(bot.ID, str("id"))
 	case "list_models":
 		return a.listModelsTool(bot.ID, a.chatOfRun(runID))
+	case "transcribe":
+		return a.transcribeTool(ctx, bot.ID, str("path"), str("language"), structured)
 	}
 	return "", fmt.Errorf("unknown tool %s", name)
 }

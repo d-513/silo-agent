@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"strings"
 	"time"
 
@@ -71,18 +70,7 @@ func (a *App) embed(ctx context.Context, texts []string) ([]pgvector.Vector, str
 // canEmbed reports whether modelID names a provider that implements
 // llm.Embedder, without needing its API key.
 func (a *App) canEmbed(modelID string) error {
-	provider, _, err := llm.Parse(modelID)
-	if err != nil {
-		return err
-	}
-	// Build a throwaway client: only its type matters, so a missing key is
-	// filled in and nothing is called.
-	settings := llm.Settings{}
-	maps.Copy(settings, a.cfg().ProviderSettings(provider))
-	if settings.Get("api_key") == "" {
-		settings["api_key"] = "probe"
-	}
-	client, err := llm.New(provider, settings)
+	client, provider, err := a.probeClient(modelID)
 	if err != nil {
 		return err
 	}

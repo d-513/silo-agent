@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -48,13 +49,22 @@ func ignoredUpstreams(s Settings) []string {
 // provider.ignore.
 func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendCacheKey, routing bool) factory {
 	return func(s Settings) (Client, error) {
-		key := s.Get("api_key")
-		if key == "" {
-			return nil, fmt.Errorf("api key missing")
-		}
 		base := s.Get("base_url")
 		if base == "" {
 			base = defaultBase
+		}
+		key := s.Get("api_key")
+		if defaultBase == "" {
+			// A self-hosted server: the URL is the config, the key optional.
+			if base == "" {
+				return nil, fmt.Errorf("base url missing")
+			}
+			if key == "" {
+				key = "none"
+			}
+		}
+		if key == "" {
+			return nil, fmt.Errorf("api key missing")
 		}
 		opts := []option.RequestOption{
 			option.WithAPIKey(key),
@@ -321,6 +331,60 @@ func (c *openAICompatClient) Embed(ctx context.Context, model string, texts []st
 		if v == nil {
 			return nil, fmt.Errorf("no embedding for input %d", i)
 		}
+	}
+	return out, nil
+}
+
+// Transcribe posts one recording to /audio/transcriptions (multipart, JSON
+// response). usage.seconds/cost and language are read from the raw body when
+// the upstream sends them (OpenRouter, verbose servers).
+func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio Audio) (Transcript, error) {
+	if len(audio.Data) == 0 {
+		return Transcript{}, fmt.Errorf("audio is empty")
+	}
+	if len(audio.Data) > MaxAudioBytes {
+		return Transcript{}, fmt.Errorf("audio is %d bytes; the cap is %d", len(audio.Data), MaxAudioBytes)
+	}
+	name := audio.Filename
+	if name == "" {
+		ext := AudioExt(audio.MIME)
+		if ext == "" {
+			ext = ".webm"
+		}
+		name = "audio" + ext
+	}
+	mime := audio.MIME
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+	params := openai.AudioTranscriptionNewParams{
+		File:           openai.File(bytes.NewReader(audio.Data), name, mime),
+		Model:          openai.AudioModel(model),
+		ResponseFormat: openai.AudioResponseFormatJSON,
+	}
+	if lang := strings.TrimSpace(audio.Language); lang != "" {
+		params.Language = openai.String(lang)
+	}
+	resp, err := c.client.Audio.Transcriptions.New(ctx, params)
+	if err != nil {
+		return Transcript{}, err
+	}
+	out := Transcript{Text: strings.TrimSpace(resp.Text)}
+	var extra struct {
+		Language string  `json:"language"`
+		Duration float64 `json:"duration"`
+		Usage    struct {
+			Seconds float64 `json:"seconds"`
+			Cost    float64 `json:"cost"`
+		} `json:"usage"`
+	}
+	if json.Unmarshal([]byte(resp.RawJSON()), &extra) == nil {
+		out.Language = extra.Language
+		out.Seconds = extra.Usage.Seconds
+		if out.Seconds == 0 {
+			out.Seconds = extra.Duration
+		}
+		out.Cost = extra.Usage.Cost
 	}
 	return out, nil
 }

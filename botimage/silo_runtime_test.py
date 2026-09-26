@@ -37,7 +37,27 @@ def test_web_search_call():
         raise SystemExit(f"omit max {seen}")
 
 
+def test_transcribe_call():
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"result": {"text": "hi", "language": "en", "seconds": 1.0}}
+
+    silo_runtime._post = post
+    out = silo_runtime.transcribe("memo.mp3", "en")
+    if out["text"] != "hi":
+        raise SystemExit(f"result {out}")
+    if seen != [("/v1/tools/call", {"connector": "bot", "action": "transcribe", "args": {"path": "memo.mp3", "language": "en"}})]:
+        raise SystemExit(f"body {seen}")
+    seen.clear()
+    silo_runtime.transcribe("memo.mp3")
+    if seen[0][1]["args"] != {"path": "memo.mp3"}:
+        raise SystemExit(f"omit language {seen}")
+
+
 if __name__ == "__main__":
     test_chrome_page_ensures()
     test_web_search_call()
+    test_transcribe_call()
     print("ok")

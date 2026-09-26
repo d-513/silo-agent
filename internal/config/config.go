@@ -89,6 +89,13 @@ const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
 // llm.EmbedDims wide (text-embedding-3 honours the dimensions parameter).
 const DefaultEmbeddingModel = "openrouter/openai/text-embedding-3-small"
 
+// DefaultTranscribeModel turns speech into text for composer dictation and the
+// Bot's transcribe tool. TranscribeOff disables voice.
+const (
+	DefaultTranscribeModel = "openrouter/openai/whisper-1"
+	TranscribeOff          = "off"
+)
+
 // DefaultDatabaseURL is the dev Postgres from docker-compose.dev.yml.
 const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
 
@@ -105,6 +112,7 @@ type Config struct {
 	ModelTitle    string              `koanf:"model_title"`
 	ModelApproval string              `koanf:"model_approval"`
 	EmbedModel    string              `koanf:"embedding_model"`
+	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
 	Models        []string            `koanf:"models"`
 	Debug         bool                `koanf:"debug"`
@@ -133,6 +141,19 @@ func (c Config) TitleModel() string {
 	return DefaultModel
 }
 
+// TranscribeModel returns the speech-to-text model id, or "" when voice is
+// off.
+func (c Config) TranscribeModel() string {
+	m := strings.TrimSpace(c.Transcribe)
+	if strings.EqualFold(m, TranscribeOff) {
+		return ""
+	}
+	if m == "" {
+		return DefaultTranscribeModel
+	}
+	return m
+}
+
 // ApprovalModel returns the model used to decide auto-approval rules, falling
 // back to the title model and then the main default model.
 func (c Config) ApprovalModel() string {
@@ -154,6 +175,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_title"},
 	{Key: "model_approval"},
 	{Key: "embedding_model"},
+	{Key: "transcribe_model"},
 	{Key: "memory.auto_recall", Type: "bool"},
 	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
@@ -230,6 +252,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
+	_ = k.Set("transcribe_model", DefaultTranscribeModel)
 	_ = k.Set("memory.auto_recall", true)
 }
 
@@ -542,6 +565,11 @@ func validateYAML(raw []byte) error {
 			if _, _, err := llm.Parse(v); err != nil {
 				return fmt.Errorf("%s: %w", key, err)
 			}
+		}
+	}
+	if v := strings.TrimSpace(k.String("transcribe_model")); v != "" && !strings.EqualFold(v, TranscribeOff) {
+		if _, _, err := llm.Parse(v); err != nil {
+			return fmt.Errorf("transcribe_model: %w", err)
 		}
 	}
 	return nil

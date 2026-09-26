@@ -81,6 +81,7 @@ var catalog = map[string]spec{
 	"bot.recall":         {title: "Recall", mode: Allow, summary: want("search its long-term memories")},
 	"bot.forget":         {title: "Forget", mode: Allow, summary: want("delete a long-term memory")},
 	"bot.feed":           {title: "Post to Feed", mode: Allow, summary: want("post to your Feed")},
+	"bot.transcribe":     {title: "Transcribe audio", mode: Allow, summary: want("transcribe an audio file")},
 	"skills.load":        {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit":      {title: "Artifact", mode: Allow, summary: want("show an artifact")},
 	"web.search":         {title: "Web search", mode: Allow, summary: want("search the web")},

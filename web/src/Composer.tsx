@@ -1,6 +1,7 @@
-import { ArrowUp, FoldVertical, Paperclip, UnfoldVertical, Upload, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
+import { ArrowUp, FoldVertical, Mic, Paperclip, Square, UnfoldVertical, Upload, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { setAutoExpand, useAutoExpand } from "./autoExpand";
+import { fmtClock, insertDictation, useDictation, type Dictation } from "./voice";
 import { fmtSize } from "./fs";
 import { Select } from "./Select";
 import type { ModelOption } from "./gen/silo/v1/ui_pb";
@@ -35,6 +36,9 @@ export interface ComposerProps {
   model?: string;
   onModel?: (model: string) => void;
   usage?: Usage | null;
+  // voice shows the dictation mic; onTranscribe turns a recording into text.
+  voice?: boolean;
+  onTranscribe?: (audio: Uint8Array, mime: string) => Promise<string>;
 }
 
 function fmtTokens(n: number) {
@@ -59,8 +63,42 @@ export function Composer({
   model,
   onModel,
   usage,
+  voice,
+  onTranscribe,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textRef = useRef(text);
+  textRef.current = text;
+  const dictation = useDictation(
+    (audio, mime) => (onTranscribe ? onTranscribe(audio, mime) : Promise.reject(new Error("Dictation is off."))),
+    (spoken) => {
+      // Splice at the caret (or over the selection) the textarea last had.
+      const el = textareaRef.current;
+      const cur = textRef.current;
+      const r = insertDictation(cur, el?.selectionStart ?? cur.length, el?.selectionEnd ?? cur.length, spoken);
+      setText(r.text);
+      requestAnimationFrame(() => {
+        el?.focus();
+        el?.setSelectionRange(r.caret, r.caret);
+      });
+    },
+  );
+  const recording = dictation.state === "recording";
+  const cancelTake = dictation.cancel;
+
+  // Esc drops a take wherever focus is.
+  useEffect(() => {
+    if (!recording) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelTake();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [recording, cancelTake]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const autoExpand = useAutoExpand();
@@ -77,6 +115,7 @@ export function Composer({
   const canSend = (text.trim().length > 0 || atts.length > 0) && !!chatId;
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Escape" && recording) return; // the window listener cancels the take
     if (e.key === "Escape" && sending) {
       e.preventDefault();
       onStop();
@@ -172,6 +211,24 @@ export function Composer({
             </div>
           )}
 
+          {dictation.error && dictation.state === "idle" && (
+            <div role="alert" className="flex items-center gap-1.5 px-4 pt-2.5 text-[12px] text-vermilion">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
+              <span className="min-w-0 truncate">{dictation.error}</span>
+              <button
+                type="button"
+                title="Dismiss"
+                aria-label="Dismiss"
+                className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-ink-3 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+                onClick={dictation.clearError}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+
+          {dictation.state !== "idle" && <DictationStrip dictation={dictation} />}
+
           <textarea
             ref={textareaRef}
             rows={1}
@@ -212,6 +269,8 @@ export function Composer({
                   </span>
                 )}
               </button>
+
+              {voice && onTranscribe ? <MicButton dictation={dictation} disabled={!chatId} /> : null}
 
               {models && models.length > 0 && onModel ? (
                 <Select
@@ -264,6 +323,78 @@ export function Composer({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// The mic toggles a take: Mic to start, a vermilion square to stop and
+// transcribe. It is disabled (with the reason as its title) where the browser
+// cannot record.
+function MicButton({ dictation, disabled }: { dictation: Dictation; disabled: boolean }) {
+  const { state, supported } = dictation;
+  const recording = state === "recording";
+  const busy = state === "transcribing";
+  const title = !supported
+    ? "Dictation needs https or localhost and a browser that can record"
+    : recording
+      ? "Stop and transcribe"
+      : busy
+        ? "Transcribing…"
+        : "Dictate";
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={recording ? "Stop dictation" : "Dictate"}
+      aria-pressed={recording}
+      disabled={disabled || !supported || busy}
+      className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent ${
+        recording ? "bg-vermilion-pale text-vermilion" : "text-ink-2 hover:bg-well hover:text-ink disabled:text-ink-3"
+      }`}
+      onClick={() => (recording ? dictation.stop() : void dictation.start())}
+    >
+      {recording ? <Square size={13} fill="currentColor" strokeWidth={0} /> : <Mic size={17} />}
+    </button>
+  );
+}
+
+// DictationStrip sits above the toolbar while a take is live: a breathing dot,
+// the clock, a five-bar level meter, and Cancel. While the CP transcribes it
+// becomes a shimmering "Transcribing…".
+function DictationStrip({ dictation }: { dictation: Dictation }) {
+  if (dictation.state === "transcribing") {
+    return (
+      <div className="flex h-8 items-center px-4 pt-2 text-[12px]" aria-live="polite">
+        <span className="shimmer-text font-medium">Transcribing…</span>
+      </div>
+    );
+  }
+  const bars = [0.35, 0.7, 1, 0.7, 0.35];
+  return (
+    <div className="rise flex h-8 items-center gap-2 px-4 pt-2 text-[12px] text-ink-2" aria-live="polite">
+      <span className="breathe h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
+      <span className="font-medium text-ink">Listening</span>
+      <span className="font-mono text-ink-3 tabular-nums">{fmtClock(dictation.elapsed)}</span>
+      <span className="flex h-3.5 items-center gap-[3px]" aria-hidden>
+        {bars.map((w, i) => (
+          <span
+            key={i}
+            className="w-[3px] rounded-full bg-ink-3 transition-[height] duration-[80ms]"
+            style={{ height: `${Math.max(3, Math.round(14 * Math.min(1, dictation.level * w * 1.6)))}px` }}
+          />
+        ))}
+      </span>
+      <span className="flex-1" />
+      <span className="hidden text-ink-3 @min-[460px]:inline">Esc cancels</span>
+      <button
+        type="button"
+        title="Cancel dictation"
+        aria-label="Cancel dictation"
+        className="flex h-6 w-6 items-center justify-center rounded-xs text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+        onClick={dictation.cancel}
+      >
+        <X size={13} />
+      </button>
     </div>
   );
 }

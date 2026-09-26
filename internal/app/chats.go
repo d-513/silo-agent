@@ -143,6 +143,7 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 		Models:       modelOptionProtos(a.allowedModels()),
 		DefaultModel: a.botDefaultModel(b.ID),
 		TitleModel:   cfg.ModelTitle,
+		VoiceEnabled: a.voiceEnabled(),
 	}), nil
 }
 

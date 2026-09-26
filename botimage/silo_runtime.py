@@ -118,6 +118,19 @@ def web_search(query: str, max_results: int | None = None) -> dict:
     return call("web", "search", args)
 
 
+def transcribe(path: str, language: str | None = None) -> dict:
+    """Transcribe a speech recording in the workspace to text.
+
+    Same as the `transcribe` chat tool (mp3, wav, m4a, ogg, opus, webm, flac;
+    up to 25 MB). `language` is an optional ISO-639-1 hint such as "en".
+    Returns {text, language, seconds}.
+    """
+    args: dict = {"path": path}
+    if language is not None:
+        args["language"] = language
+    return call("bot", "transcribe", args)
+
+
 def send_channel(channel: str, text: str, to: str | None = None) -> dict:
     """Send a message to one of this Bot's channels.
 

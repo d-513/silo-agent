@@ -1053,6 +1053,7 @@ function BotPage() {
   const [inspect, setInspect] = useState<Artifact | null>(null);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
+  const [voice, setVoice] = useState(false);
   const { events, sending, setSending, usage, fresh, markSent, resync } = useRunStream(id, chatId, {
     onApproval: () => {
       if (id) ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
@@ -1114,6 +1115,7 @@ function BotPage() {
         if (!dead) {
           setModels(r.models);
           setDefaultModel(r.defaultModel);
+          setVoice(r.voiceEnabled);
         }
       })
       .catch(() => {});
@@ -1665,6 +1667,8 @@ function BotPage() {
                 model={chats.find((c) => c.id === chatId)?.model || defaultModel}
                 onModel={(m) => void pickModel(m)}
                 usage={usage}
+                voice={voice}
+                onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
               />
               </>
               )}

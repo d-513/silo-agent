@@ -455,6 +455,11 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
+			if k == "transcribe_model" && v != "" && !strings.EqualFold(strings.TrimSpace(v), config.TranscribeOff) {
+				if err := a.canTranscribe(v); err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+			}
 			if (k == "model" || k == "model_title" || k == "model_approval") && v != "" {
 				if _, _, err := llm.Parse(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)

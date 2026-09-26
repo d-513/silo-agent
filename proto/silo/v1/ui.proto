@@ -38,6 +38,7 @@ service UI {
   rpc SetChatModel(SetChatModelRequest) returns (Chat);
 
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc Transcribe(TranscribeRequest) returns (TranscribeResponse);
 
   rpc Send(SendRequest) returns (SendResponse);
   rpc StopRun(StopRunRequest) returns (StopRunResponse);
@@ -358,6 +359,22 @@ message ListModelsResponse {
   repeated ModelOption models = 1;
   string default_model = 2;
   string title_model = 3;
+  // voice_enabled is true when transcribe_model is set and its provider is
+  // configured, so the composer can offer dictation.
+  bool voice_enabled = 4;
+}
+
+// TranscribeRequest carries one dictated recording (browser MediaRecorder
+// bytes). language is an optional ISO-639-1 hint.
+message TranscribeRequest {
+  string bot_id = 1;
+  bytes audio = 2;
+  string mime = 3;
+  string language = 4;
+}
+
+message TranscribeResponse {
+  string text = 1;
 }
 
 message SetChatModelRequest {

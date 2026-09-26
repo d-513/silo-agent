@@ -199,6 +199,7 @@ cp_url: http://127.0.0.1:0
 model: dummy/echo
 model_title: dummy/echo
 embedding_model: dummy/embed
+transcribe_model: dummy/whisper
 models:
   - dummy/echo
 providers:

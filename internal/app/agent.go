@@ -232,6 +232,14 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"text"},
 	}),
+	tool("transcribe", "Transcribe a speech recording in the workspace (mp3, wav, m4a, ogg, opus, webm, flac; up to 25 MB) to text with the operator's speech-to-text model. Python: silo_runtime.transcribe(path).", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":     map[string]any{"type": "string", "description": "audio file relative to /workspace"},
+			"language": map[string]any{"type": "string", "description": "optional ISO-639-1 hint such as en or pl"},
+		},
+		"required": []string{"path"},
+	}),
 	tool("channel", "Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -695,6 +703,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		return
 	}
 	settings := a.cfg().ProviderSettings(provider)
+	tools := a.runTools()
 
 	a.emitUser(botID, chatID, runID, userText, atts)
 	a.bumpChat(chatID)
@@ -739,7 +748,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			Model:    model,
 			System:   a.buildSystemBlocks(botID, origin),
 			Messages: msgs,
-			Tools:    toolDefs,
+			Tools:    tools,
 			Cache:    cachePolicy(settings, botID),
 		})
 		if err != nil {

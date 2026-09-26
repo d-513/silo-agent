@@ -232,3 +232,36 @@ func TestValidateRejectsBadProviderAndModel(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestTranscribeModel(t *testing.T) {
+	if got := (Config{}).TranscribeModel(); got != DefaultTranscribeModel {
+		t.Fatalf("unset = %q", got)
+	}
+	if got := (Config{Transcribe: " OFF "}).TranscribeModel(); got != "" {
+		t.Fatalf("off = %q", got)
+	}
+	if got := (Config{Transcribe: "local/whisper"}).TranscribeModel(); got != "local/whisper" {
+		t.Fatalf("set = %q", got)
+	}
+	if !KnownKey("transcribe_model") || !KnownKey("providers.local.base_url") {
+		t.Fatal("transcribe_model and the local provider should be known keys")
+	}
+	dir := t.TempDir()
+	t.Chdir(dir)
+	s, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Config().TranscribeModel() != DefaultTranscribeModel {
+		t.Fatal("default should load")
+	}
+	if err := s.WriteYAML([]byte("transcribe_model: whisper\n")); err == nil {
+		t.Fatal("a bare model id must be rejected")
+	}
+	if err := s.WriteYAML([]byte("transcribe_model: off\n")); err != nil {
+		t.Fatal(err)
+	}
+	if s.Config().TranscribeModel() != "" {
+		t.Fatal("off should disable voice")
+	}
+}

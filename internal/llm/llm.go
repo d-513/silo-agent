@@ -156,6 +156,60 @@ type Embedder interface {
 	Embed(ctx context.Context, model string, texts []string) ([][]float32, error)
 }
 
+// MaxAudioBytes is the per-recording upload cap OpenAI and OpenRouter enforce
+// on /audio/transcriptions.
+const MaxAudioBytes = 25 << 20
+
+// Audio is one recording to transcribe. MIME names the container (the upstream
+// sniffs it from the filename extension); Language is an optional ISO-639-1
+// hint.
+type Audio struct {
+	Data     []byte
+	MIME     string
+	Filename string
+	Language string
+}
+
+// Transcript is a transcription result. Language and Seconds are filled when
+// the upstream reports them.
+type Transcript struct {
+	Text     string
+	Language string
+	Seconds  float64
+	Cost     float64
+}
+
+// Transcriber is the optional interface a provider implements when it can turn
+// speech into text (the OpenAI /audio/transcriptions shape that OpenRouter,
+// Groq, LocalAI, Speaches, vLLM and whisper.cpp all speak). Anthropic does not.
+type Transcriber interface {
+	Transcribe(ctx context.Context, model string, audio Audio) (Transcript, error)
+}
+
+// AudioExt maps an audio MIME type (parameters ignored) to the file extension
+// transcription upstreams use to detect the container. Unknown types give "".
+func AudioExt(mime string) string {
+	mime = strings.ToLower(strings.TrimSpace(mime))
+	if i := strings.IndexByte(mime, ';'); i >= 0 {
+		mime = strings.TrimSpace(mime[:i])
+	}
+	switch mime {
+	case "audio/webm", "video/webm":
+		return ".webm"
+	case "audio/ogg", "audio/opus", "application/ogg":
+		return ".ogg"
+	case "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac", "video/mp4":
+		return ".m4a"
+	case "audio/mpeg", "audio/mp3":
+		return ".mp3"
+	case "audio/wav", "audio/wave", "audio/x-wav", "audio/vnd.wave":
+		return ".wav"
+	case "audio/flac", "audio/x-flac":
+		return ".flac"
+	}
+	return ""
+}
+
 // SettingDef describes one configurable provider setting for the admin UI.
 type SettingDef struct {
 	Key         string
@@ -174,6 +228,10 @@ type Descriptor struct {
 	Settings      []SettingDef
 	SupportsCache bool
 	CacheTTLs     []string
+	// KeyOptional marks a provider that works without an API key (a
+	// self-hosted server). BaseURLRequired marks one with no default URL.
+	KeyOptional     bool
+	BaseURLRequired bool
 }
 
 // Settings is provider config keyed by SettingDef.Key.
@@ -198,6 +256,7 @@ const (
 	OpenRouter = "openrouter"
 	OpenAI     = "openai"
 	Anthropic  = "anthropic"
+	Local      = "local"
 )
 
 var registry = []registered{
@@ -248,6 +307,20 @@ var registry = []registered{
 			},
 		},
 		new: newAnthropic,
+	},
+	{
+		desc: Descriptor{
+			ID:              Local,
+			Name:            "Local",
+			Description:     "Any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp). Silo only connects; it does not run models.",
+			KeyOptional:     true,
+			BaseURLRequired: true,
+			Settings: []SettingDef{
+				{Key: "base_url", Label: "Base URL", Description: "The server's OpenAI-compatible root, e.g. http://localai:8080/v1."},
+				{Key: "api_key", Label: "API key", Description: "Optional; only if the server checks one.", Secret: true},
+			},
+		},
+		new: newOpenAICompat("", nil, false, false),
 	},
 }
 

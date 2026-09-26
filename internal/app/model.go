@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"silo.agent/internal/config"
@@ -53,20 +54,48 @@ func (a *App) providerClient(modelID string) (llm.Client, string, string, error)
 		return nil, "", "", err
 	}
 	settings := a.cfg().ProviderSettings(provider)
-	if settings.Get("api_key") == "" {
+	d, _ := llm.Lookup(provider)
+	if settings.Get("api_key") == "" && !d.KeyOptional {
 		name := provider
-		if d, ok := llm.Lookup(provider); ok {
+		if d.Name != "" {
 			name = d.Name
 		}
 		return nil, provider, model, fmt.Errorf(
 			"%s API key missing in operator config (silo.yaml / %s)",
 			name, config.EnvName("providers."+provider+".api_key"))
 	}
+	if d.BaseURLRequired && settings.Get("base_url") == "" {
+		return nil, provider, model, fmt.Errorf(
+			"%s base URL missing in operator config (silo.yaml / %s)",
+			d.Name, config.EnvName("providers."+provider+".base_url"))
+	}
 	client, err := llm.New(provider, settings)
 	if err != nil {
 		return nil, provider, model, err
 	}
 	return client, provider, model, nil
+}
+
+// probeClient builds a throwaway client for provider so a caller can check which
+// optional interfaces (llm.Embedder, llm.Transcriber) it implements. Missing
+// credentials are filled in and nothing is called.
+func (a *App) probeClient(modelID string) (llm.Client, string, error) {
+	provider, _, err := llm.Parse(modelID)
+	if err != nil {
+		return nil, "", err
+	}
+	settings := llm.Settings{}
+	maps.Copy(settings, a.cfg().ProviderSettings(provider))
+	if settings.Get("api_key") == "" {
+		settings["api_key"] = "probe"
+	}
+	if settings.Get("base_url") == "" {
+		if d, _ := llm.Lookup(provider); d.BaseURLRequired {
+			settings["base_url"] = "http://probe.invalid"
+		}
+	}
+	client, err := llm.New(provider, settings)
+	return client, provider, err
 }
 
 // cachePolicy turns a provider's settings into a request cache policy. Caching
