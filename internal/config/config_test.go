@@ -194,6 +194,27 @@ func TestProviderSettingsParse(t *testing.T) {
 	}
 }
 
+func TestProviderIgnoreSetting(t *testing.T) {
+	dir := t.TempDir()
+	raw := []byte("providers:\n  openrouter:\n    api_key: k\n    ignore: none\n  openai:\n    api_key: k\n")
+	if err := os.WriteFile(filepath.Join(dir, "silo.yaml"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	s, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := s.Config()
+	if v, ok := c.ProviderSettings("openrouter")["ignore"]; !ok || v != "none" {
+		t.Fatalf("openrouter ignore = %q, %v", v, ok)
+	}
+	// Unset stays absent so the engine applies its default.
+	if _, ok := c.ProviderSettings("openai")["ignore"]; ok {
+		t.Fatal("openai should carry no ignore setting")
+	}
+}
+
 func TestValidateRejectsBadProviderAndModel(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)

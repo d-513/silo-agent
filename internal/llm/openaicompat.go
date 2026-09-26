@@ -17,11 +17,36 @@ const (
 	openAIBase     = "https://api.openai.com/v1"
 )
 
+// defaultIgnoredUpstreams are OpenRouter hosts that buffer a tool call's
+// arguments into one chunk at the end, so the thread cannot stream the code or
+// command as the model writes it.
+var defaultIgnoredUpstreams = []string{"DeepInfra"}
+
+// ignoredUpstreams reads the OpenRouter `ignore` setting: unset means the
+// defaults, "" or "none" means route anywhere, else a comma list.
+func ignoredUpstreams(s Settings) []string {
+	raw, ok := s["ignore"]
+	if !ok {
+		return defaultIgnoredUpstreams
+	}
+	if strings.EqualFold(strings.TrimSpace(raw), "none") {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(raw, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // newOpenAICompat builds a provider factory for any OpenAI-compatible API
 // (OpenRouter and OpenAI today). defaultHeaders are only set when the
 // organizer has not provided their own base URL. sendCacheKey controls the
-// OpenAI-only prompt_cache_key parameter.
-func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendCacheKey bool) factory {
+// OpenAI-only prompt_cache_key parameter; routing sends OpenRouter's
+// provider.ignore.
+func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendCacheKey, routing bool) factory {
 	return func(s Settings) (Client, error) {
 		key := s.Get("api_key")
 		if key == "" {
@@ -40,13 +65,21 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 				opts = append(opts, option.WithHeader(k, v))
 			}
 		}
-		return &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey}, nil
+		c := &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey}
+		if routing {
+			if ig := ignoredUpstreams(s); len(ig) > 0 {
+				c.reqOpts = append(c.reqOpts, option.WithJSONSet("provider.ignore", ig))
+			}
+		}
+		return c, nil
 	}
 }
 
 type openAICompatClient struct {
 	client       openai.Client
 	sendCacheKey bool
+	// reqOpts ride on every chat request (after the body is serialized).
+	reqOpts []option.RequestOption
 }
 
 func (c *openAICompatClient) params(req Request) openai.ChatCompletionNewParams {
@@ -123,11 +156,11 @@ func openAIMessages(m Message) []openai.ChatCompletionMessageParamUnion {
 }
 
 func (c *openAICompatClient) Stream(ctx context.Context, req Request) (Stream, error) {
-	return &openAIStream{stream: c.client.Chat.Completions.NewStreaming(ctx, c.params(req))}, nil
+	return &openAIStream{stream: c.client.Chat.Completions.NewStreaming(ctx, c.params(req), c.reqOpts...)}, nil
 }
 
 func (c *openAICompatClient) Complete(ctx context.Context, req Request) (Response, error) {
-	res, err := c.client.Chat.Completions.New(ctx, c.params(req))
+	res, err := c.client.Chat.Completions.New(ctx, c.params(req), c.reqOpts...)
 	if err != nil {
 		return Response{}, err
 	}

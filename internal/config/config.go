@@ -42,6 +42,8 @@ type Provider struct {
 	Cache     bool   `koanf:"cache"`
 	CacheTTL  string `koanf:"cache_ttl"`
 	MaxTokens int    `koanf:"max_tokens"`
+	// Ignore is OpenRouter's upstream skip list; nil means the engine default.
+	Ignore *string `koanf:"ignore"`
 }
 
 // Settings renders a provider's config as the generic map the engine reads.
@@ -58,6 +60,9 @@ func (p Provider) Settings() llm.Settings {
 	}
 	if p.MaxTokens > 0 {
 		out["max_tokens"] = strconv.Itoa(p.MaxTokens)
+	}
+	if p.Ignore != nil {
+		out["ignore"] = *p.Ignore
 	}
 	out["cache"] = "false"
 	if p.Cache {

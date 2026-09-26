@@ -210,12 +210,13 @@ var registry = []registered{
 			Settings: []SettingDef{
 				{Key: "api_key", Label: "API key", Description: "OpenRouter API key.", Secret: true},
 				{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
+				{Key: "ignore", Label: "Skip upstreams", Description: "Comma list of upstream hosts OpenRouter must not route to. Default DeepInfra (it buffers tool arguments, so code does not stream); none routes anywhere."},
 			},
 		},
 		new: newOpenAICompat(openRouterBase, map[string]string{
 			"HTTP-Referer": "https://silo.agent",
 			"X-Title":      "Silo Agent",
-		}, false),
+		}, false, true),
 	},
 	{
 		desc: Descriptor{
@@ -229,7 +230,7 @@ var registry = []registered{
 				{Key: "cache", Label: "Prompt caching", Type: "bool", Description: "Send prompt_cache_key so cached prefixes route consistently."},
 			},
 		},
-		new: newOpenAICompat(openAIBase, nil, true),
+		new: newOpenAICompat(openAIBase, nil, true, false),
 	},
 	{
 		desc: Descriptor{
