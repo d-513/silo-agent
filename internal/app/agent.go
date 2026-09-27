@@ -280,13 +280,13 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"automation"},
 	}),
-	tool("spawn_agent", "Start a subagent: a named agent loop that works in the background on this Bot's machine, in parallel with you, from a fresh context. It sees only goal and context — not this chat — so make them self-contained (paths, constraints, what to report back). Put its tasks on the taskboard as `[NAME] …` first. You are woken with its result when it finishes, or check with agent_status / wait with sleep.", map[string]any{
+	tool("spawn_agent", "Start a subagent: a named agent loop that works in the background on this Bot's machine, in parallel with you, from a fresh context. It sees only goal and context — not this chat — so make them self-contained (paths, constraints, what to report back). Put its tasks on the taskboard as `[NAME] …` first. Then end your turn: you are woken with its result when it finishes.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"name":    map[string]any{"type": "string", "description": "short unique name, letters/digits/-/_ (e.g. scout, writer-2)"},
 			"goal":    map[string]any{"type": "string", "description": "what it must achieve and what its final report should contain"},
 			"context": map[string]any{"type": "string", "description": "everything it needs to know: files, facts, decisions, which files are its own"},
-			"model":   map[string]any{"type": "string", "description": "provider/model id from list_models; default is your current model"},
+			"model":   map[string]any{"type": "string", "description": "provider/model id from list_models; omit for the operator's subagent default (a cheaper model when one is set)"},
 		},
 		"required": []string{"name", "goal"},
 	}),
@@ -312,7 +312,7 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"name"},
 	}),
-	tool("sleep", "Pause this run to wait. Returns early when a message arrives for you or (for a lead) when a subagent finishes. Use it to wait on subagents instead of polling in a loop.", map[string]any{
+	tool("sleep", "Pause this run for a short wait. Returns early when a message arrives for you or (for a lead) when a subagent finishes. A lead should not sleep just to wait for its subagents: end the turn instead, and you are woken with their results. Sleep only when you need a result before your own next step.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"seconds": map[string]any{"type": "integer", "description": "1-600"},

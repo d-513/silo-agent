@@ -609,6 +609,16 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 	return "", fmt.Errorf("unknown tool %s", name)
 }
 
+// subagentDefaultModel is the operator's subagent model when it is allowed,
+// otherwise the lead's own model.
+func (a *App) subagentDefaultModel(botID, leadChatID string) string {
+	cfg := a.cfg()
+	if m := strings.TrimSpace(cfg.ModelSubagent); m != "" && llm.Allowed(m, cfg.Models) {
+		return m
+	}
+	return a.resolveModel(botID, leadChatID)
+}
+
 func subagentBrief(goal, ctxText string) string {
 	var b strings.Builder
 	b.WriteString("## Goal\n" + strings.TrimSpace(goal))
@@ -647,7 +657,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 			return "", fmt.Errorf("model %q is not allowed; see list_models", model)
 		}
 	} else {
-		model = a.resolveModel(bot.ID, leadChatID)
+		model = a.subagentDefaultModel(bot.ID, leadChatID)
 	}
 	slip, _ := json.Marshal(map[string]any{"name": name, "model": model, "goal": goal})
 	if _, err := a.authorizeAction(ctx, bot, runID, security.Agents, "spawn", string(slip), ""); err != nil {
@@ -673,7 +683,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		return "", err
 	}
 	a.pingLead(bot.ID, leadChatID, "subagents")
-	return fmt.Sprintf("started subagent %s on %s. It works in the background. You are woken with its result when it finishes if your turn has ended; to wait inside this turn use sleep, and agent_status to check.", name, model), nil
+	return fmt.Sprintf("started subagent %s on %s. It works in the background. Unless you have your own work left, end your turn now: you are woken with its result when it finishes.", name, model), nil
 }
 
 // messageSubagent injects text into a live subagent run or resumes a finished

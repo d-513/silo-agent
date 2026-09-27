@@ -197,6 +197,9 @@ type Config struct {
 	Model         string              `koanf:"model"`
 	ModelTitle    string              `koanf:"model_title"`
 	ModelApproval string              `koanf:"model_approval"`
+	// ModelSubagent is the default model of subagents a lead starts; empty
+	// means the lead's own model. spawn_agent may still name another.
+	ModelSubagent string `koanf:"model_subagent"`
 	EmbedModel    string              `koanf:"embedding_model"`
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
@@ -262,6 +265,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model"},
 	{Key: "model_title"},
 	{Key: "model_approval"},
+	{Key: "model_subagent"},
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
 	{Key: "memory.auto_recall", Type: "bool"},
@@ -654,7 +658,7 @@ func validateYAML(raw []byte) error {
 			return fmt.Errorf("invalid model %q: %w", m, err)
 		}
 	}
-	for _, key := range []string{"model", "model_title", "model_approval"} {
+	for _, key := range []string{"model", "model_title", "model_approval", "model_subagent"} {
 		if v := strings.TrimSpace(k.String(key)); v != "" {
 			if _, _, err := llm.Parse(v); err != nil {
 				return fmt.Errorf("%s: %w", key, err)

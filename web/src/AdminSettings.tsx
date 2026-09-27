@@ -29,6 +29,7 @@ const LABELS: Record<string, string> = {
   model: "Default model",
   model_title: "Chat title model",
   model_approval: "Auto-approval model",
+  model_subagent: "Subagent model",
   embedding_model: "Embedding model",
   transcribe_model: "Speech-to-text model",
   "memory.auto_recall": "Auto-recall",
@@ -68,7 +69,7 @@ const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the op
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model" || key === "transcribe_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("context.") || key.startsWith("runs.")) return "context";
   if (key.startsWith("providers.")) return "providers";
@@ -220,6 +221,7 @@ export function AdminSettings() {
   const defaultModel = values["model"] ?? "";
   const titleModel = values["model_title"] ?? "";
   const approvalModel = values["model_approval"] ?? "";
+  const subagentModel = values["model_subagent"] ?? "";
   const embedModel = values["embedding_model"] ?? "";
   const voiceModel = values["transcribe_model"] ?? "";
 
@@ -234,6 +236,9 @@ export function AdminSettings() {
           defaultField={fields.find((f) => f.key === "model")}
           titleField={fields.find((f) => f.key === "model_title")}
           approvalField={fields.find((f) => f.key === "model_approval")}
+          subagentModel={subagentModel}
+          subagentField={fields.find((f) => f.key === "model_subagent")}
+          onSubagent={(v) => setValue("model_subagent", v)}
           embedModel={embedModel}
           embedField={fields.find((f) => f.key === "embedding_model")}
           onEmbed={(v) => setValue("embedding_model", v)}
@@ -454,6 +459,9 @@ function ModelSettings({
   onDefault,
   onTitle,
   onApproval,
+  subagentModel,
+  subagentField,
+  onSubagent,
   embedModel,
   embedField,
   onEmbed,
@@ -472,6 +480,9 @@ function ModelSettings({
   onDefault: (v: string) => void;
   onTitle: (v: string) => void;
   onApproval: (v: string) => void;
+  subagentModel: string;
+  subagentField?: ConfigField;
+  onSubagent: (v: string) => void;
   embedModel: string;
   embedField?: ConfigField;
   onEmbed: (v: string) => void;
@@ -540,6 +551,16 @@ function ModelSettings({
             placeholder="Same as title model"
             emptyLabel="Same as title model"
             options={[{ value: "", label: "Same as title model" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
+          />
+        </Field>
+        <Field label="Subagent model" hint="Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.">
+          <Select
+            value={subagentModel}
+            onChange={onSubagent}
+            disabled={subagentField?.source === ConfigSource.ENV}
+            placeholder="Same as the lead"
+            emptyLabel="Same as the lead"
+            options={[{ value: "", label: "Same as the lead" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
           />
         </Field>
         {/* Embedding models are not chat models, so this is free text, not the allowlist. */}

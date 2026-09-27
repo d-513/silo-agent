@@ -415,3 +415,32 @@ func TestTaskboardPythonPath(t *testing.T) {
 		t.Fatal("reset left items")
 	}
 }
+
+func TestSubagentDefaultModel(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_SA8",
+		memCall("spawn_agent", `{"name":"cheap","goal":"Test_SA8Sub a"}`),
+		memCall("spawn_agent", `{"name":"picked","goal":"Test_SA8Sub b","model":"dummy/echo"}`),
+		dummy.Turn{Text: "end"},
+	)
+	dummy.Script("Test_SA8Sub", dummy.Turn{Text: "ok"})
+	dir := t.TempDir()
+	path := dir + "/silo.yaml"
+	raw := strings.Replace(apptest.DefaultYAML(dir), "  - dummy/echo\n", "  - dummy/echo\n  - dummy/cheap\n", 1) + "model_subagent: dummy/cheap\n"
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := apptest.New(t, apptest.WithConfigPath(path))
+	bot := h.CreateBot("Frugal")
+	id := bot.GetId()
+	chat := h.FirstChat(id)
+	run, _ := h.Send(id, chat, "Test_SA8_Input")
+	h.WaitRun(run)
+	got := map[string]string{}
+	for _, sa := range listSubagents(t, h, id, chat) {
+		got[sa.GetName()] = sa.GetModel()
+	}
+	if got["cheap"] != "dummy/cheap" || got["picked"] != "dummy/echo" {
+		t.Fatalf("models %v", got)
+	}
+}
