@@ -108,14 +108,16 @@ func cachePolicy(s llm.Settings, botID string) llm.CachePolicy {
 	return llm.CachePolicy{Enabled: true, TTL: ttl, Key: "silo-bot-" + botID, Messages: true}
 }
 
-// emitUsage reports token accounting for a turn so the client can show a cache
-// chip. It persists like any other run event.
-func (a *App) emitUsage(botID, chatID, runID string, u llm.Usage) {
+// emitUsage reports token accounting for a turn, with the model's context
+// window, so the composer can show the cache chip and the context meter. It
+// persists like any other run event.
+func (a *App) emitUsage(botID, chatID, runID string, u llm.Usage, window int) {
 	body, _ := json.Marshal(map[string]int{
 		"input":       u.InputTokens,
 		"output":      u.OutputTokens,
 		"cache_read":  u.CacheReadTokens,
 		"cache_write": u.CacheWriteTokens,
+		"window":      window,
 	})
 	a.emit(botID, chatID, runID, "usage", string(body), "")
 }

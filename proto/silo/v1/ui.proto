@@ -46,6 +46,7 @@ service UI {
   rpc EditMessage(EditMessageRequest) returns (SendResponse);
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
   rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
+  rpc CompactChat(CompactChatRequest) returns (CompactChatResponse);
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
   rpc AddSecret(AddSecretRequest) returns (SecretMeta);
@@ -485,6 +486,18 @@ message DivergeChatRequest {
 
 message DivergeChatResponse {
   Chat chat = 1;
+}
+
+// CompactChat summarizes a web chat's history into one compaction event so
+// later runs replay the summary instead of every turn. Refused while a reply
+// is running.
+message CompactChatRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+}
+
+message CompactChatResponse {
+  string run_id = 1;
 }
 
 message SecretMeta {

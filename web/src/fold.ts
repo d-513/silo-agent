@@ -25,6 +25,8 @@ export type ToolBlock = {
   outcome?: Outcome;
 };
 
+export type CompactionBlock = { key: string; type: "compaction"; text: string; reason: string; running?: boolean; runId?: string };
+
 export type Decision = "allow_once" | "always" | "deny" | "stopped";
 
 export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; title: string; target: string; runId?: string };
@@ -39,6 +41,10 @@ export type Block =
   | { key: string; type: "error"; text: string }
   // A Feed post quoted into a new chat: `source` is where it was posted from.
   | { key: string; type: "quote"; text: string; source: string; createdAt?: string }
+  // The history before this point was summarized to fit the context window.
+  // `running` while the summary is being written; empty text once settled
+  // means it failed or was stopped.
+  | CompactionBlock
   | {
       key: string;
       type: "artifact";
@@ -103,6 +109,13 @@ function waitingTool(out: Block[], runId?: string, approvalId?: string): ToolBlo
   }
 }
 
+function runningCompaction(out: Block[], runId?: string): CompactionBlock | undefined {
+  for (let j = out.length - 1; j >= 0; j--) {
+    const b = out[j];
+    if (b.type === "compaction" && b.running && (!runId || !b.runId || b.runId === runId)) return b;
+  }
+}
+
 export function foldEvents(events: Ev[]): Block[] {
   const out: Block[] = [];
   let i = 0;
@@ -147,6 +160,21 @@ export function foldEvents(events: Ev[]): Block[] {
         last.streaming = true;
       } else {
         push({ key, type: "assistant", text: e.body, streaming: true, bounds: [0] });
+      }
+      continue;
+    }
+    if (e.kind === "compacting") {
+      closeThinking(out, e.at);
+      push({ key, type: "compaction", text: "", reason: e.tool, running: true, runId: e.runId });
+      continue;
+    }
+    if (e.kind === "compaction") {
+      const c = runningCompaction(out, e.runId);
+      if (c) {
+        c.text = e.body;
+        c.running = false;
+      } else {
+        push({ key, type: "compaction", text: e.body, reason: e.tool, runId: e.runId });
       }
       continue;
     }
@@ -282,6 +310,7 @@ export function foldEvents(events: Ev[]): Block[] {
     if (e.kind === "done") {
       // Anything still running in this run was cut off. A Stop leaves a receipt.
       const cut = e.body === "stopped" || e.body === "interrupted" || e.body === "error";
+      for (let c = runningCompaction(out, e.runId); c; c = runningCompaction(out, e.runId)) c.running = false;
       for (const b of out) {
         if (b.type !== "tool" || !runOk(b, e.runId)) continue;
         if (b.running) {
@@ -344,6 +373,8 @@ export function foldEvents(events: Ev[]): Block[] {
     }
     if (e.kind === "error") {
       closeThinking(out, e.at);
+      const c = runningCompaction(out, e.runId);
+      if (c) c.running = false;
       push({ key, type: "error", text: e.body });
     }
   }

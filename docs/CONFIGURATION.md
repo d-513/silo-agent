@@ -39,6 +39,9 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds long-term memories (`remember`/`recall`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models; a provider that cannot embed (Anthropic) is rejected |
 | `transcribe_model` | `openrouter/openai/whisper-1` | `SILO_TRANSCRIBE_MODEL` | Speech-to-text for composer dictation (the mic, `Transcribe` RPC) and the Bot's `transcribe` tool / `silo_runtime.transcribe`. Any OpenAI-compatible `/audio/transcriptions` model: OpenRouter (`openai/whisper-1`, `openai/whisper-large-v3`, …), OpenAI (`whisper-1`, `gpt-4o-transcribe`), or `local/<model>` for LocalAI / Speaches / vLLM / whisper.cpp (`--inference-path /v1/audio/transcriptions`). 25 MB per recording. `off` disables voice (the mic hides and the tool is not offered). A provider that cannot transcribe (Anthropic) is rejected |
 | `memory.auto_recall` | `true` | `SILO_MEMORY__AUTO_RECALL` | Inject up to 3 close long-term memories into each run's volatile prompt tail |
+| `context.window` | `128000` | `SILO_CONTEXT__WINDOW` | Fallback context window in tokens, for models whose provider does not report one (OpenRouter's `/models` `context_length` is used when it does) |
+| `context.compact_at` | `0.8` | `SILO_CONTEXT__COMPACT_AT` | Fraction of the window at which a run summarizes its history into one turn before the next model call (0.1–0.98) |
+| `context.windows` | (none) | — | Per-model window overrides (YAML list of `{model, window}`; a list because model ids contain dots). Wins over the provider's report |
 | `models` | (none) | — | Allowlist of selectable models (YAML list) |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used (optional for `local`) |
 | `providers.<id>.base_url` | (provider default) | `SILO_PROVIDERS__<ID>__BASE_URL` | Override the API base URL |
@@ -110,6 +113,12 @@ providers:
 
 search:
   engine: duckduckgo_scraper
+
+context:
+  compact_at: 0.8
+  windows:
+    - model: anthropic/claude-opus-5
+      window: 200000
 ```
 
 ## What is not config

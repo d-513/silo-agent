@@ -41,7 +41,15 @@ type Turn struct {
 	Reasoning string
 	Text      string
 	ToolCalls []llm.ToolCall
+	// OverflowAbove fails the turn with a context-length error while the
+	// request carries more than this many runes, so tests can drive the
+	// compact-and-retry path. Zero never overflows.
+	OverflowAbove int
 }
+
+// CompactMarker is the heading the CP's compaction prompt starts with; a
+// Complete whose system prompt carries it answers with a summary.
+const CompactMarker = "CONTEXT COMPACTION"
 
 var (
 	mu        sync.Mutex
@@ -86,11 +94,60 @@ type client struct{}
 
 func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error) {
 	turn := resolveTurn(req)
-	events := buildEvents(turn)
+	size := requestRunes(req)
+	if turn.OverflowAbove > 0 && size > turn.OverflowAbove {
+		return nil, fmt.Errorf("This model's maximum context length is %d tokens. However, your messages resulted in %d tokens.", turn.OverflowAbove, size)
+	}
+	events := buildEvents(turn, size)
 	return &sliceStream{events: events}, nil
 }
 
+// requestRunes is the request's size in runes; the dummy reports it as its
+// input token count so context tracking sees a conversation grow.
+func requestRunes(req llm.Request) int {
+	n := 0
+	for _, blk := range req.System {
+		n += utf8.RuneCountInString(blk.Text)
+	}
+	for _, m := range req.Messages {
+		n += utf8.RuneCountInString(m.Text)
+		for _, tc := range m.ToolCalls {
+			n += utf8.RuneCountInString(tc.Arguments)
+		}
+	}
+	return n
+}
+
+// summaryFrom answers a compaction request. The summary carries the
+// conversation's Test_* token with a "_Compacted" suffix, so a test scripts
+// what happens after the history is replaced under that key (the turn index
+// restarts once the old assistant turns are gone).
+func summaryFrom(req llm.Request) (string, bool) {
+	isCompact := false
+	for _, blk := range req.System {
+		if strings.Contains(blk.Text, CompactMarker) {
+			isCompact = true
+		}
+	}
+	if !isCompact {
+		return "", false
+	}
+	token := ""
+	for _, m := range req.Messages {
+		if token = firstToken(m.Text); token != "" {
+			break
+		}
+	}
+	if token == "" {
+		return "Dummy Summary", true
+	}
+	return "Dummy Summary " + strings.TrimSuffix(token, "_Compacted") + "_Compacted", true
+}
+
 func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, error) {
+	if sum, ok := summaryFrom(req); ok {
+		return llm.Response{Text: sum, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 4}}, nil
+	}
 	if v := verdictFrom(req); v != "" {
 		return llm.Response{Text: v, Usage: llm.Usage{InputTokens: 8, OutputTokens: 1}}, nil
 	}
@@ -194,7 +251,7 @@ func isWordByte(b byte) bool {
 }
 
 // buildEvents turns a Turn into the neutral event stream.
-func buildEvents(t Turn) []llm.Event {
+func buildEvents(t Turn, input int) []llm.Event {
 	var out []llm.Event
 	for _, chunk := range chunkRunes(t.Reasoning, 7) {
 		out = append(out, llm.Event{Kind: llm.EventReasoning, Text: chunk})
@@ -221,9 +278,14 @@ func buildEvents(t Turn) []llm.Event {
 			out = append(out, llm.Event{Kind: llm.EventToolCallDelta, Index: i, Text: chunk})
 		}
 	}
+	// Like a real provider, output counts the tool-call arguments too.
+	output := 5 + utf8.RuneCountInString(t.Text)
+	for _, tc := range t.ToolCalls {
+		output += utf8.RuneCountInString(tc.Arguments)
+	}
 	out = append(out, llm.Event{Kind: llm.EventUsage, Usage: llm.Usage{
-		InputTokens:  10 + utf8.RuneCountInString(t.Text),
-		OutputTokens: 5 + utf8.RuneCountInString(t.Text),
+		InputTokens:  input,
+		OutputTokens: output,
 	}})
 	out = append(out, llm.Event{Kind: llm.EventDone})
 	return out

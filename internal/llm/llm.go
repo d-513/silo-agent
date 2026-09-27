@@ -156,6 +156,13 @@ type Embedder interface {
 	Embed(ctx context.Context, model string, texts []string) ([][]float32, error)
 }
 
+// ContextWindower is the optional interface a provider implements when it can
+// report a model's context window in tokens (OpenRouter's /models does).
+// Callers fall back to operator config when it is missing or errors.
+type ContextWindower interface {
+	ContextWindow(ctx context.Context, model string) (int, error)
+}
+
 // MaxAudioBytes is the per-recording upload cap OpenAI and OpenRouter enforce
 // on /audio/transcriptions.
 const MaxAudioBytes = 25 << 20

@@ -290,10 +290,16 @@ var toolDefs = []llm.Tool{
 }
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
+	a.emitMeta(botID, chatID, runID, kind, body, tool, "")
+}
+
+// emitMeta is emit with server-only Meta persisted on the row (not sent to
+// viewers).
+func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 	body = validUTF8(a.Mask(botID).Apply(body))
 	tool = validUTF8(tool)
 	id := ids.New()
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, CreatedAt: time.Now()})
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
 }
 
@@ -377,6 +383,9 @@ type runRequest struct {
 	text   string
 	atts   []*v1.Attachment
 	origin *runOrigin
+	// compact starts a manual compaction run: it summarizes the chat and only
+	// goes on to a model turn if a message is injected meanwhile.
+	compact bool
 }
 
 // startRun records a run and launches the agent loop. Callers with a live run
@@ -395,26 +404,29 @@ func (a *App) startRun(req runRequest) (string, error) {
 	if req.origin != nil && req.origin.automation != nil {
 		origin = "automation"
 	}
+	if req.compact {
+		origin = "compact"
+	}
 	runID := ids.New()
 	run := db.Run{ID: runID, BotID: req.botID, ChatID: req.chatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
 	if err := a.DB.Create(&run).Error; err != nil {
 		return "", err
 	}
-	b.LastTask = req.text
-	b.Status = "working"
-	// Only touch the run fields: saving the whole row here could clobber a
-	// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
-	a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
-		"last_task": req.text,
-		"status":    "working",
-	})
-	// Always ensure the box: a message must start a stopped Bot, and a worker
-	// session can outlive a container that was removed out of band.
-	cp := b
-	a.ensureRunningBg(&cp)
+	if !req.compact {
+		// Only touch the run fields: saving the whole row here could clobber a
+		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
+		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
+			"last_task": req.text,
+			"status":    "working",
+		})
+		// Always ensure the box: a message must start a stopped Bot, and a
+		// worker session can outlive a container that was removed out of band.
+		cp := b
+		a.ensureRunningBg(&cp)
+	}
 	inbox := make(chan inboxMsg, 32)
 	done := make(chan struct{})
-	go a.runLoop(req.botID, req.chatID, runID, req.text, req.atts, req.origin, inbox, done)
+	go a.runLoop(req, runID, inbox, done)
 	return runID, nil
 }
 
@@ -592,6 +604,7 @@ type turnResult struct {
 	assistant llm.Message
 	sections  []string
 	tail      string
+	usage     llm.Usage
 }
 
 // streamTurn drives one provider completion, emitting chunks, reasoning, and
@@ -671,9 +684,6 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	if think.Len() > 0 {
 		a.emit(botID, chatID, runID, "thinking", think.String(), "")
 	}
-	if usage.InputTokens > 0 || usage.OutputTokens > 0 || usage.CacheReadTokens > 0 || usage.CacheWriteTokens > 0 {
-		a.emitUsage(botID, chatID, runID, usage)
-	}
 	if !saw {
 		return turnResult{}, fmt.Errorf("empty completion")
 	}
@@ -685,10 +695,11 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 		}
 		assistant.ToolCalls = append(assistant.ToolCalls, c)
 	}
-	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush()}, nil
+	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush(), usage: usage}, nil
 }
 
-func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachment, origin *runOrigin, inbox chan inboxMsg, done chan struct{}) {
+func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done chan struct{}) {
+	botID, chatID, userText, atts, origin := req.botID, req.chatID, req.text, req.atts, req.origin
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel, inbox, done)
@@ -704,14 +715,17 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	}
 	settings := a.cfg().ProviderSettings(provider)
 	tools := a.runTools()
+	window := a.contextWindow(ctx, modelID)
 
-	a.emitUser(botID, chatID, runID, userText, atts)
-	a.bumpChat(chatID)
-	title := userText
-	if strings.TrimSpace(title) == "" && len(atts) > 0 {
-		title = "attached " + atts[0].GetName()
+	if !req.compact {
+		a.emitUser(botID, chatID, runID, userText, atts)
+		a.bumpChat(chatID)
+		title := userText
+		if strings.TrimSpace(title) == "" && len(atts) > 0 {
+			title = "attached " + atts[0].GetName()
+		}
+		go a.nameChat(botID, chatID, runID, title)
 	}
-	go a.nameChat(botID, chatID, runID, title)
 
 	var msgs []llm.Message
 	if origin != nil && origin.automation != nil {
@@ -719,6 +733,25 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 		msgs = a.historyFromRuns([]db.Run{{ID: runID}})
 	} else {
 		msgs = a.historyFromDB(chatID)
+	}
+	if req.compact {
+		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window)
+		if err != nil {
+			if a.stopped(ctx, botID, chatID, runID) {
+				return
+			}
+			a.emit(botID, chatID, runID, "error", err.Error(), "")
+			a.finish(botID, chatID, runID, "error")
+			return
+		}
+		// A message sent while the summary was written continues as a normal
+		// turn; otherwise the run is just the compaction.
+		msgs = drainInbox(out, inbox)
+		if len(msgs) == len(out) {
+			a.finish(botID, chatID, runID, "done")
+			return
+		}
+		userText = msgs[len(msgs)-1].Text
 	}
 	if note := a.autoRecall(ctx, botID, userText); note != "" {
 		if origin == nil {
@@ -730,6 +763,10 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 	// seen counts identical read/grep calls this run so a stuck loop does not
 	// re-send content the model already has. Mutating tools clear it.
 	seen := map[string]int{}
+	// lastTotal is the provider-reported size of the previous turn (input +
+	// output) and lastLen the history length it covered; the next request is
+	// that plus an estimate of what was appended since. Zero means no turn yet.
+	lastTotal, lastLen := 0, 0
 
 	for {
 		msgs = drainInbox(msgs, inbox)
@@ -742,15 +779,54 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			if c, pr, mo, e := a.modelClient(m, botID, "chat"); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
+				window = a.contextWindow(ctx, modelID)
 			}
 		}
-		res, err := a.streamTurn(ctx, botID, chatID, runID, client, llm.Request{
+		system := a.buildSystemBlocks(botID, origin)
+		base := estimateBase(system, tools)
+		used := base + estimateMessages(msgs)
+		if lastTotal > 0 && lastLen <= len(msgs) {
+			used = lastTotal + estimateMessages(msgs[lastLen:])
+		}
+		// compactNow replaces the history with a summary; mid-task it tells
+		// the model to carry on. It reports whether the history was replaced.
+		compactNow := func() bool {
+			out, err := a.compact(ctx, botID, chatID, runID, compactAuto, modelID, msgs, window)
+			if err != nil {
+				if ctx.Err() == nil {
+					a.emit(botID, chatID, runID, "error", err.Error(), "")
+				}
+				return false
+			}
+			if n := len(msgs); n > 0 && msgs[n-1].Role != llm.RoleUser {
+				out[0].Text += compactionContinue
+			}
+			msgs = out
+			lastTotal, lastLen = 0, 0
+			return true
+		}
+		if needsCompaction(used, base, window, a.cfg().Context.Threshold()) {
+			compactNow()
+			if a.stopped(ctx, botID, chatID, runID) {
+				return
+			}
+		}
+		turnReq := llm.Request{
 			Model:    model,
-			System:   a.buildSystemBlocks(botID, origin),
+			System:   system,
 			Messages: msgs,
 			Tools:    tools,
 			Cache:    cachePolicy(settings, botID),
-		})
+		}
+		res, err := a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
+		// The estimate can be off: a provider that refuses the request as too
+		// long gets one compaction and one retry.
+		if err != nil && isContextOverflow(err) && len(msgs) > 1 && ctx.Err() == nil {
+			if compactNow() {
+				turnReq.Messages = msgs
+				res, err = a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
+			}
+		}
 		if err != nil {
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
@@ -758,6 +834,10 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			a.emit(botID, chatID, runID, "error", err.Error(), "")
 			a.finish(botID, chatID, runID, "error")
 			return
+		}
+		if u := res.usage; u.InputTokens > 0 || u.OutputTokens > 0 || u.CacheReadTokens > 0 || u.CacheWriteTokens > 0 {
+			a.emitUsage(botID, chatID, runID, u, window)
+			lastTotal = u.InputTokens + u.OutputTokens
 		}
 		if len(res.assistant.ToolCalls) == 0 {
 			for _, sec := range res.sections {
@@ -779,6 +859,7 @@ func (a *App) runLoop(botID, chatID, runID, userText string, atts []*v1.Attachme
 			a.emitDelivered(botID, chatID, runID, "section_live", sec, origin)
 		}
 		msgs = append(msgs, res.assistant)
+		lastLen = len(msgs)
 		for _, tc := range res.assistant.ToolCalls {
 			if tc.Name == "write" || tc.Name == "patch" || tc.Name == "delete" || tc.Name == "terminal" || tc.Name == "exec_python" {
 				clear(seen)
@@ -874,94 +955,118 @@ func (a *App) historyFromDB(chatID string) []llm.Message {
 
 // historyFromRuns replays the given runs, in order, as model messages.
 func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
-	var msgs []llm.Message
-	quoted := false
+	var all []db.RunEvent
 	for _, run := range runs {
 		var evs []db.RunEvent
 		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
-		var pending []llm.ToolCall
-		var lastCall string
-		var results []llm.Message
-		flushTools := func() {
-			if len(pending) == 0 {
-				return
-			}
-			for len(results) < len(pending) {
-				id := pending[len(results)].ID
-				if id == "" {
-					id = "call_missing"
-				}
-				results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: "error: interrupted"})
-			}
-			msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, ToolCalls: pending})
-			msgs = append(msgs, results...)
-			pending = nil
+		all = append(all, evs...)
+	}
+	return historyFromEvents(all)
+}
+
+// historyFromEvents turns a conversation's events (runs in order, each run's
+// events by seq) into model messages. After a compaction, replay opens with
+// the summary and resumes after the compaction's anchor.
+func historyFromEvents(evs []db.RunEvent) []llm.Message {
+	var msgs []llm.Message
+	// fold merges the next user message into a preceding framed user turn (a
+	// quoted Feed post or a compaction summary) so roles still alternate.
+	fold := false
+	if start, summary, ok := cutAtCompaction(evs); ok {
+		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: compactionText(summary)})
+		fold = true
+		evs = evs[start:]
+	}
+	var pending []llm.ToolCall
+	var lastCall string
+	var results []llm.Message
+	flushTools := func() {
+		if len(pending) == 0 {
 			results = nil
 			lastCall = ""
+			return
 		}
-		for _, ev := range evs {
-			switch ev.Kind {
-			case feedQuoteKind:
-				flushTools()
-				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feedQuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
-				quoted = true
-				continue
-			case "user":
-				flushTools()
-				text := ev.Body
-				if atts := attachmentsFromMeta(ev.Meta); len(atts) > 0 {
-					paths := make([]string, 0, len(atts))
-					for _, at := range atts {
-						paths = append(paths, at.Path)
-					}
-					text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
-				}
-				text = stampUserText(text, ev.CreatedAt)
-				// A quote is its own user turn; fold the reply into it so
-				// roles still alternate.
-				if n := len(msgs); quoted && n > 0 && msgs[n-1].Role == llm.RoleUser {
-					msgs[n-1].Text += "\n\n" + text
-				} else {
-					msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
-				}
-			case "assistant", "section":
-				flushTools()
-				if strings.TrimSpace(ev.Body) != "" {
-					msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: ev.Body})
-				}
-			case "tool":
-				if n := len(pending); n > 0 {
-					last := &pending[n-1]
-					same := last.Name == ev.Tool || last.Name == "" || ev.Tool == ""
-					incomplete := last.Arguments == "" || !jsonLooksComplete(last.Arguments)
-					if same && (ev.Body == "" || incomplete || ev.Body == last.Arguments) {
-						if ev.Body != "" {
-							last.Arguments = ev.Body
-						}
-						if ev.Tool != "" {
-							last.Name = ev.Tool
-						}
-						lastCall = last.ID
-						continue
-					}
-				}
-				id := "call_" + ev.ID
-				lastCall = id
-				pending = append(pending, llm.ToolCall{ID: id, Name: ev.Tool, Arguments: ev.Body})
-			case "tool_args_chunk":
-				if n := len(pending); n > 0 {
-					pending[n-1].Arguments += ev.Body
-				}
-			case "tool_result":
-				id := lastCall
-				if id == "" {
-					id = "call_" + ev.ID
-				}
-				results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: ev.Body})
+		for len(results) < len(pending) {
+			id := pending[len(results)].ID
+			if id == "" {
+				id = "call_missing"
 			}
+			results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: "error: interrupted"})
 		}
-		flushTools()
+		msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, ToolCalls: pending})
+		msgs = append(msgs, results...)
+		pending = nil
+		results = nil
+		lastCall = ""
 	}
+	runID := ""
+	for _, ev := range evs {
+		if ev.RunID != runID {
+			// Tool calls never pair across runs.
+			flushTools()
+			runID = ev.RunID
+		}
+		switch ev.Kind {
+		case compactionKind, compactingKind:
+			continue
+		case feedQuoteKind:
+			flushTools()
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feedQuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
+			fold = true
+			continue
+		case "user":
+			flushTools()
+			text := ev.Body
+			if atts := attachmentsFromMeta(ev.Meta); len(atts) > 0 {
+				paths := make([]string, 0, len(atts))
+				for _, at := range atts {
+					paths = append(paths, at.Path)
+				}
+				text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
+			}
+			text = stampUserText(text, ev.CreatedAt)
+			if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
+				msgs[n-1].Text += "\n\n" + text
+			} else {
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
+			}
+		case "assistant", "section":
+			flushTools()
+			if strings.TrimSpace(ev.Body) != "" {
+				msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: ev.Body})
+			}
+		case "tool":
+			if n := len(pending); n > 0 {
+				last := &pending[n-1]
+				same := last.Name == ev.Tool || last.Name == "" || ev.Tool == ""
+				incomplete := last.Arguments == "" || !jsonLooksComplete(last.Arguments)
+				if same && (ev.Body == "" || incomplete || ev.Body == last.Arguments) {
+					if ev.Body != "" {
+						last.Arguments = ev.Body
+					}
+					if ev.Tool != "" {
+						last.Name = ev.Tool
+					}
+					lastCall = last.ID
+					continue
+				}
+			}
+			id := "call_" + ev.ID
+			lastCall = id
+			pending = append(pending, llm.ToolCall{ID: id, Name: ev.Tool, Arguments: ev.Body})
+		case "tool_args_chunk":
+			if n := len(pending); n > 0 {
+				pending[n-1].Arguments += ev.Body
+			}
+		case "tool_result":
+			id := lastCall
+			if id == "" {
+				id = "call_" + ev.ID
+			}
+			results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: ev.Body})
+		}
+	}
+	flushTools()
 	return msgs
 }
 

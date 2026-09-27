@@ -17,6 +17,7 @@ export interface Usage {
   output: number;
   cacheRead: number;
   cacheWrite: number;
+  window: number;
 }
 
 export interface ComposerProps {
@@ -36,6 +37,8 @@ export interface ComposerProps {
   model?: string;
   onModel?: (model: string) => void;
   usage?: Usage | null;
+  // onCompact summarizes the conversation so far (the context meter's click).
+  onCompact?: () => void;
   // voice shows the dictation mic; onTranscribe turns a recording into text.
   voice?: boolean;
   onTranscribe?: (audio: Uint8Array, mime: string) => Promise<string>;
@@ -63,6 +66,7 @@ export function Composer({
   model,
   onModel,
   usage,
+  onCompact,
   voice,
   onTranscribe,
 }: ComposerProps) {
@@ -298,14 +302,7 @@ export function Composer({
                 {autoExpand ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
               </button>
 
-              {usage && (usage.cacheRead > 0 || usage.cacheWrite > 0) ? (
-                <span
-                  className="hidden items-center rounded-sm bg-well px-2 py-1 font-mono text-[11px] text-ink-3 @min-[540px]:inline-flex"
-                  title={`Input ${usage.input} · Output ${usage.output}`}
-                >
-                  cached {fmtTokens(usage.cacheRead)} / new {fmtTokens(usage.input - usage.cacheRead > 0 ? usage.input - usage.cacheRead : 0)}
-                </span>
-              ) : null}
+              {usage && usage.window > 0 ? <ContextMeter usage={usage} onCompact={onCompact} disabled={sending || !chatId} /> : null}
             </div>
 
             <span className="min-w-2 flex-1" />
@@ -324,6 +321,46 @@ export function Composer({
         </form>
       </div>
     </div>
+  );
+}
+
+// ContextMeter is how full the model's context window was on the last turn;
+// clicking it compacts the conversation into a summary.
+function ContextMeter({ usage, onCompact, disabled }: { usage: Usage; onCompact?: () => void; disabled: boolean }) {
+  const used = usage.input + usage.output;
+  const frac = Math.min(1, used / usage.window);
+  const pct = Math.round(frac * 100);
+  const r = 6;
+  const circ = 2 * Math.PI * r;
+  const tone = frac >= 0.9 ? "text-vermilion" : frac >= 0.7 ? "text-ink" : "text-ink-3";
+  const cached = usage.cacheRead > 0 ? ` · cached ${fmtTokens(usage.cacheRead)}` : "";
+  const hint = onCompact ? (disabled ? "Compacting is available when the reply finishes" : "Click to compact the conversation into a summary") : "";
+  return (
+    <button
+      type="button"
+      title={`Context ${fmtTokens(used)} / ${fmtTokens(usage.window)} tokens${cached}${hint ? `\n${hint}` : ""}`}
+      aria-label={`Context ${pct}% full. Compact conversation`}
+      disabled={disabled || !onCompact}
+      onClick={onCompact}
+      className={`flex h-[34px] shrink-0 items-center gap-1.5 rounded-control px-2 font-mono text-[11px] transition-[background-color,color,transform] duration-[160ms] ease-quiet enabled:hover:bg-well enabled:hover:text-ink enabled:active:scale-[.96] enabled:active:duration-[70ms] disabled:cursor-default ${tone}`}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className="shrink-0 -rotate-90">
+        <circle cx="8" cy="8" r={r} fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="2" />
+        <circle
+          cx="8"
+          cy="8"
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - frac)}
+          className="transition-[stroke-dashoffset] duration-[400ms] ease-quiet"
+        />
+      </svg>
+      <span className="hidden @min-[400px]:inline">{pct}%</span>
+    </button>
   );
 }
 

@@ -22,6 +22,7 @@ import {
   Lightbulb,
   MessageCircle,
   MessagesSquare,
+  Minimize2,
   Monitor,
   Mouse,
   MousePointerClick,
@@ -667,6 +668,33 @@ function Thinking({ text, streaming, ms }: { text: string; streaming: boolean; m
       }
     >
       {text.trim() ? <div className="whitespace-pre-wrap break-words text-[13px] leading-[21px] text-ink-2">{text}</div> : null}
+    </FoldRow>
+  );
+}
+
+// Compaction marks where the model's history was replaced by a summary. The
+// thread above stays as it was; the summary is what the model sees of it.
+function Compaction({ text, reason, running }: { text: string; reason: string; running: boolean }) {
+  const title = running ? "Compacting context" : text ? "Context compacted" : "Compaction did not finish";
+  return (
+    <FoldRow
+      live={running}
+      lead={
+        <>
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+            <Minimize2 size={14} strokeWidth={1.75} />
+          </span>
+        </>
+      }
+      title={running ? <span className="shimmer-text shrink-0 font-medium">{title}</span> : <span className="shrink-0 font-medium text-ink-2">{title}</span>}
+      tail={reason === "auto" && !running ? <span className="truncate text-ink-3">· the context window was nearly full</span> : null}
+    >
+      {text.trim() ? (
+        <div className="silo-reply text-[13px] leading-[21px] text-ink-2">
+          <Md text={text} />
+        </div>
+      ) : null}
     </FoldRow>
   );
 }
@@ -1392,6 +1420,7 @@ export function Thread({
     }
     if (b.type === "receipt") return <Receipt b={b} />;
     if (b.type === "quote") return <FeedQuote text={b.text} source={b.source} createdAt={b.createdAt} />;
+    if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && sending} />;
     if (b.type === "tool") {
       if (b.name === "artifact" && blocks.some((x) => x.type === "artifact" && (!x.runId || !b.runId || x.runId === b.runId))) {
         return null;

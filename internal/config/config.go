@@ -78,6 +78,57 @@ type Memory struct {
 	AutoRecall bool `koanf:"auto_recall"`
 }
 
+// Context configures the model context window and automatic compaction.
+type Context struct {
+	// Window is the fallback context size in tokens when the provider cannot
+	// report one (OpenRouter does, via /models).
+	Window int `koanf:"window"`
+	// Windows are per-model overrides; they win over the provider's own
+	// report. A list, not a map: model ids contain dots, koanf's delimiter.
+	Windows []ModelWindow `koanf:"windows"`
+	// CompactAt is the fraction of the window that triggers compaction.
+	CompactAt float64 `koanf:"compact_at"`
+}
+
+// DefaultContextWindow and DefaultCompactAt are the context fallbacks.
+const (
+	DefaultContextWindow = 128000
+	DefaultCompactAt     = 0.8
+)
+
+// ModelWindow is one per-model context window override.
+type ModelWindow struct {
+	Model  string `koanf:"model"`
+	Window int    `koanf:"window"`
+}
+
+// WindowFor returns the operator override for modelID, or 0.
+func (c Context) WindowFor(modelID string) int {
+	modelID = strings.TrimSpace(modelID)
+	for _, w := range c.Windows {
+		if strings.TrimSpace(w.Model) == modelID && w.Window > 0 {
+			return w.Window
+		}
+	}
+	return 0
+}
+
+// Threshold returns the valid compaction fraction.
+func (c Context) Threshold() float64 {
+	if c.CompactAt <= 0.1 || c.CompactAt > 0.98 {
+		return DefaultCompactAt
+	}
+	return c.CompactAt
+}
+
+// FallbackWindow returns the valid fallback window.
+func (c Context) FallbackWindow() int {
+	if c.Window < 1000 {
+		return DefaultContextWindow
+	}
+	return c.Window
+}
+
 type Search struct {
 	Engine string `koanf:"engine"`
 }
@@ -114,6 +165,7 @@ type Config struct {
 	EmbedModel    string              `koanf:"embedding_model"`
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
+	Context       Context             `koanf:"context"`
 	Models        []string            `koanf:"models"`
 	Debug         bool                `koanf:"debug"`
 	Bootstrap     Bootstrap           `koanf:"bootstrap"`
@@ -177,6 +229,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
 	{Key: "memory.auto_recall", Type: "bool"},
+	{Key: "context.window"},
+	{Key: "context.compact_at"},
 	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
 	{Key: "http_addr", Restart: true},
@@ -254,6 +308,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
 	_ = k.Set("memory.auto_recall", true)
+	_ = k.Set("context.window", DefaultContextWindow)
+	_ = k.Set("context.compact_at", DefaultCompactAt)
 }
 
 type yamlBytes []byte

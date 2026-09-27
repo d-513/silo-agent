@@ -27,3 +27,10 @@ func TestChannelPromptTeachesSections(t *testing.T) {
 		t.Fatal("CHANNEL.md no longer teaches the section sentinel")
 	}
 }
+
+// The dummy provider recognizes a compaction request by this heading.
+func TestCompactPromptKeepsMarker(t *testing.T) {
+	if !strings.HasPrefix(Compact, "# CONTEXT COMPACTION") {
+		t.Fatal("COMPACT.md must start with the CONTEXT COMPACTION heading")
+	}
+}

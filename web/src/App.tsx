@@ -1274,6 +1274,18 @@ function BotPage() {
     }
   }
 
+  async function compactChat() {
+    if (!id || !chatId) return;
+    setActErr("");
+    markSent();
+    try {
+      await ui.compactChat({ botId: id, chatId });
+    } catch (ex) {
+      setSending(false);
+      setActErr(fail(ex));
+    }
+  }
+
   async function stopRun() {
     if (!id || !chatId) return;
     setActErr("");
@@ -1667,6 +1679,7 @@ function BotPage() {
                 model={chats.find((c) => c.id === chatId)?.model || defaultModel}
                 onModel={(m) => void pickModel(m)}
                 usage={usage}
+                onCompact={() => void compactChat()}
                 voice={voice}
                 onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
               />

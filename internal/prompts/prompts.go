@@ -25,3 +25,9 @@ var Automation string
 //
 //go:embed HEARTBEAT.md
 var Heartbeat string
+
+// Compact is the system prompt for summarizing a conversation that no longer
+// fits the model's context window.
+//
+//go:embed COMPACT.md
+var Compact string

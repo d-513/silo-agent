@@ -77,6 +77,7 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 		}
 		c := &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey}
 		if routing {
+			c.windows = &modelWindows{base: base, key: key}
 			if ig := ignoredUpstreams(s); len(ig) > 0 {
 				c.reqOpts = append(c.reqOpts, option.WithJSONSet("provider.ignore", ig))
 			}
@@ -90,6 +91,18 @@ type openAICompatClient struct {
 	sendCacheKey bool
 	// reqOpts ride on every chat request (after the body is serialized).
 	reqOpts []option.RequestOption
+	// windows lists context windows (OpenRouter only).
+	windows *modelWindows
+}
+
+// ContextWindow reports the model's context length from the gateway's model
+// list. Only OpenRouter publishes one; other endpoints return an error so the
+// caller uses operator config.
+func (c *openAICompatClient) ContextWindow(ctx context.Context, model string) (int, error) {
+	if c.windows == nil {
+		return 0, errNoWindow
+	}
+	return c.windows.lookup(ctx, model)
 }
 
 func (c *openAICompatClient) params(req Request) openai.ChatCompletionNewParams {

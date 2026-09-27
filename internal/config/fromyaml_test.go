@@ -96,3 +96,38 @@ func TestKnownKeyAndEnvName(t *testing.T) {
 		t.Fatalf("EnvName %q", EnvName("providers.openrouter.api_key"))
 	}
 }
+
+func TestContextDefaultsAndOverrides(t *testing.T) {
+	s, err := FromYAML([]byte("model: dummy/echo\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := s.Config().Context
+	if c.FallbackWindow() != DefaultContextWindow || c.Threshold() != DefaultCompactAt {
+		t.Fatalf("context defaults %d %v", c.FallbackWindow(), c.Threshold())
+	}
+	s, err = FromYAML([]byte(`context:
+  window: "64000"
+  compact_at: 0.5
+  windows:
+    - model: openrouter/openai/gpt-5.6-luna
+      window: 400000
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = s.Config().Context
+	if c.FallbackWindow() != 64000 || c.Threshold() != 0.5 {
+		t.Fatalf("context overrides %d %v", c.FallbackWindow(), c.Threshold())
+	}
+	if got := c.WindowFor("openrouter/openai/gpt-5.6-luna"); got != 400000 {
+		t.Fatalf("per-model window %d", got)
+	}
+	if got := c.WindowFor("dummy/echo"); got != 0 {
+		t.Fatalf("unknown model window %d", got)
+	}
+	// Out-of-range values fall back rather than compacting every turn.
+	if (Context{CompactAt: 0.01, Window: 5}).Threshold() != DefaultCompactAt {
+		t.Fatal("tiny compact_at not clamped")
+	}
+}

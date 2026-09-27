@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
 import type { Ev } from "./Thread";
 
-export type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number };
+// window is the model's context size in tokens (0 when the server did not say).
+export type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number; window: number };
 
 // chatBusy: a conversation is busy while any run that opened with a user
-// message has not reached done or error.
+// message (or a manual compaction) has not reached done or error.
 export function chatBusy(events: Ev[]): boolean {
   const open = new Set<string>();
   for (const ev of events) {
-    if (ev.runId && ev.kind === "user") open.add(ev.runId);
+    if (ev.runId && (ev.kind === "user" || ev.kind === "compacting")) open.add(ev.runId);
     if (ev.runId && (ev.kind === "done" || ev.kind === "error")) open.delete(ev.runId);
   }
   return open.size > 0;
@@ -75,7 +76,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               try {
                 const u = JSON.parse(ev.body) as Record<string, number>;
                 if (!dead) {
-                  setUsage({ input: u.input ?? 0, output: u.output ?? 0, cacheRead: u.cache_read ?? 0, cacheWrite: u.cache_write ?? 0 });
+                  setUsage({ input: u.input ?? 0, output: u.output ?? 0, cacheRead: u.cache_read ?? 0, cacheWrite: u.cache_write ?? 0, window: u.window ?? 0 });
                 }
               } catch {
                 /* ignore malformed usage */

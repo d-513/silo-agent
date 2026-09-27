@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -105,6 +106,9 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 		return nil, err
 	}
 	runIDs := map[string]string{}
+	// evIDs maps copied event ids so a compaction's anchor points into the
+	// new chat.
+	evIDs := map[string]string{}
 	for _, e := range events[:cut] {
 		newRunID, ok := runIDs[e.ev.RunID]
 		if !ok {
@@ -119,7 +123,18 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 				return nil, err
 			}
 		}
-		ne := db.RunEvent{ID: ids.New(), RunID: newRunID, Kind: e.ev.Kind, Body: e.ev.Body, Tool: e.ev.Tool, Meta: e.ev.Meta, CreatedAt: e.ev.CreatedAt}
+		meta := e.ev.Meta
+		if e.ev.Kind == compactionKind {
+			var cm compactionMeta
+			if json.Unmarshal([]byte(meta), &cm) == nil && cm.After != "" {
+				cm.After = evIDs[cm.After]
+				if b, err := json.Marshal(cm); err == nil {
+					meta = string(b)
+				}
+			}
+		}
+		ne := db.RunEvent{ID: ids.New(), RunID: newRunID, Kind: e.ev.Kind, Body: e.ev.Body, Tool: e.ev.Tool, Meta: meta, CreatedAt: e.ev.CreatedAt}
+		evIDs[e.ev.ID] = ne.ID
 		if err := a.DB.Create(&ne).Error; err != nil {
 			return nil, err
 		}
@@ -235,4 +250,38 @@ func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeCh
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("message not found"))
 	}
 	return connect.NewResponse(&v1.DivergeChatResponse{Chat: protoChat(nc)}), nil
+}
+
+// CompactChat starts a manual compaction run for a web chat. A message sent
+// while it runs is injected and answered after the summary.
+func (a *App) CompactChat(ctx context.Context, req *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+	if err := writableChat(ch); err != nil {
+		return nil, err
+	}
+	if ch.ChannelID != "" {
+		// Its replies must go back over the channel; channel conversations
+		// compact automatically inside their runs.
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("channel conversations compact automatically"))
+	}
+	a.convMu.Lock()
+	defer a.convMu.Unlock()
+	if a.liveRunID(b.ID, ch.ID) != "" {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
+	}
+	if len(a.historyFromDB(ch.ID)) < 2 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to compact yet"))
+	}
+	runID, err := a.startRun(runRequest{botID: b.ID, chatID: ch.ID, compact: true})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	return connect.NewResponse(&v1.CompactChatResponse{RunId: runID}), nil
 }

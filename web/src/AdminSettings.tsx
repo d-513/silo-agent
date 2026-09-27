@@ -32,6 +32,8 @@ const LABELS: Record<string, string> = {
   embedding_model: "Embedding model",
   transcribe_model: "Speech-to-text model",
   "memory.auto_recall": "Auto-recall",
+  "context.window": "Fallback context window",
+  "context.compact_at": "Compact at",
   debug: "Debug logging",
   "search.engine": "Engine",
   http_addr: "Listen address",
@@ -46,6 +48,8 @@ const LABELS: Record<string, string> = {
 };
 
 const HINTS: Record<string, string> = {
+  "context.window": "Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows.",
+  "context.compact_at": "Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call.",
   embedding_model: "For long-term memories. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly.",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
@@ -55,6 +59,8 @@ const PLACEHOLDERS: Record<string, string> = {
   transcribe_model: "openrouter/openai/whisper-1",
 };
 
+const CONTEXT_NOTE = "When a conversation nears the model's context window, it is summarized into one turn. The thread keeps everything; the model sees the summary.";
+
 const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the opening message into each run. The embedding model is under Models.";
 
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
@@ -62,6 +68,7 @@ const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart r
 function groupOf(key: string) {
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
+  if (key.startsWith("context.")) return "context";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
@@ -249,6 +256,7 @@ export function AdminSettings() {
           />
         ))}
         <FieldGroup title="Memory" note={MEMORY_NOTE} rows={rowsIn("memory")} values={values} engines={engines} providers={providers} onChange={setValue} />
+        <FieldGroup title="Context" note={CONTEXT_NOTE} rows={rowsIn("context")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />

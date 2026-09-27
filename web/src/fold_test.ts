@@ -104,3 +104,28 @@ console.log("fold ok");
   }
   if (q.length !== 3 || q[1].type !== "user" || q[2].type !== "assistant") throw new Error(`blocks ${q.map((b) => b.type)}`);
 }
+
+// A compaction opens as a running row and settles with its summary; a run that
+// ends without one leaves a settled, empty row (it failed or was stopped).
+{
+  const r = { runId: "r1" };
+  const ok = foldEvents([
+    { ...ev("compacting", "", "manual"), ...r },
+    { ...ev("usage", "{}"), ...r },
+    { ...ev("compaction", "## Request\nship it", "manual"), ...r },
+    { ...ev("done", "done"), ...r },
+  ]);
+  const c = ok[0];
+  if (ok.length !== 1 || c?.type !== "compaction" || c.running || c.text !== "## Request\nship it" || c.reason !== "manual") {
+    throw new Error(`compaction block ${JSON.stringify(ok)}`);
+  }
+  const live = foldEvents([{ ...ev("compacting", "", "auto"), ...r }]);
+  if (live[0]?.type !== "compaction" || !live[0].running) throw new Error("compacting not running");
+  const failed = foldEvents([
+    { ...ev("compacting", "", "auto"), ...r },
+    { ...ev("error", "compaction failed: boom"), ...r },
+  ]);
+  if (failed[0]?.type !== "compaction" || failed[0].running || failed[0].text || failed[1]?.type !== "error") {
+    throw new Error(`failed compaction ${JSON.stringify(failed)}`);
+  }
+}

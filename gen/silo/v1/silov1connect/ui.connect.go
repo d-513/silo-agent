@@ -107,6 +107,8 @@ const (
 	UIDeleteMessageProcedure = "/silo.v1.UI/DeleteMessage"
 	// UIDivergeChatProcedure is the fully-qualified name of the UI's DivergeChat RPC.
 	UIDivergeChatProcedure = "/silo.v1.UI/DivergeChat"
+	// UICompactChatProcedure is the fully-qualified name of the UI's CompactChat RPC.
+	UICompactChatProcedure = "/silo.v1.UI/CompactChat"
 	// UIListSecretsProcedure is the fully-qualified name of the UI's ListSecrets RPC.
 	UIListSecretsProcedure = "/silo.v1.UI/ListSecrets"
 	// UIAddSecretProcedure is the fully-qualified name of the UI's AddSecret RPC.
@@ -236,6 +238,7 @@ type UIClient interface {
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
+	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -513,6 +516,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDivergeChatProcedure,
 			connect.WithSchema(uIMethods.ByName("DivergeChat")),
+			connect.WithClientOptions(opts...),
+		),
+		compactChat: connect.NewClient[v1.CompactChatRequest, v1.CompactChatResponse](
+			httpClient,
+			baseURL+UICompactChatProcedure,
+			connect.WithSchema(uIMethods.ByName("CompactChat")),
 			connect.WithClientOptions(opts...),
 		),
 		listSecrets: connect.NewClient[v1.ListSecretsRequest, v1.ListSecretsResponse](
@@ -821,6 +830,7 @@ type uIClient struct {
 	editMessage         *connect.Client[v1.EditMessageRequest, v1.SendResponse]
 	deleteMessage       *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
 	divergeChat         *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
+	compactChat         *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
 	listSecrets         *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret           *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
 	deleteSecret        *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
@@ -1050,6 +1060,11 @@ func (c *uIClient) DeleteMessage(ctx context.Context, req *connect.Request[v1.De
 // DivergeChat calls silo.v1.UI.DivergeChat.
 func (c *uIClient) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error) {
 	return c.divergeChat.CallUnary(ctx, req)
+}
+
+// CompactChat calls silo.v1.UI.CompactChat.
+func (c *uIClient) CompactChat(ctx context.Context, req *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
+	return c.compactChat.CallUnary(ctx, req)
 }
 
 // ListSecrets calls silo.v1.UI.ListSecrets.
@@ -1311,6 +1326,7 @@ type UIHandler interface {
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
+	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -1584,6 +1600,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDivergeChatProcedure,
 		svc.DivergeChat,
 		connect.WithSchema(uIMethods.ByName("DivergeChat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICompactChatHandler := connect.NewUnaryHandler(
+		UICompactChatProcedure,
+		svc.CompactChat,
+		connect.WithSchema(uIMethods.ByName("CompactChat")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListSecretsHandler := connect.NewUnaryHandler(
@@ -1926,6 +1948,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteMessageHandler.ServeHTTP(w, r)
 		case UIDivergeChatProcedure:
 			uIDivergeChatHandler.ServeHTTP(w, r)
+		case UICompactChatProcedure:
+			uICompactChatHandler.ServeHTTP(w, r)
 		case UIListSecretsProcedure:
 			uIListSecretsHandler.ServeHTTP(w, r)
 		case UIAddSecretProcedure:
@@ -2169,6 +2193,10 @@ func (UnimplementedUIHandler) DeleteMessage(context.Context, *connect.Request[v1
 
 func (UnimplementedUIHandler) DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DivergeChat is not implemented"))
+}
+
+func (UnimplementedUIHandler) CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CompactChat is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {
