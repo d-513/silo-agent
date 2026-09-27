@@ -4,6 +4,7 @@ import { setAutoExpand, useAutoExpand } from "./autoExpand";
 import { fmtClock, insertDictation, useDictation, type Dictation } from "./voice";
 import { fmtSize } from "./fs";
 import { Select } from "./Select";
+import { Tip, TipAction, TipTitle } from "./Tip";
 import type { ModelOption } from "./gen/silo/v1/ui_pb";
 
 export interface Attachment {
@@ -289,18 +290,32 @@ export function Composer({
                 />
               ) : null}
 
-              <button
-                type="button"
-                title={autoExpand ? "Thinking and tools open while they run" : "Thinking and tools stay folded"}
-                aria-label="Expand thinking and tools while they run"
-                aria-pressed={autoExpand}
-                className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.94] active:duration-[70ms] ${
-                  autoExpand ? "text-ink" : "text-ink-3 hover:text-ink"
-                }`}
-                onClick={() => setAutoExpand(!autoExpand)}
+              <Tip
+                closeOnClick={false}
+                content={
+                  <>
+                    <TipTitle aside={autoExpand ? "On" : "Off"}>Follow live steps</TipTitle>
+                    <p className="mt-1">
+                      {autoExpand
+                        ? "Thinking and tool rows open while they run and fold shut when they finish."
+                        : "Thinking and tool rows stay folded. Click a row to open it."}
+                    </p>
+                    <TipAction>Click to turn {autoExpand ? "off" : "on"}</TipAction>
+                  </>
+                }
               >
-                {autoExpand ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
-              </button>
+                <button
+                  type="button"
+                  aria-label="Open thinking and tool rows while they run"
+                  aria-pressed={autoExpand}
+                  className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.94] active:duration-[70ms] ${
+                    autoExpand ? "text-ink" : "text-ink-3 hover:text-ink"
+                  }`}
+                  onClick={() => setAutoExpand(!autoExpand)}
+                >
+                  {autoExpand ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
+                </button>
+              </Tip>
 
               {usage && usage.window > 0 ? <ContextMeter usage={usage} onCompact={onCompact} disabled={sending || !chatId} /> : null}
             </div>
@@ -333,34 +348,60 @@ function ContextMeter({ usage, onCompact, disabled }: { usage: Usage; onCompact?
   const r = 6;
   const circ = 2 * Math.PI * r;
   const tone = frac >= 0.9 ? "text-vermilion" : frac >= 0.7 ? "text-ink" : "text-ink-3";
-  const cached = usage.cacheRead > 0 ? ` · cached ${fmtTokens(usage.cacheRead)}` : "";
-  const hint = onCompact ? (disabled ? "Compacting is available when the reply finishes" : "Click to compact the conversation into a summary") : "";
+  const barTone = frac >= 0.9 ? "bg-vermilion" : frac >= 0.7 ? "bg-ink" : "bg-ink-3";
+  const can = !disabled && !!onCompact;
   return (
-    <button
-      type="button"
-      title={`Context ${fmtTokens(used)} / ${fmtTokens(usage.window)} tokens${cached}${hint ? `\n${hint}` : ""}`}
-      aria-label={`Context ${pct}% full. Compact conversation`}
-      disabled={disabled || !onCompact}
-      onClick={onCompact}
-      className={`flex h-[34px] shrink-0 items-center gap-1.5 rounded-control px-2 font-mono text-[11px] transition-[background-color,color,transform] duration-[160ms] ease-quiet enabled:hover:bg-well enabled:hover:text-ink enabled:active:scale-[.96] enabled:active:duration-[70ms] disabled:cursor-default ${tone}`}
+    <Tip
+      content={
+        <div className="w-[220px]">
+          <TipTitle aside={`${pct}%`}>Context window</TipTitle>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-well">
+            <div className={`h-full rounded-full ${barTone}`} style={{ width: `${Math.max(2, pct)}%` }} />
+          </div>
+          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
+            <dt>Used</dt>
+            <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(used)}</dd>
+            <dt>Model limit</dt>
+            <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(usage.window)}</dd>
+            {usage.cacheRead > 0 ? (
+              <>
+                <dt>From cache</dt>
+                <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(usage.cacheRead)}</dd>
+              </>
+            ) : null}
+          </dl>
+          <p className="mt-2">Near the limit the conversation is summarized automatically; the thread keeps everything.</p>
+          {onCompact ? <TipAction>{can ? "Click to compact now" : "You can compact once the reply finishes"}</TipAction> : null}
+        </div>
+      }
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className="shrink-0 -rotate-90">
-        <circle cx="8" cy="8" r={r} fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="2" />
-        <circle
-          cx="8"
-          cy="8"
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={circ * (1 - frac)}
-          className="transition-[stroke-dashoffset] duration-[400ms] ease-quiet"
-        />
-      </svg>
-      <span className="hidden @min-[400px]:inline">{pct}%</span>
-    </button>
+      <button
+        type="button"
+        aria-label={`Context ${pct}% full. Compact conversation`}
+        aria-disabled={!can}
+        onClick={can ? onCompact : undefined}
+        className={`flex h-[34px] shrink-0 items-center gap-1.5 rounded-control px-2 font-mono text-[11px] transition-[background-color,color,transform] duration-[160ms] ease-quiet ${
+          can ? "hover:bg-well hover:text-ink active:scale-[.96] active:duration-[70ms]" : "cursor-default"
+        } ${tone}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className="shrink-0 -rotate-90">
+          <circle cx="8" cy="8" r={r} fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="2" />
+          <circle
+            cx="8"
+            cy="8"
+            r={r}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={circ * (1 - frac)}
+            className="transition-[stroke-dashoffset] duration-[400ms] ease-quiet"
+          />
+        </svg>
+        <span className="hidden @min-[400px]:inline">{pct}%</span>
+      </button>
+    </Tip>
   );
 }
 

@@ -158,6 +158,26 @@ button {
   animation: silo-rise 420ms var(--ease-settle) both;
 }
 
+/* Tips rise 4px toward their control (down when above it, up when below). */
+.tip-in {
+  animation: silo-tip 160ms var(--ease-settle) both;
+}
+.tip-in-below {
+  animation: silo-tip-below 160ms var(--ease-settle) both;
+}
+@keyframes silo-tip {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes silo-tip-below {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 @keyframes silo-glide {
   from {
     opacity: 0;
@@ -445,7 +465,9 @@ button {
   .pop,
   .slip-in,
   .wash-in,
-  .word-in {
+  .word-in,
+  .tip-in,
+  .tip-in-below {
     animation: silo-fade-in 120ms linear both !important;
     filter: none;
   }
