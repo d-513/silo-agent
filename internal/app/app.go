@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -108,6 +109,20 @@ type liveRun struct {
 	// done closes when the run's goroutine exits, so callers can wait for a
 	// stopped run to finish writing before truncating history.
 	done chan struct{}
+	// wake carries why a sleeping run should get up: an injected message or,
+	// for a lead, a subagent finishing. Sends never block.
+	wake chan string
+}
+
+// signal nudges a sleeping run. A full buffer already has a reason queued.
+func (lr *liveRun) signal(why string) {
+	if lr == nil || lr.wake == nil {
+		return
+	}
+	select {
+	case lr.wake <- why:
+	default:
+	}
 }
 
 type App struct {
@@ -138,6 +153,9 @@ type App struct {
 	// stopAutomations ends the scheduler loop on Shutdown.
 	stopAutomations chan struct{}
 	stopOnce        sync.Once
+	// wakeTimers debounce waking a lead chat when its subagents finish.
+	wakeMu     sync.Mutex
+	wakeTimers map[string]*time.Timer
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -233,6 +251,7 @@ func (a *App) recoverOrphans() {
 		}
 		log.Printf("interrupted %d orphaned runs", len(runs))
 	}
+	a.DB.Model(&db.Subagent{}).Where("status = ?", "running").Updates(map[string]any{"status": "interrupted", "reported": true})
 	res := a.DB.Model(&db.Approval{}).Where("status = ?", "pending").Update("status", "interrupted")
 	if res.RowsAffected > 0 {
 		log.Printf("interrupted %d orphaned approvals", res.RowsAffected)
@@ -440,7 +459,7 @@ func (a *App) Handler() http.Handler {
 
 func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) {
 	a.mu.Lock()
-	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done}
+	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done, wake: make(chan string, 8)}
 	a.mu.Unlock()
 }
 
@@ -463,6 +482,8 @@ func (a *App) untrackRun(runID string) {
 }
 
 func (a *App) cancelBot(botID string) {
+	// Its subagents stop with it; they must not wake a lead on the way down.
+	a.quietSubagents("interrupted", "bot_id = ?", botID)
 	a.cancelRuns(botID, "", "interrupted")
 }
 

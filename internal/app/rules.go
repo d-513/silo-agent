@@ -145,6 +145,7 @@ func (a *App) sweepRules(botID string) {
 		security.Python: true, security.Terminal: true, security.Files: true,
 		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true,
 		security.Web: true, security.Artifact: true, security.Channels: true, security.Chats: true,
+		security.Model: true, security.Automations: true, security.Agents: true, security.Tasks: true,
 	}
 	secretOK := map[string]bool{}
 	var secs []db.Secret

@@ -27,18 +27,37 @@ export type ToolBlock = {
 
 export type CompactionBlock = { key: string; type: "compaction"; text: string; reason: string; running?: boolean; runId?: string };
 
+export type ReportBlock = { key: string; type: "report"; text: string; agents: { name: string; status: string }[]; runId?: string; createdAt?: string };
+
+// reportAgents parses a subagent_report's "name:status,…" label.
+export function reportAgents(label: string): { name: string; status: string }[] {
+  return label
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => {
+      const i = x.lastIndexOf(":");
+      return i < 0 ? { name: x, status: "" } : { name: x.slice(0, i), status: x.slice(i + 1) };
+    });
+}
+
 export type Decision = "allow_once" | "always" | "deny" | "stopped";
 
 export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; title: string; target: string; runId?: string };
 
 export type Block =
-  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; createdAt?: string }
+  // `from` names a non-human sender ("lead" for a subagent's brief and the
+  // lead's messages to it).
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; createdAt?: string; from?: string }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
   | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }
   | ToolBlock
   | ReceiptBlock
   | { key: string; type: "error"; text: string }
+  // Subagents finished and woke the lead: `agents` are their names and
+  // statuses, `text` the report the lead was given.
+  | ReportBlock
   // A Feed post quoted into a new chat: `source` is where it was posted from.
   | { key: string; type: "quote"; text: string; source: string; createdAt?: string }
   // The history before this point was summarized to fit the context window.
@@ -127,7 +146,11 @@ export function foldEvents(events: Ev[]): Block[] {
     if (e.kind === "error" && staleKey.test(e.body)) continue;
     const key = `${e.kind}-${i++}`;
     if (e.kind === "user") {
-      push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, createdAt: e.createdAt });
+      push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, createdAt: e.createdAt, from: e.tool || undefined });
+      continue;
+    }
+    if (e.kind === "subagent_report") {
+      push({ key, type: "report", text: e.body, agents: reportAgents(e.tool), runId: e.runId, createdAt: e.createdAt });
       continue;
     }
     if (e.kind === "thinking_chunk") {

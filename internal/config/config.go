@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
@@ -133,6 +134,40 @@ type Search struct {
 	Engine string `koanf:"engine"`
 }
 
+// Runs configures the agent loop's per-run limits.
+type Runs struct {
+	// MaxDuration caps one run (a Go duration such as 120m or 2h). -1 (or any
+	// negative value) means no cap. A lead that sleeps while its subagents work
+	// counts its sleep toward the cap.
+	MaxDuration string `koanf:"max_duration"`
+}
+
+// DefaultRunMaxDuration is the run cap when unset or unparsable.
+const DefaultRunMaxDuration = 120 * time.Minute
+
+// Timeout returns the run cap; 0 means unlimited.
+func (r Runs) Timeout() time.Duration {
+	s := strings.TrimSpace(r.MaxDuration)
+	if s == "" {
+		return DefaultRunMaxDuration
+	}
+	if strings.HasPrefix(s, "-") {
+		return 0
+	}
+	if n, err := strconv.Atoi(s); err == nil {
+		// A bare number is minutes.
+		if n <= 0 {
+			return DefaultRunMaxDuration
+		}
+		return time.Duration(n) * time.Minute
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return DefaultRunMaxDuration
+	}
+	return d
+}
+
 const DefaultModel = "openrouter/openai/gpt-5.6-luna"
 const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
 
@@ -166,6 +201,7 @@ type Config struct {
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
 	Context       Context             `koanf:"context"`
+	Runs          Runs                `koanf:"runs"`
 	Models        []string            `koanf:"models"`
 	Debug         bool                `koanf:"debug"`
 	Bootstrap     Bootstrap           `koanf:"bootstrap"`
@@ -231,6 +267,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "memory.auto_recall", Type: "bool"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
+	{Key: "runs.max_duration"},
 	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
 	{Key: "http_addr", Restart: true},
@@ -310,6 +347,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("memory.auto_recall", true)
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
+	_ = k.Set("runs.max_duration", "120m")
 }
 
 type yamlBytes []byte

@@ -294,6 +294,25 @@ func (a *App) channelState(channelID string) channels.State {
 	return st
 }
 
+// channelOrigin is the run origin for a channel conversation: its sections
+// are delivered back through the adapter.
+func (a *App) channelOrigin(ch *db.Channel, external string) *runOrigin {
+	return &runOrigin{
+		channel:  ch,
+		external: external,
+		deliver: func(msg channels.Outbound) error {
+			ad, ok := channels.Lookup(ch.Adapter)
+			if !ok {
+				return fmt.Errorf("adapter %q is not available", ch.Adapter)
+			}
+			if msg.ExternalID == "" {
+				msg.ExternalID = external
+			}
+			return ad.Send(context.Background(), ch, a.channelConfig(ch), msg)
+		},
+	}
+}
+
 // deliverInbound is the bridge from an adapter to the execution engine: find or
 // create the conversation's Chat, then inject or start a run.
 func (a *App) deliverInbound(ctx context.Context, ch *db.Channel, in channels.Inbound) error {
@@ -311,21 +330,7 @@ func (a *App) deliverInbound(ctx context.Context, ch *db.Channel, in channels.In
 	if err != nil {
 		return err
 	}
-	origin := &runOrigin{
-		channel:  ch,
-		external: external,
-		deliver: func(msg channels.Outbound) error {
-			ad, ok := channels.Lookup(ch.Adapter)
-			if !ok {
-				return fmt.Errorf("adapter %q is not available", ch.Adapter)
-			}
-			if msg.ExternalID == "" {
-				msg.ExternalID = external
-			}
-			return ad.Send(context.Background(), ch, a.channelConfig(ch), msg)
-		},
-	}
-	_, err = a.startOrInject(ch.BotID, c.ID, in.Text, nil, origin)
+	_, err = a.startOrInject(ch.BotID, c.ID, in.Text, nil, a.channelOrigin(ch, external))
 	if err != nil {
 		return err
 	}
@@ -367,7 +372,7 @@ func (a *App) startOrInject(botID, chatID, text string, atts []*v1.Attachment, o
 // truncate history and start the replacement run atomically.
 func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *runOrigin) (string, error) {
 	if runID := a.liveRunID(botID, chatID); runID != "" {
-		if a.inject(botID, chatID, runID, text, atts) {
+		if a.inject(botID, chatID, runID, text, atts, "") {
 			return runID, nil
 		}
 	}

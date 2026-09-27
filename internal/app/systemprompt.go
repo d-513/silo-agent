@@ -51,6 +51,8 @@ type promptContext struct {
 	automation *db.Automation
 	// recall is this run's auto-recalled memories (volatile, trailing).
 	recall string
+	// subagent is set when this run is a subagent's.
+	subagent *db.Subagent
 }
 
 // promptProvider contributes ordered sections for the current session.
@@ -64,6 +66,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.skillSections,
 		a.channelSections,
 		a.automationSections,
+		a.subagentSections,
 		a.recallSections,
 	}
 }
@@ -250,6 +253,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 		pc.channel = origin.channel
 		pc.recall = origin.recall
 		pc.automation = origin.automation
+		pc.subagent = origin.subagent
 	}
 	return pc
 }

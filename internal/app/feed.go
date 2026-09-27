@@ -44,6 +44,8 @@ func (a *App) feedSource(chatID string) (kind, name string) {
 		var ch db.Channel
 		a.DB.Select("name").Where("id = ?", c.ChannelID).Limit(1).Find(&ch)
 		return "channel", ch.Name
+	case c.SubagentID != "":
+		return "subagent", c.Title
 	}
 	title := c.Title
 	if untitledTitle(title) {

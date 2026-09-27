@@ -39,7 +39,7 @@ func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, erro
 
 // webChats keeps Web UI chats: not a channel conversation, not an automation log.
 func webChats(q *gorm.DB) *gorm.DB {
-	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL)")
+	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL) AND (subagent_id = '' OR subagent_id IS NULL)")
 }
 
 // writableChat refuses conversation edits on an automation's log: its runs are
@@ -47,6 +47,9 @@ func webChats(q *gorm.DB) *gorm.DB {
 func writableChat(c *db.Chat) error {
 	if c.AutomationID != "" {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("an automation log is read-only; edit the automation instead"))
+	}
+	if c.SubagentID != "" {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("a subagent log is read-only; only its lead talks to it"))
 	}
 	return nil
 }
@@ -121,6 +124,8 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	if err := writableChat(c); err != nil {
 		return nil, err
 	}
+	a.stopChatLive(c.BotID, c.ID)
+	a.dropSubagents(c.BotID, c.ID)
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", c.ID).Find(&runs)
 	for _, r := range runs {

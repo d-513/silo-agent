@@ -26,6 +26,10 @@ var sharedTools = map[string][2]string{
 	"delete_automation": {security.Automations, "delete"},
 	"list_models":       {security.Model, "list"},
 	"transcribe":        {security.Bot, "transcribe"},
+	"task_add":          {security.Tasks, "add"},
+	"task_list":         {security.Tasks, "read"},
+	"task_done":         {security.Tasks, "done"},
+	"task_reset":        {security.Tasks, "reset"},
 }
 
 // sharedToolName is the chat tool behind connector.action, if it is shared.
@@ -56,6 +60,9 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case security.Automations:
 		// automationTool gates itself: its slip names the automation.
 		return a.automationTool(ctx, bot, runID, name, args)
+	case security.Tasks:
+		// taskTool gates itself: a subagent may not reset the shared board.
+		return a.taskTool(ctx, bot, runID, name, args, structured)
 	case security.Bot:
 		if name == "feed" {
 			return a.feedTool(ctx, bot, runID, args)

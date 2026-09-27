@@ -47,6 +47,11 @@ service UI {
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
   rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
   rpc CompactChat(CompactChatRequest) returns (CompactChatResponse);
+  rpc ListSubagents(ListSubagentsRequest) returns (ListSubagentsResponse);
+  rpc GetSubagent(GetSubagentRequest) returns (Subagent);
+  rpc StopSubagent(StopSubagentRequest) returns (StopSubagentResponse);
+  rpc GetTaskboard(GetTaskboardRequest) returns (Taskboard);
+  rpc ClearTaskboard(ClearTaskboardRequest) returns (Taskboard);
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
   rpc AddSecret(AddSecretRequest) returns (SecretMeta);
@@ -498,6 +503,80 @@ message CompactChatRequest {
 
 message CompactChatResponse {
   string run_id = 1;
+}
+
+// Subagent is a background agent loop a chat's lead started. Its work log is
+// the hidden chat chat_id; parent_chat_id is the lead's chat.
+message Subagent {
+  string id = 1;
+  string bot_id = 2;
+  string parent_chat_id = 3;
+  string chat_id = 4;
+  string name = 5;
+  string goal = 6;
+  string context = 7;
+  string model = 8;
+  // running | done | error | stopped | interrupted
+  string status = 9;
+  bool running = 10;
+  // The subagent's final reply from its latest run.
+  string result = 11;
+  string created_at = 12;
+  string finished_at = 13;
+  // Latest one-line activity (a tool name or the start of a reply).
+  string activity = 14;
+  // Its latest run, so approvals it is waiting on can be matched.
+  string run_id = 15;
+}
+
+message ListSubagentsRequest {
+  string bot_id = 1;
+  // The lead chat.
+  string chat_id = 2;
+}
+
+message ListSubagentsResponse {
+  repeated Subagent subagents = 1;
+}
+
+message GetSubagentRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message StopSubagentRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message StopSubagentResponse {}
+
+message TaskItem {
+  int32 n = 1;
+  string text = 2;
+  // The [NAME] a task is tagged with; empty is the lead's or anyone's.
+  string assignee = 3;
+  bool done = 4;
+  string done_by = 5;
+  string note = 6;
+  string created_by = 7;
+}
+
+message Taskboard {
+  // The lead chat the board belongs to.
+  string chat_id = 1;
+  repeated TaskItem items = 2;
+}
+
+message GetTaskboardRequest {
+  string bot_id = 1;
+  // A lead chat or one of its subagents' chats.
+  string chat_id = 2;
+}
+
+message ClearTaskboardRequest {
+  string bot_id = 1;
+  string chat_id = 2;
 }
 
 message SecretMeta {

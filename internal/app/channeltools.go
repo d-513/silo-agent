@@ -94,6 +94,9 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 			if c.AutomationID != "" {
 				kind = "automation log"
 			}
+			if c.SubagentID != "" {
+				kind = "subagent log"
+			}
 			fmt.Fprintf(&b, "- %s  %s (%s)\n", c.ID, c.Title, kind)
 		}
 		return b.String(), nil

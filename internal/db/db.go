@@ -72,7 +72,10 @@ type Chat struct {
 	// AutomationID marks the hidden Chat that holds one automation's run log.
 	// Web chat lists and Send skip these.
 	AutomationID string `gorm:"index;default:''"`
-	Title        string
+	// SubagentID marks the hidden Chat that holds one subagent's work log.
+	// Web chat lists and Send skip these too.
+	SubagentID string `gorm:"index;default:''"`
+	Title      string
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
 	Model     string
@@ -273,13 +276,50 @@ type FeedPost struct {
 	CreatedAt  time.Time `gorm:"index"`
 }
 
+// Subagent is a background agent loop a chat's lead started with spawn_agent.
+// Its work lands in ChatID (a hidden Chat) and starts from a fresh context
+// (the goal and context the lead passed). ParentChatID is the lead's chat.
+// Reported flips true once the lead has seen the latest result, either through
+// agent_status or a wake report.
+type Subagent struct {
+	ID           string `gorm:"primaryKey"`
+	BotID        string `gorm:"index"`
+	ParentChatID string `gorm:"index"`
+	ChatID       string `gorm:"index"`
+	Name         string
+	Goal         string
+	Context      string
+	Model        string
+	Status       string
+	Result       string
+	Reported     bool
+	CreatedAt    time.Time
+	FinishedAt   *time.Time
+}
+
+// TaskItem is one line on a chat's Taskboard. The board belongs to the lead
+// chat and is shared with its subagents; Assignee is the [NAME] prefix.
+type TaskItem struct {
+	ID        string `gorm:"primaryKey"`
+	ChatID    string `gorm:"index"`
+	N         int
+	Text      string
+	Assignee  string
+	Done      bool
+	DoneBy    string
+	Note      string
+	CreatedBy string
+	CreatedAt time.Time
+	DoneAt    *time.Time
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
 		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &Automation{}, &FeedPost{},
+		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
 	}
 }
 

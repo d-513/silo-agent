@@ -234,6 +234,34 @@ def list_models() -> dict:
     return call("model", "list", {})
 
 
+def task_list() -> dict:
+    """The chat's taskboard: {items: [{n, text, assignee, done, done_by, note}]}.
+
+    The board is shared by a lead and its subagents; assignee is the [NAME]
+    a task is tagged with.
+    """
+    return call("tasks", "read", {})
+
+
+def task_add(tasks: list[str] | str) -> dict:
+    """Add tasks to the taskboard; prefix one with [NAME] to assign it."""
+    if isinstance(tasks, str):
+        tasks = [tasks]
+    return call("tasks", "add", {"tasks": list(tasks)})
+
+
+def task_done(ids: list[int] | int, note: str | None = None) -> dict:
+    """Mark taskboard tasks done by number, with an optional short note."""
+    if isinstance(ids, int):
+        ids = [ids]
+    return call("tasks", "done", {"ids": list(ids), "note": note})
+
+
+def task_reset() -> dict:
+    """Clear the whole taskboard (the lead only)."""
+    return call("tasks", "reset", {})
+
+
 def call(connector: str, action: str, args: dict | None = None) -> dict:
     clean = {k: v for k, v in (args or {}).items() if v is not None}
     body = {"connector": connector, "action": action, "args": clean}

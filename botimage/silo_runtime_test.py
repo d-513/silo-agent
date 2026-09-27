@@ -56,8 +56,33 @@ def test_transcribe_call():
         raise SystemExit(f"omit language {seen}")
 
 
+def test_taskboard_calls():
+    seen = []
+
+    def post(path, body):
+        seen.append(body)
+        return {"result": {"items": []}}
+
+    silo_runtime._post = post
+    silo_runtime.task_add("[bob] one")
+    silo_runtime.task_done(2)
+    silo_runtime.task_done([1, 3], "saved")
+    silo_runtime.task_list()
+    silo_runtime.task_reset()
+    want = [
+        {"connector": "tasks", "action": "add", "args": {"tasks": ["[bob] one"]}},
+        {"connector": "tasks", "action": "done", "args": {"ids": [2]}},
+        {"connector": "tasks", "action": "done", "args": {"ids": [1, 3], "note": "saved"}},
+        {"connector": "tasks", "action": "read", "args": {}},
+        {"connector": "tasks", "action": "reset", "args": {}},
+    ]
+    if seen != want:
+        raise SystemExit(f"bodies {seen}")
+
+
 if __name__ == "__main__":
     test_chrome_page_ensures()
     test_web_search_call()
     test_transcribe_call()
+    test_taskboard_calls()
     print("ok")

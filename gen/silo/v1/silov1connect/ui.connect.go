@@ -109,6 +109,16 @@ const (
 	UIDivergeChatProcedure = "/silo.v1.UI/DivergeChat"
 	// UICompactChatProcedure is the fully-qualified name of the UI's CompactChat RPC.
 	UICompactChatProcedure = "/silo.v1.UI/CompactChat"
+	// UIListSubagentsProcedure is the fully-qualified name of the UI's ListSubagents RPC.
+	UIListSubagentsProcedure = "/silo.v1.UI/ListSubagents"
+	// UIGetSubagentProcedure is the fully-qualified name of the UI's GetSubagent RPC.
+	UIGetSubagentProcedure = "/silo.v1.UI/GetSubagent"
+	// UIStopSubagentProcedure is the fully-qualified name of the UI's StopSubagent RPC.
+	UIStopSubagentProcedure = "/silo.v1.UI/StopSubagent"
+	// UIGetTaskboardProcedure is the fully-qualified name of the UI's GetTaskboard RPC.
+	UIGetTaskboardProcedure = "/silo.v1.UI/GetTaskboard"
+	// UIClearTaskboardProcedure is the fully-qualified name of the UI's ClearTaskboard RPC.
+	UIClearTaskboardProcedure = "/silo.v1.UI/ClearTaskboard"
 	// UIListSecretsProcedure is the fully-qualified name of the UI's ListSecrets RPC.
 	UIListSecretsProcedure = "/silo.v1.UI/ListSecrets"
 	// UIAddSecretProcedure is the fully-qualified name of the UI's AddSecret RPC.
@@ -239,6 +249,11 @@ type UIClient interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
+	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
+	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
+	GetTaskboard(context.Context, *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
+	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -522,6 +537,36 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UICompactChatProcedure,
 			connect.WithSchema(uIMethods.ByName("CompactChat")),
+			connect.WithClientOptions(opts...),
+		),
+		listSubagents: connect.NewClient[v1.ListSubagentsRequest, v1.ListSubagentsResponse](
+			httpClient,
+			baseURL+UIListSubagentsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSubagents")),
+			connect.WithClientOptions(opts...),
+		),
+		getSubagent: connect.NewClient[v1.GetSubagentRequest, v1.Subagent](
+			httpClient,
+			baseURL+UIGetSubagentProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSubagent")),
+			connect.WithClientOptions(opts...),
+		),
+		stopSubagent: connect.NewClient[v1.StopSubagentRequest, v1.StopSubagentResponse](
+			httpClient,
+			baseURL+UIStopSubagentProcedure,
+			connect.WithSchema(uIMethods.ByName("StopSubagent")),
+			connect.WithClientOptions(opts...),
+		),
+		getTaskboard: connect.NewClient[v1.GetTaskboardRequest, v1.Taskboard](
+			httpClient,
+			baseURL+UIGetTaskboardProcedure,
+			connect.WithSchema(uIMethods.ByName("GetTaskboard")),
+			connect.WithClientOptions(opts...),
+		),
+		clearTaskboard: connect.NewClient[v1.ClearTaskboardRequest, v1.Taskboard](
+			httpClient,
+			baseURL+UIClearTaskboardProcedure,
+			connect.WithSchema(uIMethods.ByName("ClearTaskboard")),
 			connect.WithClientOptions(opts...),
 		),
 		listSecrets: connect.NewClient[v1.ListSecretsRequest, v1.ListSecretsResponse](
@@ -831,6 +876,11 @@ type uIClient struct {
 	deleteMessage       *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
 	divergeChat         *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
 	compactChat         *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
+	listSubagents       *connect.Client[v1.ListSubagentsRequest, v1.ListSubagentsResponse]
+	getSubagent         *connect.Client[v1.GetSubagentRequest, v1.Subagent]
+	stopSubagent        *connect.Client[v1.StopSubagentRequest, v1.StopSubagentResponse]
+	getTaskboard        *connect.Client[v1.GetTaskboardRequest, v1.Taskboard]
+	clearTaskboard      *connect.Client[v1.ClearTaskboardRequest, v1.Taskboard]
 	listSecrets         *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret           *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
 	deleteSecret        *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
@@ -1065,6 +1115,31 @@ func (c *uIClient) DivergeChat(ctx context.Context, req *connect.Request[v1.Dive
 // CompactChat calls silo.v1.UI.CompactChat.
 func (c *uIClient) CompactChat(ctx context.Context, req *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
 	return c.compactChat.CallUnary(ctx, req)
+}
+
+// ListSubagents calls silo.v1.UI.ListSubagents.
+func (c *uIClient) ListSubagents(ctx context.Context, req *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {
+	return c.listSubagents.CallUnary(ctx, req)
+}
+
+// GetSubagent calls silo.v1.UI.GetSubagent.
+func (c *uIClient) GetSubagent(ctx context.Context, req *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error) {
+	return c.getSubagent.CallUnary(ctx, req)
+}
+
+// StopSubagent calls silo.v1.UI.StopSubagent.
+func (c *uIClient) StopSubagent(ctx context.Context, req *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error) {
+	return c.stopSubagent.CallUnary(ctx, req)
+}
+
+// GetTaskboard calls silo.v1.UI.GetTaskboard.
+func (c *uIClient) GetTaskboard(ctx context.Context, req *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
+	return c.getTaskboard.CallUnary(ctx, req)
+}
+
+// ClearTaskboard calls silo.v1.UI.ClearTaskboard.
+func (c *uIClient) ClearTaskboard(ctx context.Context, req *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
+	return c.clearTaskboard.CallUnary(ctx, req)
 }
 
 // ListSecrets calls silo.v1.UI.ListSecrets.
@@ -1327,6 +1402,11 @@ type UIHandler interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
+	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
+	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
+	GetTaskboard(context.Context, *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
+	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
@@ -1606,6 +1686,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UICompactChatProcedure,
 		svc.CompactChat,
 		connect.WithSchema(uIMethods.ByName("CompactChat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSubagentsHandler := connect.NewUnaryHandler(
+		UIListSubagentsProcedure,
+		svc.ListSubagents,
+		connect.WithSchema(uIMethods.ByName("ListSubagents")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetSubagentHandler := connect.NewUnaryHandler(
+		UIGetSubagentProcedure,
+		svc.GetSubagent,
+		connect.WithSchema(uIMethods.ByName("GetSubagent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStopSubagentHandler := connect.NewUnaryHandler(
+		UIStopSubagentProcedure,
+		svc.StopSubagent,
+		connect.WithSchema(uIMethods.ByName("StopSubagent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetTaskboardHandler := connect.NewUnaryHandler(
+		UIGetTaskboardProcedure,
+		svc.GetTaskboard,
+		connect.WithSchema(uIMethods.ByName("GetTaskboard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIClearTaskboardHandler := connect.NewUnaryHandler(
+		UIClearTaskboardProcedure,
+		svc.ClearTaskboard,
+		connect.WithSchema(uIMethods.ByName("ClearTaskboard")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListSecretsHandler := connect.NewUnaryHandler(
@@ -1950,6 +2060,16 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDivergeChatHandler.ServeHTTP(w, r)
 		case UICompactChatProcedure:
 			uICompactChatHandler.ServeHTTP(w, r)
+		case UIListSubagentsProcedure:
+			uIListSubagentsHandler.ServeHTTP(w, r)
+		case UIGetSubagentProcedure:
+			uIGetSubagentHandler.ServeHTTP(w, r)
+		case UIStopSubagentProcedure:
+			uIStopSubagentHandler.ServeHTTP(w, r)
+		case UIGetTaskboardProcedure:
+			uIGetTaskboardHandler.ServeHTTP(w, r)
+		case UIClearTaskboardProcedure:
+			uIClearTaskboardHandler.ServeHTTP(w, r)
 		case UIListSecretsProcedure:
 			uIListSecretsHandler.ServeHTTP(w, r)
 		case UIAddSecretProcedure:
@@ -2197,6 +2317,26 @@ func (UnimplementedUIHandler) DivergeChat(context.Context, *connect.Request[v1.D
 
 func (UnimplementedUIHandler) CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CompactChat is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSubagents is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSubagent is not implemented"))
+}
+
+func (UnimplementedUIHandler) StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StopSubagent is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetTaskboard(context.Context, *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetTaskboard is not implemented"))
+}
+
+func (UnimplementedUIHandler) ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ClearTaskboard is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {

@@ -38,6 +38,11 @@ const (
 	// Automations are scheduled background prompts. Creating or changing one
 	// asks by default: it keeps running unattended after the conversation ends.
 	Automations = "automations"
+	// Agents are a chat's subagents: parallel background loops its lead starts,
+	// messages, and stops.
+	Agents = "agents"
+	// Tasks is the per-chat Taskboard shared by a lead and its subagents.
+	Tasks = "tasks"
 )
 
 type Field struct {
@@ -67,7 +72,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true, Model: true, Automations: true,
+	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true,
 }
 
 var catalog = map[string]spec{
@@ -92,6 +97,14 @@ var catalog = map[string]spec{
 	"automations.create": {title: "Create automation", mode: Ask, summary: automationSummary("create"), fields: automationFields},
 	"automations.update": {title: "Change automation", mode: Ask, summary: automationSummary("change"), fields: automationFields},
 	"automations.delete": {title: "Delete automation", mode: Allow, summary: automationSummary("delete")},
+	"agents.spawn":       {title: "Start subagent", mode: Allow, summary: agentSummary("start"), fields: agentFields},
+	"agents.status":      {title: "Check subagents", mode: Allow, summary: want("check on its subagents")},
+	"agents.message":     {title: "Message subagent", mode: Allow, summary: agentSummary("message"), fields: agentFields},
+	"agents.stop":        {title: "Stop subagent", mode: Allow, summary: agentSummary("stop")},
+	"tasks.read":         {title: "Read taskboard", mode: Allow, summary: want("read the taskboard")},
+	"tasks.add":          {title: "Add tasks", mode: Allow, summary: want("add tasks to the taskboard")},
+	"tasks.done":         {title: "Complete tasks", mode: Allow, summary: want("mark taskboard tasks done")},
+	"tasks.reset":        {title: "Reset taskboard", mode: Allow, summary: want("clear the taskboard")},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
@@ -131,6 +144,29 @@ func automationFields(args map[string]string) []Field {
 	}
 	if v := strings.TrimSpace(args["prompt"]); v != "" {
 		out = append(out, Field{Label: "Prompt", Value: v})
+	}
+	return out
+}
+
+func agentSummary(verb string) func(map[string]string) string {
+	return func(args map[string]string) string {
+		if name := strings.TrimSpace(args["name"]); name != "" {
+			return "This Bot wants to " + verb + " the subagent “" + name + "”."
+		}
+		return "This Bot wants to " + verb + " a subagent."
+	}
+}
+
+func agentFields(args map[string]string) []Field {
+	var out []Field
+	if v := strings.TrimSpace(args["model"]); v != "" {
+		out = append(out, Field{Label: "Model", Value: v})
+	}
+	if v := strings.TrimSpace(args["goal"]); v != "" {
+		out = append(out, Field{Label: "Goal", Value: v})
+	}
+	if v := strings.TrimSpace(args["text"]); v != "" {
+		out = append(out, Field{Label: "Message", Value: v})
 	}
 	return out
 }
@@ -186,6 +222,14 @@ func BuiltinRows() []Row {
 		{Automations, "create", "Create automation"},
 		{Automations, "update", "Change automation"},
 		{Automations, "delete", "Delete automation"},
+		{Agents, "spawn", "Start subagent"},
+		{Agents, "status", "Check subagents"},
+		{Agents, "message", "Message subagent"},
+		{Agents, "stop", "Stop subagent"},
+		{Tasks, "read", "Read taskboard"},
+		{Tasks, "add", "Add tasks"},
+		{Tasks, "done", "Complete tasks"},
+		{Tasks, "reset", "Reset taskboard"},
 	}
 }
 

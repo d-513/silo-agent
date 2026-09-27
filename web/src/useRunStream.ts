@@ -6,11 +6,12 @@ import type { Ev } from "./Thread";
 export type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number; window: number };
 
 // chatBusy: a conversation is busy while any run that opened with a user
-// message (or a manual compaction) has not reached done or error.
+// message (or a manual compaction, or a subagent report) has not reached done
+// or error.
 export function chatBusy(events: Ev[]): boolean {
   const open = new Set<string>();
   for (const ev of events) {
-    if (ev.runId && (ev.kind === "user" || ev.kind === "compacting")) open.add(ev.runId);
+    if (ev.runId && (ev.kind === "user" || ev.kind === "compacting" || ev.kind === "subagent_report")) open.add(ev.runId);
     if (ev.runId && (ev.kind === "done" || ev.kind === "error")) open.delete(ev.runId);
   }
   return open.size > 0;
@@ -20,7 +21,12 @@ type Handlers = {
   onApproval?: () => void;
   onTitle?: (title: string) => void;
   onDone?: () => void;
+  // Transient pings ("board", "subagents") that say the chat's taskboard or
+  // subagents moved; they are never part of the thread.
+  onPing?: (kind: string) => void;
 };
+
+const pings = new Set(["board", "subagents"]);
 
 // useRunStream is the one reader of a conversation's run log: it replays the
 // persisted events, follows the live bus, reconnects with after_event_id (no
@@ -69,6 +75,10 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               if (seen.has(ev.id)) continue;
               seen.add(ev.id);
               after = ev.id;
+            }
+            if (pings.has(ev.kind)) {
+              on.current.onPing?.(ev.kind);
+              continue;
             }
             if (ev.kind === "approval") on.current.onApproval?.();
             if (ev.kind === "chat_title" && ev.body) on.current.onTitle?.(ev.body);

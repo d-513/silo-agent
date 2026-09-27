@@ -34,6 +34,7 @@ const LABELS: Record<string, string> = {
   "memory.auto_recall": "Auto-recall",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
+  "runs.max_duration": "Max run duration",
   debug: "Debug logging",
   "search.engine": "Engine",
   http_addr: "Listen address",
@@ -50,6 +51,7 @@ const LABELS: Record<string, string> = {
 const HINTS: Record<string, string> = {
   "context.window": "Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows.",
   "context.compact_at": "Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call.",
+  "runs.max_duration": "How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this.",
   embedding_model: "For long-term memories. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly.",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
@@ -68,7 +70,7 @@ const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart r
 function groupOf(key: string) {
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
-  if (key.startsWith("context.")) return "context";
+  if (key.startsWith("context.") || key.startsWith("runs.")) return "context";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";

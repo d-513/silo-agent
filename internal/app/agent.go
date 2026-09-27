@@ -280,6 +280,68 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"automation"},
 	}),
+	tool("spawn_agent", "Start a subagent: a named agent loop that works in the background on this Bot's machine, in parallel with you, from a fresh context. It sees only goal and context — not this chat — so make them self-contained (paths, constraints, what to report back). Put its tasks on the taskboard as `[NAME] …` first. You are woken with its result when it finishes, or check with agent_status / wait with sleep.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name":    map[string]any{"type": "string", "description": "short unique name, letters/digits/-/_ (e.g. scout, writer-2)"},
+			"goal":    map[string]any{"type": "string", "description": "what it must achieve and what its final report should contain"},
+			"context": map[string]any{"type": "string", "description": "everything it needs to know: files, facts, decisions, which files are its own"},
+			"model":   map[string]any{"type": "string", "description": "provider/model id from list_models; default is your current model"},
+		},
+		"required": []string{"name", "goal"},
+	}),
+	tool("agent_status", "Check on your subagents. Without name: each one's status and latest activity. With name: its goal, status, recent steps, and its final result when finished.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name":   map[string]any{"type": "string"},
+			"events": map[string]any{"type": "integer", "description": "how many recent steps to show (default 12, max 40)"},
+		},
+	}),
+	tool("message_agent", "Send a message to one of your subagents: it is injected into its live run (like the human interjecting in a chat), or resumes a finished subagent with its history intact.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string"},
+			"text": map[string]any{"type": "string"},
+		},
+		"required": []string{"name", "text"},
+	}),
+	tool("stop_agent", "Stop one of your subagents' current run. It can be resumed later with message_agent.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string"},
+		},
+		"required": []string{"name"},
+	}),
+	tool("sleep", "Pause this run to wait. Returns early when a message arrives for you or (for a lead) when a subagent finishes. Use it to wait on subagents instead of polling in a loop.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"seconds": map[string]any{"type": "integer", "description": "1-600"},
+		},
+		"required": []string{"seconds"},
+	}),
+	tool("task_add", "Add tasks to this chat's taskboard (shared by the lead and its subagents). Prefix a task with [NAME] to assign it to that subagent.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"tasks": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		},
+		"required": []string{"tasks"},
+	}),
+	tool("task_list", "Show the taskboard.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}),
+	tool("task_done", "Mark taskboard items done by number, with an optional short note (where the output is, what changed).", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"ids":  map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
+			"note": map[string]any{"type": "string"},
+		},
+		"required": []string{"ids"},
+	}),
+	tool("task_reset", "Clear the whole taskboard (lead only). Use it when starting an unrelated piece of work.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}),
 	tool("chats", "Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -317,7 +379,9 @@ type eventAttachment struct {
 
 // emitUser persists the opening user message and carries any chat uploads so
 // the thread can render chips on reload and the model can be told the paths.
-func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment) {
+// from names a non-human sender ("lead" for a subagent's brief and the lead's
+// messages); it rides on Tool so the thread can label the bubble.
+func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment, from string) {
 	body = validUTF8(a.Mask(botID).Apply(body))
 	meta := ""
 	if len(atts) > 0 {
@@ -331,8 +395,8 @@ func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment)
 	}
 	id := ids.New()
 	now := time.Now()
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Meta: meta, CreatedAt: now})
-	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: meta, CreatedAt: now})
+	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
 }
 
 func attachmentsFromMeta(meta string) []eventAttachment {
@@ -373,6 +437,9 @@ type runOrigin struct {
 	automation *db.Automation
 	// recall is the auto-recalled memory note, computed once per run.
 	recall string
+	// subagent is set when the run is a subagent's work in its own log chat.
+	// Its runs are not delivered anywhere and get the subagent tool set.
+	subagent *db.Subagent
 }
 
 // runRequest is one call into the shared execution engine. Chats, channels,
@@ -386,6 +453,11 @@ type runRequest struct {
 	// compact starts a manual compaction run: it summarizes the chat and only
 	// goes on to a model turn if a message is injected meanwhile.
 	compact bool
+	// from names a non-human sender of text (see emitUser).
+	from string
+	// report opens a lead's wake run with its subagents' results instead of a
+	// user message.
+	report *subagentReport
 }
 
 // startRun records a run and launches the agent loop. Callers with a live run
@@ -404,6 +476,12 @@ func (a *App) startRun(req runRequest) (string, error) {
 	if req.origin != nil && req.origin.automation != nil {
 		origin = "automation"
 	}
+	if req.origin != nil && req.origin.subagent != nil {
+		origin = "subagent"
+	}
+	if req.report != nil && channelID == "" {
+		origin = "subagents"
+	}
 	if req.compact {
 		origin = "compact"
 	}
@@ -415,8 +493,12 @@ func (a *App) startRun(req runRequest) (string, error) {
 	if !req.compact {
 		// Only touch the run fields: saving the whole row here could clobber a
 		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
+		task := req.text
+		if req.report != nil {
+			task = "Subagents reported"
+		}
 		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
-			"last_task": req.text,
+			"last_task": task,
 			"status":    "working",
 		})
 		// Always ensure the box: a message must start a stopped Bot, and a
@@ -445,7 +527,7 @@ func (a *App) liveRunID(botID, chatID string) string {
 // inject hands a new user message to a live run for a conversation, so it is
 // seen on the model's next turn instead of starting a parallel run. It reports
 // whether the message was queued.
-func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment) bool {
+func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment, from string) bool {
 	a.mu.Lock()
 	lr := a.runs[runID]
 	a.mu.Unlock()
@@ -454,8 +536,9 @@ func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment) b
 	}
 	select {
 	case lr.inbox <- inboxMsg{text: text, atts: atts}:
-		a.emitUser(botID, chatID, runID, text, atts)
+		a.emitUser(botID, chatID, runID, text, atts, from)
 		a.dbSaveBotWorking(botID, text)
+		lr.signal("message")
 		return true
 	default:
 		return false
@@ -700,7 +783,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 
 func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done chan struct{}) {
 	botID, chatID, userText, atts, origin := req.botID, req.chatID, req.text, req.atts, req.origin
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := runContext(a.cfg().Runs.Timeout())
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel, inbox, done)
 	defer close(done)
@@ -714,17 +797,23 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		return
 	}
 	settings := a.cfg().ProviderSettings(provider)
-	tools := a.runTools()
+	tools := a.toolsFor(origin)
 	window := a.contextWindow(ctx, modelID)
 
-	if !req.compact {
-		a.emitUser(botID, chatID, runID, userText, atts)
+	switch {
+	case req.report != nil:
+		a.emitReport(botID, chatID, runID, req.report)
+		a.bumpChat(chatID)
+	case !req.compact:
+		a.emitUser(botID, chatID, runID, userText, atts, req.from)
 		a.bumpChat(chatID)
 		title := userText
 		if strings.TrimSpace(title) == "" && len(atts) > 0 {
 			title = "attached " + atts[0].GetName()
 		}
-		go a.nameChat(botID, chatID, runID, title)
+		if origin == nil || origin.subagent == nil {
+			go a.nameChat(botID, chatID, runID, title)
+		}
 	}
 
 	var msgs []llm.Message
@@ -811,10 +900,14 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 				return
 			}
 		}
+		// The taskboard and subagent status ride on the request's last message
+		// only: the model always sees the latest version, history never keeps
+		// the stale ones, and every cache breakpoint stays in front of it.
+		note := a.turnNote(chatID, origin)
 		turnReq := llm.Request{
 			Model:    model,
 			System:   system,
-			Messages: msgs,
+			Messages: withTurnNote(msgs, note),
 			Tools:    tools,
 			Cache:    cachePolicy(settings, botID),
 		}
@@ -823,7 +916,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		// long gets one compaction and one retry.
 		if err != nil && isContextOverflow(err) && len(msgs) > 1 && ctx.Err() == nil {
 			if compactNow() {
-				turnReq.Messages = msgs
+				turnReq.Messages = withTurnNote(msgs, note)
 				res, err = a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
 			}
 		}
@@ -1014,6 +1107,16 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feedQuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
 			fold = true
 			continue
+		case subagentReportKind:
+			flushTools()
+			text := stampUserText(subagentReportText(ev.Body), ev.CreatedAt)
+			if n := len(msgs); n > 0 && msgs[n-1].Role == llm.RoleUser {
+				msgs[n-1].Text += "\n\n" + text
+			} else {
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
+			}
+			fold = true
+			continue
 		case "user":
 			flushTools()
 			text := ev.Body
@@ -1105,6 +1208,7 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.untrackRun(runID)
 	a.recomputeStatus(botID)
 	a.emit(botID, chatID, runID, "done", st, "")
+	a.afterRun(botID, chatID, runID, st)
 }
 
 func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON string) (string, string, error) {
@@ -1153,6 +1257,18 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	if name == "chats" {
 		out, err := a.chatsReadTool(ctx, botID, runID, args)
+		return out, "", err
+	}
+	if name == "sleep" {
+		out, err := a.sleepTool(ctx, chatID, runID, args)
+		return out, "", err
+	}
+	if isAgentTool(name) {
+		var bot db.Bot
+		if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+			return "", "", fmt.Errorf("unknown bot")
+		}
+		out, err := a.agentTool(ctx, &bot, chatID, runID, name, args)
 		return out, "", err
 	}
 	if _, ok := sharedTools[name]; ok {

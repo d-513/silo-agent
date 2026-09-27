@@ -20,6 +20,10 @@ import { AdminLayout, AccountPage, AdminDebug, AdminSettings, AdminSearchExtract
 import { SettingsPane } from "./Settings";
 import { AutomationsPane } from "./Automations";
 import { useRunStream } from "./useRunStream";
+import { SubagentPage } from "./SubagentPage";
+import { SubagentTray } from "./SubagentTray";
+import { Taskboard } from "./Taskboard";
+import { useSubagents } from "./useSubagents";
 import { FeedPane } from "./Feed";
 import { MemoriesPane } from "./Memories";
 import { AdminConnectors } from "./AdminConnectors";
@@ -1030,6 +1034,8 @@ function BotPage() {
   const parts = (splat ?? "").split("/").filter(Boolean);
   const tabParam = parts[0];
   const chatId = tabParam === "run" ? parts[1] : undefined;
+  // /bots/:id/run/:chatId/agent/:agentId opens one of the chat's subagents.
+  const agentId = chatId && parts[2] === "agent" ? parts[3] : undefined;
   const tab: Tab = chatId ? "run" : tabParam === "console" ? "console" : isNavTab(tabParam) || isSideTab(tabParam) ? tabParam : "run";
   const chatSide = onChatSide(tab);
   const [bot, setBot] = useState<Bot | null>(null);
@@ -1054,6 +1060,7 @@ function BotPage() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
   const [voice, setVoice] = useState(false);
+  const subs = useSubagents(id, chatId);
   const { events, sending, setSending, usage, fresh, markSent, resync } = useRunStream(id, chatId, {
     onApproval: () => {
       if (id) ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
@@ -1061,7 +1068,9 @@ function BotPage() {
     onTitle: (title) => setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title } : c))),
     onDone: () => {
       if (id) ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
+      subs.refresh();
     },
+    onPing: () => subs.refresh(),
   });
 
   useEffect(() => {
@@ -1168,7 +1177,16 @@ function BotPage() {
   }
 
   const chatRuns = new Set(events.map((e) => e.runId).filter(Boolean));
-  const waiting = pending.some((p) => p.runId && chatRuns.has(p.runId));
+  const agentRuns = new Set(subs.agents.map((a) => a.runId).filter(Boolean));
+  const waitingRuns = new Set(pending.map((p) => p.runId).filter((r) => r && agentRuns.has(r)));
+  // A subagent's approval slip is this chat's too: the human is the same.
+  const waiting = pending.some((p) => p.runId && (chatRuns.has(p.runId) || agentRuns.has(p.runId)));
+  const agentsBusy = subs.agents.some((a) => a.running);
+
+  function agentHref(name: string): string | undefined {
+    const a = subs.agents.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    return a && id && chatId ? `/bots/${id}/run/${chatId}/agent/${a.id}` : undefined;
+  }
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
@@ -1447,7 +1465,7 @@ function BotPage() {
                 {chats.length === 0 && <p className="px-2 py-2 text-[12.5px] text-ink-3">No chats</p>}
                 {chats.map((c) => {
                   const on = tab === "run" && c.id === chatId;
-                  const live = on && (waiting || sending);
+                  const live = on && (waiting || sending || agentsBusy);
                   return (
                     <div
                       key={c.id}
@@ -1645,8 +1663,32 @@ function BotPage() {
                   />
                 </div>
               )}
-              {tab === "run" && (
+              {tab === "run" && agentId && chatId && (
+                <SubagentPage
+                  key={agentId}
+                  botId={id!}
+                  botName={bot.name}
+                  botCrest={bot.crest}
+                  chatId={chatId}
+                  agentId={agentId}
+                  onError={setActErr}
+                  onApprovals={() => ui.listApprovals({ botId: id! }).then((r) => setPending(r.approvals)).catch(() => {})}
+                  onInspectArtifact={setInspect}
+                  onSaveSkill={(a) => void saveSkill(a)}
+                />
+              )}
+              {tab === "run" && !agentId && (
               <>
+              <Taskboard
+                items={subs.board}
+                agentHref={agentHref}
+                onClear={() => {
+                  if (!id || !chatId) return;
+                  ui.clearTaskboard({ botId: id, chatId })
+                    .then((b) => subs.setBoard(b.items))
+                    .catch((e) => setActErr(fail(e)));
+                }}
+              />
               <Thread
                 botId={id!}
                 botName={bot.name}
@@ -1661,7 +1703,25 @@ function BotPage() {
                 onEditMessage={(eid, t, a) => void editMessage(eid, t, a)}
                 onDeleteMessage={(eid) => void deleteMessage(eid)}
                 onDivergeChat={(eid) => void divergeChat(eid)}
+                agentHref={agentHref}
               />
+              {chatId ? (
+                <SubagentTray
+                  botId={id!}
+                  chatId={chatId}
+                  agents={subs.agents}
+                  waitingRuns={waitingRuns}
+                  onStop={(sid) => {
+                    ui.stopSubagent({ botId: id!, id: sid }).then(subs.refresh).catch((e) => setActErr(fail(e)));
+                  }}
+                  onStopAll={() => {
+                    for (const a of subs.agents.filter((x) => x.running)) {
+                      ui.stopSubagent({ botId: id!, id: a.id }).catch((e) => setActErr(fail(e)));
+                    }
+                    setTimeout(subs.refresh, 300);
+                  }}
+                />
+              ) : null}
               <Composer
                 text={text}
                 setText={setText}

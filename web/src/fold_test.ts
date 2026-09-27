@@ -129,3 +129,18 @@ console.log("fold ok");
     throw new Error(`failed compaction ${JSON.stringify(failed)}`);
   }
 }
+
+// A subagent report opens the lead's wake run as one report block; the brief a
+// lead sends a subagent keeps its sender.
+{
+  const r = foldEvents([
+    { kind: "subagent_report", body: "### scout — done\nok", tool: "scout:done,writer-2:error", runId: "w1" },
+    ev("assistant", "noted"),
+    { ...ev("user", "## Goal\nlook"), tool: "lead" },
+  ]);
+  const rep = r[0];
+  if (rep?.type !== "report" || rep.agents.length !== 2 || rep.agents[1].name !== "writer-2" || rep.agents[1].status !== "error") {
+    throw new Error(`report block ${JSON.stringify(rep)}`);
+  }
+  if (r[2]?.type !== "user" || r[2].from !== "lead") throw new Error(`lead brief ${JSON.stringify(r[2])}`);
+}

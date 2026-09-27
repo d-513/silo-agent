@@ -31,3 +31,9 @@ var Heartbeat string
 //
 //go:embed COMPACT.md
 var Compact string
+
+// Subagent is the per-run note for a subagent's run. {{NAME}} is replaced with
+// its name.
+//
+//go:embed SUBAGENT.md
+var Subagent string

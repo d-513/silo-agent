@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestEnvKeyNesting(t *testing.T) {
@@ -72,6 +73,9 @@ func TestLoadSearchEngineDefault(t *testing.T) {
 	}
 	if c.Model != DefaultModel {
 		t.Fatalf("model %q", c.Model)
+	}
+	if c.Runs.Timeout() != 120*time.Minute {
+		t.Fatalf("runs.max_duration default %v", c.Runs.Timeout())
 	}
 }
 
@@ -263,5 +267,23 @@ func TestTranscribeModel(t *testing.T) {
 	}
 	if s.Config().TranscribeModel() != "" {
 		t.Fatal("off should disable voice")
+	}
+}
+
+func TestRunsTimeout(t *testing.T) {
+	cases := map[string]time.Duration{
+		"":      DefaultRunMaxDuration,
+		"120m":  120 * time.Minute,
+		"2h":    2 * time.Hour,
+		"45":    45 * time.Minute,
+		"-1":    0,
+		"-5m":   0,
+		"bogus": DefaultRunMaxDuration,
+		"0":     DefaultRunMaxDuration,
+	}
+	for in, want := range cases {
+		if got := (Runs{MaxDuration: in}).Timeout(); got != want {
+			t.Errorf("Timeout(%q) = %v, want %v", in, got, want)
+		}
 	}
 }

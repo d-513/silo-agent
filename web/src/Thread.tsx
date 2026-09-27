@@ -40,6 +40,9 @@ import {
   X,
   type LucideIcon,
   Timer,
+  Bot,
+  Hourglass,
+  ListChecks,
 } from "lucide-react";
 import hljs from "highlight.js/lib/core";
 import "katex/dist/katex.min.css";
@@ -57,6 +60,7 @@ import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
 import { useEffect, useLayoutEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import Markdown from "react-markdown";
+import { Link } from "react-router-dom";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
@@ -267,6 +271,18 @@ function toolMeta(name: string): { app: string } {
     case "list_models":
     case "switch_model":
       return { app: "Model" };
+    case "spawn_agent":
+    case "agent_status":
+    case "message_agent":
+    case "stop_agent":
+      return { app: "Subagents" };
+    case "sleep":
+      return { app: "Sleep" };
+    case "task_add":
+    case "task_list":
+    case "task_done":
+    case "task_reset":
+      return { app: "Taskboard" };
     default:
       return { app: name };
   }
@@ -308,6 +324,15 @@ const toolIcons: Record<string, LucideIcon> = {
   chats: MessagesSquare,
   list_models: Cpu,
   switch_model: Cpu,
+  spawn_agent: Bot,
+  agent_status: Bot,
+  message_agent: Bot,
+  stop_agent: Bot,
+  sleep: Hourglass,
+  task_add: ListChecks,
+  task_list: ListChecks,
+  task_done: ListChecks,
+  task_reset: ListChecks,
 };
 
 // Built-in `import tools` slugs a Python `call` can hit (the rest are connectors).
@@ -323,6 +348,7 @@ const builtinCallIcons: Record<string, LucideIcon> = {
   "bot.feed": Inbox,
   automations: Timer,
   model: Cpu,
+  tasks: ListChecks,
 };
 
 // slug → the attached connector's mark, for `<slug>.<action>` call rows.
@@ -420,6 +446,24 @@ function toolAction(name: string, raw: string): string {
       return "list";
     case "switch_model":
       return asStr(a.model);
+    case "spawn_agent":
+      return `start ${asStr(a.name)}`.trim();
+    case "agent_status":
+      return asStr(a.name) ? `check ${asStr(a.name)}` : "check all";
+    case "message_agent":
+      return `message ${asStr(a.name)}`.trim();
+    case "stop_agent":
+      return `stop ${asStr(a.name)}`.trim();
+    case "sleep":
+      return a.seconds != null ? `${asStr(a.seconds)}s` : "";
+    case "task_add":
+      return Array.isArray(a.tasks) ? `add ${a.tasks.length}` : "add";
+    case "task_done":
+      return Array.isArray(a.ids) ? `done ${a.ids.map((n) => `#${asStr(n)}`).join(" ")}` : "done";
+    case "task_list":
+      return "read";
+    case "task_reset":
+      return "reset";
     default:
       return "";
   }
@@ -1202,6 +1246,77 @@ function FeedQuote({ text, source, createdAt }: { text: string; source: string; 
   );
 }
 
+// LeadNote is a message a subagent got from its lead: the brief it started
+// from, or a later interjection. Set off like a quote, labeled with the sender.
+function LeadNote({ text, createdAt }: { text: string; createdAt?: string }) {
+  const when = runWhen(createdAt);
+  return (
+    <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-ink-3)]">
+      <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+        <Bot size={12} className="shrink-0" />
+        <span className="truncate">From the lead{when ? ` · ${when}` : ""}</span>
+      </figcaption>
+      <div className="silo-reply">
+        <Md text={text} />
+      </div>
+    </figure>
+  );
+}
+
+const reportTone: Record<string, string> = {
+  done: "text-emerald",
+  error: "text-vermilion",
+  stopped: "text-ink-3",
+  interrupted: "text-ink-3",
+};
+
+// SubagentReport opens a lead's wake run: which subagents finished, each a
+// link to its page, with the report the lead was handed folded underneath.
+function SubagentReport({ text, agents, href }: { text: string; agents: { name: string; status: string }[]; href?: (name: string) => string | undefined }) {
+  return (
+    <FoldRow
+      lead={
+        <>
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+            <Bot size={14} strokeWidth={1.75} />
+          </span>
+        </>
+      }
+      title={<span className="shrink-0 font-medium text-ink-2">{agents.length === 1 ? "Subagent finished" : "Subagents finished"}</span>}
+      tail={
+        <span className="flex min-w-0 items-center gap-1.5 truncate">
+          {agents.map((ag, i) => {
+            const to = href?.(ag.name);
+            const label = (
+              <>
+                <span className="font-mono text-[12.5px] text-ink">{ag.name}</span>
+                <span className={`text-[12px] ${reportTone[ag.status] ?? "text-ink-3"}`}>{ag.status === "done" ? "✓" : ag.status}</span>
+              </>
+            );
+            return (
+              <span key={ag.name} className="inline-flex shrink-0 items-center gap-1">
+                {i > 0 ? <span className="text-ink-3">·</span> : null}
+                {to ? (
+                  <Link to={to} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-xs hover:underline">
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                )}
+              </span>
+            );
+          })}
+        </span>
+      }
+    >
+      <div className="silo-reply text-[13px] leading-[21px] text-ink-2">
+        <Md text={text} />
+      </div>
+    </FoldRow>
+  );
+}
+
 function Reply({ text, bounds, streaming, onRetry }: { text: string; bounds?: number[]; streaming?: boolean; onRetry?: () => void }) {
   return (
     <div className="group/reply min-w-0">
@@ -1271,6 +1386,7 @@ export function Thread({
   onDivergeChat,
   emptyState,
   userAs = "bubble",
+  agentHref,
 }: {
   botId: string;
   botName?: string;
@@ -1291,6 +1407,8 @@ export function Thread({
   // "run" draws each user message as a run divider (automation logs, where the
   // message is the automation's own prompt, not something a human typed).
   userAs?: "bubble" | "run";
+  // Links a subagent named in a wake report to its page.
+  agentHref?: (name: string) => string | undefined;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -1400,6 +1518,9 @@ export function Thread({
     if (b.type === "user" && userAs === "run") {
       return <RunMark prompt={b.text} createdAt={b.createdAt} />;
     }
+    if (b.type === "user" && b.from === "lead") {
+      return <LeadNote text={b.text} createdAt={b.createdAt} />;
+    }
     if (b.type === "user") {
       const id = b.id;
       return (
@@ -1419,6 +1540,7 @@ export function Thread({
       return <Thinking text={b.text} streaming={!!b.streaming && sending} ms={b.ms} />;
     }
     if (b.type === "receipt") return <Receipt b={b} />;
+    if (b.type === "report") return <SubagentReport text={b.text} agents={b.agents} href={agentHref} />;
     if (b.type === "quote") return <FeedQuote text={b.text} source={b.source} createdAt={b.createdAt} />;
     if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && sending} />;
     if (b.type === "tool") {

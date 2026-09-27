@@ -270,6 +270,8 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
+	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Subagent{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
 	var bcs []db.BotConnector
@@ -363,6 +365,8 @@ func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunReques
 		return nil, err
 	}
 	a.stopChat(b.ID, chatID)
+	// Stop in a lead chat halts its subagents too, without waking it.
+	a.stopSubagents(b.ID, chatID)
 	return connect.NewResponse(&v1.StopRunResponse{}), nil
 }
 
