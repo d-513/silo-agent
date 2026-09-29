@@ -30,11 +30,24 @@ enum Theme {
     /// Dark inset for code, terminal, and preview wells (the "hatch").
     static let hatch = Color(uiColor: UIColor(hex: 0x141413))
 
+    /// Crest-palette fills for Settings-style icon tiles.
+    enum TileColor { case purple, orange, teal, graphite, wine }
+
+    static func tile(_ color: TileColor) -> Color {
+        switch color {
+        case .purple: return Color(hex: 0x6D28D9)
+        case .orange: return Color(hex: 0xEA580C)
+        case .teal: return Color(hex: 0x3D6F6A)
+        case .graphite: return Color(hex: 0x55534E)
+        case .wine: return Color(hex: 0x9F1239)
+        }
+    }
+
     /// Corner radii from `DESIGN.md` (`control`, `card`, `bubble`).
     enum Radius {
-        static let control: CGFloat = 10
-        static let card: CGFloat = 14
-        static let bubble: CGFloat = 18
+        static let control: CGFloat = 12
+        static let card: CGFloat = 20
+        static let bubble: CGFloat = 22
     }
 }
 
@@ -50,11 +63,10 @@ extension UIColor {
 }
 
 extension View {
-    /// A `surface` card with a hairline ring, the one card look outside native `List` rows.
+    /// A quiet filled card (no ring, continuous corners) for content inside the thread.
     func siloCard(padding: CGFloat = 12) -> some View {
         self.padding(padding)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card).stroke(Theme.line, lineWidth: 1))
+            .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 }
 

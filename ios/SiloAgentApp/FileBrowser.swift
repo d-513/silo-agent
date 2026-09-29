@@ -253,10 +253,8 @@ struct FilesPage: View {
 
     var body: some View {
         if model.selectedBot?.workerConnected == true, let botID = model.selectedBotID {
-            NavigationStack {
-                FileBrowser(source: .workspace(client: model.client, botID: botID))
-            }
-            .id(botID)
+            FileBrowser(source: .workspace(client: model.client, botID: botID))
+                .id(botID)
         } else {
             NeedMachine(what: "Files")
         }

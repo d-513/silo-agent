@@ -27,7 +27,7 @@ struct SecretsPage: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .bottomBar) {
+            ToolbarItem(placement: .primaryAction) {
                 Button { adding = true } label: { Label("Add Secret", systemImage: "plus") }
             }
         }

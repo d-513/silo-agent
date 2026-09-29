@@ -269,6 +269,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate messages to your Bot. Recordings are transcribed and never sent on their own.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -308,6 +309,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate messages to your Bot. Recordings are transcribed and never sent on their own.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

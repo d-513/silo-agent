@@ -24,7 +24,12 @@ struct SiloApp: App {
                 }
             }
             .environment(model)
-            .task { await model.restoreSession() }
+            .task {
+                await model.restoreSession()
+                #if DEBUG
+                await DebugLaunch.run(model)
+                #endif
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await model.resume() } }
             }

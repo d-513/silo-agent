@@ -57,7 +57,8 @@ final class AppModel {
     // Selection
     var selectedBotID: String?
     var selectedChatID: String?
-    var tab: BotTab = .chat
+    /// The Bot stack's pushed pages (chats, Feed, Files, …), so any code can navigate.
+    var path: [BotRoute] = []
 
     private(set) var client: SiloClient
     private var streamTask: Task<Void, Never>?
@@ -168,7 +169,7 @@ final class AppModel {
         sending = false
         selectedBotID = nil
         selectedChatID = nil
-        tab = .chat
+        path = []
         loadedBotID = nil
         streamingChatID = nil
     }
@@ -198,13 +199,11 @@ final class AppModel {
         selectedChatID = nil
         chats = []
         events = []
-        tab = .chat
         do {
             chats = try await client.listChats(botID: id)
         } catch {
             if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
         }
-        if let first = chats.first { selectChat(first.id) }
         await refreshApprovals()
         await loadModels(botID: id)
     }
@@ -276,12 +275,11 @@ final class AppModel {
     /// Runs paused on an approval, so the tray can mark those subagents "needs you".
     var waitingRunIDs: Set<String> { Set(approvals.map(\.runID).filter { !$0.isEmpty }) }
 
-    /// Opens a chat created elsewhere (a Feed quote): list it, switch to Chat, stream it.
+    /// Opens a chat created elsewhere (a Feed quote, a branch): list it and push its thread.
     func openChat(_ chat: Silo_V1_Chat) {
         chats.removeAll { $0.id == chat.id }
         chats.insert(chat, at: 0)
-        tab = .chat
-        selectChat(chat.id)
+        path.append(.chat(chat.id))
     }
 
     /// After `DeleteBot`: drop the row and leave the Bot's pages.
@@ -323,7 +321,7 @@ final class AppModel {
                 streamingChatID = nil
                 events = []
                 selectedChatID = nil
-                if let next = chats.first { selectChat(next.id) }
+                path.removeAll { $0 == .chat(id) }
             }
         } catch {
             errorMessage = describe(error)
@@ -352,9 +350,7 @@ final class AppModel {
     func diverge(eventID: String) async {
         guard let botID = selectedBotID, let chatID = selectedChatID else { return }
         do {
-            let chat = try await client.divergeChat(botID: botID, chatID: chatID, eventID: eventID)
-            chats.insert(chat, at: 0)
-            selectChat(chat.id)
+            openChat(try await client.divergeChat(botID: botID, chatID: chatID, eventID: eventID))
         } catch {
             errorMessage = describe(error)
         }
@@ -517,10 +513,7 @@ final class AppModel {
     func newChat() async {
         guard let botID = selectedBotID else { return }
         do {
-            let chat = try await client.createChat(botID: botID)
-            chats.insert(chat, at: 0)
-            tab = .chat
-            selectChat(chat.id)
+            openChat(try await client.createChat(botID: botID))
         } catch {
             errorMessage = describe(error)
         }

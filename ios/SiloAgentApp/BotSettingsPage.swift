@@ -31,13 +31,17 @@ struct BotSettingsPage: View {
                 Text("A chat's own model choice overrides this.")
             }
             Section {
-                Button(saving ? "Saving…" : "Save changes") { Task { await save() } }
-                    .disabled(saving || !dirty || name.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            Section {
                 Button("Delete Bot", role: .destructive) { confirmDelete = true }
             } footer: {
                 Text("Removes the machine, the Bot, and its workspace.")
+            }
+        }
+        .toolbar {
+            if dirty {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Saving…" : "Save") { Task { await save() } }
+                        .disabled(saving || name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
             }
         }
         .task(id: model.selectedBotID) { load() }

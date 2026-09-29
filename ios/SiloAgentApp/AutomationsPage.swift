@@ -13,8 +13,7 @@ struct AutomationsPage: View {
     @State private var deleting: Silo_V1_Automation?
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 ForEach(items, id: \.id) { item in
                     NavigationLink {
                         AutomationLog(automation: item)
@@ -37,15 +36,12 @@ struct AutomationsPage: View {
                     ContentUnavailableView("No automations", systemImage: "clock.arrow.circlepath", description: Text("Scheduled prompts the Bot runs on its own."))
                 }
             }
-            .navigationTitle("Automations")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { creating = true } label: { Label("New Automation", systemImage: "plus") }
                 }
             }
             .refreshable { await load() }
-        }
         .task(id: model.selectedBotID) { await load() }
         .sheet(item: $editing) { item in AutomationEditor(existing: item) { await load() } }
         .sheet(isPresented: $creating) { AutomationEditor(existing: nil) { await load() } }

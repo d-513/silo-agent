@@ -13,7 +13,7 @@ struct ComposerView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             controls
             attachmentChips
             if let error = dictation.error {
@@ -27,8 +27,8 @@ struct ComposerView: View {
             field
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.bar)
+        .padding(.top, 4)
+        .padding(.bottom, 6)
         .onChange(of: photos) { _, items in loadPhotos(items) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
@@ -48,16 +48,10 @@ struct ComposerView: View {
                     Task { await model.compact() }
                 }
             }
-            Button {
-                Task { await model.collectMemories() }
-            } label: {
-                Image(systemName: "brain")
-            }
-            .buttonStyle(.borderless)
-            .disabled(model.selectedChatID == nil)
-            .accessibilityLabel("Save memories from this chat")
         }
         .font(.footnote)
+        .tint(.secondary)
+        .foregroundStyle(.secondary)
     }
 
     private var modelMenu: some View {
@@ -72,9 +66,8 @@ struct ComposerView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "cpu")
                 Text(modelLabel).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
             }
             .foregroundStyle(.secondary)
         }
@@ -82,9 +75,8 @@ struct ComposerView: View {
     }
 
     private var modelLabel: String {
-        if let option = model.activeModelOption, !option.label.isEmpty { return option.label }
         let id = model.activeModel
-        return id.isEmpty ? "Model" : String(id.split(separator: "/").last ?? Substring(id))
+        return id.isEmpty ? "Model" : shortModel(id)
     }
 
     @ViewBuilder
@@ -105,7 +97,7 @@ struct ComposerView: View {
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "brain.head.profile")
+                    Image(systemName: "sparkles")
                     Text(thinkingLabel(model.fittedThinking)).lineLimit(1)
                 }
                 .foregroundStyle(.secondary)
@@ -136,7 +128,7 @@ struct ComposerView: View {
                         .font(.caption)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Theme.well, in: Capsule())
+                        .glassEffect(.regular, in: .capsule)
                     }
                 }
             }
@@ -173,68 +165,74 @@ struct ComposerView: View {
     }
 
     private var field: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            Menu {
-                PhotosPicker(selection: $photos, maxSelectionCount: 5, matching: .images) {
-                    Label("Photo Library", systemImage: "photo")
-                }
-                Button {
-                    importing = true
+        GlassEffectContainer(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 8) {
+                Menu {
+                    PhotosPicker(selection: $photos, maxSelectionCount: 5, matching: .images) {
+                        Label("Photo Library", systemImage: "photo")
+                    }
+                    Button {
+                        importing = true
+                    } label: {
+                        Label("Files", systemImage: "folder")
+                    }
                 } label: {
-                    Label("Files", systemImage: "folder")
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
                 }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 30, height: 30)
-                    .background(Theme.well, in: Circle())
-            }
-            .accessibilityLabel("Attach")
+                .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityLabel("Attach")
 
-            if dictation.state == .recording {
-                recordingBar
-            } else {
-            TextField("Message", text: $text, axis: .vertical)
-                .lineLimit(1...6)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.bubble))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.bubble).stroke(Theme.line, lineWidth: 1))
-                .focused($focused)
-            }
-
-            if model.voiceEnabled && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && dictation.state != .recording && !model.isRunning {
-                micButton
-            }
-
-            if model.isRunning {
-                Button {
-                    Task { await model.stopRun() }
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .frame(width: 30, height: 30)
+                Group {
+                    if dictation.state == .recording {
+                        recordingBar
+                    } else {
+                        TextField("Message", text: $text, axis: .vertical)
+                            .lineLimit(1...6)
+                            .focused($focused)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 11)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.circle)
-                .tint(Theme.vermilion)
-                .accessibilityLabel("Stop")
-            } else {
-                Button {
-                    send()
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .frame(width: 30, height: 30)
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.circle)
-                .disabled(!canSend)
-                .accessibilityLabel("Send")
+                .frame(minHeight: 44)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 22))
+
+                trailing
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: model.isRunning)
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        if model.isRunning {
+            Button {
+                Task { await model.stopRun() }
+            } label: {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.tint(Theme.vermilion).interactive(), in: .circle)
+            .accessibilityLabel("Stop")
+        } else if canSend {
+            Button {
+                send()
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.tint(Theme.cobalt).interactive(), in: .circle)
+            .accessibilityLabel("Send")
+        } else if model.voiceEnabled && dictation.state != .recording {
+            micButton
+        }
     }
 
     private var micButton: some View {
@@ -245,13 +243,13 @@ struct ComposerView: View {
                 if dictation.state == .transcribing {
                     ProgressView().controlSize(.small)
                 } else {
-                    Image(systemName: "mic")
+                    Image(systemName: "mic").font(.system(size: 17, weight: .semibold))
                 }
             }
-            .font(.system(size: 15, weight: .semibold))
-            .frame(width: 30, height: 30)
-            .background(Theme.well, in: Circle())
+            .foregroundStyle(.primary)
+            .frame(width: 44, height: 44)
         }
+        .glassEffect(.regular.interactive(), in: .circle)
         .disabled(dictation.state == .transcribing)
         .accessibilityLabel("Dictate")
     }
@@ -276,15 +274,13 @@ struct ComposerView: View {
                     .font(.system(size: 15, weight: .bold))
                     .frame(width: 30, height: 30)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .buttonBorderShape(.circle)
             .accessibilityLabel("Stop and transcribe")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 5)
         .frame(maxWidth: .infinity)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.bubble))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.bubble).stroke(Theme.vermilion.opacity(0.5), lineWidth: 1))
     }
 
     private func send() {

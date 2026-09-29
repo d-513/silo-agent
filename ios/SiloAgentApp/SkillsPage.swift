@@ -73,6 +73,8 @@ struct SkillsPage: View {
 struct SkillHub: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    /// As a tab it has no Done button.
+    var embedded = false
     @State private var scope = "personal"
     @State private var skills: [Silo_V1_Skill] = []
     @State private var loaded = false
@@ -118,9 +120,8 @@ struct SkillHub: View {
             }
             .overlay { if loaded && skills.isEmpty { ContentUnavailableView("No skills", systemImage: "book") } }
             .navigationTitle("Skill Hub")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+                if !embedded { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 if scope == "personal" {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {

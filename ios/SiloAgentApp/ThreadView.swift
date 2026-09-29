@@ -176,49 +176,30 @@ struct BlockView: View {
     // MARK: thinking
 
     private var thinkingRow: some View {
-        DisclosureGroup {
+        FoldRow {
+            HStack(spacing: 6) {
+                if block.streaming { ProgressView().controlSize(.mini) }
+                Text(block.streaming ? "Thinking…" : "Thought")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } content: {
             Text(block.text)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
-                .padding(.top, 4)
-        } label: {
-            HStack(spacing: 6) {
-                if block.streaming { ProgressView().controlSize(.mini) }
-                Text(block.streaming ? "Thinking…" : "Thought")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
     // MARK: tools
 
     private var toolRow: some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: 8) {
-                if !block.args.isEmpty {
-                    CodeWell(code: prettyJSON(block.args), language: nil)
-                }
-                ForEach(block.calls) { call in
-                    HStack(spacing: 6) {
-                        callGlyph(call)
-                        Text(call.title).font(.system(.caption, design: .monospaced))
-                    }
-                    if let result = call.result, !result.isEmpty {
-                        CodeWell(code: result, language: nil)
-                    }
-                }
-                if let result = block.result, !result.isEmpty {
-                    CodeWell(code: result, language: nil)
-                }
-            }
-            .padding(.top, 6)
-        } label: {
+        FoldRow {
             HStack(spacing: 6) {
                 toolGlyph
                 Text(toolTitle)
-                    .font(.system(.caption, design: .monospaced).weight(.medium))
+                    .font(.system(.footnote, design: .monospaced))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if block.waiting {
                     Text("Waiting for you")
@@ -228,6 +209,24 @@ struct BlockView: View {
                     Text(outcome == .denied ? "Denied" : "Stopped")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(outcome == .denied ? Theme.vermilion : .secondary)
+                }
+            }
+        } content: {
+            VStack(alignment: .leading, spacing: 8) {
+                if !block.args.isEmpty {
+                    CodeWell(code: prettyJSON(block.args), language: nil)
+                }
+                ForEach(block.calls) { call in
+                    HStack(spacing: 6) {
+                        callGlyph(call)
+                        Text(call.title).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                    }
+                    if let result = call.result, !result.isEmpty {
+                        CodeWell(code: result, language: nil)
+                    }
+                }
+                if let result = block.result, !result.isEmpty {
+                    CodeWell(code: result, language: nil)
                 }
             }
         }
@@ -296,19 +295,18 @@ struct BlockView: View {
     }
 
     private var reportCard: some View {
-        DisclosureGroup {
-            Text(block.text)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-                .padding(.top, 4)
-        } label: {
+        FoldRow {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Subagents reported").font(.subheadline.weight(.semibold))
                 Text(block.agents.map { $0.status.isEmpty ? $0.name : "\($0.name) · \($0.status)" }.joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        } content: {
+            Text(block.text)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
         .siloCard()
     }
@@ -340,16 +338,15 @@ struct BlockView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                DisclosureGroup {
+                FoldRow {
+                    Label("Earlier messages summarized", systemImage: "rectangle.compress.vertical")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } content: {
                     Text(block.text)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                        .padding(.top, 4)
-                } label: {
-                    Label("Earlier messages summarized", systemImage: "rectangle.compress.vertical")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -567,5 +564,39 @@ struct PresentCard: View {
         let data = file.data.isEmpty ? Data(file.content.utf8) : file.data
         guard (try? data.write(to: url)) != nil else { return }
         preview = url
+    }
+}
+
+
+/// A quiet expandable row: a small chevron and a secondary label, no tint, content indented below.
+struct FoldRow<Label: View, Content: View>: View {
+    @State private var open = false
+    @ViewBuilder let label: Label
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.snappy) { open.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                        .frame(width: 10)
+                    label
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                content
+                    .padding(.top, 6)
+                    .padding(.leading, 16)
+                    .transition(.opacity)
+            }
+        }
     }
 }

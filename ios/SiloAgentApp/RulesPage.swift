@@ -15,7 +15,8 @@ struct RulesPage: View {
     var body: some View {
         List {
             Section {
-                TextEditor(text: $policy).frame(minHeight: 80).font(.callout)
+                TextField("e.g. Allow read-only actions; ask before anything that sends or deletes", text: $policy, axis: .vertical)
+                    .lineLimit(3...8)
                 if policy != savedPolicy {
                     Button("Save policy") { Task { await savePolicy() } }
                 }
@@ -26,12 +27,25 @@ struct RulesPage: View {
             }
             ForEach(filtered, id: \.id) { section in
                 Section {
-                    ForEach(section.rules, id: \.id) { rule in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(rule.title.isEmpty ? rule.action : rule.title).font(.subheadline)
-                            decisionPicker(rule.decision) { value in Task { await set(rule, value) } }
+                    ForEach(section.rules, id: \.key) { rule in
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(rule.title.isEmpty ? rule.action : rule.title)
+                                    .font(rule.connector == "secrets" ? .system(.subheadline, design: .monospaced) : .subheadline)
+                                if !rule.title.isEmpty, rule.title != rule.action, rule.action != "*", rule.connector != "secrets" {
+                                    Text(rule.action)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            Picker("Decision", selection: Binding(get: { rule.decision }, set: { value in Task { await set(rule, value) } })) {
+                                ForEach(Self.modes, id: \.0) { Text($0.1).tag($0.0) }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .tint(tone(rule.decision))
                         }
-                        .padding(.vertical, 2)
                     }
                 } header: {
                     HStack {
@@ -60,12 +74,12 @@ struct RulesPage: View {
         }
     }
 
-    private func decisionPicker(_ value: String, onChange: @escaping (String) -> Void) -> some View {
-        Picker("Decision", selection: Binding(get: { value }, set: onChange)) {
-            ForEach(Self.modes, id: \.0) { Text($0.1).tag($0.0) }
+    private func tone(_ decision: String) -> Color {
+        switch decision {
+        case "allow": return Theme.emerald
+        case "deny": return Theme.vermilion
+        default: return .secondary
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
     }
 
     private var filtered: [Silo_V1_RuleSection] {
@@ -124,4 +138,9 @@ struct RulesPage: View {
             savedPolicy = policy
         } catch { await model.report(error) }
     }
+}
+
+extension Silo_V1_Rule {
+    /// Catalog-default rules have no row id, so the pair is the identity.
+    var key: String { connector + "." + action }
 }

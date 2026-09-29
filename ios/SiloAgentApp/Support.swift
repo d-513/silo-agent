@@ -1,6 +1,13 @@
 import SiloClient
 import SwiftUI
 
+/// Where the Bot's navigation stack can go.
+enum BotRoute: Hashable {
+    case chat(String)
+    case chats
+    case page(BotTab)
+}
+
 /// The Bot pages. `automations`, `memories` and `feed` sit beside the chats list on web; the
 /// rest are the tab strip. Desktop stays web-only (see `ios/todo_skipped.md`).
 enum BotTab: String, CaseIterable, Identifiable {

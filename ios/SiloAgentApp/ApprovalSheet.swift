@@ -52,27 +52,26 @@ struct ApprovalSheet: View {
         .safeAreaInset(edge: .bottom) { actions }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(.regularMaterial)
     }
 
     private var actions: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Button { decide("allow_once") } label: {
                 Text("Allow once").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             Button { decide("always") } label: {
                 Text("Always allow this action").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             Button { decide("auto") } label: {
                 Text("Auto-approve this action").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             Button(role: .destructive) { decide("deny") } label: {
                 Text("Deny").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .tint(Theme.vermilion)
             Text(approval.runID.isEmpty ? "The process is waiting for your choice." : "This run is paused until you choose.")
                 .font(.footnote)
@@ -83,7 +82,6 @@ struct ApprovalSheet: View {
         .disabled(deciding)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(.bar)
         .sensoryFeedback(.selection, trigger: deciding)
     }
 

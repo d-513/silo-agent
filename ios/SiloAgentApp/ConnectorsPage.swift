@@ -60,17 +60,17 @@ struct ConnectorsPage: View {
 
     private func statusLabel(_ row: Silo_V1_BotConnector) -> String {
         switch row.authStatus {
-        case "connected", "ready", "ok": return "Connected"
-        case "needs_auth": return row.connector.auth == "oauth" ? "Needs authorization" : "Needs setup"
+        case "authorized": return row.connector.builtin.isEmpty ? "Authorized" : "Signed in"
+        case "needs_auth": return row.connector.builtin.isEmpty && row.connector.auth == "oauth" ? "Needs authorization" : "Needs setup"
         case "error": return "Error"
         case "initializing": return "Starting"
-        default: return row.authStatus.replacingOccurrences(of: "_", with: " ").capitalized
+        default: return "Ready"
         }
     }
 
     private func tone(_ row: Silo_V1_BotConnector) -> Color {
         switch row.authStatus {
-        case "connected", "ready", "ok": return Theme.emerald
+        case "authorized": return Theme.emerald
         case "needs_auth", "error": return Theme.vermilion
         default: return .secondary
         }
