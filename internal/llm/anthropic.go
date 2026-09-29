@@ -150,7 +150,7 @@ func (c *anthropicClient) params(req Request, mode thinkMode) anthropic.MessageN
 	p := anthropic.MessageNewParams{
 		Model:     anthropic.Model(req.Model),
 		MaxTokens: int64(max),
-		Messages:  anthropicMessages(req.Messages, req.Cache, req.Model),
+		Messages:  anthropicMessages(RepairToolPairs(req.Messages), req.Cache, req.Model),
 		Tools:     anthropicTools(req.Tools),
 	}
 	switch mode {

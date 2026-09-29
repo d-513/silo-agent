@@ -175,7 +175,7 @@ func (c *openAICompatClient) params(req Request) openai.ChatCompletionNewParams 
 	if sys := joinSystem(req.System); sys != "" {
 		msgs = append(msgs, openai.SystemMessage(sys))
 	}
-	for _, m := range req.Messages {
+	for _, m := range RepairToolPairs(req.Messages) {
 		msgs = append(msgs, openAIMessages(m)...)
 	}
 	tools := make([]openai.ChatCompletionToolUnionParam, 0, len(req.Tools))

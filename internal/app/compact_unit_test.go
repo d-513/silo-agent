@@ -146,3 +146,50 @@ func TestTranscriptTrimsOldestButKeepsSummary(t *testing.T) {
 		t.Fatalf("plain transcript %q", full)
 	}
 }
+
+func toolEv(id, run, kind, tool, body string) db.RunEvent {
+	e := ev(id, run, kind, body)
+	e.Tool = tool
+	return e
+}
+
+// A turn that calls two tools at once records both calls, then both results.
+// Each result must answer its own call, or OpenAI refuses the history with
+// "No tool output found for function call".
+func TestHistoryPairsParallelToolCalls(t *testing.T) {
+	msgs := historyFromEvents([]db.RunEvent{
+		ev("1", "r1", "user", "what is your thinking level"),
+		toolEv("2", "r1", "tool", "list_models", ""),
+		toolEv("3", "r1", "tool_args_chunk", "list_models", "{}"),
+		toolEv("4", "r1", "tool", "exec_python", ""),
+		toolEv("5", "r1", "tool_args_chunk", "exec_python", `{"code":"1"}`),
+		ev("6", "r1", "thinking", "hm"),
+		toolEv("7", "r1", "tool_result", "list_models", "models"),
+		toolEv("8", "r1", "tool_chunk", "", "out"),
+		toolEv("9", "r1", "tool_result", "exec_python", "out"),
+		toolEv("10", "r1", "tool", "read", ""),
+		toolEv("11", "r1", "tool_args_chunk", "read", `{"path":"a"}`),
+		toolEv("12", "r1", "tool_result", "read", "A"),
+		toolEv("13", "r1", "tool", "read", ""),
+		toolEv("14", "r1", "tool_args_chunk", "read", `{"path":"b"}`),
+		toolEv("15", "r1", "tool_result", "read", "B"),
+		ev("16", "r1", "assistant", "done"),
+	})
+	if len(msgs) != 9 {
+		t.Fatalf("got %d: %+v", len(msgs), msgs)
+	}
+	calls := msgs[1].ToolCalls
+	if len(calls) != 2 || calls[0].Name != "list_models" || calls[1].Name != "exec_python" {
+		t.Fatalf("calls %+v", calls)
+	}
+	if msgs[2].ToolCallID != calls[0].ID || msgs[2].Text != "models" || msgs[3].ToolCallID != calls[1].ID || msgs[3].Text != "out" {
+		t.Fatalf("results %+v %+v", msgs[2], msgs[3])
+	}
+	// Two same-named calls in consecutive turns stay two turns.
+	if a := msgs[4].ToolCalls; len(a) != 1 || a[0].Arguments != `{"path":"a"}` || msgs[5].Text != "A" {
+		t.Fatalf("turn 2 %+v %+v", msgs[4], msgs[5])
+	}
+	if b := msgs[6].ToolCalls; len(b) != 1 || b[0].Arguments != `{"path":"b"}` || msgs[7].ToolCallID != b[0].ID {
+		t.Fatalf("turn 3 %+v %+v", msgs[6], msgs[7])
+	}
+}

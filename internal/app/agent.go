@@ -1089,13 +1089,14 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 		fold = true
 		evs = evs[start:]
 	}
+	// pending is one model turn's calls; results answer them in call order,
+	// which is the order the loop runs and records them (a turn may call
+	// several tools at once).
 	var pending []llm.ToolCall
-	var lastCall string
 	var results []llm.Message
 	flushTools := func() {
 		if len(pending) == 0 {
 			results = nil
-			lastCall = ""
 			return
 		}
 		for len(results) < len(pending) {
@@ -1109,7 +1110,6 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 		msgs = append(msgs, results...)
 		pending = nil
 		results = nil
-		lastCall = ""
 	}
 	runID := ""
 	for _, ev := range evs {
@@ -1158,34 +1158,35 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 				msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: ev.Body})
 			}
 		case "tool":
-			if n := len(pending); n > 0 {
+			// A call after results is the model's next turn.
+			if len(results) > 0 {
+				flushTools()
+			}
+			// Older runs could record a call twice, the second time with its
+			// full arguments. A live call is always recorded with an empty
+			// body, so an empty one is a new (possibly parallel) call.
+			if n := len(pending); n > 0 && ev.Body != "" {
 				last := &pending[n-1]
 				same := last.Name == ev.Tool || last.Name == "" || ev.Tool == ""
 				incomplete := last.Arguments == "" || !jsonLooksComplete(last.Arguments)
-				if same && (ev.Body == "" || incomplete || ev.Body == last.Arguments) {
-					if ev.Body != "" {
-						last.Arguments = ev.Body
-					}
+				if same && (incomplete || ev.Body == last.Arguments) {
+					last.Arguments = ev.Body
 					if ev.Tool != "" {
 						last.Name = ev.Tool
 					}
-					lastCall = last.ID
 					continue
 				}
 			}
-			id := "call_" + ev.ID
-			lastCall = id
-			pending = append(pending, llm.ToolCall{ID: id, Name: ev.Tool, Arguments: ev.Body})
+			pending = append(pending, llm.ToolCall{ID: "call_" + ev.ID, Name: ev.Tool, Arguments: ev.Body})
 		case "tool_args_chunk":
 			if n := len(pending); n > 0 {
 				pending[n-1].Arguments += ev.Body
 			}
 		case "tool_result":
-			id := lastCall
-			if id == "" {
-				id = "call_" + ev.ID
+			if len(results) >= len(pending) {
+				continue // answers no call
 			}
-			results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: id, Text: ev.Body})
+			results = append(results, llm.Message{Role: llm.RoleTool, ToolCallID: pending[len(results)].ID, Text: ev.Body})
 		}
 	}
 	flushTools()
