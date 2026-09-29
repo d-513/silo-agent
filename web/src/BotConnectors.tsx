@@ -1,4 +1,4 @@
-import { Check, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "./api";
 import { ArmedButton } from "./Feedback";
@@ -53,6 +53,14 @@ function nextCopyName(base: string, names: string[]) {
 }
 
 type TabMode = "in_use" | "library" | "custom";
+
+// Library presets shown in the Featured band, by their `builtin` key.
+const FEATURED = ["email"];
+
+// Short selling points under a featured card; falls back to none.
+const featuredPoints: Record<string, string[]> = {
+  email: ["Any IMAP / SMTP inbox", "Gmail & Outlook presets", "Sends ask you first"],
+};
 
 export function BotConnectors({
   botId,
@@ -136,6 +144,12 @@ export function BotConnectors({
       );
     });
   }, [catalog, search, selectedCategory]);
+
+  const featured = useMemo(
+    () =>
+      FEATURED.flatMap((key) => catalog.filter((c) => c.builtin === key)),
+    [catalog],
+  );
 
   // Catalog grouped by category for overview
   const catalogByCategory = useMemo(() => {
@@ -592,6 +606,19 @@ export function BotConnectors({
           ) : selectedCategory === "all" && !search.trim() ? (
             /* Grouped category overview */
             <div className="space-y-7">
+              {featured.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-line/70 pb-2">
+                    <Sparkles size={14} className="text-cobalt" />
+                    <h3 className="font-semibold text-sm text-ink">Featured</h3>
+                  </div>
+                  <div className={`grid grid-cols-1 gap-4 ${featured.length > 1 ? "md:grid-cols-2" : ""}`}>
+                    {featured.map((c) => (
+                      <FeaturedCard key={c.id} c={c} count={attachedCountFor(c.id)} onAdd={() => openLibraryModal(c)} />
+                    ))}
+                  </div>
+                </section>
+              )}
               {Array.from(catalogByCategory.entries()).map(([categoryName, items]) => (
                 <section key={categoryName} className="space-y-3">
                   <div className="flex items-center justify-between border-b border-line/70 pb-2">
@@ -841,6 +868,55 @@ export function BotConnectors({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number; onAdd: () => void }) {
+  const points = featuredPoints[c.builtin] ?? [];
+  return (
+    <div className="relative overflow-hidden rounded-card shadow-card bg-surface transition-shadow hover:shadow-float">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_100%_0%,var(--color-cobalt-pale),transparent_60%)]"
+      />
+      <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6">
+        <div className="shrink-0 rounded-card bg-surface p-2 shadow-card">
+          <ConnectorMark id={c.id} hasImage={c.hasImage} size={64} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-[19px] font-semibold tracking-tight text-ink">{c.name}</h4>
+            <span className="rounded-full bg-cobalt-pale px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-cobalt">
+              Built in
+            </span>
+            {c.category && <CategoryChip label={c.category} />}
+          </div>
+          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-ink-2">{c.description}</p>
+          {points.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-ink-2">
+              {points.map((p) => (
+                <li key={p} className="inline-flex items-center gap-1.5">
+                  <Check size={12} className="text-emerald" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+          <button type="button" className={btnClass("primary")} onClick={onAdd}>
+            <Plus size={15} />
+            {count > 0 ? "Add another" : `Add ${c.name}`}
+          </button>
+          {count > 0 && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald">
+              <Check size={11} />
+              {count === 1 ? "In use" : `${count} in use`}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
