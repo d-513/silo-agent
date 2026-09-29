@@ -36,3 +36,8 @@ public func formatTokens(_ count: Int) -> String {
     let thousands = Double(count) / 1000
     return count >= 10000 ? String(format: "%.0fk", thousands) : String(format: "%.1fk", thousands)
 }
+
+/// A cosine distance (0 = same, 2 = opposite) as a 0–100 match score.
+public func matchPercent(_ distance: Double) -> Int {
+    Int((max(0, min(1, 1 - distance)) * 100).rounded())
+}

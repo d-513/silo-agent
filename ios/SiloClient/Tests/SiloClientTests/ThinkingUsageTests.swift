@@ -53,3 +53,12 @@ final class DictationTests: XCTestCase {
         XCTAssertEqual(formatClock(-1), "0:00")
     }
 }
+
+final class MatchTests: XCTestCase {
+    func testMatchPercent() {
+        XCTAssertEqual(matchPercent(0), 100)
+        XCTAssertEqual(matchPercent(0.25), 75)
+        XCTAssertEqual(matchPercent(1.4), 0)
+        XCTAssertEqual(matchPercent(-1), 100)
+    }
+}

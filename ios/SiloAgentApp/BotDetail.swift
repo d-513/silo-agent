@@ -92,6 +92,9 @@ struct BotDetail: View {
                     description: Text("Pick a chat in the middle column, or start a new one.")
                 )
             }
+        case .automations: AutomationsPage()
+        case .memories: MemoriesPage()
+        case .feed: FeedPage()
         default:
             PlaceholderPane(tab: model.tab)
         }

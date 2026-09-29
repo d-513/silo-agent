@@ -343,6 +343,192 @@ public final class SiloClient: Sendable {
         return try unwrap(await ui.transcribe(request: request, headers: [:])).text
     }
 
+    // MARK: - Bot settings and lifecycle
+
+    /// Send every field; a blank one clears it (so callers pass the Bot's current values through).
+    public func updateBot(_ bot: Silo_V1_Bot, name: String? = nil, description: String? = nil, soul: String? = nil,
+                          memory: String? = nil, model: String? = nil) async throws -> Silo_V1_Bot {
+        var request = Silo_V1_UpdateBotRequest()
+        request.id = bot.id
+        request.name = name ?? bot.name
+        request.description_p = description ?? bot.description_p
+        request.soul = soul ?? bot.soul
+        request.memory = memory ?? bot.memory
+        request.autoApprove = bot.autoApprove
+        request.model = model ?? bot.model
+        return try unwrap(await ui.updateBot(request: request, headers: [:]))
+    }
+
+    public func deleteBot(_ id: String) async throws {
+        var request = Silo_V1_GetBotRequest()
+        request.id = id
+        _ = try unwrap(await ui.deleteBot(request: request, headers: [:]))
+    }
+
+    public func resetContainer(_ id: String) async throws -> Silo_V1_Bot {
+        var request = Silo_V1_GetBotRequest()
+        request.id = id
+        return try unwrap(await ui.resetContainer(request: request, headers: [:]))
+    }
+
+    public func listBotContainers(_ id: String) async throws -> [Silo_V1_BotContainer] {
+        var request = Silo_V1_GetBotRequest()
+        request.id = id
+        return try unwrap(await ui.listBotContainers(request: request, headers: [:])).containers
+    }
+
+    public func removeBotContainers(_ id: String) async throws -> Silo_V1_Bot {
+        var request = Silo_V1_GetBotRequest()
+        request.id = id
+        return try unwrap(await ui.removeBotContainers(request: request, headers: [:]))
+    }
+
+    // MARK: - Feed
+
+    public func listFeed(botID: String) async throws -> [Silo_V1_FeedPost] {
+        var request = Silo_V1_ListFeedRequest()
+        request.botID = botID
+        return try unwrap(await ui.listFeed(request: request, headers: [:])).posts
+    }
+
+    public func markFeedRead(botID: String) async throws {
+        var request = Silo_V1_MarkFeedReadRequest()
+        request.botID = botID
+        _ = try unwrap(await ui.markFeedRead(request: request, headers: [:]))
+    }
+
+    public func deleteFeedPost(botID: String, id: String) async throws {
+        var request = Silo_V1_DeleteFeedPostRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.deleteFeedPost(request: request, headers: [:]))
+    }
+
+    public func quoteFeedPost(botID: String, id: String) async throws -> Silo_V1_Chat {
+        var request = Silo_V1_QuoteFeedPostRequest()
+        request.botID = botID
+        request.id = id
+        return try unwrap(await ui.quoteFeedPost(request: request, headers: [:])).chat
+    }
+
+    // MARK: - Memories
+
+    public func listMemories(botID: String) async throws -> [Silo_V1_Memory] {
+        var request = Silo_V1_ListMemoriesRequest()
+        request.botID = botID
+        return try unwrap(await ui.listMemories(request: request, headers: [:])).memories
+    }
+
+    public func searchMemories(botID: String, query: String) async throws -> [Silo_V1_Memory] {
+        var request = Silo_V1_SearchMemoriesRequest()
+        request.botID = botID
+        request.query = query
+        request.limit = 20
+        return try unwrap(await ui.searchMemories(request: request, headers: [:])).memories
+    }
+
+    public func deleteMemory(botID: String, id: String) async throws {
+        var request = Silo_V1_DeleteMemoryRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.deleteMemory(request: request, headers: [:]))
+    }
+
+    // MARK: - Automations
+
+    public func listAutomations(botID: String) async throws -> [Silo_V1_Automation] {
+        var request = Silo_V1_ListAutomationsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listAutomations(request: request, headers: [:])).automations
+    }
+
+    public func createAutomation(botID: String, name: String, prompt: String, schedule: String, enabled: Bool) async throws -> Silo_V1_Automation {
+        var request = Silo_V1_CreateAutomationRequest()
+        request.botID = botID
+        request.name = name
+        request.prompt = prompt
+        request.schedule = schedule
+        request.enabled = enabled
+        return try unwrap(await ui.createAutomation(request: request, headers: [:]))
+    }
+
+    public func updateAutomation(botID: String, id: String, name: String, prompt: String, schedule: String, enabled: Bool) async throws -> Silo_V1_Automation {
+        var request = Silo_V1_UpdateAutomationRequest()
+        request.botID = botID
+        request.id = id
+        request.name = name
+        request.prompt = prompt
+        request.schedule = schedule
+        request.enabled = enabled
+        return try unwrap(await ui.updateAutomation(request: request, headers: [:]))
+    }
+
+    public func deleteAutomation(botID: String, id: String) async throws {
+        var request = Silo_V1_DeleteAutomationRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.deleteAutomation(request: request, headers: [:]))
+    }
+
+    public func runAutomation(botID: String, id: String) async throws {
+        var request = Silo_V1_RunAutomationRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.runAutomation(request: request, headers: [:]))
+    }
+
+    // MARK: - Secrets and rules
+
+    public func listSecrets(botID: String) async throws -> [Silo_V1_SecretMeta] {
+        var request = Silo_V1_ListSecretsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listSecrets(request: request, headers: [:])).secrets
+    }
+
+    public func addSecret(botID: String, name: String, value: String) async throws {
+        var request = Silo_V1_AddSecretRequest()
+        request.botID = botID
+        request.name = name
+        request.value = value
+        _ = try unwrap(await ui.addSecret(request: request, headers: [:]))
+    }
+
+    public func deleteSecret(botID: String, id: String) async throws {
+        var request = Silo_V1_DeleteSecretRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.deleteSecret(request: request, headers: [:]))
+    }
+
+    public func listRuleSections(botID: String) async throws -> [Silo_V1_RuleSection] {
+        var request = Silo_V1_ListRulesRequest()
+        request.botID = botID
+        return try unwrap(await ui.listRules(request: request, headers: [:])).sections
+    }
+
+    // MARK: - Workspace files
+
+    public func listFiles(botID: String, path: String) async throws -> [Silo_V1_FileEntry] {
+        var request = Silo_V1_ListFilesRequest()
+        request.botID = botID
+        request.path = path
+        return try unwrap(await ui.listFiles(request: request, headers: [:])).entries
+    }
+
+    public func mkdir(botID: String, path: String) async throws {
+        var request = Silo_V1_MkdirRequest()
+        request.botID = botID
+        request.path = path
+        _ = try unwrap(await ui.mkdir(request: request, headers: [:]))
+    }
+
+    public func removeFile(botID: String, path: String) async throws {
+        var request = Silo_V1_RemoveFileRequest()
+        request.botID = botID
+        request.path = path
+        _ = try unwrap(await ui.removeFile(request: request, headers: [:]))
+    }
+
     // MARK: - Files
 
     public func readFile(botID: String, path: String) async throws -> Silo_V1_ReadFileResponse {

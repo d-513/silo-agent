@@ -11,6 +11,27 @@ struct ChatsList: View {
     var body: some View {
         @Bindable var model = model
         List(selection: $model.selectedChatID) {
+            Section {
+                ForEach([BotTab.automations, .memories, .feed], id: \.self) { tab in
+                    Button {
+                        model.tab = tab
+                    } label: {
+                        HStack {
+                            Label(tab.title, systemImage: tab.symbol)
+                                .foregroundStyle(model.tab == tab ? Theme.cobalt : Color.primary)
+                            Spacer()
+                            if tab == .feed, let unread = model.selectedBot?.feedUnread, unread > 0 {
+                                Text("\(unread)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 7).padding(.vertical, 2)
+                                    .background(Theme.cobalt, in: Capsule())
+                            }
+                        }
+                    }
+                }
+            }
+            Section("Chats") {
             ForEach(model.chats, id: \.id) { chat in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chat.title.isEmpty ? "New chat" : chat.title)
@@ -49,6 +70,7 @@ struct ChatsList: View {
                         Label("Delete", systemImage: "trash")
                     }
                 }
+            }
             }
         }
         .overlay {

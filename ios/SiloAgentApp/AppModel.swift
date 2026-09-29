@@ -260,6 +260,19 @@ final class AppModel {
     /// Runs paused on an approval, so the tray can mark those subagents "needs you".
     var waitingRunIDs: Set<String> { Set(approvals.map(\.runID).filter { !$0.isEmpty }) }
 
+    /// Opens a chat created elsewhere (a Feed quote): list it, switch to Chat, stream it.
+    func openChat(_ chat: Silo_V1_Chat) {
+        chats.removeAll { $0.id == chat.id }
+        chats.insert(chat, at: 0)
+        tab = .chat
+        selectChat(chat.id)
+    }
+
+    /// Replaces the Bot row (after an edit) so the header and lists update without waiting for the poll.
+    func applyBot(_ bot: Silo_V1_Bot) {
+        if let index = bots.firstIndex(where: { $0.id == bot.id }) { bots[index] = bot }
+    }
+
     // MARK: - Chat and message actions
 
     func renameChat(_ id: String, title: String) async {
@@ -634,6 +647,11 @@ final class AppModel {
     private func isUnauthenticated(_ error: Error) -> Bool {
         if let silo = error as? SiloError, case .unauthenticated = silo { return true }
         return false
+    }
+
+    /// Surfaces a page's failure as the banner; a signed-out session ends the session instead.
+    func report(_ error: Error) async {
+        if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
     }
 
     private func describe(_ error: Error) -> String {

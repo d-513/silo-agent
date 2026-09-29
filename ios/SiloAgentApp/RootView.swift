@@ -29,7 +29,10 @@ struct RootView: View {
             Task { await model.chooseBot(newValue) }
         }
         .onChange(of: model.selectedChatID) { _, newValue in
-            if let newValue { model.selectChat(newValue) }
+            if let newValue {
+                model.tab = .chat
+                model.selectChat(newValue)
+            }
         }
     }
 }

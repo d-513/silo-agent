@@ -1,11 +1,16 @@
 import SiloClient
 import SwiftUI
 
-/// The Bot pages. Only `chat` is implemented; the rest are placeholders.
+/// The Bot pages. `automations`, `memories` and `feed` sit beside the chats list on web; the
+/// rest are the tab strip. Desktop stays web-only (see `ios/todo_skipped.md`).
 enum BotTab: String, CaseIterable, Identifiable {
     case chat
+    case automations
+    case memories
+    case feed
     case desktop
     case files
+    case drives
     case connectors
     case channels
     case skills
@@ -19,6 +24,10 @@ enum BotTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .chat: return "Chat"
+        case .automations: return "Automations"
+        case .memories: return "Memories"
+        case .feed: return "Feed"
+        case .drives: return "Drives"
         case .desktop: return "Desktop"
         case .files: return "Files"
         case .connectors: return "Connectors"
@@ -26,7 +35,7 @@ enum BotTab: String, CaseIterable, Identifiable {
         case .skills: return "Skills"
         case .secrets: return "Secrets"
         case .rules: return "Rules"
-        case .container: return "Container"
+        case .container: return "Containers"
         case .settings: return "Settings"
         }
     }
@@ -34,6 +43,10 @@ enum BotTab: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right"
+        case .automations: return "clock.arrow.circlepath"
+        case .memories: return "brain"
+        case .feed: return "tray.full"
+        case .drives: return "externaldrive"
         case .desktop: return "display"
         case .files: return "folder"
         case .connectors: return "puzzlepiece.extension"
@@ -114,3 +127,25 @@ func prettyJSON(_ raw: String) -> String {
     return string
 }
 
+
+
+/// "5 min ago", "yesterday" for an RFC 3339 time; empty when unparsable.
+func relativeTime(_ iso: String) -> String {
+    guard let date = parseDate(iso) else { return "" }
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .short
+    return formatter.localizedString(for: date, relativeTo: Date())
+}
+
+func parseDate(_ iso: String) -> Date? {
+    guard !iso.isEmpty else { return nil }
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = fractional.date(from: iso) { return date }
+    return ISO8601DateFormatter().date(from: iso)
+}
+
+func shortDay(_ iso: String) -> String {
+    guard let date = parseDate(iso) else { return "" }
+    return date.formatted(.dateTime.month(.abbreviated).day().year())
+}
