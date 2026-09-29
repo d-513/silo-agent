@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
@@ -31,6 +32,9 @@ func IsNotFound(err error) bool {
 type State struct {
 	ID      string
 	Running bool
+	Image   string
+	// StartedAt is when the container last started; zero if never.
+	StartedAt time.Time
 }
 
 type Stats struct {
@@ -101,7 +105,16 @@ func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
 		return State{}, err
 	}
 	run := c.State != nil && c.State.Running
-	return State{ID: c.ID, Running: run}, nil
+	st := State{ID: c.ID, Running: run}
+	if c.Config != nil {
+		st.Image = c.Config.Image
+	}
+	if c.State != nil {
+		if t, err := time.Parse(time.RFC3339Nano, c.State.StartedAt); err == nil && t.Year() > 1 {
+			st.StartedAt = t
+		}
+	}
+	return st, nil
 }
 
 func cpuPct(s container.StatsResponse) float64 {

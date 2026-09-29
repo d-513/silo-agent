@@ -409,14 +409,14 @@ function DriveForm({
   const connected = oauth ? !!draft?.connected : editing || test.state === "ok";
   const requiredMissing = connectVars.filter((v) => v.required && !(values[v.key] || secrets[v.key] || draft?.secretsSet.includes(v.key) || v.defaultValue));
 
-  const set = (k: string, val: string) => {
-    setValues((m) => ({ ...m, [k]: val }));
-    if (test.state !== "idle" && !editing) setTest({ state: "idle", msg: "" });
+  // Only connection fields change what a test proves. Choosing a folder or a
+  // pick never does, so it must not send the owner back to Test connection.
+  const connectionField = (k: string) => {
+    const v = t.vars.find((x) => x.kind === "user" && x.key === k);
+    return !!v && v.type !== "folder" && v.type !== "pick";
   };
-  const setSecret = (k: string, val: string) => {
-    setSecrets((m) => ({ ...m, [k]: val }));
-    if (test.state !== "idle" && !editing) setTest({ state: "idle", msg: "" });
-  };
+  const set = (k: string, val: string) => setValues((m) => ({ ...m, [k]: val }));
+  const setSecret = (k: string, val: string) => setSecrets((m) => ({ ...m, [k]: val }));
 
   function options() {
     const out: Record<string, string> = {};
@@ -503,6 +503,7 @@ function DriveForm({
   }
 
   async function runTest() {
+    testedSig.current = connSig;
     setTest({ state: "busy", msg: "" });
     try {
       const d = await sync();
@@ -513,6 +514,25 @@ function DriveForm({
       setTest({ state: "fail", msg: fail(e) });
     }
   }
+
+  // Once the owner has tested, editing a connection field re-tests on its
+  // own after a pause instead of asking for another click.
+  const connSig = JSON.stringify([
+    Object.entries(values).filter(([k]) => connectionField(k)).sort(),
+    Object.entries(secrets).filter(([k]) => connectionField(k)).sort(),
+  ]);
+  const testedSig = useRef("");
+  useEffect(() => {
+    if (oauth || editing || test.state === "busy") return;
+    if (test.state === "idle" || connSig === testedSig.current) return;
+    if (requiredMissing.length > 0) {
+      setTest({ state: "idle", msg: "" });
+      return;
+    }
+    const timer = setTimeout(() => void runTest(), 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connSig]);
 
   const browse = useCallback(
     async (path: string) => {
@@ -979,7 +999,7 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
           <CircleAlert size={16} className="shrink-0 text-vermilion" />
           <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink">This Bot’s container was made before it had drives. Reset it once so the Bot can see them. Its files are kept.</p>
           <Btn kind="secondary" size="sm" type="button" onClick={() => navigate(`/bots/${botId}/container`)}>
-            Go to Container
+            Go to Containers
           </Btn>
         </div>
       ) : null}

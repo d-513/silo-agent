@@ -17,6 +17,12 @@ service UI {
   rpc StartBot(GetBotRequest) returns (Bot);
   rpc StopBot(GetBotRequest) returns (Bot);
   rpc ResetContainer(GetBotRequest) returns (Bot);
+  // Every container that belongs to a Bot: its machine, drive sidecar, and
+  // STDIO MCP sidecars, with usage.
+  rpc ListBotContainers(GetBotRequest) returns (BotContainers);
+  // Stop and remove all of them. Files, drives, and connectors stay; each
+  // container is made again when it is next needed.
+  rpc RemoveBotContainers(GetBotRequest) returns (Bot);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
@@ -198,6 +204,30 @@ message Container {
   double cpu_percent = 2;
   int64 mem_used = 3;
   int64 mem_limit = 4;
+}
+
+// BotContainer is one container a Bot owns.
+message BotContainer {
+  // bot | drive | mcp
+  string kind = 1;
+  // Engine container name (silo-…).
+  string name = 2;
+  // What it is for a human: "Machine", "Drives", or the connector's name.
+  string label = 3;
+  // running | stopped | absent (not created yet, or removed)
+  string state = 4;
+  string image = 5;
+  // RFC 3339; empty unless running.
+  string started_at = 6;
+  double cpu_percent = 7;
+  int64 mem_used = 8;
+  int64 mem_limit = 9;
+  // One line of context: "3 drives", "stdio · npx @modelcontextprotocol/…".
+  string detail = 10;
+}
+
+message BotContainers {
+  repeated BotContainer containers = 1;
 }
 
 message DeleteBotResponse {}

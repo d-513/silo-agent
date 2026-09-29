@@ -493,3 +493,64 @@ func TestDrivesInSystemPrompt(t *testing.T) {
 		t.Fatal("credentials in the prompt")
 	}
 }
+
+func TestBotContainersListAndRemoveAll(t *testing.T) {
+	h := driveHarness(t)
+	bot := h.CreateBot("Keeper")
+	if _, err := h.Client.StartBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.Id})); err != nil {
+		t.Fatal(err)
+	}
+	draft, _ := saveDrive(h, &v1.SaveDriveRequest{BotId: bot.Id, Template: "s3", Draft: true, Options: map[string]string{"access_key_id": "A", "secret_access_key": "S"}})
+	d, err := saveDrive(h, &v1.SaveDriveRequest{Id: draft.Id, Name: "files", Options: map[string]string{"access_key_id": "A"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitDrive(t, h, bot.Id, d.Id, "mounted")
+	conn := db.Connector{ID: "c-fs", Name: "Filesystem", Transport: "stdio", StdioCommand: "npx", StdioArgsJSON: `["-y","@modelcontextprotocol/server-filesystem"]`}
+	h.DB.Create(&conn)
+	h.DB.Create(&db.BotConnector{ID: "bc-fs", BotID: bot.Id, ConnectorID: conn.ID})
+
+	list := func() map[string]*v1.BotContainer {
+		res, err := h.Client.ListBotContainers(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.Id}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]*v1.BotContainer{}
+		for _, c := range res.Msg.Containers {
+			out[c.Kind] = c
+		}
+		return out
+	}
+	got := list()
+	if got["bot"].GetState() != "running" || got["drive"].GetState() != "running" || got["drive"].Detail != "rclone for 1 drive" {
+		t.Fatalf("containers = %+v", got)
+	}
+	if m := got["mcp"]; m.GetLabel() != "Filesystem" || m.GetState() != "absent" || !strings.Contains(m.Detail, "server-filesystem") {
+		t.Fatalf("mcp = %+v", m)
+	}
+
+	stdioDrops := h.Fake.StdioDrops.Load()
+	if _, err := h.Client.RemoveBotContainers(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.Id})); err != nil {
+		t.Fatal(err)
+	}
+	got = list()
+	if got["bot"].GetState() != "absent" || got["drive"].GetState() != "absent" || got["mcp"].GetState() != "absent" {
+		t.Fatalf("after remove all: %+v", got)
+	}
+	if h.Fake.StdioDrops.Load() == stdioDrops {
+		t.Fatal("stdio sidecar not dropped")
+	}
+	// Drives, connectors, and the drive dir are kept; the next start remounts.
+	if dd := findDrive(listDrives(t, h, bot.Id, ""), d.Id); dd == nil || dd.State != "stopped" {
+		t.Fatalf("drive after remove all: %+v", dd)
+	}
+	var n int64
+	h.DB.Model(&db.BotConnector{}).Where("id = ?", "bc-fs").Count(&n)
+	if n != 1 {
+		t.Fatalf("connector attachment removed (%d)", n)
+	}
+	if _, err := h.Client.StartBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.Id})); err != nil {
+		t.Fatal(err)
+	}
+	waitDrive(t, h, bot.Id, d.Id, "mounted")
+}

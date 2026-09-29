@@ -55,6 +55,10 @@ const (
 	UIStopBotProcedure = "/silo.v1.UI/StopBot"
 	// UIResetContainerProcedure is the fully-qualified name of the UI's ResetContainer RPC.
 	UIResetContainerProcedure = "/silo.v1.UI/ResetContainer"
+	// UIListBotContainersProcedure is the fully-qualified name of the UI's ListBotContainers RPC.
+	UIListBotContainersProcedure = "/silo.v1.UI/ListBotContainers"
+	// UIRemoveBotContainersProcedure is the fully-qualified name of the UI's RemoveBotContainers RPC.
+	UIRemoveBotContainersProcedure = "/silo.v1.UI/RemoveBotContainers"
 	// UIDeleteBotProcedure is the fully-qualified name of the UI's DeleteBot RPC.
 	UIDeleteBotProcedure = "/silo.v1.UI/DeleteBot"
 	// UIListMemoriesProcedure is the fully-qualified name of the UI's ListMemories RPC.
@@ -240,6 +244,12 @@ type UIClient interface {
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// Every container that belongs to a Bot: its machine, drive sidecar, and
+	// STDIO MCP sidecars, with usage.
+	ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error)
+	// Stop and remove all of them. Files, drives, and connectors stay; each
+	// container is made again when it is next needed.
+	RemoveBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
@@ -404,6 +414,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIResetContainerProcedure,
 			connect.WithSchema(uIMethods.ByName("ResetContainer")),
+			connect.WithClientOptions(opts...),
+		),
+		listBotContainers: connect.NewClient[v1.GetBotRequest, v1.BotContainers](
+			httpClient,
+			baseURL+UIListBotContainersProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBotContainers")),
+			connect.WithClientOptions(opts...),
+		),
+		removeBotContainers: connect.NewClient[v1.GetBotRequest, v1.Bot](
+			httpClient,
+			baseURL+UIRemoveBotContainersProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveBotContainers")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteBot: connect.NewClient[v1.GetBotRequest, v1.DeleteBotResponse](
@@ -932,6 +954,8 @@ type uIClient struct {
 	startBot            *connect.Client[v1.GetBotRequest, v1.Bot]
 	stopBot             *connect.Client[v1.GetBotRequest, v1.Bot]
 	resetContainer      *connect.Client[v1.GetBotRequest, v1.Bot]
+	listBotContainers   *connect.Client[v1.GetBotRequest, v1.BotContainers]
+	removeBotContainers *connect.Client[v1.GetBotRequest, v1.Bot]
 	deleteBot           *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
 	listMemories        *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
 	searchMemories      *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
@@ -1072,6 +1096,16 @@ func (c *uIClient) StopBot(ctx context.Context, req *connect.Request[v1.GetBotRe
 // ResetContainer calls silo.v1.UI.ResetContainer.
 func (c *uIClient) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return c.resetContainer.CallUnary(ctx, req)
+}
+
+// ListBotContainers calls silo.v1.UI.ListBotContainers.
+func (c *uIClient) ListBotContainers(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error) {
+	return c.listBotContainers.CallUnary(ctx, req)
+}
+
+// RemoveBotContainers calls silo.v1.UI.RemoveBotContainers.
+func (c *uIClient) RemoveBotContainers(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
+	return c.removeBotContainers.CallUnary(ctx, req)
 }
 
 // DeleteBot calls silo.v1.UI.DeleteBot.
@@ -1512,6 +1546,12 @@ type UIHandler interface {
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// Every container that belongs to a Bot: its machine, drive sidecar, and
+	// STDIO MCP sidecars, with usage.
+	ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error)
+	// Stop and remove all of them. Files, drives, and connectors stay; each
+	// container is made again when it is next needed.
+	RemoveBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
@@ -1672,6 +1712,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIResetContainerProcedure,
 		svc.ResetContainer,
 		connect.WithSchema(uIMethods.ByName("ResetContainer")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBotContainersHandler := connect.NewUnaryHandler(
+		UIListBotContainersProcedure,
+		svc.ListBotContainers,
+		connect.WithSchema(uIMethods.ByName("ListBotContainers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveBotContainersHandler := connect.NewUnaryHandler(
+		UIRemoveBotContainersProcedure,
+		svc.RemoveBotContainers,
+		connect.WithSchema(uIMethods.ByName("RemoveBotContainers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIDeleteBotHandler := connect.NewUnaryHandler(
@@ -2208,6 +2260,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStopBotHandler.ServeHTTP(w, r)
 		case UIResetContainerProcedure:
 			uIResetContainerHandler.ServeHTTP(w, r)
+		case UIListBotContainersProcedure:
+			uIListBotContainersHandler.ServeHTTP(w, r)
+		case UIRemoveBotContainersProcedure:
+			uIRemoveBotContainersHandler.ServeHTTP(w, r)
 		case UIDeleteBotProcedure:
 			uIDeleteBotHandler.ServeHTTP(w, r)
 		case UIListMemoriesProcedure:
@@ -2429,6 +2485,14 @@ func (UnimplementedUIHandler) StopBot(context.Context, *connect.Request[v1.GetBo
 
 func (UnimplementedUIHandler) ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ResetContainer is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBotContainers is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveBotContainers is not implemented"))
 }
 
 func (UnimplementedUIHandler) DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
