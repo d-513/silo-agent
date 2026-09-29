@@ -150,14 +150,14 @@ proto: ## Regenerate protobuf stubs (Go + TS)
 
 ## --- database ------------------------------------------------------------
 
-db-up: ## Start dev Postgres (pgvector) on localhost:5433 + Lightpanda MCP on :9223
+db-up: ## Start dev Postgres (pgvector) :5433 + Lightpanda MCP :9223 + smtp4dev :1025/:1143/:8025
 	$(DEV_COMPOSE) up -d
 	@for i in $$(seq 1 60); do \
 		$(PODMAN) exec $(PG_CONTAINER) pg_isready -q -U silo -d silo && { echo "postgres ready on localhost:5433"; exit 0; }; \
 		sleep 1; \
 	done; echo "postgres did not become ready"; exit 1
 
-db-down: ## Stop dev Postgres + Lightpanda (keeps the volume)
+db-down: ## Stop dev Postgres + Lightpanda + smtp4dev (keeps the volume)
 	$(DEV_COMPOSE) down
 
 db-psql: ## Open psql on the dev database

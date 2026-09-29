@@ -1,6 +1,7 @@
 # Dev dependencies only. The control plane and Vite run locally (`make dev`).
 #   make db-up     start Postgres (pgvector) on localhost:5433 and the shared
-#                  Lightpanda MCP (HTTP) on localhost:9223/mcp
+#                  Lightpanda MCP (HTTP) on localhost:9223/mcp, and smtp4dev
+#                  (SMTP :1025, IMAP :1143, web UI http://localhost:8025)
 #   make db-psql   open psql
 #   make db-reset  drop the volume (all data)
 name: silodb
@@ -37,6 +38,24 @@ services:
     command: ["/bin/lightpanda", "mcp", "--host", "0.0.0.0", "--port", "9223", "--block-private-networks"]
     ports:
       - "127.0.0.1:9223:9223"
+    restart: unless-stopped
+
+  # Local mail server for the Email built-in connector (smtp4dev). SMTP
+  # accepts anything; IMAP logs in as silo/silo and shows every message.
+  # Inbox UI: http://localhost:8025. In the connector use SMTP localhost:1025
+  # and IMAP localhost:1143, both without TLS, user/password silo/silo.
+  smtp4dev:
+    image: docker.io/rnwood/smtp4dev:latest
+    container_name: silodb-smtp4dev
+    environment:
+      ServerOptions__ImapPort: "143"
+      ServerOptions__Users__0__Username: silo
+      ServerOptions__Users__0__Password: silo
+      ServerOptions__Users__0__DefaultMailbox: Default
+    ports:
+      - "127.0.0.1:1025:25"
+      - "127.0.0.1:1143:143"
+      - "127.0.0.1:8025:80"
     restart: unless-stopped
 
 volumes:
