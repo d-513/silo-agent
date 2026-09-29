@@ -121,7 +121,7 @@ struct BlockView: View {
         case .thinking:
             thinkingRow
         case .tool:
-            toolRow
+            if let path = presentedPath { PresentCard(path: path) } else { toolRow }
         case .receipt:
             receiptRow
         case .error:
@@ -233,9 +233,18 @@ struct BlockView: View {
         }
     }
 
+    /// A finished `present` of a user-facing path shows the file itself; `bot/…` stays a quiet row.
+    private var presentedPath: String? {
+        guard block.name == "present", !block.running, let result = block.result, !result.isEmpty,
+              !result.hasPrefix("error:") else { return nil }
+        let path = parseToolArgs(block.args)["path"] ?? ""
+        return path.isEmpty || isBotScratch(path) ? nil : path
+    }
+
     private var toolTitle: String {
         if block.name == "call", let first = block.calls.first { return first.title }
-        return block.name
+        let action = toolAction(name: block.name, args: block.args)
+        return action.isEmpty ? block.name : "\(block.name) · \(action)"
     }
 
     @ViewBuilder
@@ -474,5 +483,89 @@ struct CodeWell: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+
+/// `present` of a user-facing path: the file itself in a card (image inline, text in a well).
+struct PresentCard: View {
+    @Environment(AppModel.self) private var model
+    let path: String
+    @State private var file: Silo_V1_ReadFileResponse?
+    @State private var failure: String?
+    @State private var preview: URL?
+
+    private var name: String {
+        if let file, !file.name.isEmpty { return file.name }
+        return path.split(separator: "/").last.map(String.init) ?? path
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "doc").foregroundStyle(Theme.cobalt)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text([file.map { formatBytes($0.size) }, "in Files"].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                if file != nil {
+                    Button {
+                        Task { await open() }
+                    } label: {
+                        Image(systemName: "arrow.up.forward.square")
+                    }
+                    .accessibilityLabel("Open")
+                }
+            }
+            if let failure {
+                Text(failure).font(.footnote).foregroundStyle(Theme.vermilion)
+            } else if let file {
+                content(file)
+            } else {
+                RoundedRectangle(cornerRadius: 8).fill(Theme.well).frame(height: 120)
+                    .overlay { ProgressView() }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .siloCard()
+        .quickLookPreview($preview)
+        .task(id: path) {
+            guard let botID = model.selectedBotID else { return }
+            do {
+                file = try await model.client.readFile(botID: botID, path: path)
+            } catch {
+                failure = (error as? SiloError)?.errorDescription ?? error.localizedDescription
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func content(_ file: Silo_V1_ReadFileResponse) -> some View {
+        if !file.data.isEmpty, let image = UIImage(data: file.data) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else if !file.binary, !file.content.isEmpty {
+            CodeWell(code: String(file.content.prefix(4000)), language: nil)
+            if file.truncated || file.content.count > 4000 {
+                Text("Open to see more.").font(.caption).foregroundStyle(.secondary)
+            }
+        } else if file.binary {
+            Text("Preview not available. Open to view.").font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private func open() async {
+        guard let file else { return }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(name)
+        let data = file.data.isEmpty ? Data(file.content.utf8) : file.data
+        guard (try? data.write(to: url)) != nil else { return }
+        preview = url
     }
 }

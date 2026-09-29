@@ -343,6 +343,15 @@ public final class SiloClient: Sendable {
         return try unwrap(await ui.transcribe(request: request, headers: [:])).text
     }
 
+    // MARK: - Files
+
+    public func readFile(botID: String, path: String) async throws -> Silo_V1_ReadFileResponse {
+        var request = Silo_V1_ReadFileRequest()
+        request.botID = botID
+        request.path = path
+        return try unwrap(await ui.readFile(request: request, headers: [:]))
+    }
+
     // MARK: - Downloads
 
     /// GETs a cookie-authed CP route (e.g. `ArtifactInfo.downloadPath`) and returns its bytes.
