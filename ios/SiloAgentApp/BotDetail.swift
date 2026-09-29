@@ -23,7 +23,7 @@ struct BotDetail: View {
                 if let error = model.errorMessage {
                     Text(error)
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.vermilion)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(.bar)

@@ -50,9 +50,9 @@ enum BotTab: String, CaseIterable, Identifiable {
 func statusColor(_ status: String) -> Color {
     switch status {
     case "working", "online", "idle":
-        return .green
+        return Theme.lamp
     case "needs_you":
-        return .red
+        return Theme.vermilion
     case "stopped", "starting":
         return .secondary
     default:

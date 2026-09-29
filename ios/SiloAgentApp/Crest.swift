@@ -13,19 +13,6 @@ let CREST_COLORS: [Color] = [
     Color(hex: 0xDB2777), // pink
     Color(hex: 0x55534E), // graphite
     Color(hex: 0x1A1917), // ink
-] = [
-    Color(hex: 0xF3F0E8), // plaster
-    Color(hex: 0x7A4E2A), // brown
-    Color(hex: 0xA33B4A), // carmine
-    Color(hex: 0xE07A2F), // orange
-    Color(hex: 0xE4C04A), // yellow
-    Color(hex: 0x4A8F4A), // green
-    Color(hex: 0x3D6F6A), // pine
-    Color(hex: 0x2A3F5F), // bindery
-    Color(hex: 0x6B4C8A), // purple
-    Color(hex: 0xD47A8C), // pink
-    Color(hex: 0x5F5E58), // stone
-    Color(hex: 0x1E2126), // iron
 ]
 
 let SHAPE_COUNT = 8

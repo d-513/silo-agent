@@ -51,7 +51,7 @@ struct SignInView: View {
                     Section {
                         Text(error)
                             .font(.footnote)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.vermilion)
                     }
                 }
             }

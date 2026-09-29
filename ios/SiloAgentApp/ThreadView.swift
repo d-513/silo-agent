@@ -58,7 +58,7 @@ struct BlockView: View {
         case .error:
             Text(block.text)
                 .font(.callout)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.vermilion)
                 .textSelection(.enabled)
         }
     }
@@ -69,7 +69,7 @@ struct BlockView: View {
             Text(block.text)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.bubble))
                 .textSelection(.enabled)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -127,6 +127,7 @@ struct ProseView: View {
                 switch part {
                 case .text(let value):
                     Text(attributed(value))
+                        .font(.reply())
                         .textSelection(.enabled)
                 case .code(let value, let language):
                     CodeWell(code: value, language: language)

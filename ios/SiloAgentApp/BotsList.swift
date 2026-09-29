@@ -37,7 +37,7 @@ struct BotsList: View {
             if let error = model.botsError {
                 Text(error)
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.vermilion)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
                     .background(.bar)
@@ -70,7 +70,7 @@ struct BotRow: View {
             Spacer(minLength: 0)
             if bot.status == "needs_you" {
                 Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.vermilion)
                     .accessibilityLabel("Needs you")
             }
         }
