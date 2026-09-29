@@ -6,6 +6,8 @@ import { fmtSize } from "./fs";
 import { Select } from "./Select";
 import { Tip, TipAction, TipTitle } from "./Tip";
 import { MemoryCollectButton } from "./MemoryCollect";
+import { fitThinking } from "./thinking";
+import { ThinkingPicker } from "./ThinkingPicker";
 import type { CollectMemoriesResponse, ModelOption } from "./gen/silo/v1/ui_pb";
 
 export interface Attachment {
@@ -38,6 +40,10 @@ export interface ComposerProps {
   models?: ModelOption[];
   model?: string;
   onModel?: (model: string) => void;
+  // thinking is the chat's chosen level ("" is the model default); the
+  // picker shows only when the current model lists levels.
+  thinking?: string;
+  onThinking?: (level: string) => void;
   usage?: Usage | null;
   // onCompact summarizes the conversation so far (the context meter's click).
   onCompact?: () => void;
@@ -69,6 +75,8 @@ export function Composer({
   models,
   model,
   onModel,
+  thinking,
+  onThinking,
   usage,
   onCompact,
   voice,
@@ -111,6 +119,8 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const autoExpand = useAutoExpand();
+  const currentModel = models?.find((m) => m.id === model) ?? models?.[0];
+  const thinkingLevels = currentModel?.thinkingLevels ?? [];
 
   // field-sizing: content grows the textarea natively; older engines get a
   // scrollHeight fallback clamped to the same 26–168px.
@@ -291,6 +301,15 @@ export function Composer({
                   onChange={onModel}
                   disabled={!chatId}
                   options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
+                />
+              ) : null}
+
+              {thinkingLevels.length > 0 && onThinking ? (
+                <ThinkingPicker
+                  value={fitThinking(thinking ?? "", thinkingLevels)}
+                  levels={thinkingLevels}
+                  onChange={onThinking}
+                  disabled={!chatId}
                 />
               ) : null}
 

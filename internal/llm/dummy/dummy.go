@@ -71,6 +71,31 @@ func Reset() {
 	scenarios = map[string][]Turn{}
 	collects = map[string]string{}
 	collectCalls = nil
+	streamed = nil
+}
+
+// streamed records every streamed request so tests can see what the agent
+// loop sent (thinking level, replayed reasoning).
+var streamed []llm.Request
+
+// Streamed returns the requests Stream has seen since the last Reset.
+func Streamed() []llm.Request {
+	mu.Lock()
+	defer mu.Unlock()
+	return append([]llm.Request(nil), streamed...)
+}
+
+// ThinkingSignature signs every reasoning block the dummy streams, like a
+// provider that needs its reasoning handed back in a tool loop.
+const ThinkingSignature = "dummy-signature"
+
+// ThinkingLevels makes models whose name starts with "think" (dummy/think)
+// take off/low/medium/high; other dummy models have none.
+func (c *client) ThinkingLevels(ctx context.Context, model string) ([]string, error) {
+	if strings.HasPrefix(model, "think") {
+		return []string{llm.ThinkingOff, llm.ThinkingLow, llm.ThinkingMedium, llm.ThinkingHigh}, nil
+	}
+	return nil, nil
 }
 
 func scenarioFor(token string) ([]Turn, bool) {
@@ -95,6 +120,9 @@ func init() {
 type client struct{}
 
 func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error) {
+	mu.Lock()
+	streamed = append(streamed, req)
+	mu.Unlock()
 	turn := resolveTurn(req)
 	size := requestRunes(req)
 	if turn.OverflowAbove > 0 && size > turn.OverflowAbove {
@@ -260,6 +288,9 @@ func buildEvents(t Turn, input int) []llm.Event {
 	var out []llm.Event
 	for _, chunk := range chunkRunes(t.Reasoning, 7) {
 		out = append(out, llm.Event{Kind: llm.EventReasoning, Text: chunk})
+	}
+	if t.Reasoning != "" {
+		out = append(out, llm.Event{Kind: llm.EventThinkingBlock, Block: &llm.ThinkingBlock{Text: t.Reasoning, Signature: ThinkingSignature}})
 	}
 	for _, chunk := range chunkRunes(t.Text, 7) {
 		out = append(out, llm.Event{Kind: llm.EventText, Text: chunk})

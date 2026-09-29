@@ -725,6 +725,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 		return st
 	}
 	var usage llm.Usage
+	var signed []llm.ThinkingBlock
 	saw := false
 
 	for stream.Next() {
@@ -763,6 +764,10 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			st := touch(ev.Index)
 			st.call.Arguments += ev.Text
 			a.emit(botID, chatID, runID, "tool_args_chunk", ev.Text, st.call.Name)
+		case llm.EventThinkingBlock:
+			if ev.Block != nil {
+				signed = append(signed, *ev.Block)
+			}
 		case llm.EventUsage:
 			usage = ev.Usage
 		}
@@ -776,7 +781,12 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	if !saw {
 		return turnResult{}, fmt.Errorf("empty completion")
 	}
-	assistant := llm.Message{Role: llm.RoleAssistant, Text: text.String()}
+	// Signed reasoning rides on the in-run turn only (never persisted): the
+	// provider hands it back to the same model while the tool loop goes on.
+	assistant := llm.Message{Role: llm.RoleAssistant, Text: text.String(), Thinking: signed}
+	if len(signed) > 0 {
+		assistant.ThinkingModel = req.Model
+	}
 	for _, idx := range order {
 		c := open[idx].call
 		if c.ID == "" {
@@ -916,6 +926,9 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 			Messages: withTurnNote(msgs, note),
 			Tools:    tools,
 			Cache:    cachePolicy(settings, botID),
+			// Read each turn, like the model, so a change in the composer
+			// applies from the next model call.
+			Thinking: a.chatThinking(ctx, chatID, modelID),
 		}
 		res, err := a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
 		// The estimate can be off: a provider that refuses the request as too

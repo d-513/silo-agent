@@ -42,6 +42,8 @@ service UI {
   rpc RenameChat(RenameChatRequest) returns (Chat);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc SetChatModel(SetChatModelRequest) returns (Chat);
+  // SetChatThinking sets the chat's thinking level ("" is the model default).
+  rpc SetChatThinking(SetChatThinkingRequest) returns (Chat);
 
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
   rpc Transcribe(TranscribeRequest) returns (TranscribeResponse);
@@ -396,12 +398,19 @@ message Chat {
   string title = 3;
   string updated_at = 4;
   string model = 5;
+  // thinking is the chosen thinking level; "" is the model's default. It is
+  // fitted to each model's levels when a turn runs.
+  string thinking = 6;
 }
 
 message ModelOption {
   string id = 1;
   string provider = 2;
   string label = 3;
+  // thinking_levels are the levels this model accepts, least reasoning
+  // first (off, minimal, low, medium, high, xhigh, max). Empty means the
+  // model has no selectable thinking.
+  repeated string thinking_levels = 4;
 }
 
 message ListModelsRequest {
@@ -434,6 +443,12 @@ message SetChatModelRequest {
   string bot_id = 1;
   string chat_id = 2;
   string model = 3;
+}
+
+message SetChatThinkingRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  string thinking = 3;
 }
 
 message ListChatsRequest {

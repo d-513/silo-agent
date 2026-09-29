@@ -97,7 +97,7 @@ func TestAnthropicParamsCacheBreakpoints(t *testing.T) {
 		},
 		Tools: []Tool{{Name: "read", Description: "read a file", Parameters: json.RawMessage(`{"type":"object"}`)}},
 		Cache: CachePolicy{Enabled: true, TTL: "1h", Messages: true},
-	})
+	}, thinkNone)
 	raw, err := json.Marshal(p)
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestAnthropicCacheOff(t *testing.T) {
 		Model:  "claude-opus-5",
 		System: []SystemBlock{{Text: "BASE", CacheAfter: true}},
 		Cache:  CachePolicy{Messages: true},
-	}))
+	}, thinkNone))
 	if strings.Contains(string(raw), "cache_control") {
 		t.Fatalf("cache_control sent while disabled: %s", raw)
 	}

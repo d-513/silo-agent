@@ -119,6 +119,32 @@ func (c Context) WindowFor(modelID string) int {
 	return 0
 }
 
+// Thinking configures the composer's thinking-level picker.
+type Thinking struct {
+	// Levels are per-model overrides of the levels a model accepts; they win
+	// over the provider's own report (OpenRouter /models, the Anthropic Models
+	// API, OpenAI model families). An empty list hides the picker for that
+	// model. A list, not a map: model ids contain dots, koanf's delimiter.
+	Levels []ModelThinking `koanf:"levels"`
+}
+
+// ModelThinking is one per-model thinking-level override.
+type ModelThinking struct {
+	Model  string   `koanf:"model"`
+	Levels []string `koanf:"levels"`
+}
+
+// LevelsFor returns the operator override for modelID and whether one is set.
+func (t Thinking) LevelsFor(modelID string) ([]string, bool) {
+	modelID = strings.TrimSpace(modelID)
+	for _, m := range t.Levels {
+		if strings.TrimSpace(m.Model) == modelID {
+			return m.Levels, true
+		}
+	}
+	return nil, false
+}
+
 // Threshold returns the valid compaction fraction.
 func (c Context) Threshold() float64 {
 	if c.CompactAt <= 0.1 || c.CompactAt > 0.98 {
@@ -211,6 +237,7 @@ type Config struct {
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
 	Context       Context             `koanf:"context"`
+	Thinking      Thinking            `koanf:"thinking"`
 	Runs          Runs                `koanf:"runs"`
 	Models        []string            `koanf:"models"`
 	Debug         bool                `koanf:"debug"`

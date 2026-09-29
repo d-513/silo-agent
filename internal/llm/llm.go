@@ -44,6 +44,11 @@ type Message struct {
 	Images     []Image
 	ToolCalls  []ToolCall
 	ToolCallID string
+	// Thinking holds the provider-signed reasoning of an assistant turn, and
+	// ThinkingModel the bare model that wrote it. A provider replays the
+	// blocks only to that same model (Anthropic needs them in a tool loop).
+	Thinking      []ThinkingBlock
+	ThinkingModel string
 }
 
 // Tool is a callable function exposed to the model.
@@ -86,6 +91,10 @@ type Request struct {
 	Tools     []Tool
 	Cache     CachePolicy
 	MaxTokens int
+	// Thinking is a level from ThinkingOrder; empty sends nothing and leaves
+	// the model on its default. Callers fit it to the model first
+	// (NearestThinking over the model's levels).
+	Thinking string
 }
 
 // EventKind identifies a streamed event.
@@ -96,6 +105,9 @@ const (
 	EventReasoning     EventKind = "reasoning"
 	EventToolCallStart EventKind = "tool_call_start"
 	EventToolCallDelta EventKind = "tool_call_delta"
+	// EventThinkingBlock carries one finished signed reasoning block
+	// (Event.Block) to hand back on the next request.
+	EventThinkingBlock EventKind = "thinking_block"
 	EventUsage         EventKind = "usage"
 	EventDone          EventKind = "done"
 	EventError         EventKind = "error"
@@ -111,6 +123,7 @@ type Event struct {
 	ToolCallID string
 	ToolName   string
 	Usage      Usage
+	Block      *ThinkingBlock
 	Err        error
 }
 

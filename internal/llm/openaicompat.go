@@ -11,6 +11,7 @@ import (
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
 	"github.com/openai/openai-go/v2/packages/ssestream"
+	"github.com/openai/openai-go/v2/shared"
 )
 
 const (
@@ -75,7 +76,7 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 				opts = append(opts, option.WithHeader(k, v))
 			}
 		}
-		c := &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey}
+		c := &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey, openAI: defaultBase == openAIBase}
 		if routing {
 			c.windows = &modelWindows{base: base, key: key}
 			if ig := ignoredUpstreams(s); len(ig) > 0 {
@@ -91,8 +92,72 @@ type openAICompatClient struct {
 	sendCacheKey bool
 	// reqOpts ride on every chat request (after the body is serialized).
 	reqOpts []option.RequestOption
-	// windows lists context windows (OpenRouter only).
+	// windows lists context windows and reasoning support (OpenRouter only).
 	windows *modelWindows
+	// openAI marks OpenAI's own API, whose reasoning models are known by
+	// name (its model list reports no capabilities).
+	openAI bool
+}
+
+// openRouterThinking is the reasoning.effort ladder OpenRouter normalizes
+// across upstreams ("none" is off); it maps effort to a budget for models
+// that take one.
+var openRouterThinking = []string{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}
+
+// ThinkingLevels reports a model's thinking levels: OpenRouter from its model
+// list (supported_parameters has "reasoning"), OpenAI from its reasoning
+// model families. A self-hosted server cannot tell; operator config decides.
+func (c *openAICompatClient) ThinkingLevels(ctx context.Context, model string) ([]string, error) {
+	switch {
+	case c.windows != nil:
+		reasoning, listed, err := c.windows.reasons(ctx, model)
+		if err != nil {
+			return nil, err
+		}
+		if !listed {
+			return nil, fmt.Errorf("%q is not in the model list", model)
+		}
+		if !reasoning {
+			return nil, nil
+		}
+		return openRouterThinking, nil
+	case c.openAI:
+		return openAIThinking(model), nil
+	}
+	return nil, errNoThinking
+}
+
+var errNoThinking = fmt.Errorf("provider does not report thinking levels")
+
+// openAIThinking is the reasoning_effort subset every model of a reasoning
+// family accepts (o-series, gpt-5*). Newer levels (minimal, none, xhigh) vary
+// per model; operators list them in thinking.levels.
+func openAIThinking(model string) []string {
+	m := strings.ToLower(model)
+	reasoning := strings.HasPrefix(m, "gpt-5") || strings.Contains(m, "codex") ||
+		(len(m) > 1 && m[0] == 'o' && m[1] >= '1' && m[1] <= '9')
+	if !reasoning {
+		return nil
+	}
+	return []string{ThinkingLow, ThinkingMedium, ThinkingHigh}
+}
+
+// wireEffort is a level as the OpenAI-compatible APIs spell it.
+func wireEffort(level string) string {
+	if level == ThinkingOff {
+		return "none"
+	}
+	return level
+}
+
+// opts are the per-request options: the client's own plus OpenRouter's
+// reasoning object (not a field the SDK knows).
+func (c *openAICompatClient) opts(req Request) []option.RequestOption {
+	if req.Thinking == "" || c.windows == nil {
+		return c.reqOpts
+	}
+	out := append([]option.RequestOption{}, c.reqOpts...)
+	return append(out, option.WithJSONSet("reasoning", map[string]any{"effort": wireEffort(req.Thinking)}))
 }
 
 // ContextWindow reports the model's context length from the gateway's model
@@ -133,6 +198,9 @@ func (c *openAICompatClient) params(req Request) openai.ChatCompletionNewParams 
 	}
 	if req.Cache.Enabled && req.Cache.Key != "" && c.sendCacheKey {
 		p.PromptCacheKey = openai.String(req.Cache.Key)
+	}
+	if req.Thinking != "" && c.windows == nil {
+		p.ReasoningEffort = shared.ReasoningEffort(wireEffort(req.Thinking))
 	}
 	return p
 }
@@ -179,11 +247,11 @@ func openAIMessages(m Message) []openai.ChatCompletionMessageParamUnion {
 }
 
 func (c *openAICompatClient) Stream(ctx context.Context, req Request) (Stream, error) {
-	return &openAIStream{stream: c.client.Chat.Completions.NewStreaming(ctx, c.params(req), c.reqOpts...)}, nil
+	return &openAIStream{stream: c.client.Chat.Completions.NewStreaming(ctx, c.params(req), c.opts(req)...)}, nil
 }
 
 func (c *openAICompatClient) Complete(ctx context.Context, req Request) (Response, error) {
-	res, err := c.client.Chat.Completions.New(ctx, c.params(req), c.reqOpts...)
+	res, err := c.client.Chat.Completions.New(ctx, c.params(req), c.opts(req)...)
 	if err != nil {
 		return Response{}, err
 	}

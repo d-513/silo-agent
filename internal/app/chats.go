@@ -18,7 +18,7 @@ import (
 
 func protoChat(c *db.Chat) *v1.Chat {
 	return &v1.Chat{
-		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model,
+		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
 	}
 }
@@ -145,7 +145,7 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 	}
 	cfg := a.cfg()
 	return connect.NewResponse(&v1.ListModelsResponse{
-		Models:       modelOptionProtos(a.allowedModels()),
+		Models:       modelOptionProtos(a.withThinking(ctx, a.allowedModels())),
 		DefaultModel: a.botDefaultModel(b.ID),
 		TitleModel:   cfg.ModelTitle,
 		VoiceEnabled: a.voiceEnabled(),

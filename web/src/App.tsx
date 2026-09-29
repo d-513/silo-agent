@@ -1396,6 +1396,17 @@ function BotPage() {
     }
   }
 
+  async function pickThinking(thinking: string) {
+    if (!id || !chatId) return;
+    setActErr("");
+    try {
+      const c = await ui.setChatThinking({ botId: id, chatId, thinking });
+      setChats((xs) => xs.map((x) => (x.id === c.id ? c : x)));
+    } catch (ex) {
+      setActErr(fail(ex));
+    }
+  }
+
   async function compactChat() {
     if (!id || !chatId) return;
     setActErr("");
@@ -1842,6 +1853,8 @@ function BotPage() {
                 models={models}
                 model={chats.find((c) => c.id === chatId)?.model || defaultModel}
                 onModel={(m) => void pickModel(m)}
+                thinking={chats.find((c) => c.id === chatId)?.thinking ?? ""}
+                onThinking={(l) => void pickThinking(l)}
                 usage={usage}
                 onCompact={() => void compactChat()}
                 voice={voice}

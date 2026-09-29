@@ -95,6 +95,8 @@ const (
 	UIDeleteChatProcedure = "/silo.v1.UI/DeleteChat"
 	// UISetChatModelProcedure is the fully-qualified name of the UI's SetChatModel RPC.
 	UISetChatModelProcedure = "/silo.v1.UI/SetChatModel"
+	// UISetChatThinkingProcedure is the fully-qualified name of the UI's SetChatThinking RPC.
+	UISetChatThinkingProcedure = "/silo.v1.UI/SetChatThinking"
 	// UIListModelsProcedure is the fully-qualified name of the UI's ListModels RPC.
 	UIListModelsProcedure = "/silo.v1.UI/ListModels"
 	// UITranscribeProcedure is the fully-qualified name of the UI's Transcribe RPC.
@@ -270,6 +272,8 @@ type UIClient interface {
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
+	// SetChatThinking sets the chat's thinking level ("" is the model default).
+	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
@@ -537,6 +541,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UISetChatModelProcedure,
 			connect.WithSchema(uIMethods.ByName("SetChatModel")),
+			connect.WithClientOptions(opts...),
+		),
+		setChatThinking: connect.NewClient[v1.SetChatThinkingRequest, v1.Chat](
+			httpClient,
+			baseURL+UISetChatThinkingProcedure,
+			connect.WithSchema(uIMethods.ByName("SetChatThinking")),
 			connect.WithClientOptions(opts...),
 		),
 		listModels: connect.NewClient[v1.ListModelsRequest, v1.ListModelsResponse](
@@ -983,6 +993,7 @@ type uIClient struct {
 	renameChat          *connect.Client[v1.RenameChatRequest, v1.Chat]
 	deleteChat          *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
 	setChatModel        *connect.Client[v1.SetChatModelRequest, v1.Chat]
+	setChatThinking     *connect.Client[v1.SetChatThinkingRequest, v1.Chat]
 	listModels          *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
 	transcribe          *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
 	send                *connect.Client[v1.SendRequest, v1.SendResponse]
@@ -1206,6 +1217,11 @@ func (c *uIClient) DeleteChat(ctx context.Context, req *connect.Request[v1.Delet
 // SetChatModel calls silo.v1.UI.SetChatModel.
 func (c *uIClient) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
 	return c.setChatModel.CallUnary(ctx, req)
+}
+
+// SetChatThinking calls silo.v1.UI.SetChatThinking.
+func (c *uIClient) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error) {
+	return c.setChatThinking.CallUnary(ctx, req)
 }
 
 // ListModels calls silo.v1.UI.ListModels.
@@ -1585,6 +1601,8 @@ type UIHandler interface {
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
+	// SetChatThinking sets the chat's thinking level ("" is the model default).
+	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
@@ -1848,6 +1866,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UISetChatModelProcedure,
 		svc.SetChatModel,
 		connect.WithSchema(uIMethods.ByName("SetChatModel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetChatThinkingHandler := connect.NewUnaryHandler(
+		UISetChatThinkingProcedure,
+		svc.SetChatThinking,
+		connect.WithSchema(uIMethods.ByName("SetChatThinking")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListModelsHandler := connect.NewUnaryHandler(
@@ -2322,6 +2346,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteChatHandler.ServeHTTP(w, r)
 		case UISetChatModelProcedure:
 			uISetChatModelHandler.ServeHTTP(w, r)
+		case UISetChatThinkingProcedure:
+			uISetChatThinkingHandler.ServeHTTP(w, r)
 		case UIListModelsProcedure:
 			uIListModelsHandler.ServeHTTP(w, r)
 		case UITranscribeProcedure:
@@ -2589,6 +2615,10 @@ func (UnimplementedUIHandler) DeleteChat(context.Context, *connect.Request[v1.De
 
 func (UnimplementedUIHandler) SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetChatModel is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetChatThinking is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {

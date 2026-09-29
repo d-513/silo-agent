@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -34,15 +36,113 @@ func newAnthropic(s Settings) (Client, error) {
 			max = n
 		}
 	}
-	return &anthropicClient{client: anthropic.NewClient(opts...), maxTokens: max}, nil
+	base := s.Get("base_url")
+	if base == "" {
+		base = anthropicDefaultBase
+	}
+	return &anthropicClient{client: anthropic.NewClient(opts...), maxTokens: max, base: base}, nil
 }
 
 type anthropicClient struct {
 	client    anthropic.Client
 	maxTokens int
+	base      string
 }
 
-func (c *anthropicClient) params(req Request) anthropic.MessageNewParams {
+// thinkMode is how a Claude model takes a thinking level.
+type thinkMode int
+
+const (
+	thinkNone     thinkMode = iota
+	thinkAdaptive           // thinking {type: adaptive} + output_config.effort
+	thinkBudget             // thinking {type: enabled, budget_tokens}
+)
+
+type anthropicCaps struct {
+	at     time.Time
+	err    error
+	mode   thinkMode
+	levels []string
+}
+
+// anthropicCapsCache holds Models API answers per base URL + model, shared by
+// every client the CP builds (a client is built per run).
+var anthropicCapsCache = struct {
+	sync.Mutex
+	m map[string]*anthropicCaps
+}{m: map[string]*anthropicCaps{}}
+
+// budgetTokens maps a level to a thinking budget for models that only take
+// {type: enabled}.
+var budgetTokens = map[string]int{
+	ThinkingMinimal: 1024,
+	ThinkingLow:     2048,
+	ThinkingMedium:  8192,
+	ThinkingHigh:    16384,
+	ThinkingXHigh:   32000,
+	ThinkingMax:     64000,
+}
+
+// caps asks the Models API what thinking a model supports. Adaptive models
+// list their effort levels; budget-only models get off/low/medium/high.
+func (c *anthropicClient) caps(ctx context.Context, model string) *anthropicCaps {
+	key := c.base + "|" + model
+	anthropicCapsCache.Lock()
+	defer anthropicCapsCache.Unlock()
+	if e := anthropicCapsCache.m[key]; e != nil {
+		if (e.err == nil && time.Since(e.at) < windowTTL) || (e.err != nil && time.Since(e.at) < windowRetry) {
+			return e
+		}
+	}
+	e := &anthropicCaps{at: time.Now()}
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	info, err := c.client.Models.Get(cctx, model, anthropic.ModelGetParams{})
+	if err != nil {
+		e.err = err
+	} else {
+		th, ef := info.Capabilities.Thinking, info.Capabilities.Effort
+		switch {
+		case th.Types.Adaptive.Supported && ef.Supported:
+			e.mode = thinkAdaptive
+			for _, l := range []struct {
+				name string
+				ok   bool
+			}{{ThinkingLow, ef.Low.Supported}, {ThinkingMedium, ef.Medium.Supported}, {ThinkingHigh, ef.High.Supported}, {ThinkingXHigh, ef.Xhigh.Supported}, {ThinkingMax, ef.Max.Supported}} {
+				if l.ok {
+					e.levels = append(e.levels, l.name)
+				}
+			}
+		case th.Types.Enabled.Supported:
+			e.mode = thinkBudget
+			e.levels = []string{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh}
+		}
+	}
+	anthropicCapsCache.m[key] = e
+	return e
+}
+
+// ThinkingLevels reports the model's levels from the Models API.
+func (c *anthropicClient) ThinkingLevels(ctx context.Context, model string) ([]string, error) {
+	e := c.caps(ctx, model)
+	return e.levels, e.err
+}
+
+// thinkingMode is the cached mode for a model when a level is requested. A
+// model the Models API could not describe is assumed adaptive (every current
+// Claude model is).
+func (c *anthropicClient) thinkingMode(ctx context.Context, req Request) thinkMode {
+	if req.Thinking == "" || req.Thinking == ThinkingOff {
+		return thinkNone
+	}
+	e := c.caps(ctx, req.Model)
+	if e.err != nil {
+		return thinkAdaptive
+	}
+	return e.mode
+}
+
+func (c *anthropicClient) params(req Request, mode thinkMode) anthropic.MessageNewParams {
 	max := req.MaxTokens
 	if max <= 0 {
 		max = c.maxTokens
@@ -50,8 +150,29 @@ func (c *anthropicClient) params(req Request) anthropic.MessageNewParams {
 	p := anthropic.MessageNewParams{
 		Model:     anthropic.Model(req.Model),
 		MaxTokens: int64(max),
-		Messages:  anthropicMessages(req.Messages, req.Cache),
+		Messages:  anthropicMessages(req.Messages, req.Cache, req.Model),
 		Tools:     anthropicTools(req.Tools),
+	}
+	switch mode {
+	case thinkAdaptive:
+		// Summarized so the thread shows the reasoning; the default on current
+		// models is omitted (empty thinking text).
+		p.Thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{
+			Display: anthropic.ThinkingConfigAdaptiveDisplaySummarized,
+		}}
+		effort := req.Thinking
+		if effort == ThinkingMinimal {
+			effort = ThinkingLow
+		}
+		p.OutputConfig = anthropic.OutputConfigParam{Effort: anthropic.OutputConfigEffort(effort)}
+	case thinkBudget:
+		budget := budgetTokens[req.Thinking]
+		if budget == 0 {
+			budget = budgetTokens[ThinkingMedium]
+		}
+		// max_tokens counts the thinking too, so the answer keeps its room.
+		p.Thinking = anthropic.ThinkingConfigParamOfEnabled(int64(budget))
+		p.MaxTokens = int64(budget + max)
 	}
 	for _, blk := range req.System {
 		if blk.Text == "" {
@@ -90,7 +211,7 @@ func anthropicTools(tools []Tool) []anthropic.ToolUnionParam {
 	return out
 }
 
-func anthropicMessages(msgs []Message, cache CachePolicy) []anthropic.MessageParam {
+func anthropicMessages(msgs []Message, cache CachePolicy, model string) []anthropic.MessageParam {
 	var out []anthropic.MessageParam
 	for _, m := range msgs {
 		switch m.Role {
@@ -109,6 +230,17 @@ func anthropicMessages(msgs []Message, cache CachePolicy) []anthropic.MessagePar
 			out = appendUser(out, blocks)
 		case RoleAssistant:
 			blocks := []anthropic.ContentBlockParamUnion{}
+			// Signed reasoning goes back unchanged, first, and only to the
+			// model that wrote it (a tool loop with thinking needs it).
+			if m.ThinkingModel == model {
+				for _, t := range m.Thinking {
+					if t.Redacted != "" {
+						blocks = append(blocks, anthropic.NewRedactedThinkingBlock(t.Redacted))
+					} else if t.Signature != "" {
+						blocks = append(blocks, anthropic.NewThinkingBlock(t.Signature, t.Text))
+					}
+				}
+			}
 			if strings.TrimSpace(m.Text) != "" {
 				blocks = append(blocks, anthropic.NewTextBlock(m.Text))
 			}
@@ -162,11 +294,11 @@ func markLastBlock(m *anthropic.MessageParam, ttl string) {
 }
 
 func (c *anthropicClient) Stream(ctx context.Context, req Request) (Stream, error) {
-	return &anthropicStream{stream: c.client.Messages.NewStreaming(ctx, c.params(req))}, nil
+	return &anthropicStream{stream: c.client.Messages.NewStreaming(ctx, c.params(req, c.thinkingMode(ctx, req)))}, nil
 }
 
 func (c *anthropicClient) Complete(ctx context.Context, req Request) (Response, error) {
-	res, err := c.client.Messages.New(ctx, c.params(req))
+	res, err := c.client.Messages.New(ctx, c.params(req, c.thinkingMode(ctx, req)))
 	if err != nil {
 		return Response{}, err
 	}
@@ -198,6 +330,8 @@ type anthropicStream struct {
 	err       error
 	usage     Usage
 	usageSeen bool
+	// block is the thinking block being streamed, handed on at its stop.
+	block *ThinkingBlock
 }
 
 func (s *anthropicStream) Next() bool {
@@ -242,11 +376,21 @@ func (s *anthropicStream) enqueue(ev anthropic.MessageStreamEventUnion) {
 		s.usage.CacheWriteTokens = int(u.CacheCreationInputTokens)
 		s.usageSeen = true
 	case "content_block_start":
-		if ev.ContentBlock.Type == "tool_use" {
+		switch ev.ContentBlock.Type {
+		case "tool_use":
 			s.queue = append(s.queue, Event{
 				Kind: EventToolCallStart, Index: int(ev.Index),
 				ToolCallID: ev.ContentBlock.ID, ToolName: ev.ContentBlock.Name,
 			})
+		case "thinking":
+			s.block = &ThinkingBlock{Text: ev.ContentBlock.Thinking, Signature: ev.ContentBlock.Signature}
+		case "redacted_thinking":
+			s.block = &ThinkingBlock{Redacted: ev.ContentBlock.Data}
+		}
+	case "content_block_stop":
+		if s.block != nil {
+			s.queue = append(s.queue, Event{Kind: EventThinkingBlock, Index: int(ev.Index), Block: s.block})
+			s.block = nil
 		}
 	case "content_block_delta":
 		switch ev.Delta.Type {
@@ -257,6 +401,13 @@ func (s *anthropicStream) enqueue(ev anthropic.MessageStreamEventUnion) {
 		case "thinking_delta":
 			if ev.Delta.Thinking != "" {
 				s.queue = append(s.queue, Event{Kind: EventReasoning, Text: ev.Delta.Thinking})
+				if s.block != nil {
+					s.block.Text += ev.Delta.Thinking
+				}
+			}
+		case "signature_delta":
+			if s.block != nil {
+				s.block.Signature += ev.Delta.Signature
 			}
 		case "input_json_delta":
 			if ev.Delta.PartialJSON != "" {

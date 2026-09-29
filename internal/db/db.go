@@ -79,6 +79,10 @@ type Chat struct {
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
 	Model string
+	// Thinking is the chat's thinking level (llm.ThinkingOrder); empty is the
+	// model's default. It is fitted to each model's levels when a turn runs,
+	// so it survives a model switch.
+	Thinking string `gorm:"default:''"`
 	// MemorySeq is the memory collector's watermark: the highest run_events.seq
 	// it has already read. Only events after it reach the next collection.
 	MemorySeq int64 `gorm:"default:0"`

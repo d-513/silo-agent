@@ -127,6 +127,8 @@ type modelOption struct {
 	ID       string
 	Provider string
 	Label    string
+	// Thinking is filled only where the UI needs levels (ListModels).
+	Thinking []string
 }
 
 func (a *App) allowedModels() []modelOption {

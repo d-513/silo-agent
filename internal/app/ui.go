@@ -602,7 +602,7 @@ func providerProtos() []*v1.Provider {
 func modelOptionProtos(opts []modelOption) []*v1.ModelOption {
 	out := make([]*v1.ModelOption, 0, len(opts))
 	for _, o := range opts {
-		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label})
+		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking})
 	}
 	return out
 }
