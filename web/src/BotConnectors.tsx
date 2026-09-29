@@ -1,4 +1,4 @@
-import { Check, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
+import { Check, Copy, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "./api";
 import { ArmedButton } from "./Feedback";
@@ -85,6 +85,9 @@ export function BotConnectors({
   // Edit attached connector state
   const [edit, setEdit] = useState<BotConnector | null>(null);
   const [editDraft, setEditDraft] = useState<ConnectorDraft>(emptyDraft());
+
+  // Full status/error text of one connector (the status line truncates it)
+  const [errView, setErrView] = useState<BotConnector | null>(null);
 
   // Action states
   const [err, setErr] = useState("");
@@ -491,6 +494,15 @@ export function BotConnectors({
                             {row.lastError && (
                               <span className="truncate text-vermilion">· {row.lastError}</span>
                             )}
+                            {(row.lastError || (row.authStatus === "error" && row.statusDetail)) && (
+                              <button
+                                type="button"
+                                className="shrink-0 font-medium text-cobalt hover:underline"
+                                onClick={() => setErrView(row)}
+                              >
+                                View error
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -841,6 +853,44 @@ export function BotConnectors({
       )}
 
       {/* POPUP: Edit Attached Connector Modal */}
+      {errView && (
+        <div
+          className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/30 backdrop-blur-xs py-[6vh] px-4"
+          onClick={() => setErrView(null)}
+        >
+          <div
+            className="w-full max-w-[720px] rounded-card shadow-card bg-surface p-6 shadow-slip relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute top-4 right-4 text-ink-2 hover:text-ink p-1 rounded-md transition-colors"
+              onClick={() => setErrView(null)}
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="mb-1 text-base font-semibold text-ink">{errView.connector?.name} error</h3>
+            <p className="mb-3 text-[12px] text-ink-3">{errView.statusDetail}</p>
+            <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-well p-3 font-mono text-[12px] leading-relaxed text-ink">
+              {errView.lastError || errView.statusDetail}
+            </pre>
+            <div className="mt-4 flex items-center gap-2">
+              <Btn
+                kind="ghost"
+                onClick={() => void navigator.clipboard?.writeText(errView.lastError || errView.statusDetail)}
+              >
+                <Copy size={13} />
+                <span>Copy</span>
+              </Btn>
+              <Btn kind="ghost" onClick={() => setErrView(null)}>
+                Close
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
       {edit && (
         <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-ink/30 backdrop-blur-xs py-[6vh] px-4">
           <div className="w-full max-w-[560px] rounded-card shadow-card bg-surface p-6 shadow-slip relative">

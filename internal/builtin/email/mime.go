@@ -275,11 +275,13 @@ func compose(o outgoing) ([]byte, string, error) {
 	}
 	for _, f := range o.files {
 		var ah mail.AttachmentHeader
-		typ := mime.TypeByExtension(extOf(f.name))
-		if typ == "" {
-			typ = "application/octet-stream"
+		// TypeByExtension returns "text/plain; charset=utf-8"; SetContentType
+		// wants the bare type and formats an empty header for one with params.
+		typ, params, err := mime.ParseMediaType(mime.TypeByExtension(extOf(f.name)))
+		if err != nil || typ == "" {
+			typ, params = "application/octet-stream", nil
 		}
-		ah.SetContentType(typ, nil)
+		ah.SetContentType(typ, params)
 		ah.SetFilename(f.name)
 		aw, err := mw.CreateAttachment(ah)
 		if err != nil {

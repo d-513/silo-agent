@@ -18,19 +18,38 @@ import (
 	"silo.agent/internal/builtin"
 )
 
-const dialTimeout = 30 * time.Second
+const (
+	dialTimeout = 30 * time.Second
+	// opTimeout bounds one whole connection (login through logout): a server
+	// that stops answering must not hang the tool call forever.
+	opTimeout = 90 * time.Second
+	// logoutWait is how long close waits for the server's goodbye.
+	logoutWait = 5 * time.Second
+)
 
 // mailbox is one logged-in IMAP connection. It closes itself if the call's
 // context ends, which unblocks any command waiting on the server.
 type mailbox struct {
 	*imapclient.Client
-	stop func() bool
+	ctx    context.Context
+	cancel context.CancelFunc
+	stop   func() bool
+}
+
+// wrap names a deadline overrun instead of the "closed connection" it causes.
+func (m *mailbox) wrap(err error) error {
+	if errors.Is(m.ctx.Err(), context.DeadlineExceeded) {
+		return fmt.Errorf("mail server did not answer within %s", opTimeout)
+	}
+	return err
 }
 
 func dialIMAP(ctx context.Context, s settings) (*mailbox, error) {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	d := &net.Dialer{Timeout: dialTimeout}
 	conn, err := d.DialContext(ctx, "tcp", s.imapAddr)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("IMAP connect: %w", err)
 	}
 	opts := &imapclient.Options{}
@@ -43,12 +62,13 @@ func dialIMAP(ctx context.Context, s settings) (*mailbox, error) {
 		c, err = imapclient.NewStartTLS(conn, opts)
 		if err != nil {
 			conn.Close()
+			cancel()
 			return nil, fmt.Errorf("IMAP STARTTLS: %w", err)
 		}
 	default:
 		c = imapclient.New(conn, opts)
 	}
-	m := &mailbox{Client: c}
+	m := &mailbox{Client: c, ctx: ctx, cancel: cancel}
 	m.stop = context.AfterFunc(ctx, func() { c.Close() })
 	if err := c.WaitGreeting(); err != nil {
 		m.close()
@@ -62,9 +82,18 @@ func dialIMAP(ctx context.Context, s settings) (*mailbox, error) {
 }
 
 func (m *mailbox) close() {
-	m.stop()
-	_ = m.Logout().Wait()
+	done := make(chan struct{})
+	go func() {
+		_ = m.Logout().Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(logoutWait):
+	}
 	_ = m.Close()
+	m.stop()
+	m.cancel()
 }
 
 // open resolves the config, logs in, and (when folder is set) selects it.
@@ -252,11 +281,15 @@ func search(ctx context.Context, _ builtin.Env, cfg builtin.Config, raw json.Raw
 		return nil, err
 	}
 	defer m.close()
-	data, err := m.UIDSearch(crit, nil).Wait()
+	// Search and fetch by sequence number, asking for the UID as a fetch item.
+	// A UID FETCH is matched to its response by the UID inside it, and
+	// go-imap silently drops any response that lacks one, so a server that
+	// omits or reorders it (total: 3, messages: []) loses every message.
+	data, err := m.Search(crit, nil).Wait()
 	if err != nil {
-		return nil, fmt.Errorf("search: %w", err)
+		return nil, fmt.Errorf("search: %w", m.wrap(err))
 	}
-	all := data.AllUIDs()
+	all := data.AllSeqNums()
 	sort.Slice(all, func(i, j int) bool { return all[i] > all[j] })
 	total := len(all)
 	if len(all) > limit {
@@ -264,16 +297,22 @@ func search(ctx context.Context, _ builtin.Env, cfg builtin.Config, raw json.Raw
 	}
 	out := []summary{}
 	if len(all) > 0 {
-		msgs, err := m.Fetch(imap.UIDSetNum(all...), &imap.FetchOptions{
-			UID: true, Envelope: true, Flags: true, RFC822Size: true, BodyStructure: &imap.FetchItemBodyStructure{Extended: true},
+		msgs, err := m.Fetch(imap.SeqSetNum(all...), &imap.FetchOptions{
+			UID: true, Envelope: true, Flags: true, RFC822Size: true,
 		}).Collect()
 		if err != nil {
-			return nil, fmt.Errorf("fetch: %w", err)
+			return nil, fmt.Errorf("fetch: %w", m.wrap(err))
 		}
+		attach := m.attachments(all)
 		for _, msg := range msgs {
-			out = append(out, summarize(msg))
+			s := summarize(msg)
+			s.HasAttachments = attach[msg.SeqNum]
+			out = append(out, s)
 		}
 		sort.Slice(out, func(i, j int) bool { return out[i].UID > out[j].UID })
+		if len(out) < len(all) {
+			return nil, fmt.Errorf("fetch: server returned %d of %d matching messages", len(out), len(all))
+		}
 	}
 	return map[string]any{"folder": folder, "total": total, "messages": out}, nil
 }
@@ -303,18 +342,55 @@ func summarize(msg *imapclient.FetchMessageBuffer) summary {
 	if s.Date == "" && !msg.InternalDate.IsZero() {
 		s.Date = msg.InternalDate.Format(time.RFC3339)
 	}
-	if msg.BodyStructure != nil {
-		msg.BodyStructure.Walk(func(_ []int, part imap.BodyStructure) bool {
-			if d := part.Disposition(); d != nil && strings.EqualFold(d.Value, "attachment") {
-				s.HasAttachments = true
-			}
-			if sp, ok := part.(*imap.BodyStructureSinglePart); ok && sp.Filename() != "" {
-				s.HasAttachments = true
-			}
-			return !s.HasAttachments
-		})
-	}
 	return s
+}
+
+// structureWait caps the optional attachment lookup.
+const structureWait = 4 * time.Second
+
+// attachments reports, by sequence number, which messages carry an
+// attachment. It is best effort and a separate fetch: some servers (smtp4dev
+// on a malformed part) answer BODYSTRUCTURE with an untagged BAD and never
+// finish the command, which would otherwise take the whole search with it.
+// On a stall the connection is dropped and has_attachments stays false.
+func (m *mailbox) attachments(seqs []uint32) map[uint32]bool {
+	res := make(chan map[uint32]bool, 1)
+	go func() {
+		msgs, err := m.Fetch(imap.SeqSetNum(seqs...), &imap.FetchOptions{
+			BodyStructure: &imap.FetchItemBodyStructure{Extended: true},
+		}).Collect()
+		out := map[uint32]bool{}
+		if err == nil {
+			for _, msg := range msgs {
+				out[msg.SeqNum] = hasAttachment(msg.BodyStructure)
+			}
+		}
+		res <- out
+	}()
+	select {
+	case out := <-res:
+		return out
+	case <-time.After(structureWait):
+		_ = m.Close()
+		return nil
+	}
+}
+
+func hasAttachment(bs imap.BodyStructure) bool {
+	found := false
+	if bs == nil {
+		return false
+	}
+	bs.Walk(func(_ []int, part imap.BodyStructure) bool {
+		if d := part.Disposition(); d != nil && strings.EqualFold(d.Value, "attachment") {
+			found = true
+		}
+		if sp, ok := part.(*imap.BodyStructureSinglePart); ok && sp.Filename() != "" {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
 
 func flagNames(fs []imap.Flag) []string {
@@ -357,9 +433,26 @@ type readArgs struct {
 	MarkRead bool   `json:"mark_read"`
 }
 
+// seqOfUID maps a UID to its sequence number (see search: a UID FETCH would
+// lose the reply on a server that leaves the UID out of it).
+func (m *mailbox) seqOfUID(uid uint32) (imap.SeqSet, error) {
+	data, err := m.Search(&imap.SearchCriteria{UID: []imap.UIDSet{imap.UIDSetNum(imap.UID(uid))}}, nil).Wait()
+	if err != nil {
+		return nil, fmt.Errorf("search: %w", err)
+	}
+	seqs := data.AllSeqNums()
+	if len(seqs) == 0 {
+		return nil, fmt.Errorf("no message with uid %d", uid)
+	}
+	return imap.SeqSetNum(seqs[0]), nil
+}
+
 // fetchRaw fetches one message's full source. peek leaves \Seen alone.
 func (m *mailbox) fetchRaw(uid uint32, peek bool) (*imapclient.FetchMessageBuffer, []byte, error) {
-	set := imap.UIDSetNum(imap.UID(uid))
+	set, err := m.seqOfUID(uid)
+	if err != nil {
+		return nil, nil, err
+	}
 	head, err := m.Fetch(set, &imap.FetchOptions{UID: true, RFC822Size: true}).Collect()
 	if err != nil {
 		return nil, nil, err

@@ -267,6 +267,21 @@ func TestSendWithAttachmentSavesSent(t *testing.T) {
 	}
 }
 
+// A .txt attachment's registered type carries params ("text/plain;
+// charset=utf-8"); that once produced an empty Content-Type header, which
+// smtp4dev could not parse and stalled BODYSTRUCTURE forever.
+func TestAttachmentContentTypeNeverEmpty(t *testing.T) {
+	srv, cfg, env := setup(t)
+	env.files["note.txt"] = []byte("hello")
+	call(t, "send", env, cfg, map[string]any{
+		"to": "dave@example.org", "subject": "s", "body": "b", "attachments": []string{"note.txt"},
+	})
+	data := srv.Sent()[0].Data
+	if bytes.Contains(data, []byte("Content-Type: \r\n")) || !bytes.Contains(data, []byte("text/plain")) {
+		t.Fatalf("attachment content type:\n%s", data)
+	}
+}
+
 func TestReplyThreadsAndQuotes(t *testing.T) {
 	srv, cfg, env := setup(t)
 	uid := srv.Deliver(t, "INBOX", attachMsg)
