@@ -106,6 +106,21 @@ final class AppModel {
         }
     }
 
+    /// Back in the foreground: iOS may have dropped the stream while suspended. Reload the Bot
+    /// row and approvals and replay the open chat from scratch (dedupe is by event id).
+    func resume() async {
+        guard user != nil else { return }
+        await refreshBots()
+        await refreshApprovals()
+        if let id = selectedChatID {
+            events = []
+            usage = nil
+            sending = false
+            startStream(for: id)
+            await refreshSubagents()
+        }
+    }
+
     func signIn() async {
         guard !signingIn else { return }
         signingIn = true
@@ -310,6 +325,17 @@ final class AppModel {
         models = list.models
         defaultModel = list.defaultModel
         voiceEnabled = list.voiceEnabled
+    }
+
+    /// Transcribes one dictation take; nil on failure (the message is in `errorMessage`).
+    func transcribe(_ audio: Data) async -> String? {
+        guard let botID = selectedBotID else { return nil }
+        do {
+            return try await client.transcribe(botID: botID, audio: audio, mime: "audio/mp4")
+        } catch {
+            errorMessage = describe(error)
+            return nil
+        }
     }
 
     func setModel(_ model: String) async {

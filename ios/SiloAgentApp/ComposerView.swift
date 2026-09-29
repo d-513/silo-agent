@@ -9,12 +9,17 @@ struct ComposerView: View {
     @State private var text = ""
     @State private var photos: [PhotosPickerItem] = []
     @State private var importing = false
+    @State private var dictation = Dictation()
     @FocusState private var focused: Bool
 
     var body: some View {
         VStack(spacing: 8) {
             controls
             attachmentChips
+            if let error = dictation.error {
+                Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let error = model.attachError {
                 Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -186,6 +191,9 @@ struct ComposerView: View {
             }
             .accessibilityLabel("Attach")
 
+            if dictation.state == .recording {
+                recordingBar
+            } else {
             TextField("Message", text: $text, axis: .vertical)
                 .lineLimit(1...6)
                 .padding(.horizontal, 14)
@@ -193,6 +201,12 @@ struct ComposerView: View {
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.bubble))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.bubble).stroke(Theme.line, lineWidth: 1))
                 .focused($focused)
+            }
+
+            if model.voiceEnabled && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && dictation.state != .recording && !model.isRunning {
+                micButton
+            }
 
             if model.isRunning {
                 Button {
@@ -221,6 +235,56 @@ struct ComposerView: View {
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: model.isRunning)
+    }
+
+    private var micButton: some View {
+        Button {
+            Task { await dictation.start() }
+        } label: {
+            Group {
+                if dictation.state == .transcribing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "mic")
+                }
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .frame(width: 30, height: 30)
+            .background(Theme.well, in: Circle())
+        }
+        .disabled(dictation.state == .transcribing)
+        .accessibilityLabel("Dictate")
+    }
+
+    private var recordingBar: some View {
+        HStack(spacing: 10) {
+            Circle().fill(Theme.vermilion).frame(width: 9, height: 9)
+            Text(formatClock(dictation.elapsed))
+                .font(.system(.body, design: .monospaced))
+            Spacer()
+            Button("Cancel") { dictation.cancel() }
+                .buttonStyle(.borderless)
+            Button {
+                guard let audio = dictation.finish() else { return }
+                Task {
+                    if let spoken = await model.transcribe(audio) { text = appendDictation(text, spoken) }
+                    dictation.done()
+                    focused = true
+                }
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.circle)
+            .accessibilityLabel("Stop and transcribe")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.bubble))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.bubble).stroke(Theme.vermilion.opacity(0.5), lineWidth: 1))
     }
 
     private func send() {

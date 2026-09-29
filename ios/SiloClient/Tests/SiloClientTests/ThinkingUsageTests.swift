@@ -38,3 +38,18 @@ final class ThinkingUsageTests: XCTestCase {
         XCTAssertEqual(formatTokens(48000), "48k")
     }
 }
+
+final class DictationTests: XCTestCase {
+    func testAppend() {
+        XCTAssertEqual(appendDictation("", " hello "), "hello")
+        XCTAssertEqual(appendDictation("hi", "there"), "hi there")
+        XCTAssertEqual(appendDictation("hi ", "there"), "hi there")
+        XCTAssertEqual(appendDictation("hi", "  "), "hi")
+    }
+
+    func testClock() {
+        XCTAssertEqual(formatClock(7.9), "0:07")
+        XCTAssertEqual(formatClock(723), "12:03")
+        XCTAssertEqual(formatClock(-1), "0:00")
+    }
+}
