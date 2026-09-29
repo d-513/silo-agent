@@ -529,6 +529,57 @@ public final class SiloClient: Sendable {
         _ = try unwrap(await ui.removeFile(request: request, headers: [:]))
     }
 
+    // MARK: - Drives
+
+    public struct DriveList: Sendable {
+        public var drives: [Silo_V1_Drive]
+        public var bindOK: Bool
+        public var unavailable: String
+    }
+
+    public func listDriveTemplates() async throws -> [Silo_V1_DriveTemplate] {
+        try unwrap(await ui.listDriveTemplates(request: Silo_V1_ListDriveTemplatesRequest(), headers: [:])).templates
+    }
+
+    public func listDrives(botID: String, draftID: String = "") async throws -> DriveList {
+        var request = Silo_V1_ListDrivesRequest()
+        request.botID = botID
+        request.draftID = draftID
+        let response = try unwrap(await ui.listDrives(request: request, headers: [:]))
+        return DriveList(drives: response.drives, bindOK: response.bindOk, unavailable: response.unavailable)
+    }
+
+    public func saveDrive(_ request: Silo_V1_SaveDriveRequest) async throws -> Silo_V1_Drive {
+        try unwrap(await ui.saveDrive(request: request, headers: [:]))
+    }
+
+    public func deleteDrive(id: String) async throws {
+        var request = Silo_V1_DeleteDriveRequest()
+        request.id = id
+        _ = try unwrap(await ui.deleteDrive(request: request, headers: [:]))
+    }
+
+    /// The URL to open in a browser to sign in to this drive's provider.
+    public func beginDriveAuth(id: String) async throws -> String {
+        var request = Silo_V1_BeginDriveAuthRequest()
+        request.id = id
+        return try unwrap(await ui.beginDriveAuth(request: request, headers: [:])).url
+    }
+
+    public func pickDriveOptions(id: String, key: String) async throws -> [Silo_V1_DriveOption] {
+        var request = Silo_V1_PickDriveOptionsRequest()
+        request.id = id
+        request.key = key
+        return try unwrap(await ui.pickDriveOptions(request: request, headers: [:])).options
+    }
+
+    public func browseDrive(id: String, path: String) async throws -> [Silo_V1_BrowseDriveDir] {
+        var request = Silo_V1_BrowseDriveRequest()
+        request.id = id
+        request.path = path
+        return try unwrap(await ui.browseDrive(request: request, headers: [:])).dirs
+    }
+
     // MARK: - Connectors
 
     public func listBotConnectors(botID: String) async throws -> [Silo_V1_BotConnector] {
