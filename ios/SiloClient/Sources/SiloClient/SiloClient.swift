@@ -197,6 +197,31 @@ public final class SiloClient: Sendable {
         }
     }
 
+    // MARK: - Approvals and rules
+
+    public func listApprovals(botID: String) async throws -> [Silo_V1_Approval] {
+        var request = Silo_V1_ListApprovalsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listApprovals(request: request, headers: [:])).approvals
+    }
+
+    /// `decision` is `allow_once`, `always`, or `deny`.
+    public func decideApproval(id: String, decision: String) async throws {
+        var request = Silo_V1_DecideApprovalRequest()
+        request.id = id
+        request.decision = decision
+        _ = try unwrap(await ui.decideApproval(request: request, headers: [:]))
+    }
+
+    public func setRule(botID: String, connector: String, action: String, decision: String) async throws {
+        var request = Silo_V1_SetRuleRequest()
+        request.botID = botID
+        request.connector = connector
+        request.action = action
+        request.decision = decision
+        _ = try unwrap(await ui.setRule(request: request, headers: [:]))
+    }
+
     // MARK: - Helpers
 
     private func unwrap<Output: ProtobufMessage>(_ response: ResponseMessage<Output>) throws -> Output {

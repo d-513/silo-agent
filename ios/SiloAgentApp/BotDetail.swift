@@ -10,7 +10,11 @@ struct BotDetail: View {
             VStack(spacing: 0) {
                 header(bot)
                 Divider()
+                needsYouBanner
                 content
+            }
+            .sheet(item: pendingSheet) { approval in
+                ApprovalSheet(bot: bot, approval: approval)
             }
             .navigationTitle(bot.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -32,6 +36,43 @@ struct BotDetail: View {
             }
         } else {
             ContentUnavailableView("No Bot selected", systemImage: "shippingbox")
+        }
+    }
+
+    /// The sheet shows the oldest pending approval until the reader swipes it away.
+    private var pendingSheet: Binding<Silo_V1_Approval?> {
+        Binding(
+            get: {
+                guard let first = model.approvals.first, first.id != model.dismissedApprovalID else { return nil }
+                return first
+            },
+            set: { newValue in
+                if newValue == nil { model.dismissedApprovalID = model.approvals.first?.id }
+            }
+        )
+    }
+
+    /// Brings a swiped-away approval back; the run stays paused until it is decided.
+    @ViewBuilder
+    private var needsYouBanner: some View {
+        if let first = model.approvals.first, first.id == model.dismissedApprovalID {
+            Button {
+                model.dismissedApprovalID = nil
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.raised.fill")
+                    Text(model.approvals.count > 1 ? "\(model.approvals.count) waiting for you" : "Needs you")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("Review").font(.subheadline)
+                }
+                .foregroundStyle(Theme.vermilion)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(Theme.vermilionPale)
+            }
+            .buttonStyle(.plain)
         }
     }
 

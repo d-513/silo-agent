@@ -33,6 +33,11 @@ final class AppModel {
     private(set) var sending = false
     var errorMessage: String?
 
+    // Approvals (the Bot's "Needs you" queue, oldest first)
+    private(set) var approvals: [Silo_V1_Approval] = []
+    /// The approval whose sheet the reader swiped away; a banner brings it back.
+    var dismissedApprovalID: String?
+
     // Selection
     var selectedBotID: String?
     var selectedChatID: String?
@@ -118,6 +123,8 @@ final class AppModel {
 
     func chooseBot(_ id: String?) async {
         guard let id, id != loadedBotID else { return }
+        approvals = []
+        dismissedApprovalID = nil
         stopStream()
         streamingChatID = nil
         loadedBotID = id
@@ -131,6 +138,7 @@ final class AppModel {
             if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
         }
         if let first = chats.first { selectChat(first.id) }
+        await refreshApprovals()
     }
 
     func createBot(name: String, crest: Int32, description: String) async throws -> Silo_V1_Bot {
@@ -158,6 +166,40 @@ final class AppModel {
         } catch {
             errorMessage = describe(error)
         }
+        await refreshBots()
+    }
+
+    // MARK: - Approvals
+
+    func refreshApprovals() async {
+        guard let botID = selectedBotID else { return }
+        do {
+            let list = try await client.listApprovals(botID: botID)
+            guard botID == selectedBotID else { return }
+            approvals = list
+            if let dismissed = dismissedApprovalID, !list.contains(where: { $0.id == dismissed }) {
+                dismissedApprovalID = nil
+            }
+        } catch {
+            if isUnauthenticated(error) { await signOut() }
+        }
+    }
+
+    /// `decision`: `allow_once`, `always`, `deny`, or `auto` (set the rule to Auto, allow this one).
+    func decide(_ approval: Silo_V1_Approval, _ decision: String) async {
+        do {
+            if decision == "auto" {
+                try await client.setRule(botID: approval.botID, connector: approval.connector, action: approval.action, decision: "auto")
+                try await client.decideApproval(id: approval.id, decision: "allow_once")
+            } else {
+                try await client.decideApproval(id: approval.id, decision: decision)
+            }
+            approvals.removeAll { $0.id == approval.id }
+            dismissedApprovalID = nil
+        } catch {
+            errorMessage = describe(error)
+        }
+        await refreshApprovals()
         await refreshBots()
     }
 
@@ -247,6 +289,9 @@ final class AppModel {
                         }
                         self.events.append(event)
                         self.sending = chatBusy(self.events)
+                        if event.kind == "approval" {
+                            await self.refreshApprovals()
+                        }
                         if event.kind == "done" || event.kind == "chat_title" {
                             await self.refreshChats()
                         }
@@ -277,6 +322,7 @@ final class AppModel {
                 try? await Task.sleep(for: .seconds(4))
                 guard let self, !Task.isCancelled else { return }
                 await self.refreshBots()
+                await self.refreshApprovals()
             }
         }
     }
