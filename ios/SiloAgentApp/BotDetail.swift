@@ -97,6 +97,8 @@ struct BotDetail: View {
         case .feed: FeedPage()
         case .files: FilesPage()
         case .skills: SkillsPage()
+        case .connectors: ConnectorsPage()
+        case .channels: ChannelsPage()
         case .rules: RulesPage()
         case .secrets: SecretsPage()
         case .container: ContainersPage()

@@ -529,6 +529,66 @@ public final class SiloClient: Sendable {
         _ = try unwrap(await ui.removeFile(request: request, headers: [:]))
     }
 
+    // MARK: - Connectors
+
+    public func listBotConnectors(botID: String) async throws -> [Silo_V1_BotConnector] {
+        var request = Silo_V1_ListBotConnectorsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listBotConnectors(request: request, headers: [:])).connectors
+    }
+
+    public func listConnectors() async throws -> [Silo_V1_Connector] {
+        try unwrap(await ui.listConnectors(request: Silo_V1_ListConnectorsRequest(), headers: [:])).connectors
+    }
+
+    public func attachConnector(botID: String, connectorID: String) async throws -> Silo_V1_BotConnector {
+        var request = Silo_V1_AttachConnectorRequest()
+        request.botID = botID
+        request.connectorID = connectorID
+        return try unwrap(await ui.attachConnector(request: request, headers: [:]))
+    }
+
+    public func detachConnector(botID: String, id: String) async throws {
+        var request = Silo_V1_DetachConnectorRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.detachConnector(request: request, headers: [:]))
+    }
+
+    public func refreshBotConnector(botID: String, id: String) async throws -> Silo_V1_BotConnector {
+        var request = Silo_V1_RefreshBotConnectorRequest()
+        request.botID = botID
+        request.id = id
+        return try unwrap(await ui.refreshBotConnector(request: request, headers: [:]))
+    }
+
+    // MARK: - Channels
+
+    public func listChannelAdapters() async throws -> [Silo_V1_ChannelAdapter] {
+        try unwrap(await ui.listChannelAdapters(request: Silo_V1_ListChannelAdaptersRequest(), headers: [:])).adapters
+    }
+
+    public func listBotChannels(botID: String) async throws -> [Silo_V1_Channel] {
+        var request = Silo_V1_ListBotChannelsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listBotChannels(request: request, headers: [:])).channels
+    }
+
+    public func createChannel(_ request: Silo_V1_CreateChannelRequest) async throws -> Silo_V1_Channel {
+        try unwrap(await ui.createChannel(request: request, headers: [:]))
+    }
+
+    public func updateChannel(_ request: Silo_V1_UpdateChannelRequest) async throws -> Silo_V1_Channel {
+        try unwrap(await ui.updateChannel(request: request, headers: [:]))
+    }
+
+    public func deleteChannel(botID: String, id: String) async throws {
+        var request = Silo_V1_DeleteChannelRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.deleteChannel(request: request, headers: [:]))
+    }
+
     // MARK: - Skills
 
     public func listBotSkills(botID: String) async throws -> [Silo_V1_BotSkill] {
