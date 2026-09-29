@@ -9,7 +9,14 @@ struct SiloApp: App {
         WindowGroup {
             Group {
                 if model.restoring && model.user == nil {
-                    ProgressView()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        if let error = model.restoreError {
+                            Text(error).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            Text("Retrying…").font(.caption).foregroundStyle(.tertiary)
+                        }
+                    }
+                    .padding()
                 } else if model.user == nil {
                     SignInView()
                 } else {

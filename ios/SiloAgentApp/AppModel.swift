@@ -11,6 +11,8 @@ final class AppModel {
     // Session
     private(set) var user: Silo_V1_User?
     private(set) var restoring = true
+    /// Set while the boot `me` call keeps failing because the Control Plane is unreachable.
+    private(set) var restoreError: String?
     var serverURL: String {
         didSet {
             UserDefaults.standard.set(serverURL, forKey: "serverURL")
@@ -99,12 +101,26 @@ final class AppModel {
     func restoreSession() async {
         restoring = true
         defer { restoring = false }
-        do {
-            user = try await client.me()
-            await refreshBots()
-            startPolling()
-        } catch {
-            user = nil
+        var delay = 1.0
+        while !Task.isCancelled {
+            do {
+                user = try await client.me()
+                restoreError = nil
+                await refreshBots()
+                startPolling()
+                return
+            } catch {
+                // Only a real "not signed in" shows the sign-in page; an unreachable Control Plane
+                // retries with backoff instead of looking like a sign-out.
+                if isUnauthenticated(error) {
+                    user = nil
+                    restoreError = nil
+                    return
+                }
+                restoreError = describe(error)
+                try? await Task.sleep(for: .seconds(delay))
+                delay = min(delay * 2, 15)
+            }
         }
     }
 
