@@ -25,16 +25,22 @@ export const CATEGORY_LABEL: Record<string, string> = {
   protocol: "File servers",
 };
 
-// The catalog's marks are monochrome currentColor glyphs, tinted by the ink
-// class around them: the design system allows no brand colors.
-export function DriveMark({ svg, size = 40, className = "" }: { svg?: string; size?: number; className?: string }) {
+// Provider marks are the brands' own SVGs (thesvg.org), drawn as an <img> from
+// a data URI: several inline SVGs would share ids (gradients, masks) and break
+// each other, and an <img> never runs markup from the file.
+export function DriveMark({ svg, size = 40, muted = false, className = "" }: { svg?: string; size?: number; muted?: boolean; className?: string }) {
+  const src = useMemo(() => (svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : ""), [svg]);
   return (
     <div
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-sm bg-well text-ink [&>svg]:h-full [&>svg]:w-full ${className}`}
-      style={{ width: size, height: size, padding: Math.round(size * 0.12) }}
+      className={`flex shrink-0 items-center justify-center rounded-sm bg-well ${className}`}
+      style={{ width: size, height: size, padding: Math.round(size * 0.16) }}
     >
-      {svg ? <span className="contents" dangerouslySetInnerHTML={{ __html: svg }} /> : <HardDrive size={Math.round(size * 0.5)} className="text-ink-2" />}
+      {src ? (
+        <img src={src} alt="" draggable={false} className={`h-full w-full object-contain ${muted ? "opacity-45 grayscale" : ""}`} />
+      ) : (
+        <HardDrive size={Math.round(size * 0.5)} className="text-ink-2" />
+      )}
     </div>
   );
 }
@@ -769,7 +775,7 @@ function Gallery({ botId, templates, admin, onBack }: { botId: string; templates
                       else if (admin) navigate("/admin/drives");
                     }}
                   >
-                    <DriveMark svg={t.iconSvg} size={40} className={t.available ? "" : "text-ink-3"} />
+                    <DriveMark svg={t.iconSvg} size={40} muted={!t.available} />
                     <div className="min-w-0 flex-1">
                       <div className={`text-[14px] font-medium leading-5 ${t.available ? "text-ink" : "text-ink-3"}`}>{t.title}</div>
                       <div className="truncate text-[12.5px] leading-[18px] text-ink-3">{t.available ? t.blurb : "Needs admin setup"}</div>
@@ -876,7 +882,7 @@ function DriveRow({ botId, d, t, onReconnect, onRemoved }: { botId: string; d: D
   );
 }
 
-const POPULAR = ["gdrive", "onedrive", "dropbox", "nextcloud", "s3", "sftp"];
+const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", "s3", "r2", "b2", "sftp"];
 
 export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[]; admin: boolean }) {
   const navigate = useNavigate();
@@ -991,18 +997,18 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
               <p className="text-[13px] text-ink-2">Give the Bot a folder from somewhere else.</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {POPULAR.map((k) => byKey.get(k))
               .filter((t): t is DriveTemplate => !!t)
               .map((t) => (
                 <button
                   key={t.key}
                   type="button"
-                  className="flex items-center gap-2.5 rounded-control bg-well px-3 py-2.5 text-left text-[13.5px] font-medium text-ink transition-colors duration-[160ms] ease-quiet hover:bg-pressed"
+                  className="flex flex-col items-center gap-2 rounded-control bg-well px-2 pb-2.5 pt-3.5 text-center transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-pressed active:scale-[.97]"
                   onClick={() => navigate(t.available ? `/bots/${botId}/drives/new/${t.key}` : `/bots/${botId}/drives/new`)}
                 >
-                  <DriveMark svg={t.iconSvg} size={26} className="bg-surface" />
-                  <span className="truncate">{t.title}</span>
+                  <DriveMark svg={t.iconSvg} size={36} className="bg-surface" muted={!t.available} />
+                  <span className={`w-full truncate text-[12.5px] font-medium ${t.available ? "text-ink" : "text-ink-3"}`}>{t.title}</span>
                 </button>
               ))}
           </div>
