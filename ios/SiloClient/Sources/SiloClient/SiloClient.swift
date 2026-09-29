@@ -50,8 +50,10 @@ public enum SiloRunEvent: Sendable {
 /// `HTTPCookieStorage.shared` for later requests on the same host.
 public final class SiloClient: Sendable {
     private let protocolClient: ProtocolClient
+    private let host: String
 
     public init(host: String) {
+        self.host = host
         let config = ProtocolClientConfig(
             host: host,
             networkProtocol: .connect,
@@ -339,6 +341,30 @@ public final class SiloClient: Sendable {
         request.audio = audio
         request.mime = mime
         return try unwrap(await ui.transcribe(request: request, headers: [:])).text
+    }
+
+    // MARK: - Downloads
+
+    /// GETs a cookie-authed CP route (e.g. `ArtifactInfo.downloadPath`) and returns its bytes.
+    public func download(path: String) async throws -> Data {
+        guard let url = URL(string: host + path) else { throw SiloError.invalidArgument("Bad download URL") }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse else { throw SiloError.server("No response") }
+        switch http.statusCode {
+        case 200..<300: return data
+        case 401: throw SiloError.unauthenticated
+        default:
+            let message = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            throw SiloError.server(message.isEmpty ? "Download failed (\(http.statusCode))" : message)
+        }
+    }
+
+    public func saveSkill(botID: String, path: String, runID: String) async throws -> String {
+        var request = Silo_V1_SaveSkillRequest()
+        request.botID = botID
+        request.path = path
+        request.runID = runID
+        return try unwrap(await ui.saveSkill(request: request, headers: [:])).name
     }
 
     // MARK: - Approvals and rules

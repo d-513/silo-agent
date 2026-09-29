@@ -38,6 +38,8 @@ final class AppModel {
     private(set) var defaultModel = ""
     private(set) var voiceEnabled = false
     private(set) var usage: Usage?
+    /// Skill artifacts saved this session (the stored event still says pending).
+    private(set) var savedSkillPaths = Set<String>()
     private(set) var attachments: [Silo_V1_Attachment] = []
     var attachError: String?
 
@@ -335,6 +337,33 @@ final class AppModel {
         } catch {
             errorMessage = describe(error)
             return nil
+        }
+    }
+
+    /// Downloads an artifact to a temp file for preview/sharing.
+    func fetchArtifact(_ artifact: ArtifactInfo) async -> URL? {
+        guard let botID = selectedBotID else { return nil }
+        do {
+            let data = try await client.download(path: artifact.downloadPath(botID: botID))
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let url = dir.appendingPathComponent(artifact.downloadName)
+            try data.write(to: url)
+            return url
+        } catch {
+            errorMessage = describe(error)
+            return nil
+        }
+    }
+
+    /// Copies a pending skill directory into the personal library; the card turns "saved".
+    func saveSkill(_ artifact: ArtifactInfo, runID: String) async {
+        guard let botID = selectedBotID else { return }
+        do {
+            _ = try await client.saveSkill(botID: botID, path: artifact.path, runID: runID)
+            savedSkillPaths.insert(artifact.path)
+        } catch {
+            errorMessage = describe(error)
         }
     }
 

@@ -1,4 +1,5 @@
 import Observation
+import QuickLook
 import SiloClient
 import SwiftUI
 
@@ -135,7 +136,7 @@ struct BlockView: View {
         case .compaction:
             compactionRow
         case .artifact:
-            if let artifact = block.artifact { ArtifactCard(artifact: artifact) }
+            if let artifact = block.artifact { ArtifactCard(artifact: artifact, runID: block.runID) }
         }
     }
 
@@ -346,29 +347,85 @@ struct BlockView: View {
     }
 }
 
-/// A file or skill the Bot handed over. Save/download/preview arrive with the artifact phase.
+/// A file or skill the Bot handed over. Tap to preview (QuickLook also shares/saves it); a
+/// pending skill has **Save skill**, which copies it into the personal library.
 struct ArtifactCard: View {
+    @Environment(AppModel.self) private var model
     let artifact: ArtifactInfo
+    let runID: String
+    @State private var preview: URL?
+    @State private var loading = false
+    @State private var saving = false
+
+    private var saved: Bool { artifact.isSaved || model.savedSkillPaths.contains(artifact.path) }
+    private var pending: Bool { artifact.isPending && !saved }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: artifact.artifactType == "skill" ? "book.closed" : "doc")
-                .font(.title3)
-                .foregroundStyle(Theme.cobalt)
-                .frame(width: 32)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(artifact.title.isEmpty ? artifact.name : artifact.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(2)
-                Text([artifact.artifactType == "skill" ? "Skill" : "File", artifact.size.map(formatBytes)]
-                    .compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                Task { await open() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: artifact.artifactType == "skill" ? "book.closed" : fileSymbol)
+                        .font(.title3)
+                        .foregroundStyle(Theme.cobalt)
+                        .frame(width: 32)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(artifact.title.isEmpty ? artifact.name : artifact.title)
+                            .font(.subheadline.weight(.semibold))
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if loading { ProgressView().controlSize(.small) }
+                }
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: 0)
+            .buttonStyle(.plain)
+            if pending {
+                Button {
+                    saving = true
+                    Task {
+                        await model.saveSkill(artifact, runID: runID)
+                        saving = false
+                    }
+                } label: {
+                    Label("Save skill", systemImage: "tray.and.arrow.down").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(saving)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .siloCard()
+        .quickLookPreview($preview)
+    }
+
+    private var subtitle: String {
+        var parts = [artifact.artifactType == "skill" ? "Skill" : "File"]
+        if let size = artifact.size { parts.append(formatBytes(size)) }
+        if saved { parts.append("Saved") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var fileSymbol: String {
+        switch (artifact.downloadName as NSString).pathExtension.lowercased() {
+        case "pdf": return "doc.richtext"
+        case "png", "jpg", "jpeg", "gif", "webp", "heic": return "photo"
+        case "csv", "xlsx", "xls": return "tablecells"
+        case "zip", "tar", "gz": return "doc.zipper"
+        default: return "doc"
+        }
+    }
+
+    private func open() async {
+        guard !loading else { return }
+        loading = true
+        preview = await model.fetchArtifact(artifact)
+        loading = false
     }
 }
 
