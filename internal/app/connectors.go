@@ -474,6 +474,12 @@ func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "<p>Unknown or expired authorization. You can close this window.</p>")
 		return
 	}
+	if wait.drive != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		_, _ = io.WriteString(w, drivePopupPage(wait.drive(ctx, q)))
+		return
+	}
 	iss := q.Get("iss")
 	if iss == "" {
 		iss = wait.issuer
@@ -1605,9 +1611,13 @@ func originOf(raw string) string {
 	return u.Scheme + "://" + u.Host
 }
 
+// oauthWait is one pending sign-in keyed by its state. MCP connectors hand the
+// code to the SDK through ch; drives finish the exchange in drive and the
+// popup shows the outcome.
 type oauthWait struct {
 	ch     chan *mcpauth.AuthorizationResult
 	issuer string
+	drive  func(ctx context.Context, q url.Values) error
 }
 
 func tokenFromJSON(raw string) *oauth2.Token {

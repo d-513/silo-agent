@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +24,8 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/db/dbtest"
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/drivehost"
+	"silo.agent/internal/drivehost/drivetest"
 
 	// Registers the deterministic "dummy" model provider for every test binary
 	// that uses this harness.
@@ -44,6 +47,8 @@ type H struct {
 	DataDir  string
 	Email    string
 	Password string
+	// Drives is the in-process drive sidecar (WithDriveGuest only).
+	Drives *DriveGuest
 
 	srv *http.Server
 	ln  net.Listener
@@ -60,6 +65,7 @@ type options struct {
 	password    string
 	beforeApp   func(*gorm.DB)
 	stdioBridge bool
+	driveGuest  bool
 }
 
 // Option customizes the harness.
@@ -102,6 +108,10 @@ func WithBeforeApp(fn func(*gorm.DB)) Option { return func(o *options) { o.befor
 // for each STDIO sidecar, with the same env the container would get. The
 // config must set cp_url to the harness listener for the bridge to dial back.
 func WithStdioBridge() Option { return func(o *options) { o.stdioBridge = true } }
+
+// WithDriveGuest runs the real drive guest (supervisor + session) in-process
+// for every drive sidecar the CP creates, with a fake rclone in h.Drives.
+func WithDriveGuest() Option { return func(o *options) { o.driveGuest = true } }
 
 // New builds a harness and signs in as its bootstrap admin. Everything is
 // torn down via t.Cleanup.
@@ -180,6 +190,10 @@ func New(t *testing.T, opts ...Option) *H {
 		srv: srv, ln: ln,
 	}
 	h.Client = silov1connect.NewUIClient(hc, h.URL)
+	if o.driveGuest && fake != nil {
+		h.Drives = &DriveGuest{Runner: drivetest.New(), Dir: t.TempDir()}
+		fake.DriveLaunch = func(spec dockerx.DriveSpec) func() { return h.startDriveGuest(spec) }
+	}
 	if _, err := h.Client.SignIn(context.Background(), connect.NewRequest(&v1.SignInRequest{
 		Email: o.email, Password: o.password,
 	})); err != nil {
@@ -421,4 +435,46 @@ func clientAddr(ln net.Listener) string {
 		host = "127.0.0.1"
 	}
 	return net.JoinHostPort(host, port)
+}
+
+// DriveGuest is the in-process drive sidecar a harness runs when built with
+// WithDriveGuest: the real drivehost supervisor and session over the real
+// DriveHost endpoint, with a fake rclone.
+type DriveGuest struct {
+	Runner *drivetest.Runner
+	Dir    string
+}
+
+func (h *H) startDriveGuest(spec dockerx.DriveSpec) func() {
+	token := ""
+	for _, e := range spec.Env {
+		if v, ok := strings.CutPrefix(e, "SILO_DRIVE_TOKEN="); ok {
+			token = v
+		}
+	}
+	client, err := drivehost.NewClient(h.URL, token)
+	if err != nil {
+		h.T.Errorf("drive guest: %v", err)
+		return func() {}
+	}
+	out, emit := drivehost.Outbox()
+	sup := drivehost.New(drivehost.Config{
+		MountRoot: h.Drives.Dir + "/mnt", CacheRoot: h.Drives.Dir + "/cache", RunDir: h.Drives.Dir + "/run",
+		Poll: 10 * time.Millisecond,
+	}, h.Drives.Runner, emit)
+	sup.Cleanup()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = drivehost.Serve(ctx, client, sup, out)
+	}()
+	stop := func() {
+		cancel()
+		<-done
+		sup.StopAll()
+	}
+	h.T.Cleanup(stop)
+	var once sync.Once
+	return func() { once.Do(stop) }
 }

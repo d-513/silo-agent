@@ -207,6 +207,36 @@ type BotConnector struct {
 	CreatedAt       time.Time
 }
 
+// Drive is one rclone remote mounted into a Bot at /workspace/drives/<Name>.
+// Template is a key of the embedded drive catalog. Values are split the way
+// the template declares them: plain user answers in OptionsJSON, secret user
+// answers and every dynamic value (OAuth token, account label) in SecretsJSON,
+// which never leaves the CP except rendered into the drive sidecar's env.
+type Drive struct {
+	ID       string `gorm:"primaryKey"`
+	BotID    string `gorm:"index;uniqueIndex:bot_drive_name"`
+	Name     string `gorm:"uniqueIndex:bot_drive_name"`
+	Template string
+	ReadOnly bool
+	// Draft rows exist while the add form signs in, tests, and browses; they
+	// never mount and are swept after a day.
+	Draft       bool
+	OptionsJSON string
+	SecretsJSON string
+	State       string
+	StateDetail string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// DriveHost is a Bot's drive sidecar: the last container and the hash of the
+// token it dials the CP with.
+type DriveHost struct {
+	BotID       string `gorm:"primaryKey"`
+	ContainerID string
+	TokenHash   string `gorm:"index"`
+}
+
 type BotSkill struct {
 	ID        string `gorm:"primaryKey"`
 	BotID     string `gorm:"uniqueIndex:bot_skill"`
@@ -320,6 +350,7 @@ func Models() []any {
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
+		&Drive{}, &DriveHost{},
 	}
 }
 

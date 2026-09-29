@@ -107,6 +107,18 @@ service UI {
   rpc UpdateChannel(UpdateChannelRequest) returns (Channel);
   rpc DeleteChannel(DeleteChannelRequest) returns (DeleteChannelResponse);
   rpc ChannelAction(ChannelActionRequest) returns (ChannelActionResponse);
+
+  // Drives: rclone remotes mounted at /workspace/drives/<name>.
+  rpc ListDriveTemplates(ListDriveTemplatesRequest) returns (ListDriveTemplatesResponse);
+  rpc ListDrives(ListDrivesRequest) returns (ListDrivesResponse);
+  rpc SaveDrive(SaveDriveRequest) returns (Drive);
+  rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
+  rpc BeginDriveAuth(BeginDriveAuthRequest) returns (BeginDriveAuthResponse);
+  rpc PickDriveOptions(PickDriveOptionsRequest) returns (PickDriveOptionsResponse);
+  rpc BrowseDrive(BrowseDriveRequest) returns (BrowseDriveResponse);
+  // Admin: per-template system values (OAuth client ids and secrets).
+  rpc GetDriveSettings(GetDriveSettingsRequest) returns (DriveSettings);
+  rpc PutDriveSettings(PutDriveSettingsRequest) returns (DriveSettings);
 }
 
 message SignInRequest {
@@ -1222,4 +1234,185 @@ message ChannelActionRequest {
 
 message ChannelActionResponse {
   ChannelState state = 1;
+}
+
+// --- drives ---
+
+message DriveOption {
+  string value = 1;
+  string label = 2;
+  string detail = 3;
+  // Other user vars a pick sets along with its own value.
+  map<string, string> extra = 4;
+}
+
+// DriveVar is one question a template asks. System values never ride here.
+message DriveVar {
+  string key = 1;
+  // user | system | dynamic
+  string kind = 2;
+  // text | secret | url | number | bool | select | pick | folder | textarea | hidden
+  string type = 3;
+  string label = 4;
+  string help = 5;
+  string placeholder = 6;
+  string default_value = 7;
+  bool required = 8;
+  bool advanced = 9;
+  bool secret = 10;
+  repeated DriveOption options = 11;
+  map<string, string> visible_if = 12;
+  bool auto_pick = 13;
+  string source = 14;
+}
+
+message DriveTemplate {
+  string key = 1;
+  string title = 2;
+  string blurb = 3;
+  string category = 4;
+  // GUIDE.md: owner-facing "Before you add" copy (markdown).
+  string guide = 5;
+  // SETUP.md: admin instructions; {public_url} already substituted.
+  string setup = 6;
+  string icon_svg = 7;
+  // oauth2 | form
+  string auth_kind = 8;
+  // Provider name on the sign-in button ("Google").
+  string auth_label = 9;
+  repeated DriveVar vars = 10;
+  // False while an admin still has to set required system values.
+  bool available = 11;
+  repeated string missing_system = 12;
+}
+
+message Drive {
+  string id = 1;
+  string bot_id = 2;
+  string name = 3;
+  string template = 4;
+  bool read_only = 5;
+  bool draft = 6;
+  // mounting | mounted | error | stopped | needs_setup | needs_auth | needs_input | draft
+  string state = 7;
+  string state_detail = 8;
+  // Non-secret user answers.
+  map<string, string> options = 9;
+  // Secret user answers that have a value (the values never leave the CP).
+  repeated string secrets_set = 10;
+  // Signed-in account label from the provider, when it has one.
+  string account = 11;
+  // An OAuth drive holds a token.
+  bool connected = 12;
+  // Where the Bot sees it.
+  string path = 13;
+}
+
+message ListDriveTemplatesRequest {}
+
+message ListDriveTemplatesResponse {
+  repeated DriveTemplate templates = 1;
+  // The exact redirect URI to register with every OAuth provider.
+  string redirect_url = 2;
+}
+
+message ListDrivesRequest {
+  string bot_id = 1;
+  // Include the add form's draft with this id.
+  string draft_id = 2;
+}
+
+message ListDrivesResponse {
+  repeated Drive drives = 1;
+  // False when the Bot's box predates drives (or the host refused the shared
+  // mount): the UI asks for a Container reset.
+  bool bind_ok = 2;
+  // Why drives cannot work on this host at all, if so.
+  string unavailable = 3;
+}
+
+message SaveDriveRequest {
+  string bot_id = 1;
+  // Empty creates.
+  string id = 2;
+  string template = 3;
+  string name = 4;
+  bool read_only = 5;
+  // Keep (or create) the row as a draft that never mounts.
+  bool draft = 6;
+  // User answers. Non-secret keys replace the stored set; a secret key sets
+  // that secret, and a secret key left out keeps its stored value.
+  map<string, string> options = 7;
+  repeated string clear_secrets = 8;
+}
+
+message DeleteDriveRequest {
+  string id = 1;
+}
+
+message DeleteDriveResponse {}
+
+message BeginDriveAuthRequest {
+  string id = 1;
+}
+
+message BeginDriveAuthResponse {
+  string url = 1;
+}
+
+message PickDriveOptionsRequest {
+  string id = 1;
+  string key = 2;
+}
+
+message PickDriveOptionsResponse {
+  repeated DriveOption options = 1;
+}
+
+message BrowseDriveRequest {
+  string id = 1;
+  string path = 2;
+}
+
+message BrowseDriveDir {
+  string name = 1;
+  string path = 2;
+}
+
+message BrowseDriveResponse {
+  repeated BrowseDriveDir dirs = 1;
+}
+
+message DriveSystemField {
+  string key = 1;
+  string label = 2;
+  string help = 3;
+  string type = 4;
+  bool secret = 5;
+  bool required = 6;
+  // Current value for non-secret fields; empty for secrets.
+  string value = 7;
+  bool set = 8;
+  // default | yaml | env
+  string source = 9;
+  string env_name = 10;
+}
+
+message DriveProviderSettings {
+  string template = 1;
+  repeated DriveSystemField fields = 2;
+  bool ready = 3;
+}
+
+message DriveSettings {
+  repeated DriveProviderSettings providers = 1;
+  string redirect_url = 2;
+}
+
+message GetDriveSettingsRequest {}
+
+message PutDriveSettingsRequest {
+  string template = 1;
+  // Set these values; an empty value clears the key from silo.yaml.
+  map<string, string> values = 2;
 }

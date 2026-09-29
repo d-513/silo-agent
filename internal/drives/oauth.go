@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -113,4 +114,29 @@ func ParseToken(raw string) (*oauth2.Token, error) {
 		return nil, errors.New("token has no access_token")
 	}
 	return &tok, nil
+}
+
+// Refresh renews an expired (or nearly expired) token. It returns "" when the
+// stored token is still good, and a MissingError for the token when the
+// provider refuses the refresh (revoked access): the owner must reconnect.
+func (t *Template) Refresh(ctx context.Context, v Values) (string, error) {
+	tok, err := ParseToken(t.Value(v, KindDynamic, "token"))
+	if err != nil {
+		return "", &MissingError{Missing: []Missing{{Kind: KindDynamic, Key: "token"}}}
+	}
+	if tok.Expiry.IsZero() || time.Until(tok.Expiry) > time.Minute || tok.RefreshToken == "" {
+		return "", nil
+	}
+	cfg, err := t.oauthConfig(v, "")
+	if err != nil {
+		return "", err
+	}
+	fresh, err := cfg.TokenSource(ctx, tok).Token()
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", &MissingError{Missing: []Missing{{Kind: KindDynamic, Key: "token"}}}, err)
+	}
+	if fresh.RefreshToken == "" {
+		fresh.RefreshToken = tok.RefreshToken
+	}
+	return TokenJSON(fresh)
 }

@@ -50,6 +50,12 @@ type Host interface {
 	CreateStdio(ctx context.Context, spec StdioSpec) (string, error)
 	DropStdio(ctx context.Context, id, containerID string)
 	ListStdio(ctx context.Context) ([]StdioContainer, error)
+	PrepareDriveDir(ctx context.Context, image, root, botID string) error
+	RemoveDriveDir(ctx context.Context, image, root, botID string) error
+	CreateDrive(ctx context.Context, spec DriveSpec) (string, error)
+	DropDrive(ctx context.Context, botID, containerID string)
+	ListDrives(ctx context.Context) ([]DriveContainer, error)
+	HasDriveBind(ctx context.Context, id string) (bool, error)
 }
 
 type StdioSpec struct {
@@ -177,6 +183,13 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	}
 	absWS, _ := filepath.Abs(ws)
 	absChrome, _ := filepath.Abs(chrome)
+	binds := []string{
+		absWS + ":/workspace",
+		absChrome + ":/home/silo/chrome-profile",
+	}
+	if b := e.botDriveBind(ctx, botID); b != "" {
+		binds = append(binds, b)
+	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.BotImage,
 		Env: []string{
@@ -186,10 +199,7 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 		},
 		Hostname: "bot",
 	}, &container.HostConfig{
-		Binds: []string{
-			absWS + ":/workspace",
-			absChrome + ":/home/silo/chrome-profile",
-		},
+		Binds:         binds,
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 		ExtraHosts:    []string{"host.containers.internal:host-gateway"},
 	}, nil, nil, Name(botID))

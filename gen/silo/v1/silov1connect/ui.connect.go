@@ -207,6 +207,24 @@ const (
 	UIDeleteChannelProcedure = "/silo.v1.UI/DeleteChannel"
 	// UIChannelActionProcedure is the fully-qualified name of the UI's ChannelAction RPC.
 	UIChannelActionProcedure = "/silo.v1.UI/ChannelAction"
+	// UIListDriveTemplatesProcedure is the fully-qualified name of the UI's ListDriveTemplates RPC.
+	UIListDriveTemplatesProcedure = "/silo.v1.UI/ListDriveTemplates"
+	// UIListDrivesProcedure is the fully-qualified name of the UI's ListDrives RPC.
+	UIListDrivesProcedure = "/silo.v1.UI/ListDrives"
+	// UISaveDriveProcedure is the fully-qualified name of the UI's SaveDrive RPC.
+	UISaveDriveProcedure = "/silo.v1.UI/SaveDrive"
+	// UIDeleteDriveProcedure is the fully-qualified name of the UI's DeleteDrive RPC.
+	UIDeleteDriveProcedure = "/silo.v1.UI/DeleteDrive"
+	// UIBeginDriveAuthProcedure is the fully-qualified name of the UI's BeginDriveAuth RPC.
+	UIBeginDriveAuthProcedure = "/silo.v1.UI/BeginDriveAuth"
+	// UIPickDriveOptionsProcedure is the fully-qualified name of the UI's PickDriveOptions RPC.
+	UIPickDriveOptionsProcedure = "/silo.v1.UI/PickDriveOptions"
+	// UIBrowseDriveProcedure is the fully-qualified name of the UI's BrowseDrive RPC.
+	UIBrowseDriveProcedure = "/silo.v1.UI/BrowseDrive"
+	// UIGetDriveSettingsProcedure is the fully-qualified name of the UI's GetDriveSettings RPC.
+	UIGetDriveSettingsProcedure = "/silo.v1.UI/GetDriveSettings"
+	// UIPutDriveSettingsProcedure is the fully-qualified name of the UI's PutDriveSettings RPC.
+	UIPutDriveSettingsProcedure = "/silo.v1.UI/PutDriveSettings"
 )
 
 // UIClient is a client for the silo.v1.UI service.
@@ -298,6 +316,17 @@ type UIClient interface {
 	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error)
 	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
 	ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error)
+	// Drives: rclone remotes mounted at /workspace/drives/<name>.
+	ListDriveTemplates(context.Context, *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error)
+	ListDrives(context.Context, *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
+	SaveDrive(context.Context, *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error)
+	DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error)
+	BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error)
+	PickDriveOptions(context.Context, *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error)
+	BrowseDrive(context.Context, *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error)
+	// Admin: per-template system values (OAuth client ids and secrets).
+	GetDriveSettings(context.Context, *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error)
+	PutDriveSettings(context.Context, *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error)
 }
 
 // NewUIClient constructs a client for the silo.v1.UI service. By default, it uses the Connect
@@ -833,6 +862,60 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ChannelAction")),
 			connect.WithClientOptions(opts...),
 		),
+		listDriveTemplates: connect.NewClient[v1.ListDriveTemplatesRequest, v1.ListDriveTemplatesResponse](
+			httpClient,
+			baseURL+UIListDriveTemplatesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListDriveTemplates")),
+			connect.WithClientOptions(opts...),
+		),
+		listDrives: connect.NewClient[v1.ListDrivesRequest, v1.ListDrivesResponse](
+			httpClient,
+			baseURL+UIListDrivesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListDrives")),
+			connect.WithClientOptions(opts...),
+		),
+		saveDrive: connect.NewClient[v1.SaveDriveRequest, v1.Drive](
+			httpClient,
+			baseURL+UISaveDriveProcedure,
+			connect.WithSchema(uIMethods.ByName("SaveDrive")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteDrive: connect.NewClient[v1.DeleteDriveRequest, v1.DeleteDriveResponse](
+			httpClient,
+			baseURL+UIDeleteDriveProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteDrive")),
+			connect.WithClientOptions(opts...),
+		),
+		beginDriveAuth: connect.NewClient[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse](
+			httpClient,
+			baseURL+UIBeginDriveAuthProcedure,
+			connect.WithSchema(uIMethods.ByName("BeginDriveAuth")),
+			connect.WithClientOptions(opts...),
+		),
+		pickDriveOptions: connect.NewClient[v1.PickDriveOptionsRequest, v1.PickDriveOptionsResponse](
+			httpClient,
+			baseURL+UIPickDriveOptionsProcedure,
+			connect.WithSchema(uIMethods.ByName("PickDriveOptions")),
+			connect.WithClientOptions(opts...),
+		),
+		browseDrive: connect.NewClient[v1.BrowseDriveRequest, v1.BrowseDriveResponse](
+			httpClient,
+			baseURL+UIBrowseDriveProcedure,
+			connect.WithSchema(uIMethods.ByName("BrowseDrive")),
+			connect.WithClientOptions(opts...),
+		),
+		getDriveSettings: connect.NewClient[v1.GetDriveSettingsRequest, v1.DriveSettings](
+			httpClient,
+			baseURL+UIGetDriveSettingsProcedure,
+			connect.WithSchema(uIMethods.ByName("GetDriveSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		putDriveSettings: connect.NewClient[v1.PutDriveSettingsRequest, v1.DriveSettings](
+			httpClient,
+			baseURL+UIPutDriveSettingsProcedure,
+			connect.WithSchema(uIMethods.ByName("PutDriveSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -925,6 +1008,15 @@ type uIClient struct {
 	updateChannel       *connect.Client[v1.UpdateChannelRequest, v1.Channel]
 	deleteChannel       *connect.Client[v1.DeleteChannelRequest, v1.DeleteChannelResponse]
 	channelAction       *connect.Client[v1.ChannelActionRequest, v1.ChannelActionResponse]
+	listDriveTemplates  *connect.Client[v1.ListDriveTemplatesRequest, v1.ListDriveTemplatesResponse]
+	listDrives          *connect.Client[v1.ListDrivesRequest, v1.ListDrivesResponse]
+	saveDrive           *connect.Client[v1.SaveDriveRequest, v1.Drive]
+	deleteDrive         *connect.Client[v1.DeleteDriveRequest, v1.DeleteDriveResponse]
+	beginDriveAuth      *connect.Client[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse]
+	pickDriveOptions    *connect.Client[v1.PickDriveOptionsRequest, v1.PickDriveOptionsResponse]
+	browseDrive         *connect.Client[v1.BrowseDriveRequest, v1.BrowseDriveResponse]
+	getDriveSettings    *connect.Client[v1.GetDriveSettingsRequest, v1.DriveSettings]
+	putDriveSettings    *connect.Client[v1.PutDriveSettingsRequest, v1.DriveSettings]
 }
 
 // SignIn calls silo.v1.UI.SignIn.
@@ -1362,6 +1454,51 @@ func (c *uIClient) ChannelAction(ctx context.Context, req *connect.Request[v1.Ch
 	return c.channelAction.CallUnary(ctx, req)
 }
 
+// ListDriveTemplates calls silo.v1.UI.ListDriveTemplates.
+func (c *uIClient) ListDriveTemplates(ctx context.Context, req *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error) {
+	return c.listDriveTemplates.CallUnary(ctx, req)
+}
+
+// ListDrives calls silo.v1.UI.ListDrives.
+func (c *uIClient) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	return c.listDrives.CallUnary(ctx, req)
+}
+
+// SaveDrive calls silo.v1.UI.SaveDrive.
+func (c *uIClient) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error) {
+	return c.saveDrive.CallUnary(ctx, req)
+}
+
+// DeleteDrive calls silo.v1.UI.DeleteDrive.
+func (c *uIClient) DeleteDrive(ctx context.Context, req *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
+	return c.deleteDrive.CallUnary(ctx, req)
+}
+
+// BeginDriveAuth calls silo.v1.UI.BeginDriveAuth.
+func (c *uIClient) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
+	return c.beginDriveAuth.CallUnary(ctx, req)
+}
+
+// PickDriveOptions calls silo.v1.UI.PickDriveOptions.
+func (c *uIClient) PickDriveOptions(ctx context.Context, req *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
+	return c.pickDriveOptions.CallUnary(ctx, req)
+}
+
+// BrowseDrive calls silo.v1.UI.BrowseDrive.
+func (c *uIClient) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
+	return c.browseDrive.CallUnary(ctx, req)
+}
+
+// GetDriveSettings calls silo.v1.UI.GetDriveSettings.
+func (c *uIClient) GetDriveSettings(ctx context.Context, req *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+	return c.getDriveSettings.CallUnary(ctx, req)
+}
+
+// PutDriveSettings calls silo.v1.UI.PutDriveSettings.
+func (c *uIClient) PutDriveSettings(ctx context.Context, req *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+	return c.putDriveSettings.CallUnary(ctx, req)
+}
+
 // UIHandler is an implementation of the silo.v1.UI service.
 type UIHandler interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
@@ -1451,6 +1588,17 @@ type UIHandler interface {
 	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error)
 	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
 	ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error)
+	// Drives: rclone remotes mounted at /workspace/drives/<name>.
+	ListDriveTemplates(context.Context, *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error)
+	ListDrives(context.Context, *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
+	SaveDrive(context.Context, *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error)
+	DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error)
+	BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error)
+	PickDriveOptions(context.Context, *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error)
+	BrowseDrive(context.Context, *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error)
+	// Admin: per-template system values (OAuth client ids and secrets).
+	GetDriveSettings(context.Context, *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error)
+	PutDriveSettings(context.Context, *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error)
 }
 
 // NewUIHandler builds an HTTP handler from the service implementation. It returns the path on which
@@ -1982,6 +2130,60 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ChannelAction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListDriveTemplatesHandler := connect.NewUnaryHandler(
+		UIListDriveTemplatesProcedure,
+		svc.ListDriveTemplates,
+		connect.WithSchema(uIMethods.ByName("ListDriveTemplates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListDrivesHandler := connect.NewUnaryHandler(
+		UIListDrivesProcedure,
+		svc.ListDrives,
+		connect.WithSchema(uIMethods.ByName("ListDrives")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISaveDriveHandler := connect.NewUnaryHandler(
+		UISaveDriveProcedure,
+		svc.SaveDrive,
+		connect.WithSchema(uIMethods.ByName("SaveDrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteDriveHandler := connect.NewUnaryHandler(
+		UIDeleteDriveProcedure,
+		svc.DeleteDrive,
+		connect.WithSchema(uIMethods.ByName("DeleteDrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIBeginDriveAuthHandler := connect.NewUnaryHandler(
+		UIBeginDriveAuthProcedure,
+		svc.BeginDriveAuth,
+		connect.WithSchema(uIMethods.ByName("BeginDriveAuth")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPickDriveOptionsHandler := connect.NewUnaryHandler(
+		UIPickDriveOptionsProcedure,
+		svc.PickDriveOptions,
+		connect.WithSchema(uIMethods.ByName("PickDriveOptions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIBrowseDriveHandler := connect.NewUnaryHandler(
+		UIBrowseDriveProcedure,
+		svc.BrowseDrive,
+		connect.WithSchema(uIMethods.ByName("BrowseDrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetDriveSettingsHandler := connect.NewUnaryHandler(
+		UIGetDriveSettingsProcedure,
+		svc.GetDriveSettings,
+		connect.WithSchema(uIMethods.ByName("GetDriveSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPutDriveSettingsHandler := connect.NewUnaryHandler(
+		UIPutDriveSettingsProcedure,
+		svc.PutDriveSettings,
+		connect.WithSchema(uIMethods.ByName("PutDriveSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.UI/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UISignInProcedure:
@@ -2158,6 +2360,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteChannelHandler.ServeHTTP(w, r)
 		case UIChannelActionProcedure:
 			uIChannelActionHandler.ServeHTTP(w, r)
+		case UIListDriveTemplatesProcedure:
+			uIListDriveTemplatesHandler.ServeHTTP(w, r)
+		case UIListDrivesProcedure:
+			uIListDrivesHandler.ServeHTTP(w, r)
+		case UISaveDriveProcedure:
+			uISaveDriveHandler.ServeHTTP(w, r)
+		case UIDeleteDriveProcedure:
+			uIDeleteDriveHandler.ServeHTTP(w, r)
+		case UIBeginDriveAuthProcedure:
+			uIBeginDriveAuthHandler.ServeHTTP(w, r)
+		case UIPickDriveOptionsProcedure:
+			uIPickDriveOptionsHandler.ServeHTTP(w, r)
+		case UIBrowseDriveProcedure:
+			uIBrowseDriveHandler.ServeHTTP(w, r)
+		case UIGetDriveSettingsProcedure:
+			uIGetDriveSettingsHandler.ServeHTTP(w, r)
+		case UIPutDriveSettingsProcedure:
+			uIPutDriveSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2513,4 +2733,40 @@ func (UnimplementedUIHandler) DeleteChannel(context.Context, *connect.Request[v1
 
 func (UnimplementedUIHandler) ChannelAction(context.Context, *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ChannelAction is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListDriveTemplates(context.Context, *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListDriveTemplates is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListDrives(context.Context, *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListDrives is not implemented"))
+}
+
+func (UnimplementedUIHandler) SaveDrive(context.Context, *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SaveDrive is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteDrive is not implemented"))
+}
+
+func (UnimplementedUIHandler) BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.BeginDriveAuth is not implemented"))
+}
+
+func (UnimplementedUIHandler) PickDriveOptions(context.Context, *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PickDriveOptions is not implemented"))
+}
+
+func (UnimplementedUIHandler) BrowseDrive(context.Context, *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.BrowseDrive is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetDriveSettings(context.Context, *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetDriveSettings is not implemented"))
+}
+
+func (UnimplementedUIHandler) PutDriveSettings(context.Context, *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PutDriveSettings is not implemented"))
 }

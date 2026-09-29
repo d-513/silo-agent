@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddSecretRequest, Approval, AttachConnectorRequest, Automation, Bot, BotConnector, BotSkill, Channel, ChannelActionRequest, ChannelActionResponse, Chat, ClearTaskboardRequest, CompactChatRequest, CompactChatResponse, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, EditMessageRequest, FileOpResponse, GetBotRequest, GetSettingsRequest, GetSubagentRequest, GetTaskboardRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSubagentsRequest, ListSubagentsResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, Taskboard, TranscribeRequest, TranscribeResponse, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
+import { AddSecretRequest, Approval, AttachConnectorRequest, Automation, BeginDriveAuthRequest, BeginDriveAuthResponse, Bot, BotConnector, BotSkill, BrowseDriveRequest, BrowseDriveResponse, Channel, ChannelActionRequest, ChannelActionResponse, Chat, ClearTaskboardRequest, CompactChatRequest, CompactChatResponse, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteDriveRequest, DeleteDriveResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DetachConnectorRequest, DetachConnectorResponse, DivergeChatRequest, DivergeChatResponse, Drive, DriveSettings, EditMessageRequest, FileOpResponse, GetBotRequest, GetDriveSettingsRequest, GetSettingsRequest, GetSubagentRequest, GetTaskboardRequest, InstallSkillRequest, InstallSkillResponse, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListDrivesRequest, ListDrivesResponse, ListDriveTemplatesRequest, ListDriveTemplatesResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSubagentsRequest, ListSubagentsResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, PickDriveOptionsRequest, PickDriveOptionsResponse, PutDriveSettingsRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RefreshBotConnectorRequest, RemoveFileRequest, RenameChatRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveDriveRequest, SaveSkillRequest, SaveSkillResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetBotSkillRequest, SetChatModelRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, Taskboard, TranscribeRequest, TranscribeResponse, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -793,6 +793,91 @@ export const UI = {
       name: "ChannelAction",
       I: ChannelActionRequest,
       O: ChannelActionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Drives: rclone remotes mounted at /workspace/drives/<name>.
+     *
+     * @generated from rpc silo.v1.UI.ListDriveTemplates
+     */
+    listDriveTemplates: {
+      name: "ListDriveTemplates",
+      I: ListDriveTemplatesRequest,
+      O: ListDriveTemplatesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListDrives
+     */
+    listDrives: {
+      name: "ListDrives",
+      I: ListDrivesRequest,
+      O: ListDrivesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SaveDrive
+     */
+    saveDrive: {
+      name: "SaveDrive",
+      I: SaveDriveRequest,
+      O: Drive,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteDrive
+     */
+    deleteDrive: {
+      name: "DeleteDrive",
+      I: DeleteDriveRequest,
+      O: DeleteDriveResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.BeginDriveAuth
+     */
+    beginDriveAuth: {
+      name: "BeginDriveAuth",
+      I: BeginDriveAuthRequest,
+      O: BeginDriveAuthResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.PickDriveOptions
+     */
+    pickDriveOptions: {
+      name: "PickDriveOptions",
+      I: PickDriveOptionsRequest,
+      O: PickDriveOptionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.BrowseDrive
+     */
+    browseDrive: {
+      name: "BrowseDrive",
+      I: BrowseDriveRequest,
+      O: BrowseDriveResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Admin: per-template system values (OAuth client ids and secrets).
+     *
+     * @generated from rpc silo.v1.UI.GetDriveSettings
+     */
+    getDriveSettings: {
+      name: "GetDriveSettings",
+      I: GetDriveSettingsRequest,
+      O: DriveSettings,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.PutDriveSettings
+     */
+    putDriveSettings: {
+      name: "PutDriveSettings",
+      I: PutDriveSettingsRequest,
+      O: DriveSettings,
       kind: MethodKind.Unary,
     },
   }

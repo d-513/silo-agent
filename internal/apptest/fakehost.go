@@ -36,6 +36,14 @@ type FakeHost struct {
 	// StdioLaunch, when set, is called with the sidecar spec after CreateStdio
 	// records it. Container-free tests use it to run the real bridge process.
 	StdioLaunch func(spec dockerx.StdioSpec) func()
+	// DriveLaunch, when set, runs after CreateDrive records a sidecar spec;
+	// tests use it to run the real drive guest in-process.
+	DriveLaunch func(spec dockerx.DriveSpec) func()
+
+	drive        *driveState
+	driveSpecs   map[string]dockerx.DriveSpec
+	driveStops   map[string]func()
+	driveOrphans []dockerx.DriveContainer
 
 	Creates      atomic.Int32
 	Starts       atomic.Int32
@@ -43,6 +51,8 @@ type FakeHost struct {
 	Drops        atomic.Int32
 	StdioCreates atomic.Int32
 	StdioDrops   atomic.Int32
+	DriveCreates atomic.Int32
+	DriveDrops   atomic.Int32
 }
 
 func NewFakeHost() *FakeHost {
@@ -265,4 +275,122 @@ func (f *FakeHost) Gone(botID string) bool {
 	_, byID := f.inspect["cid-"+botID]
 	_, byName := f.inspect[dockerx.Name(botID)]
 	return !byID && !byName
+}
+
+type driveState struct {
+	dirs    map[string]bool
+	prepErr error
+}
+
+func (f *FakeHost) drives() *driveState {
+	if f.drive == nil {
+		f.drive = &driveState{dirs: map[string]bool{}}
+	}
+	return f.drive
+}
+
+// SetPrepareDriveErr makes PrepareDriveDir fail (no drive image, or the
+// engine refused the shared mount).
+func (f *FakeHost) SetPrepareDriveErr(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.drives().prepErr = err
+}
+
+func (f *FakeHost) PrepareDriveDir(_ context.Context, _, root, botID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.drives().prepErr; err != nil {
+		return err
+	}
+	f.drives().dirs[dockerx.DriveDir(root, botID)] = true
+	return nil
+}
+
+func (f *FakeHost) RemoveDriveDir(_ context.Context, _, root, botID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.drives().dirs, dockerx.DriveDir(root, botID))
+	return nil
+}
+
+// DriveDirExists reports whether PrepareDriveDir made a Bot's drive dir and
+// nothing removed it since.
+func (f *FakeHost) DriveDirExists(root, botID string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.drives().dirs[dockerx.DriveDir(root, botID)]
+}
+
+func (f *FakeHost) CreateDrive(_ context.Context, spec dockerx.DriveSpec) (string, error) {
+	f.DriveCreates.Add(1)
+	if f.CreateErr != nil {
+		return "", f.CreateErr
+	}
+	id := "drive-" + spec.BotID
+	f.mu.Lock()
+	st := dockerx.State{ID: id, Running: true}
+	f.inspect[id] = st
+	f.inspect[dockerx.DriveName(spec.BotID)] = st
+	if f.driveSpecs == nil {
+		f.driveSpecs = map[string]dockerx.DriveSpec{}
+	}
+	f.driveSpecs[spec.BotID] = spec
+	launch := f.DriveLaunch
+	f.mu.Unlock()
+	if launch != nil {
+		stop := launch(spec)
+		f.mu.Lock()
+		if f.driveStops == nil {
+			f.driveStops = map[string]func(){}
+		}
+		f.driveStops[spec.BotID] = stop
+		f.mu.Unlock()
+	}
+	return id, nil
+}
+
+// DriveSpecFor returns the recorded sidecar spec for a Bot.
+func (f *FakeHost) DriveSpecFor(botID string) (dockerx.DriveSpec, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.driveSpecs[botID]
+	return s, ok
+}
+
+func (f *FakeHost) DropDrive(_ context.Context, botID, _ string) {
+	f.DriveDrops.Add(1)
+	f.mu.Lock()
+	delete(f.inspect, "drive-"+botID)
+	delete(f.inspect, dockerx.DriveName(botID))
+	delete(f.driveSpecs, botID)
+	stop := f.driveStops[botID]
+	delete(f.driveStops, botID)
+	f.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
+}
+
+func (f *FakeHost) ListDrives(context.Context) ([]dockerx.DriveContainer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []dockerx.DriveContainer
+	for bot := range f.driveSpecs {
+		out = append(out, dockerx.DriveContainer{ID: "drive-" + bot, Name: dockerx.DriveName(bot), BotID: bot})
+	}
+	return append(out, f.driveOrphans...), nil
+}
+
+// AddDriveOrphan registers a drive sidecar with no Bot behind it.
+func (f *FakeHost) AddDriveOrphan(c dockerx.DriveContainer) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.driveOrphans = append(f.driveOrphans, c)
+}
+
+func (f *FakeHost) HasDriveBind(context.Context, string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.drives().prepErr == nil, nil
 }

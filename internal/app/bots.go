@@ -108,8 +108,15 @@ func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) 
 	return st, err
 }
 
-// ensureRunning starts the existing box or recreates it if Docker lost it.
-func (a *App) ensureRunning(ctx context.Context, b *db.Bot) error {
+// ensureRunning starts the existing box or recreates it if Docker lost it. A
+// running Bot also gets its drive sidecar (in the background; mounts appear in
+// /workspace/drives by propagation whenever they are ready).
+func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
+	defer func() {
+		if err == nil {
+			a.ensureDrivesBg(b.ID)
+		}
+	}()
 	unlock := a.lockBot(b.ID)
 	defer unlock()
 	// Another ensure/start may have created a box since this row was loaded;
@@ -204,6 +211,7 @@ func (a *App) haltBot(ctx context.Context, b *db.Bot) {
 		_ = a.Docker.Stop(ctx, b.ContainerID)
 	}
 	_ = a.Docker.Stop(ctx, dockerx.Name(b.ID))
+	a.stopDrives(ctx, b.ID)
 }
 
 func (a *App) destroyBot(ctx context.Context, b *db.Bot) {

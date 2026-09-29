@@ -73,6 +73,8 @@ type spec struct {
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
 	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true,
+	// Drives are mounted folders, not a connector; keep the name free of MCP slugs.
+	"drives": true,
 }
 
 var catalog = map[string]spec{

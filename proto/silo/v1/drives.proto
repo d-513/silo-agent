@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+// DriveHost is the reverse channel for a Bot's drive sidecar (silo-drive). The
+// sidecar dials the control plane with its per-Bot drive token. The CP pushes
+// the desired set of rclone mounts (already rendered from templates, so the
+// sidecar knows nothing about providers) and asks for one-shot listings; the
+// sidecar reports mount state and hands back OAuth tokens rclone refreshed.
+service DriveHost {
+  rpc Session(stream DriveUp) returns (stream DriveDown);
+}
+
+// DriveSpec is one rclone remote, fully rendered.
+message DriveSpec {
+  // Drive id: keys status, cache, and config.
+  string id = 1;
+  // rclone remote name ([A-Za-z0-9_]); env keys are RCLONE_CONFIG_<REMOTE>_*.
+  string remote = 2;
+  map<string, string> env = 3;
+  // Path inside the remote to mount (after the colon).
+  string path = 4;
+  repeated string flags = 5;
+  bool read_only = 6;
+  // For OAuth drives: the token, written to a private rclone config file so a
+  // refresh can be saved and reported back. Empty for other drives.
+  string token = 7;
+  // Mount directory under the mount root: the drive's name, so the Bot sees
+  // /workspace/drives/<dir>.
+  string dir = 8;
+}
+
+message DriveDown {
+  oneof body {
+    DriveApply apply = 1;
+    DriveList list = 2;
+  }
+}
+
+// DriveApply replaces the whole desired set. Unchanged specs keep running.
+message DriveApply {
+  repeated DriveSpec drives = 1;
+  // rclone --vfs-cache-max-size per drive, e.g. "10G".
+  string cache_max_size = 2;
+}
+
+// DriveList lists folders of a remote that need not be mounted (the add
+// form's Test connection and folder picker).
+message DriveList {
+  string request_id = 1;
+  DriveSpec spec = 2;
+  // Path inside the remote, relative to its root.
+  string path = 3;
+}
+
+message DriveUp {
+  oneof body {
+    DriveHello hello = 1;
+    DriveStatus status = 2;
+    DriveToken token = 3;
+    DriveListResult list = 4;
+  }
+}
+
+// DriveHello is sent first, at once: ConnectRPC holds the stream's headers
+// until the first message.
+message DriveHello {
+  string version = 1;
+}
+
+message DriveStatus {
+  string id = 1;
+  // mounting | mounted | error | stopped
+  string state = 2;
+  string detail = 3;
+}
+
+message DriveToken {
+  string id = 1;
+  string token = 2;
+}
+
+message DriveListResult {
+  string request_id = 1;
+  repeated DriveDir dirs = 2;
+  string error = 3;
+  // A token rclone refreshed during the listing, if any.
+  string token = 4;
+}
+
+message DriveDir {
+  string name = 1;
+  string path = 2;
+}

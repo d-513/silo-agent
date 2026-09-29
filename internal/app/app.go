@@ -131,6 +131,9 @@ type App struct {
 	Docker dockerx.Host
 	Hub    *hub.Hub
 	Bus    *bus
+	// DriveHTTP reaches drive providers (OAuth token endpoints and account
+	// lookups); nil is http.DefaultClient. Tests point it at a fake provider.
+	DriveHTTP *http.Client
 
 	mu        sync.Mutex
 	approvals map[string]*waiter
@@ -142,6 +145,9 @@ type App struct {
 	lifecycle sync.Map
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
+	// drivesHub holds each Bot's live drive sidecar session.
+	drivesOnce sync.Once
+	drivesHub  *driveHub
 
 	// convMu serializes the inject-or-start decision per conversation. chatMu
 	// serializes find-or-create of a channel conversation.
@@ -184,6 +190,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
+	a.reconcileDrives()
 	a.resumeConnectors()
 	a.migrateSettings()
 	a.reconcileChannels()
@@ -444,9 +451,11 @@ func (a *App) Handler() http.Handler {
 	uiPath, uiH := silov1connect.NewUIHandler(a, connect.WithInterceptors(uiInterceptor{a}))
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(workerInterceptor{a}))
 	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(bridgeInterceptor{a}))
+	drPath, drH := silov1connect.NewDriveHostHandler(a, connect.WithInterceptors(driveInterceptor{a}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
 	mux.Handle(brPath, brH)
+	mux.Handle(drPath, drH)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
 	mux.HandleFunc("/console", a.handleConsole)

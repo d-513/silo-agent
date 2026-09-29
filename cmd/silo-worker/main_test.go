@@ -399,3 +399,31 @@ func TestGrepRG(t *testing.T) {
 		t.Fatalf("cap=%q", out)
 	}
 }
+
+func TestDriveGuards(t *testing.T) {
+	ws := t.TempDir()
+	w := &worker{workspace: ws}
+	for _, p := range []string{"drives/gd/Projects", "drives/gd/a.txt", "notes/drives"} {
+		_ = os.MkdirAll(filepath.Join(ws, p), 0o755)
+	}
+	for _, p := range []string{"drives", "drives/gd", "/workspace/drives/gd", "./drives/gd/"} {
+		if _, err := w.remove(p); err == nil || !strings.Contains(err.Error(), "Drives tab") {
+			t.Errorf("remove(%q) = %v", p, err)
+		}
+	}
+	if _, err := w.remove("drives/gd/Projects"); err != nil {
+		t.Fatalf("files inside a drive stay deletable: %v", err)
+	}
+	if _, err := w.remove("notes/drives"); err != nil {
+		t.Fatalf("a folder that is merely named drives: %v", err)
+	}
+
+	for path, excluded := range map[string]bool{
+		"": true, ".": true, "bot": true, "drives": false, "drives/gd": false, "/workspace/drives/gd/x": false,
+	} {
+		args := strings.Join(grepArgs("x", path, "", 10), " ")
+		if got := strings.Contains(args, "!/drives/**"); got != excluded {
+			t.Errorf("grep path %q: drives excluded = %v, want %v", path, got, excluded)
+		}
+	}
+}

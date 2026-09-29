@@ -471,6 +471,11 @@ func grepArgs(pattern, path, include string, maxHits int) []string {
 	for _, d := range grepPruneDirs {
 		args = append(args, "--glob", "!**/"+d+"/**")
 	}
+	// Drives are remote storage: a workspace-wide search must not crawl a
+	// whole Google Drive over the network. Searching inside one still works.
+	if !inDrives(path) {
+		args = append(args, "--glob", "!/drives/**")
+	}
 	if include != "" {
 		args = append(args, "--glob", include)
 	}
@@ -661,6 +666,24 @@ func (w *worker) mkdir(p string) (string, error) {
 	return "ok", os.MkdirAll(full, 0o755)
 }
 
+// inDrives is true for a workspace path at or under drives/.
+func inDrives(p string) bool {
+	p = strings.TrimPrefix(filepath.ToSlash(filepath.Clean(p)), "/workspace/")
+	p = strings.TrimPrefix(p, "./")
+	return p == "drives" || strings.HasPrefix(p, "drives/")
+}
+
+// driveRoot is true for /workspace/drives and each /workspace/drives/<name>:
+// mount points of remote storage, which only the Drives tab adds or removes.
+func (w *worker) driveRoot(full string) bool {
+	rel, err := filepath.Rel(w.workspace, full)
+	if err != nil {
+		return false
+	}
+	rel = filepath.ToSlash(rel)
+	return rel == "drives" || (strings.HasPrefix(rel, "drives/") && !strings.Contains(strings.TrimPrefix(rel, "drives/"), "/"))
+}
+
 func (w *worker) remove(p string) (string, error) {
 	if strings.TrimSpace(p) == "" {
 		return "", errors.New("cannot remove workspace root")
@@ -671,6 +694,9 @@ func (w *worker) remove(p string) (string, error) {
 	}
 	if full == w.workspace {
 		return "", errors.New("cannot remove workspace root")
+	}
+	if w.driveRoot(full) {
+		return "", errors.New("cannot remove a drive: it is remote storage mounted by the owner (Drives tab). Delete files inside it instead")
 	}
 	return "ok", os.RemoveAll(full)
 }

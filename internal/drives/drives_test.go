@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -493,5 +494,41 @@ func TestRcloneOptions(t *testing.T) {
 				t.Errorf("%s: option %q password=%v but obscured=%v", tp.Key, opt, o.Password, obscured)
 			}
 		}
+	}
+}
+
+func TestRefresh(t *testing.T) {
+	gd, _ := Builtin().Get("gdrive")
+	sys := map[string]string{"client_id": "a", "client_secret": "b"}
+	fresh := `{"access_token":"x","refresh_token":"r","expiry":"` + time.Now().Add(time.Hour).Format(time.RFC3339) + `"}`
+	if got, err := gd.Refresh(context.Background(), Values{System: sys, Dynamic: map[string]string{"token": fresh}}); err != nil || got != "" {
+		t.Fatalf("fresh token refreshed: %q %v", got, err)
+	}
+	stale := `{"access_token":"old","refresh_token":"r","expiry":"` + time.Now().Add(-time.Hour).Format(time.RFC3339) + `"}`
+	status := http.StatusOK
+	hc, _, done := testClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		if status == http.StatusOK {
+			_, _ = io.WriteString(w, `{"access_token":"new","token_type":"Bearer","expires_in":3600}`)
+		} else {
+			_, _ = io.WriteString(w, `{"error":"invalid_grant"}`)
+		}
+	}))
+	defer done()
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hc)
+	got, err := gd.Refresh(ctx, Values{System: sys, Dynamic: map[string]string{"token": stale}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pt, _ := ParseToken(got)
+	if pt.AccessToken != "new" || pt.RefreshToken != "r" {
+		t.Fatalf("refreshed = %s (refresh token must carry over)", got)
+	}
+	status = http.StatusBadRequest
+	if _, err := gd.Refresh(ctx, Values{System: sys, Dynamic: map[string]string{"token": stale}}); err == nil {
+		t.Fatal("revoked refresh accepted")
+	} else if m, ok := AsMissing(err); !ok || m.State() != StateNeedsAuth {
+		t.Fatalf("revoked refresh must mean reconnect: %v", err)
 	}
 }

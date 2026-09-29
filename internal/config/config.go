@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
+	"silo.agent/internal/drives"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
 )
@@ -210,6 +212,49 @@ type Config struct {
 	Bootstrap     Bootstrap           `koanf:"bootstrap"`
 	Providers     map[string]Provider `koanf:"providers"`
 	Search        Search              `koanf:"search"`
+	Drives        Drives              `koanf:"drives"`
+}
+
+// DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
+const DefaultDriveImage = "localhost/silo-drive:v1"
+
+// Drives configures rclone-backed drives.
+type Drives struct {
+	Image string `koanf:"image"`
+	// MountRoot is where sidecar mounts live, as a path the container engine
+	// sees (inside the VM on podman machine). It must be able to carry mount
+	// propagation; the CP makes it a shared mount before use.
+	MountRoot string `koanf:"mount_root"`
+	// CacheMaxSize caps each drive's rclone VFS cache, e.g. "10G".
+	CacheMaxSize string `koanf:"cache_max_size"`
+	// Providers holds each template's system values (OAuth client ids and
+	// secrets), keyed by template then var: drives.providers.gdrive.client_id.
+	Providers map[string]map[string]string `koanf:"providers"`
+}
+
+// DriveMountRoot resolves drives.mount_root. On macOS the engine runs in a VM
+// whose view of data_dir is a virtiofs share, which cannot propagate mounts,
+// so the default is a VM-local directory there.
+func (c Config) DriveMountRoot() string {
+	if r := strings.TrimSpace(c.Drives.MountRoot); r != "" {
+		return r
+	}
+	if runtime.GOOS == "darwin" {
+		return "/var/tmp/silo-drives"
+	}
+	dir := c.DataDir
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	return filepath.Join(dir, "drives-mnt")
+}
+
+// DriveImage is drives.image or the default.
+func (c Config) DriveImage() string {
+	if i := strings.TrimSpace(c.Drives.Image); i != "" {
+		return i
+	}
+	return DefaultDriveImage
 }
 
 // ProviderSettings returns the engine settings for a provider id.
@@ -282,6 +327,9 @@ var fieldDefs = []fieldMeta{
 	{Key: "docker_host", Restart: true},
 	{Key: "bot_image"},
 	{Key: "mcp_stdio_image"},
+	{Key: "drives.image"},
+	{Key: "drives.mount_root"},
+	{Key: "drives.cache_max_size"},
 	{Key: "bootstrap.email", Restart: true},
 	{Key: "bootstrap.password", Secret: true, Restart: true},
 }
@@ -334,7 +382,47 @@ func KnownKey(key string) bool {
 			}
 		}
 	}
-	return false
+	return driveSystemKey(key)
+}
+
+// DriveSystemKey names a drive template's system value in silo.yaml.
+func DriveSystemKey(template, name string) string {
+	return "drives.providers." + template + "." + name
+}
+
+// driveSystemKey is true for drives.providers.<template>.<system var>.
+func driveSystemKey(key string) bool {
+	rest, ok := strings.CutPrefix(key, "drives.providers.")
+	if !ok {
+		return false
+	}
+	tk, v, ok := strings.Cut(rest, ".")
+	if !ok {
+		return false
+	}
+	t, ok := drives.Builtin().Get(tk)
+	if !ok {
+		return false
+	}
+	_, ok = t.Var(drives.KindSystem, v)
+	return ok
+}
+
+// DriveSystem is one template's system values, env winning over yaml.
+func (s *Store) DriveSystem(template string) map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := map[string]string{}
+	t, ok := drives.Builtin().Get(template)
+	if !ok || s.merged == nil {
+		return out
+	}
+	for _, v := range t.VarsOf(drives.KindSystem) {
+		if val := strings.TrimSpace(s.merged.String(DriveSystemKey(template, v.Key))); val != "" {
+			out[v.Key] = val
+		}
+	}
+	return out
 }
 
 func setDefaults(k *koanf.Koanf) {
@@ -344,6 +432,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("cp_url", "http://host.containers.internal:8080")
 	_ = k.Set("bot_image", "localhost/silo-bot:v1")
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
+	_ = k.Set("drives.image", DefaultDriveImage)
+	_ = k.Set("drives.cache_max_size", "10G")
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
@@ -651,6 +741,11 @@ func validateYAML(raw []byte) error {
 		}
 		if !providerSettingKnown(d, sub) {
 			return fmt.Errorf("unknown setting %q for provider %q", sub, id)
+		}
+	}
+	for _, key := range k.Keys() {
+		if strings.HasPrefix(key, "drives.providers.") && !driveSystemKey(key) {
+			return fmt.Errorf("unknown drive setting %q", key)
 		}
 	}
 	for _, m := range k.Strings("models") {
