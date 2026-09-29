@@ -53,6 +53,7 @@ service UI {
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
   rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
   rpc CompactChat(CompactChatRequest) returns (CompactChatResponse);
+  rpc CollectMemories(CollectMemoriesRequest) returns (CollectMemoriesResponse);
   rpc ListSubagents(ListSubagentsRequest) returns (ListSubagentsResponse);
   rpc GetSubagent(GetSubagentRequest) returns (Subagent);
   rpc StopSubagent(StopSubagentRequest) returns (StopSubagentResponse);
@@ -241,6 +242,10 @@ message Memory {
   string last_used_at = 4;
   // Cosine distance to the query; set only by SearchMemories.
   double distance = 5;
+  // "fact" or "lesson" (a pitfall and what worked).
+  string kind = 6;
+  // Set when the memory collector saved it from this chat.
+  string chat_id = 7;
 }
 
 message ListMemoriesRequest {
@@ -545,6 +550,23 @@ message CompactChatRequest {
 
 message CompactChatResponse {
   string run_id = 1;
+}
+
+// CollectMemories runs the memory collector over a chat's messages since its
+// last collection: one cheap model call that saves missed facts and lessons.
+message CollectMemoriesRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+}
+
+message CollectMemoriesResponse {
+  int32 saved = 1;
+  int32 updated = 2;
+  int32 forgotten = 3;
+  // The memories saved or updated by this collection.
+  repeated Memory memories = 4;
+  // Why nothing was read (for example "nothing new"); empty after a read.
+  string note = 5;
 }
 
 // Subagent is a background agent loop a chat's lead started. Its work log is

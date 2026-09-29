@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -159,6 +160,11 @@ type App struct {
 	// stopAutomations ends the scheduler loop on Shutdown.
 	stopAutomations chan struct{}
 	stopOnce        sync.Once
+	// collecting holds the chats the memory collector is reading now, so a
+	// manual collection and the sweep never read the same delta twice.
+	collecting sync.Map
+	// collectPause (unix nanos) holds the sweep back after a provider error.
+	collectPause atomic.Int64
 	// wakeTimers debounce waking a lead chat when its subagents finish.
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
@@ -197,6 +203,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	if a.DB != nil {
 		a.rescheduleAutomations()
 		go a.automationLoop(a.stopAutomations)
+		go a.memoryLoop(a.stopAutomations)
 	}
 	return a
 }

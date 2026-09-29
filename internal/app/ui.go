@@ -465,7 +465,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
-			if (k == "model" || k == "model_title" || k == "model_approval" || k == "model_subagent") && v != "" {
+			if (k == "model" || k == "model_title" || k == "model_approval" || k == "model_subagent" || k == "model_memory") && v != "" {
 				if _, _, err := llm.Parse(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}

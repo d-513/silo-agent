@@ -113,6 +113,8 @@ const (
 	UIDivergeChatProcedure = "/silo.v1.UI/DivergeChat"
 	// UICompactChatProcedure is the fully-qualified name of the UI's CompactChat RPC.
 	UICompactChatProcedure = "/silo.v1.UI/CompactChat"
+	// UICollectMemoriesProcedure is the fully-qualified name of the UI's CollectMemories RPC.
+	UICollectMemoriesProcedure = "/silo.v1.UI/CollectMemories"
 	// UIListSubagentsProcedure is the fully-qualified name of the UI's ListSubagents RPC.
 	UIListSubagentsProcedure = "/silo.v1.UI/ListSubagents"
 	// UIGetSubagentProcedure is the fully-qualified name of the UI's GetSubagent RPC.
@@ -277,6 +279,7 @@ type UIClient interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error)
 	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
 	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
 	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
@@ -588,6 +591,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UICompactChatProcedure,
 			connect.WithSchema(uIMethods.ByName("CompactChat")),
+			connect.WithClientOptions(opts...),
+		),
+		collectMemories: connect.NewClient[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse](
+			httpClient,
+			baseURL+UICollectMemoriesProcedure,
+			connect.WithSchema(uIMethods.ByName("CollectMemories")),
 			connect.WithClientOptions(opts...),
 		),
 		listSubagents: connect.NewClient[v1.ListSubagentsRequest, v1.ListSubagentsResponse](
@@ -983,6 +992,7 @@ type uIClient struct {
 	deleteMessage       *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
 	divergeChat         *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
 	compactChat         *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
+	collectMemories     *connect.Client[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse]
 	listSubagents       *connect.Client[v1.ListSubagentsRequest, v1.ListSubagentsResponse]
 	getSubagent         *connect.Client[v1.GetSubagentRequest, v1.Subagent]
 	stopSubagent        *connect.Client[v1.StopSubagentRequest, v1.StopSubagentResponse]
@@ -1241,6 +1251,11 @@ func (c *uIClient) DivergeChat(ctx context.Context, req *connect.Request[v1.Dive
 // CompactChat calls silo.v1.UI.CompactChat.
 func (c *uIClient) CompactChat(ctx context.Context, req *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
 	return c.compactChat.CallUnary(ctx, req)
+}
+
+// CollectMemories calls silo.v1.UI.CollectMemories.
+func (c *uIClient) CollectMemories(ctx context.Context, req *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error) {
+	return c.collectMemories.CallUnary(ctx, req)
 }
 
 // ListSubagents calls silo.v1.UI.ListSubagents.
@@ -1579,6 +1594,7 @@ type UIHandler interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error)
 	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
 	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
 	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
@@ -1886,6 +1902,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UICompactChatProcedure,
 		svc.CompactChat,
 		connect.WithSchema(uIMethods.ByName("CompactChat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICollectMemoriesHandler := connect.NewUnaryHandler(
+		UICollectMemoriesProcedure,
+		svc.CollectMemories,
+		connect.WithSchema(uIMethods.ByName("CollectMemories")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListSubagentsHandler := connect.NewUnaryHandler(
@@ -2318,6 +2340,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDivergeChatHandler.ServeHTTP(w, r)
 		case UICompactChatProcedure:
 			uICompactChatHandler.ServeHTTP(w, r)
+		case UICollectMemoriesProcedure:
+			uICollectMemoriesHandler.ServeHTTP(w, r)
 		case UIListSubagentsProcedure:
 			uIListSubagentsHandler.ServeHTTP(w, r)
 		case UIGetSubagentProcedure:
@@ -2601,6 +2625,10 @@ func (UnimplementedUIHandler) DivergeChat(context.Context, *connect.Request[v1.D
 
 func (UnimplementedUIHandler) CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CompactChat is not implemented"))
+}
+
+func (UnimplementedUIHandler) CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CollectMemories is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {

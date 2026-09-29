@@ -69,6 +69,8 @@ func Reset() {
 	mu.Lock()
 	defer mu.Unlock()
 	scenarios = map[string][]Turn{}
+	collects = map[string]string{}
+	collectCalls = nil
 }
 
 func scenarioFor(token string) ([]Turn, bool) {
@@ -145,6 +147,9 @@ func summaryFrom(req llm.Request) (string, bool) {
 }
 
 func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, error) {
+	if res, ok, err := collectFrom(req); ok {
+		return res, err
+	}
 	if sum, ok := summaryFrom(req); ok {
 		return llm.Response{Text: sum, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 4}}, nil
 	}

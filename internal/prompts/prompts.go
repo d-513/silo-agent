@@ -32,6 +32,12 @@ var Heartbeat string
 //go:embed COMPACT.md
 var Compact string
 
+// Memory is the system prompt of the memory collector, which reads a chat's
+// new messages and answers with the facts and lessons to save as JSON.
+//
+//go:embed MEMORY.md
+var Memory string
+
 // Subagent is the per-run note for a subagent's run. {{NAME}} is replaced with
 // its name.
 //

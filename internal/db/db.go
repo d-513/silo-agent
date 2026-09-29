@@ -78,7 +78,10 @@ type Chat struct {
 	Title      string
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
-	Model     string
+	Model string
+	// MemorySeq is the memory collector's watermark: the highest run_events.seq
+	// it has already read. Only events after it reach the next collection.
+	MemorySeq int64 `gorm:"default:0"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -256,13 +259,17 @@ type CatalogSeed struct {
 
 // Memory is one long-term fact a Bot saved with `remember`. MEMORY (bots.memory)
 // stays the small always-in-prompt set; these are searched by embedding.
+// Kind is "fact" or "lesson" (a pitfall and what worked). ChatID is set when
+// the memory collector saved it from that conversation.
 type Memory struct {
 	ID         string `gorm:"primaryKey"`
 	BotID      string `gorm:"index"`
+	Kind       string `gorm:"default:'fact'"`
 	Content    string
 	Embedding  pgvector.Vector `gorm:"type:vector(1536)"`
 	EmbedModel string
 	RunID      string
+	ChatID     string `gorm:"default:''"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 }
@@ -377,8 +384,17 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.Exec("CREATE EXTENSION IF NOT EXISTS vector").Error; err != nil {
 		return fmt.Errorf("pgvector: %w", err)
 	}
+	hadWatermark := !gdb.Migrator().HasTable(&Chat{}) || gdb.Migrator().HasColumn(&Chat{}, "MemorySeq")
 	if err := gdb.AutoMigrate(Models()...); err != nil {
 		return err
+	}
+	if !hadWatermark {
+		// Chats that predate the memory collector start at their newest event,
+		// so the first sweep reads only what is said from now on.
+		if err := gdb.Exec(`UPDATE chats SET memory_seq = COALESCE((
+			SELECT MAX(e.seq) FROM run_events e JOIN runs r ON r.id = e.run_id WHERE r.chat_id = chats.id), 0)`).Error; err != nil {
+			return err
+		}
 	}
 	// The always-in-prompt MEMORY tool is now core_memory; keep the owner's rule.
 	if err := gdb.Exec("UPDATE rules SET action = 'core_memory' WHERE connector = 'bot' AND action = 'memory'").Error; err != nil {

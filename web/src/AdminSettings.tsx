@@ -30,9 +30,11 @@ const LABELS: Record<string, string> = {
   model_title: "Chat title model",
   model_approval: "Auto-approval model",
   model_subagent: "Subagent model",
+  model_memory: "Memory save model",
   embedding_model: "Embedding model",
   transcribe_model: "Speech-to-text model",
   "memory.auto_recall": "Auto-recall",
+  "memory.collect": "Collect from idle chats",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
@@ -64,12 +66,13 @@ const PLACEHOLDERS: Record<string, string> = {
 
 const CONTEXT_NOTE = "When a conversation nears the model's context window, it is summarized into one turn. The thread keeps everything; the model sees the summary.";
 
-const MEMORY_NOTE = "Auto-recall puts up to 3 long-term memories close to the opening message into each run. The embedding model is under Models.";
+const MEMORY_NOTE =
+  "Auto-recall puts up to 3 long-term memories close to the opening message into each run. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.";
 
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "embedding_model" || key === "transcribe_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("context.") || key.startsWith("runs.")) return "context";
   if (key.startsWith("providers.")) return "providers";
@@ -222,6 +225,7 @@ export function AdminSettings() {
   const titleModel = values["model_title"] ?? "";
   const approvalModel = values["model_approval"] ?? "";
   const subagentModel = values["model_subagent"] ?? "";
+  const memoryModel = values["model_memory"] ?? "";
   const embedModel = values["embedding_model"] ?? "";
   const voiceModel = values["transcribe_model"] ?? "";
 
@@ -239,6 +243,9 @@ export function AdminSettings() {
           subagentModel={subagentModel}
           subagentField={fields.find((f) => f.key === "model_subagent")}
           onSubagent={(v) => setValue("model_subagent", v)}
+          memoryModel={memoryModel}
+          memoryField={fields.find((f) => f.key === "model_memory")}
+          onMemory={(v) => setValue("model_memory", v)}
           embedModel={embedModel}
           embedField={fields.find((f) => f.key === "embedding_model")}
           onEmbed={(v) => setValue("embedding_model", v)}
@@ -462,6 +469,9 @@ function ModelSettings({
   subagentModel,
   subagentField,
   onSubagent,
+  memoryModel,
+  memoryField,
+  onMemory,
   embedModel,
   embedField,
   onEmbed,
@@ -483,6 +493,9 @@ function ModelSettings({
   subagentModel: string;
   subagentField?: ConfigField;
   onSubagent: (v: string) => void;
+  memoryModel: string;
+  memoryField?: ConfigField;
+  onMemory: (v: string) => void;
   embedModel: string;
   embedField?: ConfigField;
   onEmbed: (v: string) => void;
@@ -561,6 +574,16 @@ function ModelSettings({
             placeholder="Same as the lead"
             emptyLabel="Same as the lead"
             options={[{ value: "", label: "Same as the lead" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
+          />
+        </Field>
+        <Field label="Memory save model" hint="Reads chats once they go quiet and saves the facts and lessons the Bot missed. A cheap model is enough.">
+          <Select
+            value={memoryModel}
+            onChange={onMemory}
+            disabled={memoryField?.source === ConfigSource.ENV}
+            placeholder="Same as title model"
+            emptyLabel="Same as title model"
+            options={[{ value: "", label: "Same as title model" }, ...models.map((m) => ({ value: m.id, label: m.label || m.id }))]}
           />
         </Field>
         {/* Embedding models are not chat models, so this is free text, not the allowlist. */}

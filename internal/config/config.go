@@ -79,6 +79,9 @@ type Memory struct {
 	// AutoRecall injects the closest memories to the user's message into
 	// each run's volatile prompt tail.
 	AutoRecall bool `koanf:"auto_recall"`
+	// Collect runs the memory collector over chats that went idle with new
+	// messages. The manual composer button works either way.
+	Collect bool `koanf:"collect"`
 }
 
 // Context configures the model context window and automatic compaction.
@@ -202,6 +205,8 @@ type Config struct {
 	// ModelSubagent is the default model of subagents a lead starts; empty
 	// means the lead's own model. spawn_agent may still name another.
 	ModelSubagent string `koanf:"model_subagent"`
+	// ModelMemory is the memory collector's model; empty means the title model.
+	ModelMemory string `koanf:"model_memory"`
 	EmbedModel    string              `koanf:"embedding_model"`
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
@@ -299,6 +304,15 @@ func (c Config) ApprovalModel() string {
 	return c.TitleModel()
 }
 
+// MemoryModel returns the model the memory collector reads chats with,
+// falling back to the title model.
+func (c Config) MemoryModel() string {
+	if m := strings.TrimSpace(c.ModelMemory); m != "" {
+		return m
+	}
+	return c.TitleModel()
+}
+
 type fieldMeta struct {
 	Key     string
 	Secret  bool
@@ -311,9 +325,11 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_title"},
 	{Key: "model_approval"},
 	{Key: "model_subagent"},
+	{Key: "model_memory"},
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
 	{Key: "memory.auto_recall", Type: "bool"},
+	{Key: "memory.collect", Type: "bool"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},
@@ -439,6 +455,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
 	_ = k.Set("memory.auto_recall", true)
+	_ = k.Set("memory.collect", true)
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")
@@ -753,7 +770,7 @@ func validateYAML(raw []byte) error {
 			return fmt.Errorf("invalid model %q: %w", m, err)
 		}
 	}
-	for _, key := range []string{"model", "model_title", "model_approval", "model_subagent"} {
+	for _, key := range []string{"model", "model_title", "model_approval", "model_subagent", "model_memory"} {
 		if v := strings.TrimSpace(k.String(key)); v != "" {
 			if _, _, err := llm.Parse(v); err != nil {
 				return fmt.Errorf("%s: %w", key, err)

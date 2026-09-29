@@ -132,7 +132,7 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
   return (
     <Panel
       title="Long-term memories"
-      note={`${count}Saved by the Bot with remember and found by meaning. Only the closest few reach a run.`}
+      note={`${count}Saved by the Bot with remember, or collected from chats once they go quiet, and found by meaning. Lessons are pitfalls and what worked. Only the closest few reach a run.`}
       padded={false}
       className="mt-4"
     >
@@ -172,8 +172,10 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
             <div className="min-w-0 flex-1">
               <p className="break-words whitespace-pre-wrap">{m.content}</p>
               <p className="mt-0.5 font-mono text-[11px] text-ink-3">
+                {m.kind === "lesson" ? <span className="mr-1.5 rounded-xs bg-cobalt-pale px-1.5 py-px text-cobalt-deep">lesson</span> : null}
                 {searchMode ? `${match(m.distance)}% match · ` : ""}
                 {day(m.createdAt)}
+                {m.chatId ? " · collected" : ""}
                 {m.lastUsedAt ? ` · recalled ${day(m.lastUsedAt)}` : ""}
               </p>
             </div>

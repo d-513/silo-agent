@@ -1830,6 +1830,7 @@ function BotPage() {
                 onCompact={() => void compactChat()}
                 voice={voice}
                 onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
+                onCollect={() => ui.collectMemories({ botId: id!, chatId: chatId! })}
               />
               </>
               )}

@@ -5,7 +5,8 @@ import { fmtClock, insertDictation, useDictation, type Dictation } from "./voice
 import { fmtSize } from "./fs";
 import { Select } from "./Select";
 import { Tip, TipAction, TipTitle } from "./Tip";
-import type { ModelOption } from "./gen/silo/v1/ui_pb";
+import { MemoryCollectButton } from "./MemoryCollect";
+import type { CollectMemoriesResponse, ModelOption } from "./gen/silo/v1/ui_pb";
 
 export interface Attachment {
   name: string;
@@ -43,6 +44,8 @@ export interface ComposerProps {
   // voice shows the dictation mic; onTranscribe turns a recording into text.
   voice?: boolean;
   onTranscribe?: (audio: Uint8Array, mime: string) => Promise<string>;
+  // onCollect runs the memory collector over this chat now.
+  onCollect?: () => Promise<CollectMemoriesResponse>;
 }
 
 function fmtTokens(n: number) {
@@ -70,6 +73,7 @@ export function Composer({
   onCompact,
   voice,
   onTranscribe,
+  onCollect,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef(text);
@@ -316,6 +320,8 @@ export function Composer({
                   {autoExpand ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
                 </button>
               </Tip>
+
+              {onCollect ? <MemoryCollectButton chatId={chatId} onCollect={onCollect} /> : null}
 
               {usage && usage.window > 0 ? <ContextMeter usage={usage} onCompact={onCompact} disabled={sending || !chatId} /> : null}
             </div>

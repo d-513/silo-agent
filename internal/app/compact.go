@@ -141,13 +141,30 @@ func (a *App) lastEventID(chatID string) string {
 	return ev.ID
 }
 
+// transcriptCaps bound each tool call and tool result in a flat transcript.
+// ErrorResult, when larger, is the cap for a result that reads as a failure:
+// the memory collector keeps more of those because pitfalls live there.
+type transcriptCaps struct {
+	Args, Result, ErrorResult int
+}
+
+// compactCaps are the summarizing call's caps; the summary names files, it does
+// not need their bodies.
+var compactCaps = transcriptCaps{Args: transcriptArgsCap, Result: transcriptToolCap}
+
 // transcript flattens msgs into one plain-text document for the summarizing
 // call. A flat text never breaks tool-call pairing and trims from the front.
 // A previous summary is always kept; the oldest entries are dropped until the
 // transcript fits budget tokens.
 func transcript(msgs []llm.Message, budget int) string {
-	entries := make([]string, 0, len(msgs))
-	keepFirst := false
+	entries, keepFirst := transcriptEntries(msgs, compactCaps)
+	return trimTranscript(entries, keepFirst, budget)
+}
+
+// transcriptEntries renders each message as one transcript entry. keepFirst is
+// true when the first entry is a previous compaction summary.
+func transcriptEntries(msgs []llm.Message, caps transcriptCaps) (entries []string, keepFirst bool) {
+	entries = make([]string, 0, len(msgs))
 	for i, m := range msgs {
 		var b strings.Builder
 		switch m.Role {
@@ -172,15 +189,19 @@ func transcript(msgs []llm.Message, budget int) string {
 					b.WriteString("\n")
 				}
 				args := tc.Arguments
-				if utf8.RuneCountInString(args) > transcriptArgsCap {
-					args = truncateUTF8(args, transcriptArgsCap) + "…"
+				if utf8.RuneCountInString(args) > caps.Args {
+					args = truncateUTF8(args, caps.Args) + "…"
 				}
 				fmt.Fprintf(&b, "TOOL CALL %s %s", tc.Name, args)
 			}
 		case llm.RoleTool:
 			out := m.Text
-			if utf8.RuneCountInString(out) > transcriptToolCap {
-				out = truncateUTF8(out, transcriptToolCap) + "\n…truncated"
+			limit := caps.Result
+			if caps.ErrorResult > limit && looksLikeFailure(out) {
+				limit = caps.ErrorResult
+			}
+			if utf8.RuneCountInString(out) > limit {
+				out = truncateUTF8(out, limit) + "\n…truncated"
 			}
 			b.WriteString("TOOL RESULT:\n")
 			b.WriteString(out)
@@ -189,6 +210,19 @@ func transcript(msgs []llm.Message, budget int) string {
 			entries = append(entries, b.String())
 		}
 	}
+	return entries, keepFirst
+}
+
+// looksLikeFailure reports whether a tool result reads as an error.
+func looksLikeFailure(s string) bool {
+	head := strings.ToLower(truncateUTF8(strings.TrimSpace(s), 200))
+	return strings.HasPrefix(head, "error") || strings.Contains(head, "traceback") ||
+		strings.Contains(head, "exception") || strings.Contains(head, "failed")
+}
+
+// trimTranscript drops the oldest entries (never a kept summary) until the
+// joined transcript fits budget tokens.
+func trimTranscript(entries []string, keepFirst bool, budget int) string {
 	total := 0
 	for _, e := range entries {
 		total += runeTokens(e) + 1

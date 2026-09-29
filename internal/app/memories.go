@@ -37,6 +37,7 @@ const (
 
 type recalled struct {
 	ID        string
+	Kind      string
 	Content   string
 	CreatedAt time.Time
 	Distance  float64
@@ -85,7 +86,7 @@ func (a *App) canEmbed(modelID string) error {
 func (a *App) nearest(botID string, vec pgvector.Vector, k int, maxDist float64) ([]recalled, error) {
 	var rows []recalled
 	q := a.DB.Model(&db.Memory{}).
-		Select("id, content, created_at, embedding <=> ? AS distance", vec).
+		Select("id, kind, content, created_at, embedding <=> ? AS distance", vec).
 		Where("bot_id = ?", botID)
 	if maxDist > 0 {
 		q = q.Where("embedding <=> ? < ?", vec, maxDist)
@@ -97,35 +98,88 @@ func (a *App) nearest(botID string, vec pgvector.Vector, k int, maxDist float64)
 }
 
 func (a *App) remember(ctx context.Context, botID, runID, content string) (string, error) {
-	content = strings.TrimSpace(content)
+	res, err := a.saveMemory(ctx, newMemory{botID: botID, runID: runID, content: content})
+	if err != nil {
+		return "", err
+	}
+	if res.updated {
+		return fmt.Sprintf("updated memory %s (it already held this fact)", res.id), nil
+	}
+	return "remembered " + res.id, nil
+}
+
+const (
+	memoryFact   = "fact"
+	memoryLesson = "lesson"
+)
+
+// newMemory is one memory to save: from the Bot's remember (runID) or from the
+// memory collector (chatID).
+type newMemory struct {
+	botID, runID, chatID, kind, content string
+}
+
+type savedMemory struct {
+	id      string
+	updated bool
+}
+
+// saveMemory embeds and stores one memory. A near-copy of an existing memory
+// replaces it instead of adding a duplicate.
+func (a *App) saveMemory(ctx context.Context, m newMemory) (savedMemory, error) {
+	content := strings.TrimSpace(m.content)
 	if content == "" {
-		return "", errors.New("content required")
+		return savedMemory{}, errors.New("content required")
 	}
 	if len(content) > rememberMax {
-		return "", fmt.Errorf("memory is %d characters; cap is %d. Save one short fact per call.", len(content), rememberMax)
+		return savedMemory{}, fmt.Errorf("memory is %d characters; cap is %d. Save one short fact per call.", len(content), rememberMax)
+	}
+	kind := m.kind
+	if kind != memoryLesson {
+		kind = memoryFact
 	}
 	vecs, model, err := a.embed(ctx, []string{content})
 	if err != nil {
-		return "", err
+		return savedMemory{}, err
 	}
-	near, err := a.nearest(botID, vecs[0], 1, dedupeDistance)
+	near, err := a.nearest(m.botID, vecs[0], 1, dedupeDistance)
 	if err != nil {
-		return "", err
+		return savedMemory{}, err
 	}
 	if len(near) == 1 {
-		err := a.DB.Model(&db.Memory{}).Where("id = ?", near[0].ID).Updates(map[string]any{
-			"content": content, "embedding": vecs[0], "embed_model": model, "run_id": runID,
-		}).Error
-		if err != nil {
-			return "", err
+		up := map[string]any{"content": content, "embedding": vecs[0], "embed_model": model}
+		if m.runID != "" {
+			up["run_id"] = m.runID
 		}
-		return fmt.Sprintf("updated memory %s (it already held this fact)", near[0].ID), nil
+		if m.kind != "" {
+			up["kind"] = kind
+		}
+		err := a.DB.Model(&db.Memory{}).Where("id = ?", near[0].ID).Updates(up).Error
+		if err != nil {
+			return savedMemory{}, err
+		}
+		return savedMemory{id: near[0].ID, updated: true}, nil
 	}
-	m := db.Memory{ID: ids.New(), BotID: botID, Content: content, Embedding: vecs[0], EmbedModel: model, RunID: runID, CreatedAt: time.Now()}
-	if err := a.DB.Create(&m).Error; err != nil {
-		return "", err
+	row := db.Memory{ID: ids.New(), BotID: m.botID, Kind: kind, Content: content, Embedding: vecs[0], EmbedModel: model, RunID: m.runID, ChatID: m.chatID, CreatedAt: time.Now()}
+	if err := a.DB.Create(&row).Error; err != nil {
+		return savedMemory{}, err
 	}
-	return "remembered " + m.ID, nil
+	return savedMemory{id: row.ID}, nil
+}
+
+// rewriteMemory replaces one memory's text (and its embedding).
+func (a *App) rewriteMemory(ctx context.Context, botID, id, content string) error {
+	content = strings.TrimSpace(content)
+	if content == "" || len(content) > rememberMax {
+		return fmt.Errorf("memory text must be 1..%d characters", rememberMax)
+	}
+	vecs, model, err := a.embed(ctx, []string{content})
+	if err != nil {
+		return err
+	}
+	return a.DB.Model(&db.Memory{}).Where("bot_id = ? AND id = ?", botID, id).Updates(map[string]any{
+		"content": content, "embedding": vecs[0], "embed_model": model,
+	}).Error
 }
 
 var errNoQuery = errors.New("query required")
@@ -174,7 +228,11 @@ func (a *App) forget(botID, id string) (string, error) {
 func formatRecalled(rows []recalled) string {
 	var b strings.Builder
 	for _, r := range rows {
-		fmt.Fprintf(&b, "- [%s] (%s) %s\n", r.ID, r.CreatedAt.Format("2006-01-02"), r.Content)
+		kind := ""
+		if r.Kind == memoryLesson {
+			kind = " lesson:"
+		}
+		fmt.Fprintf(&b, "- [%s] (%s)%s %s\n", r.ID, r.CreatedAt.Format("2006-01-02"), kind, r.Content)
 	}
 	return b.String()
 }
@@ -217,11 +275,11 @@ func (a *App) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemo
 		return nil, err
 	}
 	var rows []db.Memory
-	a.DB.Select("id, content, created_at, last_used_at").
+	a.DB.Select("id, kind, chat_id, content, created_at, last_used_at").
 		Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
 	out := &v1.ListMemoriesResponse{}
 	for _, r := range rows {
-		m := &v1.Memory{Id: r.ID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+		m := &v1.Memory{Id: r.ID, Kind: r.Kind, ChatId: r.ChatID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)}
 		if r.LastUsedAt != nil {
 			m.LastUsedAt = r.LastUsedAt.Format(time.RFC3339)
 		}
@@ -250,17 +308,17 @@ func (a *App) SearchMemories(ctx context.Context, req *connect.Request[v1.Search
 	for i, r := range rows {
 		memIDs[i] = r.ID
 	}
-	// nearest selects only what the prompt needs; fetch last_used_at for the UI.
-	used := map[string]*time.Time{}
-	var full []db.Memory
-	a.DB.Select("id, last_used_at").Where("id IN ?", memIDs).Find(&full)
-	for _, m := range full {
-		used[m.ID] = m.LastUsedAt
+	// nearest selects only what the prompt needs; fetch the rest for the UI.
+	full := map[string]db.Memory{}
+	var extra []db.Memory
+	a.DB.Select("id, chat_id, last_used_at").Where("id IN ?", memIDs).Find(&extra)
+	for _, m := range extra {
+		full[m.ID] = m
 	}
 	out := &v1.SearchMemoriesResponse{}
 	for _, r := range rows {
-		m := &v1.Memory{Id: r.ID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339), Distance: r.Distance}
-		if t := used[r.ID]; t != nil {
+		m := &v1.Memory{Id: r.ID, Kind: r.Kind, ChatId: full[r.ID].ChatID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339), Distance: r.Distance}
+		if t := full[r.ID].LastUsedAt; t != nil {
 			m.LastUsedAt = t.Format(time.RFC3339)
 		}
 		out.Memories = append(out.Memories, m)
