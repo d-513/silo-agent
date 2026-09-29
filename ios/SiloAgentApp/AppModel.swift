@@ -198,6 +198,66 @@ final class AppModel {
         await refreshBots()
     }
 
+    // MARK: - Chat and message actions
+
+    func renameChat(_ id: String, title: String) async {
+        guard let botID = selectedBotID else { return }
+        let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        do {
+            replaceChat(try await client.renameChat(botID: botID, chatID: id, title: clean))
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func deleteChat(_ id: String) async {
+        guard let botID = selectedBotID else { return }
+        do {
+            try await client.deleteChat(botID: botID, chatID: id)
+            chats.removeAll { $0.id == id }
+            if selectedChatID == id {
+                stopStream()
+                streamingChatID = nil
+                events = []
+                selectedChatID = nil
+                if let next = chats.first { selectChat(next.id) }
+            }
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func editMessage(eventID: String, text: String) async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            try await client.editMessage(botID: botID, chatID: chatID, eventID: eventID, text: text)
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func deleteMessage(eventID: String) async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            try await client.deleteMessage(botID: botID, chatID: chatID, eventID: eventID)
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    /// Branch a new chat from the context before this message and open it.
+    func diverge(eventID: String) async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            let chat = try await client.divergeChat(botID: botID, chatID: chatID, eventID: eventID)
+            chats.insert(chat, at: 0)
+            selectChat(chat.id)
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
     // MARK: - Composer
 
     func loadModels(botID: String) async {
@@ -389,10 +449,19 @@ final class AppModel {
             var seen = Set<String>()
             while !Task.isCancelled {
                 guard let self else { return }
-                for await item in self.client.streamRun(botID: botID, chatID: chatID, afterEventID: after) {
+                streamLoop: for await item in self.client.streamRun(botID: botID, chatID: chatID, afterEventID: after) {
                     if Task.isCancelled { return }
                     switch item {
                     case .event(let event):
+                        if event.kind == "reset" {
+                            // History was truncated by an edit/delete; replay from scratch.
+                            self.events = []
+                            self.sending = false
+                            self.usage = nil
+                            after = ""
+                            seen.removeAll()
+                            break streamLoop
+                        }
                         if !event.id.isEmpty {
                             if seen.contains(event.id) { continue }
                             seen.insert(event.id)

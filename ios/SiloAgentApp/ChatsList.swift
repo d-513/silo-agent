@@ -4,6 +4,9 @@ import SwiftUI
 
 struct ChatsList: View {
     @Environment(AppModel.self) private var model
+    @State private var renaming: Silo_V1_Chat?
+    @State private var renameText = ""
+    @State private var deleting: Silo_V1_Chat?
 
     var body: some View {
         @Bindable var model = model
@@ -19,6 +22,33 @@ struct ChatsList: View {
                     }
                 }
                 .tag(chat.id)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        deleting = chat
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    Button {
+                        renameText = chat.title
+                        renaming = chat
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    .tint(Theme.cobalt)
+                }
+                .contextMenu {
+                    Button {
+                        renameText = chat.title
+                        renaming = chat
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        deleting = chat
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
         .overlay {
@@ -30,6 +60,26 @@ struct ChatsList: View {
                 )
             }
         }
+        .alert("Rename chat", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Title", text: $renameText)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") {
+                if let chat = renaming { Task { await model.renameChat(chat.id, title: renameText) } }
+            }
+        }
+        .confirmationDialog(
+            "Delete this chat?",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            titleVisibility: .visible,
+            presenting: deleting
+        ) { chat in
+            Button("Delete chat", role: .destructive) {
+                Task { await model.deleteChat(chat.id) }
+            }
+        } message: { _ in
+            Text("The conversation and its history are removed.")
+        }
+        .refreshable { await model.refreshChats() }
         .navigationTitle(model.selectedBot?.name ?? "Chats")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

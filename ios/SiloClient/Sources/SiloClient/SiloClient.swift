@@ -198,6 +198,51 @@ public final class SiloClient: Sendable {
         }
     }
 
+    // MARK: - Chat management and message actions
+
+    public func renameChat(botID: String, chatID: String, title: String) async throws -> Silo_V1_Chat {
+        var request = Silo_V1_RenameChatRequest()
+        request.botID = botID
+        request.id = chatID
+        request.title = title
+        return try unwrap(await ui.renameChat(request: request, headers: [:]))
+    }
+
+    public func deleteChat(botID: String, chatID: String) async throws {
+        var request = Silo_V1_DeleteChatRequest()
+        request.botID = botID
+        request.id = chatID
+        _ = try unwrap(await ui.deleteChat(request: request, headers: [:]))
+    }
+
+    /// Only the trailing user message can be edited; it re-sends as a fresh turn.
+    public func editMessage(botID: String, chatID: String, eventID: String, text: String, attachments: [Silo_V1_Attachment] = []) async throws {
+        var request = Silo_V1_EditMessageRequest()
+        request.botID = botID
+        request.chatID = chatID
+        request.eventID = eventID
+        request.text = text
+        request.attachments = attachments
+        _ = try unwrap(await ui.editMessage(request: request, headers: [:]))
+    }
+
+    public func deleteMessage(botID: String, chatID: String, eventID: String) async throws {
+        var request = Silo_V1_DeleteMessageRequest()
+        request.botID = botID
+        request.chatID = chatID
+        request.eventID = eventID
+        _ = try unwrap(await ui.deleteMessage(request: request, headers: [:]))
+    }
+
+    /// Copies the context before a message into a new chat.
+    public func divergeChat(botID: String, chatID: String, eventID: String) async throws -> Silo_V1_Chat {
+        var request = Silo_V1_DivergeChatRequest()
+        request.botID = botID
+        request.chatID = chatID
+        request.eventID = eventID
+        return try unwrap(await ui.divergeChat(request: request, headers: [:])).chat
+    }
+
     // MARK: - Models, thinking, compaction, files
 
     public struct ModelList: Sendable {

@@ -4,12 +4,16 @@ import SwiftUI
 
 struct ThreadView: View {
     @Environment(AppModel.self) private var model
+    @State private var editing: Block?
+    @State private var editText = ""
+    @State private var deleting: Block?
 
     var body: some View {
+        let blocks = foldEvents(model.events)
+        let lastUserID = blocks.last(where: { $0.kind == .user && $0.from.isEmpty })?.id
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    let blocks = foldEvents(model.events)
                     if blocks.isEmpty && !model.isRunning {
                         Text("Send a message to start.")
                             .font(.callout)
@@ -18,7 +22,9 @@ struct ThreadView: View {
                             .padding(.top, 48)
                     }
                     ForEach(blocks) { block in
-                        BlockView(block: block).id(block.id)
+                        BlockView(block: block)
+                            .id(block.id)
+                            .contextMenu { menu(for: block, isLastUser: block.id == lastUserID) }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -37,6 +43,63 @@ struct ThreadView: View {
                 proxy.scrollTo(last.id, anchor: .bottom)
             }
         }
+        .sheet(item: $editing) { block in
+            EditMessageSheet(text: $editText) {
+                Task { await model.editMessage(eventID: block.eventID, text: editText) }
+            }
+        }
+        .confirmationDialog("Delete this message?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { block in
+            Button("Delete message and everything after", role: .destructive) {
+                Task { await model.deleteMessage(eventID: block.eventID) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func menu(for block: Block, isLastUser: Bool) -> some View {
+        switch block.kind {
+        case .user:
+            Button { UIPasteboard.general.string = block.text } label: { Label("Copy", systemImage: "doc.on.doc") }
+            if !block.eventID.isEmpty {
+                Button { Task { await model.diverge(eventID: block.eventID) } } label: {
+                    Label("Branch into new chat", systemImage: "arrow.triangle.branch")
+                }
+                if isLastUser && !model.isRunning {
+                    Button { editText = block.text; editing = block } label: { Label("Edit", systemImage: "pencil") }
+                    Button(role: .destructive) { deleting = block } label: { Label("Delete", systemImage: "trash") }
+                }
+            }
+        case .assistant:
+            Button { UIPasteboard.general.string = block.text } label: { Label("Copy", systemImage: "doc.on.doc") }
+        default:
+            EmptyView()
+        }
+    }
+}
+
+struct EditMessageSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var text: String
+    let onSend: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            TextEditor(text: $text)
+                .padding(12)
+                .navigationTitle("Edit message")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Send") {
+                            onSend()
+                            dismiss()
+                        }
+                        .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
