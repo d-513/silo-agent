@@ -11,11 +11,7 @@ import { Select } from "./Select";
 import { ToggleRow } from "./Switch";
 import { Thread, type Ev } from "./Thread";
 import type { Channel, ChannelAdapter, ChannelField, Chat } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: number }) {
   if (adapter?.logo) {

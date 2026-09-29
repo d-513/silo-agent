@@ -386,7 +386,7 @@ func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 		}
 		u, err := auth.UserFromRequest(a.DB, r)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			return nil, sessionError(err)
 		}
 		return next(context.WithValue(ctx, userKey, u), req)
 	}
@@ -400,10 +400,30 @@ func (a *App) interceptUIStream(next connect.StreamingHandlerFunc) connect.Strea
 		}
 		u, err := auth.UserFromRequest(a.DB, r)
 		if err != nil {
-			return connect.NewError(connect.CodeUnauthenticated, err)
+			return sessionError(err)
 		}
 		return next(context.WithValue(ctx, userKey, u), conn)
 	}
+}
+
+// sessionError maps a session lookup failure: ErrAuth is a sign-out, anything
+// else is the store failing, which the UI must retry rather than treat as one.
+func sessionError(err error) *connect.Error {
+	if errors.Is(err, auth.ErrAuth) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	log.Printf("session lookup: %v", err)
+	return connect.NewError(connect.CodeUnavailable, errors.New("session store unavailable"))
+}
+
+// httpSessionError is sessionError for plain HTTP handlers.
+func httpSessionError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrAuth) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	log.Printf("session lookup: %v", err)
+	http.Error(w, "session store unavailable", http.StatusServiceUnavailable)
 }
 
 func (a *App) interceptWorker(next connect.UnaryFunc) connect.UnaryFunc {

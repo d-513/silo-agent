@@ -148,7 +148,7 @@ func (a *App) artifact(ctx context.Context, bot *db.Bot, runID, argsJSON string)
 func (a *App) handleArtifactDownload(w http.ResponseWriter, r *http.Request) {
 	u, err := siloauth.UserFromRequest(a.DB, r)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpSessionError(w, err)
 		return
 	}
 	switch strings.Trim(strings.TrimPrefix(r.URL.Path, "/artifacts/"), "/") {

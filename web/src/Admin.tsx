@@ -7,14 +7,10 @@ import { Btn } from "./Btn";
 import { Field, Panel } from "./Field";
 import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
+import { fail } from "./errors";
 
 export { AdminSettings } from "./AdminSettings";
 export { AdminDebug } from "./AdminDebug";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
 
 export function AdminLayout() {
   const [debug, setDebug] = useState(false);

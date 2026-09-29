@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,6 +73,29 @@ func TestUserFromRequestExpiredAndMissing(t *testing.T) {
 	req2.AddCookie(&http.Cookie{Name: "silo_session", Value: "ghost"})
 	if _, err := UserFromRequest(gdb, req2); err == nil {
 		t.Fatal("unknown session should fail")
+	}
+}
+
+// A store failure is not a sign-out: the UI must not bounce to the sign-in
+// screen because Postgres blinked.
+func TestUserFromRequestStoreErrorIsNotAuth(t *testing.T) {
+	gdb := dbtest.New(t)
+	gdb.Create(&db.User{ID: "u1", Email: "a@b.c"})
+	gdb.Create(&db.Session{ID: "s1", UserID: "u1", ExpiresAt: time.Now().Add(time.Hour)})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "silo_session", Value: "s1"})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := UserFromRequest(gdb.WithContext(ctx), req)
+	if err == nil || errors.Is(err, ErrAuth) {
+		t.Fatalf("store error should not be ErrAuth: %v", err)
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req2.AddCookie(&http.Cookie{Name: "silo_session", Value: "ghost"})
+	if _, err := UserFromRequest(gdb, req2); !errors.Is(err, ErrAuth) {
+		t.Fatalf("unknown session should be ErrAuth: %v", err)
 	}
 }
 

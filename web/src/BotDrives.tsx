@@ -12,11 +12,7 @@ import { Select } from "./Select";
 import { ToggleRow } from "./Switch";
 import { Tip, TipAction, TipTitle } from "./Tip";
 import type { BrowseDriveDir, Drive, DriveOption, DriveTemplate, DriveVar } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 export const CATEGORY_LABEL: Record<string, string> = {
   consumer: "Personal cloud",

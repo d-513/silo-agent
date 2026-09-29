@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
+import { isTransient } from "./errors";
 import type { Ev } from "./Thread";
 
 // window is the model's context size in tokens (0 when the server did not say).
@@ -67,10 +68,13 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
       });
     };
     (async () => {
+      // Reconnect quickly after a clean end, back off while the CP is down.
+      let backoff = 800;
       while (!dead) {
         ac = new AbortController();
         try {
           for await (const ev of ui.streamRun({ botId, chatId, afterEventId: after }, { signal: ac.signal })) {
+            backoff = 800;
             if (ev.id) {
               if (seen.has(ev.id)) continue;
               seen.add(ev.id);
@@ -119,11 +123,12 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               });
             }
           }
-        } catch {
+        } catch (e) {
           if (!dead) setSending(false);
+          if (isTransient(e)) backoff = Math.min(backoff * 2, 8000);
         }
         if (dead) return;
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, backoff));
       }
     })();
     return () => {

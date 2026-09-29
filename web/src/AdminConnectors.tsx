@@ -8,11 +8,7 @@ import { ConnectorFields, ConnectorMark, McpChip, CategoryChip, draftFrom, empty
 import { inputClass, SkeletonRows } from "./Field";
 import { Select } from "./Select";
 import type { Connector } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 export function AdminConnectors() {
   return (

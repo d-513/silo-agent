@@ -5,11 +5,7 @@ import { ArmedButton, SaveButton, Spinner, useSave } from "./Feedback";
 import { Panel, inputClass } from "./Field";
 import { PromptWell } from "./Settings";
 import type { Bot, Memory } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 function day(iso: string) {
   return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";

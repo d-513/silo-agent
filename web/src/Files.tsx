@@ -7,11 +7,7 @@ import { FileBrowser } from "./FileBrowser";
 import { botSource, joinPath, parentPath, type FsEntry } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
   // ?open=drives/work lands the tree in that folder (Drives → Open in Files).

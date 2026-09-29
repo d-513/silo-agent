@@ -74,6 +74,7 @@ import { fmtSize } from "./fs";
 import { useAutoExpand } from "./autoExpand";
 import { foldEvents, type Attachment, type Block, type Decision, type Ev, type ReceiptBlock } from "./fold";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
+import { fail } from "./errors";
 
 export type { Ev };
 
@@ -1018,11 +1019,6 @@ function isActivity(b: Block) {
 function gapAfter(prev: boolean | undefined, row: boolean) {
   if (prev === undefined) return "";
   return prev && row ? "mt-0.5" : "mt-4";
-}
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
 function isBotScratch(path: string): boolean {

@@ -15,7 +15,7 @@ import (
 func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*websocket.Conn, *hub.Session, string, bool) {
 	u, err := auth.UserFromRequest(a.DB, r)
 	if err != nil {
-		http.Error(w, "auth", 401)
+		httpSessionError(w, err)
 		return nil, nil, "", false
 	}
 	botID := r.URL.Query().Get("bot")

@@ -493,7 +493,7 @@ func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleConnectorImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := siloauth.UserFromRequest(a.DB, r); err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpSessionError(w, err)
 		return
 	}
 	id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/connectors/"), "/image")

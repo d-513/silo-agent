@@ -11,11 +11,7 @@ import { Taskboard } from "./Taskboard";
 import { Md, Thread } from "./Thread";
 import { useRunStream } from "./useRunStream";
 import { shortModel, useSubagents } from "./useSubagents";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 // SubagentPage shows one subagent's work log with the shared Thread. It is
 // read-only: only the lead talks to a subagent. The human can Stop it.

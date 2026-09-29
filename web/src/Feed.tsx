@@ -6,11 +6,7 @@ import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
 import type { Bot, Chat, FeedPost } from "./gen/silo/v1/ui_pb";
 import { Md } from "./Thread";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 function stamp(iso: string) {
   const d = new Date(iso);

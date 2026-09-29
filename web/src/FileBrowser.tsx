@@ -5,6 +5,7 @@ import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, kindOf } from "./fileKind";
 import { SkeletonRows } from "./Field";
 import { crumbs, fmtSize, type FsEntry, type FsFile, type FsSource } from "./fs";
+import { fail } from "./errors";
 
 export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean; size?: number }) {
   const cls = "shrink-0 text-current opacity-70";
@@ -326,7 +327,3 @@ export function SkillBrowserOverlay({
   );
 }
 
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}

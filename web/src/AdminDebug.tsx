@@ -5,11 +5,7 @@ import { SkeletonRows } from "./Field";
 import { Btn } from "./Btn";
 import { Select } from "./Select";
 import type { Bot, LLMLog } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 const labelClass: Record<string, string> = {
   chat: "bg-cobalt-pale text-ink",

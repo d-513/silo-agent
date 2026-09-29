@@ -14,11 +14,7 @@ import type { Artifact } from "./Artifact";
 import { clock, DAY_SHORT, describe, HOUR_STEPS, MINUTE_STEPS, parse, toCron, type Mode, type Sched } from "./schedule";
 import { useRunStream } from "./useRunStream";
 import type { Automation, Bot } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 function whenShort(iso: string) {
   if (!iso) return "";

@@ -125,20 +125,26 @@ func EnsureAdmin(gdb *gorm.DB) error {
 	return gdb.Save(&u).Error
 }
 
+// UserFromRequest resolves the session cookie. Only a missing, unknown, or
+// expired session is ErrAuth; a store failure is returned as-is so callers do
+// not report a sign-out when Postgres is briefly unreachable.
 func UserFromRequest(gdb *gorm.DB, r *http.Request) (*db.User, error) {
 	c, err := r.Cookie(cookieName)
 	if err != nil || c.Value == "" {
 		return nil, ErrAuth
 	}
 	var s db.Session
-	if err := gdb.First(&s, "id = ?", c.Value).Error; err != nil {
-		return nil, ErrAuth
+	if err := gdb.Where("id = ?", c.Value).Limit(1).Find(&s).Error; err != nil {
+		return nil, err
 	}
-	if time.Now().After(s.ExpiresAt) {
+	if s.ID == "" || time.Now().After(s.ExpiresAt) {
 		return nil, ErrAuth
 	}
 	var u db.User
-	if err := gdb.First(&u, "id = ?", s.UserID).Error; err != nil {
+	if err := gdb.Where("id = ?", s.UserID).Limit(1).Find(&u).Error; err != nil {
+		return nil, err
+	}
+	if u.ID == "" {
 		return nil, ErrAuth
 	}
 	return &u, nil

@@ -15,15 +15,11 @@ import {
   type ConnectorDraft,
 } from "./ConnectorForm";
 import type { BotConnector, Connector } from "./gen/silo/v1/ui_pb";
+import { fail } from "./errors";
 
 export async function startConnectorAuth(botId: string, id: string) {
   const r = await ui.startConnectorAuth({ botId, id });
   if (r.authorizeUrl) window.open(r.authorizeUrl, "silo-oauth", "width=480,height=720");
-}
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
 function statusLabel(s: string) {

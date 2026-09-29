@@ -5,11 +5,7 @@ import { Btn } from "./Btn";
 import { SaveButton, useSave } from "./Feedback";
 import { Panel, SkeletonRows, textareaClass } from "./Field";
 import type { Rule, RuleSection } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 function sectionDecision(s: RuleSection): string {
   if (s.rules.length === 0) return "";

@@ -9,11 +9,7 @@ import { SkillBrowserOverlay } from "./FileBrowser";
 import { Switch } from "./Switch";
 import { skillSource } from "./fs";
 import type { BotSkill, Skill } from "./gen/silo/v1/ui_pb";
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
+import { fail } from "./errors";
 
 export function InstallField({
   scope,

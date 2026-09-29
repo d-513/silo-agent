@@ -17,13 +17,9 @@ import {
   type SearchEngine,
   type Settings,
 } from "./gen/silo/v1/ui_pb";
+import { fail } from "./errors";
 
 const YamlEditor = lazy(() => import("./YamlEditor").then((m) => ({ default: m.YamlEditor })));
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
-}
 
 const LABELS: Record<string, string> = {
   model: "Default model",

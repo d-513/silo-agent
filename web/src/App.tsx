@@ -2,7 +2,10 @@ import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRigh
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ui } from "./api";
+import { onSignedOut, ui } from "./api";
+import { fail, isGone, isSignedOut } from "./errors";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { OfflineBanner, Unreachable } from "./Offline";
 import { Btn, btnClass } from "./Btn";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
@@ -53,11 +56,6 @@ function isSideTab(s: string | undefined): s is SideTab {
 
 function onChatSide(t: Tab) {
   return t === "run" || isSideTab(t);
-}
-
-function fail(e: unknown) {
-  const m = e instanceof Error ? e.message : "failed";
-  return m.replace(/^\[[^\]]+\]\s*/, "");
 }
 
 // Chat-row meta: "Just now", "12 min ago", "09:12", "Yesterday", "Tue", "Mar 4".
@@ -238,7 +236,12 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
           title="Sign out"
           className={railHit(false)}
           onClick={async () => {
-            await ui.signOut({});
+            try {
+              await ui.signOut({});
+            } catch (e) {
+              // Already signed out is the goal; anything else keeps the session.
+              if (!isSignedOut(e)) return;
+            }
             setSession(null);
           }}
         >
@@ -250,16 +253,20 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
 }
 
 function Shell({ page, fill, children }: { page: "bots" | "admin" | "account" | "skills"; fill?: boolean; children: ReactNode }) {
+  const { pathname } = useLocation();
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
       <Rail page={page} />
-      <main className={`min-w-0 flex-1 ${fill ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>{children}</main>
+      <main className={`min-w-0 flex-1 ${fill ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
+        <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+      </main>
     </div>
   );
 }
 
 function SignIn() {
   const nav = useNavigate();
+  const loc = useLocation();
   const { setSession } = useAuth();
   const [email, setEm] = useState("");
   const [password, setPassword] = useState("");
@@ -272,7 +279,9 @@ function SignIn() {
     try {
       const r = await ui.signIn({ email, password });
       setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
-      nav("/");
+      // Back to where the session ended, not the Bots list.
+      const from = (loc.state as { from?: string } | null)?.from;
+      nav(from && from !== "/signin" ? from : "/", { replace: true });
     } catch (ex) {
       setErr(fail(ex));
       setBusy(false);
@@ -1165,6 +1174,7 @@ function BotPage() {
     setKeepDesk(tab === "desktop");
     setKeepCon(tab === "console");
     setAuthPrompt(null);
+    setLoadErr("");
   }, [id]);
   useEffect(() => {
     if (tab === "desktop") setKeepDesk(true);
@@ -1175,13 +1185,19 @@ function BotPage() {
   useEffect(() => {
     if (!id) return;
     let dead = false;
-    const tick = (first = false) => {
+    const tick = () => {
       ui.getBot({ id })
         .then((b) => {
-          if (!dead) setBot(b);
+          if (dead) return;
+          setBot(b);
+          setLoadErr("");
         })
         .catch((e) => {
-          if (!dead && first) setLoadErr(fail(e));
+          // Only a Bot that is gone (deleted, not ours) ends the page; a
+          // blip keeps the last row and the next tick recovers.
+          if (dead || !isGone(e)) return;
+          setLoadErr(fail(e));
+          clearInterval(t);
         });
       ui.listApprovals({ botId: id })
         .then((r) => {
@@ -1189,8 +1205,8 @@ function BotPage() {
         })
         .catch(() => {});
     };
-    tick(true);
-    const t = setInterval(() => tick(), settled ? 3000 : 500);
+    const t = setInterval(tick, settled ? 3000 : 500);
+    tick();
     return () => {
       dead = true;
       clearInterval(t);
@@ -2088,23 +2104,58 @@ function Authed() {
   );
 }
 
+function ToSignIn() {
+  const loc = useLocation();
+  return <Navigate to="/signin" replace state={{ from: loc.pathname + loc.search }} />;
+}
+
 export default function App() {
   const [session, setSession] = useState<{ email: string; admin: boolean } | null | undefined>(undefined);
+  const [unreachable, setUnreachable] = useState(false);
+  // Only an Unauthenticated answer means signed out. Anything else (the CP
+  // restarting, a proxy 502, a store error) retries with backoff instead of
+  // showing a Sign in screen for a session that may be fine.
   useEffect(() => {
-    ui.me({})
-      .then((r) => setSession(r.user ? { email: r.user.email, admin: r.user.admin } : null))
-      .catch(() => setSession(null));
+    let dead = false;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const check = (delay: number) => {
+      ui.me({})
+        .then((r) => {
+          if (dead) return;
+          setUnreachable(false);
+          setSession(r.user ? { email: r.user.email, admin: r.user.admin } : null);
+        })
+        .catch((e) => {
+          if (dead) return;
+          if (isSignedOut(e)) {
+            setUnreachable(false);
+            setSession(null);
+            return;
+          }
+          setUnreachable(true);
+          t = setTimeout(() => check(Math.min(delay * 2, 8000)), delay);
+        });
+    };
+    check(500);
+    return () => {
+      dead = true;
+      clearTimeout(t);
+    };
   }, []);
-  if (session === undefined) return null;
+  useEffect(() => onSignedOut(() => setSession(null)), []);
+  if (session === undefined) return unreachable ? <Unreachable /> : null;
   return (
     <AuthCtx.Provider value={{ email: session?.email ?? "", admin: session?.admin ?? false, setSession }}>
       {session === null ? (
         <Routes>
           <Route path="/signin" element={<SignIn />} />
-          <Route path="*" element={<Navigate to="/signin" />} />
+          <Route path="*" element={<ToSignIn />} />
         </Routes>
       ) : (
-        <Authed />
+        <>
+          <Authed />
+          <OfflineBanner />
+        </>
       )}
     </AuthCtx.Provider>
   );
