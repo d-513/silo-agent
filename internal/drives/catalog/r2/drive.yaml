@@ -1,0 +1,39 @@
+key: r2
+title: Cloudflare R2
+blurb: R2 buckets in your Cloudflare account.
+category: object-storage
+rclone_type: s3
+auth:
+  kind: form
+vars:
+  - key: account_id
+    kind: user
+    type: text
+    label: Account ID
+    required: true
+    help: In the Cloudflare dashboard, under R2 → Overview.
+  - key: access_key_id
+    kind: user
+    type: text
+    label: Access key ID
+    required: true
+  - key: secret_access_key
+    kind: user
+    type: secret
+    label: Secret access key
+    required: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Bucket and folder
+    placeholder: All buckets
+    help: Pick a bucket, or a folder inside one. Leave empty to see every bucket the key can list.
+rclone:
+  provider: Cloudflare
+  endpoint: "https://{{user.account_id}}.r2.cloudflarestorage.com"
+  access_key_id: "{{user.access_key_id}}"
+  secret_access_key: "{{user.secret_access_key}}"
+  region: auto
+  no_check_bucket: "true"
+mount:
+  path: "{{user.folder}}"

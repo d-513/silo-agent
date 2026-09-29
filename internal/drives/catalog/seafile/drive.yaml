@@ -1,0 +1,45 @@
+key: seafile
+title: Seafile
+blurb: Libraries on a Seafile server.
+category: self-hosted
+rclone_type: seafile
+auth:
+  kind: form
+vars:
+  - key: server
+    kind: user
+    type: url
+    label: Server address
+    placeholder: https://seafile.example.com
+    required: true
+  - key: email
+    kind: user
+    type: text
+    label: Email
+    required: true
+  - key: password
+    kind: user
+    type: secret
+    label: Password
+    required: true
+    obscure: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Library and folder
+    placeholder: All libraries
+    help: Pick a library, or a folder inside one. Leave empty to see every library.
+  - key: library_key
+    kind: user
+    type: secret
+    label: Library password
+    advanced: true
+    obscure: true
+    help: Only for an encrypted library.
+rclone:
+  url: "{{user.server|trimslash}}"
+  user: "{{user.email}}"
+  pass: "{{user.password}}"
+  library_key: "{{user.library_key}}"
+mount:
+  path: "{{user.folder}}"

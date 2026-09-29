@@ -1,0 +1,44 @@
+key: smb
+title: SMB share
+blurb: Windows and NAS file shares.
+category: protocol
+rclone_type: smb
+auth:
+  kind: form
+vars:
+  - key: host
+    kind: user
+    type: text
+    label: Server
+    placeholder: nas.local
+    required: true
+  - key: username
+    kind: user
+    type: text
+    label: Username
+    required: true
+  - key: password
+    kind: user
+    type: secret
+    label: Password
+    required: true
+    obscure: true
+  - key: domain
+    kind: user
+    type: text
+    label: Domain
+    default: WORKGROUP
+    advanced: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Share and folder
+    placeholder: All shares
+    help: Pick a share, or a folder inside one.
+rclone:
+  host: "{{user.host}}"
+  user: "{{user.username}}"
+  pass: "{{user.password}}"
+  domain: "{{user.domain}}"
+mount:
+  path: "{{user.folder}}"

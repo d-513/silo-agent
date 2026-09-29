@@ -1,0 +1,1388 @@
+{
+ "azureblob": {
+  "access_tier": {
+   "password": false
+  },
+  "account": {
+   "password": false
+  },
+  "archive_tier_delete": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "client_certificate_password": {
+   "password": true
+  },
+  "client_certificate_path": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "client_send_certificate_chain": {
+   "password": false
+  },
+  "connection_string": {
+   "password": false
+  },
+  "copy_concurrency": {
+   "password": false
+  },
+  "copy_cutoff": {
+   "password": false
+  },
+  "copy_total_concurrency": {
+   "password": false
+  },
+  "decompress": {
+   "password": false
+  },
+  "delete_snapshots": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "directory_markers": {
+   "password": false
+  },
+  "disable_checksum": {
+   "password": false
+  },
+  "disable_instance_discovery": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "endpoint": {
+   "password": false
+  },
+  "env_auth": {
+   "password": false
+  },
+  "key": {
+   "password": false
+  },
+  "list_chunk": {
+   "password": false
+  },
+  "list_parallelism": {
+   "password": false
+  },
+  "memory_pool_flush_time": {
+   "password": false
+  },
+  "memory_pool_use_mmap": {
+   "password": false
+  },
+  "msi_client_id": {
+   "password": false
+  },
+  "msi_mi_res_id": {
+   "password": false
+  },
+  "msi_object_id": {
+   "password": false
+  },
+  "no_check_container": {
+   "password": false
+  },
+  "no_head_object": {
+   "password": false
+  },
+  "password": {
+   "password": true
+  },
+  "public_access": {
+   "password": false
+  },
+  "sas_url": {
+   "password": false
+  },
+  "service_principal_file": {
+   "password": false
+  },
+  "tenant": {
+   "password": false
+  },
+  "upload_concurrency": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  },
+  "use_arrow_list": {
+   "password": false
+  },
+  "use_az": {
+   "password": false
+  },
+  "use_copy_blob": {
+   "password": false
+  },
+  "use_emulator": {
+   "password": false
+  },
+  "use_msi": {
+   "password": false
+  },
+  "username": {
+   "password": false
+  }
+ },
+ "b2": {
+  "account": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "copy_cutoff": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "disable_checksum": {
+   "password": false
+  },
+  "download_auth_duration": {
+   "password": false
+  },
+  "download_url": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "endpoint": {
+   "password": false
+  },
+  "hard_delete": {
+   "password": false
+  },
+  "key": {
+   "password": false
+  },
+  "lifecycle": {
+   "password": false
+  },
+  "memory_pool_flush_time": {
+   "password": false
+  },
+  "memory_pool_use_mmap": {
+   "password": false
+  },
+  "sse_customer_algorithm": {
+   "password": false
+  },
+  "sse_customer_key": {
+   "password": false
+  },
+  "sse_customer_key_base64": {
+   "password": false
+  },
+  "sse_customer_key_md5": {
+   "password": false
+  },
+  "test_mode": {
+   "password": false
+  },
+  "upload_concurrency": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  },
+  "version_at": {
+   "password": false
+  },
+  "versions": {
+   "password": false
+  }
+ },
+ "box": {
+  "access_token": {
+   "password": false
+  },
+  "auth_url": {
+   "password": false
+  },
+  "box_config_file": {
+   "password": false
+  },
+  "box_sub_type": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "commit_retries": {
+   "password": false
+  },
+  "config_credentials": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "impersonate": {
+   "password": false
+  },
+  "list_chunk": {
+   "password": false
+  },
+  "owned_by": {
+   "password": false
+  },
+  "root_folder_id": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  }
+ },
+ "drive": {
+  "acknowledge_abuse": {
+   "password": false
+  },
+  "allow_import_name_change": {
+   "password": false
+  },
+  "alternate_export": {
+   "password": false
+  },
+  "auth_owner_only": {
+   "password": false
+  },
+  "auth_url": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "copy_shortcut_content": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "disable_http2": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "env_auth": {
+   "password": false
+  },
+  "export_formats": {
+   "password": false
+  },
+  "fast_list_bug_fix": {
+   "password": false
+  },
+  "formats": {
+   "password": false
+  },
+  "impersonate": {
+   "password": false
+  },
+  "import_formats": {
+   "password": false
+  },
+  "keep_revision_forever": {
+   "password": false
+  },
+  "list_chunk": {
+   "password": false
+  },
+  "metadata_enforce_expansive_access": {
+   "password": false
+  },
+  "metadata_labels": {
+   "password": false
+  },
+  "metadata_owner": {
+   "password": false
+  },
+  "metadata_permissions": {
+   "password": false
+  },
+  "pacer_burst": {
+   "password": false
+  },
+  "pacer_min_sleep": {
+   "password": false
+  },
+  "resource_key": {
+   "password": false
+  },
+  "root_folder_id": {
+   "password": false
+  },
+  "scope": {
+   "password": false
+  },
+  "server_side_across_configs": {
+   "password": false
+  },
+  "service_account_credentials": {
+   "password": false
+  },
+  "service_account_file": {
+   "password": false
+  },
+  "shared_with_me": {
+   "password": false
+  },
+  "show_all_gdocs": {
+   "password": false
+  },
+  "size_as_quota": {
+   "password": false
+  },
+  "skip_checksum_gphotos": {
+   "password": false
+  },
+  "skip_dangling_shortcuts": {
+   "password": false
+  },
+  "skip_gdocs": {
+   "password": false
+  },
+  "skip_shortcuts": {
+   "password": false
+  },
+  "starred_only": {
+   "password": false
+  },
+  "stop_on_download_limit": {
+   "password": false
+  },
+  "stop_on_upload_limit": {
+   "password": false
+  },
+  "team_drive": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "trashed_only": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  },
+  "use_created_date": {
+   "password": false
+  },
+  "use_shared_date": {
+   "password": false
+  },
+  "use_trash": {
+   "password": false
+  },
+  "v2_download_min_size": {
+   "password": false
+  }
+ },
+ "dropbox": {
+  "auth_url": {
+   "password": false
+  },
+  "batch_commit_timeout": {
+   "password": false
+  },
+  "batch_mode": {
+   "password": false
+  },
+  "batch_size": {
+   "password": false
+  },
+  "batch_timeout": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "export_formats": {
+   "password": false
+  },
+  "impersonate": {
+   "password": false
+  },
+  "impersonate_admin": {
+   "password": false
+  },
+  "pacer_min_sleep": {
+   "password": false
+  },
+  "root_namespace": {
+   "password": false
+  },
+  "shared_files": {
+   "password": false
+  },
+  "shared_folders": {
+   "password": false
+  },
+  "show_all_exports": {
+   "password": false
+  },
+  "skip_exports": {
+   "password": false
+  },
+  "skip_shared_folders": {
+   "password": false
+  },
+  "skip_unowned_folders": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  }
+ },
+ "ftp": {
+  "allow_insecure_tls_ciphers": {
+   "password": false
+  },
+  "ask_password": {
+   "password": false
+  },
+  "close_timeout": {
+   "password": false
+  },
+  "concurrency": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "disable_epsv": {
+   "password": false
+  },
+  "disable_mlsd": {
+   "password": false
+  },
+  "disable_tls13": {
+   "password": false
+  },
+  "disable_utf8": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "explicit_tls": {
+   "password": false
+  },
+  "force_list_hidden": {
+   "password": false
+  },
+  "host": {
+   "password": false
+  },
+  "http_proxy": {
+   "password": false
+  },
+  "idle_timeout": {
+   "password": false
+  },
+  "no_check_certificate": {
+   "password": false
+  },
+  "no_check_upload": {
+   "password": false
+  },
+  "pass": {
+   "password": true
+  },
+  "port": {
+   "password": false
+  },
+  "shut_timeout": {
+   "password": false
+  },
+  "socks_proxy": {
+   "password": false
+  },
+  "tls": {
+   "password": false
+  },
+  "tls_cache_size": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  },
+  "writing_mdtm": {
+   "password": false
+  }
+ },
+ "jottacloud": {
+  "auth_url": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hard_delete": {
+   "password": false
+  },
+  "md5_memory_limit": {
+   "password": false
+  },
+  "no_versions": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "trashed_only": {
+   "password": false
+  },
+  "upload_resume_limit": {
+   "password": false
+  }
+ },
+ "koofr": {
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "endpoint": {
+   "password": false
+  },
+  "mountid": {
+   "password": false
+  },
+  "password": {
+   "password": true
+  },
+  "provider": {
+   "password": false
+  },
+  "setmtime": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  }
+ },
+ "mega": {
+  "2fa": {
+   "password": false
+  },
+  "debug": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hard_delete": {
+   "password": false
+  },
+  "master_key": {
+   "password": false
+  },
+  "pass": {
+   "password": true
+  },
+  "session_id": {
+   "password": false
+  },
+  "use_https": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  }
+ },
+ "onedrive": {
+  "access_scopes": {
+   "password": false
+  },
+  "auth_url": {
+   "password": false
+  },
+  "av_override": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "delta": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "disable_site_permission": {
+   "password": false
+  },
+  "drive_id": {
+   "password": false
+  },
+  "drive_type": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "expose_onenote_files": {
+   "password": false
+  },
+  "hard_delete": {
+   "password": false
+  },
+  "hash_type": {
+   "password": false
+  },
+  "link_password": {
+   "password": false
+  },
+  "link_scope": {
+   "password": false
+  },
+  "link_type": {
+   "password": false
+  },
+  "list_chunk": {
+   "password": false
+  },
+  "metadata_permissions": {
+   "password": false
+  },
+  "no_versions": {
+   "password": false
+  },
+  "region": {
+   "password": false
+  },
+  "root_folder_id": {
+   "password": false
+  },
+  "server_side_across_configs": {
+   "password": false
+  },
+  "tenant": {
+   "password": false
+  },
+  "tenant_url": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  }
+ },
+ "pcloud": {
+  "auth_url": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hostname": {
+   "password": false
+  },
+  "password": {
+   "password": true
+  },
+  "root_folder_id": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "username": {
+   "password": false
+  }
+ },
+ "protondrive": {
+  "2fa": {
+   "password": false
+  },
+  "app_version": {
+   "password": false
+  },
+  "client_access_token": {
+   "password": false
+  },
+  "client_refresh_token": {
+   "password": false
+  },
+  "client_salted_key_pass": {
+   "password": false
+  },
+  "client_uid": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "enable_caching": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "mailbox_password": {
+   "password": true
+  },
+  "original_file_size": {
+   "password": false
+  },
+  "otp_secret_key": {
+   "password": true
+  },
+  "password": {
+   "password": true
+  },
+  "replace_existing_draft": {
+   "password": false
+  },
+  "username": {
+   "password": false
+  }
+ },
+ "s3": {
+  "access_key_id": {
+   "password": false
+  },
+  "acl": {
+   "password": false
+  },
+  "bucket_acl": {
+   "password": false
+  },
+  "bucket_object_lock_enabled": {
+   "password": false
+  },
+  "bypass_governance_retention": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "copy_cutoff": {
+   "password": false
+  },
+  "decompress": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "directory_bucket": {
+   "password": false
+  },
+  "directory_markers": {
+   "password": false
+  },
+  "disable_checksum": {
+   "password": false
+  },
+  "disable_http2": {
+   "password": false
+  },
+  "download_url": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "endpoint": {
+   "password": false
+  },
+  "env_auth": {
+   "password": false
+  },
+  "force_path_style": {
+   "password": false
+  },
+  "ibm_api_key": {
+   "password": false
+  },
+  "ibm_iam_endpoint": {
+   "password": false
+  },
+  "ibm_resource_instance_id": {
+   "password": false
+  },
+  "leave_parts_on_error": {
+   "password": false
+  },
+  "list_chunk": {
+   "password": false
+  },
+  "list_url_encode": {
+   "password": false
+  },
+  "list_version": {
+   "password": false
+  },
+  "list_versions_oldest_first": {
+   "password": false
+  },
+  "location_constraint": {
+   "password": false
+  },
+  "max_upload_parts": {
+   "password": false
+  },
+  "memory_pool_flush_time": {
+   "password": false
+  },
+  "memory_pool_use_mmap": {
+   "password": false
+  },
+  "might_gzip": {
+   "password": false
+  },
+  "no_check_bucket": {
+   "password": false
+  },
+  "no_head": {
+   "password": false
+  },
+  "no_head_object": {
+   "password": false
+  },
+  "no_system_metadata": {
+   "password": false
+  },
+  "object_lock_legal_hold_status": {
+   "password": false
+  },
+  "object_lock_mode": {
+   "password": false
+  },
+  "object_lock_retain_until_date": {
+   "password": false
+  },
+  "object_lock_set_after_upload": {
+   "password": false
+  },
+  "object_lock_supported": {
+   "password": false
+  },
+  "profile": {
+   "password": false
+  },
+  "provider": {
+   "password": false
+  },
+  "region": {
+   "password": false
+  },
+  "requester_pays": {
+   "password": false
+  },
+  "role_arn": {
+   "password": false
+  },
+  "role_external_id": {
+   "password": false
+  },
+  "role_session_duration": {
+   "password": false
+  },
+  "role_session_name": {
+   "password": false
+  },
+  "sdk_log_mode": {
+   "password": false
+  },
+  "secret_access_key": {
+   "password": false
+  },
+  "server_side_encryption": {
+   "password": false
+  },
+  "session_token": {
+   "password": false
+  },
+  "shared_credentials_file": {
+   "password": false
+  },
+  "sign_accept_encoding": {
+   "password": false
+  },
+  "sse_customer_algorithm": {
+   "password": false
+  },
+  "sse_customer_key": {
+   "password": false
+  },
+  "sse_customer_key_base64": {
+   "password": false
+  },
+  "sse_customer_key_md5": {
+   "password": false
+  },
+  "sse_kms_key_id": {
+   "password": false
+  },
+  "storage_class": {
+   "password": false
+  },
+  "sts_endpoint": {
+   "password": false
+  },
+  "upload_concurrency": {
+   "password": false
+  },
+  "upload_cutoff": {
+   "password": false
+  },
+  "use_accelerate_endpoint": {
+   "password": false
+  },
+  "use_accept_encoding_gzip": {
+   "password": false
+  },
+  "use_already_exists": {
+   "password": false
+  },
+  "use_arn_region": {
+   "password": false
+  },
+  "use_data_integrity_protections": {
+   "password": false
+  },
+  "use_dual_stack": {
+   "password": false
+  },
+  "use_multipart_etag": {
+   "password": false
+  },
+  "use_multipart_uploads": {
+   "password": false
+  },
+  "use_presigned_request": {
+   "password": false
+  },
+  "use_unsigned_payload": {
+   "password": false
+  },
+  "use_x_id": {
+   "password": false
+  },
+  "v2_auth": {
+   "password": false
+  },
+  "version_at": {
+   "password": false
+  },
+  "version_deleted": {
+   "password": false
+  },
+  "versions": {
+   "password": false
+  }
+ },
+ "seafile": {
+  "2fa": {
+   "password": false
+  },
+  "auth_token": {
+   "password": false
+  },
+  "create_library": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "library": {
+   "password": false
+  },
+  "library_key": {
+   "password": true
+  },
+  "pass": {
+   "password": true
+  },
+  "url": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  }
+ },
+ "sftp": {
+  "ask_password": {
+   "password": false
+  },
+  "blake3sum_command": {
+   "password": false
+  },
+  "chunk_size": {
+   "password": false
+  },
+  "ciphers": {
+   "password": false
+  },
+  "concurrency": {
+   "password": false
+  },
+  "connections": {
+   "password": false
+  },
+  "copy_is_hardlink": {
+   "password": false
+  },
+  "crc32sum_command": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "disable_concurrent_reads": {
+   "password": false
+  },
+  "disable_concurrent_writes": {
+   "password": false
+  },
+  "disable_hashcheck": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hashes": {
+   "password": false
+  },
+  "host": {
+   "password": false
+  },
+  "host_key_algorithms": {
+   "password": false
+  },
+  "host_keys": {
+   "password": false
+  },
+  "http_proxy": {
+   "password": false
+  },
+  "idle_timeout": {
+   "password": false
+  },
+  "key_exchange": {
+   "password": false
+  },
+  "key_file": {
+   "password": false
+  },
+  "key_file_pass": {
+   "password": true
+  },
+  "key_pem": {
+   "password": false
+  },
+  "key_use_agent": {
+   "password": false
+  },
+  "known_hosts_file": {
+   "password": false
+  },
+  "macs": {
+   "password": false
+  },
+  "md5sum_command": {
+   "password": false
+  },
+  "pass": {
+   "password": true
+  },
+  "path_override": {
+   "password": false
+  },
+  "pin_host_key": {
+   "password": false
+  },
+  "port": {
+   "password": false
+  },
+  "pubkey": {
+   "password": false
+  },
+  "pubkey_file": {
+   "password": false
+  },
+  "server_command": {
+   "password": false
+  },
+  "set_env": {
+   "password": false
+  },
+  "set_modtime": {
+   "password": false
+  },
+  "sha1sum_command": {
+   "password": false
+  },
+  "sha256sum_command": {
+   "password": false
+  },
+  "shell_type": {
+   "password": false
+  },
+  "skip_links": {
+   "password": false
+  },
+  "socks_proxy": {
+   "password": false
+  },
+  "ssh": {
+   "password": false
+  },
+  "subsystem": {
+   "password": false
+  },
+  "use_fstat": {
+   "password": false
+  },
+  "use_insecure_cipher": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  },
+  "xxh128sum_command": {
+   "password": false
+  },
+  "xxh3sum_command": {
+   "password": false
+  }
+ },
+ "smb": {
+  "case_insensitive": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "domain": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hide_special_share": {
+   "password": false
+  },
+  "host": {
+   "password": false
+  },
+  "idle_timeout": {
+   "password": false
+  },
+  "kerberos_ccache": {
+   "password": false
+  },
+  "pass": {
+   "password": true
+  },
+  "port": {
+   "password": false
+  },
+  "spn": {
+   "password": false
+  },
+  "use_kerberos": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  }
+ },
+ "webdav": {
+  "auth_redirect": {
+   "password": false
+  },
+  "bearer_token": {
+   "password": false
+  },
+  "bearer_token_command": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "headers": {
+   "password": false
+  },
+  "nextcloud_chunk_size": {
+   "password": false
+  },
+  "owncloud_exclude_mounts": {
+   "password": false
+  },
+  "owncloud_exclude_shares": {
+   "password": false
+  },
+  "pacer_min_sleep": {
+   "password": false
+  },
+  "pass": {
+   "password": true
+  },
+  "unix_socket": {
+   "password": false
+  },
+  "url": {
+   "password": false
+  },
+  "user": {
+   "password": false
+  },
+  "vendor": {
+   "password": false
+  }
+ },
+ "yandex": {
+  "auth_url": {
+   "password": false
+  },
+  "client_credentials": {
+   "password": false
+  },
+  "client_id": {
+   "password": false
+  },
+  "client_secret": {
+   "password": false
+  },
+  "description": {
+   "password": false
+  },
+  "encoding": {
+   "password": false
+  },
+  "hard_delete": {
+   "password": false
+  },
+  "spoof_ua": {
+   "password": false
+  },
+  "token": {
+   "password": false
+  },
+  "token_url": {
+   "password": false
+  },
+  "upload_wait": {
+   "password": false
+  }
+ }
+}

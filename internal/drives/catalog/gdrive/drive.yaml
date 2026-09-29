@@ -1,0 +1,69 @@
+key: gdrive
+title: Google Drive
+blurb: My Drive or a shared drive.
+category: consumer
+rclone_type: drive
+auth:
+  kind: oauth2
+  label: Google
+  auth_url: https://accounts.google.com/o/oauth2/auth
+  token_url: https://oauth2.googleapis.com/token
+  scopes: ["https://www.googleapis.com/auth/{{user.access}}"]
+  params:
+    access_type: offline
+    prompt: consent
+vars:
+  - key: client_id
+    kind: system
+    type: text
+    label: OAuth client ID
+    required: true
+  - key: client_secret
+    kind: system
+    type: secret
+    label: OAuth client secret
+    required: true
+  - key: access
+    kind: user
+    type: select
+    label: Access
+    default: drive
+    help: What Google lets this drive do. Changing it needs a new sign-in.
+    options:
+      - {value: drive, label: Read and write}
+      - {value: drive.readonly, label: Read only}
+  - key: shared_drive
+    kind: user
+    type: pick
+    label: Drive
+    placeholder: My Drive
+    help: Pick a shared drive, or leave it on My Drive.
+    lookup:
+      url: https://www.googleapis.com/drive/v3/drives?pageSize=100
+      items: drives
+      value: id
+      label: name
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+  - key: token
+    kind: dynamic
+    source: oauth
+    secret: true
+  - key: account
+    kind: dynamic
+    source: lookup
+    lookup:
+      url: https://www.googleapis.com/drive/v3/about?fields=user
+      value: user.emailAddress
+rclone:
+  client_id: "{{system.client_id}}"
+  client_secret: "{{system.client_secret}}"
+  scope: "{{user.access}}"
+  team_drive: "{{user.shared_drive}}"
+  token: "{{dynamic.token}}"
+mount:
+  path: "{{user.folder}}"

@@ -1,0 +1,29 @@
+key: b2
+title: Backblaze B2
+blurb: B2 buckets.
+category: object-storage
+rclone_type: b2
+auth:
+  kind: form
+vars:
+  - key: key_id
+    kind: user
+    type: text
+    label: Application key ID
+    required: true
+  - key: app_key
+    kind: user
+    type: secret
+    label: Application key
+    required: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Bucket and folder
+    placeholder: All buckets
+    help: Pick a bucket, or a folder inside one. Leave empty to see every bucket the key can list.
+rclone:
+  account: "{{user.key_id}}"
+  key: "{{user.app_key}}"
+mount:
+  path: "{{user.folder}}"

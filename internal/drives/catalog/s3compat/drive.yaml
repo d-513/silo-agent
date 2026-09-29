@@ -1,0 +1,55 @@
+key: s3compat
+title: S3-compatible
+blurb: MinIO, Wasabi, DigitalOcean Spaces, and friends.
+category: object-storage
+rclone_type: s3
+auth:
+  kind: form
+vars:
+  - key: provider
+    kind: user
+    type: select
+    label: Service
+    default: Minio
+    options:
+      - {value: Minio, label: MinIO}
+      - {value: Wasabi, label: Wasabi}
+      - {value: DigitalOcean, label: DigitalOcean Spaces}
+      - {value: Scaleway, label: Scaleway}
+      - {value: Other, label: Other}
+  - key: endpoint
+    kind: user
+    type: url
+    label: Endpoint
+    placeholder: https://minio.example.com
+    required: true
+  - key: access_key_id
+    kind: user
+    type: text
+    label: Access key ID
+    required: true
+  - key: secret_access_key
+    kind: user
+    type: secret
+    label: Secret access key
+    required: true
+  - key: region
+    kind: user
+    type: text
+    label: Region
+    advanced: true
+    placeholder: us-east-1
+  - key: folder
+    kind: user
+    type: folder
+    label: Bucket and folder
+    placeholder: All buckets
+    help: Pick a bucket, or a folder inside one. Leave empty to see every bucket the key can list.
+rclone:
+  provider: "{{user.provider}}"
+  endpoint: "{{user.endpoint}}"
+  access_key_id: "{{user.access_key_id}}"
+  secret_access_key: "{{user.secret_access_key}}"
+  region: "{{user.region}}"
+mount:
+  path: "{{user.folder}}"

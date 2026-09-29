@@ -1,0 +1,48 @@
+key: pcloud
+title: pCloud
+blurb: Your pCloud storage, US or EU.
+category: consumer
+rclone_type: pcloud
+auth:
+  kind: oauth2
+  label: pCloud
+  auth_url: https://my.pcloud.com/oauth2/authorize
+  token_url: https://{{dynamic.hostname}}/oauth2_token
+vars:
+  - key: client_id
+    kind: system
+    type: text
+    label: OAuth client ID
+    required: true
+  - key: client_secret
+    kind: system
+    type: secret
+    label: OAuth client secret
+    required: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+  - key: hostname
+    kind: dynamic
+    source: callback
+    default: api.pcloud.com
+  - key: token
+    kind: dynamic
+    source: oauth
+    secret: true
+  - key: account
+    kind: dynamic
+    source: lookup
+    lookup:
+      url: https://{{dynamic.hostname}}/userinfo
+      value: email
+rclone:
+  client_id: "{{system.client_id}}"
+  client_secret: "{{system.client_secret}}"
+  hostname: "{{dynamic.hostname}}"
+  token: "{{dynamic.token}}"
+mount:
+  path: "{{user.folder}}"

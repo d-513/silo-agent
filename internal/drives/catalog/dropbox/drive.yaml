@@ -1,0 +1,47 @@
+key: dropbox
+title: Dropbox
+blurb: Your Dropbox files.
+category: consumer
+rclone_type: dropbox
+auth:
+  kind: oauth2
+  label: Dropbox
+  auth_url: https://www.dropbox.com/oauth2/authorize
+  token_url: https://api.dropboxapi.com/oauth2/token
+  params:
+    token_access_type: offline
+vars:
+  - key: client_id
+    kind: system
+    type: text
+    label: OAuth client ID
+    required: true
+  - key: client_secret
+    kind: system
+    type: secret
+    label: OAuth client secret
+    required: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+  - key: token
+    kind: dynamic
+    source: oauth
+    secret: true
+  - key: account
+    kind: dynamic
+    source: lookup
+    lookup:
+      url: https://api.dropboxapi.com/2/users/get_current_account
+      method: POST
+      body: "null"
+      value: email
+rclone:
+  client_id: "{{system.client_id}}"
+  client_secret: "{{system.client_secret}}"
+  token: "{{dynamic.token}}"
+mount:
+  path: "{{user.folder}}"

@@ -1,0 +1,39 @@
+key: nextcloud
+title: Nextcloud
+blurb: Files on your Nextcloud server.
+category: self-hosted
+rclone_type: webdav
+auth:
+  kind: form
+vars:
+  - key: server
+    kind: user
+    type: url
+    label: Server address
+    placeholder: https://cloud.example.com
+    required: true
+  - key: username
+    kind: user
+    type: text
+    label: Username
+    required: true
+  - key: password
+    kind: user
+    type: secret
+    label: App password
+    required: true
+    obscure: true
+    help: Create one under Settings → Security. It stays on the Silo server; the Bot never sees it.
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+rclone:
+  vendor: nextcloud
+  url: "{{user.server|trimslash}}/remote.php/dav/files/{{user.username|pathescape}}"
+  user: "{{user.username}}"
+  pass: "{{user.password}}"
+mount:
+  path: "{{user.folder}}"

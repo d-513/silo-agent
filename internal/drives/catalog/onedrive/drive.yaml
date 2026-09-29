@@ -1,0 +1,65 @@
+key: onedrive
+title: OneDrive
+blurb: Personal OneDrive or OneDrive for Business.
+category: consumer
+rclone_type: onedrive
+auth:
+  kind: oauth2
+  label: Microsoft
+  auth_url: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+  token_url: https://login.microsoftonline.com/common/oauth2/v2.0/token
+  scopes: ["Files.ReadWrite.All Sites.Read.All User.Read offline_access"]
+vars:
+  - key: client_id
+    kind: system
+    type: text
+    label: OAuth client ID
+    required: true
+  - key: client_secret
+    kind: system
+    type: secret
+    label: OAuth client secret
+    required: true
+  - key: drive_id
+    kind: user
+    type: pick
+    label: Drive
+    required: true
+    auto_pick: true
+    help: Your OneDrive, or a document library you can reach.
+    lookup:
+      url: https://graph.microsoft.com/v1.0/me/drives
+      items: value
+      value: id
+      label: name
+      detail: driveType
+      extra:
+        drive_type: driveType
+  - key: drive_type
+    kind: user
+    type: hidden
+    required: true
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+  - key: token
+    kind: dynamic
+    source: oauth
+    secret: true
+  - key: account
+    kind: dynamic
+    source: lookup
+    lookup:
+      url: https://graph.microsoft.com/v1.0/me
+      value: userPrincipalName
+rclone:
+  client_id: "{{system.client_id}}"
+  client_secret: "{{system.client_secret}}"
+  drive_id: "{{user.drive_id}}"
+  drive_type: "{{user.drive_type}}"
+  token: "{{dynamic.token}}"
+mount:
+  path: "{{user.folder}}"

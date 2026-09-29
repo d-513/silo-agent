@@ -1,0 +1,70 @@
+key: sftp
+title: SFTP
+blurb: Any SSH server.
+category: protocol
+rclone_type: sftp
+auth:
+  kind: form
+vars:
+  - key: host
+    kind: user
+    type: text
+    label: Host
+    placeholder: server.example.com
+    required: true
+  - key: port
+    kind: user
+    type: number
+    label: Port
+    default: "22"
+    advanced: true
+  - key: username
+    kind: user
+    type: text
+    label: Username
+    required: true
+  - key: method
+    kind: user
+    type: select
+    label: Sign in with
+    default: password
+    options:
+      - {value: password, label: Password}
+      - {value: key, label: Private key}
+  - key: password
+    kind: user
+    type: secret
+    label: Password
+    required: true
+    obscure: true
+    visible_if: {method: password}
+  - key: private_key
+    kind: user
+    type: textarea
+    label: Private key
+    secret: true
+    required: true
+    placeholder: "-----BEGIN OPENSSH PRIVATE KEY-----"
+    visible_if: {method: key}
+  - key: key_passphrase
+    kind: user
+    type: secret
+    label: Key passphrase
+    obscure: true
+    visible_if: {method: key}
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Home folder
+    help: A path on the server. Leave empty for the user's home folder.
+rclone:
+  host: "{{user.host}}"
+  port: "{{user.port}}"
+  user: "{{user.username}}"
+  pass: "{{user.password}}"
+  key_pem: "{{user.private_key}}"
+  key_file_pass: "{{user.key_passphrase}}"
+  shell_type: none
+mount:
+  path: "{{user.folder}}"

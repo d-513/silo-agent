@@ -1,0 +1,53 @@
+key: webdav
+title: WebDAV
+blurb: Any WebDAV server.
+category: self-hosted
+rclone_type: webdav
+auth:
+  kind: form
+vars:
+  - key: url
+    kind: user
+    type: url
+    label: WebDAV address
+    placeholder: https://dav.example.com/files
+    required: true
+  - key: vendor
+    kind: user
+    type: select
+    label: Server type
+    default: other
+    options:
+      - {value: other, label: Other}
+      - {value: fastmail, label: Fastmail Files}
+      - {value: sharepoint-ntlm, label: SharePoint (NTLM)}
+      - {value: rclone, label: rclone serve webdav}
+  - key: username
+    kind: user
+    type: text
+    label: Username
+  - key: password
+    kind: user
+    type: secret
+    label: Password
+    obscure: true
+  - key: bearer_token
+    kind: user
+    type: secret
+    label: Bearer token
+    advanced: true
+    help: Instead of a username and password.
+  - key: folder
+    kind: user
+    type: folder
+    label: Folder to mount
+    placeholder: Whole drive
+    help: Only this folder shows up in the Bot. Leave empty to mount everything.
+rclone:
+  url: "{{user.url}}"
+  vendor: "{{user.vendor}}"
+  user: "{{user.username}}"
+  pass: "{{user.password}}"
+  bearer_token: "{{user.bearer_token}}"
+mount:
+  path: "{{user.folder}}"
