@@ -955,6 +955,14 @@ message Connector {
   string category = 23;
   // The `tools.<slug>` name; a chat `call` event's tool is `<slug>.<action>`.
   string slug = 24;
+  // Built-in connectors (transport "builtin") run Go code on the CP. builtin
+  // names the registry entry; fields are its declared config inputs. config
+  // holds the non-secret values; secret values never leave the CP, only
+  // secrets_set lists which are filled.
+  string builtin = 25;
+  repeated ChannelField fields = 26;
+  map<string, string> config = 27;
+  repeated string secrets_set = 28;
 }
 
 message ListConnectorsRequest {}
@@ -1010,6 +1018,8 @@ message UpdateConnectorRequest {
   string prompt = 18;
   bool auto_attach = 19;
   string category = 20;
+  // Built-in config; an empty secret keeps the stored value.
+  map<string, string> config = 21;
 }
 
 message DeleteConnectorRequest {
@@ -1060,6 +1070,8 @@ message CreateBotConnectorRequest {
   repeated EnvInput env = 17;
   string prompt = 18;
   string category = 19;
+  // Built-in config (see Connector.fields).
+  map<string, string> config = 20;
 }
 
 message DetachConnectorRequest {
@@ -1184,6 +1196,8 @@ message ChannelField {
   bool required = 5;
   bool secret = 6;
   repeated ChannelFieldOption options = 7;
+  // Folded under "More settings" (built-in connector server overrides).
+  bool advanced = 8;
 }
 
 message ChannelAdapterAction {

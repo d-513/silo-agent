@@ -193,7 +193,13 @@ type Connector struct {
 	DefaultMode       string
 	Prompt            string
 	AutoAttach        bool `gorm:"index"`
-	CreatedAt         time.Time
+	// Builtin names an internal/builtin registry entry (Transport "builtin").
+	// ConfigJSON holds its plain field values and SecretsJSON the secret ones,
+	// both map[string]string; library rows carry neither.
+	Builtin     string
+	ConfigJSON  string
+	SecretsJSON string
+	CreatedAt   time.Time
 }
 
 type BotConnector struct {

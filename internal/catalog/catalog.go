@@ -40,13 +40,17 @@ type entry struct {
 	StdioCommand string   `json:"stdio_command"`
 	StdioArgs    []string `json:"stdio_args"`
 	StdioImage   string   `json:"stdio_image"`
+	Builtin      string   `json:"builtin"`
 }
 
 // transportOf resolves an entry's transport, defaulting by which endpoint is set.
 func (e entry) transportOf() string {
 	tr := strings.ToLower(strings.TrimSpace(e.Transport))
-	if tr == "http" || tr == "stdio" {
+	if tr == "http" || tr == "stdio" || tr == "builtin" {
 		return tr
+	}
+	if strings.TrimSpace(e.Builtin) != "" {
+		return "builtin"
 	}
 	if strings.TrimSpace(e.StdioCommand) != "" {
 		return "stdio"
@@ -90,6 +94,13 @@ func Load() ([]entry, error) {
 			return nil, fmt.Errorf("catalog entry %d needs key and name", i)
 		}
 		tr := e.transportOf()
+		if tr == "builtin" {
+			// The app checks the key against the builtin registry at seed time.
+			if strings.TrimSpace(e.Builtin) == "" {
+				return nil, fmt.Errorf("catalog entry %s needs builtin", e.Key)
+			}
+			continue
+		}
 		if tr == "stdio" {
 			if strings.TrimSpace(e.StdioCommand) == "" {
 				return nil, fmt.Errorf("catalog entry %s needs stdio_command", e.Key)
@@ -173,6 +184,12 @@ func Seed(gdb *gorm.DB) error {
 			Transport: e.transportOf(), HTTPURL: e.HTTPURL, Auth: auth,
 			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach,
 			CreatedAt: time.Now(),
+		}
+		if row.Transport == "builtin" {
+			row.Type = "builtin"
+			row.Auth = "none"
+			row.HTTPURL = ""
+			row.Builtin = strings.TrimSpace(e.Builtin)
 		}
 		if row.Transport == "stdio" {
 			row.Auth = "none"

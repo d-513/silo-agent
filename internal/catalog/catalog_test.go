@@ -45,6 +45,10 @@ func TestLoad(t *testing.T) {
 			if e.HTTPURL != "" {
 				t.Fatalf("%s: stdio entry must not set http_url", e.Key)
 			}
+		case "builtin":
+			if e.Builtin == "" || e.HTTPURL != "" || e.StdioCommand != "" {
+				t.Fatalf("%s: builtin entry needs builtin and no endpoint", e.Key)
+			}
 		default:
 			t.Fatalf("%s: unknown transport", e.Key)
 		}
@@ -135,17 +139,31 @@ func TestSeedStdio(t *testing.T) {
 		t.Fatal(err)
 	}
 	var row db.Connector
-	if err := gdb.First(&row, "seed_key = ?", "email").Error; err != nil {
+	if err := gdb.First(&row, "seed_key = ?", "obsidian").Error; err != nil {
 		t.Fatal(err)
 	}
 	if row.Transport != "stdio" || row.StdioCommand != "npx" || row.Auth != "none" {
 		t.Fatalf("unexpected stdio seed %+v", row)
 	}
-	if !strings.Contains(row.StdioArgsJSON, "@codefuturist/email-mcp") {
+	if !strings.Contains(row.StdioArgsJSON, "obsidian-mcp-server") {
 		t.Fatalf("args not persisted: %q", row.StdioArgsJSON)
 	}
 	if row.HTTPURL != "" {
 		t.Fatalf("stdio seed kept an http url %q", row.HTTPURL)
+	}
+}
+
+func TestSeedBuiltin(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var row db.Connector
+	if err := gdb.First(&row, "seed_key = ?", "email").Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Transport != "builtin" || row.Builtin != "email" || row.Auth != "none" || row.StdioCommand != "" || row.HTTPURL != "" {
+		t.Fatalf("unexpected builtin seed %+v", row)
 	}
 }
 

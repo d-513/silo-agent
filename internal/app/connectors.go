@@ -33,17 +33,19 @@ import (
 )
 
 const (
-	connTypeMCP     = "mcp"
-	transportHTTP   = "http"
-	transportSTDIO  = "stdio"
-	authNone        = "none"
-	authOAuth       = "oauth"
-	statusNone      = "none"
-	statusInit      = "initializing"
-	statusNeedsAuth = "needs_auth"
-	statusOK        = "authorized"
-	statusErr       = "error"
-	imageMax        = 512 << 10
+	connTypeMCP    = "mcp"
+	transportHTTP  = "http"
+	transportSTDIO = "stdio"
+	// transportBuiltin connectors run Go code on the CP (internal/builtin).
+	transportBuiltin = "builtin"
+	authNone         = "none"
+	authOAuth        = "oauth"
+	statusNone       = "none"
+	statusInit       = "initializing"
+	statusNeedsAuth  = "needs_auth"
+	statusOK         = "authorized"
+	statusErr        = "error"
+	imageMax         = 512 << 10
 
 	// connectorInitWait bounds an async connect+tool-discovery job.
 	connectorInitWait = 10 * time.Minute
@@ -115,6 +117,23 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	if row.Kind == catalog.KindLibrary {
 		row.AutoAttach = m.GetAutoAttach()
 	}
+	if row.Transport == transportBuiltin {
+		// A library preset holds no account: config lives on each Bot copy.
+		if row.Kind == catalog.KindCustom {
+			if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+		}
+		if m.GetDefaultMode() != "" {
+			row.DefaultMode = security.Rule(m.GetDefaultMode())
+		}
+		if err := setConnectorImage(&row, m); err != nil {
+			return nil, err
+		}
+		a.DB.Save(&row)
+		a.restartConnector(&row)
+		return connect.NewResponse(protoConnector(&row, true)), nil
+	}
 	if m.GetTransport() != "" {
 		tr := strings.ToLower(m.GetTransport())
 		if err := checkTransport(tr); err != nil {
@@ -183,18 +202,25 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	} else {
 		row.OAuthClientSecret = ""
 	}
+	if err := setConnectorImage(&row, m); err != nil {
+		return nil, err
+	}
+	a.DB.Save(&row)
+	a.restartConnector(&row)
+	return connect.NewResponse(protoConnector(&row, true)), nil
+}
+
+func setConnectorImage(row *db.Connector, m *v1.UpdateConnectorRequest) error {
 	if m.GetClearImage() {
 		row.Image, row.ImageType = nil, ""
 	} else if len(m.GetImage()) > 0 {
 		img, imgType, err := clipImage(m.GetImage(), m.GetImageType())
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		row.Image, row.ImageType = img, imgType
 	}
-	a.DB.Save(&row)
-	a.restartStdio(&row)
-	return connect.NewResponse(protoConnector(&row, true)), nil
+	return nil
 }
 
 func (a *App) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
@@ -252,6 +278,13 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	}
 	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
+	if lib := a.libraryBuiltin(from); lib != nil {
+		out, err := a.attachBuiltin(ctx, m.GetBotId(), lib, m)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(out), nil
+	}
 	row, err := parseConnector(connectorIn{
 		Name: m.GetName(), Desc: m.GetDescription(), Category: m.GetCategory(), Transport: m.GetTransport(),
 		HTTPURL: m.GetHttpUrl(), Auth: m.GetAuth(), Mode: m.GetDefaultMode(),
@@ -537,9 +570,18 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	runID := req.Msg.GetRunId()
 	tool := slug + "." + action
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
-	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), c.DefaultMode); err != nil {
+	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+	}
+	if c.Transport == transportBuiltin {
+		out, err := a.runBuiltin(ctx, bot, c, action, req.Msg.GetArgsJson())
+		if err != nil {
+			a.emitCallDone(bot.ID, runID, tool, err.Error())
+			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		}
+		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	}
 	sess, err := a.mcpSession(ctx, bc, c)
 	if err != nil {
@@ -828,6 +870,9 @@ func parseVerdict(s string) string {
 }
 
 func (a *App) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+	if c.Transport == transportBuiltin {
+		return a.refreshBuiltin(ctx, row, c)
+	}
 	sess, err := a.mcpSession(ctx, row, c)
 	if err != nil {
 		return err
@@ -843,6 +888,12 @@ func (a *App) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Conn
 	if err != nil {
 		return err
 	}
+	return a.storeTools(row, c, tools)
+}
+
+// storeTools caches a connector's discovered tools, marks it authorized,
+// drops rules for vanished actions, and resyncs the Bot's `tools` package.
+func (a *App) storeTools(row *db.BotConnector, c *db.Connector, tools []mcpx.Tool) error {
 	b, err := json.Marshal(tools)
 	if err != nil {
 		return err
@@ -901,6 +952,10 @@ func (a *App) connectorSections(pc promptContext) []promptSection {
 		slug := toolsgen.Slug(v.conn.Name)
 		switch v.link.AuthStatus {
 		case statusNeedsAuth:
+			if v.conn.Transport == transportBuiltin {
+				fmt.Fprintf(&b, "- `%s` (%s) — not set up yet; the human fills in its settings on the Connectors tab.\n", slug, v.conn.Name)
+				continue
+			}
 			fmt.Fprintf(&b, "- `%s` (%s) — needs Authorize on the Connectors tab.\n", slug, v.conn.Name)
 		case statusInit:
 			fmt.Fprintf(&b, "- `%s` (%s) — still starting up; its tools are not ready yet.\n", slug, v.conn.Name)
@@ -1272,7 +1327,8 @@ func cloneLibrary(lib *db.Connector, botID string) db.Connector {
 		OAuthClientID: lib.OAuthClientID, OAuthClientSecret: lib.OAuthClientSecret,
 		HeadersJSON: lib.HeadersJSON, StdioCommand: lib.StdioCommand,
 		StdioArgsJSON: lib.StdioArgsJSON, StdioImage: lib.StdioImage, EnvJSON: lib.EnvJSON,
-		DefaultMode: lib.DefaultMode, Prompt: lib.Prompt, CreatedAt: time.Now(),
+		DefaultMode: lib.DefaultMode, Prompt: lib.Prompt, Builtin: lib.Builtin,
+		ConfigJSON: lib.ConfigJSON, SecretsJSON: lib.SecretsJSON, CreatedAt: time.Now(),
 	}
 }
 
@@ -1329,6 +1385,9 @@ func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector)
 }
 
 func initDetail(transport string) string {
+	if transport == transportBuiltin {
+		return "Signing in…"
+	}
 	if transport == transportSTDIO {
 		return "Starting MCP server — the first run may download packages…"
 	}
@@ -1428,6 +1487,7 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 		StdioCommand: c.StdioCommand, StdioArgs: mcpbridge.ParseArgs(c.StdioArgsJSON), StdioImage: c.StdioImage,
 		Prompt: c.Prompt, AutoAttach: c.AutoAttach, Slug: toolsgen.Slug(c.Name),
 	}
+	protoBuiltin(c, out)
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
 	for k := range hdr {
 		out.HeaderKeys = append(out.HeaderKeys, &v1.HeaderKey{Name: k})
@@ -1579,7 +1639,9 @@ func mergeEnv(existingJSON string, ins []*v1.EnvInput, requireValue bool) (strin
 	return string(b), nil
 }
 
-func (a *App) restartStdio(c *db.Connector) {
+// restartConnector re-drives a Bot's copy after an edit: a STDIO sidecar is
+// recycled, and a builtin re-checks its config.
+func (a *App) restartConnector(c *db.Connector) {
 	if c == nil || c.Kind != catalog.KindCustom || c.BotID == "" {
 		return
 	}
@@ -1588,7 +1650,7 @@ func (a *App) restartStdio(c *db.Connector) {
 		return
 	}
 	a.dropStdio(&row)
-	if c.Transport != transportSTDIO {
+	if c.Transport != transportSTDIO && c.Transport != transportBuiltin {
 		return
 	}
 	a.applyInit(&row, c.Transport)

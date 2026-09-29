@@ -22,9 +22,9 @@ export async function startConnectorAuth(botId: string, id: string) {
   if (r.authorizeUrl) window.open(r.authorizeUrl, "silo-oauth", "width=480,height=720");
 }
 
-function statusLabel(s: string) {
-  if (s === "authorized") return "Authorized";
-  if (s === "needs_auth") return "Needs authorization";
+function statusLabel(s: string, builtin?: boolean) {
+  if (s === "authorized") return builtin ? "Signed in" : "Authorized";
+  if (s === "needs_auth") return builtin ? "Needs setup" : "Needs authorization";
   if (s === "initializing") return "Initializing";
   if (s === "error") return "Error";
   return "Ready";
@@ -201,7 +201,7 @@ export function BotConnectors({
       closeLibraryModal();
       await load();
       setTab("in_use");
-      if (row.authStatus === "needs_auth") onNeedAuth(row);
+      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") onNeedAuth(row);
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -219,7 +219,7 @@ export function BotConnectors({
       setCustomDraft(emptyDraft());
       await load();
       setTab("in_use");
-      if (row.authStatus === "needs_auth") onNeedAuth(row);
+      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") onNeedAuth(row);
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -452,7 +452,7 @@ export function BotConnectors({
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</span>
-                            <McpChip />
+                            <McpChip transport={c.transport} />
                             {isCustom(c) && <CustomChip />}
                             {c.category && <CategoryChip label={c.category} />}
                           </div>
@@ -469,7 +469,7 @@ export function BotConnectors({
                               <span className={`inline-block h-2 w-2 rounded-full ${statusLamp(row.authStatus)}`} />
                             )}
                             <span className={row.authStatus === "needs_auth" || row.authStatus === "error" ? "text-vermilion" : "text-ink-3"}>
-                              {statusLabel(row.authStatus)}
+                              {statusLabel(row.authStatus, !!c.builtin)}
                             </span>
                             {row.statusDetail && (
                               <span className="truncate text-ink-3">· {row.statusDetail}</span>
@@ -485,15 +485,26 @@ export function BotConnectors({
                     {/* Card Bottom: Actions */}
                     <div className="mt-4 flex items-center justify-between border-t border-line/80 pt-3.5">
                       <div className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">
-                        {c.transport} · {c.auth}
+                        {c.builtin ? "built-in" : `${c.transport} · ${c.auth}`}
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        {row.authStatus === "needs_auth" && (
-                          <Btn kind="primary" onClick={() => authorize(row)}>
-                            Authorize
-                          </Btn>
-                        )}
+                        {row.authStatus === "needs_auth" &&
+                          (c.builtin ? (
+                            <Btn
+                              kind="primary"
+                              onClick={() => {
+                                setEdit(row);
+                                setEditDraft(draftFrom(c));
+                              }}
+                            >
+                              Set up
+                            </Btn>
+                          ) : (
+                            <Btn kind="primary" onClick={() => authorize(row)}>
+                              Authorize
+                            </Btn>
+                          ))}
                         <Btn
                           kind="ghost"
                           onClick={() => {
@@ -608,7 +619,7 @@ export function BotConnectors({
                               <div className="flex flex-wrap items-center gap-2">
                                 <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
                                 <ShieldCheck size={15} className="text-emerald shrink-0" />
-                                <McpChip />
+                                <McpChip transport={c.transport} />
                                 {c.category && <CategoryChip label={c.category} />}
                               </div>
                               <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
@@ -666,7 +677,7 @@ export function BotConnectors({
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
                             <ShieldCheck size={15} className="text-emerald shrink-0" />
-                            <McpChip />
+                            <McpChip transport={c.transport} />
                             {c.category && <CategoryChip label={c.category} />}
                           </div>
                           <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>

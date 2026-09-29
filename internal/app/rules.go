@@ -82,6 +82,9 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 			Title:   c.Name,
 			Summary: fmt.Sprintf("When there is no override, this connector uses %s.", modeWord(c.DefaultMode)),
 		}
+		if c.Transport == transportBuiltin {
+			sec.Summary = "Each action has its own default: reading is allowed, anything that sends or changes mail asks."
+		}
 		var tools []mcpx.Tool
 		_ = json.Unmarshal([]byte(attached[i].ToolsJSON), &tools)
 		if len(tools) == 0 {
@@ -91,7 +94,7 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 			if t.Name == "" {
 				continue
 			}
-			r := a.effectiveRule(botID, slug, t.Name, t.Name, stored, c.DefaultMode)
+			r := a.effectiveRule(botID, slug, t.Name, t.Name, stored, builtinMode(&c, t.Name))
 			sec.Rules = append(sec.Rules, r)
 			out.Rules = append(out.Rules, r)
 		}

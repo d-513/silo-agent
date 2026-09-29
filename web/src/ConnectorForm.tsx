@@ -1,6 +1,7 @@
 import { ChevronRight, Plug } from "lucide-react";
+import { FieldInput } from "./FieldInput";
 import { ToggleRow } from "./Switch";
-import type { Connector } from "./gen/silo/v1/ui_pb";
+import type { ChannelField, Connector } from "./gen/silo/v1/ui_pb";
 
 export type HeaderDraft = { name: string; value: string };
 export type EnvDraft = { name: string; value: string; secret: string };
@@ -29,6 +30,11 @@ export type ConnectorDraft = {
   clearImage: boolean;
   imageId?: string;
   previewUrl?: string;
+  // Built-in connectors: Go-declared fields instead of transport settings.
+  builtin: string;
+  fields: ChannelField[];
+  config: Record<string, string>;
+  secretsSet: string[];
 };
 
 export function emptyDraft(): ConnectorDraft {
@@ -53,6 +59,10 @@ export function emptyDraft(): ConnectorDraft {
     imageType: "",
     hasImage: false,
     clearImage: false,
+    builtin: "",
+    fields: [],
+    config: {},
+    secretsSet: [],
   };
 }
 
@@ -81,10 +91,39 @@ export function draftFrom(c: Connector): ConnectorDraft {
     hasImage: c.hasImage,
     clearImage: false,
     imageId: c.id,
+    builtin: c.builtin || "",
+    fields: c.fields,
+    config: builtinDefaults(c),
+    secretsSet: c.secretsSet,
   };
 }
 
+// builtinDefaults is the form's starting config: the server sends stored
+// values on a Bot copy and the field defaults on a library preset.
+function builtinDefaults(c: Connector): Record<string, string> {
+  if (!c.builtin) return {};
+  const out: Record<string, string> = {};
+  for (const f of c.fields) {
+    if (!f.secret) out[f.key] = c.config[f.key] ?? "";
+  }
+  return out;
+}
+
 export function specOf(d: ConnectorDraft) {
+  if (d.builtin) {
+    return {
+      name: d.name,
+      description: d.description,
+      category: d.category,
+      prompt: d.prompt,
+      autoAttach: d.autoAttach,
+      defaultMode: d.defaultMode,
+      config: d.config,
+      image: d.image,
+      imageType: d.imageType,
+      clearImage: d.clearImage,
+    };
+  }
   return {
     name: d.name,
     description: d.description,
@@ -142,8 +181,38 @@ export function ConnectorMark({
   );
 }
 
-export function McpChip() {
-  return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-[11px] font-medium text-canvas">MCP</span>;
+export function McpChip({ transport }: { transport?: string }) {
+  const label = transport === "builtin" ? "Built-in" : "MCP";
+  return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-[11px] font-medium text-canvas">{label}</span>;
+}
+
+// BuiltinConfig is a built-in connector's account form, generated from the
+// fields its Go code declares. Advanced fields fold under "More settings".
+export function BuiltinConfig({ value, onChange }: { value: ConnectorDraft; onChange: (next: ConnectorDraft) => void }) {
+  const input = (f: ChannelField) => (
+    <FieldInput
+      key={f.key}
+      field={f}
+      value={value.config[f.key] ?? ""}
+      isSet={value.secretsSet.includes(f.key)}
+      setValue={(v) => onChange({ ...value, config: { ...value.config, [f.key]: v } })}
+    />
+  );
+  const more = value.fields.filter((f) => f.advanced);
+  return (
+    <div className="mb-3 space-y-3">
+      {value.fields.filter((f) => !f.advanced).map(input)}
+      {more.length > 0 && (
+        <details className="group">
+          <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
+            <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+            More settings
+          </summary>
+          <div className="mt-3 space-y-3">{more.map(input)}</div>
+        </details>
+      )}
+    </div>
+  );
 }
 
 export function CustomChip() {
@@ -194,6 +263,7 @@ export function ConnectorFields({
   catalogGuide,
   allowStdioImage,
   allowAutoAttach,
+  showConfig = true,
 }: {
   value: ConnectorDraft;
   onChange: (next: ConnectorDraft) => void;
@@ -202,7 +272,10 @@ export function ConnectorFields({
   catalogGuide?: string;
   allowStdioImage?: boolean;
   allowAutoAttach?: boolean;
+  // A library preset holds no account, so the admin form hides the config.
+  showConfig?: boolean;
 }) {
+  const builtin = !!value.builtin;
   function set<K extends keyof ConnectorDraft>(k: K, v: ConnectorDraft[K]) {
     onChange({ ...value, [k]: v });
   }
@@ -275,7 +348,9 @@ export function ConnectorFields({
         )}
       </div>
       <div className="mb-1 text-[12px] font-medium text-ink-3">Type</div>
-      <p className="mb-3 text-ink-2">MCP</p>
+      <p className="mb-3 text-ink-2">{builtin ? "Built-in — runs on the Silo server" : "MCP"}</p>
+      {!builtin && (
+      <>
       <div className="mb-1 text-[12px] font-medium text-ink-3">Transport</div>
       <div className="mb-3">
         <Segmented
@@ -366,8 +441,14 @@ export function ConnectorFields({
           )}
         </>
       )}
+      </>
+      )}
       <div className="mb-1 text-[12px] font-medium text-ink-3">Default for tools</div>
-      <p className="mb-2 text-ink-2">Used when there is no rule for an action. Rules can still override.</p>
+      <p className="mb-2 text-ink-2">
+        {builtin
+          ? "Each action already has its own default (reading allowed, sending asks); this covers anything else. Rules can still override."
+          : "Used when there is no rule for an action. Rules can still override."}
+      </p>
       <div className="mb-3">
         <Segmented
           value={value.defaultMode}
@@ -388,7 +469,7 @@ export function ConnectorFields({
           onChange={(v) => set("autoAttach", v)}
         />
       )}
-      {value.transport === "stdio" ? (
+      {builtin ? null : value.transport === "stdio" ? (
         <>
           <div className="mb-1 text-[12px] font-medium text-ink-3">Environment</div>
           <p className="mb-2 text-ink-2">Values stay on the Control Plane. A secret name reads that Bot secret when the sidecar starts. Docker inspect can still see injected env.</p>
@@ -448,7 +529,23 @@ export function ConnectorFields({
     </>
   );
 
-  if (!fromCatalog) return settings;
+  const config = builtin && showConfig ? <BuiltinConfig value={value} onChange={onChange} /> : null;
+
+  if (!fromCatalog) {
+    if (!config) return settings;
+    return (
+      <>
+        {config}
+        <details className="group mb-6">
+          <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
+            <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+            Advanced settings
+          </summary>
+          <div className="mt-4">{settings}</div>
+        </details>
+      </>
+    );
+  }
 
   return (
     <>
@@ -457,7 +554,7 @@ export function ConnectorFields({
         <div className="min-w-0">
           <div className="text-[22px] leading-7 font-medium tracking-[-0.015em]">{value.name}</div>
           <div className="mt-1 flex items-center gap-2">
-            <McpChip />
+            <McpChip transport={value.builtin ? "builtin" : value.transport} />
             {value.category && <CategoryChip label={value.category} />}
           </div>
         </div>
@@ -468,6 +565,7 @@ export function ConnectorFields({
           <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{catalogGuide}</p>
         </div>
       )}
+      {config}
       <details className="group mb-6">
         <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
           <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
