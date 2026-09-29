@@ -139,11 +139,12 @@ public final class SiloClient: Sendable {
 
     // MARK: - Runs
 
-    public func send(botID: String, chatID: String, text: String) async throws -> Silo_V1_SendResponse {
+    public func send(botID: String, chatID: String, text: String, attachments: [Silo_V1_Attachment] = []) async throws -> Silo_V1_SendResponse {
         var request = Silo_V1_SendRequest()
         request.botID = botID
         request.chatID = chatID
         request.text = text
+        request.attachments = attachments
         let response = await ui.send(request: request, headers: [:])
         return try unwrap(response)
     }
@@ -195,6 +196,67 @@ public final class SiloClient: Sendable {
                 stream.cancel()
             }
         }
+    }
+
+    // MARK: - Models, thinking, compaction, files
+
+    public struct ModelList: Sendable {
+        public var models: [Silo_V1_ModelOption]
+        public var defaultModel: String
+        public var voiceEnabled: Bool
+    }
+
+    public func listModels(botID: String) async throws -> ModelList {
+        var request = Silo_V1_ListModelsRequest()
+        request.botID = botID
+        let response = try unwrap(await ui.listModels(request: request, headers: [:]))
+        return ModelList(models: response.models, defaultModel: response.defaultModel, voiceEnabled: response.voiceEnabled)
+    }
+
+    public func setChatModel(botID: String, chatID: String, model: String) async throws -> Silo_V1_Chat {
+        var request = Silo_V1_SetChatModelRequest()
+        request.botID = botID
+        request.chatID = chatID
+        request.model = model
+        return try unwrap(await ui.setChatModel(request: request, headers: [:]))
+    }
+
+    public func setChatThinking(botID: String, chatID: String, thinking: String) async throws -> Silo_V1_Chat {
+        var request = Silo_V1_SetChatThinkingRequest()
+        request.botID = botID
+        request.chatID = chatID
+        request.thinking = thinking
+        return try unwrap(await ui.setChatThinking(request: request, headers: [:]))
+    }
+
+    public func compactChat(botID: String, chatID: String) async throws {
+        var request = Silo_V1_CompactChatRequest()
+        request.botID = botID
+        request.chatID = chatID
+        _ = try unwrap(await ui.compactChat(request: request, headers: [:]))
+    }
+
+    public func collectMemories(botID: String, chatID: String) async throws {
+        var request = Silo_V1_CollectMemoriesRequest()
+        request.botID = botID
+        request.chatID = chatID
+        _ = try unwrap(await ui.collectMemories(request: request, headers: [:]))
+    }
+
+    public func putFile(botID: String, path: String, data: Data) async throws {
+        var request = Silo_V1_PutFileRequest()
+        request.botID = botID
+        request.path = path
+        request.data = data
+        _ = try unwrap(await ui.putFile(request: request, headers: [:]))
+    }
+
+    public func transcribe(botID: String, audio: Data, mime: String) async throws -> String {
+        var request = Silo_V1_TranscribeRequest()
+        request.botID = botID
+        request.audio = audio
+        request.mime = mime
+        return try unwrap(await ui.transcribe(request: request, headers: [:])).text
     }
 
     // MARK: - Approvals and rules

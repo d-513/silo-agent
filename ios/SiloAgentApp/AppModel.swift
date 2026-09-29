@@ -33,6 +33,14 @@ final class AppModel {
     private(set) var sending = false
     var errorMessage: String?
 
+    // Composer: models, thinking, context, attachments
+    private(set) var models: [Silo_V1_ModelOption] = []
+    private(set) var defaultModel = ""
+    private(set) var voiceEnabled = false
+    private(set) var usage: Usage?
+    private(set) var attachments: [Silo_V1_Attachment] = []
+    var attachError: String?
+
     // Approvals (the Bot's "Needs you" queue, oldest first)
     private(set) var approvals: [Silo_V1_Approval] = []
     /// The approval whose sheet the reader swiped away; a banner brings it back.
@@ -61,6 +69,24 @@ final class AppModel {
     }
 
     var isRunning: Bool { sending || chatBusy(events) }
+
+    var selectedChat: Silo_V1_Chat? {
+        guard let selectedChatID else { return nil }
+        return chats.first { $0.id == selectedChatID }
+    }
+
+    /// The model the next turn uses: the chat's override, else the operator default.
+    var activeModel: String {
+        let chosen = selectedChat?.model ?? ""
+        return chosen.isEmpty ? defaultModel : chosen
+    }
+
+    var activeModelOption: Silo_V1_ModelOption? { models.first { $0.id == activeModel } }
+
+    var thinkingLevels: [String] { activeModelOption?.thinkingLevels ?? [] }
+
+    /// The thinking level that will actually be sent (the chat's choice fitted to the model).
+    var fittedThinking: String { fitThinking(selectedChat?.thinking ?? "", thinkingLevels) }
 
     // MARK: - Session lifecycle
 
@@ -125,6 +151,8 @@ final class AppModel {
         guard let id, id != loadedBotID else { return }
         approvals = []
         dismissedApprovalID = nil
+        usage = nil
+        attachments = []
         stopStream()
         streamingChatID = nil
         loadedBotID = id
@@ -139,6 +167,7 @@ final class AppModel {
         }
         if let first = chats.first { selectChat(first.id) }
         await refreshApprovals()
+        await loadModels(botID: id)
     }
 
     func createBot(name: String, crest: Int32, description: String) async throws -> Silo_V1_Bot {
@@ -167,6 +196,86 @@ final class AppModel {
             errorMessage = describe(error)
         }
         await refreshBots()
+    }
+
+    // MARK: - Composer
+
+    func loadModels(botID: String) async {
+        guard let list = try? await client.listModels(botID: botID), botID == selectedBotID else { return }
+        models = list.models
+        defaultModel = list.defaultModel
+        voiceEnabled = list.voiceEnabled
+    }
+
+    func setModel(_ model: String) async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            replaceChat(try await client.setChatModel(botID: botID, chatID: chatID, model: model))
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func setThinking(_ level: String) async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            replaceChat(try await client.setChatThinking(botID: botID, chatID: chatID, thinking: level))
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func compact() async {
+        guard let botID = selectedBotID, let chatID = selectedChatID, !isRunning else { return }
+        do {
+            try await client.compactChat(botID: botID, chatID: chatID)
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    func collectMemories() async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            try await client.collectMemories(botID: botID, chatID: chatID)
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    /// Uploads to `tmp/<name>` on the Bot's workspace (input only; wiped on container start).
+    func attach(name: String, data: Data) async {
+        guard let botID = selectedBotID else { return }
+        attachError = nil
+        guard selectedBot?.workerConnected == true else {
+            attachError = "Start the Bot to attach files."
+            return
+        }
+        guard data.count <= 50 << 20 else {
+            attachError = "\(name) is larger than 50 MB"
+            return
+        }
+        let safe = name.replacingOccurrences(of: "/", with: "_")
+        let path = "tmp/\(safe)"
+        do {
+            try await client.putFile(botID: botID, path: path, data: data)
+            var item = Silo_V1_Attachment()
+            item.name = safe
+            item.path = path
+            item.size = Int64(data.count)
+            attachments.removeAll { $0.path == path }
+            attachments.append(item)
+        } catch {
+            attachError = describe(error)
+        }
+    }
+
+    func removeAttachment(_ path: String) {
+        attachments.removeAll { $0.path == path }
+    }
+
+    private func replaceChat(_ chat: Silo_V1_Chat) {
+        if let index = chats.firstIndex(where: { $0.id == chat.id }) { chats[index] = chat }
     }
 
     // MARK: - Approvals
@@ -221,6 +330,7 @@ final class AppModel {
         guard id != streamingChatID else { return }
         selectedChatID = id
         events = []
+        usage = nil
         sending = false
         startStream(for: id)
     }
@@ -228,7 +338,7 @@ final class AppModel {
     func send(_ text: String) async {
         guard let botID = selectedBotID else { return }
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
+        guard !message.isEmpty || !attachments.isEmpty else { return }
         errorMessage = nil
         sending = true
         do {
@@ -240,7 +350,8 @@ final class AppModel {
                 selectedChatID = chat.id
                 startStream(for: chat.id)
             }
-            _ = try await client.send(botID: botID, chatID: chatID, text: message)
+            _ = try await client.send(botID: botID, chatID: chatID, text: message, attachments: attachments)
+            attachments = []
             await refreshChats()
             await refreshBots()
         } catch {
@@ -287,6 +398,7 @@ final class AppModel {
                             seen.insert(event.id)
                             after = event.id
                         }
+                        if event.kind == "usage", let usage = Usage(eventBody: event.body) { self.usage = usage }
                         self.events.append(event)
                         self.sending = chatBusy(self.events)
                         if event.kind == "approval" {
