@@ -243,15 +243,22 @@ func (s *Supervisor) Snapshot() []*v1.DriveUp {
 	return out
 }
 
-// StopAll unmounts everything (container shutdown).
+// StopAll unmounts everything (container shutdown), all at once so a Bot
+// with many drives still fits the engine's stop timeout.
 func (s *Supervisor) StopAll() {
 	s.mu.Lock()
 	ms := s.mounts
 	s.mounts = map[string]*mount{}
 	s.mu.Unlock()
+	var wg sync.WaitGroup
 	for _, m := range ms {
-		m.stop()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.stop()
+		}()
 	}
+	wg.Wait()
 }
 
 // Cleanup unmounts and removes leftovers under the mount root from a previous

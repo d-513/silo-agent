@@ -32,6 +32,7 @@ export function FileBrowser({
   source,
   chrome = "surface",
   initialFile = "",
+  initialDir = "",
   headerLeft,
   headerRight,
   onSelect,
@@ -42,6 +43,8 @@ export function FileBrowser({
   source: FsSource;
   chrome?: "surface" | "hatch";
   initialFile?: string;
+  // Open the tree at this folder (its ancestors expand), e.g. a drive.
+  initialDir?: string;
   headerLeft?: ReactNode;
   headerRight?: ReactNode;
   onSelect?: (path: string, dir: boolean) => void;
@@ -67,8 +70,23 @@ export function FileBrowser({
     let dead = false;
     setErr("");
     loadDir("")
-      .then(() => {
-        if (!dead && initialFile) return openFile(initialFile);
+      .then(async () => {
+        if (dead) return;
+        if (initialDir) {
+          const next = new Set([""]);
+          let acc = "";
+          for (const part of initialDir.split("/").filter(Boolean)) {
+            acc = acc ? `${acc}/${part}` : part;
+            next.add(acc);
+            await loadDir(acc);
+            if (dead) return;
+          }
+          setOpen(next);
+          setSel(acc);
+          onSelect?.(acc, true);
+          return;
+        }
+        if (initialFile) return openFile(initialFile);
       })
       .catch((e) => {
         if (!dead) setErr(fail(e));

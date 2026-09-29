@@ -67,8 +67,10 @@ if command -v chcon >/dev/null 2>&1; then chcon -t container_file_t "$0" "$0/$1"
 ' "$R" "$B"
 `
 
-// removeScript deletes root/<bot> in the same namespace, refusing while
-// anything under it is still mounted.
+// removeScript deletes root/<bot> in the same namespace. It runs after the
+// sidecar is gone, so anything still mounted there is a dead FUSE mount (a
+// killed sidecar cannot unmount, and namespace teardown does not propagate an
+// unmount): detach those lazily first, and refuse if one will not let go.
 const removeScript = `set -e
 R="$1"; B="$2"
 P=1
@@ -79,6 +81,9 @@ done
 exec nsenter -t "$P" -m -- sh -c '
 set -e
 [ -d "$0/$1" ] || exit 0
+while read -r _ _ _ _ mp _; do
+  case "$mp" in "$0/$1"/*) umount -l "$mp" 2>/dev/null || true;; esac
+done < /proc/self/mountinfo
 if grep -q " $0/$1/" /proc/self/mountinfo; then echo "drives still mounted" >&2; exit 1; fi
 rm -rf --one-file-system "$0/$1"
 ' "$R" "$B"
@@ -193,10 +198,17 @@ func (e *Engine) CreateDrive(ctx context.Context, spec DriveSpec) (string, error
 	return resp.ID, nil
 }
 
+// DropDrive stops the sidecar gracefully before removing it: on SIGTERM
+// rclone unmounts, and that unmount propagates into the Bot. A plain forced
+// remove kills rclone and leaves dead FUSE mounts behind.
 func (e *Engine) DropDrive(ctx context.Context, botID, containerID string) {
-	_ = e.Remove(ctx, containerID)
-	if botID != "" {
-		_ = e.Remove(ctx, DriveName(botID))
+	timeout := 25
+	for _, id := range []string{containerID, DriveName(botID)} {
+		if id == "" || id == DriveName("") {
+			continue
+		}
+		_ = e.cli.ContainerStop(ctx, id, container.StopOptions{Timeout: &timeout})
+		_ = e.Remove(ctx, id)
 	}
 }
 

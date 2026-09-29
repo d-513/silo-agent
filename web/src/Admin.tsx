@@ -52,6 +52,14 @@ export function AdminLayout() {
           Skills Library
         </NavLink>
         <NavLink
+          to="/admin/drives"
+          className={({ isActive }) =>
+            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
+          }
+        >
+          Drives
+        </NavLink>
+        <NavLink
           to="/admin/search-extract"
           className={({ isActive }) =>
             `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`

@@ -1,5 +1,6 @@
 import { FolderPlus, Plus, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { FileBrowser } from "./FileBrowser";
@@ -13,6 +14,9 @@ function fail(e: unknown) {
 }
 
 export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
+  // ?open=drives/work lands the tree in that folder (Drives → Open in Files).
+  const [params] = useSearchParams();
+  const openAt = params.get("open") ?? "";
   const source = useMemo(() => botSource(bot.id), [bot.id]);
   const [cwd, setCwd] = useState("");
   const [err, setErr] = useState("");
@@ -113,8 +117,9 @@ export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
       )}
       {err && <p className="px-4 py-2 text-vermilion">{err}</p>}
       <FileBrowser
-        key={bot.id}
+        key={`${bot.id}:${openAt}`}
         source={source}
+        initialDir={openAt}
         refreshKey={tick}
         pendingDel={pendingDel}
         onDelete={(e) => void remove(e)}

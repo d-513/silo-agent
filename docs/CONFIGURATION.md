@@ -34,6 +34,9 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL Bot containers and STDIO sidecars use to dial the CP |
 | `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
 | `mcp_stdio_image` | `localhost/silo-mcp-stdio:v1` | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
+| `drives.image` | `localhost/silo-drive:v1` | `SILO_DRIVES__IMAGE` | The rclone drive sidecar (`make drive-image`) |
+| `drives.mount_root` | `<data_dir>/drives-mnt`; on macOS `/var/tmp/silo-drives` | `SILO_DRIVES__MOUNT_ROOT` | Where drive mounts live, as a path the container engine sees. It must be able to carry mount propagation, so on podman machine it is inside the VM, not the virtiofs `data/` share |
+| `drives.cache_max_size` | `10G` | `SILO_DRIVES__CACHE_MAX_SIZE` | rclone VFS cache cap per drive, kept in `data/drives/<bot>/cache` |
 | `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
@@ -55,6 +58,20 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
 | `search.engine` | `duckduckgo_scraper` | `SILO_SEARCH__ENGINE` | Web search engine. Future engines may add keys under `search.<engine_id>` |
 | `connector_vars.<name>` | (none) | `SILO_CONNECTOR_VARS__<NAME>` | Connector variable. Referenced as `${NAME}` in connector settings. **Plain text, not a secret** |
+
+## Drive providers
+
+Drives mount rclone remotes into a Bot at `/workspace/drives/<name>`. Providers that sign in with OAuth (Google Drive, OneDrive, Dropbox, Box, pCloud) need an OAuth client registered once, with redirect URI `{public_url}/oauth/callback`. Set it in **Admin → Drives** or here:
+
+```yaml
+drives:
+  providers:
+    gdrive:
+      client_id: 1234.apps.googleusercontent.com
+      client_secret: GOCSPX-…
+```
+
+Keys are `drives.providers.<template>.<var>`; the env form is `SILO_DRIVES__PROVIDERS__GDRIVE__CLIENT_SECRET`, and env wins. An unknown template or var is rejected. Form-based providers (S3, WebDAV, Nextcloud, SFTP, …) need nothing here.
 
 ## Connector variables
 

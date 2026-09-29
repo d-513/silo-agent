@@ -1,4 +1,4 @@
-import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, Inbox, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { ArrowUp, Book, Box, Brain, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, HardDrive, Inbox, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -27,13 +27,15 @@ import { useSubagents } from "./useSubagents";
 import { FeedPane } from "./Feed";
 import { MemoriesPane } from "./Memories";
 import { AdminConnectors } from "./AdminConnectors";
+import { AdminDrives } from "./AdminDrives";
 import { BotConnectors, startConnectorAuth } from "./BotConnectors";
 import { BotChannels } from "./BotChannels";
+import { BotDrives } from "./BotDrives";
 import { RulesPane } from "./Rules";
 import { AdminSkills, BotSkills, SkillHub } from "./Skills";
 import type { Approval, Bot, BotConnector, Chat, Container, ModelOption, SecretMeta } from "./gen/silo/v1/ui_pb";
 
-const tabs = ["run", "desktop", "files", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
+const tabs = ["run", "desktop", "files", "drives", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
 type NavTab = (typeof tabs)[number];
 // Side tabs live in the chat sidebar (the conversation lifecycle); the top
 // strip is config and machine. The Chat tab stays lit on all of them.
@@ -79,6 +81,7 @@ const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
   run: { label: "Chat", icon: MessageCircle },
   desktop: { label: "Desktop", icon: Monitor },
   files: { label: "Files", icon: Folder },
+  drives: { label: "Drives", icon: HardDrive },
   connectors: { label: "Connectors", icon: Plug },
   channels: { label: "Channels", icon: Radio },
   skills: { label: "Skills", icon: Book },
@@ -1028,6 +1031,7 @@ function SideChip({ to, on, icon: Icon, label, badge = 0 }: { to: string; on: bo
 }
 
 function BotPage() {
+  const { admin } = useAuth();
   const { id, "*": splat } = useParams();
   const nav = useNavigate();
   const { refresh } = useBots();
@@ -1770,6 +1774,11 @@ function BotPage() {
             <BotConnectors botId={id} onNeedAuth={setAuthPrompt} />
           </section>
         )}
+        {tab === "drives" && id && (
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <BotDrives botId={id} sub={parts.slice(1)} admin={admin} />
+          </div>
+        )}
         {tab === "channels" && id && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">
             <BotChannels botId={id} sub={parts.slice(1)} />
@@ -1968,6 +1977,7 @@ function Authed() {
           <Route path="connectors/*" element={<AdminConnectors />} />
           <Route path="skills" element={<AdminSkills />} />
           <Route path="search-extract" element={<AdminSearchExtract />} />
+          <Route path="drives" element={<AdminDrives />} />
           <Route path="debug" element={<AdminDebug />} />
         </Route>
         <Route
