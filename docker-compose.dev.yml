@@ -1,7 +1,8 @@
 # Dev dependencies only. The control plane and Vite run locally (`make dev`).
 #   make db-up     start Postgres (pgvector) on localhost:5433 and the shared
 #                  Lightpanda MCP (HTTP) on localhost:9223/mcp, and smtp4dev
-#                  (SMTP :1025, IMAP :1143, web UI http://localhost:8025)
+#                  (SMTP :1025, IMAP :1143, web UI http://localhost:8025), and
+#                  Radicale CalDAV on http://localhost:5232
 #   make db-psql   open psql
 #   make db-reset  drop the volume (all data)
 name: silodb
@@ -58,5 +59,19 @@ services:
       - "127.0.0.1:8025:80"
     restart: unless-stopped
 
+  # Local CalDAV server for the Calendar built-in connector (Radicale). In the
+  # connector pick Other, URL http://localhost:5232, user/password silo/silo.
+  # Each user gets one "Calendar" collection on first login.
+  radicale:
+    image: docker.io/tomsquest/docker-radicale:latest
+    container_name: silodb-radicale
+    volumes:
+      - ./deploy/radicale:/config:ro
+      - silodb-radicale:/data
+    ports:
+      - "127.0.0.1:5232:5232"
+    restart: unless-stopped
+
 volumes:
+  silodb-radicale:
   silodb-pg:

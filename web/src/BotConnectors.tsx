@@ -55,11 +55,12 @@ function nextCopyName(base: string, names: string[]) {
 type TabMode = "in_use" | "library" | "custom";
 
 // Library presets shown in the Featured band, by their `builtin` key.
-const FEATURED = ["email"];
+const FEATURED = ["email", "calendar"];
 
 // Short selling points under a featured card; falls back to none.
 const featuredPoints: Record<string, string[]> = {
   email: ["Any IMAP / SMTP inbox", "Gmail & Outlook presets", "Sends ask you first"],
+  calendar: ["iCloud, Fastmail, Nextcloud & any CalDAV", "Recurring events & free/busy", "Changes ask you first"],
 };
 
 export function BotConnectors({
@@ -930,7 +931,7 @@ function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number; onAdd:
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_100%_0%,var(--color-cobalt-pale),transparent_60%)]"
       />
-      <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6">
+      <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-start sm:gap-6">
         <div className="shrink-0 rounded-card bg-surface p-2 shadow-card">
           <ConnectorMark id={c.id} hasImage={c.hasImage} size={64} />
         </div>

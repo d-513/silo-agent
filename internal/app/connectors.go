@@ -982,10 +982,20 @@ func (a *App) connectorSections(pc promptContext) []promptSection {
 				}
 				fmt.Fprintf(&b, "- `import tools.%s` — %s\n", slug, strings.Join(names, ", "))
 			}
-			if v.link.AuthStatus == statusOK && strings.TrimSpace(v.conn.Prompt) != "" {
-				prompt := config.ExpandVars(v.conn.Prompt, a.connectorVars())
-				for _, line := range strings.Split(strings.TrimSpace(prompt), "\n") {
-					fmt.Fprintf(&b, "  %s\n", strings.TrimRight(line, "\r"))
+			if v.link.AuthStatus != statusOK {
+				continue
+			}
+			prompt := config.ExpandVars(v.conn.Prompt, a.connectorVars())
+			// A built-in's usage notes live in code, so they stay current on
+			// copies attached before they changed.
+			if bc, ok := builtinOf(&v.conn); ok {
+				if p := strings.TrimSpace(bc.Descriptor().Prompt); p != "" {
+					prompt = strings.TrimSpace(prompt + "\n" + strings.ReplaceAll(p, "{slug}", slug))
+				}
+			}
+			for _, line := range strings.Split(strings.TrimSpace(prompt), "\n") {
+				if line = strings.TrimRight(line, "\r"); line != "" {
+					fmt.Fprintf(&b, "  %s\n", line)
 				}
 			}
 		}

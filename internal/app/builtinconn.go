@@ -14,6 +14,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/builtin"
+	_ "silo.agent/internal/builtin/calendar"
 	_ "silo.agent/internal/builtin/email"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"

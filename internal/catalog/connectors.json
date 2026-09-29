@@ -307,6 +307,18 @@
       "image": "email.svg"
     },
     {
+      "key": "caldav",
+      "name": "Calendar",
+      "description": "Read and manage events on any CalDAV calendar: iCloud, Fastmail, Nextcloud, and more.",
+      "category": "Productivity",
+      "guide": "Built in: Silo talks to your CalDAV server directly. Pick your provider, then sign in with an app password (not your account password) and set your time zone. Listing events and free/busy are allowed; creating, changing, and deleting events ask you first.",
+      "prompt": "Confirm with the human before creating, changing, or deleting events.",
+      "transport": "builtin",
+      "builtin": "calendar",
+      "default_mode": "ask",
+      "image": "calendar.svg"
+    },
+    {
       "key": "resend",
       "name": "Resend",
       "description": "Transactional email sending and templates.",

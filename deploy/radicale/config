@@ -1,0 +1,16 @@
+# Dev-only Radicale for the Calendar built-in connector (docker-compose.dev.yml).
+[server]
+hosts = 0.0.0.0:5232
+
+[auth]
+type = htpasswd
+htpasswd_filename = /config/users
+htpasswd_encryption = plain
+
+[rights]
+type = owner_only
+
+[storage]
+filesystem_folder = /data/collections
+# Every user starts with one event calendar, so the connector finds something.
+predefined_collections = {"calendar": {"tag": "VCALENDAR", "D:displayname": "Calendar", "C:supported-calendar-component-set": "VEVENT,VTODO"}}
