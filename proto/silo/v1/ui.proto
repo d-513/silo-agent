@@ -687,6 +687,10 @@ message Approval {
   string title = 8;
   string summary = 9;
   repeated ApprovalField fields = 10;
+  // Who asked: "Chat · <title>", "Automation · <name>", "Channel · <name>",
+  // "Subagent · <name>", or "Background process" for an orphan call (no live
+  // run; see callRun).
+  string source = 11;
 }
 
 message ListApprovalsRequest {

@@ -250,6 +250,15 @@ func (h *H) WaitApproval(botID string) *v1.Approval {
 	}
 }
 
+// LiveRun marks a finished run running again: the state a Python child sees
+// while its command runs. Worker-side calls from a finished run are orphans.
+func (h *H) LiveRun(runID string) {
+	h.T.Helper()
+	if err := h.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", "running").Error; err != nil {
+		h.T.Fatal(err)
+	}
+}
+
 // WaitBotStatus polls GetBot until the derived status matches want.
 func (h *H) WaitBotStatus(botID, want string) *v1.Bot {
 	h.T.Helper()

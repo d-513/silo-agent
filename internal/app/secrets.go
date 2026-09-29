@@ -69,12 +69,36 @@ func (a *App) ListApprovals(ctx context.Context, req *connect.Request[v1.ListApp
 		return nil, err
 	}
 	var rows []db.Approval
-	a.DB.Where("bot_id = ? AND status = ?", req.Msg.GetBotId(), "pending").Find(&rows)
+	// Oldest first: the slip shows the head, so it must not reshuffle between
+	// polls when two runs ask at once.
+	a.DB.Where("bot_id = ? AND status = ?", req.Msg.GetBotId(), "pending").Order("created_at, id").Find(&rows)
 	out := &v1.ListApprovalsResponse{}
 	for _, r := range rows {
-		out.Approvals = append(out.Approvals, protoApproval(&r))
+		p := protoApproval(&r)
+		p.Source = a.approvalSource(r.RunID)
+		out.Approvals = append(out.Approvals, p)
 	}
 	return connect.NewResponse(out), nil
+}
+
+// approvalSource names who asked for an approval so the slip can say which
+// conversation is paused. A run-less approval came from an orphan call.
+func (a *App) approvalSource(runID string) string {
+	if runID == "" {
+		return "Background process"
+	}
+	kind, name := a.feedSource(a.chatOfRun(runID))
+	switch kind {
+	case "automation":
+		return "Automation · " + name
+	case "channel":
+		return "Channel · " + name
+	case "subagent":
+		return "Subagent · " + name
+	case "chat":
+		return "Chat · " + name
+	}
+	return ""
 }
 
 func protoApproval(r *db.Approval) *v1.Approval {

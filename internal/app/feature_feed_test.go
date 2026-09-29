@@ -170,6 +170,7 @@ func TestFeedPostFromPython(t *testing.T) {
 	chat := h.FirstChat(bot.GetId())
 	run, _ := h.Send(bot.GetId(), chat, "hello")
 	h.WaitRun(run)
+	h.LiveRun(run)
 
 	wc := h.WorkerClient(bot.GetId())
 	call := func(args string) *v1.ToolRes {

@@ -81,6 +81,24 @@ func (a *App) chatOfRun(runID string) string {
 	return r.ChatID
 }
 
+// callRun resolves the run a worker-side call (silo_runtime / CallTool /
+// GetSecret) claims via SILO_RUN_ID. The call is attributed to a chat only
+// while that run is live on this Bot. No run id, an unknown one, another
+// Bot's, or a finished run (a background process that outlived its command,
+// a script started from the Console) makes it an orphan: it still runs under
+// the Bot's rules, but its events and approval belong to no chat.
+func (a *App) callRun(botID, runID string) string {
+	if runID == "" {
+		return ""
+	}
+	var r db.Run
+	a.DB.Select("id", "status").Where("id = ? AND bot_id = ?", runID, botID).Limit(1).Find(&r)
+	if r.ID == "" || r.Status != "running" {
+		return ""
+	}
+	return r.ID
+}
+
 func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq]) (*connect.Response[v1.SecretRes], error) {
 	bot := currentBot(ctx)
 	name := req.Msg.GetName()
@@ -91,7 +109,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	if err := a.DB.First(&sec, "bot_id = ? AND name = ?", bot.ID, name).Error; err != nil {
 		return connect.NewResponse(&v1.SecretRes{Error: "unknown secret"}), nil
 	}
-	runID := req.Msg.GetRunId()
+	runID := a.callRun(bot.ID, req.Msg.GetRunId())
 	tool := security.Key(security.Secrets, name)
 	title := security.Describe(security.Secrets, name, argsJSON(name)).Title
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)

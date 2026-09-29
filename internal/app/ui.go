@@ -403,7 +403,8 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 			if !ok {
 				return connect.NewError(connect.CodeAborted, errors.New("stream overflow"))
 			}
-			if chatID != "" && ev.GetChatId() != "" && ev.GetChatId() != chatID {
+			// Only this chat's events; an orphan (no chat) belongs to none.
+			if chatID != "" && ev.GetChatId() != chatID {
 				continue
 			}
 			if ev.GetId() != "" {

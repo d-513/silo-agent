@@ -56,6 +56,7 @@ export function NeedYouSlip({
   summary,
   fields,
   note,
+  source,
   children,
 }: {
   bot: Bot;
@@ -63,6 +64,7 @@ export function NeedYouSlip({
   summary: string;
   fields?: { label: string; value: string }[];
   note?: string;
+  source?: string;
   children: ReactNode;
 }) {
   const done = useContext(LeavingCtx);
@@ -93,6 +95,7 @@ export function NeedYouSlip({
               <StatusWord status="needs_you" />
             </span>
           </div>
+          {source ? <p className="mb-1 truncate text-[12px] leading-4 font-medium text-ink-3">{source}</p> : null}
           <h2 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">{title}</h2>
           <p className="mb-5 text-[14px] leading-[22px] text-ink-2">{summary}</p>
           {fields && fields.length > 0 && (
@@ -132,9 +135,11 @@ export function ApprovalSlip({
   onAutoApprove?: () => void;
 }) {
   const d = describeApproval(approval);
-  const waiting = approval.runId ? "This run is paused until you choose." : "Waiting for your choice.";
+  // No run: a background process (a script that outlived its command, or one
+  // started from the Console) asked; it waits, but no chat is paused.
+  const waiting = approval.runId ? "This run is paused until you choose." : "The process is waiting for your choice.";
   return (
-    <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting}>
+    <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
       <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
         Allow once
       </Btn>

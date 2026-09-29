@@ -5178,17 +5178,21 @@ func (x *ApprovalField) GetValue() string {
 }
 
 type Approval struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	BotId         string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	Connector     string                 `protobuf:"bytes,4,opt,name=connector,proto3" json:"connector,omitempty"`
-	Action        string                 `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
-	ArgsJson      string                 `protobuf:"bytes,6,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
-	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	Title         string                 `protobuf:"bytes,8,opt,name=title,proto3" json:"title,omitempty"`
-	Summary       string                 `protobuf:"bytes,9,opt,name=summary,proto3" json:"summary,omitempty"`
-	Fields        []*ApprovalField       `protobuf:"bytes,10,rep,name=fields,proto3" json:"fields,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BotId     string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	RunId     string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Connector string                 `protobuf:"bytes,4,opt,name=connector,proto3" json:"connector,omitempty"`
+	Action    string                 `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
+	ArgsJson  string                 `protobuf:"bytes,6,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	Status    string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	Title     string                 `protobuf:"bytes,8,opt,name=title,proto3" json:"title,omitempty"`
+	Summary   string                 `protobuf:"bytes,9,opt,name=summary,proto3" json:"summary,omitempty"`
+	Fields    []*ApprovalField       `protobuf:"bytes,10,rep,name=fields,proto3" json:"fields,omitempty"`
+	// Who asked: "Chat · <title>", "Automation · <name>", "Channel · <name>",
+	// "Subagent · <name>", or "Background process" for an orphan call (no live
+	// run; see callRun).
+	Source        string `protobuf:"bytes,11,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5291,6 +5295,13 @@ func (x *Approval) GetFields() []*ApprovalField {
 		return x.Fields
 	}
 	return nil
+}
+
+func (x *Approval) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
 }
 
 type ListApprovalsRequest struct {
@@ -13134,7 +13145,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x14DeleteSecretResponse\";\n" +
 	"\rApprovalField\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x93\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xab\x02\n" +
 	"\bApproval\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x15\n" +
@@ -13146,7 +13157,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x05title\x18\b \x01(\tR\x05title\x12\x18\n" +
 	"\asummary\x18\t \x01(\tR\asummary\x12.\n" +
 	"\x06fields\x18\n" +
-	" \x03(\v2\x16.silo.v1.ApprovalFieldR\x06fields\"-\n" +
+	" \x03(\v2\x16.silo.v1.ApprovalFieldR\x06fields\x12\x16\n" +
+	"\x06source\x18\v \x01(\tR\x06source\"-\n" +
 	"\x14ListApprovalsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"H\n" +
 	"\x15ListApprovalsResponse\x12/\n" +

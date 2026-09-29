@@ -552,8 +552,9 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	bot := currentBot(ctx)
 	slug := req.Msg.GetConnector()
 	action := req.Msg.GetAction()
+	runID := a.callRun(bot.ID, req.Msg.GetRunId())
 	if security.Reserved(slug) {
-		return a.callBuiltin(ctx, bot, slug, action, req.Msg.GetArgsJson(), req.Msg.GetRunId())
+		return a.callBuiltin(ctx, bot, slug, action, req.Msg.GetArgsJson(), runID)
 	}
 	bc, c, err := a.findBotConnector(bot.ID, slug)
 	if err != nil {
@@ -567,7 +568,6 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 			a.Mask(bot.ID).Add(v)
 		}
 	}
-	runID := req.Msg.GetRunId()
 	tool := slug + "." + action
 	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
 	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
@@ -706,6 +706,10 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 	case security.Artifact:
 		if action != "emit" {
 			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
+		}
+		if runID == "" {
+			// An orphan call has no thread to hold the card.
+			return connect.NewResponse(&v1.ToolRes{Error: "artifact needs a live chat run; this process is not attached to one"}), nil
 		}
 		tool := security.Key(slug, action)
 		title := security.Describe(slug, action, argsJSON).Title

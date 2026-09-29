@@ -387,6 +387,7 @@ func TestTaskboardPythonPath(t *testing.T) {
 	chat := h.FirstChat(id)
 	run, _ := h.Send(id, chat, "Test_SA7_Input")
 	h.WaitRun(run)
+	h.LiveRun(run)
 
 	if res := pyCall(t, h, id, run, "tasks", "add", `{"tasks":["[bob] one","two"]}`); res.GetError() != "" {
 		t.Fatalf("add: %+v", res)

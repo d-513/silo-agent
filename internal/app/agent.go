@@ -356,11 +356,17 @@ func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
 }
 
 // emitMeta is emit with server-only Meta persisted on the row (not sent to
-// viewers).
+// viewers). An event with no run is an orphan (see callRun): it is published
+// to the Bot's bus without a chat, so no thread shows it, and never persisted,
+// since no run would ever replay it.
 func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 	body = validUTF8(a.Mask(botID).Apply(body))
 	tool = validUTF8(tool)
 	id := ids.New()
+	if runID == "" {
+		a.Bus.Publish(botID, &v1.RunEvent{Id: id, Kind: kind, Body: body, Tool: tool})
+		return
+	}
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
 }
