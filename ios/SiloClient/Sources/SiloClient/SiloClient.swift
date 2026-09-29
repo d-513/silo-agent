@@ -529,6 +529,61 @@ public final class SiloClient: Sendable {
         _ = try unwrap(await ui.removeFile(request: request, headers: [:]))
     }
 
+    // MARK: - Skills
+
+    public func listBotSkills(botID: String) async throws -> [Silo_V1_BotSkill] {
+        var request = Silo_V1_ListBotSkillsRequest()
+        request.botID = botID
+        return try unwrap(await ui.listBotSkills(request: request, headers: [:])).skills
+    }
+
+    public func setBotSkill(botID: String, kind: String, name: String, enabled: Bool) async throws {
+        var request = Silo_V1_SetBotSkillRequest()
+        request.botID = botID
+        request.kind = kind
+        request.name = name
+        request.enabled = enabled
+        _ = try unwrap(await ui.setBotSkill(request: request, headers: [:]))
+    }
+
+    public func listSkills(scope: String) async throws -> [Silo_V1_Skill] {
+        var request = Silo_V1_ListSkillsRequest()
+        request.scope = scope
+        return try unwrap(await ui.listSkills(request: request, headers: [:])).skills
+    }
+
+    public func installSkill(scope: String, url: String = "", archive: Data = Data(), filename: String = "") async throws -> Silo_V1_InstallSkillResponse {
+        var request = Silo_V1_InstallSkillRequest()
+        request.scope = scope
+        request.url = url
+        request.archive = archive
+        request.filename = filename
+        return try unwrap(await ui.installSkill(request: request, headers: [:]))
+    }
+
+    public func deleteSkill(scope: String, name: String) async throws {
+        var request = Silo_V1_DeleteSkillRequest()
+        request.scope = scope
+        request.name = name
+        _ = try unwrap(await ui.deleteSkill(request: request, headers: [:]))
+    }
+
+    public func listSkillFiles(scope: String, name: String, path: String) async throws -> [Silo_V1_FileEntry] {
+        var request = Silo_V1_ListSkillFilesRequest()
+        request.scope = scope
+        request.name = name
+        request.path = path
+        return try unwrap(await ui.listSkillFiles(request: request, headers: [:])).entries
+    }
+
+    public func readSkillFile(scope: String, name: String, path: String) async throws -> Silo_V1_ReadFileResponse {
+        var request = Silo_V1_ReadSkillFileRequest()
+        request.scope = scope
+        request.name = name
+        request.path = path
+        return try unwrap(await ui.readSkillFile(request: request, headers: [:]))
+    }
+
     // MARK: - Files
 
     public func readFile(botID: String, path: String) async throws -> Silo_V1_ReadFileResponse {

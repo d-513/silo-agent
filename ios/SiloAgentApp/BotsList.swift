@@ -5,6 +5,7 @@ import SwiftUI
 struct BotsList: View {
     @Environment(AppModel.self) private var model
     @State private var showingNew = false
+    @State private var showingHub = false
 
     var body: some View {
         @Bindable var model = model
@@ -25,6 +26,9 @@ struct BotsList: View {
         }
         .navigationTitle("Bots")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showingHub = true } label: { Label("Skill Hub", systemImage: "book") }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showingNew = true
@@ -46,6 +50,9 @@ struct BotsList: View {
         .refreshable { await model.refreshBots() }
         .sheet(isPresented: $showingNew) {
             NewBotView()
+        }
+        .sheet(isPresented: $showingHub) {
+            SkillHub()
         }
     }
 }
