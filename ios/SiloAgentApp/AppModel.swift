@@ -41,6 +41,10 @@ final class AppModel {
     private(set) var attachments: [Silo_V1_Attachment] = []
     var attachError: String?
 
+    // Subagents and taskboard of the selected lead chat
+    private(set) var subagents: [Silo_V1_Subagent] = []
+    private(set) var board: [Silo_V1_TaskItem] = []
+
     // Approvals (the Bot's "Needs you" queue, oldest first)
     private(set) var approvals: [Silo_V1_Approval] = []
     /// The approval whose sheet the reader swiped away; a banner brings it back.
@@ -51,7 +55,7 @@ final class AppModel {
     var selectedChatID: String?
     var tab: BotTab = .chat
 
-    private var client: SiloClient
+    private(set) var client: SiloClient
     private var streamTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var loadedBotID: String?
@@ -152,6 +156,8 @@ final class AppModel {
         approvals = []
         dismissedApprovalID = nil
         usage = nil
+        subagents = []
+        board = []
         attachments = []
         stopStream()
         streamingChatID = nil
@@ -197,6 +203,45 @@ final class AppModel {
         }
         await refreshBots()
     }
+
+    // MARK: - Subagents and taskboard
+
+    func refreshSubagents() async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        async let items = try? client.getTaskboard(botID: botID, chatID: chatID)
+        async let agents = try? client.listSubagents(botID: botID, chatID: chatID)
+        let (newItems, newAgents) = await (items, agents)
+        guard chatID == selectedChatID else { return }
+        if let newItems { board = newItems }
+        if let newAgents { subagents = newAgents }
+    }
+
+    func stopSubagent(_ id: String) async {
+        guard let botID = selectedBotID else { return }
+        do {
+            try await client.stopSubagent(botID: botID, id: id)
+        } catch {
+            errorMessage = describe(error)
+        }
+        await refreshSubagents()
+    }
+
+    func stopAllSubagents() async {
+        for agent in subagents where agent.running { await stopSubagent(agent.id) }
+    }
+
+    func clearBoard() async {
+        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        do {
+            try await client.clearTaskboard(botID: botID, chatID: chatID)
+        } catch {
+            errorMessage = describe(error)
+        }
+        await refreshSubagents()
+    }
+
+    /// Runs paused on an approval, so the tray can mark those subagents "needs you".
+    var waitingRunIDs: Set<String> { Set(approvals.map(\.runID).filter { !$0.isEmpty }) }
 
     // MARK: - Chat and message actions
 
@@ -391,8 +436,11 @@ final class AppModel {
         selectedChatID = id
         events = []
         usage = nil
+        subagents = []
+        board = []
         sending = false
         startStream(for: id)
+        Task { await refreshSubagents() }
     }
 
     func send(_ text: String) async {
@@ -467,6 +515,10 @@ final class AppModel {
                             seen.insert(event.id)
                             after = event.id
                         }
+                        if event.kind == "board" || event.kind == "subagents" {
+                            await self.refreshSubagents()
+                            continue
+                        }
                         if event.kind == "usage", let usage = Usage(eventBody: event.body) { self.usage = usage }
                         self.events.append(event)
                         self.sending = chatBusy(self.events)
@@ -504,6 +556,7 @@ final class AppModel {
                 guard let self, !Task.isCancelled else { return }
                 await self.refreshBots()
                 await self.refreshApprovals()
+                if self.subagents.contains(where: \.running) { await self.refreshSubagents() }
             }
         }
     }

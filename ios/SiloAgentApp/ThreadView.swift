@@ -4,17 +4,22 @@ import SwiftUI
 
 struct ThreadView: View {
     @Environment(AppModel.self) private var model
+    /// The events to render; the chat passes `model.events`, a log page its own stream.
+    var events: [Silo_V1_RunEvent]
+    var busy: Bool
+    /// Edit/delete/branch only apply to the selected web chat.
+    var interactive = true
     @State private var editing: Block?
     @State private var editText = ""
     @State private var deleting: Block?
 
     var body: some View {
-        let blocks = foldEvents(model.events)
+        let blocks = foldEvents(events)
         let lastUserID = blocks.last(where: { $0.kind == .user && $0.from.isEmpty })?.id
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    if blocks.isEmpty && !model.isRunning {
+                    if blocks.isEmpty && !busy {
                         Text("Send a message to start.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
@@ -24,7 +29,7 @@ struct ThreadView: View {
                     ForEach(blocks) { block in
                         BlockView(block: block)
                             .id(block.id)
-                            .contextMenu { menu(for: block, isLastUser: block.id == lastUserID) }
+                            .contextMenu { menu(for: block, isLastUser: interactive && block.id == lastUserID) }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -32,14 +37,14 @@ struct ThreadView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDismissesKeyboard(.interactively)
-            .onChange(of: model.events.count) { _, _ in
-                guard let last = foldEvents(model.events).last else { return }
+            .onChange(of: events.count) { _, _ in
+                guard let last = blocks.last else { return }
                 withAnimation(.easeOut(duration: 0.15)) {
                     proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
             .onAppear {
-                guard let last = foldEvents(model.events).last else { return }
+                guard let last = blocks.last else { return }
                 proxy.scrollTo(last.id, anchor: .bottom)
             }
         }
@@ -60,7 +65,7 @@ struct ThreadView: View {
         switch block.kind {
         case .user:
             Button { UIPasteboard.general.string = block.text } label: { Label("Copy", systemImage: "doc.on.doc") }
-            if !block.eventID.isEmpty {
+            if interactive && !block.eventID.isEmpty {
                 Button { Task { await model.diverge(eventID: block.eventID) } } label: {
                     Label("Branch into new chat", systemImage: "arrow.triangle.branch")
                 }

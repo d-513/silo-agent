@@ -198,6 +198,43 @@ public final class SiloClient: Sendable {
         }
     }
 
+    // MARK: - Subagents and taskboard
+
+    public func listSubagents(botID: String, chatID: String) async throws -> [Silo_V1_Subagent] {
+        var request = Silo_V1_ListSubagentsRequest()
+        request.botID = botID
+        request.chatID = chatID
+        return try unwrap(await ui.listSubagents(request: request, headers: [:])).subagents
+    }
+
+    public func getSubagent(botID: String, id: String) async throws -> Silo_V1_Subagent {
+        var request = Silo_V1_GetSubagentRequest()
+        request.botID = botID
+        request.id = id
+        return try unwrap(await ui.getSubagent(request: request, headers: [:]))
+    }
+
+    public func stopSubagent(botID: String, id: String) async throws {
+        var request = Silo_V1_StopSubagentRequest()
+        request.botID = botID
+        request.id = id
+        _ = try unwrap(await ui.stopSubagent(request: request, headers: [:]))
+    }
+
+    public func getTaskboard(botID: String, chatID: String) async throws -> [Silo_V1_TaskItem] {
+        var request = Silo_V1_GetTaskboardRequest()
+        request.botID = botID
+        request.chatID = chatID
+        return try unwrap(await ui.getTaskboard(request: request, headers: [:])).items
+    }
+
+    public func clearTaskboard(botID: String, chatID: String) async throws {
+        var request = Silo_V1_ClearTaskboardRequest()
+        request.botID = botID
+        request.chatID = chatID
+        _ = try unwrap(await ui.clearTaskboard(request: request, headers: [:]))
+    }
+
     // MARK: - Chat management and message actions
 
     public func renameChat(botID: String, chatID: String, title: String) async throws -> Silo_V1_Chat {

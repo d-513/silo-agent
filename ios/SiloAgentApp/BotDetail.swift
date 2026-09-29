@@ -81,7 +81,9 @@ struct BotDetail: View {
         switch model.tab {
         case .chat:
             if model.selectedChatID != nil {
-                ThreadView()
+                TaskboardStrip()
+                ThreadView(events: model.events, busy: model.isRunning)
+                SubagentTray()
                 ComposerView()
             } else {
                 ContentUnavailableView(
