@@ -95,6 +95,10 @@ struct BotDetail: View {
         case .automations: AutomationsPage()
         case .memories: MemoriesPage()
         case .feed: FeedPage()
+        case .rules: RulesPage()
+        case .secrets: SecretsPage()
+        case .container: ContainersPage()
+        case .settings: BotSettingsPage()
         default:
             PlaceholderPane(tab: model.tab)
         }

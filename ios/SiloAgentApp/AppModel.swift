@@ -268,6 +268,17 @@ final class AppModel {
         selectChat(chat.id)
     }
 
+    /// After `DeleteBot`: drop the row and leave the Bot's pages.
+    func botDeleted(_ id: String) async {
+        stopStream()
+        selectedBotID = nil
+        selectedChatID = nil
+        loadedBotID = nil
+        chats = []
+        events = []
+        await refreshBots()
+    }
+
     /// Replaces the Bot row (after an edit) so the header and lists update without waiting for the poll.
     func applyBot(_ bot: Silo_V1_Bot) {
         if let index = bots.firstIndex(where: { $0.id == bot.id }) { bots[index] = bot }
