@@ -84,8 +84,8 @@ func (a *App) walkWorker(ctx context.Context, botID, path string, max int32) ([]
 	return out.Files, out.Truncated, nil
 }
 
-func (a *App) extractWorker(ctx context.Context, botID, path string) (extracted, error) {
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Extract{Extract: &v1.ExtractCmd{Path: path}}})
+func (a *App) extractWorker(ctx context.Context, botID, path string, ocr bool) (extracted, error) {
+	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Extract{Extract: &v1.ExtractCmd{Path: path, Ocr: ocr}}})
 	if err != nil {
 		return extracted{}, err
 	}
@@ -147,8 +147,14 @@ func capRunes(s string, n int) string {
 
 // sourceUnchanged is the cheap check: same size and mtime means the file was
 // not touched, so it is not read at all (on a drive that read is a download).
-func sourceUnchanged(old *db.KnowledgeSource, wf walkEntry, model string, now time.Time) bool {
+//
+// A file that was reported as a scan while OCR was off is read again once OCR
+// is on (ocrNow); one that OCR already looked at is not.
+func sourceUnchanged(old *db.KnowledgeSource, wf walkEntry, model string, ocrNow bool, now time.Time) bool {
 	if old.Size != wf.Size || old.Mtime != wf.Mtime {
+		return false
+	}
+	if ocrNow && waitsForOCR(old) {
 		return false
 	}
 	switch old.Status {
@@ -161,10 +167,16 @@ func sourceUnchanged(old *db.KnowledgeSource, wf walkEntry, model string, now ti
 	}
 }
 
+// ocrOffNote is how the worker words a scan it did not read; see ocr.go.
+const ocrOffNote = "OCR is off"
+
+func waitsForOCR(s *db.KnowledgeSource) bool { return strings.Contains(s.Detail, ocrOffNote) }
+
 // syncFolder does the work; the caller records the outcome. The returned note
 // is shown beside an otherwise healthy folder (a truncated walk).
 func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, error) {
 	model := a.embedModelID()
+	ocr := a.cfg().Knowledge.OCR
 	files, truncated, err := a.walkWorker(ctx, f.BotID, f.Path, knowledgeMaxFiles)
 	if err != nil {
 		return "", fmt.Errorf("cannot read %s: %w", f.Path, err)
@@ -186,7 +198,7 @@ func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, er
 	now := time.Now()
 	for _, wf := range files {
 		seen[wf.Path] = true
-		if old := byPath[wf.Path]; old != nil && sourceUnchanged(old, wf, model, now) {
+		if old := byPath[wf.Path]; old != nil && sourceUnchanged(old, wf, model, ocr, now) {
 			continue
 		}
 		todo = append(todo, wf)
@@ -212,7 +224,7 @@ func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, er
 			return "", err
 		}
 		old := byPath[wf.Path]
-		ex, err := a.extractWorker(ctx, f.BotID, wf.Path)
+		ex, err := a.extractWorker(ctx, f.BotID, wf.Path, ocr)
 		if err != nil {
 			// A worker that went away ends the sweep; a file that cannot be
 			// read is that file's problem.
@@ -226,7 +238,7 @@ func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, er
 			a.saveSource(f, old, wf, model, "skipped", ex.Sha256, ex.Detail, nil)
 			continue
 		}
-		if old != nil && old.Status == "ok" && old.Hash == ex.Sha256 && old.EmbedModel == model {
+		if old != nil && old.Status == "ok" && old.Hash == ex.Sha256 && old.EmbedModel == model && !(ocr && waitsForOCR(old)) {
 			a.DB.Model(old).Updates(map[string]any{"size": wf.Size, "mtime": wf.Mtime})
 			continue
 		}
@@ -240,9 +252,9 @@ func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, er
 		}
 		chunks := rag.Split(ex.Text)
 		if len(chunks) == 0 {
-			detail := "no text found"
-			if ex.Kind == "pdf" {
-				detail = "no text layer (a scan? OCR is not supported yet)"
+			detail := ex.Detail
+			if detail == "" {
+				detail = "no text found"
 			}
 			a.saveSource(f, old, wf, model, "skipped", ex.Sha256, detail, nil)
 			continue
@@ -255,9 +267,12 @@ func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, er
 		if err != nil {
 			return "", providerError{err}
 		}
-		detail := ""
+		detail := ex.Detail
 		if ex.Truncated {
-			detail = "only the first part of this file is indexed"
+			if detail != "" {
+				detail += "; "
+			}
+			detail += "only the first part of this file is indexed"
 		}
 		a.saveSource(f, old, wf, model, "ok", ex.Sha256, detail, &indexed{chunks: chunks, vecs: vecs})
 	}

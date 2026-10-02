@@ -3,6 +3,7 @@ package app_test
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -511,5 +512,47 @@ func TestKnowledgePythonPathIsStructuredAndGated(t *testing.T) {
 	}
 	if res := pyCall(t, f.h, f.botID, "", "bot", "search_docs", `{"query":"deploy"}`); res.GetError() != "denied" {
 		t.Fatalf("deny rule: %+v", res)
+	}
+}
+
+func TestKnowledgeImagesAreReportedWhenOCRIsOff(t *testing.T) {
+	dummy.Reset()
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(dir)+"knowledge:\n  ocr: false\n"))
+	bot := h.CreateBot("NoOCR")
+	w := h.StartWorker(bot.GetId())
+	f := &knowledgeFixture{h: h, botID: bot.GetId(), ws: w.Workspace}
+	f.write(t, "docs/notes.md", "# Notes\n\nplain readable notes about turbines\n")
+	f.write(t, "docs/shot.png", strings.Repeat("x", 20<<10))
+	res, err := h.Client.AddKnowledgeFolder(h.Ctx(), connect.NewRequest(&v1.AddKnowledgeFolderRequest{BotId: bot.GetId(), Path: "docs"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.folder = res.Msg
+	f.sync(t)
+	fo := f.list(t)
+	if fo.GetFiles() != 1 || fo.GetSkipped() != 1 || len(fo.GetIssues()) != 1 {
+		t.Fatalf("folder = %+v", fo)
+	}
+	if i := fo.GetIssues()[0]; i.GetPath() != "docs/shot.png" || !strings.Contains(i.GetDetail(), "OCR is off") {
+		t.Fatalf("issue = %+v", i)
+	}
+}
+
+func TestKnowledgeOCRFailureIsThatFilesProblem(t *testing.T) {
+	if _, err := exec.LookPath("tesseract"); err == nil {
+		t.Skip("tesseract is installed here; this test needs it absent")
+	}
+	f := newKnowledge(t, "docs", map[string]string{
+		"docs/notes.md": "# Notes\n\nplain readable notes about turbines\n",
+		"docs/shot.png": strings.Repeat("x", 20<<10),
+	})
+	fo := f.list(t)
+	// One unreadable image must not fail the folder or hide the other file.
+	if fo.GetStatus() != "idle" || fo.GetFiles() != 1 || len(fo.GetIssues()) != 1 || !strings.Contains(fo.GetIssues()[0].GetDetail(), "tesseract") {
+		t.Fatalf("folder = %+v issues=%+v", fo, fo.GetIssues())
+	}
+	if hits := f.search(t, "notes about turbines"); len(hits) == 0 || hits[0].GetPath() != "docs/notes.md" {
+		t.Fatalf("hits = %+v", hits)
 	}
 }

@@ -97,6 +97,35 @@ channels, and MCP — so they cost money. They never gate `make test`.
 - Reserve real network/MCP expectations for the integration tier.
 - Keep every test hermetic: temp dirs, in-memory DB, no shared global state.
 
+#### On macOS (podman machine)
+
+The default socket is the Linux path `/run/user/1000/podman/podman.sock`. On a
+Mac, point `DOCKER_HOST` at the machine's socket or the container tests fail
+with "Cannot connect to the Docker daemon":
+
+```sh
+export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')
+go test ./internal/app/ -run 'TestContainer'
+```
+
+#### Worker tests in the bot image
+
+Some worker tests need the image's tools (pdftotext, pandoc, tesseract, python3
+with PIL/reportlab) and skip on a host without them: the PDF, Word and OCR
+extraction tests in `cmd/silo-worker`. Run them for real inside the image by
+cross-compiling the test binary and mounting it (use `GOARCH=amd64` on an Intel
+machine):
+
+```sh
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c -o /tmp/worker.test ./cmd/silo-worker
+podman run --rm -v /tmp/worker.test:/worker.test:ro localhost/silo-bot:v1 \
+  /worker.test -test.run 'Extract|Walk|OCR' -test.v
+```
+
+`TestContainerKnowledgeAllFormats` (container tier) covers the same tools end
+to end: markdown, docx, a text PDF, a scanned PDF and a PNG are indexed in a
+real box and found through `SearchKnowledge`.
+
 ## Environment knobs
 
 | Variable | Effect |

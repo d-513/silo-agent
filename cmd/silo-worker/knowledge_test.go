@@ -148,7 +148,12 @@ type extractOut struct {
 
 func runExtract(t *testing.T, w *worker, path string, max int64) extractOut {
 	t.Helper()
-	raw, err := w.extract(context.Background(), path, max)
+	return runExtractOCR(t, w, path, max, false)
+}
+
+func runExtractOCR(t *testing.T, w *worker, path string, max int64, ocr bool) extractOut {
+	t.Helper()
+	raw, err := w.extract(context.Background(), path, max, ocr)
 	if err != nil {
 		t.Fatalf("extract %s: %v", path, err)
 	}
@@ -221,10 +226,10 @@ func TestExtractMissingAndDirectory(t *testing.T) {
 	ws := t.TempDir()
 	writeTree(t, ws, map[string]string{"d/x.txt": "x"})
 	w := &worker{workspace: ws}
-	if _, err := w.extract(context.Background(), "gone.txt", 0); err == nil {
+	if _, err := w.extract(context.Background(), "gone.txt", 0, false); err == nil {
 		t.Fatal("missing file must error")
 	}
-	if _, err := w.extract(context.Background(), "d", 0); err == nil {
+	if _, err := w.extract(context.Background(), "d", 0, false); err == nil {
 		t.Fatal("directory must error")
 	}
 }
@@ -277,7 +282,7 @@ func TestExtractMissingToolIsAnError(t *testing.T) {
 	writeTree(t, ws, map[string]string{"x.pdf": "%PDF-1.4 not really"})
 	w := &worker{workspace: ws}
 	t.Setenv("PATH", t.TempDir()) // no pdftotext anywhere
-	if _, err := w.extract(context.Background(), "x.pdf", 0); err == nil {
+	if _, err := w.extract(context.Background(), "x.pdf", 0, false); err == nil {
 		t.Fatal("a missing extractor must be an error the CP can show")
 	}
 }

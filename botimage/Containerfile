@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo 'silo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/silo \
     && chmod 440 /etc/sudoers.d/silo \
     && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir playwright python-pptx
+# Language packs for OCR of scanned documents (tesseract uses every installed
+# pack; English comes with tesseract-ocr). Its own layer so adding a language
+# does not rebuild the big one above.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-pol \
+    && rm -rf /var/lib/apt/lists/*
 COPY bin/silo-worker /usr/local/bin/silo-worker
 COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
 COPY botimage/silo-chromium /usr/local/bin/silo-chromium

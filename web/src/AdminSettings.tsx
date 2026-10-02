@@ -33,6 +33,7 @@ const LABELS: Record<string, string> = {
   "memory.collect": "Collect from idle chats",
   "knowledge.enabled": "Document search",
   "knowledge.sync_interval": "Re-check folders every",
+  "knowledge.ocr": "Read scans and images (OCR)",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
@@ -55,6 +56,7 @@ const HINTS: Record<string, string> = {
   "runs.max_duration": "How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this.",
   embedding_model: "For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync).",
   "knowledge.sync_interval": "A Go duration such as 15m or 1h (minimum 1m).",
+  "knowledge.ocr": "Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those.",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
 
@@ -69,7 +71,7 @@ const MEMORY_NOTE =
   "Auto-recall puts up to 3 long-term memories close to the opening message into each run. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.";
 
 const KNOWLEDGE_NOTE =
-  "Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays.";
+  "Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.";
 
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 

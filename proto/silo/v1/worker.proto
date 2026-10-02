@@ -124,6 +124,9 @@ message ExtractCmd {
   string path = 1;
   // Cap on the returned text (0 = worker default).
   int64 max_bytes = 2;
+  // Read scanned PDF pages and image files with tesseract. Off, a scan is
+  // reported (detail says OCR is off) instead of read.
+  bool ocr = 3;
 }
 
 message MkdirCmd {

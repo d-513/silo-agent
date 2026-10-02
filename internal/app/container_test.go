@@ -49,6 +49,7 @@ cp_url: http://host.containers.internal:%d
 bot_image: %s
 model: dummy/echo
 model_title: dummy/echo
+embedding_model: dummy/embed
 models:
   - dummy/echo
 providers:

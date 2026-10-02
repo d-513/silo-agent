@@ -1201,7 +1201,10 @@ type ExtractCmd struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Path  string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	// Cap on the returned text (0 = worker default).
-	MaxBytes      int64 `protobuf:"varint,2,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
+	MaxBytes int64 `protobuf:"varint,2,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
+	// Read scanned PDF pages and image files with tesseract. Off, a scan is
+	// reported (detail says OCR is off) instead of read.
+	Ocr           bool `protobuf:"varint,3,opt,name=ocr,proto3" json:"ocr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1248,6 +1251,13 @@ func (x *ExtractCmd) GetMaxBytes() int64 {
 		return x.MaxBytes
 	}
 	return 0
+}
+
+func (x *ExtractCmd) GetOcr() bool {
+	if x != nil {
+		return x.Ocr
+	}
+	return false
 }
 
 type MkdirCmd struct {
@@ -2358,11 +2368,12 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x03R\x05limit\":\n" +
 	"\aWalkCmd\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1b\n" +
-	"\tmax_files\x18\x02 \x01(\x05R\bmaxFiles\"=\n" +
+	"\tmax_files\x18\x02 \x01(\x05R\bmaxFiles\"O\n" +
 	"\n" +
 	"ExtractCmd\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1b\n" +
-	"\tmax_bytes\x18\x02 \x01(\x03R\bmaxBytes\"\x1e\n" +
+	"\tmax_bytes\x18\x02 \x01(\x03R\bmaxBytes\x12\x10\n" +
+	"\x03ocr\x18\x03 \x01(\bR\x03ocr\"\x1e\n" +
 	"\bMkdirCmd\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"\x1f\n" +
 	"\tRemoveCmd\x12\x12\n" +

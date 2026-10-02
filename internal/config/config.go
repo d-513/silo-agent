@@ -93,6 +93,9 @@ type Knowledge struct {
 	// duration such as 15m or 1h). Drive folders are checked four times less
 	// often: every look is a network round trip.
 	SyncInterval string `koanf:"sync_interval"`
+	// OCR reads scanned PDF pages and image files with tesseract. Off, they are
+	// listed as not indexed. A folder of photos makes this slow: turn it off.
+	OCR bool `koanf:"ocr"`
 }
 
 // DefaultKnowledgeInterval is the folder re-check cadence when unset or
@@ -387,6 +390,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "memory.collect", Type: "bool"},
 	{Key: "knowledge.enabled", Type: "bool"},
 	{Key: "knowledge.sync_interval"},
+	{Key: "knowledge.ocr", Type: "bool"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},
@@ -515,6 +519,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("memory.collect", true)
 	_ = k.Set("knowledge.enabled", true)
 	_ = k.Set("knowledge.sync_interval", "15m")
+	_ = k.Set("knowledge.ocr", true)
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")

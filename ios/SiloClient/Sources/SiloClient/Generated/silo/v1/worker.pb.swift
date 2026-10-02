@@ -461,6 +461,10 @@ public nonisolated struct Silo_V1_ExtractCmd: Sendable {
   /// Cap on the returned text (0 = worker default).
   public var maxBytes: Int64 = 0
 
+  /// Read scanned PDF pages and image files with tesseract. Off, a scan is
+  /// reported (detail says OCR is off) instead of read.
+  public var ocr: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1697,7 +1701,7 @@ nonisolated extension Silo_V1_WalkCmd: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ExtractCmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}max_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}max_bytes\0\u{1}ocr\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1707,6 +1711,7 @@ nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
       case 2: try { try decoder.decodeSingularInt64Field(value: &self.maxBytes) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.ocr) }()
       default: break
       }
     }
@@ -1719,12 +1724,16 @@ nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._
     if self.maxBytes != 0 {
       try visitor.visitSingularInt64Field(value: self.maxBytes, fieldNumber: 2)
     }
+    if self.ocr != false {
+      try visitor.visitSingularBoolField(value: self.ocr, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_ExtractCmd, rhs: Silo_V1_ExtractCmd) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.maxBytes != rhs.maxBytes {return false}
+    if lhs.ocr != rhs.ocr {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

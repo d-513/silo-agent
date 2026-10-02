@@ -288,7 +288,7 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 	case *v1.Cmd_Walk:
 		return w.walk(b.Walk.GetPath(), int(b.Walk.GetMaxFiles()))
 	case *v1.Cmd_Extract:
-		return w.extract(ctx, b.Extract.GetPath(), b.Extract.GetMaxBytes())
+		return w.extract(ctx, b.Extract.GetPath(), b.Extract.GetMaxBytes(), b.Extract.GetOcr())
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:

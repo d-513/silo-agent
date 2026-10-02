@@ -120,9 +120,11 @@ type extractResult struct {
 // extract reads one file and returns its plain text and the sha256 of all its
 // bytes. Text files are read as is, PDFs go through pdftotext (form feeds mark
 // pages), word-processor files through pandoc, legacy .doc through catdoc;
-// anything else is sniffed and skipped when binary. A missing extractor is an
-// error so the owner sees why a file was not indexed.
-func (w *worker) extract(ctx context.Context, p string, max int64) (string, error) {
+// anything else is sniffed and skipped when binary. With ocr, scanned PDF
+// pages and image files are read with tesseract (ocr.go); without it they are
+// reported, not read. A missing extractor is an error so the owner sees why a
+// file was not indexed.
+func (w *worker) extract(ctx context.Context, p string, max int64, ocr bool) (string, error) {
 	full, err := w.resolve(p)
 	if err != nil {
 		return "", err
@@ -142,6 +144,17 @@ func (w *worker) extract(ctx context.Context, p string, max int64) (string, erro
 		res.Detail = fmt.Sprintf("file too large (%d bytes, max %d)", st.Size(), extractFileMax)
 		return marshalExtract(res)
 	}
+	ext := strings.ToLower(filepath.Ext(full))
+	if imageExts[ext] {
+		if !ocr {
+			res.Detail = "image (" + ocrOffNote + ")"
+			return marshalExtract(res)
+		}
+		if st.Size() < ocrMinImageBytes {
+			res.Detail = "image too small to hold text"
+			return marshalExtract(res)
+		}
+	}
 	f, err := os.Open(full)
 	if err != nil {
 		return "", err
@@ -149,14 +162,23 @@ func (w *worker) extract(ctx context.Context, p string, max int64) (string, erro
 	defer f.Close()
 	h := sha256.New()
 	var text string
-	switch strings.ToLower(filepath.Ext(full)) {
-	case ".pdf":
+	switch {
+	case imageExts[ext]:
+		res.Kind = "image"
+		text, err = hashThenRunOCR(ctx, f, h, "tesseract", full, "stdout", "-l", ocrLangs())
+		if err == nil && !looksLikeText(text) {
+			text, res.Detail = "", "no text found in the image"
+		}
+	case ext == ".pdf":
 		res.Kind = "pdf"
 		text, err = hashThenRun(ctx, f, h, "pdftotext", "-layout", full, "-")
-	case ".docx", ".odt", ".rtf", ".epub", ".html", ".htm":
+		if err == nil {
+			text, res.Detail = ocrPDF(ctx, full, text, ocr)
+		}
+	case ext == ".docx" || ext == ".odt" || ext == ".rtf" || ext == ".epub" || ext == ".html" || ext == ".htm":
 		res.Kind = "document"
 		text, err = hashThenRun(ctx, f, h, "pandoc", "-t", "gfm", "--wrap=none", full)
-	case ".doc":
+	case ext == ".doc":
 		res.Kind = "document"
 		text, err = hashThenRun(ctx, f, h, "catdoc", full)
 	default:
@@ -213,6 +235,18 @@ func looksBinary(data []byte) bool {
 		i += n
 	}
 	return bad*100 > len(head) // over 1% of bytes
+}
+
+// hashThenRunOCR is hashThenRun for tesseract, which gets a single thread per
+// process: pages run in parallel instead, which scales better than OpenMP.
+func hashThenRunOCR(ctx context.Context, f io.Reader, h io.Writer, name string, args ...string) (string, error) {
+	if _, err := exec.LookPath(name); err != nil {
+		return "", fmt.Errorf("%s is not installed in this Bot's image", name)
+	}
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return runOCRTool(ctx, name, args...)
 }
 
 // hashThenRun hashes the file, then converts it. The converter is looked up

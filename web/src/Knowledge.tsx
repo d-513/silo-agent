@@ -373,7 +373,7 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
       {!enabled && <p className="mb-4 text-[13px] text-vermilion">The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.</p>}
       <Panel
         title="Indexed folders"
-        note="PDFs, Word and OpenDocument files, HTML, Markdown, and plain text or code. Changes are picked up every few minutes, sooner when the Bot or you write there. Scanned PDFs need OCR and are skipped for now."
+        note="PDFs, Word and OpenDocument files, HTML, Markdown, and plain text or code. Scanned PDF pages and images (English and Polish) are read with OCR. Changes are picked up every few minutes, sooner when the Bot or you write there."
         padded={false}
         action={
           !picking && (
