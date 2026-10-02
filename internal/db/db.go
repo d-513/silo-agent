@@ -284,6 +284,55 @@ type Memory struct {
 	LastUsedAt *time.Time
 }
 
+// KnowledgeFolder is a workspace folder (drives included) the owner chose to
+// index for `search_docs`. Files stay on the box; the CP keeps the sync state
+// and the searchable chunks. Status is idle | syncing | error. DirtyAt is set
+// when something wrote under the folder, so the sweep looks again soon.
+type KnowledgeFolder struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index;uniqueIndex:bot_knowledge_path"`
+	Path       string `gorm:"uniqueIndex:bot_knowledge_path"`
+	Status     string
+	Detail     string
+	Files      int
+	Skipped    int
+	Chunks     int
+	LastSyncAt *time.Time
+	DirtyAt    *time.Time
+	CreatedAt  time.Time
+}
+
+// KnowledgeSource is one file of a folder. Size+Mtime is the cheap change
+// check; Hash (sha256 of the bytes) confirms a change and finds renames.
+// Status is ok | skipped (binary, too large) | error (extractor failed).
+type KnowledgeSource struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index"`
+	FolderID   string `gorm:"index;uniqueIndex:knowledge_folder_path"`
+	Path       string `gorm:"uniqueIndex:knowledge_folder_path"`
+	Size       int64
+	Mtime      int64
+	Hash       string `gorm:"index"`
+	EmbedModel string
+	Status     string
+	Detail     string
+	Chunks     int
+	IndexedAt  time.Time
+}
+
+// KnowledgeChunk is one embedded piece of a source. Locator says where in the
+// file it came from ("p. 12", "Setup · L40"). Migrate adds a generated tsv
+// column and the HNSW and GIN indexes beside it.
+type KnowledgeChunk struct {
+	ID        string `gorm:"primaryKey"`
+	BotID     string `gorm:"index"`
+	SourceID  string `gorm:"index"`
+	Ord       int
+	Locator   string
+	Content   string
+	Embedding pgvector.Vector `gorm:"type:vector(1536)"`
+}
+
 // Automation is a scheduled background prompt. Its runs land in ChatID (a
 // hidden Chat) and each firing starts with a fresh context. Kind "heartbeat" is
 // the pinned one every Bot has; it is created without a schedule.
@@ -368,6 +417,7 @@ func Models() []any {
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{},
+		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 	}
 }
 
@@ -410,5 +460,17 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.Exec("UPDATE rules SET action = 'core_memory' WHERE connector = 'bot' AND action = 'memory'").Error; err != nil {
 		return err
 	}
-	return gdb.Exec("CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)").Error
+	for _, stmt := range []string{
+		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
+		// 'simple' keeps the keyword half language-neutral: names, part
+		// numbers and error codes match exactly in any language.
+		"ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED",
+		"CREATE INDEX IF NOT EXISTS knowledge_chunks_embedding_hnsw ON knowledge_chunks USING hnsw (embedding vector_cosine_ops)",
+		"CREATE INDEX IF NOT EXISTS knowledge_chunks_tsv ON knowledge_chunks USING gin (tsv)",
+	} {
+		if err := gdb.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

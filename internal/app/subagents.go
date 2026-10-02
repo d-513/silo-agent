@@ -77,9 +77,18 @@ func isAgentTool(name string) bool {
 }
 
 // toolsFor is the tool list for a run: everything for a chat, minus the
-// lead-only tools for a subagent.
-func (a *App) toolsFor(origin *runOrigin) []llm.Tool {
+// lead-only tools for a subagent and search_docs while nothing is indexed.
+func (a *App) toolsFor(botID string, origin *runOrigin) []llm.Tool {
 	all := a.runTools()
+	if !a.knowledgeActive(botID) {
+		kept := make([]llm.Tool, 0, len(all))
+		for _, t := range all {
+			if t.Name != "search_docs" {
+				kept = append(kept, t)
+			}
+		}
+		all = kept
+	}
 	if origin == nil || origin.subagent == nil {
 		return all
 	}

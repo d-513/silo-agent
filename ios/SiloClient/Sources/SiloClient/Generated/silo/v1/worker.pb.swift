@@ -196,6 +196,22 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     set {body = .syncSkills(newValue)}
   }
 
+  public var walk: Silo_V1_WalkCmd {
+    get {
+      if case .walk(let v)? = body {return v}
+      return Silo_V1_WalkCmd()
+    }
+    set {body = .walk(newValue)}
+  }
+
+  public var extract: Silo_V1_ExtractCmd {
+    get {
+      if case .extract(let v)? = body {return v}
+      return Silo_V1_ExtractCmd()
+    }
+    set {body = .extract(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -219,6 +235,8 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     case key(Silo_V1_KeyCmd)
     case scroll(Silo_V1_ScrollCmd)
     case syncSkills(Silo_V1_SyncSkillsCmd)
+    case walk(Silo_V1_WalkCmd)
+    case extract(Silo_V1_ExtractCmd)
 
   }
 
@@ -407,6 +425,41 @@ public nonisolated struct Silo_V1_BrowseFileCmd: Sendable {
   public var path: String = String()
 
   public var limit: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// WalkCmd lists every regular file under a folder, recursively, for the
+/// knowledge index: path, size and mtime only (no reads). An unreadable root is
+/// an error, never an empty list.
+public nonisolated struct Silo_V1_WalkCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var path: String = String()
+
+  /// Stop after this many files and report truncated (0 = worker default).
+  public var maxFiles: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ExtractCmd reads one file and returns its plain text plus the sha256 of its
+/// bytes: text as is, PDF through pdftotext, documents through pandoc.
+public nonisolated struct Silo_V1_ExtractCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var path: String = String()
+
+  /// Cap on the returned text (0 = worker default).
+  public var maxBytes: Int64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -719,7 +772,7 @@ fileprivate nonisolated let _protobuf_package = "silo.v1"
 
 nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Cmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -989,6 +1042,32 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
           self.body = .syncSkills(v)
         }
       }()
+      case 23: try {
+        var v: Silo_V1_WalkCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .walk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .walk(v)
+        }
+      }()
+      case 24: try {
+        var v: Silo_V1_ExtractCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .extract(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .extract(v)
+        }
+      }()
       default: break
       }
     }
@@ -1088,6 +1167,14 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
     case .syncSkills?: try {
       guard case .syncSkills(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+    }()
+    case .walk?: try {
+      guard case .walk(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+    }()
+    case .extract?: try {
+      guard case .extract(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
     }()
     default: break
     }
@@ -1568,6 +1655,76 @@ nonisolated extension Silo_V1_BrowseFileCmd: SwiftProtobuf.Message, SwiftProtobu
   public static func ==(lhs: Silo_V1_BrowseFileCmd, rhs: Silo_V1_BrowseFileCmd) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.limit != rhs.limit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_WalkCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WalkCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}max_files\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.maxFiles) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if self.maxFiles != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxFiles, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_WalkCmd, rhs: Silo_V1_WalkCmd) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.maxFiles != rhs.maxFiles {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ExtractCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}max_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.maxBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if self.maxBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxBytes, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ExtractCmd, rhs: Silo_V1_ExtractCmd) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.maxBytes != rhs.maxBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

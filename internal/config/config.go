@@ -84,6 +84,33 @@ type Memory struct {
 	Collect bool `koanf:"collect"`
 }
 
+// Knowledge configures the folder index behind `search_docs` (RAG).
+type Knowledge struct {
+	// Enabled turns on the background sweep, adding folders, and the
+	// search_docs tool. Already-indexed chunks stay in Postgres either way.
+	Enabled bool `koanf:"enabled"`
+	// SyncInterval is how often a folder is re-checked for changes (a Go
+	// duration such as 15m or 1h). Drive folders are checked four times less
+	// often: every look is a network round trip.
+	SyncInterval string `koanf:"sync_interval"`
+}
+
+// DefaultKnowledgeInterval is the folder re-check cadence when unset or
+// unparsable; KnowledgeMinInterval is the floor.
+const (
+	DefaultKnowledgeInterval = 15 * time.Minute
+	KnowledgeMinInterval     = time.Minute
+)
+
+// Interval returns the re-check cadence for a local folder.
+func (k Knowledge) Interval() time.Duration {
+	d, err := time.ParseDuration(strings.TrimSpace(k.SyncInterval))
+	if err != nil || d <= 0 {
+		return DefaultKnowledgeInterval
+	}
+	return max(d, KnowledgeMinInterval)
+}
+
 // Context configures the model context window and automatic compaction.
 type Context struct {
 	// Window is the fallback context size in tokens when the provider cannot
@@ -236,6 +263,7 @@ type Config struct {
 	EmbedModel    string              `koanf:"embedding_model"`
 	Transcribe    string              `koanf:"transcribe_model"`
 	Memory        Memory              `koanf:"memory"`
+	Knowledge     Knowledge           `koanf:"knowledge"`
 	Context       Context             `koanf:"context"`
 	Thinking      Thinking            `koanf:"thinking"`
 	Runs          Runs                `koanf:"runs"`
@@ -357,6 +385,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "transcribe_model"},
 	{Key: "memory.auto_recall", Type: "bool"},
 	{Key: "memory.collect", Type: "bool"},
+	{Key: "knowledge.enabled", Type: "bool"},
+	{Key: "knowledge.sync_interval"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},
@@ -483,6 +513,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
 	_ = k.Set("memory.auto_recall", true)
 	_ = k.Set("memory.collect", true)
+	_ = k.Set("knowledge.enabled", true)
+	_ = k.Set("knowledge.sync_interval", "15m")
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")

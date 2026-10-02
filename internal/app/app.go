@@ -165,6 +165,12 @@ type App struct {
 	collecting sync.Map
 	// collectPause (unix nanos) holds the sweep back after a provider error.
 	collectPause atomic.Int64
+	// knowLocks serializes syncs per knowledge folder; knowCancel stops a
+	// running one when its folder is removed; knowPause (unix nanos) holds the
+	// sweep back after a provider error.
+	knowLocks  sync.Map
+	knowCancel sync.Map
+	knowPause  atomic.Int64
 	// wakeTimers debounce waking a lead chat when its subagents finish.
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
@@ -204,6 +210,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		a.rescheduleAutomations()
 		go a.automationLoop(a.stopAutomations)
 		go a.memoryLoop(a.stopAutomations)
+		a.recoverKnowledge()
+		go a.knowledgeLoop(a.stopAutomations)
 	}
 	return a
 }

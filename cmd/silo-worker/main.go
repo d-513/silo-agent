@@ -285,6 +285,10 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.listDir(b.DirList.GetPath())
 	case *v1.Cmd_BrowseFile:
 		return w.browseFile(b.BrowseFile.GetPath(), b.BrowseFile.GetLimit())
+	case *v1.Cmd_Walk:
+		return w.walk(b.Walk.GetPath(), int(b.Walk.GetMaxFiles()))
+	case *v1.Cmd_Extract:
+		return w.extract(ctx, b.Extract.GetPath(), b.Extract.GetMaxBytes())
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:

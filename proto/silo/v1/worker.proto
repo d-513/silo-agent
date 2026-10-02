@@ -36,6 +36,8 @@ message Cmd {
     KeyCmd key = 20;
     ScrollCmd scroll = 21;
     SyncSkillsCmd sync_skills = 22;
+    WalkCmd walk = 23;
+    ExtractCmd extract = 24;
   }
 }
 
@@ -105,6 +107,23 @@ message DirListCmd {
 message BrowseFileCmd {
   string path = 1;
   int64 limit = 2;
+}
+
+// WalkCmd lists every regular file under a folder, recursively, for the
+// knowledge index: path, size and mtime only (no reads). An unreadable root is
+// an error, never an empty list.
+message WalkCmd {
+  string path = 1;
+  // Stop after this many files and report truncated (0 = worker default).
+  int32 max_files = 2;
+}
+
+// ExtractCmd reads one file and returns its plain text plus the sha256 of its
+// bytes: text as is, PDF through pdftotext, documents through pandoc.
+message ExtractCmd {
+  string path = 1;
+  // Cap on the returned text (0 = worker default).
+  int64 max_bytes = 2;
 }
 
 message MkdirCmd {

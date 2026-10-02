@@ -10,4 +10,6 @@ The iOS client aims for parity with the web client (see the plan in the repo his
 | **Connector OAuth + custom MCP form** | OAuth callback is `{public_url}/oauth/callback` and the custom form is large. iOS lists, refreshes, attaches library presets and detaches; a connector that needs auth shows "Authorize on web". |
 | **Admin** (`/admin/*`) | Operator settings, Connectors/Skills libraries, Drives system vars, search/extract, audit and LLM logs. Out of scope for now. |
 
+| **Knowledge** (`/bots/:id/knowledge`) | The folder picker, per-folder sync state and the try-a-search panel. Web only for now; the Swift client already has the RPCs. |
+
 Drives, Files, Secrets, Rules, Skills, Automations, Memories, Feed, Containers and Settings are in scope.

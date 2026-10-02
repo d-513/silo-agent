@@ -55,6 +55,8 @@ type promptContext struct {
 	subagent *db.Subagent
 	// drives are the Bot's saved drives (mounted under /workspace/drives).
 	drives []db.Drive
+	// knowledge are the Bot's indexed folders (search_docs).
+	knowledge []db.KnowledgeFolder
 }
 
 // promptProvider contributes ordered sections for the current session.
@@ -68,6 +70,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.skillSections,
 		a.channelSections,
 		a.driveSections,
+		a.knowledgeSections,
 		a.automationSections,
 		a.subagentSections,
 		a.recallSections,
@@ -276,6 +279,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 	}
 	pc.channels = a.enabledChannels(botID)
 	pc.drives = a.botDrives(botID)
+	pc.knowledge = a.knowledgeFolders(botID)
 	if origin != nil {
 		pc.channel = origin.channel
 		pc.recall = origin.recall

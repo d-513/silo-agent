@@ -31,6 +31,8 @@ const LABELS: Record<string, string> = {
   transcribe_model: "Speech-to-text model",
   "memory.auto_recall": "Auto-recall",
   "memory.collect": "Collect from idle chats",
+  "knowledge.enabled": "Document search",
+  "knowledge.sync_interval": "Re-check folders every",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
@@ -51,7 +53,8 @@ const HINTS: Record<string, string> = {
   "context.window": "Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows.",
   "context.compact_at": "Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call.",
   "runs.max_duration": "How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this.",
-  embedding_model: "For long-term memories. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly.",
+  embedding_model: "For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync).",
+  "knowledge.sync_interval": "A Go duration such as 15m or 1h (minimum 1m).",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
 
@@ -65,11 +68,15 @@ const CONTEXT_NOTE = "When a conversation nears the model's context window, it i
 const MEMORY_NOTE =
   "Auto-recall puts up to 3 long-term memories close to the opening message into each run. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.";
 
+const KNOWLEDGE_NOTE =
+  "Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays.";
+
 const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 function groupOf(key: string) {
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
+  if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("context.") || key.startsWith("runs.")) return "context";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
@@ -266,6 +273,7 @@ export function AdminSettings() {
           />
         ))}
         <FieldGroup title="Memory" note={MEMORY_NOTE} rows={rowsIn("memory")} values={values} engines={engines} providers={providers} onChange={setValue} />
+        <FieldGroup title="Knowledge" note={KNOWLEDGE_NOTE} rows={rowsIn("knowledge")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Context" note={CONTEXT_NOTE} rows={rowsIn("context")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />

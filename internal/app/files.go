@@ -134,6 +134,7 @@ func (a *App) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFile
 	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_Remove{Remove: &v1.RemoveCmd{Path: path}}}); err != nil {
 		return nil, err
 	}
+	a.markKnowledgeDirty(b.ID, path)
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }
 
@@ -156,5 +157,6 @@ func (a *App) PutFile(ctx context.Context, req *connect.Request[v1.PutFileReques
 	if _, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
 		return nil, err
 	}
+	a.markKnowledgeDirty(b.ID, path)
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }

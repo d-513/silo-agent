@@ -138,6 +138,15 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"query"},
 	}),
+	tool("search_docs", "Search the owner's indexed document folders by meaning and by exact words (names, codes, numbers). Returns cited snippets: file path plus page or line. Use it before grepping or reading many files, then `read` the cited path to confirm. Only the folders listed in the system prompt are searchable.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query": map[string]any{"type": "string", "description": "what to look for; a question or keywords"},
+			"limit": map[string]any{"type": "integer", "description": "max snippets (default 6, max 15)"},
+			"path":  map[string]any{"type": "string", "description": "only files under this workspace path"},
+		},
+		"required": []string{"query"},
+	}),
 	tool("forget", "Delete one long-term memory by id (from recall).", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -813,7 +822,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		return
 	}
 	settings := a.cfg().ProviderSettings(provider)
-	tools := a.toolsFor(origin)
+	tools := a.toolsFor(botID, origin)
 	window := a.contextWindow(ctx, modelID)
 
 	switch {
@@ -1395,6 +1404,10 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	out, err := a.Hub.ExecResult(ctx, botID, cmd)
 	if err != nil {
 		return "", "", err
+	}
+	switch name {
+	case "write", "patch", "delete":
+		a.markKnowledgeDirty(botID, path)
 	}
 	switch name {
 	case "read":

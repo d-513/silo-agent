@@ -43,12 +43,17 @@ type recalled struct {
 	Distance  float64
 }
 
+// embedModelID is the operator's embedding model, or the default.
+func (a *App) embedModelID() string {
+	if m := strings.TrimSpace(a.cfg().EmbedModel); m != "" {
+		return m
+	}
+	return config.DefaultEmbeddingModel
+}
+
 // embed turns texts into vectors with the operator's embedding model.
 func (a *App) embed(ctx context.Context, texts []string) ([]pgvector.Vector, string, error) {
-	modelID := strings.TrimSpace(a.cfg().EmbedModel)
-	if modelID == "" {
-		modelID = config.DefaultEmbeddingModel
-	}
+	modelID := a.embedModelID()
 	client, provider, model, err := a.providerClient(modelID)
 	if err != nil {
 		return nil, modelID, err

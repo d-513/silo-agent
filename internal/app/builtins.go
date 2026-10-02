@@ -20,6 +20,7 @@ var sharedTools = map[string][2]string{
 	"remember":          {security.Bot, "remember"},
 	"recall":            {security.Bot, "recall"},
 	"forget":            {security.Bot, "forget"},
+	"search_docs":       {security.Bot, "search_docs"},
 	"list_automations":  {security.Automations, "list"},
 	"create_automation": {security.Automations, "create"},
 	"update_automation": {security.Automations, "update"},
@@ -99,6 +100,8 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		return string(b), err
 	case "forget":
 		return a.forget(bot.ID, str("id"))
+	case "search_docs":
+		return a.knowledgeTool(ctx, bot.ID, args, structured)
 	case "list_models":
 		return a.listModelsTool(bot.ID, a.chatOfRun(runID))
 	case "transcribe":

@@ -27,6 +27,14 @@ service UI {
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
   rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
+  // Knowledge: workspace folders (drives included) indexed for search_docs.
+  rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse);
+  rpc AddKnowledgeFolder(AddKnowledgeFolderRequest) returns (KnowledgeFolder);
+  rpc RemoveKnowledgeFolder(RemoveKnowledgeFolderRequest) returns (RemoveKnowledgeFolderResponse);
+  // SyncKnowledge starts a sync in the background and returns the folder as
+  // "syncing"; the page polls ListKnowledge.
+  rpc SyncKnowledge(SyncKnowledgeRequest) returns (KnowledgeFolder);
+  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse);
   rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
   rpc MarkFeedRead(MarkFeedReadRequest) returns (MarkFeedReadResponse);
   rpc DeleteFeedPost(DeleteFeedPostRequest) returns (DeleteFeedPostResponse);
@@ -277,6 +285,79 @@ message DeleteMemoryRequest {
 }
 
 message DeleteMemoryResponse {}
+
+// KnowledgeFolder is a workspace folder indexed for search_docs.
+message KnowledgeFolder {
+  string id = 1;
+  // Workspace-relative, no leading slash ("docs", "drives/gdrive/Reports").
+  string path = 2;
+  // idle | syncing | error
+  string status = 3;
+  string detail = 4;
+  // Files indexed, files not indexed (binary, too large, unreadable), chunks.
+  int32 files = 5;
+  int32 skipped = 6;
+  int32 chunks = 7;
+  string last_sync_at = 8;
+  // The folder is on a drive: syncing it goes over the network and may be slow.
+  bool drive = 9;
+  // Up to 20 files that were not indexed, with the reason.
+  repeated KnowledgeIssue issues = 10;
+}
+
+message KnowledgeIssue {
+  string path = 1;
+  string detail = 2;
+}
+
+message ListKnowledgeRequest {
+  string bot_id = 1;
+}
+
+message ListKnowledgeResponse {
+  repeated KnowledgeFolder folders = 1;
+  // False when the operator turned knowledge off (knowledge.enabled).
+  bool enabled = 2;
+}
+
+message AddKnowledgeFolderRequest {
+  string bot_id = 1;
+  string path = 2;
+}
+
+message RemoveKnowledgeFolderRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message RemoveKnowledgeFolderResponse {}
+
+message SyncKnowledgeRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+// KnowledgeHit is one search_docs result.
+message KnowledgeHit {
+  string path = 1;
+  string locator = 2;
+  string snippet = 3;
+  double score = 4;
+  string indexed_at = 5;
+}
+
+message SearchKnowledgeRequest {
+  string bot_id = 1;
+  string query = 2;
+  // Default 10, max 30.
+  int32 limit = 3;
+  // Only files under this workspace path.
+  string path = 4;
+}
+
+message SearchKnowledgeResponse {
+  repeated KnowledgeHit hits = 1;
+}
 
 // FeedPost is one read-only message a Bot posted to its Feed with `feed`.
 message FeedPost {

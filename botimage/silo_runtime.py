@@ -187,6 +187,17 @@ def recall(query: str, limit: int | None = None) -> dict:
     return call("bot", "recall", {"query": query, "limit": limit})
 
 
+def search_docs(query: str, limit: int | None = None, path: str | None = None) -> dict:
+    """Search the owner's indexed document folders by meaning and exact words.
+
+    Returns {results: [{path, locator, snippet, score, indexed_at}, ...]},
+    best first. locator is a page ("p. 12") or heading and line. `path` limits
+    the search to files under a workspace path. Default 6, max 15. The index
+    can lag edits: read the file to confirm.
+    """
+    return call("bot", "search_docs", {"query": query, "limit": limit, "path": path})
+
+
 def forget(id: str) -> dict:
     """Delete one long-term memory by its id (from recall)."""
     return call("bot", "forget", {"id": id})

@@ -267,6 +267,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Run{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.LLMLog{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Memory{})
+	a.dropKnowledge(b.ID)
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
