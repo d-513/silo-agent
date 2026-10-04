@@ -170,6 +170,8 @@ cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
 cmd/silo-mcp-bridge reverse tunnel from a STDIO sidecar to the CP (raw JSON-RPC)
 internal/app        UI + worker RPCs, agent loop
+internal/rpcx       ConnectRPC plumbing shared by the CP and everything that dials it: h2c client, Bearer interceptor, EnableH2C
+internal/desktop    what the CP and the worker agree on about the Bot's X11 desktop (screen size, point check)
 internal/channels   channel adapter engine (telegram/ is gotd MTProto; GUIDE.md go:embed’d)
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)
