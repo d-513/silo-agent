@@ -1,6 +1,7 @@
 import { Check, Copy, Pencil, Plug, Plus, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "./api";
+import { startConnectorAuth } from "./connectorAuth";
 import { ArmedButton } from "./Feedback";
 import { Btn, btnClass } from "./Btn";
 import {
@@ -16,11 +17,6 @@ import {
 } from "./ConnectorForm";
 import type { BotConnector, Connector } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-
-export async function startConnectorAuth(botId: string, id: string) {
-  const r = await ui.startConnectorAuth({ botId, id });
-  if (r.authorizeUrl) window.open(r.authorizeUrl, "silo-oauth", "width=480,height=720");
-}
 
 function statusLabel(s: string, builtin?: boolean) {
   if (s === "authorized") return builtin ? "Signed in" : "Authorized";

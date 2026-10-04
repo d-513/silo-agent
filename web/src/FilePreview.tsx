@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { codeLang, kindOf, mimeOf } from "./fileKind";
-import { highlight } from "./highlight";
+import { Highlighted } from "./Highlighted";
 
 export function downloadFile(name: string, content: string, data?: Uint8Array) {
   const blob = new Blob([data && data.length ? data.slice() : content], { type: mimeOf(name) });
@@ -138,17 +138,13 @@ export function FilePreview({
       /* raw */
     }
     return (
-      <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-5">
-        <code className="hljs" dangerouslySetInnerHTML={{ __html: highlight(pretty, "json") }} />
-      </pre>
+      <Highlighted code={pretty} lang="json" preClass="whitespace-pre-wrap break-words font-mono text-[13px] leading-5" />
     );
   }
   if (kind === "code" || (kind === "text" && !binary)) {
     const lang = codeLang(name);
     return (
-      <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-5">
-        <code className="hljs" dangerouslySetInnerHTML={{ __html: highlight(text || " ", lang) }} />
-      </pre>
+      <Highlighted code={text || " "} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-[13px] leading-5" />
     );
   }
   if (!binary && text) {

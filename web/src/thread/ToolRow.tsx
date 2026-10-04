@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react";
 import { CopyButton } from "../Feedback";
-import { highlight, langFromPath, resultLang } from "../highlight";
+import { Highlighted } from "../Highlighted";
+import { langFromPath, resultLang } from "../highlight";
 import { FoldRow, StateSlot, type RowState } from "./FoldRow";
 import { ToolIcon, type ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, prettyJson } from "./toolInfo";
@@ -13,9 +14,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
         <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">{displayLang || "code"}</span>
         <CopyButton text={code} title="Copy code" label size={12} />
       </div>
-      <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[12.5px] leading-5">
-        <code className="hljs whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
-      </pre>
+      <Highlighted code={code} lang={lang} preClass="whitespace-pre-wrap break-words p-3 font-mono text-[12.5px] leading-5" codeClass="hljs whitespace-pre-wrap break-words" />
     </div>
   );
 }
@@ -186,9 +185,7 @@ export function ToolResult({ text, live }: { text: string; live?: boolean }) {
   const sliced = text.length > 4000 ? (live ? `…${text.slice(-4000)}` : `${text.slice(0, 4000)}…`) : text;
   const lang = resultLang(sliced);
   const inner = lang ? (
-    <pre className="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5 text-ink-2">
-      <code className="hljs" dangerouslySetInnerHTML={{ __html: highlight(sliced, lang) }} />
-    </pre>
+    <Highlighted code={sliced} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5 text-ink-2" />
   ) : (
     <pre className="whitespace-pre-wrap font-mono text-[12.5px] leading-5 text-ink-2">{sliced}</pre>
   );

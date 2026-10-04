@@ -1,17 +1,10 @@
 import { Check, Copy } from "lucide-react";
-import "katex/dist/katex.min.css";
-import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import { useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import { hlLangs } from "./highlight";
+import { useMdModules } from "./mdPlugins";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
-
-const mdHighlight: [[typeof rehypeHighlight, { languages: typeof hlLangs }]] = [
-  [rehypeHighlight, { languages: hlLangs }],
-];
 
 function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode }) {
   const display = isDisplayMath(node);
@@ -121,9 +114,14 @@ const mdComponents: NonNullable<Parameters<typeof Markdown>[0]["components"]> = 
   },
 };
 
+type Rehype = NonNullable<Parameters<typeof Markdown>[0]["rehypePlugins"]>;
+
 export function Md({ text, bounds }: { text: string; bounds?: number[] }) {
+  const mods = useMdModules(text);
   if (!text) return null;
-  const plugins = bounds && bounds.length > 1 ? [...mdRehype, rehypeChunks(bounds)] : mdRehype;
+  // KaTeX first, then the math tagging that reads its output, then highlighting.
+  const base = [...(mods.math ? [mods.math.rehypeKatex] : []), rehypeMathCopy, ...(mods.code ? mods.code.rehypeCode : [])] as Rehype;
+  const plugins = bounds && bounds.length > 1 ? [...base, rehypeChunks(bounds)] : base;
   return (
     <div className="silo-md">
       <Markdown
@@ -137,4 +135,3 @@ export function Md({ text, bounds }: { text: string; bounds?: number[] }) {
   );
 }
 
-const mdRehype = [rehypeKatex, rehypeMathCopy, ...mdHighlight] as NonNullable<Parameters<typeof Markdown>[0]["rehypePlugins"]>;

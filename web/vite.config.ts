@@ -5,7 +5,20 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: { exclude: ["@novnc/novnc"], esbuildOptions: { target: "es2022" } },
-  build: { target: "es2022" },
+  build: {
+    target: "es2022",
+    rollupOptions: {
+      output: {
+        // The libraries that change least get their own files, so an app
+        // release leaves them in the browser's cache.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return "vendor-react";
+          if (/[\\/]node_modules[\\/](@bufbuild|@connectrpc)[\\/]/.test(id)) return "vendor-rpc";
+        },
+      },
+    },
+  },
   esbuild: { target: "es2022" },
   server: {
     port: 5173,

@@ -1,28 +1,28 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { onSignedOut, ui } from "./api";
-import { AdminConnectors } from "./AdminConnectors";
-import { AdminDrives } from "./AdminDrives";
-import { AccountPage, AdminDebug, AdminLayout, AdminSearchExtract, AdminSettings } from "./Admin";
+import { AccountPage } from "./AccountPage";
 import { AuthCtx, useAuth } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import { BotsPage } from "./BotsPage";
 import { BotsProvider } from "./bots";
 import { isSignedOut } from "./errors";
+import { lazyNamed } from "./lazyNamed";
+import { preloadMarkdown } from "./mdPlugins";
 import { NewBotPage } from "./NewBotPage";
 import { OfflineBanner, Unreachable } from "./Offline";
+import { PaneFallback } from "./PaneFallback";
 import { Shell } from "./Shell";
 import { SignIn } from "./SignIn";
-import { AdminSkills, SkillHub } from "./Skills";
 
-function AdminGate() {
-  const { admin } = useAuth();
-  if (!admin) return <Navigate to="/" replace />;
-  return <AdminLayout />;
-}
+// The admin area and the skills hub are loaded when first opened.
+const AdminApp = lazy(() => import("./AdminApp"));
+const SkillHub = lazyNamed(() => import("./Skills"), "SkillHub");
 
 function Authed() {
   const { email } = useAuth();
+  // Replies with code are common: fetch the highlighter once the browser is idle.
+  useEffect(() => preloadMarkdown(), []);
   return (
     <BotsProvider>
       <Routes>
@@ -46,7 +46,9 @@ function Authed() {
           path="/skills"
           element={
             <Shell page="skills">
-              <SkillHub />
+              <Suspense fallback={<PaneFallback />}>
+                <SkillHub />
+              </Suspense>
             </Shell>
           }
         />
@@ -59,21 +61,15 @@ function Authed() {
           }
         />
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <Shell page="admin">
-              <AdminGate />
+              <Suspense fallback={<PaneFallback />}>
+                <AdminApp />
+              </Suspense>
             </Shell>
           }
-        >
-          <Route index element={<Navigate to="settings" replace />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="connectors/*" element={<AdminConnectors />} />
-          <Route path="skills" element={<AdminSkills />} />
-          <Route path="search-extract" element={<AdminSearchExtract />} />
-          <Route path="drives" element={<AdminDrives />} />
-          <Route path="debug" element={<AdminDebug />} />
-        </Route>
+        />
         <Route
           path="/account"
           element={

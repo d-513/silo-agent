@@ -1,6 +1,6 @@
 import { ui } from "../api";
 import { ApprovalSlip, ConnectorAuthSlip, SlipPresence } from "../Approval";
-import { startConnectorAuth } from "../BotConnectors";
+import { startConnectorAuth } from "../connectorAuth";
 import { fail } from "../errors";
 import type { Approval, Bot, BotConnector } from "../gen/silo/v1/ui_pb";
 

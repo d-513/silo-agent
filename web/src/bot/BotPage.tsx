@@ -1,33 +1,21 @@
 import { X } from "lucide-react";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ui } from "../api";
-import { ArtifactOverlay, type Artifact } from "../Artifact";
+import type { Artifact } from "../Artifact";
 import { useAuth } from "../auth";
-import { AutomationsPane } from "../Automations";
-import { BotChannels } from "../BotChannels";
-import { BotConnectors } from "../BotConnectors";
-import { BotDrives } from "../BotDrives";
 import { useBots } from "../bots";
 import { fail } from "../errors";
-import { FeedPane } from "../Feed";
 import { SkeletonRows } from "../Field";
-import { FilesPane } from "../Files";
+import { lazyNamed } from "../lazyNamed";
+import { PaneFallback } from "../PaneFallback";
 import type { BotConnector } from "../gen/silo/v1/ui_pb";
-import { KnowledgePane } from "../Knowledge";
-import { MemoriesPane } from "../Memories";
-import { RulesPane } from "../Rules";
-import { SettingsPane } from "../Settings";
-import { BotSkills } from "../Skills";
-import { SubagentPage } from "../SubagentPage";
 import { useRunStream } from "../useRunStream";
 import { useSubagents } from "../useSubagents";
 import { BotHeader } from "./BotHeader";
 import { BotSlip } from "./BotSlip";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatStrip } from "./ChatStrip";
-import { ContainersPane } from "./Containers";
-import { MachinePane } from "./MachinePane";
 import { runActions } from "./runActions";
 import { RunPane } from "./RunPane";
 import { SecretsPane } from "./SecretsPane";
@@ -37,9 +25,30 @@ import { useChatList } from "./useChatList";
 import { useComposerDraft } from "./useComposerDraft";
 import { useSecrets } from "./useSecrets";
 
+// Everything but the chat is loaded the first time its tab opens.
+const AutomationsPane = lazyNamed(() => import("../Automations"), "AutomationsPane");
+const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
+const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
+const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
+const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
+const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
+const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
+const BotConnectors = lazyNamed(() => import("../BotConnectors"), "BotConnectors");
+const BotDrives = lazyNamed(() => import("../BotDrives"), "BotDrives");
+const BotChannels = lazyNamed(() => import("../BotChannels"), "BotChannels");
+const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
+const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
+const SettingsPane = lazyNamed(() => import("../Settings"), "SettingsPane");
+const RulesPane = lazyNamed(() => import("../Rules"), "RulesPane");
+const ArtifactOverlay = lazyNamed(() => import("../ArtifactOverlay"), "ArtifactOverlay");
+
 // A tab page that scrolls inside the Bot page's body.
 function ScrollPane({ children }: { children: ReactNode }) {
-  return <div className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>;
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+      <Suspense fallback={<PaneFallback />}>{children}</Suspense>
+    </div>
+  );
 }
 
 function LoadingBot() {
@@ -210,14 +219,16 @@ export function BotPage() {
                 onDeleteChat={onDeleteChat}
               />
               {tab === "automations" && (
-                <AutomationsPane
-                  bot={bot}
-                  sub={parts.slice(1)}
-                  onError={setActErr}
-                  onApprovals={reloadApprovals}
-                  onInspectArtifact={setInspect}
-                  onSaveSkill={onSaveSkill}
-                />
+                <Suspense fallback={<PaneFallback />}>
+                  <AutomationsPane
+                    bot={bot}
+                    sub={parts.slice(1)}
+                    onError={setActErr}
+                    onApprovals={reloadApprovals}
+                    onInspectArtifact={setInspect}
+                    onSaveSkill={onSaveSkill}
+                  />
+                </Suspense>
               )}
               {tab === "memories" && (
                 <ScrollPane>
@@ -242,18 +253,20 @@ export function BotPage() {
                 </ScrollPane>
               )}
               {tab === "run" && agentId && chatId && (
-                <SubagentPage
-                  key={agentId}
-                  botId={id}
-                  botName={bot.name}
-                  botCrest={bot.crest}
-                  chatId={chatId}
-                  agentId={agentId}
-                  onError={setActErr}
-                  onApprovals={reloadApprovals}
-                  onInspectArtifact={setInspect}
-                  onSaveSkill={onSaveSkill}
-                />
+                <Suspense fallback={<PaneFallback />}>
+                  <SubagentPage
+                    key={agentId}
+                    botId={id}
+                    botName={bot.name}
+                    botCrest={bot.crest}
+                    chatId={chatId}
+                    agentId={agentId}
+                    onError={setActErr}
+                    onApprovals={reloadApprovals}
+                    onInspectArtifact={setInspect}
+                    onSaveSkill={onSaveSkill}
+                  />
+                </Suspense>
               )}
               {tab === "run" && !agentId && (
                 <RunPane
@@ -280,24 +293,32 @@ export function BotPage() {
         )}
         {tab === "desktop" || keepDesk ? (
           <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "desktop" ? "flex" : "hidden"}`}>
-            <MachinePane bot={bot} onStart={start} visible={tab === "desktop"} kind="desktop" />
+            <Suspense fallback={null}>
+              <MachinePane bot={bot} onStart={start} visible={tab === "desktop"} kind="desktop" />
+            </Suspense>
             <p className="mt-2 text-[12.5px] text-ink-2">Same browser the Bot uses. You can type and click.</p>
           </section>
         ) : null}
         {tab === "console" || keepCon ? (
           <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "console" ? "flex" : "hidden"}`}>
-            <MachinePane bot={bot} onStart={start} visible={tab === "console"} kind="console" />
+            <Suspense fallback={null}>
+              <MachinePane bot={bot} onStart={start} visible={tab === "console"} kind="console" />
+            </Suspense>
             <p className="mt-2 text-[12.5px] text-ink-2">A shell on this Bot, started in /workspace.</p>
           </section>
         ) : null}
         {tab === "files" && (
           <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <FilesPane bot={bot} onStart={start} />
+            <Suspense fallback={<PaneFallback />}>
+              <FilesPane bot={bot} onStart={start} />
+            </Suspense>
           </section>
         )}
         {tab === "connectors" && (
           <section className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <BotConnectors botId={id} onNeedAuth={setAuthPrompt} />
+            <Suspense fallback={<PaneFallback />}>
+              <BotConnectors botId={id} onNeedAuth={setAuthPrompt} />
+            </Suspense>
           </section>
         )}
         {tab === "drives" && (
@@ -336,7 +357,11 @@ export function BotPage() {
           </ScrollPane>
         )}
         <BotSlip bot={bot} pending={pending} setPending={setPending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
-        {inspect ? <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} /> : null}
+        {inspect ? (
+          <Suspense fallback={null}>
+            <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} />
+          </Suspense>
+        ) : null}
       </div>
     </div>
   );
