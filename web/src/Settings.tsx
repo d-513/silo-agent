@@ -131,7 +131,7 @@ export function SettingsPane({
   }
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Settings</h2>
+      <h2 className="text-title">Settings</h2>
       <p className="mb-6 text-ink-2">This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories tab.</p>
       <form onSubmit={save} className="grid gap-4">
         <Panel title="Identity" note="Shown on the folio and in the run header.">

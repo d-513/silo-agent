@@ -144,7 +144,7 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
 export function MemoriesPane({ bot, onSaved, onError }: { bot: Bot; onSaved: (b: Bot) => void; onError: (s: string) => void }) {
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Memories</h2>
+      <h2 className="text-title">Memories</h2>
       <p className="mb-6 text-ink-2">Core memory rides in every prompt. Long-term memories are unlimited and recalled by meaning.</p>
       <CorePanel bot={bot} onSaved={onSaved} onError={onError} />
       <LongTermPanel botId={bot.id} onError={onError} />

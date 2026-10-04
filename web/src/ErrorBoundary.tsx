@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<{ resetKey?: string; children: Reac
     if (!error) return this.props.children;
     return (
       <div role="alert" className="flex h-full min-h-[320px] flex-col items-center justify-center bg-well px-4 text-center wide:px-8">
-        <p className="mb-2 max-w-[26rem] text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">This page hit a snag</p>
+        <p className="mb-2 max-w-[26rem] text-title text-ink">This page hit a snag</p>
         <p className="mb-6 max-w-[32rem] font-mono text-[12.5px] break-words text-ink-3">{error.message || String(error)}</p>
         <div className="flex gap-2">
           <button type="button" className={btnClass("primary")} onClick={() => this.setState({ error: null })}>

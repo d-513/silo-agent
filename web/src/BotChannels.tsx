@@ -566,7 +566,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Channels</h1>
+            <h1 className="text-title text-ink">Channels</h1>
             <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">
               {channels.length}
             </span>

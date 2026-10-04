@@ -294,7 +294,7 @@ export function BotConnectors({
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
       {/* Header & Page Description */}
       <div className="mb-6 space-y-1.5">
-        <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Connectors</h1>
+        <h1 className="text-title text-ink">Connectors</h1>
         <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
           Connectors let this Bot work with outside services like GitHub, Slack, Notion, or your custom MCP servers. Search the library to add verified integrations or link bespoke tools directly into your bot runtime.
         </p>

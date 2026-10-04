@@ -560,7 +560,7 @@ export function ConnectorFields({
       <div className="mb-5 flex items-center gap-4">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} size={72} />
         <div className="min-w-0">
-          <div className="text-[22px] leading-7 font-medium tracking-[-0.015em]">{value.name}</div>
+          <div className="text-title">{value.name}</div>
           <div className="mt-1 flex items-center gap-2">
             <McpChip transport={value.builtin ? "builtin" : value.transport} />
             {value.category && <CategoryChip label={value.category} />}

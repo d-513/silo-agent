@@ -941,7 +941,7 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
     <div className="silo-page">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-[22px] font-medium leading-7 tracking-[-0.015em] text-ink">Drives</h2>
+          <h2 className="text-title text-ink">Drives</h2>
           <p className="mt-1 max-w-[520px] text-[13.5px] leading-[21px] text-ink-2">
             Cloud storage and file servers, mounted as folders in <code className="font-mono text-[12.5px] text-ink">/workspace/drives</code>. The Bot works on them like any file. Sign-ins and passwords stay on the Silo server.
           </p>

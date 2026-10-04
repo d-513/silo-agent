@@ -96,7 +96,7 @@ export function NeedYouSlip({
             </span>
           </div>
           {source ? <p className="mb-1 truncate text-[12px] leading-4 font-medium text-ink-3">{source}</p> : null}
-          <h2 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">{title}</h2>
+          <h2 className="mb-2 text-title">{title}</h2>
           <p className="mb-5 text-[14px] leading-[22px] text-ink-2">{summary}</p>
           {fields && fields.length > 0 && (
             <dl className="overflow-hidden rounded-control bg-well">

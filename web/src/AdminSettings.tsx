@@ -285,7 +285,7 @@ export function AdminSettings() {
 
       <SaveBar dirty={dirty} state={formSaver.state} error={err} onSave={() => void saveForm()} onDiscard={discard} />
 
-      <h2 className="mt-10 mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">silo.yaml</h2>
+      <h2 className="mt-10 mb-3 text-title">silo.yaml</h2>
       <p className="mb-2 font-mono text-[12px] text-ink-3">{yamlPath || "silo.yaml"}</p>
       {envFields.length > 0 ? (
         <p className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
@@ -305,7 +305,7 @@ export function AdminSettings() {
         </SaveButton>
       </div>
 
-      <h2 className="mt-10 mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">Audit</h2>
+      <h2 className="mt-10 mb-3 text-title">Audit</h2>
       {audit.length === 0 ? (
         <p className="text-ink-2">No decisions yet.</p>
       ) : (

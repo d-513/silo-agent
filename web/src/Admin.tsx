@@ -33,7 +33,7 @@ export function AdminLayout() {
   }, []);
   return (
     <div className="silo-page">
-      <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Admin</h1>
+      <h1 className="text-title">Admin</h1>
       <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 shadow-[inset_0_-1px_0_var(--color-line)]">
         <AdminTab to="/admin/settings">Settings</AdminTab>
         <AdminTab to="/admin/connectors">Connectors Library</AdminTab>
@@ -131,7 +131,7 @@ export function AdminSearchExtract() {
           <SaveButton state={saver.state} onClick={() => void save()} disabled={locked} />
         </div>
       </Panel>
-      <h2 className="mb-3 text-[22px] leading-7 font-medium tracking-[-0.015em]">Extract</h2>
+      <h2 className="mb-3 text-title">Extract</h2>
       <p className="text-ink-2">Page extract is not available yet.</p>
     </div>
   );
@@ -140,7 +140,7 @@ export function AdminSearchExtract() {
 export function AccountPage({ email }: { email: string }) {
   return (
     <div className="silo-page silo-page-sm">
-      <h1 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">Account</h1>
+      <h1 className="mb-2 text-title">Account</h1>
       <p className="mb-6 text-ink-2">Your sign-in. More settings later.</p>
       <div className="mb-1 text-[12px] font-medium text-ink-3">Email</div>
       <div className="rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 py-2">{email}</div>

@@ -98,7 +98,7 @@ export function AdminDebug() {
   if (!enabled && !loading) {
     return (
       <div>
-        <h2 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">Debug</h2>
+        <h2 className="mb-2 text-title">Debug</h2>
         <p className="text-ink-2">
           Debug logging is off. Set <span className="font-mono text-ink">debug: true</span> in{" "}
           <span className="font-mono text-ink">silo.yaml</span> (or{" "}
@@ -112,7 +112,7 @@ export function AdminDebug() {
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Debug</h2>
+          <h2 className="text-title">Debug</h2>
           <p className="mt-0.5 text-ink-2">Raw model requests and responses from every feature, including auto-approval.</p>
         </div>
         <div className="flex items-center gap-2">

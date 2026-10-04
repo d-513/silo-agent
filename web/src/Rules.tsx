@@ -191,7 +191,7 @@ export function RulesPane({ botId }: { botId: string }) {
     <div className="silo-page">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Rules</h2>
+          <h2 className="text-title text-ink">Rules</h2>
           <p className="mt-0.5 text-ink-2">Permissions for tools, secrets, and system actions</p>
         </div>
         {totalRules > 5 && (

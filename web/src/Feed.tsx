@@ -92,7 +92,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
 
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Feed</h2>
+      <h2 className="text-title">Feed</h2>
       <p className="mb-6 text-ink-2">What this Bot posted for you to read later. Quote a post to talk about it in a new chat.</p>
       {posts === null ? (
         <p className="text-ink-3">Loading…</p>

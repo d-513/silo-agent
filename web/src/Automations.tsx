@@ -254,7 +254,7 @@ export function AutomationsPane({
           <Link to={`/bots/${bot.id}/automations`} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
             <ChevronLeft size={14} /> Automations
           </Link>
-          <h2 className="mb-6 text-[22px] leading-7 font-medium tracking-[-0.015em]">New automation</h2>
+          <h2 className="mb-6 text-title">New automation</h2>
           <Panel>
             <Editor
               bot={bot}
@@ -353,7 +353,7 @@ export function AutomationsPane({
       <div className="silo-page">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Automations</h2>
+            <h2 className="text-title">Automations</h2>
             <p className="text-ink-2">Prompts {bot.name} runs on its own, on a schedule. Each run starts fresh and lands in its log.</p>
           </div>
           <Btn kind="primary" icon={<Plus size={13} />} onClick={() => nav(`/bots/${bot.id}/automations/new`)}>

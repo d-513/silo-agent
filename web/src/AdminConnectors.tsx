@@ -139,7 +139,7 @@ function CatalogList() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Connectors Library</h2>
+        <h2 className="text-title">Connectors Library</h2>
         <div className="flex flex-wrap gap-2">
           <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
             Add new presets
@@ -256,7 +256,7 @@ function LibraryForm() {
 
   return (
     <form onSubmit={onSubmit} className="max-w-[560px]">
-      <h2 className="mb-4 text-[22px] leading-7 font-medium tracking-[-0.015em]">{id ? "Edit preset" : "Add preset"}</h2>
+      <h2 className="mb-4 text-title">{id ? "Edit preset" : "Add preset"}</h2>
       {err && <p className="mb-3 text-vermilion">{err}</p>}
       <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage allowAutoAttach showConfig={false} />
       <div className="flex gap-2">

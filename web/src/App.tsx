@@ -297,7 +297,7 @@ function SignIn() {
           </span>
           <span className="text-[14px] font-medium">Silo Agent</span>
         </div>
-        <h1 className="mb-6 text-[22px] leading-7 font-medium tracking-[-0.015em]">Sign in</h1>
+        <h1 className="mb-6 text-title">Sign in</h1>
         <label htmlFor="silo-email" className="mb-1.5 block text-[12px] font-medium text-ink-3">
           Email
         </label>
@@ -358,7 +358,7 @@ function BotsPage() {
       {!empty ? (
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Bots</h1>
+            <h1 className="text-title">Bots</h1>
             <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">Machines you can open.</p>
           </div>
           <Link to="/new" className={btnClass("primary")}>
@@ -440,7 +440,7 @@ function NewBotPage() {
   }
   return (
     <div className="silo-page silo-page-sm rise">
-      <h1 className="mb-6 text-[22px] leading-7 font-medium tracking-[-0.015em]">New Bot</h1>
+      <h1 className="mb-6 text-title">New Bot</h1>
       <form onSubmit={create}>
         <div className="mb-5 flex flex-col items-center gap-4">
           <Crest index={crest} size={88} />
@@ -985,7 +985,7 @@ function ContainersPane({ bot, onStart, onStop, onChanged }: { bot: Bot; onStart
 
   return (
     <div className="silo-page">
-      <h2 className="text-[22px] font-medium leading-7 tracking-[-0.015em]">Containers</h2>
+      <h2 className="text-title">Containers</h2>
       <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.</p>
       {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}
 
@@ -1914,7 +1914,7 @@ function BotPage() {
         {tab === "secrets" && (
           <div className="min-h-0 min-w-0 flex-1 overflow-auto">
           <div className="silo-page">
-            <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Secrets</h2>
+            <h2 className="text-title">Secrets</h2>
             <p className="mb-6 text-ink-2">Handed to the Bot only after you allow it. Masked before the model sees output.</p>
             <Panel title="Stored secrets" padded={false}>
               {secrets === null ? (

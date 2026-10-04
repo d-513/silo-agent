@@ -13,7 +13,7 @@ export function NeedMachine({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-panel bg-well px-4 wide:px-8">
-      <p className="mb-7 max-w-[22rem] text-center text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">{copy}</p>
+      <p className="mb-7 max-w-[22rem] text-center text-title text-ink">{copy}</p>
       {starting ? (
         <WakeMark />
       ) : (

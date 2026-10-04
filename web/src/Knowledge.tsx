@@ -319,7 +319,7 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
 
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Knowledge</h2>
+      <h2 className="text-title">Knowledge</h2>
       <p className="mb-6 text-ink-2">
         Pick folders of documents and the Bot can search them by meaning and by exact words, with the file and page cited. Files stay on the Bot's machine; only their text and an embedding are kept in the control plane.
       </p>

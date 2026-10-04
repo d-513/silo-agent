@@ -65,6 +65,14 @@
   --color-hatch: #141413;
   --color-matte: #0e0e0d;
 
+  /* DESIGN.md §3 type scale. `text-title` is the page-title style: size, line
+     height, weight and tracking in one utility. The line height is the 7-step
+     spacing the app has always rendered (the root is 14px, so 24.5px). */
+  --text-title: 22px;
+  --text-title--line-height: calc(var(--spacing) * 7);
+  --text-title--font-weight: 500;
+  --text-title--letter-spacing: -0.015em;
+
   --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-control: 10px;

@@ -175,7 +175,7 @@ export function AdminSkills() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills Library</h2>
+        <h2 className="text-title">Skills Library</h2>
         <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
           Re-add defaults
         </Btn>
@@ -218,7 +218,7 @@ export function SkillHub() {
   }
   return (
     <div className="silo-page">
-      <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills</h1>
+      <h1 className="text-title">Skills</h1>
       <p className="mb-4 text-ink-2">Personal skills are yours. Library skills are site-wide; enable them on a Bot.</p>
       <div className="mb-4 w-full max-w-[280px]">
         <Segmented
@@ -270,7 +270,7 @@ export function BotSkills({ botId }: { botId: string }) {
   const personal = (rows ?? []).filter((s) => s.kind === "personal");
   return (
     <div className="silo-page">
-      <h2 className="mb-2 text-[22px] leading-7 font-medium tracking-[-0.015em]">Skills</h2>
+      <h2 className="mb-2 text-title">Skills</h2>
       <p className="mb-4 text-ink-2">Enabled skills show as name + description in the prompt. The Bot loads the rest with `skill`.</p>
       {err && <p className="mb-3 text-vermilion">{err}</p>}
       {rows === null ? (
