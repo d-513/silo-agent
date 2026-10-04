@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
-import { CATEGORY_LABEL, DriveMark } from "./BotDrives";
+import { CATEGORY_LABEL, DriveMark } from "./drives/DriveMark";
 import { Btn } from "./Btn";
 import { ArmedButton, CopyButton, SaveButton, useSave } from "./Feedback";
 import { ErrorWell, Field, inputClass, Panel, SkeletonRows } from "./Field";
