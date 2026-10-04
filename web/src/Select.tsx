@@ -1,6 +1,7 @@
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { listboxKeys, useDismiss } from "./useMenu";
 
 export interface SelectOption {
   value: string;
@@ -74,28 +75,9 @@ export function Select({
     place();
     const i = options.findIndex((o) => o.value === value);
     setActive(i >= 0 ? i : 0);
-    const close = () => setOpen(false);
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      if (triggerRef.current?.contains(t) || menuRef.current?.contains(t)) return;
-      close();
-    };
-    const onScroll = (e: Event) => {
-      const t = e.target;
-      if (menuRef.current && t instanceof Node && menuRef.current.contains(t)) return;
-      close();
-    };
-    document.addEventListener("mousedown", onDoc);
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", close);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  useDismiss(open, triggerRef, menuRef, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -112,32 +94,16 @@ export function Select({
 
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
-    if (!open) {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        setOpen(true);
-      }
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((i) => Math.min(i + 1, options.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      setActive(0);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      setActive(options.length - 1);
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      const o = options[active];
-      if (o) pick(o);
-    } else if (e.key === "Escape" || e.key === "Tab") {
-      setOpen(false);
-    }
+    listboxKeys(e, {
+      open,
+      count: options.length,
+      setOpen,
+      setActive,
+      pickActive: () => {
+        const o = options[active];
+        if (o) pick(o);
+      },
+    });
   }
 
   const style: CSSProperties = {
