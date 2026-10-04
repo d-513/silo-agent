@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { codeLang } from "./fileKind";
 
 export function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -30,32 +31,6 @@ export function useHighlight(code: string, lang?: string): string {
   return heavy ? heavy.highlight(code, lang) : escapeHtml(code);
 }
 
-export function langFromPath(path: string) {
-  const ext = path.split(".").pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    py: "python",
-    sh: "bash",
-    bash: "bash",
-    json: "json",
-    ts: "typescript",
-    tsx: "typescript",
-    js: "javascript",
-    jsx: "javascript",
-    go: "go",
-    html: "xml",
-    htm: "xml",
-    xml: "xml",
-    svg: "xml",
-    md: "markdown",
-    markdown: "markdown",
-    diff: "diff",
-    patch: "diff",
-    yml: "yaml",
-    yaml: "yaml",
-  };
-  return ext ? map[ext] : undefined;
-}
-
 export function resultLang(s: string) {
   const t = s.trim();
   if (t.startsWith("{") || t.startsWith("[")) {
@@ -68,5 +43,5 @@ export function resultLang(s: string) {
   }
   if (/^(def |class |import |from |Traceback)/m.test(t)) return "python";
   if (/^(\$ |#!\/)/.test(t)) return "bash";
-  return langFromPath(t.split("\n")[0] ?? "") || undefined;
+  return codeLang(t.split("\n")[0] ?? "");
 }

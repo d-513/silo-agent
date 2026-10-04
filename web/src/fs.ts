@@ -24,13 +24,6 @@ export type FsSource = {
   read(path: string): Promise<FsFile>;
 };
 
-export function fmtSize(n: bigint | number) {
-  const v = typeof n === "bigint" ? Number(n) : n;
-  if (v < 1024) return `${v} B`;
-  if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
-  return `${(v / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function crumbs(path: string, rootLabel = "workspace") {
   if (!path) return [{ label: rootLabel, path: "" }];
   const parts = path.split("/").filter(Boolean);

@@ -1,4 +1,4 @@
-import { Check, ChevronRight, CircleAlert, CircleCheck, FolderOpen, HardDrive, Folder, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Check, ChevronRight, CircleAlert, CircleCheck, FolderOpen, HardDrive, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -7,8 +7,10 @@ import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { ArmedButton, CopyButton, SaveButton, Spinner, useSave } from "./Feedback";
 import { ErrorWell, Field, inputClass, SkeletonRows, textareaClass } from "./Field";
+import { FolderNav } from "./FolderNav";
 import { PageHead } from "./PageHead";
 import { Lamp } from "./Lamp";
+import { driveLook } from "./statusLook";
 import { Select } from "./Select";
 import { ToggleRow } from "./Switch";
 import { Tip, TipAction, TipTitle } from "./Tip";
@@ -40,26 +42,6 @@ export function DriveMark({ svg, size = 40, muted = false, className = "" }: { s
       )}
     </div>
   );
-}
-
-// state → the lamp and the word beside it. A lamp is never alone.
-function driveLook(d: Drive): { lamp: string; word: string; tone: string } {
-  switch (d.state) {
-    case "mounted":
-      return { lamp: "online", word: "Mounted", tone: "text-emerald" };
-    case "mounting":
-      return { lamp: "starting", word: "Connecting…", tone: "text-ink-2" };
-    case "needs_auth":
-      return { lamp: "needs_you", word: "Reconnect needed", tone: "text-vermilion" };
-    case "needs_setup":
-      return { lamp: "needs_you", word: "Waiting for an admin", tone: "text-vermilion" };
-    case "needs_input":
-      return { lamp: "needs_you", word: "Needs details", tone: "text-vermilion" };
-    case "error":
-      return { lamp: "needs_you", word: "Error", tone: "text-vermilion" };
-    default:
-      return { lamp: "stopped", word: "Stopped", tone: "text-ink-3" };
-  }
 }
 
 function slug(s: string) {
@@ -196,7 +178,6 @@ function FolderPicker({
     [browse],
   );
 
-  const crumbs = at ? at.split("/") : [];
   const rootLabel = v.placeholder || "Whole drive";
 
   return (
@@ -227,47 +208,7 @@ function FolderPicker({
       </div>
       {open ? (
         <div className="mt-2 overflow-hidden rounded-control bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]">
-          <nav className="silo-scroll-x flex items-center gap-1 px-2 py-2 text-[12.5px] shadow-[inset_0_-1px_0_var(--color-line)]" aria-label="Folder path">
-            <button type="button" className={`shrink-0 rounded-sm px-2 py-1 ${at ? "text-ink-2 hover:bg-well hover:text-ink" : "font-medium text-ink"}`} onClick={() => void go("")}>
-              {rootLabel}
-            </button>
-            {crumbs.map((c, i) => {
-              const p = crumbs.slice(0, i + 1).join("/");
-              const last = i === crumbs.length - 1;
-              return (
-                <span key={p} className="flex shrink-0 items-center gap-1">
-                  <ChevronRight size={12} className="text-ink-3" />
-                  <button type="button" className={`rounded-sm px-2 py-1 ${last ? "font-medium text-ink" : "text-ink-2 hover:bg-well hover:text-ink"}`} onClick={() => void go(p)}>
-                    {c}
-                  </button>
-                </span>
-              );
-            })}
-          </nav>
-          <div className="max-h-[260px] overflow-auto py-1">
-            {dirs === null ? (
-              <SkeletonRows rows={3} height={32} className="p-2" />
-            ) : err ? (
-              <div className="p-2">
-                <ErrorWell>{err}</ErrorWell>
-              </div>
-            ) : dirs.length === 0 ? (
-              <p className="px-4 py-3 text-[12.5px] text-ink-3">No folders here.</p>
-            ) : (
-              dirs.map((d) => (
-                <button
-                  key={d.path}
-                  type="button"
-                  className="flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] text-ink transition-colors duration-[160ms] ease-quiet hover:bg-well"
-                  onClick={() => void go(d.path)}
-                >
-                  <Folder size={15} className="shrink-0 text-ink-3" />
-                  <span className="min-w-0 flex-1 truncate">{d.name}</span>
-                  <ChevronRight size={14} className="shrink-0 text-ink-3" />
-                </button>
-              ))
-            )}
-          </div>
+          <FolderNav rootLabel={rootLabel} at={at} dirs={dirs} err={err} onGo={(p) => void go(p)} />
           <div className="flex items-center justify-between gap-2 px-3 py-2 shadow-[inset_0_1px_0_var(--color-line)]">
             <span className="min-w-0 truncate font-mono text-[12px] text-ink-3">{at ? `/${at}` : rootLabel}</span>
             <Btn
@@ -802,7 +743,7 @@ function Gallery({ botId, templates, admin, onBack }: { botId: string; templates
 
 function DriveRow({ botId, d, t, onReconnect, onRemoved }: { botId: string; d: Drive; t?: DriveTemplate; onReconnect: () => void; onRemoved: () => void }) {
   const navigate = useNavigate();
-  const look = driveLook(d);
+  const look = driveLook(d.state);
   const attention = look.lamp === "needs_you";
   return (
     <li

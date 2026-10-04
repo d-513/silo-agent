@@ -1,25 +1,16 @@
-import { ChevronRight, Folder, FolderPlus, RefreshCw, Trash2 } from "lucide-react";
+import { FolderPlus, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { fail } from "./errors";
 import { ArmedButton, Spinner } from "./Feedback";
-import { day } from "./format";
+import { FolderNav, type FolderEntry } from "./FolderNav";
+import { ago, day } from "./format";
 import { Panel } from "./Field";
-import { crumbs } from "./fs";
 import type { Bot, KnowledgeFolder, KnowledgeHit } from "./gen/silo/v1/ui_pb";
 import { NeedMachine } from "./NeedMachine";
 import { SearchBox } from "./SearchBox";
 import { useSearch } from "./useSearch";
-
-function ago(iso: string) {
-  if (!iso) return "never";
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 90) return "just now";
-  if (s < 5400) return `${Math.round(s / 60)} min ago`;
-  if (s < 129600) return `${Math.round(s / 3600)} h ago`;
-  return day(iso);
-}
 
 // Folders the Bot cannot index even if picked; the server refuses them too.
 const scratch = new Set(["bot", "tmp"]);
@@ -46,7 +37,7 @@ function FolderPicker({
   onStart: () => void;
 }) {
   const [cwd, setCwd] = useState("");
-  const [dirs, setDirs] = useState<string[] | null>(null);
+  const [dirs, setDirs] = useState<FolderEntry[] | null>(null);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -60,8 +51,8 @@ function FolderPicker({
         setDirs(
           r.entries
             .filter((e) => e.dir && !e.name.startsWith(".") && !(cwd === "" && scratch.has(e.name)))
-            .map((e) => e.path)
-            .sort((a, b) => a.localeCompare(b)),
+            .map((e) => ({ name: e.name, path: e.path }))
+            .sort((a, b) => a.path.localeCompare(b.path)),
         );
       })
       .catch((e) => {
@@ -89,42 +80,7 @@ function FolderPicker({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-0.5 px-5 py-3 font-mono text-[12.5px] shadow-[inset_0_-1px_0_var(--color-line)]">
-        {crumbs(cwd).map((c, i, all) => (
-          <span key={c.path} className="flex items-center gap-0.5">
-            <button
-              type="button"
-              className={`rounded-xs px-1 hover:bg-well ${i === all.length - 1 ? "text-ink" : "text-ink-2"}`}
-              onClick={() => setCwd(c.path)}
-            >
-              {c.label}
-            </button>
-            {i < all.length - 1 && <ChevronRight size={12} className="text-ink-3" />}
-          </span>
-        ))}
-      </div>
-      <div className="max-h-[260px] overflow-auto">
-        {err ? (
-          <p className="px-5 py-4 text-[12.5px] text-vermilion">{err}</p>
-        ) : dirs === null ? (
-          <p className="px-5 py-4 text-ink-3">Loading…</p>
-        ) : dirs.length === 0 ? (
-          <p className="px-5 py-4 text-ink-3">No subfolders.</p>
-        ) : (
-          dirs.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className="flex h-10 w-full items-center gap-2.5 px-5 text-left text-[13.5px] shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none hover:bg-well"
-              onClick={() => setCwd(p)}
-            >
-              <Folder size={15} className="shrink-0 opacity-70" />
-              <span className="min-w-0 flex-1 truncate">{p.split("/").pop()}</span>
-              <ChevronRight size={14} className="text-ink-3" />
-            </button>
-          ))
-        )}
-      </div>
+      <FolderNav rootLabel="workspace" at={cwd} dirs={dirs} err={err} onGo={setCwd} empty="No subfolders." />
       {drive && (
         <p className="px-5 pt-3 text-[12.5px] leading-[18px] text-ink-2">
           This folder is on a drive. Indexing reads every file over the network, so a large folder, or a provider that rate-limits, can be slow. It is re-checked less often than local folders.

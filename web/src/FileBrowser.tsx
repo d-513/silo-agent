@@ -4,7 +4,8 @@ import { Btn } from "./Btn";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, isArchive, kindOf } from "./fileKind";
 import { SkeletonRows } from "./Field";
-import { crumbs, fmtSize, type FsEntry, type FsFile, type FsSource } from "./fs";
+import { fmtBytes } from "./format";
+import { crumbs, type FsEntry, type FsFile, type FsSource } from "./fs";
 import { fail } from "./errors";
 
 export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean; size?: number }) {
@@ -254,7 +255,7 @@ function Tree({
               >
                 <TypeIcon name={e.name} dir={e.dir} />
                 <span className="min-w-0 truncate text-[13px]">{e.name}</span>
-                {!e.dir && <span className="ml-auto shrink-0 font-mono text-[11px] opacity-50">{fmtSize(e.size)}</span>}
+                {!e.dir && <span className="ml-auto shrink-0 font-mono text-[11px] opacity-50">{fmtBytes(e.size)}</span>}
               </button>
               {onDelete && (
                 <button

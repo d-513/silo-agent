@@ -17,21 +17,8 @@ import {
 } from "./ConnectorForm";
 import type { BotConnector, Connector } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-
-function statusLabel(s: string, builtin?: boolean) {
-  if (s === "authorized") return builtin ? "Signed in" : "Authorized";
-  if (s === "needs_auth") return builtin ? "Needs setup" : "Needs authorization";
-  if (s === "initializing") return "Initializing";
-  if (s === "error") return "Error";
-  return "Ready";
-}
-
-function statusLamp(s: string) {
-  if (s === "authorized") return "bg-lamp";
-  if (s === "needs_auth" || s === "error") return "bg-vermilion";
-  if (s === "initializing") return "bg-cobalt breathe";
-  return "bg-ink-3";
-}
+import { Lamp } from "./Lamp";
+import { connectorLook } from "./statusLook";
 
 function isCustom(c: Connector) {
   return c.kind === "custom" && !c.sourceId;
@@ -480,11 +467,9 @@ export function BotConnectors({
                             {row.authStatus === "initializing" ? (
                               <span className="inline-block h-2.5 w-2.5 spin rounded-full border border-line border-t-cobalt" />
                             ) : (
-                              <span className={`inline-block h-2 w-2 rounded-full ${statusLamp(row.authStatus)}`} />
+                              <Lamp status={connectorLook(row.authStatus, !!c.builtin).lamp} />
                             )}
-                            <span className={row.authStatus === "needs_auth" || row.authStatus === "error" ? "text-vermilion" : "text-ink-3"}>
-                              {statusLabel(row.authStatus, !!c.builtin)}
-                            </span>
+                            <span className={connectorLook(row.authStatus, !!c.builtin).tone}>{connectorLook(row.authStatus, !!c.builtin).word}</span>
                             {row.statusDetail && (
                               <span className="truncate text-ink-3">· {row.statusDetail}</span>
                             )}

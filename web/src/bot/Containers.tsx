@@ -6,23 +6,12 @@ import { fail } from "../errors";
 import { ArmedButton } from "../Feedback";
 import { Panel, SkeletonRows } from "../Field";
 import type { Bot, BotContainer } from "../gen/silo/v1/ui_pb";
+import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
 
 function n64(v: bigint | number | undefined) {
   if (typeof v === "bigint") return Number(v);
   return v ?? 0;
-}
-
-function fmtBytes(n: number) {
-  if (n <= 0) return "0 B";
-  const u = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let x = n;
-  while (x >= 1024 && i < u.length - 1) {
-    x /= 1024;
-    i++;
-  }
-  return `${x < 10 && i > 0 ? x.toFixed(1) : Math.round(x)} ${u[i]}`;
 }
 
 function Meter({ value, max }: { value: number; max: number }) {

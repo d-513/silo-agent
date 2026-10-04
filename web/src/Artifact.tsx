@@ -1,7 +1,8 @@
 import { Check, Download, ScrollText } from "lucide-react";
 import { btnClass } from "./Btn";
 import { extOf, kindLabel } from "./fileKind";
-import { fmtSize, skillSource, workspaceDirSource, type FsSource } from "./fs";
+import { fmtBytes } from "./format";
+import { skillSource, workspaceDirSource, type FsSource } from "./fs";
 
 export type Artifact = {
   type: "skill" | "file";
@@ -91,7 +92,7 @@ export function ArtifactCard({
               ? saved
                 ? "Skill · saved to your skills"
                 : "Skill"
-              : `${kindLabel(name)}${artifact.size ? ` · ${fmtSize(artifact.size)}` : ""} · saved to Files`}
+              : `${kindLabel(name)}${artifact.size ? ` · ${fmtBytes(artifact.size)}` : ""} · saved to Files`}
           </span>
         </span>
       </button>

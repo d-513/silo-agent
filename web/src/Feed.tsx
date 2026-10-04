@@ -5,17 +5,9 @@ import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
 import type { Bot, Chat, FeedPost } from "./gen/silo/v1/ui_pb";
+import { feedStamp } from "./format";
 import { Md } from "./Md";
 import { fail } from "./errors";
-
-function stamp(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const today = new Date().toDateString() === d.toDateString();
-  return today
-    ? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
 
 function sourceLabel(p: FeedPost) {
   switch (p.sourceKind) {
@@ -111,7 +103,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                   {p.title ? <h3 className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-ink">{p.title}</h3> : null}
                   <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-ink-3">
                     {fresh.has(p.id) ? <span aria-label="New" className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
-                    <span className="shrink-0 font-mono">{stamp(p.createdAt)}</span>
+                    <span className="shrink-0 font-mono">{feedStamp(p.createdAt)}</span>
                     {sourceLabel(p) ? (
                       <>
                         <span aria-hidden>·</span>

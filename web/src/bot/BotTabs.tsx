@@ -2,6 +2,7 @@ import { Book, Box, ChevronDown, Folder, HardDrive, Key, ListChecks, MessageCirc
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, NavLink } from "react-router-dom";
+import { useDismiss } from "../useMenu";
 import { FadeScroll } from "./FadeScroll";
 import { onChatSide, tabs, type NavTab, type Tab } from "./tabs";
 
@@ -166,22 +167,8 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
     if (!open) return;
     const r = wrap.current?.getBoundingClientRect();
     if (r) setBox({ top: r.bottom + 6, left: r.left });
-    const close = () => setOpen(false);
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      if (wrap.current?.contains(t) || menu.current?.contains(t)) return;
-      close();
-    };
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    document.addEventListener("mousedown", onDoc);
-    return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-      document.removeEventListener("mousedown", onDoc);
-    };
   }, [open]);
+  useDismiss(open, wrap, menu, () => setOpen(false));
   return (
     <div
       ref={wrap}

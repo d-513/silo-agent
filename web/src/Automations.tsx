@@ -15,18 +15,13 @@ import { clock, DAY_SHORT, describe, HOUR_STEPS, MINUTE_STEPS, parse, toCron, ty
 import { useRunStream } from "./useRunStream";
 import type { Automation, Bot } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-
-function whenShort(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-}
+import { nextWhen } from "./format";
 
 function nextLine(a: Automation) {
   if (a.running) return "Running now";
   if (!a.enabled) return "Paused";
   if (!a.schedule) return "No schedule — never runs on its own";
-  return a.nextRunAt ? `Next ${whenShort(a.nextRunAt)}` : "";
+  return a.nextRunAt ? `Next ${nextWhen(a.nextRunAt)}` : "";
 }
 
 const modeOptions: { value: Mode; label: string }[] = [

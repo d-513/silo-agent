@@ -1,7 +1,8 @@
 import type { JSX, ReactNode } from "react";
 import { CopyButton } from "../Feedback";
 import { Highlighted } from "../Highlighted";
-import { langFromPath, resultLang } from "../highlight";
+import { codeLang } from "../fileKind";
+import { resultLang } from "../highlight";
 import { FoldRow, StateSlot, type RowState } from "./FoldRow";
 import { ToolIcon, type ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, prettyJson } from "./toolInfo";
@@ -105,7 +106,7 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
     body = (
       <div className="space-y-2">
         {path ? <div className="font-mono text-[12.5px]">{path}</div> : null}
-        {content ? <CodeBlock code={content} lang={langFromPath(path)} /> : null}
+        {content ? <CodeBlock code={content} lang={codeLang(path)} /> : null}
       </div>
     );
   } else if (name === "read" && (path || offset != null || limit != null)) {

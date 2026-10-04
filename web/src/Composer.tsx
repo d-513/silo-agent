@@ -2,7 +2,7 @@ import { ArrowUp, FoldVertical, Mic, Paperclip, Square, UnfoldVertical, Upload, 
 import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { setAutoExpand, useAutoExpand } from "./autoExpand";
 import { fmtClock, insertDictation, useDictation, type Dictation } from "./voice";
-import { fmtSize } from "./fs";
+import { fmtBytes } from "./format";
 import { Select } from "./Select";
 import { Tip, TipAction, TipTitle } from "./Tip";
 import { MemoryCollectButton } from "./MemoryCollect";
@@ -209,7 +209,7 @@ export function Composer({
                 >
                   <Paperclip size={12} className="shrink-0 text-ink-2" />
                   <span className="max-w-[180px] truncate font-medium">{a.name}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtSize(a.size)}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtBytes(a.size)}</span>
                   <button
                     type="button"
                     title="Remove attachment"

@@ -14,6 +14,8 @@ import { Thread } from "./Thread";
 import type { Channel, ChannelAdapter, Chat } from "./gen/silo/v1/ui_pb";
 import { FieldInput } from "./FieldInput";
 import { fail } from "./errors";
+import { Lamp } from "./Lamp";
+import { channelLook } from "./statusLook";
 
 function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: number }) {
   if (adapter?.logo) {
@@ -34,21 +36,6 @@ function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; size?: 
       <Radio size={Math.round(size * 0.5)} />
     </div>
   );
-}
-
-function statusDot(status: string) {
-  if (status === "connected") return "bg-lamp";
-  if (status === "starting") return "bg-lamp breathe";
-  if (status === "error") return "bg-vermilion";
-  return "bg-ink-3";
-}
-
-function statusLabel(status: string) {
-  if (status === "connected") return "Connected";
-  if (status === "starting") return "Starting…";
-  if (status === "error") return "Error";
-  if (status === "stopped") return "Stopped";
-  return status.replace(/_/g, " ");
 }
 
 function Opening({ onBack }: { onBack: () => void }) {
@@ -362,8 +349,8 @@ function ChannelSetup({
       <div className="max-w-2xl rounded-card shadow-card bg-surface p-6 space-y-5">
         {/* Status line */}
         <div className="flex items-center gap-2 rounded-sm bg-well px-3.5 py-2.5 text-[12px] font-medium text-ink-3">
-          <span className={`inline-block h-2.5 w-2.5 rounded-full ${statusDot(channel.status)}`} />
-          <span className="text-ink">{statusLabel(channel.status)}</span>
+          <Lamp status={channelLook(channel.status).lamp} />
+          <span className="text-ink">{channelLook(channel.status).word}</span>
           {channel.statusDetail && <span className="text-ink-3">· {channel.statusDetail}</span>}
         </div>
 
@@ -657,10 +644,8 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
 
                       {/* Status */}
                       <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-ink-3">
-                        <span className={`inline-block h-2 w-2 rounded-full ${statusDot(c.status)}`} />
-                        <span className={c.status === "error" ? "text-vermilion" : "text-ink-3"}>
-                          {statusLabel(c.status)}
-                        </span>
+                        <Lamp status={channelLook(c.status).lamp} />
+                        <span className={channelLook(c.status).tone}>{channelLook(c.status).word}</span>
                         {c.statusDetail && (
                           <span className="truncate text-ink-3">· {c.statusDetail}</span>
                         )}

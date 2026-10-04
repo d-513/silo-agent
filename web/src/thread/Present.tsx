@@ -6,7 +6,7 @@ import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { kindLabel } from "../fileKind";
 import { downloadFile, FilePreview } from "../FilePreview";
-import { fmtSize } from "../fs";
+import { fmtBytes } from "../format";
 
 export function isBotScratch(path: string): boolean {
   const p = path.replace(/^\/+/, "").replace(/^(workspace\/)+/, "");
@@ -63,7 +63,7 @@ export function PresentFile({ botId, path }: { botId: string; path: string }) {
           <div className="truncate text-[13.5px] leading-5 font-medium text-ink">{name}</div>
           <div className="truncate text-[12.5px] leading-[18px] text-ink-3">
             {kindLabel(name)}
-            {file ? ` · ${fmtSize(fileSize(file))}` : ""} · in Files
+            {file ? ` · ${fmtBytes(fileSize(file))}` : ""} · in Files
           </div>
         </div>
         {file ? (

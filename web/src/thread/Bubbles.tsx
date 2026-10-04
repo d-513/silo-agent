@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import { Btn } from "../Btn";
 import { CopyButton, useArmed } from "../Feedback";
 import type { Attachment } from "../fold";
-import { runWhen } from "../format";
-import { fmtSize } from "../fs";
+import { fmtBytes, fullTime, runWhen } from "../format";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
 
@@ -95,7 +94,7 @@ export function UserBubble({
               >
                 <Paperclip size={12} className="shrink-0 text-ink-2" />
                 <span className="max-w-[180px] truncate font-medium">{a.name}</span>
-                <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtSize(a.size)}</span>
+                <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtBytes(a.size)}</span>
               </span>
             ))}
           </div>
@@ -140,7 +139,7 @@ export function FeedQuote({ text, source, createdAt }: { text: string; source: s
         <Inbox size={12} className="shrink-0" />
         <span className="truncate">
           Quoted from the Feed{source ? ` · ${source}` : ""}
-          {at && !Number.isNaN(at.getTime()) ? ` · ${at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+          {at && !Number.isNaN(at.getTime()) ? ` · ${fullTime(at)}` : ""}
         </span>
       </figcaption>
       <div className="silo-reply">

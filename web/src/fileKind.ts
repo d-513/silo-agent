@@ -94,8 +94,13 @@ export function mimeOf(name: string): string {
   return map[e] || (kindOf(name) === "text" || kindOf(name) === "code" ? "text/plain" : "application/octet-stream");
 }
 
+// Names of what no code extension covers but a highlighter reads.
+const extraLangs: Record<string, string> = { svg: "xml", md: "markdown", markdown: "markdown", diff: "diff", patch: "diff" };
+
+// codeLang is the highlight.js language for a file name, if it has one.
 export function codeLang(name: string) {
-  return codes[extOf(name)];
+  const e = extOf(name);
+  return codes[e] ?? extraLangs[e];
 }
 
 export function kindLabel(name: string): string {
