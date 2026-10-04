@@ -54,7 +54,6 @@ type H struct {
 }
 
 type options struct {
-	host        dockerx.Host
 	hostFactory func(*config.Store) (dockerx.Host, error)
 	listener    net.Listener
 	yaml        string
@@ -69,9 +68,6 @@ type options struct {
 
 // Option customizes the harness.
 type Option func(*options)
-
-// WithHost replaces the fake Docker host with a real one (container tier).
-func WithHost(h dockerx.Host) Option { return func(o *options) { o.host = h } }
 
 // WithHostFactory builds the Docker host from the harness config store, which
 // a real dockerx.Engine needs (it reads data_dir and cp_url from it).
@@ -93,11 +89,6 @@ func WithConfigPath(path string) Option { return func(o *options) { o.configPath
 // WithDataDir pins the config data_dir. Tests that need to inspect the
 // workspace files use it.
 func WithDataDir(dir string) Option { return func(o *options) { o.dataDir = dir } }
-
-// WithCredentials overrides the bootstrap admin credentials.
-func WithCredentials(email, password string) Option {
-	return func(o *options) { o.email, o.password = email, password }
-}
 
 // WithBeforeApp seeds rows after migration but before the App starts, which is
 // how startup recovery (orphaned runs, connector resume) is exercised.
@@ -141,8 +132,8 @@ func New(t *testing.T, opts ...Option) *H {
 		o.beforeApp(gdb)
 	}
 
-	fake, _ := o.host.(*FakeHost)
-	host := o.host
+	var fake *FakeHost
+	var host dockerx.Host
 	if o.hostFactory != nil {
 		built, ferr := o.hostFactory(store)
 		if ferr != nil {

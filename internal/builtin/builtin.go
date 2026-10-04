@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
+	"silo.agent/internal/registry"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
@@ -162,10 +162,7 @@ func (d Descriptor) Field(key string) (Field, bool) {
 	return Field{}, false
 }
 
-var (
-	mu       sync.RWMutex
-	registry = map[string]Connector{}
-)
+var connectors = registry.New[Descriptor, Connector](func(d Descriptor) string { return d.Key })
 
 // Register adds a connector. It panics on a malformed descriptor, which only
 // happens at init time.
@@ -174,35 +171,26 @@ func Register(c Connector) {
 	if err := validate(d); err != nil {
 		panic("builtin: " + err.Error())
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	if _, dup := registry[d.Key]; dup {
+	if _, _, dup := connectors.Lookup(d.Key); dup {
 		panic("builtin: duplicate key " + d.Key)
 	}
-	registry[d.Key] = c
+	connectors.Put(d, c)
 }
 
 // Unregister removes a connector (tests register throwaway ones).
-func Unregister(key string) {
-	mu.Lock()
-	defer mu.Unlock()
-	delete(registry, key)
-}
+func Unregister(key string) { connectors.Remove(key) }
 
 func Lookup(key string) (Connector, bool) {
-	mu.RLock()
-	defer mu.RUnlock()
-	c, ok := registry[key]
+	_, c, ok := connectors.Lookup(key)
 	return c, ok
 }
 
 // Keys lists the registered keys, sorted.
 func Keys() []string {
-	mu.RLock()
-	defer mu.RUnlock()
-	out := make([]string, 0, len(registry))
-	for k := range registry {
-		out = append(out, k)
+	ds := connectors.All()
+	out := make([]string, len(ds))
+	for i, d := range ds {
+		out[i] = d.Key
 	}
 	sort.Strings(out)
 	return out

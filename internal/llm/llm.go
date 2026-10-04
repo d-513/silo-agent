@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/registry"
 	"silo.agent/internal/settingdef"
 )
 
@@ -275,7 +276,8 @@ const (
 	Local      = "local"
 )
 
-var registry = []registered{
+// builtinProviders are the providers every control plane starts with.
+var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:            OpenRouter,
@@ -340,24 +342,23 @@ var registry = []registered{
 	},
 }
 
-// Descriptors returns provider metadata in registration order.
-func Descriptors() []Descriptor {
-	out := make([]Descriptor, len(registry))
-	for i, r := range registry {
-		out[i] = r.desc
+var providers = newProviders()
+
+func newProviders() *registry.Registry[Descriptor, factory] {
+	r := registry.New[Descriptor, factory](func(d Descriptor) string { return d.ID })
+	for _, p := range builtinProviders {
+		r.Put(p.desc, p.new)
 	}
-	return out
+	return r
 }
+
+// Descriptors returns provider metadata in registration order.
+func Descriptors() []Descriptor { return providers.All() }
 
 // Lookup finds a provider descriptor by id.
 func Lookup(id string) (Descriptor, bool) {
-	id = strings.TrimSpace(id)
-	for _, r := range registry {
-		if r.desc.ID == id {
-			return r.desc, true
-		}
-	}
-	return Descriptor{}, false
+	d, _, ok := providers.Lookup(strings.TrimSpace(id))
+	return d, ok
 }
 
 // Known reports whether id is a registered provider.
@@ -369,10 +370,8 @@ func Known(id string) bool {
 // New builds a client for a provider id.
 func New(id string, settings Settings) (Client, error) {
 	id = strings.TrimSpace(id)
-	for _, r := range registry {
-		if r.desc.ID == id {
-			return r.new(settings)
-		}
+	if _, f, ok := providers.Lookup(id); ok {
+		return f(settings)
 	}
 	return nil, fmt.Errorf("unknown model provider %q", id)
 }
@@ -383,16 +382,10 @@ func New(id string, settings Settings) (Client, error) {
 // exists replaces the factory but keeps the original descriptor unless the new
 // one is non-empty.
 func Register(desc Descriptor, newFn func(Settings) (Client, error)) {
-	for i, r := range registry {
-		if r.desc.ID == desc.ID {
-			if desc.Name != "" || len(desc.Settings) > 0 {
-				registry[i].desc = desc
-			}
-			registry[i].new = newFn
-			return
-		}
+	if old, _, ok := providers.Lookup(desc.ID); ok && desc.Name == "" && len(desc.Settings) == 0 {
+		desc = old
 	}
-	registry = append(registry, registered{desc: desc, new: newFn})
+	providers.Put(desc, newFn)
 }
 
 // Split parses a "provider/model" id on the first slash. The model part may

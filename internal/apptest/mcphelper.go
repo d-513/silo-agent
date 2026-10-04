@@ -18,12 +18,7 @@ func RunMCPHelper() bool {
 	if os.Getenv(MCPHelperEnv) != "echo" {
 		return false
 	}
-	srv := mcp.NewServer(&mcp.Implementation{Name: "echo", Version: "1"}, nil)
-	mcp.AddTool(srv, &mcp.Tool{Name: "echo", Description: "echo the q argument"},
-		func(_ context.Context, _ *mcp.CallToolRequest, in echoIn) (*mcp.CallToolResult, any, error) {
-			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: in.Q}}}, nil, nil
-		})
-	_ = srv.Run(context.Background(), &mcp.StdioTransport{})
+	_ = echoServer("echo").Run(context.Background(), &mcp.StdioTransport{})
 	return true
 }
 
@@ -33,8 +28,11 @@ type echoIn struct {
 
 // NewEchoServer is a streamable-HTTP MCP server with an echo tool, mounted on
 // an httptest server the harness can hand to an HTTP connector.
-func NewEchoServer() *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "echo-http", Version: "1"}, nil)
+func NewEchoServer() *mcp.Server { return echoServer("echo-http") }
+
+// echoServer is an MCP server whose one tool, echo, returns its q argument.
+func echoServer(name string) *mcp.Server {
+	srv := mcp.NewServer(&mcp.Implementation{Name: name, Version: "1"}, nil)
 	mcp.AddTool(srv, &mcp.Tool{Name: "echo", Description: "echo the q argument"},
 		func(_ context.Context, _ *mcp.CallToolRequest, in echoIn) (*mcp.CallToolResult, any, error) {
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: in.Q}}}, nil, nil

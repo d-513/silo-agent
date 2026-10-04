@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/registry"
 	"silo.agent/internal/settingdef"
 )
 
@@ -43,36 +44,23 @@ type Engine interface {
 
 type factory func(Settings) Engine
 
-type registered struct {
-	desc Descriptor
-	new  factory
-}
+var engines = newEngines()
 
-var registry = []registered{{
-	desc: Descriptor{
+func newEngines() *registry.Registry[Descriptor, factory] {
+	r := registry.New[Descriptor, factory](func(d Descriptor) string { return d.ID })
+	r.Put(Descriptor{
 		ID:          DuckDuckGoScraper,
 		Name:        "DuckDuckGo Scraper",
 		Description: "Scrapes DuckDuckGo HTML results. No API key.",
-	},
-	new: func(Settings) Engine { return NewDuckDuckGo() },
-}}
-
-func Descriptors() []Descriptor {
-	out := make([]Descriptor, len(registry))
-	for i, r := range registry {
-		out[i] = r.desc
-	}
-	return out
+	}, func(Settings) Engine { return NewDuckDuckGo() })
+	return r
 }
 
+func Descriptors() []Descriptor { return engines.All() }
+
 func Lookup(id string) (Descriptor, bool) {
-	id = strings.TrimSpace(id)
-	for _, r := range registry {
-		if r.desc.ID == id {
-			return r.desc, true
-		}
-	}
-	return Descriptor{}, false
+	d, _, ok := engines.Lookup(strings.TrimSpace(id))
+	return d, ok
 }
 
 func Known(id string) bool {
@@ -83,37 +71,18 @@ func Known(id string) bool {
 // Register adds a search engine to the registry. It is the seam test and
 // embedder packages use to plug in an engine without editing the built-in
 // list; production code never calls it.
-func Register(desc Descriptor, newFn func(Settings) Engine) {
-	for i, r := range registry {
-		if r.desc.ID == desc.ID {
-			registry[i] = registered{desc: desc, new: newFn}
-			return
-		}
-	}
-	registry = append(registry, registered{desc: desc, new: newFn})
-}
+func Register(desc Descriptor, newFn func(Settings) Engine) { engines.Put(desc, newFn) }
 
 // Unregister removes a search engine from the registry.
-func Unregister(id string) {
-	id = strings.TrimSpace(id)
-	out := registry[:0]
-	for _, r := range registry {
-		if r.desc.ID != id {
-			out = append(out, r)
-		}
-	}
-	registry = out
-}
+func Unregister(id string) { engines.Remove(strings.TrimSpace(id)) }
 
 func New(id string, settings Settings) (Engine, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		id = DefaultEngine
 	}
-	for _, r := range registry {
-		if r.desc.ID == id {
-			return r.new(settings), nil
-		}
+	if _, f, ok := engines.Lookup(id); ok {
+		return f(settings), nil
 	}
 	return nil, fmt.Errorf("unknown search engine %q", id)
 }
