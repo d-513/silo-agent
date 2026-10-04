@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/channels"
+
 	// Register built-in adapters.
 	_ "silo.agent/internal/channels/telegram"
 	"silo.agent/internal/db"
