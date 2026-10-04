@@ -1,6 +1,9 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
+// The frame of a wide Bot page (Connectors, Channels and their sub-pages).
+export const widePage = "w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20";
+
 // The title row of a Bot sub-page that has a way back: back button, an optional
 // mark (a logo tile), the title, and a quiet subtitle.
 export function PageHead({ title, subtitle, mark, onBack }: { title: string; subtitle?: string; mark?: ReactNode; onBack: () => void }) {

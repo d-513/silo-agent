@@ -6,9 +6,9 @@ import { fail } from "../errors";
 import { ErrorWell, inputClass } from "../Field";
 import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
-import { PageHead } from "../PageHead";
+import { widePage } from "../PageHead";
 import { channelLook } from "../statusLook";
-import { AdapterLogo } from "./AdapterLogo";
+import { AdapterHead } from "./AdapterHead";
 
 export function ChannelSetup({
   botId,
@@ -58,13 +58,8 @@ export function ChannelSetup({
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
-      <PageHead
-        mark={<AdapterLogo adapter={adapter} size={40} />}
-        title={channel.name}
-        subtitle={`${adapter.name} Setup`}
-        onBack={onBack}
-      />
+    <div className={widePage}>
+      <AdapterHead adapter={adapter} title={channel.name} subtitle={`${adapter.name} Setup`} onBack={onBack} />
 
       <div className="max-w-2xl rounded-card shadow-card bg-surface p-6 space-y-5">
         {/* Status line */}

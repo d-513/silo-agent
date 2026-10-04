@@ -6,6 +6,7 @@ import { startConnectorAuth } from "../connectorAuth";
 import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "../ConnectorForm";
 import { fail } from "../errors";
 import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
+import { widePage } from "../PageHead";
 import { ConnectorModal } from "./ConnectorModal";
 import { ConnectorToolbar } from "./ConnectorToolbar";
 import { CustomTab } from "./CustomTab";
@@ -168,7 +169,7 @@ export function BotConnectors({
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className={widePage}>
       {/* Header & Page Description */}
       <div className="mb-6 space-y-1.5">
         <h1 className="text-title text-ink">Connectors</h1>

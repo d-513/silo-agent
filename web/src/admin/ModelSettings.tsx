@@ -4,6 +4,7 @@ import { Btn } from "../Btn";
 import { Field, Panel, inputClass } from "../Field";
 import { Select } from "../Select";
 import { ConfigSource, type ConfigField, type ModelOption } from "../gen/silo/v1/ui_pb";
+import { modelOptions } from "../modelOptions";
 import { SourceChips } from "./FieldRow";
 import { HINTS, PLACEHOLDERS } from "./fields";
 
@@ -89,7 +90,7 @@ export function ModelSettings({
             disabled={lockedDefault}
             placeholder={models.length ? "Select…" : "No models allowed yet"}
             emptyLabel="No models allowed yet"
-            options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
+            options={modelOptions(models)}
           />
         </Field>
         <Field label="Chat title model">

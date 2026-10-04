@@ -8,9 +8,9 @@ import { SaveButton, useSave } from "../Feedback";
 import { ErrorWell, Field, inputClass, textareaClass } from "../Field";
 import { FieldInput } from "../FieldInput";
 import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
-import { PageHead } from "../PageHead";
+import { widePage } from "../PageHead";
 import { ToggleRow } from "../Switch";
-import { AdapterLogo } from "./AdapterLogo";
+import { AdapterHead } from "./AdapterHead";
 
 export function ChannelForm({
   botId,
@@ -68,9 +68,9 @@ export function ChannelForm({
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
-      <PageHead
-        mark={<AdapterLogo adapter={adapter} size={40} />}
+    <div className={widePage}>
+      <AdapterHead
+        adapter={adapter}
         title={channel ? channel.name : adapter.name}
         subtitle={channel ? adapter.name : `Configure ${adapter.name}`}
         onBack={onBack}

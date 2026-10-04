@@ -6,7 +6,7 @@ import { btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
 import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
-import { PageHead } from "../PageHead";
+import { PageHead, widePage } from "../PageHead";
 import { AdapterPicker } from "./AdapterPicker";
 import { ChannelCard } from "./ChannelCard";
 import { ChannelForm } from "./ChannelForm";
@@ -15,7 +15,7 @@ import { ChannelSetup } from "./ChannelSetup";
 
 function Opening({ onBack }: { onBack: () => void }) {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className={widePage}>
       <PageHead title="Channels" onBack={onBack} />
       <p className="text-ink-2 text-[13px]">Opening…</p>
     </div>
@@ -89,7 +89,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
 
   // /bots/:id/channels
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className={widePage}>
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">

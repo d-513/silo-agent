@@ -9,6 +9,7 @@ import { MemoryCollectButton } from "./MemoryCollect";
 import { fitThinking } from "./thinking";
 import { ThinkingPicker } from "./ThinkingPicker";
 import type { CollectMemoriesResponse, ModelOption } from "./gen/silo/v1/ui_pb";
+import { modelOptions } from "./modelOptions";
 
 export interface Attachment {
   name: string;
@@ -300,7 +301,7 @@ export function Composer({
                   value={model && models.some((m) => m.id === model) ? model : models[0].id}
                   onChange={onModel}
                   disabled={!chatId}
-                  options={models.map((m) => ({ value: m.id, label: m.label || m.id, hint: m.label && m.label !== m.id ? m.id : undefined }))}
+                  options={modelOptions(models)}
                 />
               ) : null}
 

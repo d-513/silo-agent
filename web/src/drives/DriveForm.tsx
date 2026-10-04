@@ -34,6 +34,16 @@ export function DriveForm({
     oauth, connectVars, mountVars, advancedVars, connected, requiredMissing, set, setSecret, signIn, runTest, browse, pickLoader,
     nameOk, canSave, save, pathPreview,
   } = useDriveForm({ botId, t, drive, taken, onDone });
+  const varInputs = (vars: typeof connectVars) =>
+    vars.map((v) => (
+      <VarInput
+        key={v.key}
+        v={v}
+        value={v.secret ? secrets[v.key] ?? "" : values[v.key] ?? ""}
+        onChange={(s) => (v.secret ? setSecret(v.key, s) : set(v.key, s))}
+        isSet={draft?.secretsSet.includes(v.key)}
+      />
+    ));
 
 
   return (
@@ -59,15 +69,7 @@ export function DriveForm({
           {oauth && !t.available ? (
             <ErrorWell>An admin has to set up {t.title} before anyone can connect it (Admin → Drives).</ErrorWell>
           ) : null}
-          {connectVars.map((v) => (
-            <VarInput
-              key={v.key}
-              v={v}
-              value={v.secret ? secrets[v.key] ?? "" : values[v.key] ?? ""}
-              onChange={(s) => (v.secret ? setSecret(v.key, s) : set(v.key, s))}
-              isSet={draft?.secretsSet.includes(v.key)}
-            />
-          ))}
+          {varInputs(connectVars)}
           {oauth ? (
             draft?.connected ? (
               <div className="flex flex-wrap items-center gap-3 rounded-control bg-well px-3.5 py-3">
@@ -164,15 +166,7 @@ export function DriveForm({
                 Advanced settings
               </summary>
               <div className="mt-4 space-y-4">
-                {advancedVars.map((v) => (
-                  <VarInput
-                    key={v.key}
-                    v={v}
-                    value={v.secret ? secrets[v.key] ?? "" : values[v.key] ?? ""}
-                    onChange={(s) => (v.secret ? setSecret(v.key, s) : set(v.key, s))}
-                    isSet={draft?.secretsSet.includes(v.key)}
-                  />
-                ))}
+                {varInputs(advancedVars)}
               </div>
             </details>
           ) : null}

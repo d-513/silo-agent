@@ -6,6 +6,7 @@ import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
 import { Select } from "./Select";
 import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
+import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
 
 export function PromptWell({
@@ -158,11 +159,7 @@ export function SettingsPane({
               emptyLabel="No models allowed"
               options={[
                 { value: "", label: "Operator default" },
-                ...models.map((m) => ({
-                  value: m.id,
-                  label: m.label || m.id,
-                  hint: m.label && m.label !== m.id ? m.id : undefined,
-                })),
+                ...modelOptions(models),
               ]}
             />
           </Field>

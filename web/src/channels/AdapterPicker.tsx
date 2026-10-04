@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { SkeletonRows } from "../Field";
 import type { ChannelAdapter } from "../gen/silo/v1/ui_pb";
-import { PageHead } from "../PageHead";
+import { PageHead, widePage } from "../PageHead";
 import { AdapterLogo } from "./AdapterLogo";
 
 // /bots/:id/channels/new: the built-in adapters to start a channel from.
 export function AdapterPicker({ botId, adapters, loaded, onBack }: { botId: string; adapters: ChannelAdapter[]; loaded: boolean; onBack: () => void }) {
   const navigate = useNavigate();
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+    <div className={widePage}>
       <PageHead title="Add a channel" subtitle="Choose a built-in adapter to connect with this Bot." onBack={onBack} />
       {!loaded ? (
         <SkeletonRows rows={2} height={72} />
