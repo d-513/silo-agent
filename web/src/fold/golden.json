@@ -1,0 +1,327 @@
+[
+ {
+  "key": "user-0",
+  "type": "user",
+  "id": "u1",
+  "runId": "r1",
+  "text": "hello",
+  "attachments": [
+   {
+    "name": "a.txt",
+    "path": "tmp/a.txt",
+    "size": 3
+   }
+  ],
+  "createdAt": "2026-10-04T10:00:00Z"
+ },
+ {
+  "key": "user-1",
+  "type": "user",
+  "id": "u2",
+  "runId": "r1",
+  "text": "do the thing",
+  "from": "lead"
+ },
+ {
+  "key": "thinking_chunk-2",
+  "type": "thinking",
+  "text": "quiet thought",
+  "streaming": false,
+  "startAt": 1300,
+  "ms": 100
+ },
+ {
+  "key": "chunk-4",
+  "type": "assistant",
+  "text": "Sure, on it.",
+  "streaming": false
+ },
+ {
+  "key": "tool_args_chunk-8",
+  "type": "tool",
+  "name": "exec_python",
+  "args": "{\"code\":\"print(1)\"}",
+  "running": false,
+  "runId": "r1",
+  "result": "1\n",
+  "calls": [
+   {
+    "key": "call-12",
+    "title": "GitHub · list repos",
+    "name": "github.list_repos",
+    "running": false,
+    "result": "[]",
+    "waiting": false
+   }
+  ],
+  "waiting": false
+ },
+ {
+  "key": "tool-15",
+  "type": "tool",
+  "name": "read",
+  "args": "{\"path\":\"x\"}",
+  "running": false,
+  "runId": "r1",
+  "result": "contents",
+  "waiting": false
+ },
+ {
+  "key": "tool-18",
+  "type": "tool",
+  "name": "write",
+  "args": "{\"path\":\"w\"}",
+  "running": false,
+  "runId": "r1",
+  "waiting": false,
+  "approvalId": "ap1",
+  "result": "ok"
+ },
+ {
+  "key": "decision-20",
+  "type": "receipt",
+  "decision": "allow_once",
+  "title": "Write file",
+  "target": "w",
+  "runId": "r1"
+ },
+ {
+  "key": "tool-22",
+  "type": "tool",
+  "name": "terminal",
+  "args": "{\"cmd\":\"rm\"}",
+  "running": false,
+  "runId": "r1",
+  "waiting": false,
+  "approvalId": "ap2",
+  "outcome": "denied",
+  "result": "denied"
+ },
+ {
+  "key": "decision-24",
+  "type": "receipt",
+  "decision": "deny",
+  "title": "Run command",
+  "target": "rm",
+  "runId": "r1"
+ },
+ {
+  "key": "tool-26",
+  "type": "tool",
+  "name": "exec_python",
+  "args": "{\"code\":\"x\"}",
+  "running": false,
+  "runId": "r1",
+  "calls": [
+   {
+    "key": "call-27",
+    "title": "Slack · post",
+    "name": "slack.post",
+    "running": false,
+    "waiting": false,
+    "outcome": "denied",
+    "result": "denied"
+   }
+  ],
+  "waiting": false,
+  "approvalId": "ap3",
+  "result": "failed"
+ },
+ {
+  "key": "decision-29",
+  "type": "receipt",
+  "decision": "deny",
+  "title": "Post",
+  "target": "#general",
+  "runId": "r1"
+ },
+ {
+  "key": "decision-32",
+  "type": "receipt",
+  "decision": "",
+  "title": "files.write",
+  "target": "",
+  "runId": "r1"
+ },
+ {
+  "key": "section_live-33",
+  "type": "assistant",
+  "text": "part one"
+ },
+ {
+  "key": "section-34",
+  "type": "assistant",
+  "text": "part twotail",
+  "streaming": false
+ },
+ {
+  "key": "compacting-38",
+  "type": "compaction",
+  "text": "Summary of earlier turns",
+  "reason": "auto",
+  "running": false,
+  "runId": "r1"
+ },
+ {
+  "key": "compaction-40",
+  "type": "compaction",
+  "text": "Manual summary",
+  "reason": "manual",
+  "runId": "r1"
+ },
+ {
+  "key": "compacting-41",
+  "type": "compaction",
+  "text": "",
+  "reason": "manual",
+  "running": false,
+  "runId": "r1"
+ },
+ {
+  "key": "error-42",
+  "type": "error",
+  "text": "provider exploded"
+ },
+ {
+  "key": "feed_quote-43",
+  "type": "quote",
+  "text": "A post",
+  "source": "automation “Digest”",
+  "createdAt": "2026-10-03T09:00:00Z"
+ },
+ {
+  "key": "subagent_report-44",
+  "type": "report",
+  "text": "### a — done\nok",
+  "agents": [
+   {
+    "name": "a",
+    "status": "done"
+   },
+   {
+    "name": "b",
+    "status": "error"
+   },
+   {
+    "name": "c",
+    "status": ""
+   }
+  ],
+  "runId": "r2"
+ },
+ {
+  "key": "artifact-45",
+  "type": "artifact",
+  "artifactType": "skill",
+  "name": "pdf",
+  "title": "PDF",
+  "path": "skills/pdf",
+  "scope": "personal",
+  "approvalId": "",
+  "status": "saved",
+  "runId": "r2"
+ },
+ {
+  "key": "artifact-47",
+  "type": "artifact",
+  "artifactType": "file",
+  "name": "r.pdf",
+  "title": "r.pdf",
+  "path": "r.pdf",
+  "scope": "workspace",
+  "approvalId": "ap9",
+  "status": "ready",
+  "size": 99,
+  "runId": "r2"
+ },
+ {
+  "key": "artifact-49",
+  "type": "artifact",
+  "artifactType": "skill",
+  "name": "",
+  "title": "",
+  "path": "",
+  "scope": "",
+  "approvalId": "",
+  "status": "",
+  "runId": "r2"
+ },
+ {
+  "key": "call-51",
+  "type": "tool",
+  "name": "exec_python",
+  "args": "{\"code\":\"slow\"}",
+  "running": false,
+  "runId": "r2",
+  "calls": [
+   {
+    "key": "call-51",
+    "title": "Bare call",
+    "name": "python.thing",
+    "running": false,
+    "result": "r",
+    "waiting": false
+   },
+   {
+    "key": "call-55",
+    "title": "Nested",
+    "name": "a.b",
+    "running": false,
+    "outcome": "stopped",
+    "waiting": false
+   }
+  ],
+  "outcome": "stopped",
+  "waiting": false
+ },
+ {
+  "key": "thinking_chunk-53",
+  "type": "thinking",
+  "text": "pondering",
+  "streaming": false,
+  "startAt": 3850,
+  "ms": 50
+ },
+ {
+  "key": "chunk-56",
+  "type": "assistant",
+  "text": "partial reply",
+  "streaming": false
+ },
+ {
+  "key": "done-57",
+  "type": "receipt",
+  "decision": "stopped",
+  "title": "this run",
+  "target": "",
+  "runId": "r2"
+ },
+ {
+  "key": "tool-58",
+  "type": "tool",
+  "name": "other",
+  "args": "{\"x\":1}",
+  "running": false,
+  "runId": "r1",
+  "outcome": "stopped",
+  "waiting": false
+ },
+ {
+  "key": "tool-61",
+  "type": "tool",
+  "name": "after",
+  "args": "{\"y\":2}",
+  "running": false,
+  "runId": "r2",
+  "outcome": "stopped",
+  "waiting": false
+ },
+ {
+  "key": "compacting-62",
+  "type": "compaction",
+  "text": "",
+  "reason": "auto",
+  "running": false,
+  "runId": "r2"
+ }
+]

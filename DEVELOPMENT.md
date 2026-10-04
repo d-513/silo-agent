@@ -130,6 +130,8 @@ make test-fast     # skip the container tier (no Podman needed)
 make e2e           # Playwright against the already-running `make dev` stack
 ```
 
+Web unit tests are plain scripts: `node --experimental-strip-types web/src/<dir>/<x>_test.ts` runs one, and `npx tsc --noEmit` in `web/` typechecks (test files are excluded). A module a test imports needs relative imports that Node can resolve, so inside such a folder (today `web/src/fold`, `rules`, `composer`, `connectors`) pure logic lives in `.ts` files with no runtime dependency on React, and a folder whose files import each other uses explicit `.ts` extensions (`allowImportingTsExtensions` is on).
+
 The explicit Go package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. Feature tests use the deterministic DummyLLM provider (`internal/llm/dummy`) and the `internal/apptest` harness; the container tier boots the real Bot image and cleans up everything it creates. See [TESTING.md](TESTING.md) for tiers, environment knobs, and live checks.
 
 ## Web bundle
@@ -173,7 +175,13 @@ Keep commits atomic: one logical change each, not a mega-commit that bundles unr
 cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
 cmd/silo-mcp-bridge reverse tunnel from a STDIO sidecar to the CP (raw JSON-RPC)
-internal/app        UI + worker RPCs, agent loop
+internal/app        the control plane: UI + worker RPCs, the agent loop and run engine, Bot lifecycle, connectors, subagents
+internal/app/…      one package per domain the app is built from, each a Service with its own RPCs and Bot tools:
+                    access (who is asking: the signed-in user, ownership checks), host (the few things a domain asks of the
+                    App), run (a unit of agent work and the Engine door into it), chats, models (providers, model choice,
+                    embeddings, the LLM log), workspace (the Bot's files), voice, feed, knowledge, memory, drive,
+                    automation, channel, skill, artifact, toolarg. handler.go embeds them into the one UI service
+internal/textx      string helpers (valid UTF-8, caps, clips) shared by the above
 internal/rpcx       ConnectRPC plumbing shared by the CP and everything that dials it: h2c client, Bearer interceptor, EnableH2C
 internal/desktop    what the CP and the worker agree on about the Bot's X11 desktop (screen size, point check)
 internal/channels   channel adapter engine (telegram/ is gotd MTProto; GUIDE.md go:embed’d)
@@ -186,6 +194,9 @@ gen/                Go stubs (generated)
 web/                Vite + React
 web/src/bot/        the Bot page: BotPage, its tabs, chat list, run pane and hooks
 web/src/thread/     the conversation view: rows, tool rows, bubbles, scroll-following
+web/src/fold/       how raw run events fold into the thread's blocks (one handler per event kind)
+web/src/composer/   the message box: input hooks, toolbar, dictation, context meter
+web/src/rules/      the Rules tab; connectors/form is the connector form, drives, channels and admin follow the same shape
 web/src/gen         TS stubs (generated)
 data/               per-bot volumes + skills (gitignored; the DB is Postgres)
 ```

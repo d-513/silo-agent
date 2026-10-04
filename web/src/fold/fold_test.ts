@@ -1,4 +1,4 @@
-import { foldEvents, type Ev } from "./fold.ts";
+import { foldEvents, type Ev } from "./index.ts";
 
 function ev(kind: string, body = "", tool = ""): Ev {
   return { kind, body, tool };
