@@ -4,7 +4,7 @@ import { ui } from "./api";
 import { ArmedButton } from "./Feedback";
 import { SkeletonRows } from "./Field";
 import { Btn } from "./Btn";
-import { Segmented } from "./ConnectorForm";
+import { Segmented } from "./connectors/form";
 import { SkillBrowserOverlay } from "./FileBrowser";
 import { Switch } from "./Switch";
 import { skillSource } from "./fs";

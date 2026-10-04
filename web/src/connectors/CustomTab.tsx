@@ -1,5 +1,5 @@
 import { Btn } from "../Btn";
-import { ConnectorFields, emptyDraft, type ConnectorDraft } from "../ConnectorForm";
+import { ConnectorFields, emptyDraft, type ConnectorDraft } from "./form";
 
 // The form for a connector that is not in the library: an HTTP MCP server, or a
 // STDIO one in its own sidecar.

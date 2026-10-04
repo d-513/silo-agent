@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { startConnectorAuth } from "../connectorAuth";
-import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "../ConnectorForm";
+import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./form";
 import { fail } from "../errors";
 import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
 import { widePage } from "../PageHead";

@@ -1,6 +1,6 @@
 import { Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { Btn } from "../Btn";
-import { CategoryChip, ConnectorMark, CustomChip, McpChip } from "../ConnectorForm";
+import { CategoryChip, ConnectorMark, CustomChip, McpChip } from "./form";
 import { ArmedButton } from "../Feedback";
 import type { BotConnector } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";

@@ -4,7 +4,7 @@ import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Btn, btnClass } from "./Btn";
-import { ConnectorFields, ConnectorMark, McpChip, CategoryChip, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./ConnectorForm";
+import { ConnectorFields, ConnectorMark, McpChip, CategoryChip, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./connectors/form";
 import { inputClass, SkeletonRows } from "./Field";
 import { Select } from "./Select";
 import type { Connector } from "./gen/silo/v1/ui_pb";

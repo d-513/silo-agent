@@ -1,6 +1,6 @@
 import { Check, Plus, ShieldCheck } from "lucide-react";
 import { btnClass } from "../Btn";
-import { CategoryChip, ConnectorMark, McpChip } from "../ConnectorForm";
+import { CategoryChip, ConnectorMark, McpChip } from "./form";
 import type { Connector } from "../gen/silo/v1/ui_pb";
 import { featuredPoints } from "./model";
 
