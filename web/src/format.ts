@@ -21,3 +21,19 @@ export function runWhen(iso?: string) {
   if (days < 7) return `${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
   return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}`;
 }
+
+// Chat-row meta: "Just now", "12 min ago", "09:12", "Yesterday", "Tue", "Mar 4".
+export function chatWhen(iso: string) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const d = new Date(t);
+  const now = new Date();
+  const mins = Math.floor((now.getTime() - t) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const days = daysAgo(d, now);
+  if (days === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (days === 1) return "Yesterday";
+  if (days < 7) return d.toLocaleDateString([], { weekday: "short" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
