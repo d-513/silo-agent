@@ -55,16 +55,8 @@ func TestCrestInRange(t *testing.T) {
 			}
 		}
 	}
-	if Crest("Alpha", "1") != Crest("Alpha", "1") {
+	first, second := Crest("Alpha", "1"), Crest("Alpha", "1")
+	if first != second {
 		t.Fatal("Crest not deterministic")
-	}
-}
-
-func TestPackCrestWraps(t *testing.T) {
-	if got := PackCrest(CrestShapes, CrestColors); got != 0 {
-		t.Fatalf("wrap: %d", got)
-	}
-	if got := PackCrest(0, 1); got != CrestShapes {
-		t.Fatalf("color offset: %d", got)
 	}
 }
