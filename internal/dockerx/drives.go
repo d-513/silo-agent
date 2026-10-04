@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 )
 
 // DriveName is a Bot's drive sidecar container.
@@ -214,22 +213,9 @@ func (e *Engine) DropDrive(ctx context.Context, botID, containerID string) {
 
 // ListDrives returns every drive sidecar, for reclaiming orphans.
 func (e *Engine) ListDrives(ctx context.Context) ([]DriveContainer, error) {
-	items, err := e.cli.ContainerList(ctx, container.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("label", "silo.role=drive")),
+	return listRole(ctx, e, "drive", func(id, name string, labels map[string]string) DriveContainer {
+		return DriveContainer{ID: id, Name: name, BotID: labels["silo.bot_id"]}
 	})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]DriveContainer, 0, len(items))
-	for _, c := range items {
-		name := ""
-		if len(c.Names) > 0 {
-			name = strings.TrimPrefix(c.Names[0], "/")
-		}
-		out = append(out, DriveContainer{ID: c.ID, Name: name, BotID: c.Labels["silo.bot_id"]})
-	}
-	return out, nil
 }
 
 // botDriveBind prepares the Bot's drive dir and returns its bind, or "" when

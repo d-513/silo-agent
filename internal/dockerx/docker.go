@@ -294,24 +294,28 @@ func (e *Engine) DropStdio(ctx context.Context, id, containerID string) {
 // its connector label. The CP uses it to reclaim containers whose attachment
 // row is gone.
 func (e *Engine) ListStdio(ctx context.Context) ([]StdioContainer, error) {
+	return listRole(ctx, e, "mcp-stdio", func(id, name string, labels map[string]string) StdioContainer {
+		return StdioContainer{ID: id, Name: name, ConnectorID: labels["silo.connector_id"]}
+	})
+}
+
+// listRole returns every running-or-stopped container labeled silo.role=role,
+// each built by mk from its id, name (without the leading slash) and labels.
+func listRole[T any](ctx context.Context, e *Engine, role string, mk func(id, name string, labels map[string]string) T) ([]T, error) {
 	items, err := e.cli.ContainerList(ctx, container.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("label", "silo.role=mcp-stdio")),
+		Filters: filters.NewArgs(filters.Arg("label", "silo.role="+role)),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]StdioContainer, 0, len(items))
+	out := make([]T, 0, len(items))
 	for _, c := range items {
 		name := ""
 		if len(c.Names) > 0 {
 			name = strings.TrimPrefix(c.Names[0], "/")
 		}
-		out = append(out, StdioContainer{
-			ID:          c.ID,
-			Name:        name,
-			ConnectorID: c.Labels["silo.connector_id"],
-		})
+		out = append(out, mk(c.ID, name, c.Labels))
 	}
 	return out, nil
 }
