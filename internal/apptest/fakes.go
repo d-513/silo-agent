@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"testing"
+	"time"
 
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
@@ -18,8 +20,13 @@ type FakeAdapter struct {
 	Requires bool
 	Fields   []channels.Field
 
+	// HistoryMsgs and HistoryErr are what History answers with.
+	HistoryMsgs []channels.Message
+	HistoryErr  error
+
 	mu           sync.Mutex
 	Sent         []channels.Outbound
+	host         channels.Host
 	ValidateFunc func(ctx context.Context, ch *db.Channel, cfg channels.Config) (channels.State, error)
 }
 
@@ -42,8 +49,29 @@ func (f *FakeAdapter) Validate(ctx context.Context, ch *db.Channel, cfg channels
 	return channels.State{Kind: channels.StateInfo, Message: "ready"}, nil
 }
 
-func (f *FakeAdapter) Start(ctx context.Context, _ *db.Channel, _ channels.Config, _ channels.Host) error {
+func (f *FakeAdapter) Start(ctx context.Context, _ *db.Channel, _ channels.Config, host channels.Host) error {
+	f.mu.Lock()
+	f.host = host
+	f.mu.Unlock()
 	<-ctx.Done()
+	return nil
+}
+
+// WaitHost returns the channels.Host the control plane handed to Start, so a
+// test can play the part of the platform and deliver inbound messages.
+func (f *FakeAdapter) WaitHost(t testing.TB) channels.Host {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		f.mu.Lock()
+		h := f.host
+		f.mu.Unlock()
+		if h != nil {
+			return h
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("the adapter was never started")
 	return nil
 }
 
@@ -55,7 +83,7 @@ func (f *FakeAdapter) Send(_ context.Context, _ *db.Channel, _ channels.Config, 
 }
 
 func (f *FakeAdapter) History(_ context.Context, _ *db.Channel, _ channels.Config, _ string, _ int) ([]channels.Message, error) {
-	return nil, nil
+	return f.HistoryMsgs, f.HistoryErr
 }
 
 func (f *FakeAdapter) Action(_ context.Context, _ *db.Channel, _ channels.Config, action string, _ map[string]string) (channels.State, error) {
