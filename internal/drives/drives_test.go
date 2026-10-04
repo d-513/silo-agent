@@ -457,7 +457,6 @@ func TestDig(t *testing.T) {
 	}
 }
 
-
 // TestRcloneOptions checks every template against rclone's own option list
 // (testdata/rclone_options.json, from `rclone config providers`): option names
 // must exist, and exactly the options rclone treats as passwords are obscured.

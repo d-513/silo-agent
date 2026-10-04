@@ -300,7 +300,7 @@ func (s *Supervisor) setStatus(m *mount, state, detail string) {
 }
 
 func (s *Supervisor) mountPath(dir string) string { return filepath.Join(s.cfg.MountRoot, dir) }
-func (s *Supervisor) confPath(id string) string  { return filepath.Join(s.cfg.RunDir, id+".conf") }
+func (s *Supervisor) confPath(id string) string   { return filepath.Join(s.cfg.RunDir, id+".conf") }
 
 // MountArgs is the rclone argv for one drive.
 func MountArgs(spec *v1.DriveSpec, cfg Config, conf, cacheMax string) []string {
