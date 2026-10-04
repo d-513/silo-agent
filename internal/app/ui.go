@@ -107,6 +107,28 @@ func (a *App) ownBot(ctx context.Context, id string) (*db.Bot, error) {
 	return &b, nil
 }
 
+// botRow loads one row of a Bot's by its id; what names the row in the
+// not-found error. The caller has already established that the Bot is theirs.
+func botRow[T any](a *App, botID, id, what string) (*T, error) {
+	var row T
+	res := a.DB.Where("bot_id = ? AND id = ?", botID, id).Limit(1).Find(&row)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New(what+" not found"))
+	}
+	return &row, nil
+}
+
+// ownBotRow is botRow for the signed-in user's own Bot.
+func ownBotRow[T any](ctx context.Context, a *App, botID, id, what string) (*T, error) {
+	if _, err := a.ownBot(ctx, botID); err != nil {
+		return nil, err
+	}
+	return botRow[T](a, botID, id, what)
+}
+
 func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {
 	u := currentUser(ctx)
 	var bots []db.Bot
@@ -232,22 +254,21 @@ func (a *App) StartBot(ctx context.Context, req *connect.Request[v1.GetBotReques
 }
 
 func (a *App) StopBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
-	if err != nil {
-		return nil, err
-	}
-	a.haltBot(ctx, b)
-	b.Status = "stopped"
-	a.DB.Save(b)
-	return connect.NewResponse(a.viewBot(ctx, b)), nil
+	return a.takeDown(ctx, req.Msg.GetId(), a.haltBot)
 }
 
 func (a *App) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	return a.takeDown(ctx, req.Msg.GetId(), a.destroyBot)
+}
+
+// takeDown runs down (halt the box, or remove it) on the user's Bot and returns
+// the Bot as stopped.
+func (a *App) takeDown(ctx context.Context, id string, down func(context.Context, *db.Bot)) (*connect.Response[v1.Bot], error) {
+	b, err := a.ownBot(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	a.destroyBot(ctx, b)
+	down(ctx, b)
 	b.Status = "stopped"
 	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
@@ -619,15 +640,6 @@ func sourceProto(s config.Source) v1.ConfigSource {
 	}
 }
 
-func settingsField(s *v1.Settings, key string) string {
-	for _, f := range s.GetFields() {
-		if f.GetKey() == key {
-			return f.GetValue()
-		}
-	}
-	return ""
-}
-
 func searchEngineProtos() []*v1.SearchEngine {
 	out := make([]*v1.SearchEngine, 0, len(search.Descriptors()))
 	for _, d := range search.Descriptors() {
@@ -662,11 +674,7 @@ func (a *App) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequ
 const descMax = 400
 
 func clipDesc(s string) string {
-	s = strings.TrimSpace(s)
-	if len(s) > descMax {
-		return s[:descMax]
-	}
-	return s
+	return truncateUTF8(strings.TrimSpace(s), descMax)
 }
 
 func eventsAfter(rows []db.RunEvent, after string) []db.RunEvent {

@@ -321,19 +321,6 @@ func tailRunes(s string, n int) string {
 
 // --- sweep ---
 
-func (a *App) memoryLoop(stop <-chan struct{}) {
-	t := time.NewTicker(collectTick)
-	defer t.Stop()
-	for {
-		select {
-		case <-stop:
-			return
-		case now := <-t.C:
-			a.SweepMemories(now)
-		}
-	}
-}
-
 // SweepMemories collects every web and channel chat that has new messages and
 // has been quiet for collectIdle, at most collectPerTick of them, oldest
 // first. It returns how many it read.
@@ -409,7 +396,7 @@ func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.Colle
 		var rows []db.Memory
 		a.DB.Select("id, kind, chat_id, content, created_at, last_used_at").Where("id IN ?", res.IDs).Order("created_at").Find(&rows)
 		for _, r := range rows {
-			out.Memories = append(out.Memories, &v1.Memory{Id: r.ID, Kind: r.Kind, ChatId: r.ChatID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)})
+			out.Memories = append(out.Memories, memoryProto(r))
 		}
 	}
 	return connect.NewResponse(out), nil

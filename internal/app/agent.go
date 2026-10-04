@@ -15,6 +15,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
+	"silo.agent/internal/desktop"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/security"
@@ -41,6 +42,15 @@ func truncateUTF8(s string, n int) string {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+// capText cuts s to at most n bytes (never mid-rune) and marks the cut, so the
+// reader and the model can both see that text is missing.
+func capText(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return truncateUTF8(s, n) + "\n…truncated"
 }
 
 // tool builds a neutral tool definition from a JSON-schema property map.
@@ -1003,9 +1013,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 				out = "error: " + err.Error()
 			}
 			out = a.Mask(botID).Apply(out)
-			if len(out) > 12000 {
-				out = truncateUTF8(out, 12000) + "\n…truncated"
-			}
+			out = capText(out, 12000)
 			a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 			if img != "" {
@@ -1249,7 +1257,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	path := relWorkspace(str("path"))
 	if name == "click" || name == "scroll" {
-		if err := screenPoint(num(args, "x"), num(args, "y")); err != nil {
+		if err := desktop.CheckPoint(num(args, "x"), num(args, "y")); err != nil {
 			return "", "", err
 		}
 	}
@@ -1346,7 +1354,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: str("command")}}}
 	case "exec_python":
 		code := str("code")
-		if wantsChrome(code) {
+		if desktop.WantsChromium(code) {
 			if err := a.ensureChrome(ctx, botID, runID); err != nil {
 				return "", "", err
 			}
@@ -1430,8 +1438,6 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 }
 
 const (
-	screenW      = 1600
-	screenH      = 900
 	lookPath     = "bot/screen.jpg"
 	lookCoordLaw = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
@@ -1487,13 +1493,6 @@ func chatTool(name string) (conn, action string, ok bool) {
 	default:
 		return "", "", false
 	}
-}
-
-func screenPoint(x, y int) error {
-	if x < 0 || x >= screenW || y < 0 || y >= screenH {
-		return fmt.Errorf("(%d,%d) is outside %d×%d", x, y, screenW, screenH)
-	}
-	return nil
 }
 
 func visionImage(tool, url string) (string, llm.Image) {

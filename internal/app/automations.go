@@ -254,19 +254,6 @@ func (a *App) rescheduleAutomations() {
 	}
 }
 
-func (a *App) automationLoop(stop <-chan struct{}) {
-	t := time.NewTicker(automationTick)
-	defer t.Stop()
-	for {
-		select {
-		case <-stop:
-			return
-		case now := <-t.C:
-			a.FireDueAutomations(now)
-		}
-	}
-}
-
 // FireDueAutomations starts every enabled automation whose next firing is at or
 // before now and moves it to its following slot. It returns how many started.
 func (a *App) FireDueAutomations(now time.Time) int {
@@ -341,15 +328,7 @@ func (a *App) protoAutomation(au *db.Automation) *v1.Automation {
 }
 
 func (a *App) ownAutomation(ctx context.Context, botID, id string) (*db.Automation, error) {
-	if _, err := a.ownBot(ctx, botID); err != nil {
-		return nil, err
-	}
-	var au db.Automation
-	a.DB.Where("bot_id = ? AND id = ?", botID, id).Limit(1).Find(&au)
-	if au.ID == "" {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("automation not found"))
-	}
-	return &au, nil
+	return ownBotRow[db.Automation](ctx, a, botID, id, "automation")
 }
 
 func (a *App) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {

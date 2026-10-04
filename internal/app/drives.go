@@ -324,28 +324,13 @@ type driveHostCtxKey struct{}
 
 var driveHostKey = driveHostCtxKey{}
 
-type driveInterceptor struct{ a *App }
-
-func (i driveInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc { return next }
-
-func (i driveInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return next
-}
-
-func (i driveInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (a *App) interceptDriveStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		tok := strings.TrimPrefix(conn.RequestHeader().Get("Authorization"), "Bearer ")
-		if tok == "" || i.a.DB == nil {
-			return connect.NewError(connect.CodeUnauthenticated, nil)
-		}
-		var host db.DriveHost
-		if err := i.a.DB.Where("token_hash = ?", ids.Hash(tok)).Limit(1).Find(&host).Error; err != nil {
+		host, _, err := rowByToken[db.DriveHost](a.DB, "token_hash", conn.RequestHeader().Get("Authorization"))
+		if err != nil {
 			return err
 		}
-		if host.BotID == "" {
-			return connect.NewError(connect.CodeUnauthenticated, nil)
-		}
-		return next(context.WithValue(ctx, driveHostKey, &host), conn)
+		return next(context.WithValue(ctx, driveHostKey, host), conn)
 	}
 }
 

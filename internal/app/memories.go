@@ -76,12 +76,18 @@ func (a *App) embed(ctx context.Context, texts []string) ([]pgvector.Vector, str
 // canEmbed reports whether modelID names a provider that implements
 // llm.Embedder, without needing its API key.
 func (a *App) canEmbed(modelID string) error {
+	return providerCan[llm.Embedder](a, modelID, "embed")
+}
+
+// providerCan reports whether modelID names a provider whose client implements
+// the capability interface T; verb names what it cannot do in the error.
+func providerCan[T any](a *App, modelID, verb string) error {
 	client, provider, err := a.probeClient(modelID)
 	if err != nil {
 		return err
 	}
-	if _, ok := client.(llm.Embedder); !ok {
-		return fmt.Errorf("%s cannot embed; pick an OpenAI-compatible provider", provider)
+	if _, ok := client.(T); !ok {
+		return fmt.Errorf("%s cannot %s; pick an OpenAI-compatible provider", provider, verb)
 	}
 	return nil
 }
@@ -284,13 +290,16 @@ func (a *App) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemo
 		Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
 	out := &v1.ListMemoriesResponse{}
 	for _, r := range rows {
-		m := &v1.Memory{Id: r.ID, Kind: r.Kind, ChatId: r.ChatID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339)}
-		if r.LastUsedAt != nil {
-			m.LastUsedAt = r.LastUsedAt.Format(time.RFC3339)
-		}
-		out.Memories = append(out.Memories, m)
+		out.Memories = append(out.Memories, memoryProto(r))
 	}
 	return connect.NewResponse(out), nil
+}
+
+func memoryProto(m db.Memory) *v1.Memory {
+	return &v1.Memory{
+		Id: m.ID, Kind: m.Kind, ChatId: m.ChatID, Content: m.Content,
+		CreatedAt: m.CreatedAt.Format(time.RFC3339), LastUsedAt: rfc3339(m.LastUsedAt),
+	}
 }
 
 func (a *App) SearchMemories(ctx context.Context, req *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error) {
@@ -322,10 +331,9 @@ func (a *App) SearchMemories(ctx context.Context, req *connect.Request[v1.Search
 	}
 	out := &v1.SearchMemoriesResponse{}
 	for _, r := range rows {
-		m := &v1.Memory{Id: r.ID, Kind: r.Kind, ChatId: full[r.ID].ChatID, Content: r.Content, CreatedAt: r.CreatedAt.Format(time.RFC3339), Distance: r.Distance}
-		if t := full[r.ID].LastUsedAt; t != nil {
-			m.LastUsedAt = t.Format(time.RFC3339)
-		}
+		x := full[r.ID]
+		m := memoryProto(db.Memory{ID: r.ID, Kind: r.Kind, ChatID: x.ChatID, Content: r.Content, CreatedAt: r.CreatedAt, LastUsedAt: x.LastUsedAt})
+		m.Distance = r.Distance
 		out.Memories = append(out.Memories, m)
 	}
 	return connect.NewResponse(out), nil

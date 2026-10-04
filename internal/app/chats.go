@@ -24,17 +24,7 @@ func protoChat(c *db.Chat) *v1.Chat {
 }
 
 func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, error) {
-	if _, err := a.ownBot(ctx, botID); err != nil {
-		return nil, err
-	}
-	var c db.Chat
-	if err := a.DB.First(&c, "id = ? AND bot_id = ?", chatID, botID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, err
-	}
-	return &c, nil
+	return ownBotRow[db.Chat](ctx, a, botID, chatID, "chat")
 }
 
 // webChats keeps Web UI chats: not a channel conversation, not an automation log.

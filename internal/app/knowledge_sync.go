@@ -357,19 +357,6 @@ func (a *App) saveSource(f *db.KnowledgeFolder, old *db.KnowledgeSource, wf walk
 
 // --- sweep ---
 
-func (a *App) knowledgeLoop(stop <-chan struct{}) {
-	t := time.NewTicker(knowledgeTick)
-	defer t.Stop()
-	for {
-		select {
-		case <-stop:
-			return
-		case now := <-t.C:
-			a.SweepKnowledge(now)
-		}
-	}
-}
-
 // recoverKnowledge clears "syncing" left by a CP that stopped mid-sync.
 func (a *App) recoverKnowledge() {
 	a.DB.Model(&db.KnowledgeFolder{}).Where("status = 'syncing'").Update("status", "idle")

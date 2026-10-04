@@ -320,12 +320,12 @@ func TestSubagentStopCascadesAndDeleteDrops(t *testing.T) {
 	chat := h.FirstChat(id)
 	run, _ := h.Send(id, chat, "Test_SA4_Input")
 	h.WaitRun(run)
-	sa := waitSubagent(t, h, id, chat, "slow", func(s *v1.Subagent) bool { return s.GetRunning() })
+	waitSubagent(t, h, id, chat, "slow", func(s *v1.Subagent) bool { return s.GetRunning() })
 
 	if _, err := h.Client.StopRun(h.Ctx(), connect.NewRequest(&v1.StopRunRequest{BotId: id, ChatId: chat})); err != nil {
 		t.Fatal(err)
 	}
-	sa = waitSubagent(t, h, id, chat, "slow", func(s *v1.Subagent) bool { return !s.GetRunning() })
+	sa := waitSubagent(t, h, id, chat, "slow", func(s *v1.Subagent) bool { return !s.GetRunning() })
 	if sa.GetStatus() != "stopped" {
 		t.Fatalf("status %q", sa.GetStatus())
 	}

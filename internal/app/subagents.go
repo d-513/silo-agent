@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"connectrpc.com/connect"
 
@@ -483,11 +482,7 @@ func (a *App) subagentActivity(sa *db.Subagent) string {
 }
 
 func oneLine(s string, n int) string {
-	s = strings.Join(strings.Fields(s), " ")
-	if utf8.RuneCountInString(s) > n {
-		s = string([]rune(s)[:n]) + "…"
-	}
-	return s
+	return capRunes(strings.Join(strings.Fields(s), " "), n)
 }
 
 // --- sleep ---
@@ -978,15 +973,7 @@ func (a *App) protoSubagent(sa *db.Subagent) *v1.Subagent {
 }
 
 func (a *App) ownSubagent(ctx context.Context, botID, id string) (*db.Subagent, error) {
-	if _, err := a.ownBot(ctx, botID); err != nil {
-		return nil, err
-	}
-	var sa db.Subagent
-	a.DB.Where("bot_id = ? AND id = ?", botID, id).Limit(1).Find(&sa)
-	if sa.ID == "" {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("subagent not found"))
-	}
-	return &sa, nil
+	return ownBotRow[db.Subagent](ctx, a, botID, id, "subagent")
 }
 
 func (a *App) ListSubagents(ctx context.Context, req *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {

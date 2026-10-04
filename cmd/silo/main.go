@@ -3,9 +3,6 @@ package main
 import (
 	"log"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
 	"silo.agent/internal/app"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/config"
@@ -35,9 +32,7 @@ func main() {
 	}
 	a := app.New(store, gdb, eng)
 	log.Printf("silo listening %s docker=%s cp_url=%s", cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
-	h2s := &http2.Server{}
-	err = app.ListenAndServe(&cfg, h2c.NewHandler(a.Handler(), h2s), a.Shutdown)
-	if err != nil {
+	if err := app.ListenAndServe(&cfg, a.Handler(), a.Shutdown); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -118,11 +118,11 @@ func (a *App) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.Kno
 	if err != nil {
 		return nil, nil, err
 	}
-	var f db.KnowledgeFolder
-	if err := a.DB.Where("bot_id = ? AND id = ?", b.ID, id).Limit(1).Find(&f).Error; err != nil || f.ID == "" {
-		return nil, nil, connect.NewError(connect.CodeNotFound, errors.New("no such folder"))
+	f, err := botRow[db.KnowledgeFolder](a, b.ID, id, "folder")
+	if err != nil {
+		return nil, nil, err
 	}
-	return b, &f, nil
+	return b, f, nil
 }
 
 // --- RPCs ---

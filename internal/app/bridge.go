@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
-	"silo.agent/internal/ids"
 )
 
 // bridgeTunnel is one live reverse connection from a STDIO sidecar. Frames flow
@@ -243,38 +241,17 @@ func (l *bridgeLink) Close() error {
 
 func (l *bridgeLink) SessionID() string { return "" }
 
-type bridgeInterceptor struct{ a *App }
-
-func (i bridgeInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return next
-}
-
-func (i bridgeInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return next
-}
-
-func (i bridgeInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (a *App) interceptBridgeStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		row, tok, err := i.a.bridgeFromToken(conn.RequestHeader().Get("Authorization"))
+		row, tok, err := a.bridgeFromToken(conn.RequestHeader().Get("Authorization"))
 		if err != nil {
 			return err
 		}
-		i.a.Mask(row.BotID).Add(tok)
+		a.Mask(row.BotID).Add(tok)
 		return next(context.WithValue(ctx, bridgeKey, row), conn)
 	}
 }
 
 func (a *App) bridgeFromToken(h string) (*db.BotConnector, string, error) {
-	tok := strings.TrimPrefix(h, "Bearer ")
-	if tok == "" {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	var row db.BotConnector
-	if err := a.DB.Where("bridge_token_hash = ?", ids.Hash(tok)).Limit(1).Find(&row).Error; err != nil {
-		return nil, "", err
-	}
-	if row.ID == "" {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	return &row, tok, nil
+	return rowByToken[db.BotConnector](a.DB, "bridge_token_hash", h)
 }

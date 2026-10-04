@@ -157,17 +157,6 @@ func (a *App) dropBotStdio(botID string) {
 	}
 }
 
-func (a *App) dropAllStdio() {
-	if a.DB == nil {
-		return
-	}
-	var rows []db.BotConnector
-	a.DB.Find(&rows)
-	for i := range rows {
-		a.dropStdio(&rows[i])
-	}
-}
-
 // reconcileStdio reclaims sidecar containers whose BotConnector row is gone
 // (crash mid-delete, DB reset, older-version leftovers). Runs at startup.
 func (a *App) reconcileStdio() {

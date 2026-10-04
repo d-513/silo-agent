@@ -28,6 +28,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/masker"
 	"silo.agent/internal/mcpx"
+	"silo.agent/internal/rpcx"
 )
 
 type ctxKey int
@@ -208,12 +209,27 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.reconcileChannels()
 	if a.DB != nil {
 		a.rescheduleAutomations()
-		go a.automationLoop(a.stopAutomations)
-		go a.memoryLoop(a.stopAutomations)
+		go tickLoop(a.stopAutomations, automationTick, func(now time.Time) { a.FireDueAutomations(now) })
+		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		a.recoverKnowledge()
-		go a.knowledgeLoop(a.stopAutomations)
+		go tickLoop(a.stopAutomations, knowledgeTick, func(now time.Time) { a.SweepKnowledge(now) })
 	}
 	return a
+}
+
+// tickLoop calls fn on every tick until stop is closed: the shape of each
+// background sweep (automations, memory collection, knowledge sync).
+func tickLoop(stop <-chan struct{}, every time.Duration, fn func(now time.Time)) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case now := <-t.C:
+			fn(now)
+		}
+	}
 }
 
 func (a *App) cfg() config.Config {
@@ -324,6 +340,7 @@ func (a *App) Shutdown() {
 
 func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: h}
+	rpcx.EnableH2C(srv)
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	sigc := make(chan os.Signal, 1)
@@ -466,27 +483,35 @@ func currentBot(ctx context.Context) *db.Bot {
 	return b
 }
 
+// rowByToken resolves an Authorization header to the row whose hashColumn holds
+// the hash of its bearer token, and returns the raw token so the caller can mask
+// it. A missing or unknown token is Unauthenticated; a store failure is itself.
+func rowByToken[T any](gdb *gorm.DB, hashColumn, header string) (*T, string, error) {
+	tok := strings.TrimPrefix(header, "Bearer ")
+	if tok == "" || gdb == nil {
+		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+	var row T
+	res := gdb.Where(hashColumn+" = ?", ids.Hash(tok)).Limit(1).Find(&row)
+	if res.Error != nil {
+		return nil, "", res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+	return &row, tok, nil
+}
+
 func (a *App) botFromToken(h string) (*db.Bot, string, error) {
-	tok := strings.TrimPrefix(h, "Bearer ")
-	if tok == "" {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	var b db.Bot
-	if err := a.DB.Where("token_hash = ?", ids.Hash(tok)).Limit(1).Find(&b).Error; err != nil {
-		return nil, "", err
-	}
-	if b.ID == "" {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	return &b, tok, nil
+	return rowByToken[db.Bot](a.DB, "token_hash", h)
 }
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	uiPath, uiH := silov1connect.NewUIHandler(a, connect.WithInterceptors(uiInterceptor{a}))
-	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(workerInterceptor{a}))
-	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(bridgeInterceptor{a}))
-	drPath, drH := silov1connect.NewDriveHostHandler(a, connect.WithInterceptors(driveInterceptor{a}))
+	uiPath, uiH := silov1connect.NewUIHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptUI, Stream: a.interceptUIStream}))
+	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
+	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptBridgeStream}))
+	drPath, drH := silov1connect.NewDriveHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptDriveStream}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
 	mux.Handle(brPath, brH)

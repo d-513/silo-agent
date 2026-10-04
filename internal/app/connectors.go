@@ -580,7 +580,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	}
 	sess, err := a.mcpSession(ctx, bc, c)
@@ -613,7 +613,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
 	out = a.Mask(bot.ID).Apply(out)
-	a.emitCallDone(bot.ID, runID, tool, capCall(out))
+	a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
 	return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 }
 
@@ -645,7 +645,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
 		out = a.Mask(bot.ID).Apply(out)
-		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	case security.Channels:
 		if action != "send" {
@@ -680,7 +680,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
 	case security.Bot, security.Automations, security.Model, security.Tasks:
 		// Actions shared with a chat tool run the same code (runShared); the
@@ -698,7 +698,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capCall(out))
+		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
 		if strings.HasPrefix(out, "{") && json.Valid([]byte(out)) {
 			return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 		}
@@ -744,12 +744,8 @@ func callTitle(name, action string) string {
 	return name + " · " + a
 }
 
-func capCall(s string) string {
-	if len(s) > 2000 {
-		return truncateUTF8(s, 2000) + "\n…truncated"
-	}
-	return s
-}
+// callResultMax caps a connector call's result on the thread's call row.
+const callResultMax = 2000
 
 // jsonResult wraps a plain string as a JSON object for the Python bus.
 func jsonResult(s string) string {

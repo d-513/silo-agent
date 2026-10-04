@@ -217,14 +217,6 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 	return out
 }
 
-func (b *systemPromptBuilder) String() string {
-	var s strings.Builder
-	for _, blk := range b.Blocks() {
-		s.WriteString(blk.Text)
-	}
-	return s.String()
-}
-
 // buildSystemBlocks loads the session and returns the ordered, cache-aware
 // system prompt. An optional origin makes the prompt aware of the channel a run
 // came from; that per-run note is placed last.
@@ -254,15 +246,6 @@ func (a *App) buildSystemBlocks(botID string, origin ...*runOrigin) []llm.System
 		}
 	}
 	return b.Blocks()
-}
-
-// buildSystem renders the system prompt as one string.
-func (a *App) buildSystem(botID string, origin ...*runOrigin) string {
-	var s strings.Builder
-	for _, blk := range a.buildSystemBlocks(botID, origin...) {
-		s.WriteString(blk.Text)
-	}
-	return s.String()
 }
 
 // promptContext snapshots the session state providers may depend on.

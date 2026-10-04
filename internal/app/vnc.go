@@ -21,12 +21,12 @@ func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*w
 	botID := r.URL.Query().Get("bot")
 	var b db.Bot
 	if err := a.DB.First(&b, "id = ? AND user_id = ?", botID, u.ID).Error; err != nil {
-		http.Error(w, "not found", 404)
+		http.Error(w, "not found", http.StatusNotFound)
 		return nil, nil, "", false
 	}
 	sess := a.Hub.Get(botID)
 	if sess == nil {
-		http.Error(w, "no worker", 503)
+		http.Error(w, "no worker", http.StatusServiceUnavailable)
 		return nil, nil, "", false
 	}
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{

@@ -163,15 +163,7 @@ func (a *App) MarkFeedRead(ctx context.Context, req *connect.Request[v1.MarkFeed
 }
 
 func (a *App) ownFeedPost(ctx context.Context, botID, id string) (*db.FeedPost, error) {
-	if _, err := a.ownBot(ctx, botID); err != nil {
-		return nil, err
-	}
-	var p db.FeedPost
-	a.DB.Where("bot_id = ? AND id = ?", botID, id).Limit(1).Find(&p)
-	if p.ID == "" {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("feed post not found"))
-	}
-	return &p, nil
+	return ownBotRow[db.FeedPost](ctx, a, botID, id, "feed post")
 }
 
 func (a *App) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error) {

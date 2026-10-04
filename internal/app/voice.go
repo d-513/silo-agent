@@ -80,14 +80,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 // canTranscribe reports whether modelID names a provider that implements
 // llm.Transcriber, without needing its API key.
 func (a *App) canTranscribe(modelID string) error {
-	client, provider, err := a.probeClient(modelID)
-	if err != nil {
-		return err
-	}
-	if _, ok := client.(llm.Transcriber); !ok {
-		return fmt.Errorf("%s cannot transcribe; pick an OpenAI-compatible provider", provider)
-	}
-	return nil
+	return providerCan[llm.Transcriber](a, modelID, "transcribe")
 }
 
 // Transcribe is composer dictation: the browser records, the CP transcribes,

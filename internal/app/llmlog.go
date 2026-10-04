@@ -37,8 +37,8 @@ func (a *App) recordLLM(botID, label string, rec llm.Record) {
 		Label:      label,
 		Provider:   rec.Provider,
 		Model:      rec.Model,
-		Request:    capLogText(formatLLMRequest(rec)),
-		Response:   capLogText(formatLLMResponse(rec)),
+		Request:    capText(formatLLMRequest(rec), llmlogTextMax),
+		Response:   capText(formatLLMResponse(rec), llmlogTextMax),
 		InputTok:   rec.Usage.InputTokens,
 		OutputTok:  rec.Usage.OutputTokens,
 		DurationMs: rec.Duration.Milliseconds(),
@@ -68,13 +68,6 @@ func (a *App) pruneLLMLogs() {
 	if len(idsToDrop) > 0 {
 		a.DB.Where("id IN ?", idsToDrop).Delete(&db.LLMLog{})
 	}
-}
-
-func capLogText(s string) string {
-	if len(s) <= llmlogTextMax {
-		return s
-	}
-	return truncateUTF8(s, llmlogTextMax) + "\n…truncated"
 }
 
 func (a *App) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
