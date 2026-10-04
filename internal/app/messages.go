@@ -10,6 +10,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -149,9 +150,9 @@ func (a *App) publishReset(botID, chatID string) {
 	a.Bus.Publish(botID, &v1.RunEvent{ChatId: chatID, Kind: "reset"})
 }
 
-// stopChatLive stops any live run for the chat and waits for its goroutine to
+// StopChatLive stops any live run for the chat and waits for its goroutine to
 // exit, so history truncation is not raced by a final write.
-func (a *App) stopChatLive(botID, chatID string) {
+func (a *App) StopChatLive(botID, chatID string) {
 	lr := a.liveRunFor(botID, chatID)
 	if lr == nil {
 		return
@@ -187,7 +188,7 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 	if last := a.lastUserEventID(ch.ID); last == "" || last != req.Msg.GetEventId() {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("only the last user message can be edited"))
 	}
-	a.stopChatLive(b.ID, ch.ID)
+	a.StopChatLive(b.ID, ch.ID)
 	found, err := a.truncateChatFrom(ch.ID, req.Msg.GetEventId())
 	if err != nil {
 		return nil, err
@@ -218,7 +219,7 @@ func (a *App) DeleteMessage(ctx context.Context, req *connect.Request[v1.DeleteM
 	if last := a.lastUserEventID(ch.ID); last == "" || last != req.Msg.GetEventId() {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("only the last user message can be deleted"))
 	}
-	a.stopChatLive(b.ID, ch.ID)
+	a.StopChatLive(b.ID, ch.ID)
 	found, err := a.truncateChatFrom(ch.ID, req.Msg.GetEventId())
 	if err != nil {
 		return nil, err
@@ -274,13 +275,13 @@ func (a *App) CompactChat(ctx context.Context, req *connect.Request[v1.CompactCh
 	}
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	if a.liveRunID(b.ID, ch.ID) != "" {
+	if a.LiveRunID(b.ID, ch.ID) != "" {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
 	}
 	if len(a.historyFromDB(ch.ID)) < 2 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to compact yet"))
 	}
-	runID, err := a.startRun(runRequest{botID: b.ID, chatID: ch.ID, compact: true})
+	runID, err := a.StartRun(run.Request{BotID: b.ID, ChatID: ch.ID, Compact: true})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}

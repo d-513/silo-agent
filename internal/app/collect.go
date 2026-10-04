@@ -342,7 +342,7 @@ func (a *App) SweepMemories(now time.Time) int {
 		if read == collectPerTick {
 			break
 		}
-		if a.liveRunID(r.BotID, r.ID) != "" {
+		if a.LiveRunID(r.BotID, r.ID) != "" {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)

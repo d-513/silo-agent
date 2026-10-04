@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
@@ -68,7 +69,7 @@ func isAgentTool(name string) bool {
 
 // toolsFor is the tool list for a run: everything for a chat, minus the
 // lead-only tools for a subagent and search_docs while nothing is indexed.
-func (a *App) toolsFor(botID string, origin *runOrigin) []llm.Tool {
+func (a *App) toolsFor(botID string, origin *run.Origin) []llm.Tool {
 	all := a.runTools()
 	if !a.Knowledge.Active(botID) {
 		kept := make([]llm.Tool, 0, len(all))
@@ -79,7 +80,7 @@ func (a *App) toolsFor(botID string, origin *runOrigin) []llm.Tool {
 		}
 		all = kept
 	}
-	if origin == nil || origin.subagent == nil {
+	if origin == nil || origin.Subagent == nil {
 		return all
 	}
 	out := make([]llm.Tool, 0, len(all))
@@ -142,7 +143,7 @@ func (a *App) findSubagent(leadChatID, name string) (*db.Subagent, error) {
 }
 
 func (a *App) subagentLive(sa *db.Subagent) bool {
-	return a.liveRunID(sa.BotID, sa.ChatID) != ""
+	return a.LiveRunID(sa.BotID, sa.ChatID) != ""
 }
 
 // pingLead tells viewers of the lead chat that its subagents or board moved.
@@ -182,7 +183,7 @@ func (a *App) stopSubagents(botID, leadChatID string) {
 func (a *App) dropSubagents(botID, leadChatID string) {
 	for _, sa := range a.subagentsOf(leadChatID) {
 		a.quietSubagents("stopped", "id = ?", sa.ID)
-		a.stopChatLive(botID, sa.ChatID)
+		a.StopChatLive(botID, sa.ChatID)
 		a.dropChat(sa.ChatID)
 		a.DB.Delete(&db.Subagent{}, "id = ?", sa.ID)
 	}

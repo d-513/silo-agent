@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -91,13 +92,13 @@ func v1Attachments(flat []eventAttachment) []*v1.Attachment {
 // delivers it. kind is "assistant" for a plain reply, "section" for a
 // sentinel-bounded block on the final turn, or "section_live" for one emitted
 // mid-turn (displayed and delivered but not replayed as model history).
-func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *runOrigin) {
+func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *run.Origin) {
 	if strings.TrimSpace(body) == "" {
 		return
 	}
 	a.emit(botID, chatID, runID, kind, body, "")
-	if origin != nil && origin.deliver != nil {
-		if err := origin.deliver(channels.Outbound{ExternalID: origin.external, Text: body}); err != nil {
+	if origin != nil && origin.Deliver != nil {
+		if err := origin.Deliver(channels.Outbound{ExternalID: origin.External, Text: body}); err != nil {
 			a.emit(botID, chatID, runID, "error", "channel send failed: "+err.Error(), "")
 		}
 	}
@@ -106,16 +107,16 @@ func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *run
 // deliverTool forwards a present/artifact side effect to a channel by reading
 // the real bytes from the workspace and attaching them, so the human on the
 // other side gets the file itself. A skill directory is zipped.
-func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, origin *runOrigin, name, argsJSON, img string) {
-	if origin == nil || origin.deliver == nil {
+func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, origin *run.Origin, name, argsJSON, img string) {
+	if origin == nil || origin.Deliver == nil {
 		return
 	}
 	send := func(text string, att *channels.Attachment) {
-		msg := channels.Outbound{ExternalID: origin.external, Text: text}
+		msg := channels.Outbound{ExternalID: origin.External, Text: text}
 		if att != nil {
 			msg.Files = []channels.Attachment{*att}
 		}
-		if err := origin.deliver(msg); err != nil {
+		if err := origin.Deliver(msg); err != nil {
 			a.emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
 		}
 	}

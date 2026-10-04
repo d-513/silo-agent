@@ -306,7 +306,7 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	if err := writableChat(ch); err != nil {
 		return nil, err
 	}
-	runID, err := a.startOrInject(b.ID, ch.ID, text, atts, nil)
+	runID, err := a.StartOrInject(b.ID, ch.ID, text, atts, nil)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}

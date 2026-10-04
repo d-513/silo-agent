@@ -109,7 +109,7 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	if err := writableChat(c); err != nil {
 		return nil, err
 	}
-	a.stopChatLive(c.BotID, c.ID)
+	a.StopChatLive(c.BotID, c.ID)
 	a.dropSubagents(c.BotID, c.ID)
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", c.ID).Find(&runs)

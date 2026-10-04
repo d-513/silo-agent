@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
@@ -30,14 +31,14 @@ func withTurnNote(msgs []llm.Message, note string) []llm.Message {
 
 // turnNote is the live taskboard (and, for a lead, its subagents) as of this
 // turn. Empty when there is nothing to show.
-func (a *App) turnNote(chatID string, origin *runOrigin) string {
+func (a *App) turnNote(chatID string, origin *run.Origin) string {
 	if a.DB == nil || chatID == "" {
 		return ""
 	}
-	sub := origin != nil && origin.subagent != nil
+	sub := origin != nil && origin.Subagent != nil
 	board := chatID
 	if sub {
-		board = origin.subagent.ParentChatID
+		board = origin.Subagent.ParentChatID
 	}
 	var parts []string
 	if items := a.boardItems(board); len(items) > 0 {

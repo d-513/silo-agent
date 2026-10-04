@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"silo.agent/internal/app/knowledge"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
@@ -203,7 +204,7 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 // buildSystemBlocks loads the session and returns the ordered, cache-aware
 // system prompt. An optional origin makes the prompt aware of the channel a run
 // came from; that per-run note is placed last.
-func (a *App) buildSystemBlocks(botID string, origin ...*runOrigin) []llm.SystemBlock {
+func (a *App) buildSystemBlocks(botID string, origin ...*run.Origin) []llm.SystemBlock {
 	if a.DB == nil {
 		return []llm.SystemBlock{{Text: prompts.System}}
 	}
@@ -211,7 +212,7 @@ func (a *App) buildSystemBlocks(botID string, origin ...*runOrigin) []llm.System
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return []llm.SystemBlock{{Text: prompts.System}}
 	}
-	var o *runOrigin
+	var o *run.Origin
 	if len(origin) > 0 {
 		o = origin[0]
 	}
@@ -232,7 +233,7 @@ func (a *App) buildSystemBlocks(botID string, origin ...*runOrigin) []llm.System
 }
 
 // promptContext snapshots the session state providers may depend on.
-func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) promptContext {
+func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promptContext {
 	pc := promptContext{bot: bot, skills: a.enabledSkills(botID)}
 	var links []db.BotConnector
 	a.DB.Where("bot_id = ?", botID).Find(&links)
@@ -247,10 +248,10 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 	pc.drives = a.Drives.BotDrives(botID)
 	pc.knowledge = a.Knowledge.Folders(botID)
 	if origin != nil {
-		pc.channel = origin.channel
-		pc.recall = origin.recall
-		pc.automation = origin.automation
-		pc.subagent = origin.subagent
+		pc.channel = origin.Channel
+		pc.recall = origin.Recall
+		pc.automation = origin.Automation
+		pc.subagent = origin.Subagent
 	}
 	return pc
 }

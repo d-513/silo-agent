@@ -6,6 +6,7 @@ import (
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 )
@@ -38,3 +39,6 @@ type uiHandler struct {
 func (a *App) uiHandler() *uiHandler {
 	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives}
 }
+
+// The App is the engine the satellite domains drive.
+var _ run.Engine = (*App)(nil)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/textx"
@@ -33,18 +34,12 @@ func (a *App) scheduleWake(botID, leadChatID string) {
 	})
 }
 
-// subagentReport is what a lead's wake run opens with.
-type subagentReport struct {
-	body  string
-	label string
-}
-
 // wakeLead starts a lead run with every finished, unseen subagent result. A
 // lead that is running inspects on its own; an automation log is never woken.
 func (a *App) wakeLead(botID, leadChatID string) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	if a.liveRunID(botID, leadChatID) != "" {
+	if a.LiveRunID(botID, leadChatID) != "" {
 		return
 	}
 	var chat db.Chat
@@ -63,19 +58,19 @@ func (a *App) wakeLead(botID, leadChatID string) {
 	}
 	a.DB.Model(&db.Subagent{}).Where("id IN ?", ids).Update("reported", true)
 	rep := a.buildReport(leadChatID, done)
-	var origin *runOrigin
+	var origin *run.Origin
 	if chat.ChannelID != "" {
 		var ch db.Channel
 		if a.DB.Where("id = ?", chat.ChannelID).Limit(1).Find(&ch); ch.ID != "" {
 			origin = a.channelOrigin(&ch, chat.ExternalID)
 		}
 	}
-	if _, err := a.startRun(runRequest{botID: botID, chatID: leadChatID, origin: origin, report: rep}); err != nil {
+	if _, err := a.StartRun(run.Request{BotID: botID, ChatID: leadChatID, Origin: origin, Report: rep}); err != nil {
 		a.DB.Model(&db.Subagent{}).Where("id IN ?", ids).Update("reported", false)
 	}
 }
 
-func (a *App) buildReport(leadChatID string, done []db.Subagent) *subagentReport {
+func (a *App) buildReport(leadChatID string, done []db.Subagent) *run.Report {
 	var b strings.Builder
 	labels := make([]string, 0, len(done))
 	for _, sa := range done {
@@ -101,15 +96,15 @@ func (a *App) buildReport(leadChatID string, done []db.Subagent) *subagentReport
 	} else {
 		b.WriteString("No subagents are running.\n")
 	}
-	return &subagentReport{body: strings.TrimSpace(b.String()), label: strings.Join(labels, ",")}
+	return &run.Report{Body: strings.TrimSpace(b.String()), Label: strings.Join(labels, ",")}
 }
 
-func (a *App) emitReport(botID, chatID, runID string, rep *subagentReport) {
-	body := textx.ValidUTF8(a.Mask(botID).Apply(rep.body))
+func (a *App) emitReport(botID, chatID, runID string, rep *run.Report) {
+	body := textx.ValidUTF8(a.Mask(botID).Apply(rep.Body))
 	id := ids.New()
 	now := time.Now()
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: subagentReportKind, Body: body, Tool: rep.label, CreatedAt: now})
-	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: subagentReportKind, Body: body, Tool: rep.label, CreatedAt: now.Format(time.RFC3339)})
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: subagentReportKind, Body: body, Tool: rep.Label, CreatedAt: now})
+	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: subagentReportKind, Body: body, Tool: rep.Label, CreatedAt: now.Format(time.RFC3339)})
 }
 
 // subagentReportText frames a report as the user turn the lead replays.

@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/channels"
 
 	// Register built-in adapters.
@@ -298,11 +299,11 @@ func (a *App) channelState(channelID string) channels.State {
 
 // channelOrigin is the run origin for a channel conversation: its sections
 // are delivered back through the adapter.
-func (a *App) channelOrigin(ch *db.Channel, external string) *runOrigin {
-	return &runOrigin{
-		channel:  ch,
-		external: external,
-		deliver: func(msg channels.Outbound) error {
+func (a *App) channelOrigin(ch *db.Channel, external string) *run.Origin {
+	return &run.Origin{
+		Channel:  ch,
+		External: external,
+		Deliver: func(msg channels.Outbound) error {
 			ad, ok := channels.Lookup(ch.Adapter)
 			if !ok {
 				return fmt.Errorf("adapter %q is not available", ch.Adapter)
@@ -332,7 +333,7 @@ func (a *App) deliverInbound(ctx context.Context, ch *db.Channel, in channels.In
 	if err != nil {
 		return err
 	}
-	_, err = a.startOrInject(ch.BotID, c.ID, in.Text, nil, a.channelOrigin(ch, external))
+	_, err = a.StartOrInject(ch.BotID, c.ID, in.Text, nil, a.channelOrigin(ch, external))
 	if err != nil {
 		return err
 	}
@@ -362,9 +363,9 @@ func (a *App) findOrCreateConversation(ch *db.Channel, external, title string) (
 	return &c, nil
 }
 
-// startOrInject serializes the decision to either steer a live run or start a
+// StartOrInject serializes the decision to either steer a live run or start a
 // new one. This is the single entry point for chats and channels.
-func (a *App) startOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *runOrigin) (string, error) {
+func (a *App) StartOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
 	return a.startOrInjectLocked(botID, chatID, text, atts, origin)
@@ -372,13 +373,13 @@ func (a *App) startOrInject(botID, chatID, text string, atts []*v1.Attachment, o
 
 // startOrInjectLocked is startOrInject with convMu already held, so callers can
 // truncate history and start the replacement run atomically.
-func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *runOrigin) (string, error) {
-	if runID := a.liveRunID(botID, chatID); runID != "" {
+func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
+	if runID := a.LiveRunID(botID, chatID); runID != "" {
 		if a.inject(botID, chatID, runID, text, atts, "") {
 			return runID, nil
 		}
 	}
-	return a.startRun(runRequest{botID: botID, chatID: chatID, text: text, atts: atts, origin: origin})
+	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Atts: atts, Origin: origin})
 }
 
 // --- proto / RPC ---

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
@@ -209,7 +210,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		return "", err
 	}
 	a.convMu.Lock()
-	_, err := a.startRun(runRequest{botID: bot.ID, chatID: c.ID, text: subagentBrief(goal, ctxText), from: "lead", origin: &runOrigin{subagent: &sa}})
+	_, err := a.StartRun(run.Request{BotID: bot.ID, ChatID: c.ID, Text: subagentBrief(goal, ctxText), From: "lead", Origin: &run.Origin{Subagent: &sa}})
 	a.convMu.Unlock()
 	if err != nil {
 		return "", err
@@ -223,7 +224,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	if runID := a.liveRunID(sa.BotID, sa.ChatID); runID != "" {
+	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
 		if a.inject(sa.BotID, sa.ChatID, runID, text, nil, "lead") {
 			return false, nil
 		}
@@ -231,7 +232,7 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	}
 	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{"status": "running", "reported": true, "finished_at": nil})
 	sa.Status, sa.Reported, sa.FinishedAt = "running", true, nil
-	if _, err := a.startRun(runRequest{botID: sa.BotID, chatID: sa.ChatID, text: text, from: "lead", origin: &runOrigin{subagent: sa}}); err != nil {
+	if _, err := a.StartRun(run.Request{BotID: sa.BotID, ChatID: sa.ChatID, Text: text, From: "lead", Origin: &run.Origin{Subagent: sa}}); err != nil {
 		return false, err
 	}
 	a.pingLead(sa.BotID, sa.ParentChatID, "subagents")

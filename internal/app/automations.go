@@ -15,6 +15,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/prompts"
@@ -220,7 +221,7 @@ func (a *App) deleteAutomation(au *db.Automation) error {
 		return errors.New("the Heartbeat is pinned; clear its schedule or pause it instead")
 	}
 	if au.ChatID != "" {
-		a.stopChatLive(au.BotID, au.ChatID)
+		a.StopChatLive(au.BotID, au.ChatID)
 		a.dropChat(au.ChatID)
 	}
 	return a.DB.Delete(au).Error
@@ -280,11 +281,11 @@ func (a *App) fireAutomation(au *db.Automation) (string, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
 	now := time.Now()
-	if a.liveRunID(au.BotID, au.ChatID) != "" {
+	if a.LiveRunID(au.BotID, au.ChatID) != "" {
 		a.DB.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_status": "skipped", "last_run_at": now})
 		return "", errAutomationBusy
 	}
-	runID, err := a.startRun(runRequest{botID: au.BotID, chatID: au.ChatID, text: au.Prompt, origin: &runOrigin{automation: au}})
+	runID, err := a.StartRun(run.Request{BotID: au.BotID, ChatID: au.ChatID, Text: au.Prompt, Origin: &run.Origin{Automation: au}})
 	if err != nil {
 		return "", err
 	}
@@ -295,7 +296,7 @@ func (a *App) fireAutomation(au *db.Automation) (string, error) {
 // --- proto / RPC ---
 
 func (a *App) automationStatus(au *db.Automation) (string, bool) {
-	running := au.ChatID != "" && a.liveRunID(au.BotID, au.ChatID) != ""
+	running := au.ChatID != "" && a.LiveRunID(au.BotID, au.ChatID) != ""
 	if au.LastStatus != "" || au.LastRunID == "" {
 		return au.LastStatus, running
 	}

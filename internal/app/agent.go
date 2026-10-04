@@ -11,6 +11,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -23,75 +24,41 @@ type inboxMsg struct {
 	atts []*v1.Attachment
 }
 
-// runOrigin identifies where a run came from and how to deliver user-visible
-// sections. A nil origin or channel is a Web UI chat.
-type runOrigin struct {
-	channel  *db.Channel
-	external string
-	deliver  func(channels.Outbound) error
-	// automation is set when a scheduled automation started the run. Its runs
-	// start from a fresh context and are not delivered anywhere.
-	automation *db.Automation
-	// recall is the auto-recalled memory note, computed once per run.
-	recall string
-	// subagent is set when the run is a subagent's work in its own log chat.
-	// Its runs are not delivered anywhere and get the subagent tool set.
-	subagent *db.Subagent
-}
-
-// runRequest is one call into the shared execution engine. Chats, channels,
-// and future automations all go through here.
-type runRequest struct {
-	botID  string
-	chatID string
-	text   string
-	atts   []*v1.Attachment
-	origin *runOrigin
-	// compact starts a manual compaction run: it summarizes the chat and only
-	// goes on to a model turn if a message is injected meanwhile.
-	compact bool
-	// from names a non-human sender of text (see emitUser).
-	from string
-	// report opens a lead's wake run with its subagents' results instead of a
-	// user message.
-	report *subagentReport
-}
-
-// startRun records a run and launches the agent loop. Callers with a live run
+// StartRun records a run and launches the agent loop. Callers with a live run
 // for the conversation should inject instead.
-func (a *App) startRun(req runRequest) (string, error) {
+func (a *App) StartRun(req run.Request) (string, error) {
 	var b db.Bot
-	if err := a.DB.First(&b, "id = ?", req.botID).Error; err != nil {
+	if err := a.DB.First(&b, "id = ?", req.BotID).Error; err != nil {
 		return "", fmt.Errorf("unknown bot")
 	}
 	channelID := ""
 	origin := "chat"
-	if req.origin != nil && req.origin.channel != nil {
-		channelID = req.origin.channel.ID
+	if req.Origin != nil && req.Origin.Channel != nil {
+		channelID = req.Origin.Channel.ID
 		origin = "channel"
 	}
-	if req.origin != nil && req.origin.automation != nil {
+	if req.Origin != nil && req.Origin.Automation != nil {
 		origin = "automation"
 	}
-	if req.origin != nil && req.origin.subagent != nil {
+	if req.Origin != nil && req.Origin.Subagent != nil {
 		origin = "subagent"
 	}
-	if req.report != nil && channelID == "" {
+	if req.Report != nil && channelID == "" {
 		origin = "subagents"
 	}
-	if req.compact {
+	if req.Compact {
 		origin = "compact"
 	}
 	runID := ids.New()
-	run := db.Run{ID: runID, BotID: req.botID, ChatID: req.chatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
+	run := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
 	if err := a.DB.Create(&run).Error; err != nil {
 		return "", err
 	}
-	if !req.compact {
+	if !req.Compact {
 		// Only touch the run fields: saving the whole row here could clobber a
 		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
-		task := req.text
-		if req.report != nil {
+		task := req.Text
+		if req.Report != nil {
 			task = "Subagents reported"
 		}
 		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
@@ -109,8 +76,8 @@ func (a *App) startRun(req runRequest) (string, error) {
 	return runID, nil
 }
 
-// liveRunID returns the active run for a conversation, if any.
-func (a *App) liveRunID(botID, chatID string) string {
+// LiveRunID returns the active run for a conversation, if any.
+func (a *App) LiveRunID(botID, chatID string) string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for id, lr := range a.runs {
@@ -270,8 +237,8 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush(), usage: usage}, nil
 }
 
-func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done chan struct{}) {
-	botID, chatID, userText, atts, origin := req.botID, req.chatID, req.text, req.atts, req.origin
+func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done chan struct{}) {
+	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Atts, req.Origin
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
 	defer cancel()
 	a.trackRun(botID, chatID, runID, cancel, inbox, done)
@@ -290,29 +257,29 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 	window := a.contextWindow(ctx, modelID)
 
 	switch {
-	case req.report != nil:
-		a.emitReport(botID, chatID, runID, req.report)
+	case req.Report != nil:
+		a.emitReport(botID, chatID, runID, req.Report)
 		a.bumpChat(chatID)
-	case !req.compact:
-		a.emitUser(botID, chatID, runID, userText, atts, req.from)
+	case !req.Compact:
+		a.emitUser(botID, chatID, runID, userText, atts, req.From)
 		a.bumpChat(chatID)
 		title := userText
 		if strings.TrimSpace(title) == "" && len(atts) > 0 {
 			title = "attached " + atts[0].GetName()
 		}
-		if origin == nil || origin.subagent == nil {
+		if origin == nil || origin.Subagent == nil {
 			go a.nameChat(botID, chatID, runID, title)
 		}
 	}
 
 	var msgs []llm.Message
-	if origin != nil && origin.automation != nil {
+	if origin != nil && origin.Automation != nil {
 		// Each firing is independent: only this run is the model's history.
 		msgs = a.historyFromRuns([]db.Run{{ID: runID}})
 	} else {
 		msgs = a.historyFromDB(chatID)
 	}
-	if req.compact {
+	if req.Compact {
 		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window)
 		if err != nil {
 			if a.stopped(ctx, botID, chatID, runID) {
@@ -333,9 +300,9 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 	}
 	if note := a.Memory.AutoRecall(ctx, botID, userText); note != "" {
 		if origin == nil {
-			origin = &runOrigin{}
+			origin = &run.Origin{}
 		}
-		origin.recall = note
+		origin.Recall = note
 	}
 	var lastLook string
 	// seen counts identical read/grep calls this run so a stuck loop does not
@@ -482,7 +449,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 					msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
 				}
 			}
-			if origin != nil && origin.channel != nil && err == nil {
+			if origin != nil && origin.Channel != nil && err == nil {
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
 			}
 		}
