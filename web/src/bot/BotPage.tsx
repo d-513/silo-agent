@@ -33,7 +33,7 @@ const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
 const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
-const BotConnectors = lazyNamed(() => import("../BotConnectors"), "BotConnectors");
+const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
 const BotDrives = lazyNamed(() => import("../BotDrives"), "BotDrives");
 const BotChannels = lazyNamed(() => import("../BotChannels"), "BotChannels");
 const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
