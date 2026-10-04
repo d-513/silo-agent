@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { LinkSurface, retryDelay, useLinkPhase } from "./machineLink";
 import { palette } from "./tokens";
 
 export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
-  const [phase, setPhase] = useState<"off" | "connecting" | "connected" | "lost">("off");
-  const [attempt, setAttempt] = useState(0);
+  const { phase, setPhase, attempt, nextAttempt } = useLinkPhase();
 
   useEffect(() => {
     if (!live) {
@@ -20,9 +20,8 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     if (!el) return;
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
-    const backoff = Math.min(15000, 2000 * 2 ** Math.min(attempt, 3));
     const schedule = () => {
-      if (!cancelled) retry = setTimeout(() => setAttempt((n) => n + 1), backoff);
+      if (!cancelled) retry = setTimeout(nextAttempt, retryDelay(attempt));
     };
     setPhase("connecting");
     const termInst = new Terminal({
@@ -91,7 +90,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
       termRef.current = null;
       el.replaceChildren();
     };
-  }, [botId, live, attempt]);
+  }, [botId, live, attempt, setPhase, nextAttempt]);
 
   useEffect(() => {
     if (!visible) return;
@@ -104,14 +103,5 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     return () => ro.disconnect();
   }, [visible]);
 
-  return (
-    <div className="relative h-full min-h-0 w-full bg-matte">
-      <div ref={ref} className="silo-console h-full min-h-[320px] w-full" onMouseDown={() => termRef.current?.focus()} />
-      {phase !== "connected" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
-          {phase === "off" ? "Console not connected" : phase === "connecting" ? "Opening console…" : "Console lost"}
-        </div>
-      )}
-    </div>
-  );
+  return <LinkSurface noun="Console" phase={phase} surfaceRef={ref} surfaceClass="silo-console" onMouseDown={() => termRef.current?.focus()} />;
 }

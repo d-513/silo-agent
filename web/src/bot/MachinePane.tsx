@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ConsoleTerm } from "../Console";
 import { Crest } from "../Crest";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp, statusText } from "../Lamp";
+import { LinkSurface, retryDelay, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
 
 function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<"off" | "connecting" | "connected" | "lost">("off");
-  const [attempt, setAttempt] = useState(0);
+  const { phase, setPhase, attempt, nextAttempt } = useLinkPhase();
   useEffect(() => {
     if (!live) {
       setPhase("off");
@@ -20,9 +20,8 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let hang: ReturnType<typeof setTimeout> | undefined;
-    const backoff = Math.min(15000, 2000 * 2 ** Math.min(attempt, 3));
     const schedule = () => {
-      if (!cancelled) retry = setTimeout(() => setAttempt((n) => n + 1), backoff);
+      if (!cancelled) retry = setTimeout(nextAttempt, retryDelay(attempt));
     };
     setPhase("connecting");
     const start = window.setTimeout(() => {
@@ -80,20 +79,11 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
       }
       el.replaceChildren();
     };
-  }, [botId, live, attempt]);
+  }, [botId, live, attempt, setPhase, nextAttempt]);
   useEffect(() => {
     if (visible) window.dispatchEvent(new Event("resize"));
   }, [visible]);
-  return (
-    <div className="relative h-full min-h-0 w-full bg-matte">
-      <div ref={ref} className="silo-hatch h-full min-h-[320px] w-full" />
-      {phase !== "connected" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
-          {phase === "off" ? "Desktop not connected" : phase === "connecting" ? "Opening desktop…" : "Desktop lost"}
-        </div>
-      )}
-    </div>
-  );
+  return <LinkSurface noun="Desktop" phase={phase} surfaceRef={ref} surfaceClass="silo-hatch" />;
 }
 
 export function MachinePane({
