@@ -21,3 +21,9 @@ type Authorizer interface {
 type Runs interface {
 	ChatOfRun(runID string) string
 }
+
+// Emitter publishes one run event to the Bot's viewers and, when the run is
+// known, persists it in the run's log (secrets masked, text made valid UTF-8).
+type Emitter interface {
+	Emit(botID, chatID, runID, kind, body, tool string)
+}

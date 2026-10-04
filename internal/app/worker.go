@@ -24,7 +24,7 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 	a.recomputeStatus(bot.ID)
 	log.Printf("worker connected bot=%s", bot.ID)
 	go a.pushTools(bot.ID)
-	go a.pushSkills(bot.ID)
+	go a.Skills.Push(bot.ID)
 
 	errc := make(chan error, 1)
 	go func() {
@@ -38,7 +38,7 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 			case *v1.CmdEvent_Heartbeat:
 			case *v1.CmdEvent_Chunk:
 				runID := a.runOfCmd(ev.GetId())
-				a.emit(bot.ID, a.ChatOfRun(runID), runID, "tool_chunk", b.Chunk.GetText(), "")
+				a.Emit(bot.ID, a.ChatOfRun(runID), runID, "tool_chunk", b.Chunk.GetText(), "")
 			case *v1.CmdEvent_Done:
 				sess.Resolve(ev.GetId(), a.Mask(bot.ID).Apply(b.Done.GetResult()), b.Done.GetImage(), nil)
 			case *v1.CmdEvent_Error:
@@ -112,7 +112,7 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	runID := a.callRun(bot.ID, req.Msg.GetRunId())
 	tool := security.Key(security.Secrets, name)
 	title := security.Describe(security.Secrets, name, argsJSON(name)).Title
-	a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+	a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
 	if _, err := a.AuthorizeAction(ctx, bot, runID, security.Secrets, name, argsJSON(name), ""); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.SecretRes{Error: err.Error()}), nil
@@ -308,7 +308,7 @@ func (a *App) ruleDecision(botID, conn, action, fallback string) string {
 }
 
 func (a *App) emitCallDone(botID, runID, tool, body string) {
-	a.emit(botID, a.ChatOfRun(runID), runID, "call_result", body, tool)
+	a.Emit(botID, a.ChatOfRun(runID), runID, "call_result", body, tool)
 }
 
 func (a *App) audit(bot *db.Bot, actor, action, decision string) {

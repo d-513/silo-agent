@@ -20,6 +20,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/drive"
@@ -27,6 +28,7 @@ import (
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/auth"
@@ -180,6 +182,8 @@ type App struct {
 	Drives      *drive.Service
 	Automations *automation.Service
 	Channels    *channel.Service
+	Skills      *skill.Service
+	Artifacts   *artifact.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -209,6 +213,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Automations = automation.New(a.DB, a, a)
+	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
+	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
 	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
@@ -316,7 +322,7 @@ func (a *App) ensureTerminalEvent(run db.Run, status string) {
 	if n > 0 {
 		return
 	}
-	a.emit(run.BotID, run.ChatID, run.ID, "done", status, "")
+	a.Emit(run.BotID, run.ChatID, run.ID, "done", status, "")
 }
 
 func (a *App) Shutdown() {
@@ -448,16 +454,6 @@ func sessionError(err error) *connect.Error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("session store unavailable"))
 }
 
-// httpSessionError is sessionError for plain HTTP handlers.
-func httpSessionError(w http.ResponseWriter, err error) {
-	if errors.Is(err, auth.ErrAuth) {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	log.Printf("session lookup: %v", err)
-	http.Error(w, "session store unavailable", http.StatusServiceUnavailable)
-}
-
 func (a *App) interceptWorker(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		bot, tok, err := a.botFromToken(req.Header().Get("Authorization"))
@@ -504,7 +500,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/console", a.handleConsole)
 	mux.HandleFunc("/oauth/callback", a.handleOAuthCallback)
 	mux.HandleFunc("/connectors/", a.handleConnectorImage)
-	mux.HandleFunc("/artifacts/", a.handleArtifactDownload)
+	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
 	log.Printf("mounted %s %s", uiPath, wkPath)
 	return withHTTP(mux)
 }

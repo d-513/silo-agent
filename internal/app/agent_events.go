@@ -17,7 +17,9 @@ import (
 	"silo.agent/internal/textx"
 )
 
-func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
+// Emit publishes one run event to the Bot's viewers and persists it in the run's
+// log (see emitMeta).
+func (a *App) Emit(botID, chatID, runID, kind, body, tool string) {
 	a.emitMeta(botID, chatID, runID, kind, body, tool, "")
 }
 
@@ -96,10 +98,10 @@ func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *run
 	if strings.TrimSpace(body) == "" {
 		return
 	}
-	a.emit(botID, chatID, runID, kind, body, "")
+	a.Emit(botID, chatID, runID, kind, body, "")
 	if origin != nil && origin.Deliver != nil {
 		if err := origin.Deliver(channels.Outbound{ExternalID: origin.External, Text: body}); err != nil {
-			a.emit(botID, chatID, runID, "error", "channel send failed: "+err.Error(), "")
+			a.Emit(botID, chatID, runID, "error", "channel send failed: "+err.Error(), "")
 		}
 	}
 }
@@ -117,7 +119,7 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 			msg.Files = []channels.Attachment{*att}
 		}
 		if err := origin.Deliver(msg); err != nil {
-			a.emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
+			a.Emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
 		}
 	}
 	var args struct {
@@ -142,9 +144,9 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 			send("Presented in the workspace: "+args.Path, nil)
 		}
 	case "artifact":
-		if info, err := a.describeArtifact(ctx, botID, args.Path, args.Kind, args.Title); err == nil {
+		if info, err := a.Artifacts.Describe(ctx, botID, args.Path, args.Kind, args.Title); err == nil {
 			if info.Type == "skill" {
-				if att, err := a.skillZipAttachment(ctx, botID, info.Path, info.Title); err == nil {
+				if att, err := a.Artifacts.ZipAttachment(ctx, botID, info.Path, info.Title); err == nil {
 					send("Skill: "+info.Name, &att)
 					return
 				}
@@ -192,5 +194,5 @@ func (a *App) emitUsage(botID, chatID, runID string, u llm.Usage, window int) {
 		"cache_write": u.CacheWriteTokens,
 		"window":      window,
 	})
-	a.emit(botID, chatID, runID, "usage", string(body), "")
+	a.Emit(botID, chatID, runID, "usage", string(body), "")
 }

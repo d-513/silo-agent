@@ -135,7 +135,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		return nil, err
 	}
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
-	a.ensureDefaultSkills(id)
+	a.Skills.EnsureDefaults(id)
 	a.Automations.EnsureHeartbeat(id)
 	a.attachDefaultConnectors(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {

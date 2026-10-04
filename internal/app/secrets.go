@@ -183,7 +183,7 @@ func (a *App) emitDecision(row *db.Approval, dec string) {
 		"title":       p.Title,
 		"target":      target,
 	})
-	a.emit(row.BotID, a.ChatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
+	a.Emit(row.BotID, a.ChatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
 }
 
 func (a *App) setBotStatus(id, st string) {

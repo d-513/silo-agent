@@ -7,6 +7,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
@@ -15,7 +16,7 @@ import (
 func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*websocket.Conn, *hub.Session, string, bool) {
 	u, err := auth.UserFromRequest(a.DB, r)
 	if err != nil {
-		httpSessionError(w, err)
+		access.HTTPSessionError(w, err)
 		return nil, nil, "", false
 	}
 	botID := r.URL.Query().Get("bot")

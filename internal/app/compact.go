@@ -253,7 +253,7 @@ func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID
 		return nil, errors.New("nothing to compact")
 	}
 	after := a.lastEventID(chatID)
-	a.emit(botID, chatID, runID, compactingKind, "", reason)
+	a.Emit(botID, chatID, runID, compactingKind, "", reason)
 	client, _, model, err := a.Models.Observed(modelID, botID, "compact")
 	if err != nil {
 		return nil, err

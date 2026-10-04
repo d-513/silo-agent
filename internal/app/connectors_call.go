@@ -43,7 +43,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		}
 	}
 	tool := slug + "." + action
-	a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
+	a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
 	if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -95,7 +95,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 	switch slug {
 	case security.Desktop:
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
 		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -108,7 +108,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		tool := security.Key(slug, action)
 		title := security.Describe(slug, action, argsJSON).Title
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
 		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -133,7 +133,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			title = "Send to " + name
 		}
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
 		out, err := a.Channels.SendTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
@@ -148,7 +148,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		args := map[string]any{}
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", "Read chats", tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", "Read chats", tool)
 		out, err := a.Channels.ChatsTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
@@ -166,7 +166,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		args := map[string]any{}
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
 		out, err := a.runShared(ctx, bot, runID, name, args, true)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
@@ -187,12 +187,12 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		tool := security.Key(slug, action)
 		title := security.Describe(slug, action, argsJSON).Title
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
 		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		out, err := a.artifact(ctx, bot, runID, argsJSON)
+		out, err := a.Artifacts.Tool(ctx, bot, runID, argsJSON)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -263,7 +263,7 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
 		a.setBotStatus(bot.ID, "needs_you")
-		a.emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
+		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
 		var dec string
 		select {
 		case <-ctx.Done():

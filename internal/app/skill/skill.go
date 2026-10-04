@@ -1,4 +1,8 @@
-package app
+// Package skill is the skill library the Bots draw on: skill bodies on the
+// control plane's disk (library and personal), which ones each Bot has enabled,
+// the install, delete and file-browse RPCs, syncing the enabled set into the
+// Bot's machine, and turning a workspace folder into a personal skill.
+package skill
 
 import (
 	"bytes"
@@ -15,35 +19,42 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/catalog"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/skills"
 	"silo.agent/internal/textx"
 )
 
-func (a *App) dataDir() string {
-	return a.cfg().DataDir
+// Service reads and writes the skill library and each Bot's enabled set.
+type Service struct {
+	db  *gorm.DB
+	hub *hub.Hub
+	cfg func() config.Config
+	ws  *workspace.Service
 }
 
-func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
+func New(gdb *gorm.DB, h *hub.Hub, cfg func() config.Config, ws *workspace.Service) *Service {
+	return &Service{db: gdb, hub: h, cfg: cfg, ws: ws}
+}
+
+// DataDir is the control plane's data directory, where skill bodies live.
+func (s *Service) DataDir() string {
+	return s.cfg().DataDir
+}
+
+func (s *Service) SeedSkills(ctx context.Context, _ *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	if err := catalog.Seed(a.DB); err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&v1.SeedConnectorsResponse{}), nil
-}
-
-func (a *App) SeedSkills(ctx context.Context, _ *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error) {
-	if err := access.RequireAdmin(ctx); err != nil {
-		return nil, err
-	}
-	if err := catalog.SeedSkills(a.dataDir()); err != nil {
+	if err := catalog.SeedSkills(s.DataDir()); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&v1.SeedSkillsResponse{}), nil
@@ -63,12 +74,12 @@ func skillScope(scope string, u *db.User) (kind, userID string, err error) {
 	}
 }
 
-func (a *App) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
+func (s *Service) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
 	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
 	if err != nil {
 		return nil, err
 	}
-	root := skills.RootFor(a.dataDir(), kind, userID)
+	root := skills.RootFor(s.DataDir(), kind, userID)
 	rows, err := skills.List(root, kind)
 	if err != nil {
 		return nil, err
@@ -87,7 +98,7 @@ func protoSkill(r skills.Info) *v1.Skill {
 	}
 }
 
-func (a *App) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
+func (s *Service) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
 	u := access.User(ctx)
 	kind, userID, err := skillScope(req.Msg.GetScope(), u)
 	if err != nil {
@@ -98,7 +109,7 @@ func (a *App) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallS
 			return nil, err
 		}
 	}
-	root := skills.RootFor(a.dataDir(), kind, userID)
+	root := skills.RootFor(s.DataDir(), kind, userID)
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
 	}
@@ -118,7 +129,7 @@ func (a *App) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallS
 	return connect.NewResponse(&v1.InstallSkillResponse{Installed: got.Installed, Skipped: got.Skipped}), nil
 }
 
-func (a *App) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
+func (s *Service) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
 	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
 	if err != nil {
 		return nil, err
@@ -129,38 +140,38 @@ func (a *App) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSki
 		}
 	}
 	name := strings.TrimSpace(req.Msg.GetName())
-	if err := skills.Delete(skills.RootFor(a.dataDir(), kind, userID), name); err != nil {
+	if err := skills.Delete(skills.RootFor(s.DataDir(), kind, userID), name); err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	q := a.DB.Where("kind = ? AND name = ?", kind, name)
+	q := s.db.Where("kind = ? AND name = ?", kind, name)
 	if kind == skills.KindPersonal {
-		q = q.Where("bot_id IN (?)", a.DB.Model(&db.Bot{}).Select("id").Where("user_id = ?", userID))
+		q = q.Where("bot_id IN (?)", s.db.Model(&db.Bot{}).Select("id").Where("user_id = ?", userID))
 	}
 	q.Delete(&db.BotSkill{})
 	return connect.NewResponse(&v1.DeleteSkillResponse{}), nil
 }
 
-func (a *App) ListBotSkills(ctx context.Context, req *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) ListBotSkills(ctx context.Context, req *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
-	a.ensureDefaultSkills(b.ID)
+	s.EnsureDefaults(b.ID)
 	out := &v1.ListBotSkillsResponse{}
-	out.Skills = append(out.Skills, a.botSkillRows(b, skills.KindLibrary, "")...)
-	out.Skills = append(out.Skills, a.botSkillRows(b, skills.KindPersonal, b.UserID)...)
+	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindLibrary, "")...)
+	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindPersonal, b.UserID)...)
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) botSkillRows(b *db.Bot, kind, userID string) []*v1.BotSkill {
-	root := skills.RootFor(a.dataDir(), kind, userID)
+func (s *Service) botSkillRows(b *db.Bot, kind, userID string) []*v1.BotSkill {
+	root := skills.RootFor(s.DataDir(), kind, userID)
 	rows, err := skills.List(root, kind)
 	if err != nil {
 		return nil
 	}
 	on := map[string]bool{}
 	var stored []db.BotSkill
-	a.DB.Where("bot_id = ? AND kind = ?", b.ID, kind).Find(&stored)
+	s.db.Where("bot_id = ? AND kind = ?", b.ID, kind).Find(&stored)
 	for _, r := range stored {
 		on[r.Name] = r.Enabled
 	}
@@ -174,8 +185,8 @@ func (a *App) botSkillRows(b *db.Bot, kind, userID string) []*v1.BotSkill {
 	return out
 }
 
-func (a *App) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
@@ -191,32 +202,32 @@ func (a *App) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSki
 	if kind == skills.KindPersonal {
 		userID = b.UserID
 	}
-	root := skills.RootFor(a.dataDir(), kind, userID)
+	root := skills.RootFor(s.DataDir(), kind, userID)
 	info, err := skills.Load(filepath.Join(root, name))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("skill not found"))
 	}
 	if req.Msg.GetEnabled() {
 		var clash db.BotSkill
-		a.DB.Where("bot_id = ? AND name = ? AND enabled = ? AND NOT (kind = ?)", b.ID, name, true, kind).Limit(1).Find(&clash)
+		s.db.Where("bot_id = ? AND name = ? AND enabled = ? AND NOT (kind = ?)", b.ID, name, true, kind).Limit(1).Find(&clash)
 		if clash.ID != "" {
 			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("%s is already enabled from %s", name, clash.Kind))
 		}
 	}
 	var row db.BotSkill
-	a.DB.Where("bot_id = ? AND kind = ? AND name = ?", b.ID, kind, name).Limit(1).Find(&row)
+	s.db.Where("bot_id = ? AND kind = ? AND name = ?", b.ID, kind, name).Limit(1).Find(&row)
 	if row.ID == "" {
 		row = db.BotSkill{ID: ids.New(), BotID: b.ID, Kind: kind, Name: name, Enabled: req.Msg.GetEnabled(), CreatedAt: time.Now()}
-		if err := a.DB.Create(&row).Error; err != nil {
+		if err := s.db.Create(&row).Error; err != nil {
 			return nil, err
 		}
 	} else {
 		row.Enabled = req.Msg.GetEnabled()
-		if err := a.DB.Save(&row).Error; err != nil {
+		if err := s.db.Save(&row).Error; err != nil {
 			return nil, err
 		}
 	}
-	go a.pushSkills(b.ID)
+	go s.Push(b.ID)
 	return connect.NewResponse(&v1.BotSkill{
 		Name: info.Name, Description: info.Description, Kind: kind, Enabled: row.Enabled, Source: info.Source,
 	}), nil
@@ -224,7 +235,7 @@ func (a *App) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSki
 
 const skillBrowseLimit = 2 << 20
 
-func (a *App) skillRoot(ctx context.Context, scope, name string) (root string, err error) {
+func (s *Service) skillRoot(ctx context.Context, scope, name string) (root string, err error) {
 	kind, userID, err := skillScope(scope, access.User(ctx))
 	if err != nil {
 		return "", err
@@ -233,15 +244,15 @@ func (a *App) skillRoot(ctx context.Context, scope, name string) (root string, e
 	if err := skills.ValidName(name); err != nil {
 		return "", connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	root = skills.RootFor(a.dataDir(), kind, userID)
+	root = skills.RootFor(s.DataDir(), kind, userID)
 	if !skills.Exists(root, name) {
 		return "", connect.NewError(connect.CodeNotFound, errors.New("skill not found"))
 	}
 	return root, nil
 }
 
-func (a *App) ListSkillFiles(ctx context.Context, req *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
-	root, err := a.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
+func (s *Service) ListSkillFiles(ctx context.Context, req *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
+	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +273,8 @@ func (a *App) ListSkillFiles(ctx context.Context, req *connect.Request[v1.ListSk
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
-	root, err := a.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
+func (s *Service) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
+	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -298,60 +309,37 @@ func (a *App) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSki
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
-	if err != nil {
-		return nil, err
-	}
-	path := strings.TrimSpace(strings.TrimPrefix(req.Msg.GetPath(), "/"))
-	if path == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
-	}
-	peek, err := a.peekSkillProposal(ctx, b.ID, path)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if _, err := a.proposeSkill(ctx, b, path); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	runID := strings.TrimSpace(req.Msg.GetRunId())
-	if runID != "" {
-		a.emitArtifact(b.ID, runID, artifactInfo{
-			Type: "skill", Name: peek.Name, Title: peek.Name, Path: peek.Path,
-			Scope: skills.KindPersonal, Status: "saved",
-		})
-	}
-	return connect.NewResponse(&v1.SaveSkillResponse{Name: peek.Name}), nil
-}
-
-func (a *App) ensureDefaultSkills(botID string) {
-	if a.DB == nil || a.dataDir() == "" {
+// EnsureDefaults enables the catalog's default skills on a Bot that has not
+// seen them yet.
+func (s *Service) EnsureDefaults(botID string) {
+	if s.db == nil || s.DataDir() == "" {
 		return
 	}
-	root := skills.LibraryDir(a.dataDir())
+	root := skills.LibraryDir(s.DataDir())
 	for _, name := range catalog.DefaultSkills {
 		if !skills.Exists(root, name) {
 			continue
 		}
 		var n int64
-		a.DB.Model(&db.BotSkill{}).Where("bot_id = ? AND kind = ? AND name = ?", botID, skills.KindLibrary, name).Count(&n)
+		s.db.Model(&db.BotSkill{}).Where("bot_id = ? AND kind = ? AND name = ?", botID, skills.KindLibrary, name).Count(&n)
 		if n > 0 {
 			continue
 		}
-		_ = a.DB.Create(&db.BotSkill{
+		_ = s.db.Create(&db.BotSkill{
 			ID: ids.New(), BotID: botID, Kind: skills.KindLibrary, Name: name, Enabled: true, CreatedAt: time.Now(),
 		}).Error
 	}
 }
 
-func (a *App) enabledSkills(botID string) []skills.Info {
+// Enabled lists the skills enabled on a Bot that load from disk.
+func (s *Service) Enabled(botID string) []skills.Info {
 	var bot db.Bot
-	if a.DB.First(&bot, "id = ?", botID).Error != nil {
+	if s.db.First(&bot, "id = ?", botID).Error != nil {
 		return nil
 	}
-	a.ensureDefaultSkills(botID)
+	s.EnsureDefaults(botID)
 	var rows []db.BotSkill
-	a.DB.Where("bot_id = ? AND enabled = ?", botID, true).Order("name").Find(&rows)
+	s.db.Where("bot_id = ? AND enabled = ?", botID, true).Order("name").Find(&rows)
 	var out []skills.Info
 	seen := map[string]bool{}
 	for _, r := range rows {
@@ -359,7 +347,7 @@ func (a *App) enabledSkills(botID string) []skills.Info {
 		if r.Kind == skills.KindPersonal {
 			userID = bot.UserID
 		}
-		info, err := skills.Load(filepath.Join(skills.RootFor(a.dataDir(), r.Kind, userID), r.Name))
+		info, err := skills.Load(filepath.Join(skills.RootFor(s.DataDir(), r.Kind, userID), r.Name))
 		if err != nil {
 			continue
 		}
@@ -373,21 +361,23 @@ func (a *App) enabledSkills(botID string) []skills.Info {
 	return out
 }
 
-func (a *App) skillSections(pc promptContext) []promptSection {
+// Prompt is the session-tier system-prompt note listing the enabled skills.
+func Prompt(list []skills.Info) string {
 	var b strings.Builder
 	b.WriteString("Load with `skill` when the task matches. Instructions are not in this prompt. Scripts and extras are at `/opt/silo/skills/<name>/`.\n")
-	if len(pc.skills) == 0 {
+	if len(list) == 0 {
 		b.WriteString("None enabled.\n")
-		return []promptSection{{title: "Skills", body: b.String()}}
+		return b.String()
 	}
-	for _, s := range pc.skills {
-		fmt.Fprintf(&b, "- `%s` — %s\n", s.Name, s.Description)
+	for _, sk := range list {
+		fmt.Fprintf(&b, "- `%s` — %s\n", sk.Name, sk.Description)
 	}
-	return []promptSection{{title: "Skills", body: b.String()}}
+	return b.String()
 }
 
-func (a *App) pushSkills(botID string) {
-	xs := a.enabledSkills(botID)
+// Push syncs the Bot's enabled skills into its machine.
+func (s *Service) Push(botID string) {
+	xs := s.Enabled(botID)
 	var files []*v1.SkillFile
 	for _, s := range xs {
 		tree, err := skills.WalkFiles(s.Dir)
@@ -402,18 +392,20 @@ func (a *App) pushSkills(botID string) {
 	cmd := &v1.Cmd{Id: ids.New(), Body: &v1.Cmd_SyncSkills{SyncSkills: &v1.SyncSkillsCmd{Files: files}}}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := a.Hub.Exec(ctx, botID, cmd); err != nil {
+	if _, err := s.hub.Exec(ctx, botID, cmd); err != nil {
 		log.Printf("sync skills bot=%s: %v", botID, err)
 	}
 }
 
-func (a *App) loadSkill(botID, name, rel string) (string, error) {
+// Read is the `skill` tool: a skill's SKILL.md or one of its files, for a skill
+// enabled on this Bot.
+func (s *Service) Read(botID, name, rel string) (string, error) {
 	name = strings.TrimSpace(name)
 	if err := skills.ValidName(name); err != nil {
 		return "", err
 	}
 	var found *skills.Info
-	for _, s := range a.enabledSkills(botID) {
+	for _, s := range s.Enabled(botID) {
 		if s.Name == name {
 			s := s
 			found = &s
@@ -431,12 +423,14 @@ func (a *App) loadSkill(botID, name, rel string) (string, error) {
 	return string(b) + "\n\n" + note, nil
 }
 
-func (a *App) proposeSkill(ctx context.Context, bot *db.Bot, rel string) (string, error) {
+// Propose installs a workspace folder holding a SKILL.md as a personal skill
+// of the Bot's owner and enables it on the Bot.
+func (s *Service) Propose(ctx context.Context, bot *db.Bot, rel string) (string, error) {
 	rel = strings.TrimSpace(strings.TrimPrefix(rel, "/"))
 	if rel == "" {
 		return "", errors.New("path required")
 	}
-	files, err := a.pullWorkspaceTree(ctx, bot.ID, rel)
+	files, err := s.PullTree(ctx, bot.ID, rel)
 	if err != nil {
 		return "", err
 	}
@@ -448,7 +442,7 @@ func (a *App) proposeSkill(ctx context.Context, bot *db.Bot, rel string) (string
 	if err != nil {
 		return "", err
 	}
-	root := skills.PersonalDir(a.dataDir(), bot.UserID)
+	root := skills.PersonalDir(s.DataDir(), bot.UserID)
 	if skills.Exists(root, m.Name) {
 		return "", fmt.Errorf("personal skill %s already exists", m.Name)
 	}
@@ -478,33 +472,35 @@ func (a *App) proposeSkill(ctx context.Context, bot *db.Bot, rel string) (string
 		return "", err
 	}
 	var clash db.BotSkill
-	a.DB.Where("bot_id = ? AND name = ? AND enabled = ?", bot.ID, info.Name, true).Limit(1).Find(&clash)
+	s.db.Where("bot_id = ? AND name = ? AND enabled = ?", bot.ID, info.Name, true).Limit(1).Find(&clash)
 	if clash.ID != "" && clash.Kind != skills.KindPersonal {
 		return fmt.Sprintf("installed personal skill %s; not enabled (name already on from %s)", info.Name, clash.Kind), nil
 	}
 	row := db.BotSkill{ID: ids.New(), BotID: bot.ID, Kind: skills.KindPersonal, Name: info.Name, Enabled: true, CreatedAt: time.Now()}
-	if err := a.DB.Create(&row).Error; err != nil {
+	if err := s.db.Create(&row).Error; err != nil {
 		return "", err
 	}
-	go a.pushSkills(bot.ID)
+	go s.Push(bot.ID)
 	return "installed personal skill " + info.Name, nil
 }
 
-type skillPeek struct {
+// Proposal describes a workspace folder offered as a skill.
+type Proposal struct {
 	Name        string
 	Description string
 	Path        string
 	Files       string
 }
 
-func (a *App) peekSkillProposal(ctx context.Context, botID, rel string) (skillPeek, error) {
+// Peek reads a workspace folder as a skill proposal without installing it.
+func (s *Service) Peek(ctx context.Context, botID, rel string) (Proposal, error) {
 	rel = strings.TrimSpace(strings.TrimPrefix(rel, "/"))
 	if rel == "" {
-		return skillPeek{}, errors.New("path required")
+		return Proposal{}, errors.New("path required")
 	}
-	names, err := a.listWorkspaceTreeNames(ctx, botID, rel)
+	names, err := s.listWorkspaceTreeNames(ctx, botID, rel)
 	if err != nil {
-		return skillPeek{}, err
+		return Proposal{}, err
 	}
 	hasMD := false
 	for _, n := range names {
@@ -514,39 +510,39 @@ func (a *App) peekSkillProposal(ctx context.Context, botID, rel string) (skillPe
 		}
 	}
 	if !hasMD {
-		return skillPeek{}, errors.New("directory must contain SKILL.md")
+		return Proposal{}, errors.New("directory must contain SKILL.md")
 	}
-	raw, err := a.Workspace.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: rel + "/SKILL.md"}}})
+	raw, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: rel + "/SKILL.md"}}})
 	if err != nil {
-		return skillPeek{}, err
+		return Proposal{}, err
 	}
 	var row struct {
 		Content string `json:"content"`
 		Data    string `json:"data"`
 	}
 	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		return skillPeek{}, err
+		return Proposal{}, err
 	}
 	body := row.Content
 	if body == "" && row.Data != "" {
 		b, err := base64.StdEncoding.DecodeString(row.Data)
 		if err != nil {
-			return skillPeek{}, err
+			return Proposal{}, err
 		}
 		body = string(b)
 	}
 	m, err := skills.Parse(body)
 	if err != nil {
-		return skillPeek{}, err
+		return Proposal{}, err
 	}
-	return skillPeek{Name: m.Name, Description: m.Description, Path: rel, Files: strings.Join(names, "\n")}, nil
+	return Proposal{Name: m.Name, Description: m.Description, Path: rel, Files: strings.Join(names, "\n")}, nil
 }
 
-func (a *App) listWorkspaceTreeNames(ctx context.Context, botID, rel string) ([]string, error) {
+func (s *Service) listWorkspaceTreeNames(ctx context.Context, botID, rel string) ([]string, error) {
 	var names []string
 	var walk func(string) error
 	walk = func(dir string) error {
-		raw, err := a.Workspace.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
+		raw, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
 		if err != nil {
 			return err
 		}
@@ -586,11 +582,12 @@ func (a *App) listWorkspaceTreeNames(ctx context.Context, botID, rel string) ([]
 	return names, nil
 }
 
-func (a *App) pullWorkspaceTree(ctx context.Context, botID, rel string) (map[string][]byte, error) {
+// PullTree downloads a workspace folder's files (path to bytes) from the Bot.
+func (s *Service) PullTree(ctx context.Context, botID, rel string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	var walk func(string) error
 	walk = func(dir string) error {
-		raw, err := a.Workspace.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
+		raw, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
 		if err != nil {
 			return err
 		}
@@ -616,7 +613,7 @@ func (a *App) pullWorkspaceTree(ctx context.Context, botID, rel string) (map[str
 				}
 				continue
 			}
-			view, err := a.Workspace.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: child}}})
+			view, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: child}}})
 			if err != nil {
 				return err
 			}

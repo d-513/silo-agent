@@ -188,7 +188,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			}
 			saw = true
 			text.WriteString(ev.Text)
-			a.emit(botID, chatID, runID, "chunk", ev.Text, "")
+			a.Emit(botID, chatID, runID, "chunk", ev.Text, "")
 			sections = append(sections, sp.Write(ev.Text)...)
 		case llm.EventReasoning:
 			if ev.Text == "" {
@@ -196,7 +196,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			}
 			saw = true
 			think.WriteString(ev.Text)
-			a.emit(botID, chatID, runID, "thinking_chunk", ev.Text, "")
+			a.Emit(botID, chatID, runID, "thinking_chunk", ev.Text, "")
 		case llm.EventToolCallStart:
 			saw = true
 			st := touch(ev.Index)
@@ -207,14 +207,14 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 				st.call.Name = ev.ToolName
 			}
 			if st.call.Name != "" && !st.notified {
-				a.emit(botID, chatID, runID, "tool", "", st.call.Name)
+				a.Emit(botID, chatID, runID, "tool", "", st.call.Name)
 				st.notified = true
 			}
 		case llm.EventToolCallDelta:
 			saw = true
 			st := touch(ev.Index)
 			st.call.Arguments += ev.Text
-			a.emit(botID, chatID, runID, "tool_args_chunk", ev.Text, st.call.Name)
+			a.Emit(botID, chatID, runID, "tool_args_chunk", ev.Text, st.call.Name)
 		case llm.EventThinkingBlock:
 			if ev.Block != nil {
 				signed = append(signed, *ev.Block)
@@ -227,7 +227,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 		return turnResult{}, err
 	}
 	if think.Len() > 0 {
-		a.emit(botID, chatID, runID, "thinking", think.String(), "")
+		a.Emit(botID, chatID, runID, "thinking", think.String(), "")
 	}
 	if !saw {
 		return turnResult{}, fmt.Errorf("empty completion")
@@ -259,7 +259,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 	modelID := a.Models.Resolve(botID, chatID)
 	client, provider, model, err := a.Models.Observed(modelID, botID, "chat")
 	if err != nil {
-		a.emit(botID, chatID, runID, "error", err.Error(), "")
+		a.Emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
 		return
 	}
@@ -296,7 +296,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
-			a.emit(botID, chatID, runID, "error", err.Error(), "")
+			a.Emit(botID, chatID, runID, "error", err.Error(), "")
 			a.finish(botID, chatID, runID, "error")
 			return
 		}
@@ -350,7 +350,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			out, err := a.compact(ctx, botID, chatID, runID, compactAuto, modelID, msgs, window)
 			if err != nil {
 				if ctx.Err() == nil {
-					a.emit(botID, chatID, runID, "error", err.Error(), "")
+					a.Emit(botID, chatID, runID, "error", err.Error(), "")
 				}
 				return false
 			}
@@ -394,7 +394,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
-			a.emit(botID, chatID, runID, "error", err.Error(), "")
+			a.Emit(botID, chatID, runID, "error", err.Error(), "")
 			a.finish(botID, chatID, runID, "error")
 			return
 		}
@@ -432,7 +432,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 				seen[key]++
 				if seen[key] >= 3 {
 					out := "unchanged since your last identical " + tc.Name + " — use the result you already have"
-					a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
+					a.Emit(botID, chatID, runID, "tool_result", out, tc.Name)
 					msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 					continue
 				}
@@ -446,7 +446,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			}
 			out = a.Mask(botID).Apply(out)
 			out = textx.Cap(out, 12000)
-			a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
+			a.Emit(botID, chatID, runID, "tool_result", out, tc.Name)
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 			if img != "" {
 				if img == lastLook && isLookTool(tc.Name) {
@@ -505,7 +505,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if !a.applyGeneratedTitle(chatID, title) {
 		return
 	}
-	a.emit(botID, chatID, runID, "chat_title", title, "")
+	a.Emit(botID, chatID, runID, "chat_title", title, "")
 }
 
 // waitWorker blocks until the Bot's worker connects, so a message that arrives
@@ -533,7 +533,7 @@ func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 	if ctx.Err() == nil {
 		return false
 	}
-	a.emit(botID, chatID, runID, "assistant", "Stopped.", "")
+	a.Emit(botID, chatID, runID, "assistant", "Stopped.", "")
 	a.finish(botID, chatID, runID, "stopped")
 	return true
 }
@@ -542,7 +542,7 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", st)
 	a.untrackRun(runID)
 	a.recomputeStatus(botID)
-	a.emit(botID, chatID, runID, "done", st, "")
+	a.Emit(botID, chatID, runID, "done", st, "")
 	a.afterRun(botID, chatID, runID, st)
 }
 

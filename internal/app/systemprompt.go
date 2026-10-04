@@ -8,6 +8,7 @@ import (
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/skill"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
@@ -212,7 +213,7 @@ func (a *App) buildSystemBlocks(botID string, origin ...*run.Origin) []llm.Syste
 
 // promptContext snapshots the session state providers may depend on.
 func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promptContext {
-	pc := promptContext{bot: bot, skills: a.enabledSkills(botID)}
+	pc := promptContext{bot: bot, skills: a.Skills.Enabled(botID)}
 	var links []db.BotConnector
 	a.DB.Where("bot_id = ?", botID).Find(&links)
 	for i := range links {
@@ -245,4 +246,9 @@ func (a *App) automationSections(pc promptContext) []promptSection {
 		return nil
 	}
 	return []promptSection{{title: "This run", body: automation.Prompt(pc.automation), trailing: true}}
+}
+
+// skillSections lists the enabled skills for the session tier.
+func (a *App) skillSections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Skills", body: skill.Prompt(pc.skills)}}
 }

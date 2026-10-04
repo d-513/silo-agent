@@ -399,7 +399,7 @@ func (a *App) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.R
 
 func (a *App) handleConnectorImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := siloauth.UserFromRequest(a.DB, r); err != nil {
-		httpSessionError(w, err)
+		access.HTTPSessionError(w, err)
 		return
 	}
 	id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/connectors/"), "/image")
@@ -523,4 +523,14 @@ func (a *App) editConnector(ctx context.Context, row *db.Connector) error {
 		return err
 	}
 	return access.RequireAdmin(ctx)
+}
+
+func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if err := catalog.Seed(a.DB); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.SeedConnectorsResponse{}), nil
 }

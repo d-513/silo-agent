@@ -105,11 +105,11 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return out, "", err
 	}
 	if name == "skill" {
-		out, err := a.loadSkill(botID, str("name"), str("path"))
+		out, err := a.Skills.Read(botID, str("name"), str("path"))
 		return out, "", err
 	}
 	if name == "artifact" {
-		out, err := a.artifact(ctx, &bot, runID, argsJSON)
+		out, err := a.Artifacts.Tool(ctx, &bot, runID, argsJSON)
 		return out, "", err
 	}
 	if name == "web_search" {

@@ -7,11 +7,14 @@ package access
 import (
 	"context"
 	"errors"
+	"log"
+	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -91,4 +94,14 @@ func RowByToken[T any](gdb *gorm.DB, hashColumn, header string) (*T, string, err
 		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 	return &row, tok, nil
+}
+
+// HTTPSessionError is sessionError for plain HTTP handlers.
+func HTTPSessionError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrAuth) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	log.Printf("session lookup: %v", err)
+	http.Error(w, "session store unavailable", http.StatusServiceUnavailable)
 }
