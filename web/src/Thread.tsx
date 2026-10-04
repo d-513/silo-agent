@@ -44,20 +44,9 @@ import {
   Hourglass,
   ListChecks,
 } from "lucide-react";
-import hljs from "highlight.js/lib/core";
 import "katex/dist/katex.min.css";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
-import bash from "highlight.js/lib/languages/bash";
-import diff from "highlight.js/lib/languages/diff";
-import go from "highlight.js/lib/languages/go";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import markdown from "highlight.js/lib/languages/markdown";
-import python from "highlight.js/lib/languages/python";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
 import { useEffect, useLayoutEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import { Link } from "react-router-dom";
@@ -75,26 +64,10 @@ import { useAutoExpand } from "./autoExpand";
 import { foldEvents, type Attachment, type Block, type Decision, type Ev, type ReceiptBlock } from "./fold";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
 import { fail } from "./errors";
+import { daysAgo } from "./format";
+import { highlight, hlLangs } from "./highlight";
 
 export type { Ev };
-
-const hlLangs = {
-  python,
-  bash,
-  json,
-  typescript,
-  javascript,
-  go,
-  xml,
-  html: xml,
-  markdown,
-  diff,
-  yaml,
-};
-
-for (const [name, fn] of Object.entries(hlLangs)) {
-  hljs.registerLanguage(name, fn);
-}
 
 const mdHighlight: [[typeof rehypeHighlight, { languages: typeof hlLangs }]] = [
   [rehypeHighlight, { languages: hlLangs }],
@@ -159,21 +132,6 @@ function prettyJson(raw: string) {
   } catch {
     return raw;
   }
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function highlight(code: string, lang?: string) {
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
-    } catch {
-      /* plain */
-    }
-  }
-  return escapeHtml(code);
 }
 
 function langFromPath(path: string) {
@@ -1342,8 +1300,7 @@ function runWhen(iso?: string) {
   if (!Number.isFinite(t)) return "";
   const d = new Date(t);
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((day(new Date()) - day(d)) / 86400000);
+  const days = daysAgo(d);
   if (days === 0) return `Today ${time}`;
   if (days === 1) return `Yesterday ${time}`;
   if (days < 7) return `${d.toLocaleDateString([], { weekday: "short" })} ${time}`;

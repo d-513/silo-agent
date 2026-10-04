@@ -39,6 +39,11 @@ export function extOf(name: string) {
   return name.slice(i + 1).toLowerCase();
 }
 
+// isArchive reports whether a file extension (from extOf) is a compressed bundle.
+export function isArchive(ext: string) {
+  return ext === "zip" || ext === "gz" || ext === "tgz" || ext === "tar" || ext === "7z";
+}
+
 export function kindOf(name: string, dir?: boolean): Kind {
   if (dir) return "dir";
   const e = extOf(name);
@@ -119,7 +124,7 @@ export function kindLabel(name: string): string {
       break;
   }
   const e = extOf(name);
-  if (e === "zip" || e === "gz" || e === "tgz" || e === "tar" || e === "7z") return "Archive";
+  if (isArchive(e)) return "Archive";
   return e ? e.toUpperCase() : "File";
 }
 

@@ -1,18 +1,8 @@
-import hljs from "highlight.js/lib/core";
-import bash from "highlight.js/lib/languages/bash";
-import css from "highlight.js/lib/languages/css";
-import go from "highlight.js/lib/languages/go";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import markdown from "highlight.js/lib/languages/markdown";
-import python from "highlight.js/lib/languages/python";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
 import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { codeLang, kindOf, mimeOf } from "./fileKind";
+import { highlight } from "./highlight";
 
 export function downloadFile(name: string, content: string, data?: Uint8Array) {
   const blob = new Blob([data && data.length ? data.slice() : content], { type: mimeOf(name) });
@@ -21,38 +11,6 @@ export function downloadFile(name: string, content: string, data?: Uint8Array) {
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
-}
-
-const langs: Record<string, typeof python> = {
-  python,
-  bash,
-  json,
-  typescript,
-  javascript,
-  go,
-  xml,
-  html: xml,
-  markdown,
-  yaml,
-  css,
-};
-for (const [name, fn] of Object.entries(langs)) {
-  hljs.registerLanguage(name, fn);
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function highlight(code: string, lang?: string) {
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
-    } catch {
-      /* plain */
-    }
-  }
-  return escapeHtml(code);
 }
 
 function useBlob(data: Uint8Array | undefined, mime: string) {

@@ -1,9 +1,10 @@
-import { ArrowUp, Book, Box, Brain, Library, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, HardDrive, Inbox, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Paperclip, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, Square, SquarePen, SquareTerminal, Trash2, User, Wrench, X } from "lucide-react";
+import { Book, Box, Brain, Library, Timer, ChevronDown, ChevronLeft, ChevronRight, Folder, HardDrive, Inbox, Key, LayoutGrid, ListChecks, LogOut, MessageCircle, Monitor, Pencil, Plug, Plus, Power, Radio, SlidersHorizontal, SquarePen, SquareTerminal, Trash2, Wrench, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { onSignedOut, ui } from "./api";
 import { fail, isGone, isSignedOut } from "./errors";
+import { daysAgo } from "./format";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { OfflineBanner, Unreachable } from "./Offline";
 import { Btn, btnClass } from "./Btn";
@@ -68,8 +69,7 @@ function when(iso: string) {
   const mins = Math.floor((now.getTime() - t) / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins} min ago`;
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((day(now) - day(d)) / 86400000);
+  const days = daysAgo(d, now);
   if (days === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (days === 1) return "Yesterday";
   if (days < 7) return d.toLocaleDateString([], { weekday: "short" });
