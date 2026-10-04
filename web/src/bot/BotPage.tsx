@@ -39,7 +39,7 @@ const BotChannels = lazyNamed(() => import("../channels/BotChannels"), "BotChann
 const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
 const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
 const SettingsPane = lazyNamed(() => import("../Settings"), "SettingsPane");
-const RulesPane = lazyNamed(() => import("../Rules"), "RulesPane");
+const RulesPane = lazyNamed(() => import("../rules/RulesPane"), "RulesPane");
 const ArtifactOverlay = lazyNamed(() => import("../ArtifactOverlay"), "ArtifactOverlay");
 
 // A tab page that scrolls inside the Bot page's body.
