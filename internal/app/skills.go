@@ -516,7 +516,7 @@ func (a *App) peekSkillProposal(ctx context.Context, botID, rel string) (skillPe
 	if !hasMD {
 		return skillPeek{}, errors.New("directory must contain SKILL.md")
 	}
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: rel + "/SKILL.md"}}})
+	raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: rel + "/SKILL.md"}}})
 	if err != nil {
 		return skillPeek{}, err
 	}
@@ -546,7 +546,7 @@ func (a *App) listWorkspaceTreeNames(ctx context.Context, botID, rel string) ([]
 	var names []string
 	var walk func(string) error
 	walk = func(dir string) error {
-		raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
+		raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
 		if err != nil {
 			return err
 		}
@@ -590,7 +590,7 @@ func (a *App) pullWorkspaceTree(ctx context.Context, botID, rel string) (map[str
 	out := map[string][]byte{}
 	var walk func(string) error
 	walk = func(dir string) error {
-		raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
+		raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_DirList{DirList: &v1.DirListCmd{Path: dir}}})
 		if err != nil {
 			return err
 		}
@@ -616,7 +616,7 @@ func (a *App) pullWorkspaceTree(ctx context.Context, botID, rel string) (map[str
 				}
 				continue
 			}
-			view, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: child}}})
+			view, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: child}}})
 			if err != nil {
 				return err
 			}

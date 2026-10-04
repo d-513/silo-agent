@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/llm"
 )
 
@@ -137,7 +138,7 @@ func presentAck(path, raw string) string {
 		Size      int64  `json:"size"`
 	}
 	if json.Unmarshal([]byte(raw), &row) != nil || row.Name == "" {
-		if botScratch(path) {
+		if workspace.IsScratch(path) {
 			return "seen. Scratch — you have the pixels; do not retype."
 		}
 		return "presented. Shown in the thread — do not retype it."
@@ -146,7 +147,7 @@ func presentAck(path, raw string) string {
 	if label == "" {
 		label = row.Name
 	}
-	if botScratch(path) {
+	if workspace.IsScratch(path) {
 		msg := fmt.Sprintf("seen %s (%s). Scratch — you have the pixels; the human has a collapsed row.", label, formatSize(row.Size))
 		if row.Truncated {
 			msg += " Preview is truncated."

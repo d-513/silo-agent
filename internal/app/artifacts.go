@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/workspace"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
@@ -94,7 +95,7 @@ func (a *App) describeArtifact(ctx context.Context, botID, rel, kind, title stri
 }
 
 func (a *App) fileArtifact(ctx context.Context, botID, rel, title string) (artifactInfo, error) {
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
+	raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
 		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: 1},
 	}})
 	if err != nil {
@@ -163,7 +164,7 @@ func (a *App) handleArtifactDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *db.User) {
-	rel := relWorkspace(r.URL.Query().Get("path"))
+	rel := workspace.Rel(r.URL.Query().Get("path"))
 	botID := strings.TrimSpace(r.URL.Query().Get("bot_id"))
 	if botID == "" || rel == "" {
 		http.Error(w, "bot_id and path required", http.StatusBadRequest)
@@ -175,8 +176,8 @@ func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *d
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	raw, err := a.callWorker(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
-		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: presentBrowseLimit},
+	raw, err := a.ws.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
+		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: workspace.PresentLimit},
 	}})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -191,7 +192,7 @@ func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *d
 		http.Error(w, "bad file", http.StatusInternalServerError)
 		return
 	}
-	data, err := decodeFileData(row.Data)
+	data, err := workspace.DecodeData(row.Data)
 	if err != nil {
 		http.Error(w, "bad file", http.StatusInternalServerError)
 		return
@@ -203,7 +204,7 @@ func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *d
 	if name == "" {
 		name = path.Base(rel)
 	}
-	ct := artifactMIME(name)
+	ct := workspace.MIME(name)
 	if ct == "" {
 		ct = "application/octet-stream"
 	}
@@ -317,47 +318,6 @@ func (a *App) downloadSkillZip(w http.ResponseWriter, r *http.Request, u *db.Use
 	_ = zw.Close()
 }
 
-// workspaceAttachment reads one workspace file as a channel attachment.
-func (a *App) workspaceAttachment(ctx context.Context, botID, rel string) (channels.Attachment, error) {
-	rel = relWorkspace(rel)
-	if rel == "" {
-		return channels.Attachment{}, errors.New("path required")
-	}
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
-		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: presentBrowseLimit},
-	}})
-	if err != nil {
-		return channels.Attachment{}, err
-	}
-	var row struct {
-		Name    string `json:"name"`
-		Content string `json:"content"`
-		Data    string `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		return channels.Attachment{}, err
-	}
-	data, err := decodeFileData(row.Data)
-	if err != nil {
-		return channels.Attachment{}, err
-	}
-	if len(data) == 0 {
-		data = []byte(row.Content)
-	}
-	if len(data) == 0 {
-		return channels.Attachment{}, errors.New("file is empty")
-	}
-	name := row.Name
-	if name == "" {
-		name = path.Base(rel)
-	}
-	mime := artifactMIME(name)
-	if mime == "" {
-		mime = "application/octet-stream"
-	}
-	return channels.Attachment{Name: name, Mime: mime, Data: data}, nil
-}
-
 // skillZipAttachment packs a workspace skill directory into a zip attachment.
 func (a *App) skillZipAttachment(ctx context.Context, botID, rel, title string) (channels.Attachment, error) {
 	tree, err := a.pullWorkspaceTree(ctx, botID, rel)
@@ -415,71 +375,4 @@ func safeFilename(name string) string {
 		return "artifact"
 	}
 	return out
-}
-
-func artifactMIME(name string) string {
-	switch strings.ToLower(filepath.Ext(name)) {
-	case ".png":
-		return "image/png"
-	case ".jpg", ".jpeg":
-		return "image/jpeg"
-	case ".gif":
-		return "image/gif"
-	case ".webp":
-		return "image/webp"
-	case ".bmp":
-		return "image/bmp"
-	case ".svg":
-		return "image/svg+xml"
-	case ".avif":
-		return "image/avif"
-	case ".ico":
-		return "image/x-icon"
-	case ".pdf":
-		return "application/pdf"
-	case ".mp4":
-		return "video/mp4"
-	case ".webm":
-		return "video/webm"
-	case ".mov":
-		return "video/quicktime"
-	case ".ogv":
-		return "video/ogg"
-	case ".mp3":
-		return "audio/mpeg"
-	case ".wav":
-		return "audio/wav"
-	case ".ogg":
-		return "audio/ogg"
-	case ".m4a":
-		return "audio/mp4"
-	case ".flac":
-		return "audio/flac"
-	case ".aac":
-		return "audio/aac"
-	case ".docx":
-		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-	case ".xlsx":
-		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-	case ".pptx":
-		return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-	case ".zip":
-		return "application/zip"
-	case ".gz", ".tgz":
-		return "application/gzip"
-	case ".tar":
-		return "application/x-tar"
-	case ".json":
-		return "application/json"
-	case ".csv":
-		return "text/csv"
-	case ".md", ".markdown":
-		return "text/markdown"
-	case ".txt", ".log":
-		return "text/plain"
-	case ".html", ".htm":
-		return "text/html"
-	default:
-		return ""
-	}
 }

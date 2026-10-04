@@ -15,6 +15,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
@@ -323,7 +324,7 @@ func cleanAttachments(in []*v1.Attachment) []*v1.Attachment {
 		if at == nil {
 			continue
 		}
-		p := relWorkspace(at.GetPath())
+		p := workspace.Rel(at.GetPath())
 		if p == "" {
 			continue
 		}
@@ -448,7 +449,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 				}
 			}
 			if k == "transcribe_model" && v != "" && !strings.EqualFold(strings.TrimSpace(v), config.TranscribeOff) {
-				if err := a.canTranscribe(v); err != nil {
+				if err := a.voice.CanTranscribe(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}

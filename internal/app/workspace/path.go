@@ -1,13 +1,16 @@
-package app
+// Package workspace is the Bot's files as the control plane sees them: path
+// rules, the worker round trip, reading a file off the box, and the Files tab
+// RPCs.
+package workspace
 
 import (
 	"path/filepath"
 	"strings"
 )
 
-// relWorkspace strips a redundant /workspace or workspace/ prefix so present(" /workspace/foo.md")
+// Rel strips a redundant /workspace or workspace/ prefix so present(" /workspace/foo.md")
 // does not become /workspace/workspace/foo.md on the Bot.
-func relWorkspace(p string) string {
+func Rel(p string) string {
 	p = strings.TrimSpace(filepath.ToSlash(p))
 	switch {
 	case p == "" || p == "." || p == "/workspace" || p == "workspace":
@@ -20,8 +23,8 @@ func relWorkspace(p string) string {
 	return strings.TrimPrefix(p, "/")
 }
 
-// botScratch is /workspace/bot — the Bot's scratch. Not a user-facing present.
-func botScratch(p string) bool {
-	p = relWorkspace(p)
+// IsScratch is /workspace/bot — the Bot's scratch. Not a user-facing present.
+func IsScratch(p string) bool {
+	p = Rel(p)
 	return p == "bot" || strings.HasPrefix(p, "bot/")
 }

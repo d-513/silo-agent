@@ -16,6 +16,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -71,7 +72,7 @@ func (a *App) knowledgeSections(pc promptContext) []promptSection {
 // knowledgePath normalizes a folder the owner picked: workspace-relative, no
 // escape, and not scratch (bot, tmp) or the bare workspace or drives root.
 func knowledgePath(p string) (string, error) {
-	rel := relWorkspace(p)
+	rel := workspace.Rel(p)
 	rel = strings.Trim(path.Clean("/"+rel), "/")
 	switch {
 	case strings.HasPrefix(strings.TrimSpace(p), "..") || strings.Contains(p, "/../"):
@@ -290,7 +291,7 @@ func (a *App) searchKnowledge(ctx context.Context, botID, query string, k int, p
 	if err != nil {
 		return nil, err
 	}
-	prefix = strings.Trim(relWorkspace(prefix), "/")
+	prefix = strings.Trim(workspace.Rel(prefix), "/")
 	kw := keywordQuery(query)
 
 	var args []any

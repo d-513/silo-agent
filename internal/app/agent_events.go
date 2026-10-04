@@ -36,11 +36,6 @@ func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
 }
 
-// presentBrowseLimit is the byte budget the CP asks the worker for when a
-// tool presents a file. It is higher than the Files-tab preview budget so a
-// photo or a rendered PDF page still reaches the multimodal model.
-const presentBrowseLimit = 32 << 20
-
 type eventAttachment struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
@@ -138,7 +133,7 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 				return
 			}
 		}
-		if att, err := a.workspaceAttachment(ctx, botID, args.Path); err == nil {
+		if att, err := a.ws.Attachment(ctx, botID, args.Path); err == nil {
 			send("File: "+att.Name, &att)
 			return
 		}
@@ -152,7 +147,7 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 					send("Skill: "+info.Name, &att)
 					return
 				}
-			} else if att, err := a.workspaceAttachment(ctx, botID, info.Path); err == nil {
+			} else if att, err := a.ws.Attachment(ctx, botID, info.Path); err == nil {
 				send("Artifact: "+info.Title, &att)
 				return
 			}

@@ -105,7 +105,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case "list_models":
 		return a.models.ListTool(bot.ID, a.ChatOfRun(runID))
 	case "transcribe":
-		return a.transcribeTool(ctx, bot.ID, str("path"), str("language"), structured)
+		return a.voice.Tool(ctx, bot.ID, str("path"), str("language"), structured)
 	}
 	return "", fmt.Errorf("unknown tool %s", name)
 }

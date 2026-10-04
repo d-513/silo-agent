@@ -1,4 +1,6 @@
-package app
+// Package voice is speech-to-text: composer dictation and the Bot's transcribe
+// tool, both through the operator's transcribe_model.
+package voice
 
 import (
 	"context"
@@ -10,9 +12,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/workspace"
+	"silo.agent/internal/config"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
@@ -24,14 +30,26 @@ const transcribeTimeout = 90 * time.Second
 // errVoiceOff is returned when the operator set transcribe_model: off.
 var errVoiceOff = errors.New("voice is off (transcribe_model: off)")
 
-// voiceEnabled reports whether dictation and the transcribe tool can work: a
+// Service transcribes audio with the operator's transcribe model.
+type Service struct {
+	db     *gorm.DB
+	cfg    func() config.Config
+	models *models.Service
+	ws     *workspace.Service
+}
+
+func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service, ws *workspace.Service) *Service {
+	return &Service{db: gdb, cfg: cfg, models: m, ws: ws}
+}
+
+// Enabled reports whether dictation and the transcribe tool can work: a
 // model is configured and its provider can be built (key and URL present).
-func (a *App) voiceEnabled() bool {
-	modelID := a.cfg().TranscribeModel()
+func (s *Service) Enabled() bool {
+	modelID := s.cfg().TranscribeModel()
 	if modelID == "" {
 		return false
 	}
-	client, _, _, err := a.models.Client(modelID)
+	client, _, _, err := s.models.Client(modelID)
 	if err != nil {
 		return false
 	}
@@ -41,8 +59,8 @@ func (a *App) voiceEnabled() bool {
 
 // transcribe turns one recording into text with the operator's
 // transcribe_model. label names the caller in the LLM debug log.
-func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Audio) (llm.Transcript, error) {
-	modelID := a.cfg().TranscribeModel()
+func (s *Service) transcribe(ctx context.Context, botID, label string, audio llm.Audio) (llm.Transcript, error) {
+	modelID := s.cfg().TranscribeModel()
 	if modelID == "" {
 		return llm.Transcript{}, errVoiceOff
 	}
@@ -52,7 +70,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	if len(audio.Data) > llm.MaxAudioBytes {
 		return llm.Transcript{}, fmt.Errorf("audio is %d MB; the cap is %d MB", len(audio.Data)>>20, llm.MaxAudioBytes>>20)
 	}
-	client, provider, model, err := a.models.Client(modelID)
+	client, provider, model, err := s.models.Client(modelID)
 	if err != nil {
 		return llm.Transcript{}, err
 	}
@@ -65,7 +83,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	start := time.Now()
 	out, err := tr.Transcribe(ctx, model, audio)
 	out.Text = textx.ValidUTF8(strings.TrimSpace(out.Text))
-	a.models.Record(botID, label, llm.Record{
+	s.models.Record(botID, label, llm.Record{
 		Provider: provider,
 		Model:    model,
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: fmt.Sprintf("[audio %s, %d bytes, %.1fs]", audio.MIME, len(audio.Data), out.Seconds)}},
@@ -79,17 +97,17 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	return out, nil
 }
 
-// canTranscribe reports whether modelID names a provider that implements
+// CanTranscribe reports whether modelID names a provider that implements
 // llm.Transcriber, without needing its API key.
-func (a *App) canTranscribe(modelID string) error {
-	return models.Can[llm.Transcriber](a.models, modelID, "transcribe")
+func (s *Service) CanTranscribe(modelID string) error {
+	return models.Can[llm.Transcriber](s.models, modelID, "transcribe")
 }
 
 // Transcribe is composer dictation: the browser records, the CP transcribes,
 // and the text goes back into the composer for the human to edit. It needs no
 // worker, so it works while the box is down.
-func (a *App) Transcribe(ctx context.Context, req *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) Transcribe(ctx context.Context, req *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +115,7 @@ func (a *App) Transcribe(ctx context.Context, req *connect.Request[v1.Transcribe
 	if len(data) == 0 || len(data) > llm.MaxAudioBytes {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("recording must be 1 byte to %d MB", llm.MaxAudioBytes>>20))
 	}
-	out, err := a.transcribe(ctx, b.ID, "dictation", llm.Audio{
+	out, err := s.transcribe(ctx, b.ID, "dictation", llm.Audio{
 		Data:     data,
 		MIME:     strings.TrimSpace(req.Msg.GetMime()),
 		Language: strings.TrimSpace(req.Msg.GetLanguage()),
@@ -109,21 +127,6 @@ func (a *App) Transcribe(ctx context.Context, req *connect.Request[v1.Transcribe
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
 	return connect.NewResponse(&v1.TranscribeResponse{Text: out.Text}), nil
-}
-
-// runTools is the chat tool list for one run: toolDefs minus transcribe when
-// voice is off or unconfigured, so the model is never offered a dead tool.
-func (a *App) runTools() []llm.Tool {
-	if a.voiceEnabled() {
-		return toolDefs
-	}
-	out := make([]llm.Tool, 0, len(toolDefs))
-	for _, t := range toolDefs {
-		if t.Name != "transcribe" {
-			out = append(out, t)
-		}
-	}
-	return out
 }
 
 // audioMIME maps a recording's extension to the MIME type sent upstream; ""
@@ -146,9 +149,9 @@ func audioMIME(name string) string {
 	return ""
 }
 
-// transcribeTool is the Bot's transcribe (chat tool and
+// Tool is the Bot's transcribe (chat tool and
 // silo_runtime.transcribe). The caller already authorized bot.transcribe.
-func (a *App) transcribeTool(ctx context.Context, botID, path, language string, structured bool) (string, error) {
+func (s *Service) Tool(ctx context.Context, botID, path, language string, structured bool) (string, error) {
 	if strings.TrimSpace(path) == "" {
 		return "", errors.New("path required")
 	}
@@ -156,14 +159,14 @@ func (a *App) transcribeTool(ctx context.Context, botID, path, language string, 
 	if mime == "" {
 		return "", fmt.Errorf("%s is not an audio file (mp3, wav, m4a, ogg, opus, webm, flac)", path)
 	}
-	if a.cfg().TranscribeModel() == "" {
+	if s.cfg().TranscribeModel() == "" {
 		return "", errVoiceOff
 	}
-	file, err := a.workspaceAttachment(ctx, botID, path)
+	file, err := s.ws.Attachment(ctx, botID, path)
 	if err != nil {
 		return "", err
 	}
-	out, err := a.transcribe(ctx, botID, "transcribe", llm.Audio{
+	out, err := s.transcribe(ctx, botID, "transcribe", llm.Audio{
 		Data: file.Data, MIME: mime, Filename: file.Name, Language: strings.TrimSpace(language),
 	})
 	if err != nil {

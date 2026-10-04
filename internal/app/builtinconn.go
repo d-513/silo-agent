@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/builtin"
 	_ "silo.agent/internal/builtin/calendar"
 	_ "silo.agent/internal/builtin/email"
@@ -185,7 +186,7 @@ type botEnv struct {
 }
 
 func envPath(rel string) (string, error) {
-	p := relWorkspace(rel)
+	p := workspace.Rel(rel)
 	if p == "" {
 		return "", errors.New("path required")
 	}
@@ -204,7 +205,7 @@ func (e botEnv) ReadFile(ctx context.Context, rel string) (string, []byte, error
 	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
 		return "", nil, errors.New("the Bot's machine is not running")
 	}
-	f, err := e.a.workspaceAttachment(ctx, e.botID, p)
+	f, err := e.a.ws.Attachment(ctx, e.botID, p)
 	if err != nil {
 		return "", nil, err
 	}
@@ -216,13 +217,13 @@ func (e botEnv) WriteFile(ctx context.Context, rel string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(data) > putFileMax {
-		return fmt.Errorf("file too large (max %d MB)", putFileMax>>20)
+	if len(data) > workspace.PutMax {
+		return fmt.Errorf("file too large (max %d MB)", workspace.PutMax>>20)
 	}
 	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
 		return errors.New("the Bot's machine is not running")
 	}
-	_, err = e.a.callWorker(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
+	_, err = e.a.ws.Call(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
 	return err
 }
 

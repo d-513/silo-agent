@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/desktop"
 	"silo.agent/internal/ids"
@@ -22,7 +23,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		v, _ := args[k].(string)
 		return v
 	}
-	path := relWorkspace(str("path"))
+	path := workspace.Rel(str("path"))
 	if name == "click" || name == "scroll" {
 		if err := desktop.CheckPoint(num(args, "x"), num(args, "y")); err != nil {
 			return "", "", err
@@ -146,7 +147,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 			Pattern: str("pattern"), Path: path, Include: str("include"), MaxHits: max,
 		}}}
 	case "present":
-		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path, Limit: presentBrowseLimit}}}
+		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path, Limit: workspace.PresentLimit}}}
 	case "look":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
 	case "click":

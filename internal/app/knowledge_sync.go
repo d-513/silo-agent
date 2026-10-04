@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
@@ -70,7 +71,7 @@ type extracted struct {
 
 // walkWorker lists a folder through the worker.
 func (a *App) walkWorker(ctx context.Context, botID, path string, max int32) ([]walkEntry, bool, error) {
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Walk{Walk: &v1.WalkCmd{Path: path, MaxFiles: max}}})
+	raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Walk{Walk: &v1.WalkCmd{Path: path, MaxFiles: max}}})
 	if err != nil {
 		return nil, false, err
 	}
@@ -85,7 +86,7 @@ func (a *App) walkWorker(ctx context.Context, botID, path string, max int32) ([]
 }
 
 func (a *App) extractWorker(ctx context.Context, botID, path string, ocr bool) (extracted, error) {
-	raw, err := a.callWorker(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Extract{Extract: &v1.ExtractCmd{Path: path, Ocr: ocr}}})
+	raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Extract{Extract: &v1.ExtractCmd{Path: path, Ocr: ocr}}})
 	if err != nil {
 		return extracted{}, err
 	}
@@ -406,7 +407,7 @@ func (a *App) SweepKnowledge(now time.Time) int {
 // markKnowledgeDirty notes that something wrote under (or removed) path, so
 // the sweep re-reads any folder it touches once things go quiet.
 func (a *App) markKnowledgeDirty(botID, path string) {
-	p := strings.Trim(relWorkspace(path), "/")
+	p := strings.Trim(workspace.Rel(path), "/")
 	if a.DB == nil || p == "" {
 		return
 	}
