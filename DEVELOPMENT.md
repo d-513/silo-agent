@@ -175,12 +175,12 @@ Keep commits atomic: one logical change each, not a mega-commit that bundles unr
 cmd/silo            Control Plane
 cmd/silo-worker     process inside the Bot
 cmd/silo-mcp-bridge reverse tunnel from a STDIO sidecar to the CP (raw JSON-RPC)
-internal/app        the control plane: UI + worker RPCs, the agent loop and run engine, Bot lifecycle, connectors, subagents
+internal/app        the control plane: UI + worker RPCs, the agent loop and run engine, Bot lifecycle, tool gateway, subagents
 internal/app/…      one package per domain the app is built from, each a Service with its own RPCs and Bot tools:
                     access (who is asking: the signed-in user, ownership checks), host (the few things a domain asks of the
                     App), run (a unit of agent work and the Engine door into it), chats, models (providers, model choice,
-                    embeddings, the LLM log), workspace (the Bot's files), voice, feed, knowledge, memory, drive,
-                    automation, channel, skill, artifact, toolarg. handler.go embeds them into the one UI service
+                    embeddings, the LLM log), workspace (the Bot's files), connector (MCP, OAuth, STDIO sidecars, built-ins), admin
+                    (operator settings, audit), voice, feed, knowledge, memory, drive, automation, channel, skill, artifact, toolarg. handler.go embeds them into the one UI service
 internal/textx      string helpers (valid UTF-8, caps, clips) shared by the above
 internal/rpcx       ConnectRPC plumbing shared by the CP and everything that dials it: h2c client, Bearer interceptor, EnableH2C
 internal/desktop    what the CP and the worker agree on about the Bot's X11 desktop (screen size, point check)
