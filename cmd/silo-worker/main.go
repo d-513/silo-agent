@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -25,11 +24,12 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/creack/pty"
-	"golang.org/x/net/http2"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/desktop"
 	"silo.agent/internal/masker"
+	"silo.agent/internal/rpcx"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
@@ -51,17 +51,7 @@ func main() {
 	_ = os.MkdirAll(filepath.Dir(sock), 0o755)
 	_ = os.MkdirAll(ws, 0o755)
 
-	dialer := &net.Dialer{Timeout: 2 * time.Second, FallbackDelay: 100 * time.Millisecond}
-	httpClient := &http.Client{
-		Timeout: 0,
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-				return dialer.Dial(network, addr)
-			},
-		},
-	}
-	client := silov1connect.NewBotWorkerClient(httpClient, cp, connect.WithInterceptors(tokenI{tok}))
+	client := silov1connect.NewBotWorkerClient(rpcx.H2CClient(2*time.Second), cp, connect.WithInterceptors(rpcx.Bearer(tok)))
 	w := &worker{
 		workspace: ws,
 		mask:      masker.New(),
@@ -71,13 +61,18 @@ func main() {
 	w.mask.Add(tok)
 	ensureToolsDir()
 	go serveLocal(sock, w)
-	go w.vncLoop(client)
-	go w.consoleLoop(client)
+	go retryLoop("vnc", func() error { return w.vncOnce(client) })
+	go retryLoop("console", func() error { return w.consoleOnce(client) })
+	retryLoop("commands", func() error { return w.commands(client) })
+}
 
+// retryLoop runs one CP stream session after another, forever: a short pause
+// between sessions, a long one when the CP does not know this token yet.
+func retryLoop(name string, once func() error) {
 	for {
-		err := w.commands(client)
+		err := once()
 		if err != nil {
-			log.Printf("commands: %v", err)
+			log.Printf("%s: %v", name, err)
 		}
 		time.Sleep(reconnectWait(err))
 	}
@@ -90,25 +85,20 @@ func reconnectWait(err error) time.Duration {
 	return 200 * time.Millisecond
 }
 
-type tokenI struct{ tok string }
-
-func (t tokenI) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		req.Header().Set("Authorization", "Bearer "+t.tok)
-		return next(ctx, req)
+// pump copies r to the CP in chunks until either side ends, then cancels the
+// stream's context so the receive loop beside it stops too.
+func pump(r io.Reader, cancel context.CancelFunc, send func([]byte) error) {
+	defer cancel()
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := r.Read(buf)
+		if err != nil {
+			return
+		}
+		if send(bytes.Clone(buf[:n])) != nil {
+			return
+		}
 	}
-}
-
-func (t tokenI) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
-		conn := next(ctx, spec)
-		conn.RequestHeader().Set("Authorization", "Bearer "+t.tok)
-		return conn
-	}
-}
-
-func (t tokenI) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
 }
 
 type job struct {
@@ -804,7 +794,7 @@ func (w *worker) shell(ctx context.Context, runID, command string, chunk func(st
 }
 
 func (w *worker) python(ctx context.Context, runID, code string, chunk func(string)) (string, error) {
-	if wantsPlaywright(code) {
+	if desktop.WantsChromium(code) {
 		if _, err := w.ensureChrome(ctx); err != nil {
 			return "", err
 		}
@@ -948,20 +938,6 @@ func (w *worker) callTool(ctx context.Context, connector, action, argsJSON, runI
 	return w.mask.Apply(out), nil
 }
 
-func (w *worker) vncLoop(client silov1connect.BotWorkerClient) {
-	for {
-		err := w.vncOnce(client)
-		if err != nil {
-			log.Printf("vnc: %v", err)
-		}
-		d := 300 * time.Millisecond
-		if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
-			d = 15 * time.Second
-		}
-		time.Sleep(d)
-	}
-}
-
 func (w *worker) vncOnce(client silov1connect.BotWorkerClient) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -990,21 +966,7 @@ func (w *worker) vncOnce(client silov1connect.BotWorkerClient) error {
 		return err
 	}
 	defer conn.Close()
-	go func() {
-		defer cancel()
-		buf := make([]byte, 32*1024)
-		for {
-			n, err := conn.Read(buf)
-			if err != nil {
-				return
-			}
-			data := make([]byte, n)
-			copy(data, buf[:n])
-			if err := st.Send(&v1.Frame{Data: data}); err != nil {
-				return
-			}
-		}
-	}()
+	go pump(conn, cancel, func(b []byte) error { return st.Send(&v1.Frame{Data: b}) })
 	for {
 		fr, err := st.Receive()
 		if err != nil {
@@ -1016,20 +978,6 @@ func (w *worker) vncOnce(client silov1connect.BotWorkerClient) error {
 		if _, err := conn.Write(fr.GetData()); err != nil {
 			return err
 		}
-	}
-}
-
-func (w *worker) consoleLoop(client silov1connect.BotWorkerClient) {
-	for {
-		err := w.consoleOnce(client)
-		if err != nil {
-			log.Printf("console: %v", err)
-		}
-		d := 300 * time.Millisecond
-		if err != nil && connect.CodeOf(err) == connect.CodeUnauthenticated {
-			d = 15 * time.Second
-		}
-		time.Sleep(d)
 	}
 }
 
@@ -1078,21 +1026,7 @@ func (w *worker) consoleOnce(client silov1connect.BotWorkerClient) error {
 			return err
 		}
 	}
-	go func() {
-		defer cancel()
-		buf := make([]byte, 32*1024)
-		for {
-			n, err := ptmx.Read(buf)
-			if err != nil {
-				return
-			}
-			data := make([]byte, n)
-			copy(data, buf[:n])
-			if err := st.Send(&v1.ConsoleIO{Data: data}); err != nil {
-				return
-			}
-		}
-	}()
+	go pump(ptmx, cancel, func(b []byte) error { return st.Send(&v1.ConsoleIO{Data: b}) })
 	for {
 		fr, err := st.Receive()
 		if err != nil {

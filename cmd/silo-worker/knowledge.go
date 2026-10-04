@@ -240,31 +240,36 @@ func looksBinary(data []byte) bool {
 // hashThenRunOCR is hashThenRun for tesseract, which gets a single thread per
 // process: pages run in parallel instead, which scales better than OpenMP.
 func hashThenRunOCR(ctx context.Context, f io.Reader, h io.Writer, name string, args ...string) (string, error) {
-	if _, err := exec.LookPath(name); err != nil {
-		return "", fmt.Errorf("%s is not installed in this Bot's image", name)
-	}
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return runOCRTool(ctx, name, args...)
+	return hashThen(ctx, runOCRTool, f, h, name, args...)
 }
 
 // hashThenRun hashes the file, then converts it. The converter is looked up
 // first: on a drive, reading the whole file only to find the tool missing
 // would be a wasted download on every sweep.
 func hashThenRun(ctx context.Context, f io.Reader, h io.Writer, name string, args ...string) (string, error) {
+	return hashThen(ctx, runExtractor, f, h, name, args...)
+}
+
+func hashThen(ctx context.Context, run func(context.Context, string, ...string) (string, error), f io.Reader, h io.Writer, name string, args ...string) (string, error) {
 	if _, err := exec.LookPath(name); err != nil {
 		return "", fmt.Errorf("%s is not installed in this Bot's image", name)
 	}
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
-	return runExtractor(ctx, name, args...)
+	return run(ctx, name, args...)
 }
 
 // runExtractor runs one converter without a shell and returns its stdout.
 func runExtractor(ctx context.Context, name string, args ...string) (string, error) {
+	return runTool(ctx, nil, name, args...)
+}
+
+// runTool runs one external tool without a shell and returns its stdout. A
+// non-nil env replaces the child's environment.
+func runTool(ctx context.Context, env []string, name string, args ...string) (string, error) {
 	c := exec.CommandContext(ctx, name, args...)
+	c.Env = env
 	var stderr bytes.Buffer
 	c.Stderr = &stderr
 	out, err := c.Output()

@@ -14,23 +14,15 @@ import (
 	"unicode"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/desktop"
 )
 
 const (
-	screenW = 1600
-	screenH = 900
 	display = ":1"
 	// screenShot is the model-facing screenshot. JPEG q85 keeps the same
 	// 1600×900 pixels (clicks stay unscaled) at a fraction of the PNG bytes.
 	screenShot = "bot/screen.jpg"
 )
-
-func screenPoint(x, y int) error {
-	if x < 0 || x >= screenW || y < 0 || y >= screenH {
-		return fmt.Errorf("(%d,%d) is outside %d×%d", x, y, screenW, screenH)
-	}
-	return nil
-}
 
 func clickButton(s string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
@@ -43,11 +35,6 @@ func clickButton(s string) (string, error) {
 	default:
 		return "", errors.New("button must be left, right, or double")
 	}
-}
-
-func validKey(s string) error {
-	_, err := normalizeKey(s)
-	return err
 }
 
 func looksLikeChord(s string) bool {
@@ -161,8 +148,8 @@ func (w *worker) lookShot(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if ww != screenW || hh != screenH {
-		return fmt.Errorf("screenshot is %dx%d, want %dx%d", ww, hh, screenW, screenH)
+	if ww != desktop.Width || hh != desktop.Height {
+		return fmt.Errorf("screenshot is %dx%d, want %dx%d", ww, hh, desktop.Width, desktop.Height)
 	}
 	w.shotSeq.Add(1)
 	return nil
@@ -170,7 +157,7 @@ func (w *worker) lookShot(ctx context.Context) error {
 
 func (w *worker) click(ctx context.Context, c *v1.ClickCmd) (string, error) {
 	x, y := int(c.GetX()), int(c.GetY())
-	if err := screenPoint(x, y); err != nil {
+	if err := desktop.CheckPoint(x, y); err != nil {
 		return "", err
 	}
 	btn, err := clickButton(c.GetButton())
@@ -223,7 +210,7 @@ func (w *worker) key(ctx context.Context, name string) (string, error) {
 
 func (w *worker) scroll(ctx context.Context, c *v1.ScrollCmd) (string, error) {
 	x, y := int(c.GetX()), int(c.GetY())
-	if err := screenPoint(x, y); err != nil {
+	if err := desktop.CheckPoint(x, y); err != nil {
 		return "", err
 	}
 	dy := int(c.GetDy())

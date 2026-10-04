@@ -12,13 +12,6 @@ import (
 
 const cdpAddr = "127.0.0.1:9222"
 
-func wantsPlaywright(code string) bool {
-	s := strings.ToLower(code)
-	return strings.Contains(s, "chrome_page") ||
-		strings.Contains(s, "playwright") ||
-		strings.Contains(s, "connect_over_cdp")
-}
-
 func chromeUp() bool {
 	c, err := net.DialTimeout("tcp", cdpAddr, 200*time.Millisecond)
 	if err != nil {

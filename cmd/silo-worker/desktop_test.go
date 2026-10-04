@@ -7,19 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-)
 
-func TestScreenPoint(t *testing.T) {
-	if err := screenPoint(0, 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := screenPoint(1599, 899); err != nil {
-		t.Fatal(err)
-	}
-	if screenPoint(1600, 0) == nil || screenPoint(-1, 10) == nil || screenPoint(0, 900) == nil {
-		t.Fatal("expected out of range")
-	}
-}
+	"silo.agent/internal/desktop"
+)
 
 func TestClickButton(t *testing.T) {
 	b, err := clickButton("")
@@ -32,10 +22,11 @@ func TestClickButton(t *testing.T) {
 }
 
 func TestValidKey(t *testing.T) {
-	if err := validKey("Return"); err != nil {
-		t.Fatal(err)
+	got, err := normalizeKey("Return")
+	if err != nil || got != "Return" {
+		t.Fatalf("%s %v", got, err)
 	}
-	got, err := normalizeKey("ctrl+l")
+	got, err = normalizeKey("ctrl+l")
 	if err != nil || got != "ctrl+l" {
 		t.Fatalf("%s %v", got, err)
 	}
@@ -51,8 +42,10 @@ func TestValidKey(t *testing.T) {
 	if err != nil || got != "Return" {
 		t.Fatalf("%s %v", got, err)
 	}
-	if validKey("ctrl;l") == nil || validKey("") == nil {
-		t.Fatal("bad key")
+	for _, bad := range []string{"ctrl;l", ""} {
+		if _, err := normalizeKey(bad); err == nil {
+			t.Fatalf("%q accepted", bad)
+		}
 	}
 }
 
@@ -79,7 +72,7 @@ func TestRunDesktopUnknown(t *testing.T) {
 func TestImageSize(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "screen.jpg")
-	img := image.NewRGBA(image.Rect(0, 0, screenW, screenH))
+	img := image.NewRGBA(image.Rect(0, 0, desktop.Width, desktop.Height))
 	f, err := os.Create(p)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +82,7 @@ func TestImageSize(t *testing.T) {
 	}
 	_ = f.Close()
 	w, h, err := imageSize(p)
-	if err != nil || w != screenW || h != screenH {
+	if err != nil || w != desktop.Width || h != desktop.Height {
 		t.Fatalf("%dx%d %v", w, h, err)
 	}
 }

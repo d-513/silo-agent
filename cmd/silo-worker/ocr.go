@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -138,22 +136,7 @@ func ocrEnv() []string { return append(os.Environ(), "OMP_THREAD_LIMIT=1") }
 
 // runOCRTool runs tesseract (or pdftoppm) without a shell, one thread each.
 func runOCRTool(ctx context.Context, name string, args ...string) (string, error) {
-	c := exec.CommandContext(ctx, name, args...)
-	c.Env = ocrEnv()
-	var stderr bytes.Buffer
-	c.Stderr = &stderr
-	out, err := c.Output()
-	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
-			return "", fmt.Errorf("%s is not installed in this Bot's image", name)
-		}
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", fmt.Errorf("%s failed: %s", name, msg)
-	}
-	return string(out), nil
+	return runTool(ctx, ocrEnv(), name, args...)
 }
 
 // ocrPage rasterizes one page of a PDF and recognizes it.
