@@ -1,15 +1,14 @@
-import { Search, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Trash2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ui } from "./api";
-import { ArmedButton, SaveButton, Spinner, useSave } from "./Feedback";
-import { Panel, inputClass } from "./Field";
+import { ArmedButton, SaveButton, useSave } from "./Feedback";
+import { Panel } from "./Field";
+import { SearchBox } from "./SearchBox";
 import { PromptWell } from "./Settings";
+import { useSearch } from "./useSearch";
 import type { Bot, Memory } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-
-function day(iso: string) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-}
+import { day } from "./format";
 
 // match turns a cosine distance (0 = same, 2 = opposite) into a 0–100 score.
 function match(distance: number) {
@@ -62,10 +61,7 @@ function CorePanel({ bot, onSaved, onError }: { bot: Bot; onSaved: (b: Bot) => v
 function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string) => void }) {
   const [all, setAll] = useState<Memory[] | null>(null);
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<Memory[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [searchErr, setSearchErr] = useState("");
-  const seq = useRef(0);
+  const { hits, setHits, searching, error: searchErr } = useSearch<Memory>(query, (q) => ui.searchMemories({ botId, query: q }).then((r) => r.memories), 350, [botId]);
 
   useEffect(() => {
     let dead = false;
@@ -82,34 +78,6 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
       dead = true;
     };
   }, [botId]);
-
-  useEffect(() => {
-    const q = query.trim();
-    const n = ++seq.current;
-    setSearchErr("");
-    if (!q) {
-      setHits(null);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const t = setTimeout(() => {
-      ui.searchMemories({ botId, query: q })
-        .then((r) => {
-          if (n === seq.current) setHits(r.memories);
-        })
-        .catch((e) => {
-          if (n === seq.current) {
-            setHits([]);
-            setSearchErr(fail(e));
-          }
-        })
-        .finally(() => {
-          if (n === seq.current) setSearching(false);
-        });
-    }, 350);
-    return () => clearTimeout(t);
-  }, [query, botId]);
 
   async function remove(id: string) {
     onError("");
@@ -133,27 +101,7 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
       className="mt-4"
     >
       <div className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <label className="relative block">
-          <Search size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
-          <input
-            className={`${inputClass} w-full pr-9 pl-8`}
-            placeholder="Search by meaning, e.g. “what does the user drink”"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setQuery("");
-            }}
-          />
-          <span className="absolute top-1/2 right-2.5 -translate-y-1/2">
-            {searching ? (
-              <Spinner size={13} />
-            ) : searchMode ? (
-              <button type="button" className="text-ink-3 hover:text-ink" title="Clear search" onClick={() => setQuery("")}>
-                <X size={14} />
-              </button>
-            ) : null}
-          </span>
-        </label>
+        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder="Search by meaning, e.g. “what does the user drink”" />
         {searchErr && <p className="mt-2 text-[12.5px] text-vermilion">{searchErr}</p>}
       </div>
       {rows === null ? (

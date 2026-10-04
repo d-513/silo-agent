@@ -1,17 +1,16 @@
-import { ChevronRight, Folder, FolderPlus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronRight, Folder, FolderPlus, RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { fail } from "./errors";
 import { ArmedButton, Spinner } from "./Feedback";
-import { Panel, inputClass } from "./Field";
+import { day } from "./format";
+import { Panel } from "./Field";
 import { crumbs } from "./fs";
 import type { Bot, KnowledgeFolder, KnowledgeHit } from "./gen/silo/v1/ui_pb";
 import { NeedMachine } from "./NeedMachine";
-
-function day(iso: string) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-}
+import { SearchBox } from "./SearchBox";
+import { useSearch } from "./useSearch";
 
 function ago(iso: string) {
   if (!iso) return "never";
@@ -220,36 +219,10 @@ function FolderRow({
 
 function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) => void }) {
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<KnowledgeHit[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const seq = useRef(0);
-
+  const { hits, searching, error } = useSearch<KnowledgeHit>(query, (q) => ui.searchKnowledge({ botId, query: q }).then((r) => r.hits), 400, [botId]);
   useEffect(() => {
-    const q = query.trim();
-    const n = ++seq.current;
-    if (!q) {
-      setHits(null);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const t = setTimeout(() => {
-      ui.searchKnowledge({ botId, query: q })
-        .then((r) => {
-          if (n === seq.current) setHits(r.hits);
-        })
-        .catch((e) => {
-          if (n === seq.current) {
-            setHits([]);
-            onError(fail(e));
-          }
-        })
-        .finally(() => {
-          if (n === seq.current) setSearching(false);
-        });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [query, botId, onError]);
+    if (error) onError(error);
+  }, [error, onError]);
 
   return (
     <Panel
@@ -259,27 +232,7 @@ function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) =
       className="mt-4"
     >
       <div className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <label className="relative block">
-          <Search size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
-          <input
-            className={`${inputClass} w-full pr-9 pl-8`}
-            placeholder="Ask about your documents, or paste a name or part number"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setQuery("");
-            }}
-          />
-          <span className="absolute top-1/2 right-2.5 -translate-y-1/2">
-            {searching ? (
-              <Spinner size={13} />
-            ) : query ? (
-              <button type="button" className="text-ink-3 hover:text-ink" title="Clear search" onClick={() => setQuery("")}>
-                <X size={14} />
-              </button>
-            ) : null}
-          </span>
-        </label>
+        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder="Ask about your documents, or paste a name or part number" />
       </div>
       {hits === null ? (
         <p className="px-5 py-4 text-ink-3">{searching ? "Searching…" : "Type to search."}</p>
