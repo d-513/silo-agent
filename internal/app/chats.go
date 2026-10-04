@@ -13,6 +13,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
@@ -130,7 +131,7 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 	}
 	cfg := a.cfg()
 	return connect.NewResponse(&v1.ListModelsResponse{
-		Models:       modelOptionProtos(a.Models.WithThinking(ctx, a.Models.Allowed())),
+		Models:       models.Protos(a.Models.WithThinking(ctx, a.Models.Allowed())),
 		DefaultModel: a.Models.BotDefault(b.ID),
 		TitleModel:   cfg.ModelTitle,
 		VoiceEnabled: a.Voice.Enabled(),

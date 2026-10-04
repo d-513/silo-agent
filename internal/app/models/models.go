@@ -14,6 +14,7 @@ import (
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/gorm"
 
+	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -151,6 +152,15 @@ func (s *Service) Allowed() []Option {
 			label = d.Name + " · " + model
 		}
 		out = append(out, Option{ID: id, Provider: provider, Label: label})
+	}
+	return out
+}
+
+// Protos is the wire form of a list of options.
+func Protos(opts []Option) []*v1.ModelOption {
+	out := make([]*v1.ModelOption, 0, len(opts))
+	for _, o := range opts {
+		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking})
 	}
 	return out
 }

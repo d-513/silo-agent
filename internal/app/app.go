@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/admin"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
@@ -171,15 +171,12 @@ type App struct {
 	Knowledge   *knowledge.Service
 	Memory      *memory.Service
 	Connectors  *connector.Service
+	Admin       *admin.Service
 	Drives      *drive.Service
 	Automations *automation.Service
 	Channels    *channel.Service
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
-
-	// bridgeTransportFn is a test seam; when set it replaces the real
-	// sidecar container + reverse tunnel for STDIO connectors.
-	bridgeTransportFn func(ctx context.Context, row *db.BotConnector, c *db.Connector) (mcp.Transport, error)
 }
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
@@ -208,6 +205,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
+	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice)
 	a.recoverOrphans()
 	a.Connectors.Init()
 	a.Connectors.ReconcileStdio()

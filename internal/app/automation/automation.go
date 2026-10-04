@@ -250,13 +250,6 @@ func (s *Service) deleteAutomation(au *db.Automation) error {
 	return s.db.Delete(au).Error
 }
 
-// dropChat deletes a chat with its runs and events.
-func (s *Service) dropChat(chatID string) {
-	s.db.Where("run_id IN (?)", s.db.Model(&db.Run{}).Select("id").Where("chat_id = ?", chatID)).Delete(&db.RunEvent{})
-	s.db.Where("chat_id = ?", chatID).Delete(&db.Run{})
-	s.db.Where("id = ?", chatID).Delete(&db.Chat{})
-}
-
 // --- scheduler ---
 
 // Reschedule recomputes every pending firing from now. Firings missed

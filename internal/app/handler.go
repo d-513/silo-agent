@@ -1,6 +1,7 @@
 package app
 
 import (
+	"silo.agent/internal/app/admin"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
@@ -29,6 +30,7 @@ type (
 	autoRPC   = automation.Service
 	chanRPC   = channel.Service
 	connRPC   = connector.Service
+	adminRPC  = admin.Service
 	skillRPC  = skill.Service
 	artRPC    = artifact.Service
 )
@@ -47,12 +49,13 @@ type uiHandler struct {
 	*autoRPC
 	*chanRPC
 	*connRPC
+	*adminRPC
 	*skillRPC
 	*artRPC
 }
 
 func (a *App) uiHandler() *uiHandler {
-	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, skillRPC: a.Skills, artRPC: a.Artifacts}
+	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts}
 }
 
 // The App is the engine the satellite domains drive.
