@@ -18,6 +18,7 @@ import (
 	"silo.agent/internal/mcpx"
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
+	"silo.agent/internal/textx"
 )
 
 func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error) {
@@ -41,8 +42,8 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		}
 	}
 	tool := slug + "." + action
-	a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
-	if _, err := a.authorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
+	a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
+	if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
@@ -52,7 +53,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
+		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	}
 	sess, err := a.mcpSession(ctx, bc, c)
@@ -85,7 +86,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
 	out = a.Mask(bot.ID).Apply(out)
-	a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
+	a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 	return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 }
 
@@ -93,8 +94,8 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 	switch slug {
 	case security.Desktop:
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
-		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
+		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
@@ -106,8 +107,8 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		tool := security.Key(slug, action)
 		title := security.Describe(slug, action, argsJSON).Title
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
-		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
@@ -117,7 +118,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
 		out = a.Mask(bot.ID).Apply(out)
-		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
+		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	case security.Channels:
 		if action != "send" {
@@ -131,7 +132,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 			title = "Send to " + name
 		}
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
 		out, err := a.channelSendTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
@@ -146,13 +147,13 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		args := map[string]any{}
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", "Read chats", tool)
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", "Read chats", tool)
 		out, err := a.chatsReadTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
+		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
 	case security.Bot, security.Automations, security.Model, security.Tasks:
 		// Actions shared with a chat tool run the same code (runShared); the
@@ -164,13 +165,13 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		args := map[string]any{}
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
 		out, err := a.runShared(ctx, bot, runID, name, args, true)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
-		a.emitCallDone(bot.ID, runID, tool, capText(out, callResultMax))
+		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		if strings.HasPrefix(out, "{") && json.Valid([]byte(out)) {
 			return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 		}
@@ -185,8 +186,8 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		tool := security.Key(slug, action)
 		title := security.Describe(slug, action, argsJSON).Title
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "call", title, tool)
-		if _, err := a.authorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
+		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 		}
@@ -228,7 +229,7 @@ func jsonResult(s string) string {
 	return string(b)
 }
 
-func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
+func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
 	decision := security.Rule(a.ruleDecision(bot.ID, conn, action, fallback))
 	if decision == security.Auto {
 		switch a.autoDecision(ctx, bot, conn, action, argsJSON) {
@@ -261,7 +262,7 @@ func (a *App) authorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
 		a.setBotStatus(bot.ID, "needs_you")
-		a.emit(bot.ID, a.chatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
+		a.emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
 		var dec string
 		select {
 		case <-ctx.Done():

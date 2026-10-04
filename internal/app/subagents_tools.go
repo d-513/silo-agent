@@ -82,7 +82,7 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 	case "spawn_agent":
 		return a.spawnAgent(ctx, bot, chatID, runID, str("name"), str("goal"), str("context"), str("model"))
 	case "agent_status":
-		if _, err := a.authorizeAction(ctx, bot, runID, security.Agents, "status", slip(map[string]any{"name": str("name")}), ""); err != nil {
+		if _, err := a.AuthorizeAction(ctx, bot, runID, security.Agents, "status", slip(map[string]any{"name": str("name")}), ""); err != nil {
 			return "", err
 		}
 		if str("name") == "" {
@@ -111,7 +111,7 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 		if text == "" {
 			return "", errors.New("text required")
 		}
-		if _, err := a.authorizeAction(ctx, bot, runID, security.Agents, "message", slip(map[string]any{"name": sa.Name, "text": text}), ""); err != nil {
+		if _, err := a.AuthorizeAction(ctx, bot, runID, security.Agents, "message", slip(map[string]any{"name": sa.Name, "text": text}), ""); err != nil {
 			return "", err
 		}
 		resumed, err := a.messageSubagent(sa, text)
@@ -127,7 +127,7 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 		if err != nil {
 			return "", err
 		}
-		if _, err := a.authorizeAction(ctx, bot, runID, security.Agents, "stop", slip(map[string]any{"name": sa.Name}), ""); err != nil {
+		if _, err := a.AuthorizeAction(ctx, bot, runID, security.Agents, "stop", slip(map[string]any{"name": sa.Name}), ""); err != nil {
 			return "", err
 		}
 		if !a.subagentLive(sa) {
@@ -192,7 +192,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		model = a.subagentDefaultModel(bot.ID, leadChatID)
 	}
 	slip, _ := json.Marshal(map[string]any{"name": name, "model": model, "goal": goal})
-	if _, err := a.authorizeAction(ctx, bot, runID, security.Agents, "spawn", string(slip), ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, bot, runID, security.Agents, "spawn", string(slip), ""); err != nil {
 		return "", err
 	}
 	now := time.Now()

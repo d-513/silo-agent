@@ -8,6 +8,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/textx"
 ) // scheduleWake debounces a wake of the lead chat so subagents finishing
 // together land in one report.
 func (a *App) scheduleWake(botID, leadChatID string) {
@@ -85,7 +86,7 @@ func (a *App) buildReport(leadChatID string, done []db.Subagent) *subagentReport
 			res = "(no final reply)"
 		}
 		if len(res) > subagentReportMax {
-			res = truncateUTF8(res, subagentReportMax) + "\n…truncated — agent_status " + sa.Name + " for the rest"
+			res = textx.TruncateUTF8(res, subagentReportMax) + "\n…truncated — agent_status " + sa.Name + " for the rest"
 		}
 		b.WriteString(res + "\n\n")
 	}
@@ -104,7 +105,7 @@ func (a *App) buildReport(leadChatID string, done []db.Subagent) *subagentReport
 }
 
 func (a *App) emitReport(botID, chatID, runID string, rep *subagentReport) {
-	body := validUTF8(a.Mask(botID).Apply(rep.body))
+	body := textx.ValidUTF8(a.Mask(botID).Apply(rep.body))
 	id := ids.New()
 	now := time.Now()
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: subagentReportKind, Body: body, Tool: rep.label, CreatedAt: now})

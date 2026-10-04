@@ -19,6 +19,7 @@ import (
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/drives"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/textx"
 )
 
 // Drive states the CP stores on a row. The sidecar reports mounting, mounted,
@@ -126,7 +127,7 @@ func (a *App) setDriveState(id, state, detail string) {
 		return
 	}
 	a.DB.Model(&db.Drive{}).Where("id = ? AND draft = ?", id, false).
-		Updates(map[string]any{"state": state, "state_detail": clipRunes(detail, 500)})
+		Updates(map[string]any{"state": state, "state_detail": textx.ClipRunes(detail, 500)})
 }
 
 // botDrives lists a Bot's saved (non-draft) drives.

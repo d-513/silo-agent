@@ -10,6 +10,8 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
@@ -87,7 +89,7 @@ func (a *App) approvalSource(runID string) string {
 	if runID == "" {
 		return "Background process"
 	}
-	kind, name := a.feedSource(a.chatOfRun(runID))
+	kind, name := chats.Source(a.DB, a.ChatOfRun(runID))
 	switch kind {
 	case "automation":
 		return "Automation · " + name
@@ -128,7 +130,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	}
 	row.Status = dec
 	a.DB.Save(&row)
-	u := currentUser(ctx)
+	u := access.User(ctx)
 	var bot db.Bot
 	a.DB.First(&bot, "id = ?", row.BotID)
 	a.DB.Create(&db.Audit{
@@ -181,7 +183,7 @@ func (a *App) emitDecision(row *db.Approval, dec string) {
 		"title":       p.Title,
 		"target":      target,
 	})
-	a.emit(row.BotID, a.chatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
+	a.emit(row.BotID, a.ChatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
 }
 
 func (a *App) setBotStatus(id, st string) {

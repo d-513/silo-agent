@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/channels"
 
 	// Register built-in adapters.
@@ -428,7 +429,7 @@ func (a *App) protoChannel(ch *db.Channel) *v1.Channel {
 }
 
 func (a *App) ListChannelAdapters(ctx context.Context, _ *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {
-	if currentUser(ctx) == nil {
+	if access.User(ctx) == nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 	out := &v1.ListChannelAdaptersResponse{}
@@ -530,9 +531,9 @@ func (a *App) DeleteChannel(ctx context.Context, req *connect.Request[v1.DeleteC
 }
 
 func (a *App) clearChannelChats(channelID string) {
-	var chats []db.Chat
-	a.DB.Where("channel_id = ?", channelID).Find(&chats)
-	for _, c := range chats {
+	var convs []db.Chat
+	a.DB.Where("channel_id = ?", channelID).Find(&convs)
+	for _, c := range convs {
 		var runs []db.Run
 		a.DB.Where("chat_id = ?", c.ID).Find(&runs)
 		for _, r := range runs {

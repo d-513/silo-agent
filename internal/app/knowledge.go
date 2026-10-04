@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -118,7 +119,7 @@ func (a *App) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.Kno
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := botRow[db.KnowledgeFolder](a, b.ID, id, "folder")
+	f, err := access.BotRow[db.KnowledgeFolder](a.DB, b.ID, id, "folder")
 	if err != nil {
 		return nil, nil, err
 	}

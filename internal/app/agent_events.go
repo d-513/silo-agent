@@ -12,6 +12,7 @@ import (
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/textx"
 )
 
 func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
@@ -23,8 +24,8 @@ func (a *App) emit(botID, chatID, runID, kind, body, tool string) {
 // to the Bot's bus without a chat, so no thread shows it, and never persisted,
 // since no run would ever replay it.
 func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
-	body = validUTF8(a.Mask(botID).Apply(body))
-	tool = validUTF8(tool)
+	body = textx.ValidUTF8(a.Mask(botID).Apply(body))
+	tool = textx.ValidUTF8(tool)
 	id := ids.New()
 	if runID == "" {
 		a.Bus.Publish(botID, &v1.RunEvent{Id: id, Kind: kind, Body: body, Tool: tool})
@@ -51,7 +52,7 @@ type eventAttachment struct {
 // from names a non-human sender ("lead" for a subagent's brief and the lead's
 // messages); it rides on Tool so the thread can label the bubble.
 func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment, from string) {
-	body = validUTF8(a.Mask(botID).Apply(body))
+	body = textx.ValidUTF8(a.Mask(botID).Apply(body))
 	meta := ""
 	if len(atts) > 0 {
 		flat := make([]eventAttachment, 0, len(atts))

@@ -13,6 +13,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/mcpbridge"
+	"silo.agent/internal/textx"
 )
 
 // Container kinds on the Containers tab.
@@ -51,7 +52,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 			continue
 		}
 		cmd := strings.TrimSpace(c.StdioCommand + " " + strings.Join(mcpbridge.ParseArgs(c.StdioArgsJSON), " "))
-		out = append(out, botBox{kind: boxMCP, name: dockerx.StdioName(l.ID), label: c.Name, detail: "MCP · " + clipRunes(cmd, 80), id: l.ContainerID})
+		out = append(out, botBox{kind: boxMCP, name: dockerx.StdioName(l.ID), label: c.Name, detail: "MCP · " + textx.ClipRunes(cmd, 80), id: l.ContainerID})
 	}
 	return out
 }

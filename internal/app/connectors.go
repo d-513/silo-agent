@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
@@ -41,7 +42,7 @@ const (
 )
 
 func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
-	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
+	admin := access.User(ctx) != nil && access.User(ctx).Admin
 	var rows []db.Connector
 	a.DB.Where("kind = ?", catalog.KindLibrary).Order("name").Find(&rows)
 	out := &v1.ListConnectorsResponse{}
@@ -52,7 +53,7 @@ func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConn
 }
 
 func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	m := req.Msg
@@ -149,7 +150,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 			}
 			row.StdioArgsJSON = mustJSON(m.GetStdioArgs())
 		}
-		if currentUser(ctx) != nil && currentUser(ctx).Admin {
+		if access.User(ctx) != nil && access.User(ctx).Admin {
 			if err := mcpbridge.ValidImage(m.GetStdioImage()); err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
@@ -200,7 +201,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 }
 
 func (a *App) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	var row db.Connector
@@ -252,7 +253,7 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
 		return nil, err
 	}
-	admin := currentUser(ctx) != nil && currentUser(ctx).Admin
+	admin := access.User(ctx) != nil && access.User(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
 	if lib := a.libraryBuiltin(from); lib != nil {
 		out, err := a.attachBuiltin(ctx, m.GetBotId(), lib, m)
@@ -521,5 +522,5 @@ func (a *App) editConnector(ctx context.Context, row *db.Connector) error {
 		_, err := a.ownBot(ctx, row.BotID)
 		return err
 	}
-	return requireAdmin(ctx)
+	return access.RequireAdmin(ctx)
 }

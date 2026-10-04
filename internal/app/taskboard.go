@@ -13,6 +13,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
+	"silo.agent/internal/textx"
 ) // --- taskboard ---
 
 var assigneeRE = regexp.MustCompile(`^\s*\[([A-Za-z0-9_-]{1,24})\]\s*`)
@@ -59,7 +60,7 @@ func formatBoard(items []db.TaskItem) string {
 // taskActor names who is writing to the board from a run: the subagent's name
 // or "lead".
 func (a *App) taskActor(runID string) (actor string, sub *db.Subagent, chatID string) {
-	chatID = a.chatOfRun(runID)
+	chatID = a.ChatOfRun(runID)
 	if sa := a.subagentOfChat(chatID); sa != nil {
 		return sa.Name, sa, chatID
 	}
@@ -81,7 +82,7 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		return "", errors.New("only the lead can reset the taskboard")
 	}
 	argsJSON, _ := json.Marshal(args)
-	if _, err := a.authorizeAction(ctx, bot, runID, security.Tasks, action, string(argsJSON), ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, bot, runID, security.Tasks, action, string(argsJSON), ""); err != nil {
 		return "", err
 	}
 	changed := false
@@ -124,7 +125,7 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 				assignee = m[1]
 				t = strings.TrimSpace(t[len(m[0]):])
 			}
-			it := db.TaskItem{ID: ids.New(), ChatID: board, N: next, Text: clipRunes(t, taskTextMax), Assignee: assignee, CreatedBy: actor, CreatedAt: time.Now()}
+			it := db.TaskItem{ID: ids.New(), ChatID: board, N: next, Text: textx.ClipRunes(t, taskTextMax), Assignee: assignee, CreatedBy: actor, CreatedAt: time.Now()}
 			if err := a.DB.Create(&it).Error; err != nil {
 				return "", err
 			}
@@ -153,7 +154,7 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 			return "", errors.New("ids required")
 		}
 		now := time.Now()
-		note := clipRunes(stringArg(args, "note"), taskTextMax)
+		note := textx.ClipRunes(stringArg(args, "note"), taskTextMax)
 		res := a.DB.Model(&db.TaskItem{}).Where("chat_id = ? AND n IN ?", board, ns).
 			Updates(map[string]any{"done": true, "done_by": actor, "note": note, "done_at": &now})
 		if res.RowsAffected == 0 {

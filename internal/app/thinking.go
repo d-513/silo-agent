@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 )
@@ -86,5 +87,5 @@ func (a *App) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetCh
 	if err := a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).Update("thinking", level).Error; err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(protoChat(c)), nil
+	return connect.NewResponse(chats.Proto(c)), nil
 }

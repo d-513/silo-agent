@@ -19,6 +19,8 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/feed"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
@@ -36,7 +38,6 @@ type ctxKey int
 const (
 	reqKey ctxKey = iota
 	rwKey
-	userKey
 	botKey
 	bridgeKey
 )
@@ -176,6 +177,8 @@ type App struct {
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
 
+	feed *feed.Service
+
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
 	bridgeTransportFn func(ctx context.Context, row *db.BotConnector, c *db.Connector) (mcp.Transport, error)
@@ -200,6 +203,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 
 		stopAutomations: make(chan struct{}),
 	}
+	a.feed = feed.New(a.DB, a)
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
@@ -413,7 +417,7 @@ func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 		if err != nil {
 			return nil, sessionError(err)
 		}
-		return next(context.WithValue(ctx, userKey, u), req)
+		return next(access.WithUser(ctx, u), req)
 	}
 }
 
@@ -427,7 +431,7 @@ func (a *App) interceptUIStream(next connect.StreamingHandlerFunc) connect.Strea
 		if err != nil {
 			return sessionError(err)
 		}
-		return next(context.WithValue(ctx, userKey, u), conn)
+		return next(access.WithUser(ctx, u), conn)
 	}
 }
 
@@ -473,11 +477,6 @@ func (a *App) interceptWorkerStream(next connect.StreamingHandlerFunc) connect.S
 	}
 }
 
-func currentUser(ctx context.Context) *db.User {
-	u, _ := ctx.Value(userKey).(*db.User)
-	return u
-}
-
 func currentBot(ctx context.Context) *db.Bot {
 	b, _ := ctx.Value(botKey).(*db.Bot)
 	return b
@@ -508,7 +507,7 @@ func (a *App) botFromToken(h string) (*db.Bot, string, error) {
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	uiPath, uiH := silov1connect.NewUIHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptUI, Stream: a.interceptUIStream}))
+	uiPath, uiH := silov1connect.NewUIHandler(a.uiHandler(), connect.WithInterceptors(rpcx.Handler{Unary: a.interceptUI, Stream: a.interceptUIStream}))
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
 	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptBridgeStream}))
 	drPath, drH := silov1connect.NewDriveHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptDriveStream}))

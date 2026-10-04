@@ -91,7 +91,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", "", fmt.Errorf("unknown bot")
 	}
-	if _, err := a.authorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, &bot, runID, conn, action, argsJSON, ""); err != nil {
 		return "", "", err
 	}
 	if name == "soul" || name == "core_memory" {

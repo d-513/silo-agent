@@ -9,10 +9,12 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/textx"
 )
 
 type inboxMsg struct {
@@ -464,7 +466,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 				out = "error: " + err.Error()
 			}
 			out = a.Mask(botID).Apply(out)
-			out = capText(out, 12000)
+			out = textx.Cap(out, 12000)
 			a.emit(botID, chatID, runID, "tool_result", out, tc.Name)
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
 			if img != "" {
@@ -492,14 +494,14 @@ func (a *App) bumpChat(chatID string) {
 
 func (a *App) nameChat(botID, chatID, runID, userText string) {
 	var c db.Chat
-	if a.DB.First(&c, "id = ?", chatID).Error != nil || !untitledTitle(c.Title) {
+	if a.DB.First(&c, "id = ?", chatID).Error != nil || !chats.Untitled(c.Title) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 	snippet := userText
 	if len(snippet) > 800 {
-		snippet = truncateUTF8(snippet, 800)
+		snippet = textx.TruncateUTF8(snippet, 800)
 	}
 	client, provider, model, err := a.modelClient(a.titleModel(botID, chatID), botID, "title")
 	if err != nil {

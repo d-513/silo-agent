@@ -11,6 +11,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/textx"
 ) // Subagents are background agent loops a chat's lead starts with spawn_agent.
 // Each one owns a hidden log Chat (chats.subagent_id) and runs through the same
 // engine as a chat, from a fresh context: its history is only its own log. The
@@ -215,7 +216,7 @@ func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {
 		status = "done"
 	}
 	now := time.Now()
-	result := truncateUTF8(a.runResult(runID), subagentResultMax)
+	result := textx.TruncateUTF8(a.runResult(runID), subagentResultMax)
 	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{
 		"status": status, "result": result, "reported": false, "finished_at": &now,
 	})

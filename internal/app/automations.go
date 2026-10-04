@@ -14,10 +14,12 @@ import (
 	"github.com/robfig/cron/v3"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
+	"silo.agent/internal/textx"
 )
 
 const (
@@ -71,14 +73,6 @@ func nextRun(au *db.Automation, from time.Time) *time.Time {
 		return nil
 	}
 	return &t
-}
-
-func clipRunes(s string, n int) string {
-	s = strings.TrimSpace(s)
-	if utf8.RuneCountInString(s) > n {
-		s = strings.TrimSpace(string([]rune(s)[:n]))
-	}
-	return s
 }
 
 // --- store ---
@@ -172,7 +166,7 @@ func (a *App) saveAutomation(botID string, au *db.Automation, p automationPatch,
 		au = &db.Automation{ID: ids.New(), BotID: botID, Kind: automationCustom, Enabled: true, CreatedBy: createdBy}
 	}
 	if p.name != nil {
-		au.Name = clipRunes(*p.name, automationName)
+		au.Name = textx.ClipRunes(*p.name, automationName)
 	}
 	if p.prompt != nil {
 		au.Prompt = strings.TrimSpace(*p.prompt)
@@ -328,7 +322,7 @@ func (a *App) protoAutomation(au *db.Automation) *v1.Automation {
 }
 
 func (a *App) ownAutomation(ctx context.Context, botID, id string) (*db.Automation, error) {
-	return ownBotRow[db.Automation](ctx, a, botID, id, "automation")
+	return access.OwnBotRow[db.Automation](ctx, a.DB, botID, id, "automation")
 }
 
 func (a *App) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
@@ -464,7 +458,7 @@ func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name strin
 		slip["automation"] = au.Name
 	}
 	slipJSON, _ := json.Marshal(slip)
-	if _, err := a.authorizeAction(ctx, bot, runID, security.Automations, action, string(slipJSON), ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, bot, runID, security.Automations, action, string(slipJSON), ""); err != nil {
 		return "", err
 	}
 	switch action {

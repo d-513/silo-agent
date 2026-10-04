@@ -44,7 +44,7 @@ func (a *App) channelSendTool(ctx context.Context, botID, runID string, args map
 		return "", fmt.Errorf("unknown bot")
 	}
 	argsJSON, _ := json.Marshal(map[string]string{"channel": ch.Name, "text": text})
-	if _, err := a.authorizeAction(ctx, &bot, runID, security.Channels, ch.ID, string(argsJSON), ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, &bot, runID, security.Channels, ch.ID, string(argsJSON), ""); err != nil {
 		return "", err
 	}
 
@@ -66,7 +66,7 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", fmt.Errorf("unknown bot")
 	}
-	if _, err := a.authorizeAction(ctx, &bot, runID, security.Chats, "read", "", ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, &bot, runID, security.Chats, "read", "", ""); err != nil {
 		return "", err
 	}
 	chatQuery, _ := args["chat"].(string)
@@ -79,14 +79,14 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 	}
 
 	if strings.TrimSpace(chatQuery) == "" {
-		var chats []db.Chat
-		a.DB.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&chats)
-		if len(chats) == 0 {
+		var convs []db.Chat
+		a.DB.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&convs)
+		if len(convs) == 0 {
 			return "no chats", nil
 		}
 		var b strings.Builder
 		b.WriteString("Chats:\n")
-		for _, c := range chats {
+		for _, c := range convs {
 			kind := "web"
 			if c.ChannelID != "" {
 				kind = "channel"

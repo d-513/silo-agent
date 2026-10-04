@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/textx"
 )
 
 // transcribeTimeout bounds one speech-to-text call. OpenRouter's upstream cap
@@ -62,7 +63,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	defer cancel()
 	start := time.Now()
 	out, err := tr.Transcribe(ctx, model, audio)
-	out.Text = validUTF8(strings.TrimSpace(out.Text))
+	out.Text = textx.ValidUTF8(strings.TrimSpace(out.Text))
 	a.recordLLM(botID, label, llm.Record{
 		Provider: provider,
 		Model:    model,

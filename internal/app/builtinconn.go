@@ -139,7 +139,7 @@ func builtinMode(c *db.Connector, action string) string {
 	return c.DefaultMode
 }
 
-// runBuiltin runs one builtin action after authorizeAction allowed it.
+// runBuiltin runs one builtin action after AuthorizeAction allowed it.
 // Every secret is masked out of the result.
 func (a *App) runBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, action, argsJSON string) (string, error) {
 	bc, ok := builtinOf(c)

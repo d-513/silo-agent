@@ -11,20 +11,15 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 )
 
-func protoChat(c *db.Chat) *v1.Chat {
-	return &v1.Chat{
-		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
-		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
-	}
-}
-
 func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, error) {
-	return ownBotRow[db.Chat](ctx, a, botID, chatID, "chat")
+	return access.OwnBotRow[db.Chat](ctx, a.DB, botID, chatID, "chat")
 }
 
 // webChats keeps Web UI chats: not a channel conversation, not an automation log.
@@ -45,16 +40,16 @@ func writableChat(c *db.Chat) error {
 }
 
 func (a *App) backfillChats(botID string) *db.Chat {
-	var chats []db.Chat
-	a.DB.Where("bot_id = ?", botID).Scopes(webChats).Order("updated_at desc").Find(&chats)
-	if len(chats) == 0 {
+	var convs []db.Chat
+	a.DB.Where("bot_id = ?", botID).Scopes(webChats).Order("updated_at desc").Find(&convs)
+	if len(convs) == 0 {
 		c := db.Chat{ID: ids.New(), BotID: botID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 		a.DB.Create(&c)
 		a.DB.Model(&db.Run{}).Where("bot_id = ? AND (chat_id = '' OR chat_id IS NULL)", botID).Update("chat_id", c.ID)
 		return &c
 	}
-	a.DB.Model(&db.Run{}).Where("bot_id = ? AND (chat_id = '' OR chat_id IS NULL)", botID).Update("chat_id", chats[0].ID)
-	return &chats[0]
+	a.DB.Model(&db.Run{}).Where("bot_id = ? AND (chat_id = '' OR chat_id IS NULL)", botID).Update("chat_id", convs[0].ID)
+	return &convs[0]
 }
 
 func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error) {
@@ -72,7 +67,7 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 	q.Order("updated_at desc").Find(&rows)
 	out := &v1.ListChatsResponse{}
 	for i := range rows {
-		out.Chats = append(out.Chats, protoChat(&rows[i]))
+		out.Chats = append(out.Chats, chats.Proto(&rows[i]))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -85,7 +80,7 @@ func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChat
 	if err := a.DB.Create(&c).Error; err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(protoChat(&c)), nil
+	return connect.NewResponse(chats.Proto(&c)), nil
 }
 
 func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error) {
@@ -103,7 +98,7 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	c.Title = title
 	c.UpdatedAt = time.Now()
 	a.DB.Save(c)
-	return connect.NewResponse(protoChat(c)), nil
+	return connect.NewResponse(chats.Proto(c)), nil
 }
 
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
@@ -159,15 +154,7 @@ func (a *App) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatM
 	}
 	c.Model = model
 	a.DB.Save(c)
-	return connect.NewResponse(protoChat(c)), nil
-}
-
-func untitledTitle(s string) bool {
-	switch strings.TrimSpace(s) {
-	case "", "New chat", "Chat":
-		return true
-	}
-	return false
+	return connect.NewResponse(chats.Proto(c)), nil
 }
 
 func cleanTitle(raw string) string {
@@ -175,7 +162,7 @@ func cleanTitle(raw string) string {
 	s = strings.Trim(s, `"'“”‘’`)
 	s = strings.TrimRight(s, " .")
 	s = strings.TrimSpace(s)
-	if untitledTitle(s) {
+	if chats.Untitled(s) {
 		return ""
 	}
 	if utf8.RuneCountInString(s) > 60 {
@@ -186,7 +173,7 @@ func cleanTitle(raw string) string {
 
 func (a *App) applyGeneratedTitle(chatID, title string) bool {
 	title = strings.TrimSpace(title)
-	if untitledTitle(title) {
+	if chats.Untitled(title) {
 		return false
 	}
 	res := a.DB.Model(&db.Chat{}).Where("id = ? AND title IN ?", chatID, []string{"New chat", "Chat", ""}).

@@ -17,10 +17,12 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/skills"
+	"silo.agent/internal/textx"
 )
 
 func (a *App) dataDir() string {
@@ -28,7 +30,7 @@ func (a *App) dataDir() string {
 }
 
 func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if err := catalog.Seed(a.DB); err != nil {
@@ -38,7 +40,7 @@ func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConn
 }
 
 func (a *App) SeedSkills(ctx context.Context, _ *connect.Request[v1.SeedSkillsRequest]) (*connect.Response[v1.SeedSkillsResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if err := catalog.SeedSkills(a.dataDir()); err != nil {
@@ -62,7 +64,7 @@ func skillScope(scope string, u *db.User) (kind, userID string, err error) {
 }
 
 func (a *App) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
-	kind, userID, err := skillScope(req.Msg.GetScope(), currentUser(ctx))
+	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +88,13 @@ func protoSkill(r skills.Info) *v1.Skill {
 }
 
 func (a *App) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
-	u := currentUser(ctx)
+	u := access.User(ctx)
 	kind, userID, err := skillScope(req.Msg.GetScope(), u)
 	if err != nil {
 		return nil, err
 	}
 	if kind == skills.KindLibrary {
-		if err := requireAdmin(ctx); err != nil {
+		if err := access.RequireAdmin(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -117,12 +119,12 @@ func (a *App) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallS
 }
 
 func (a *App) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
-	kind, userID, err := skillScope(req.Msg.GetScope(), currentUser(ctx))
+	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
 	if err != nil {
 		return nil, err
 	}
 	if kind == skills.KindLibrary {
-		if err := requireAdmin(ctx); err != nil {
+		if err := access.RequireAdmin(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -223,7 +225,7 @@ func (a *App) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSki
 const skillBrowseLimit = 2 << 20
 
 func (a *App) skillRoot(ctx context.Context, scope, name string) (root string, err error) {
-	kind, userID, err := skillScope(scope, currentUser(ctx))
+	kind, userID, err := skillScope(scope, access.User(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -291,7 +293,7 @@ func (a *App) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSki
 	if bytes.IndexByte(raw, 0) >= 0 {
 		out.Binary = true
 	} else {
-		out.Content = validUTF8(string(raw))
+		out.Content = textx.ValidUTF8(string(raw))
 	}
 	return connect.NewResponse(out), nil
 }

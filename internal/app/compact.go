@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
+	"silo.agent/internal/textx"
 )
 
 // Compaction replaces a conversation that no longer fits the model's context
@@ -190,7 +191,7 @@ func transcriptEntries(msgs []llm.Message, caps transcriptCaps) (entries []strin
 				}
 				args := tc.Arguments
 				if utf8.RuneCountInString(args) > caps.Args {
-					args = truncateUTF8(args, caps.Args) + "…"
+					args = textx.TruncateUTF8(args, caps.Args) + "…"
 				}
 				fmt.Fprintf(&b, "TOOL CALL %s %s", tc.Name, args)
 			}
@@ -201,7 +202,7 @@ func transcriptEntries(msgs []llm.Message, caps transcriptCaps) (entries []strin
 				limit = caps.ErrorResult
 			}
 			if utf8.RuneCountInString(out) > limit {
-				out = truncateUTF8(out, limit) + "\n…truncated"
+				out = textx.TruncateUTF8(out, limit) + "\n…truncated"
 			}
 			b.WriteString("TOOL RESULT:\n")
 			b.WriteString(out)
@@ -215,7 +216,7 @@ func transcriptEntries(msgs []llm.Message, caps transcriptCaps) (entries []strin
 
 // looksLikeFailure reports whether a tool result reads as an error.
 func looksLikeFailure(s string) bool {
-	head := strings.ToLower(truncateUTF8(strings.TrimSpace(s), 200))
+	head := strings.ToLower(textx.TruncateUTF8(strings.TrimSpace(s), 200))
 	return strings.HasPrefix(head, "error") || strings.Contains(head, "traceback") ||
 		strings.Contains(head, "exception") || strings.Contains(head, "failed")
 }

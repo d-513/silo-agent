@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/prompts"
 ) // --- prompt ---
@@ -40,7 +41,7 @@ func (a *App) protoSubagent(sa *db.Subagent) *v1.Subagent {
 }
 
 func (a *App) ownSubagent(ctx context.Context, botID, id string) (*db.Subagent, error) {
-	return ownBotRow[db.Subagent](ctx, a, botID, id, "subagent")
+	return access.OwnBotRow[db.Subagent](ctx, a.DB, botID, id, "subagent")
 }
 
 func (a *App) ListSubagents(ctx context.Context, req *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {

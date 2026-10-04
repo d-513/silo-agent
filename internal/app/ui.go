@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
@@ -22,6 +22,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
+	"silo.agent/internal/textx"
 )
 
 func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error) {
@@ -61,16 +62,8 @@ func protoUser(u *db.User) *v1.User {
 }
 
 func (a *App) Me(ctx context.Context, _ *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error) {
-	u := currentUser(ctx)
+	u := access.User(ctx)
 	return connect.NewResponse(&v1.MeResponse{User: protoUser(u)}), nil
-}
-
-func requireAdmin(ctx context.Context) error {
-	u := currentUser(ctx)
-	if u == nil || !u.Admin {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("admin only"))
-	}
-	return nil
 }
 
 func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
@@ -87,7 +80,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Memory:          b.Memory,
 		AutoApprove:     b.AutoApprove,
 		Model:           b.Model,
-		FeedUnread:      a.feedUnread(b.ID),
+		FeedUnread:      a.feed.Unread(b.ID),
 	}
 }
 
@@ -96,41 +89,11 @@ func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
 }
 
 func (a *App) ownBot(ctx context.Context, id string) (*db.Bot, error) {
-	u := currentUser(ctx)
-	var b db.Bot
-	if err := a.DB.First(&b, "id = ? AND user_id = ?", id, u.ID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, err
-	}
-	return &b, nil
-}
-
-// botRow loads one row of a Bot's by its id; what names the row in the
-// not-found error. The caller has already established that the Bot is theirs.
-func botRow[T any](a *App, botID, id, what string) (*T, error) {
-	var row T
-	res := a.DB.Where("bot_id = ? AND id = ?", botID, id).Limit(1).Find(&row)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	if res.RowsAffected == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New(what+" not found"))
-	}
-	return &row, nil
-}
-
-// ownBotRow is botRow for the signed-in user's own Bot.
-func ownBotRow[T any](ctx context.Context, a *App, botID, id, what string) (*T, error) {
-	if _, err := a.ownBot(ctx, botID); err != nil {
-		return nil, err
-	}
-	return botRow[T](a, botID, id, what)
+	return access.OwnBot(ctx, a.DB, id)
 }
 
 func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {
-	u := currentUser(ctx)
+	u := access.User(ctx)
 	var bots []db.Bot
 	if err := a.DB.Where("user_id = ?", u.ID).Order("created_at desc").Find(&bots).Error; err != nil {
 		return nil, err
@@ -146,7 +109,7 @@ func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsReques
 }
 
 func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error) {
-	u := currentUser(ctx)
+	u := access.User(ctx)
 	name := req.Msg.GetName()
 	if name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
@@ -413,7 +376,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for _, r := range eventsAfter(rows, after) {
 		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: validUTF8(r.Body), Tool: validUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta)), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
+		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta)), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
 			return err
 		}
 	}
@@ -443,7 +406,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 }
 
 func (a *App) GetSettings(ctx context.Context, _ *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	s, err := a.settings()
@@ -454,7 +417,7 @@ func (a *App) GetSettings(ctx context.Context, _ *connect.Request[v1.GetSettings
 }
 
 func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if a.Store == nil {
@@ -510,7 +473,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 
 // SetModels replaces the operator's model allowlist.
 func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if a.Store == nil {
@@ -539,7 +502,7 @@ func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRe
 
 // SetConnectorVars replaces the operator's connector variables.
 func (a *App) SetConnectorVars(ctx context.Context, req *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if a.Store == nil {
@@ -655,7 +618,7 @@ func searchEngineProtos() []*v1.SearchEngine {
 }
 
 func (a *App) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	var rows []db.Audit
@@ -674,7 +637,7 @@ func (a *App) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequ
 const descMax = 400
 
 func clipDesc(s string) string {
-	return truncateUTF8(strings.TrimSpace(s), descMax)
+	return textx.TruncateUTF8(strings.TrimSpace(s), descMax)
 }
 
 func eventsAfter(rows []db.RunEvent, after string) []db.RunEvent {

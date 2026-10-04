@@ -19,6 +19,7 @@ import (
 	"golang.org/x/oauth2"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/drives"
@@ -512,14 +513,14 @@ func (a *App) driveSettings(ctx context.Context) *v1.DriveSettings {
 }
 
 func (a *App) GetDriveSettings(ctx context.Context, _ *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(a.driveSettings(ctx)), nil
 }
 
 func (a *App) PutDriveSettings(ctx context.Context, req *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	t, ok := a.driveTemplates().Get(req.Msg.GetTemplate())

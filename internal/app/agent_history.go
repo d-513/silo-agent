@@ -5,6 +5,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/feed"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 )
@@ -96,9 +97,9 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 		switch ev.Kind {
 		case compactionKind, compactingKind:
 			continue
-		case feedQuoteKind:
+		case feed.QuoteKind:
 			flushTools()
-			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feedQuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feed.QuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
 			fold = true
 			continue
 		case subagentReportKind:

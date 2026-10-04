@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -249,7 +250,7 @@ func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeCh
 	if nc == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("message not found"))
 	}
-	return connect.NewResponse(&v1.DivergeChatResponse{Chat: protoChat(nc)}), nil
+	return connect.NewResponse(&v1.DivergeChatResponse{Chat: chats.Proto(nc)}), nil
 }
 
 // CompactChat starts a manual compaction run for a web chat. A message sent

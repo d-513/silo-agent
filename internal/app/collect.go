@@ -16,6 +16,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
+	"silo.agent/internal/textx"
 )
 
 // The memory collector reads what a conversation said since it was last
@@ -148,7 +149,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		}
 		reply, ok := parseCollectReply(out.Text)
 		if !ok {
-			log.Printf("memory collector: chat %s: unreadable reply %q", ch.ID, truncateUTF8(out.Text, 200))
+			log.Printf("memory collector: chat %s: unreadable reply %q", ch.ID, textx.TruncateUTF8(out.Text, 200))
 			res.Note = "the model's reply could not be read"
 			continue
 		}
@@ -242,7 +243,7 @@ func chunkEntries(entries []string, budget, max int) (chunks []string, dropped i
 	total := 0
 	for i, e := range entries {
 		if utf8.RuneCountInString(e) > capRunes {
-			entries[i] = truncateUTF8(e, capRunes) + "\n…truncated"
+			entries[i] = textx.TruncateUTF8(e, capRunes) + "\n…truncated"
 		}
 		sizes[i] = runeTokens(entries[i]) + 1
 		total += sizes[i]

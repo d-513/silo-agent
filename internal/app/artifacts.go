@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
@@ -38,7 +39,7 @@ func artifactJSON(info artifactInfo) string {
 }
 
 func (a *App) emitArtifact(botID, runID string, info artifactInfo) {
-	a.emit(botID, a.chatOfRun(runID), runID, "artifact", artifactJSON(info), "")
+	a.emit(botID, a.ChatOfRun(runID), runID, "artifact", artifactJSON(info), "")
 }
 
 func titleOr(title, fallback string) string {
@@ -168,7 +169,7 @@ func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *d
 		http.Error(w, "bot_id and path required", http.StatusBadRequest)
 		return
 	}
-	ctx := context.WithValue(r.Context(), userKey, u)
+	ctx := access.WithUser(r.Context(), u)
 	b, err := a.ownBot(ctx, botID)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -234,7 +235,7 @@ func (a *App) downloadSkillZip(w http.ResponseWriter, r *http.Request, u *db.Use
 			http.Error(w, "bot_id required", http.StatusBadRequest)
 			return
 		}
-		ctx := context.WithValue(r.Context(), userKey, u)
+		ctx := access.WithUser(r.Context(), u)
 		b, err := a.ownBot(ctx, botID)
 		if err != nil {
 			http.Error(w, "not found", http.StatusNotFound)

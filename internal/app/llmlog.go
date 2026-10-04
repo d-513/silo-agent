@@ -10,9 +10,11 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/textx"
 )
 
 // llmlogLimit caps the debug table. The oldest rows are dropped past it so a
@@ -37,8 +39,8 @@ func (a *App) recordLLM(botID, label string, rec llm.Record) {
 		Label:      label,
 		Provider:   rec.Provider,
 		Model:      rec.Model,
-		Request:    capText(formatLLMRequest(rec), llmlogTextMax),
-		Response:   capText(formatLLMResponse(rec), llmlogTextMax),
+		Request:    textx.Cap(formatLLMRequest(rec), llmlogTextMax),
+		Response:   textx.Cap(formatLLMResponse(rec), llmlogTextMax),
 		InputTok:   rec.Usage.InputTokens,
 		OutputTok:  rec.Usage.OutputTokens,
 		DurationMs: rec.Duration.Milliseconds(),
@@ -71,7 +73,7 @@ func (a *App) pruneLLMLogs() {
 }
 
 func (a *App) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	out := &v1.ListLLMLogsResponse{Enabled: a.cfg().Debug}

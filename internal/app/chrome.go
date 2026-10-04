@@ -25,8 +25,8 @@ func (a *App) ensureChrome(ctx context.Context, botID, runID string) error {
 		return err
 	}
 	if out == "started" {
-		a.emit(botID, a.chatOfRun(runID), runID, "call", "Chromium", "chromium")
-		a.emit(botID, a.chatOfRun(runID), runID, "call_result", "opened on the desktop", "chromium")
+		a.emit(botID, a.ChatOfRun(runID), runID, "call", "Chromium", "chromium")
+		a.emit(botID, a.ChatOfRun(runID), runID, "call_result", "opened on the desktop", "chromium")
 	}
 	return nil
 }

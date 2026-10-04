@@ -66,11 +66,11 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		return a.taskTool(ctx, bot, runID, name, args, structured)
 	case security.Bot:
 		if name == "feed" {
-			return a.feedTool(ctx, bot, runID, args)
+			return a.feed.Tool(ctx, bot, runID, args)
 		}
 	}
 	argsJSON, _ := json.Marshal(args)
-	if _, err := a.authorizeAction(ctx, bot, runID, key[0], key[1], string(argsJSON), ""); err != nil {
+	if _, err := a.AuthorizeAction(ctx, bot, runID, key[0], key[1], string(argsJSON), ""); err != nil {
 		return "", err
 	}
 	switch name {
@@ -103,7 +103,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case "search_docs":
 		return a.knowledgeTool(ctx, bot.ID, args, structured)
 	case "list_models":
-		return a.listModelsTool(bot.ID, a.chatOfRun(runID))
+		return a.listModelsTool(bot.ID, a.ChatOfRun(runID))
 	case "transcribe":
 		return a.transcribeTool(ctx, bot.ID, str("path"), str("language"), structured)
 	}
