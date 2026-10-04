@@ -1,8 +1,5 @@
 import { fmtClock, insertDictation, pickMime } from "./voice.ts";
-
-function eq<T>(got: T, want: T, what: string) {
-  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
+import { eq } from "./testing.ts";
 
 eq(pickMime(() => true), "audio/webm;codecs=opus", "first supported wins");
 eq(pickMime((m) => m === "audio/mp4"), "audio/mp4", "Safari falls through to mp4");

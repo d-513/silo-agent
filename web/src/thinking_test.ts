@@ -1,8 +1,5 @@
 import { fitThinking, thinkingLabel } from "./thinking.ts";
-
-function eq(got: unknown, want: unknown, what: string) {
-  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
+import { eq } from "./testing.ts";
 
 // Same cases as TestNearestThinking in internal/llm.
 eq(fitThinking("high", ["low", "medium", "high"]), "high", "listed");

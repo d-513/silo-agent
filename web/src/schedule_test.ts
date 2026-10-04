@@ -1,8 +1,5 @@
 import { describe, parse, toCron } from "./schedule.ts";
-
-function eq(got: unknown, want: unknown, what: string) {
-  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
+import { eq } from "./testing.ts";
 
 // Every friendly shape round-trips through cron unchanged.
 for (const cron of ["", "*/30 * * * *", "15 * * * *", "0 */6 * * *", "0 9 * * *", "30 8 * * 1-5", "0 10 * * 0,6", "0 7 * * 1,3", "0 9 1 * *"]) {

@@ -1,9 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { fail, isGone, isSignedOut, isTransient } from "./errors.ts";
-
-function eq<T>(got: T, want: T, what: string) {
-  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
+import { eq } from "./testing.ts";
 
 // Messages: the "[code]" prefix never reaches the user.
 eq(fail(new ConnectError("bot name taken", Code.AlreadyExists)), "bot name taken", "raw server message");
