@@ -644,53 +644,9 @@ export function BotConnectors({
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {items.map((c) => {
-                      const count = attachedCountFor(c.id);
-                      return (
-                        <div
-                          key={c.id}
-                          className="group flex items-start justify-between gap-4 rounded-card shadow-card bg-surface p-5 transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs min-h-[130px]"
-                        >
-                          <div className="flex min-w-0 flex-1 items-start gap-4">
-                            <div className="shrink-0 pt-0.5">
-                              <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
-                                <ShieldCheck size={15} className="text-emerald shrink-0" />
-                                <McpChip transport={c.transport} />
-                                {c.category && <CategoryChip label={c.category} />}
-                              </div>
-                              <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
-                              <div className="mt-2.5 flex items-center gap-2 text-[11px] text-ink-3">
-                                <span className="font-mono uppercase">{c.transport}</span>
-                                <span>·</span>
-                                <span className="capitalize">{c.auth}</span>
-                                {count > 0 && (
-                                  <>
-                                    <span>·</span>
-                                    <span className="inline-flex items-center gap-1 font-medium text-emerald">
-                                      <Check size={11} />
-                                      {count === 1 ? "In use" : `${count} in use`}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 transition-[background-color,color,box-shadow] hover:shadow-float hover:bg-well hover:text-ink"
-                            onClick={() => openLibraryModal(c)}
-                            title={`Add ${c.name}`}
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                      );
-                    })}
+                    {items.map((c) => (
+                      <CatalogCard key={c.id} c={c} count={attachedCountFor(c.id)} onAdd={() => openLibraryModal(c)} />
+                    ))}
                   </div>
                 </section>
               ))}
@@ -702,53 +658,9 @@ export function BotConnectors({
                 <span>Showing {filteredCatalog.length} connector{filteredCatalog.length === 1 ? "" : "s"}</span>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {filteredCatalog.map((c) => {
-                  const count = attachedCountFor(c.id);
-                  return (
-                    <div
-                      key={c.id}
-                      className="group flex items-start justify-between gap-4 rounded-card shadow-card bg-surface p-5 transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs min-h-[130px]"
-                    >
-                      <div className="flex min-w-0 flex-1 items-start gap-4">
-                        <div className="shrink-0 pt-0.5">
-                          <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
-                            <ShieldCheck size={15} className="text-emerald shrink-0" />
-                            <McpChip transport={c.transport} />
-                            {c.category && <CategoryChip label={c.category} />}
-                          </div>
-                          <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
-                          <div className="mt-2.5 flex items-center gap-2 text-[11px] text-ink-3">
-                            <span className="font-mono uppercase">{c.transport}</span>
-                            <span>·</span>
-                            <span className="capitalize">{c.auth}</span>
-                            {count > 0 && (
-                              <>
-                                <span>·</span>
-                                <span className="inline-flex items-center gap-1 font-medium text-emerald">
-                                  <Check size={11} />
-                                  {count === 1 ? "In use" : `${count} in use`}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 transition-[background-color,color,box-shadow] hover:shadow-float hover:bg-well hover:text-ink"
-                        onClick={() => openLibraryModal(c)}
-                        title={`Add ${c.name}`}
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
+                {filteredCatalog.map((c) => (
+                  <CatalogCard key={c.id} c={c} count={attachedCountFor(c.id)} onAdd={() => openLibraryModal(c)} />
+                ))}
               </div>
             </div>
           )}
@@ -919,6 +831,50 @@ export function BotConnectors({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; onAdd: () => void }) {
+  return (
+    <div className="group flex items-start justify-between gap-4 rounded-card shadow-card bg-surface p-5 transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs min-h-[130px]">
+      <div className="flex min-w-0 flex-1 items-start gap-4">
+        <div className="shrink-0 pt-0.5">
+          <ConnectorMark id={c.id} hasImage={c.hasImage} size={48} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
+            <ShieldCheck size={15} className="text-emerald shrink-0" />
+            <McpChip transport={c.transport} />
+            {c.category && <CategoryChip label={c.category} />}
+          </div>
+          <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
+          <div className="mt-2.5 flex items-center gap-2 text-[11px] text-ink-3">
+            <span className="font-mono uppercase">{c.transport}</span>
+            <span>·</span>
+            <span className="capitalize">{c.auth}</span>
+            {count > 0 && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1 font-medium text-emerald">
+                  <Check size={11} />
+                  {count === 1 ? "In use" : `${count} in use`}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 transition-[background-color,color,box-shadow] hover:shadow-float hover:bg-well hover:text-ink"
+        onClick={onAdd}
+        title={`Add ${c.name}`}
+      >
+        <Plus size={16} />
+      </button>
     </div>
   );
 }

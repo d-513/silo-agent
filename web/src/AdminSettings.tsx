@@ -264,9 +264,10 @@ export function AdminSettings() {
         />
         <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
         {providers.map((p) => (
-          <ProviderBlock
+          <FieldGroup
             key={p.id}
-            provider={p}
+            title={p.name}
+            note={p.description || undefined}
             rows={rowsIn("providers").filter((f) => f.key.startsWith(`providers.${p.id}.`))}
             values={values}
             engines={engines}
@@ -426,41 +427,6 @@ function FieldGroup({
   );
 }
 
-function ProviderBlock({
-  provider,
-  rows,
-  values,
-  engines,
-  providers,
-  onChange,
-}: {
-  provider: Provider;
-  rows: ConfigField[];
-  values: Record<string, string>;
-  engines: SearchEngine[];
-  providers: Provider[];
-  onChange: (key: string, v: string) => void;
-}) {
-  if (rows.length === 0) return null;
-  return (
-    <Panel title={provider.name} note={provider.description || undefined} padded={false}>
-      <div className="divide-y divide-line-strong">
-        {rows.map((f) => (
-          <div key={f.key} className="px-4 py-3">
-            <FieldRow
-              field={f}
-              value={values[f.key] ?? ""}
-              engines={engines}
-              providers={providers}
-              onChange={(v) => onChange(f.key, v)}
-            />
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
 function ModelSettings({
   models,
   defaultModel,
@@ -510,12 +476,8 @@ function ModelSettings({
   onVoice: (v: string) => void;
   onSaveModels: (list: string[]) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState(models.map((m) => m.id).join("\n"));
   const [provider, setProvider] = useState("openrouter");
   const [name, setName] = useState("");
-  useEffect(() => {
-    setDraft(models.map((m) => m.id).join("\n"));
-  }, [models]);
 
   const allowed = models.map((m) => m.id);
   const lockedDefault = defaultField?.source === ConfigSource.ENV;
@@ -527,13 +489,11 @@ function ModelSettings({
     if (!name.trim() || allowed.includes(id)) return;
     const next = [...allowed, id];
     setName("");
-    setDraft(next.join("\n"));
     void onSaveModels(next);
   }
 
   function remove(id: string) {
     const next = allowed.filter((m) => m !== id);
-    setDraft(next.join("\n"));
     void onSaveModels(next);
   }
 

@@ -1,7 +1,6 @@
 import { Bot, Check, ChevronRight, CircleHelp, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ui } from "./api";
-import { Btn } from "./Btn";
 import { SaveButton, useSave } from "./Feedback";
 import { Panel, SkeletonRows, textareaClass } from "./Field";
 import type { Rule, RuleSection } from "./gen/silo/v1/ui_pb";
@@ -347,9 +346,6 @@ export function RulesPane({ botId }: { botId: string }) {
                 <p className="py-2 text-ink-2">Nothing to set here yet.</p>
               ) : (
                 s.rules.map((r) => {
-                  const isAllow = r.decision === "allow";
-                  const isDeny = r.decision === "deny";
-
                   return (
                     <div
                       key={`${r.connector}.${r.action}`}

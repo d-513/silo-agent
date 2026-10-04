@@ -1,9 +1,8 @@
 import { TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ui } from "./api";
 import { SaveButton, useSave } from "./Feedback";
-import { Btn } from "./Btn";
 import { Field, Panel } from "./Field";
 import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
@@ -11,6 +10,19 @@ import { fail } from "./errors";
 
 export { AdminSettings } from "./AdminSettings";
 export { AdminDebug } from "./AdminDebug";
+
+function AdminTab({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
 
 export function AdminLayout() {
   const [debug, setDebug] = useState(false);
@@ -23,56 +35,12 @@ export function AdminLayout() {
     <div className="silo-page">
       <h1 className="text-[22px] leading-7 font-medium tracking-[-0.015em]">Admin</h1>
       <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <NavLink
-          to="/admin/settings"
-          className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-          }
-        >
-          Settings
-        </NavLink>
-        <NavLink
-          to="/admin/connectors"
-          className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-          }
-        >
-          Connectors Library
-        </NavLink>
-        <NavLink
-          to="/admin/skills"
-          className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-          }
-        >
-          Skills Library
-        </NavLink>
-        <NavLink
-          to="/admin/drives"
-          className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-          }
-        >
-          Drives
-        </NavLink>
-        <NavLink
-          to="/admin/search-extract"
-          className={({ isActive }) =>
-            `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-          }
-        >
-          Search & Extract
-        </NavLink>
-        {debug && (
-          <NavLink
-            to="/admin/debug"
-            className={({ isActive }) =>
-              `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-            }
-          >
-            Debug
-          </NavLink>
-        )}
+        <AdminTab to="/admin/settings">Settings</AdminTab>
+        <AdminTab to="/admin/connectors">Connectors Library</AdminTab>
+        <AdminTab to="/admin/skills">Skills Library</AdminTab>
+        <AdminTab to="/admin/drives">Drives</AdminTab>
+        <AdminTab to="/admin/search-extract">Search & Extract</AdminTab>
+        {debug && <AdminTab to="/admin/debug">Debug</AdminTab>}
       </nav>
       <Outlet />
     </div>
