@@ -101,6 +101,21 @@ function lastRunning(out: Block[], pred: (b: ToolBlock) => boolean): ToolBlock |
   }
 }
 
+// upsertTool is how a streaming tool event finds its row: the running call with
+// the event's own name, else the latest running call `fallback` accepts, else a
+// new running row. `setArgs` applies the event's body to a call that exists.
+function upsertTool(out: Block[], e: Ev, key: string, fallback: (b: ToolBlock) => boolean, setArgs: (t: ToolBlock) => void) {
+  const named = e.tool ? lastRunning(out, (b) => b.name === e.tool && runOk(b, e.runId)) : undefined;
+  const t = named || lastRunning(out, (b) => fallback(b) && runOk(b, e.runId));
+  if (!t) {
+    out.push({ key, type: "tool", name: e.tool || "tool", args: e.body, running: true, runId: e.runId });
+    return;
+  }
+  setArgs(t);
+  if (e.tool) t.name = e.tool;
+  if (e.runId) t.runId = e.runId;
+}
+
 function lastThinking(out: Block[]) {
   for (let j = out.length - 1; j >= 0; j--) {
     const b = out[j];
@@ -219,28 +234,16 @@ export function foldEvents(events: Ev[]): Block[] {
     }
     if (e.kind === "tool_args_chunk") {
       closeThinking(out, e.at);
-      const named = e.tool ? lastRunning(out, (b) => b.name === e.tool && runOk(b, e.runId)) : undefined;
-      const t = named || lastRunning(out, (b) => runOk(b, e.runId));
-      if (t) {
+      upsertTool(out, e, key, () => true, (t) => {
         t.args += e.body;
-        if (e.tool) t.name = e.tool;
-        if (e.runId) t.runId = e.runId;
-      } else {
-        push({ key, type: "tool", name: e.tool || "tool", args: e.body, running: true, runId: e.runId });
-      }
+      });
       continue;
     }
     if (e.kind === "tool") {
       closeThinking(out, e.at);
-      const named = e.tool ? lastRunning(out, (b) => b.name === e.tool && runOk(b, e.runId)) : undefined;
-      const t = named || lastRunning(out, (b) => isPartialArgs(b.args) && runOk(b, e.runId));
-      if (t) {
+      upsertTool(out, e, key, (b) => isPartialArgs(b.args), (t) => {
         if (e.body) t.args = e.body;
-        if (e.tool) t.name = e.tool;
-        if (e.runId) t.runId = e.runId;
-      } else {
-        push({ key, type: "tool", name: e.tool || "tool", args: e.body, running: true, runId: e.runId });
-      }
+      });
       continue;
     }
     if (e.kind === "tool_chunk") {
