@@ -2,19 +2,16 @@ package drivehost
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
-	"net"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/net/http2"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/rpcx"
 )
 
 const (
@@ -131,33 +128,5 @@ func NewClient(cpURL, token string) (silov1connect.DriveHostClient, error) {
 	if strings.TrimSpace(cpURL) == "" || strings.TrimSpace(token) == "" {
 		return nil, errors.New("cp url and drive token required")
 	}
-	dialer := &net.Dialer{Timeout: dialTimeout, FallbackDelay: 100 * time.Millisecond}
-	hc := &http.Client{Transport: &http2.Transport{
-		AllowHTTP: true,
-		DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-			return dialer.Dial(network, addr)
-		},
-	}}
-	return silov1connect.NewDriveHostClient(hc, cpURL, connect.WithInterceptors(bearer(token))), nil
-}
-
-type bearer string
-
-func (b bearer) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		req.Header().Set("Authorization", "Bearer "+string(b))
-		return next(ctx, req)
-	}
-}
-
-func (b bearer) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
-		conn := next(ctx, spec)
-		conn.RequestHeader().Set("Authorization", "Bearer "+string(b))
-		return conn
-	}
-}
-
-func (b bearer) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
+	return silov1connect.NewDriveHostClient(rpcx.H2CClient(dialTimeout), cpURL, connect.WithInterceptors(rpcx.Bearer(token))), nil
 }

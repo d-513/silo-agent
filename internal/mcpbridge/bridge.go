@@ -7,12 +7,9 @@ package mcpbridge
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,10 +17,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/net/http2"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/rpcx"
 )
 
 const (
@@ -182,37 +179,7 @@ func child(cfg Config) (*exec.Cmd, error) {
 }
 
 func newClient(cpURL, token string) silov1connect.MCPHostClient {
-	dialer := &net.Dialer{Timeout: dialTimeout, FallbackDelay: 100 * time.Millisecond}
-	hc := &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-				return dialer.Dial(network, addr)
-			},
-		},
-	}
-	return silov1connect.NewMCPHostClient(hc, cpURL, connect.WithInterceptors(tokenInterceptor{token}))
-}
-
-type tokenInterceptor struct{ tok string }
-
-func (t tokenInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		req.Header().Set("Authorization", "Bearer "+t.tok)
-		return next(ctx, req)
-	}
-}
-
-func (t tokenInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
-		conn := next(ctx, spec)
-		conn.RequestHeader().Set("Authorization", "Bearer "+t.tok)
-		return conn
-	}
-}
-
-func (t tokenInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
+	return silov1connect.NewMCPHostClient(rpcx.H2CClient(dialTimeout), cpURL, connect.WithInterceptors(rpcx.Bearer(token)))
 }
 
 func stripBridgeEnv(env []string) []string {

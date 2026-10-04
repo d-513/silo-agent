@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
@@ -26,6 +24,7 @@ import (
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/drivehost"
 	"silo.agent/internal/drivehost/drivetest"
+	"silo.agent/internal/rpcx"
 
 	// Registers the deterministic "dummy" model provider for every test binary
 	// that uses this harness.
@@ -177,7 +176,8 @@ func New(t *testing.T, opts ...Option) *H {
 		t.Fatalf("bootstrap: %v", err)
 	}
 
-	srv := &http.Server{Handler: h2c.NewHandler(a.Handler(), &http2.Server{})}
+	srv := &http.Server{Handler: a.Handler()}
+	rpcx.EnableH2C(srv)
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
 
@@ -201,8 +201,6 @@ func New(t *testing.T, opts ...Option) *H {
 	}
 	return h
 }
-
-func (o options) DataDirFor(store *config.Store) string { return store.Config().DataDir }
 
 // DefaultYAML is the deterministic test config: the dummy provider, a temp
 // data dir, and no network.

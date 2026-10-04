@@ -13,36 +13,49 @@ import (
 	"time"
 )
 
+// builtBinary is a cmd/ program built once per test binary into the OS temp dir.
+type builtBinary struct {
+	name string // short name, for the file and error text
+	pkg  string // import path to build
+	once sync.Once
+	path string
+	err  error
+}
+
 var (
-	workerOnce sync.Once
-	workerPath string
-	workerErr  error
+	workerBin = &builtBinary{name: "worker", pkg: "silo.agent/cmd/silo-worker"}
+	bridgeBin = &builtBinary{name: "bridge", pkg: "silo.agent/cmd/silo-mcp-bridge"}
 )
+
+func (b *builtBinary) build() (string, error) {
+	b.once.Do(func() {
+		root, err := repoRoot()
+		if err != nil {
+			b.err = err
+			return
+		}
+		out := filepath.Join(os.TempDir(), fmt.Sprintf("silo-%s-test-%d", b.name, os.Getpid()))
+		cmd := exec.Command("go", "build", "-o", out, b.pkg)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+		if o, err := cmd.CombinedOutput(); err != nil {
+			b.err = fmt.Errorf("build %s: %v\n%s", b.name, err, o)
+			return
+		}
+		b.path = out
+	})
+	return b.path, b.err
+}
 
 // WorkerBinary builds cmd/silo-worker once per test binary and caches the
 // binary in the OS temp dir. It is the fast "real worker, no container" seam.
 func WorkerBinary(t *testing.T) string {
 	t.Helper()
-	workerOnce.Do(func() {
-		root, err := repoRoot()
-		if err != nil {
-			workerErr = err
-			return
-		}
-		out := filepath.Join(os.TempDir(), fmt.Sprintf("silo-worker-test-%d", os.Getpid()))
-		cmd := exec.Command("go", "build", "-o", out, "silo.agent/cmd/silo-worker")
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-		if b, err := cmd.CombinedOutput(); err != nil {
-			workerErr = fmt.Errorf("build worker: %v\n%s", err, b)
-			return
-		}
-		workerPath = out
-	})
-	if workerErr != nil {
-		t.Fatalf("worker binary: %v", workerErr)
+	bin, err := workerBin.build()
+	if err != nil {
+		t.Fatalf("worker binary: %v", err)
 	}
-	return workerPath
+	return bin
 }
 
 func repoRoot() (string, error) {

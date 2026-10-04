@@ -12,11 +12,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/rpcx"
 )
 
 func TestMain(m *testing.M) {
@@ -94,7 +93,8 @@ func startHost(t *testing.T) *hostFake {
 	path, handler := silov1connect.NewMCPHostHandler(h)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
-	srv := httptest.NewUnstartedServer(h2c.NewHandler(mux, &http2.Server{}))
+	srv := httptest.NewUnstartedServer(mux)
+	rpcx.EnableH2C(srv.Config)
 	srv.Start()
 	t.Cleanup(srv.Close)
 	h.addr = srv.Listener.Addr().String()
