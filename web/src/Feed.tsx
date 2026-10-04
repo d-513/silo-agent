@@ -5,7 +5,7 @@ import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
 import type { Bot, Chat, FeedPost } from "./gen/silo/v1/ui_pb";
-import { Md } from "./Thread";
+import { Md } from "./Md";
 import { fail } from "./errors";
 
 function stamp(iso: string) {

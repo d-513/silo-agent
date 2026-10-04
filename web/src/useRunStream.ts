@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
 import { isTransient } from "./errors";
-import type { Ev } from "./Thread";
+import type { Ev } from "./fold";
 
 // window is the model's context size in tokens (0 when the server did not say).
 export type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number; window: number };
