@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -127,7 +128,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		if i == 0 && dropped > 0 {
 			chunk = fmt.Sprintf("[%d older entries were dropped to fit.]\n\n", dropped) + chunk
 		}
-		shown, err := a.search(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown, 0)
+		shown, err := a.Memory.Search(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown, 0)
 		if err != nil {
 			return res, models.ProviderError{Err: err}
 		}
@@ -157,7 +158,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 
 // applyCollect saves, rewrites, and forgets what one reply asked for. Only ids
 // the model was shown may be rewritten or forgotten.
-func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []recalled, r collectReply, res *collectResult) error {
+func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []memory.Recalled, r collectReply, res *collectResult) error {
 	known := map[string]bool{}
 	for _, m := range shown {
 		known[m.ID] = true
@@ -167,19 +168,19 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []recalled, r
 			break
 		}
 		text := strings.TrimSpace(s.Text)
-		if text == "" || len(text) > rememberMax {
+		if text == "" || len(text) > memory.RememberMax {
 			continue
 		}
-		kind := memoryFact
-		if strings.EqualFold(strings.TrimSpace(s.Kind), memoryLesson) {
-			kind = memoryLesson
+		kind := memory.Fact
+		if strings.EqualFold(strings.TrimSpace(s.Kind), memory.Lesson) {
+			kind = memory.Lesson
 		}
-		saved, err := a.saveMemory(ctx, newMemory{botID: ch.BotID, chatID: ch.ID, kind: kind, content: text})
+		saved, err := a.Memory.Save(ctx, memory.Entry{BotID: ch.BotID, ChatID: ch.ID, Kind: kind, Content: text})
 		if err != nil {
 			return models.ProviderError{Err: err}
 		}
-		res.IDs = append(res.IDs, saved.id)
-		if saved.updated {
+		res.IDs = append(res.IDs, saved.ID)
+		if saved.Updated {
 			res.Updated++
 		} else {
 			res.Saved++
@@ -193,7 +194,7 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []recalled, r
 		if !known[id] {
 			continue
 		}
-		if err := a.rewriteMemory(ctx, ch.BotID, id, u.Text); err != nil {
+		if err := a.Memory.Rewrite(ctx, ch.BotID, id, u.Text); err != nil {
 			continue
 		}
 		res.IDs = append(res.IDs, id)
@@ -207,7 +208,7 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []recalled, r
 		if !known[id] {
 			continue
 		}
-		if _, err := a.forget(ch.BotID, id); err == nil {
+		if _, err := a.Memory.Forget(ch.BotID, id); err == nil {
 			res.Forgotten++
 		}
 	}
@@ -269,7 +270,7 @@ func chunkEntries(entries []string, budget, max int) (chunks []string, dropped i
 
 // collectInput is the one user message of a collection: what the Bot already
 // knows, then the excerpt, last.
-func collectInput(core string, shown []recalled, excerpt, note string) string {
+func collectInput(core string, shown []memory.Recalled, excerpt, note string) string {
 	var b strings.Builder
 	b.WriteString("CORE MEMORY:\n")
 	if c := strings.TrimSpace(core); c != "" {
@@ -284,7 +285,7 @@ func collectInput(core string, shown []recalled, excerpt, note string) string {
 	for _, m := range shown {
 		kind := m.Kind
 		if kind == "" {
-			kind = memoryFact
+			kind = memory.Fact
 		}
 		fmt.Fprintf(&b, "- [%s] %s: %s\n", m.ID, kind, m.Content)
 	}
@@ -391,7 +392,7 @@ func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.Colle
 		var rows []db.Memory
 		a.DB.Select("id, kind, chat_id, content, created_at, last_used_at").Where("id IN ?", res.IDs).Order("created_at").Find(&rows)
 		for _, r := range rows {
-			out.Memories = append(out.Memories, memoryProto(r))
+			out.Memories = append(out.Memories, memory.Proto(r))
 		}
 	}
 	return connect.NewResponse(out), nil

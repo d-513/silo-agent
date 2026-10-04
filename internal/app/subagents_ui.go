@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/prompts"
+	"silo.agent/internal/textx"
 ) // --- prompt ---
 
 // subagentSections is the per-run note that tells a subagent who it is.
@@ -28,7 +29,7 @@ func (a *App) protoSubagent(sa *db.Subagent) *v1.Subagent {
 	out := &v1.Subagent{
 		Id: sa.ID, BotId: sa.BotID, ParentChatId: sa.ParentChatID, ChatId: sa.ChatID, Name: sa.Name,
 		Goal: sa.Goal, Context: sa.Context, Model: sa.Model, Status: sa.Status, Result: sa.Result,
-		Running: a.subagentLive(sa), CreatedAt: sa.CreatedAt.Format(time.RFC3339), FinishedAt: rfc3339(sa.FinishedAt),
+		Running: a.subagentLive(sa), CreatedAt: sa.CreatedAt.Format(time.RFC3339), FinishedAt: textx.RFC3339(sa.FinishedAt),
 	}
 	if out.Running {
 		out.Status = "running"

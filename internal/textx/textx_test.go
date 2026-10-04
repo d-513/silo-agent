@@ -3,6 +3,7 @@ package textx
 import (
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 )
 
@@ -73,5 +74,15 @@ func TestCapRunes(t *testing.T) {
 	}
 	if got := CapRunes("héllo wörld", 5); got != "héllo…" {
 		t.Fatalf("cut: %q", got)
+	}
+}
+
+func TestRFC3339(t *testing.T) {
+	if RFC3339(nil) != "" || RFC3339(&time.Time{}) != "" {
+		t.Fatal("nil and zero must be empty")
+	}
+	at := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	if got := RFC3339(&at); got != "2026-03-04T05:06:07Z" {
+		t.Fatalf("got %q", got)
 	}
 }

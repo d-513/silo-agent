@@ -4,6 +4,7 @@ package textx
 
 import (
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"silo.agent/internal/db"
@@ -75,4 +76,12 @@ func CapRunes(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "…"
+}
+
+// RFC3339 formats an optional time; nil or zero is "".
+func RFC3339(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }

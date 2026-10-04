@@ -61,10 +61,3 @@ func TestCollectCapsKeepMoreOfFailures(t *testing.T) {
 		t.Fatalf("result caps: ok %d, error %d", okLen, errLen)
 	}
 }
-
-func TestFormatRecalledMarksLessons(t *testing.T) {
-	out := formatRecalled([]recalled{{ID: "1", Kind: memoryLesson, Content: "retry with login"}, {ID: "2", Kind: memoryFact, Content: "likes tea"}})
-	if !strings.Contains(out, "lesson: retry with login") || strings.Contains(out, "lesson: likes tea") {
-		t.Fatalf("recall format:\n%s", out)
-	}
-}

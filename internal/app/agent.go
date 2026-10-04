@@ -331,7 +331,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		}
 		userText = msgs[len(msgs)-1].Text
 	}
-	if note := a.autoRecall(ctx, botID, userText); note != "" {
+	if note := a.Memory.AutoRecall(ctx, botID, userText); note != "" {
 		if origin == nil {
 			origin = &runOrigin{}
 		}

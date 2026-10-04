@@ -22,6 +22,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
+	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
@@ -182,6 +183,7 @@ type App struct {
 	Workspace *workspace.Service
 	Voice     *voice.Service
 	Knowledge *knowledge.Service
+	Memory    *memory.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -211,6 +213,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
+	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
 	a.initConnectors()

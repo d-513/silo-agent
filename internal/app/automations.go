@@ -294,13 +294,6 @@ func (a *App) fireAutomation(au *db.Automation) (string, error) {
 
 // --- proto / RPC ---
 
-func rfc3339(t *time.Time) string {
-	if t == nil || t.IsZero() {
-		return ""
-	}
-	return t.Format(time.RFC3339)
-}
-
 func (a *App) automationStatus(au *db.Automation) (string, bool) {
 	running := au.ChatID != "" && a.liveRunID(au.BotID, au.ChatID) != ""
 	if au.LastStatus != "" || au.LastRunID == "" {
@@ -316,7 +309,7 @@ func (a *App) protoAutomation(au *db.Automation) *v1.Automation {
 	return &v1.Automation{
 		Id: au.ID, BotId: au.BotID, Name: au.Name, Prompt: au.Prompt, Schedule: au.Schedule,
 		Enabled: au.Enabled, Kind: au.Kind, ChatId: au.ChatID,
-		LastRunAt: rfc3339(au.LastRunAt), NextRunAt: rfc3339(au.NextRunAt), LastStatus: status,
+		LastRunAt: textx.RFC3339(au.LastRunAt), NextRunAt: textx.RFC3339(au.NextRunAt), LastStatus: status,
 		Running: running, CreatedBy: au.CreatedBy, CreatedAt: au.CreatedAt.Format(time.RFC3339),
 	}
 }

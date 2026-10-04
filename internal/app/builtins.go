@@ -75,12 +75,12 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	}
 	switch name {
 	case "remember":
-		return a.remember(ctx, bot.ID, runID, str("content"))
+		return a.Memory.Remember(ctx, bot.ID, runID, str("content"))
 	case "recall":
 		if !structured {
-			return a.recallTool(ctx, bot.ID, args)
+			return a.Memory.RecallTool(ctx, bot.ID, str("query"), num(args, "limit"))
 		}
-		rows, err := a.recall(ctx, bot.ID, str("query"), num(args, "limit"), 0)
+		rows, err := a.Memory.Recall(ctx, bot.ID, str("query"), num(args, "limit"), 0)
 		if err != nil {
 			return "", err
 		}
@@ -99,7 +99,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		b, err := json.Marshal(out)
 		return string(b), err
 	case "forget":
-		return a.forget(bot.ID, str("id"))
+		return a.Memory.Forget(bot.ID, str("id"))
 	case "search_docs":
 		return a.Knowledge.Tool(ctx, bot.ID, str("query"), str("path"), num(args, "limit"), structured)
 	case "list_models":
