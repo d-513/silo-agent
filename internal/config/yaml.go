@@ -42,46 +42,12 @@ func setNodeKey(doc *yaml.Node, key, value string) error {
 	return setPath(mappingOf(doc), strings.Split(key, "."), value)
 }
 
-// setNodeList replaces a top-level key with a YAML sequence, preserving any
-// comments on the existing key. Used for the model allowlist.
-func setNodeList(doc *yaml.Node, key string, values []string) error {
+// setNodeValue replaces (or appends) a top-level key's value node, keeping any
+// comments that were on the old value.
+func setNodeValue(doc *yaml.Node, key string, node *yaml.Node) {
 	m := mappingOf(doc)
 	if m.Kind != yaml.MappingNode {
 		*m = yaml.Node{Kind: yaml.MappingNode}
-	}
-	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-	for _, v := range values {
-		seq.Content = append(seq.Content, &yaml.Node{
-			Kind: yaml.ScalarNode, Tag: "!!str", Value: v, Style: quoteStyle(v),
-		})
-	}
-	for i := 0; i+1 < len(m.Content); i += 2 {
-		if m.Content[i].Value != key {
-			continue
-		}
-		seq.HeadComment = m.Content[i+1].HeadComment
-		seq.LineComment = m.Content[i+1].LineComment
-		seq.FootComment = m.Content[i+1].FootComment
-		m.Content[i+1] = seq
-		return nil
-	}
-	m.Content = append(m.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, seq)
-	return nil
-}
-
-// setNodeMap replaces a top-level key with a YAML mapping of string values,
-// preserving any comments on the existing key. Used for connector variables.
-func setNodeMap(doc *yaml.Node, key string, vars []NamedVar) error {
-	m := mappingOf(doc)
-	if m.Kind != yaml.MappingNode {
-		*m = yaml.Node{Kind: yaml.MappingNode}
-	}
-	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	for _, v := range vars {
-		node.Content = append(node.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v.Name},
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v.Value, Style: quoteStyle(v.Value)},
-		)
 	}
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		if m.Content[i].Value != key {
@@ -91,9 +57,36 @@ func setNodeMap(doc *yaml.Node, key string, vars []NamedVar) error {
 		node.LineComment = m.Content[i+1].LineComment
 		node.FootComment = m.Content[i+1].FootComment
 		m.Content[i+1] = node
-		return nil
+		return
 	}
 	m.Content = append(m.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, node)
+}
+
+func strNode(v string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v, Style: quoteStyle(v)}
+}
+
+// setNodeList replaces a top-level key with a YAML sequence, preserving any
+// comments on the existing key. Used for the model allowlist.
+func setNodeList(doc *yaml.Node, key string, values []string) error {
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	for _, v := range values {
+		seq.Content = append(seq.Content, strNode(v))
+	}
+	setNodeValue(doc, key, seq)
+	return nil
+}
+
+// setNodeMap replaces a top-level key with a YAML mapping of string values,
+// preserving any comments on the existing key. Used for connector variables.
+func setNodeMap(doc *yaml.Node, key string, vars []NamedVar) error {
+	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	for _, v := range vars {
+		// Keys are written bare; only values get the quoting heuristic.
+		node.Content = append(node.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v.Name}, strNode(v.Value))
+	}
+	setNodeValue(doc, key, node)
 	return nil
 }
 

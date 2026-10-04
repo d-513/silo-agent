@@ -20,6 +20,7 @@ import (
 	"silo.agent/internal/drives"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
+	"silo.agent/internal/settingdef"
 )
 
 const YAMLName = "silo.yaml"
@@ -247,35 +248,35 @@ const (
 const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
 
 type Config struct {
-	HTTPAddr      string              `koanf:"http_addr"`
-	PublicURL     string              `koanf:"public_url"`
-	DataDir       string              `koanf:"data_dir"`
-	DatabaseURL   string              `koanf:"database_url"`
-	DockerHost    string              `koanf:"docker_host"`
-	CPURL         string              `koanf:"cp_url"`
-	BotImage      string              `koanf:"bot_image"`
-	MCPStdioImage string              `koanf:"mcp_stdio_image"`
-	Model         string              `koanf:"model"`
-	ModelTitle    string              `koanf:"model_title"`
-	ModelApproval string              `koanf:"model_approval"`
+	HTTPAddr      string `koanf:"http_addr"`
+	PublicURL     string `koanf:"public_url"`
+	DataDir       string `koanf:"data_dir"`
+	DatabaseURL   string `koanf:"database_url"`
+	DockerHost    string `koanf:"docker_host"`
+	CPURL         string `koanf:"cp_url"`
+	BotImage      string `koanf:"bot_image"`
+	MCPStdioImage string `koanf:"mcp_stdio_image"`
+	Model         string `koanf:"model"`
+	ModelTitle    string `koanf:"model_title"`
+	ModelApproval string `koanf:"model_approval"`
 	// ModelSubagent is the default model of subagents a lead starts; empty
 	// means the lead's own model. spawn_agent may still name another.
 	ModelSubagent string `koanf:"model_subagent"`
 	// ModelMemory is the memory collector's model; empty means the title model.
-	ModelMemory string `koanf:"model_memory"`
-	EmbedModel    string              `koanf:"embedding_model"`
-	Transcribe    string              `koanf:"transcribe_model"`
-	Memory        Memory              `koanf:"memory"`
-	Knowledge     Knowledge           `koanf:"knowledge"`
-	Context       Context             `koanf:"context"`
-	Thinking      Thinking            `koanf:"thinking"`
-	Runs          Runs                `koanf:"runs"`
-	Models        []string            `koanf:"models"`
-	Debug         bool                `koanf:"debug"`
-	Bootstrap     Bootstrap           `koanf:"bootstrap"`
-	Providers     map[string]Provider `koanf:"providers"`
-	Search        Search              `koanf:"search"`
-	Drives        Drives              `koanf:"drives"`
+	ModelMemory string              `koanf:"model_memory"`
+	EmbedModel  string              `koanf:"embedding_model"`
+	Transcribe  string              `koanf:"transcribe_model"`
+	Memory      Memory              `koanf:"memory"`
+	Knowledge   Knowledge           `koanf:"knowledge"`
+	Context     Context             `koanf:"context"`
+	Thinking    Thinking            `koanf:"thinking"`
+	Runs        Runs                `koanf:"runs"`
+	Models      []string            `koanf:"models"`
+	Debug       bool                `koanf:"debug"`
+	Bootstrap   Bootstrap           `koanf:"bootstrap"`
+	Providers   map[string]Provider `koanf:"providers"`
+	Search      Search              `koanf:"search"`
+	Drives      Drives              `koanf:"drives"`
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
@@ -678,23 +679,20 @@ func (s *Store) Fields() []Field {
 			EnvName: EnvName(m.Key), Secret: m.Secret, Restart: m.Restart, Type: m.Type,
 		})
 	}
-	for _, d := range search.Descriptors() {
-		for _, f := range d.Settings {
-			key := "search." + d.ID + "." + f.Key
+	addFamily := func(prefix, id string, defs []settingdef.Def) {
+		for _, f := range defs {
+			key := prefix + id + "." + f.Key
 			out = append(out, Field{
 				Key: key, Value: s.merged.String(key), Source: s.sourceLocked(key),
 				EnvName: EnvName(key), Secret: f.Secret, Type: f.Type,
 			})
 		}
 	}
+	for _, d := range search.Descriptors() {
+		addFamily("search.", d.ID, d.Settings)
+	}
 	for _, d := range llm.Descriptors() {
-		for _, f := range d.Settings {
-			key := "providers." + d.ID + "." + f.Key
-			out = append(out, Field{
-				Key: key, Value: s.merged.String(key), Source: s.sourceLocked(key),
-				EnvName: EnvName(key), Secret: f.Secret, Type: f.Type,
-			})
-		}
+		addFamily("providers.", d.ID, d.Settings)
 	}
 	return out
 }

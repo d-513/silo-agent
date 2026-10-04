@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"silo.agent/internal/settingdef"
 )
 
 // Role is the author of a message.
@@ -231,13 +233,7 @@ func AudioExt(mime string) string {
 }
 
 // SettingDef describes one configurable provider setting for the admin UI.
-type SettingDef struct {
-	Key         string
-	Label       string
-	Type        string
-	Description string
-	Secret      bool
-}
+type SettingDef = settingdef.Def
 
 // Descriptor is provider metadata for config, the admin UI, and the model
 // picker.
@@ -397,19 +393,6 @@ func Register(desc Descriptor, newFn func(Settings) (Client, error)) {
 		}
 	}
 	registry = append(registry, registered{desc: desc, new: newFn})
-}
-
-// Unregister removes a provider from the registry. Tests use it to keep a
-// process-scoped registration from leaking into another test binary's run.
-func Unregister(id string) {
-	id = strings.TrimSpace(id)
-	out := registry[:0]
-	for _, r := range registry {
-		if r.desc.ID != id {
-			out = append(out, r)
-		}
-	}
-	registry = out
 }
 
 // Split parses a "provider/model" id on the first slash. The model part may

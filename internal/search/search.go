@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"silo.agent/internal/settingdef"
 )
 
 const (
@@ -23,13 +25,8 @@ type Result struct {
 	Results []Hit `json:"results"`
 }
 
-type SettingDef struct {
-	Key         string
-	Label       string
-	Type        string
-	Description string
-	Secret      bool
-}
+// SettingDef describes one configurable engine setting for the admin UI.
+type SettingDef = settingdef.Def
 
 type Descriptor struct {
 	ID          string
