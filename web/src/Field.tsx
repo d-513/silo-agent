@@ -1,3 +1,4 @@
+import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 // Inputs: 36px surface with an inset line-strong ring. Focus is a 1px cobalt
@@ -86,6 +87,16 @@ export function Panel({
       ) : null}
       <div className={padded ? "px-5 py-5" : ""}>{children}</div>
     </section>
+  );
+}
+
+// An error that belongs to the whole form or page rather than one field.
+export function ErrorWell({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div role="alert" className={`flex items-start gap-2 rounded-sm bg-vermilion-pale px-3 py-2.5 text-[13px] leading-5 text-vermilion ${className}`}>
+      <CircleAlert size={15} className="mt-0.5 shrink-0" />
+      <span className="min-w-0 break-words">{children}</span>
+    </div>
   );
 }
 

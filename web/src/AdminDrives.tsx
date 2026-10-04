@@ -1,4 +1,4 @@
-import { ChevronRight, Search, TriangleAlert } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -6,7 +6,7 @@ import { ui } from "./api";
 import { CATEGORY_LABEL, DriveMark } from "./BotDrives";
 import { Btn } from "./Btn";
 import { ArmedButton, CopyButton, SaveButton, useSave } from "./Feedback";
-import { Field, inputClass, Panel, SkeletonRows } from "./Field";
+import { ErrorWell, Field, inputClass, Panel, SkeletonRows } from "./Field";
 import type { DriveProviderSettings, DriveSettings, DriveSystemField, DriveTemplate } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
@@ -110,11 +110,7 @@ function ProviderFolio({ t, p, redirect, onSaved }: { t: DriveTemplate; p: Drive
             onClear={() => void put({ [f.key]: "" })}
           />
         ))}
-        {err ? (
-          <div role="alert" className="rounded-sm bg-vermilion-pale px-3 py-2.5 text-[13px] text-vermilion">
-            {err}
-          </div>
-        ) : null}
+        {err ? <ErrorWell>{err}</ErrorWell> : null}
         <div className="flex items-center gap-2.5">
           <SaveButton type="button" state={saver.state} disabled={!dirty} onClick={() => void put(edits)} />
           {dirty ? (
@@ -155,11 +151,7 @@ export function AdminDrives() {
       <p className="mb-5 max-w-[600px] text-[13.5px] leading-[21px] text-ink-2">
         Drives let each Bot mount cloud storage as a folder. Providers that sign in with OAuth need a client registered once, here, before owners can connect them. The rest need nothing.
       </p>
-      {err ? (
-        <div className="mb-4 flex items-center gap-2 rounded-sm bg-vermilion-pale px-3 py-2.5 text-[13px] text-vermilion">
-          <TriangleAlert size={15} /> {err}
-        </div>
-      ) : null}
+      {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       {!templates || !settings ? (
         <SkeletonRows rows={5} height={54} />
       ) : (

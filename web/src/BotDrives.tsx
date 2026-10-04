@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronRight, CircleAlert, CircleCheck, FolderOpen, HardDrive, Folder, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Check, ChevronRight, CircleAlert, CircleCheck, FolderOpen, HardDrive, Folder, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { ArmedButton, CopyButton, SaveButton, Spinner, useSave } from "./Feedback";
-import { Field, inputClass, SkeletonRows, textareaClass } from "./Field";
+import { ErrorWell, Field, inputClass, SkeletonRows, textareaClass } from "./Field";
+import { PageHead } from "./PageHead";
 import { Lamp } from "./Lamp";
 import { Select } from "./Select";
 import { ToggleRow } from "./Switch";
@@ -88,37 +89,6 @@ function visible(v: DriveVar, values: Record<string, string>, t: DriveTemplate) 
   return true;
 }
 
-function PageHead({ title, subtitle, mark, onBack }: { title: string; subtitle?: string; mark?: ReactNode; onBack: () => void }) {
-  return (
-    <div className="mb-6 flex items-center gap-3.5">
-      <button
-        type="button"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card transition-colors hover:text-ink hover:shadow-float"
-        onClick={onBack}
-        aria-label="Back"
-      >
-        <ArrowLeft size={16} />
-      </button>
-      {mark}
-      <div className="min-w-0">
-        <h2 className="truncate text-[22px] font-medium leading-7 tracking-[-0.015em] text-ink">{title}</h2>
-        {subtitle ? <div className="mt-0.5 text-[12.5px] text-ink-3">{subtitle}</div> : null}
-      </div>
-    </div>
-  );
-}
-
-function ErrorWell({ children }: { children: ReactNode }) {
-  return (
-    <div role="alert" className="flex items-start gap-2 rounded-sm bg-vermilion-pale px-3 py-2.5 text-[13px] leading-5 text-vermilion">
-      <CircleAlert size={15} className="mt-0.5 shrink-0" />
-      <span className="min-w-0 break-words">{children}</span>
-    </div>
-  );
-}
-
-// A numbered step of the add form. Later steps stay visible but quiet until the
-// earlier one is done, so the whole path is readable at a glance.
 function Step({ n, title, note, done, locked, children }: { n: number; title: string; note?: string; done?: boolean; locked?: boolean; children: ReactNode }) {
   return (
     <section className={`rounded-card bg-surface p-5 shadow-card transition-opacity duration-[200ms] ease-quiet ${locked ? "opacity-55" : ""}`} aria-disabled={locked || undefined}>

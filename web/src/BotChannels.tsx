@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CircleAlert, CircleCheck, History, Pencil, Plus, Radio, Settings, Trash2, X } from "lucide-react";
+import { CircleAlert, CircleCheck, History, Pencil, Plus, Radio, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -6,8 +6,8 @@ import remarkGfm from "remark-gfm";
 import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Btn, btnClass } from "./Btn";
-import { Field, inputClass, SkeletonRows, textareaClass } from "./Field";
-import { Select } from "./Select";
+import { ErrorWell, Field, inputClass, SkeletonRows, textareaClass } from "./Field";
+import { PageHead } from "./PageHead";
 import { ToggleRow } from "./Switch";
 import { Thread, type Ev } from "./Thread";
 import type { Channel, ChannelAdapter, Chat } from "./gen/silo/v1/ui_pb";
@@ -53,48 +53,8 @@ function statusLabel(status: string) {
 function Opening({ onBack }: { onBack: () => void }) {
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 hover:shadow-float hover:text-ink transition-colors"
-          onClick={onBack}
-          title="Back"
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <h2 className="text-[22px] leading-7 font-medium tracking-[-0.015em] text-ink">Channels</h2>
-      </div>
+      <PageHead title="Channels" onBack={onBack} />
       <p className="text-ink-2 text-[13px]">Opening…</p>
-    </div>
-  );
-}
-
-function PageHead({
-  logo,
-  title,
-  subtitle,
-  onBack,
-}: {
-  logo?: ChannelAdapter;
-  title: string;
-  subtitle?: string;
-  onBack: () => void;
-}) {
-  return (
-    <div className="mb-6 flex items-center gap-3.5">
-      <button
-        type="button"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 hover:shadow-float hover:text-ink transition-colors"
-        onClick={onBack}
-        title="Back"
-      >
-        <ArrowLeft size={16} />
-      </button>
-      <AdapterLogo adapter={logo} size={40} />
-      <div className="min-w-0">
-        <h2 className="truncate text-[20px] font-semibold tracking-tight text-ink">{title}</h2>
-        {subtitle ? <div className="text-[12px] text-ink-3 mt-0.5">{subtitle}</div> : null}
-      </div>
     </div>
   );
 }
@@ -157,7 +117,7 @@ function ChannelForm({
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
       <PageHead
-        logo={adapter}
+        mark={<AdapterLogo adapter={adapter} size={40} />}
         title={channel ? channel.name : adapter.name}
         subtitle={channel ? adapter.name : `Configure ${adapter.name}`}
         onBack={onBack}
@@ -215,11 +175,7 @@ function ChannelForm({
             />
           </Field>
 
-          {err && (
-            <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
-              {err}
-            </div>
-          )}
+          {err && <ErrorWell>{err}</ErrorWell>}
 
           <div className="flex items-center gap-2.5 pt-2">
             <SaveButton type="button" state={saver.state} disabled={busy || (!channel && !name.trim())} onClick={() => void save()}>
@@ -396,7 +352,7 @@ function ChannelSetup({
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
       <PageHead
-        logo={adapter}
+        mark={<AdapterLogo adapter={adapter} size={40} />}
         title={channel.name}
         subtitle={`${adapter.name} Setup`}
         onBack={onBack}
@@ -500,17 +456,9 @@ function ChannelSetup({
           </div>
         ) : null}
 
-        {state?.kind === "error" ? (
-          <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
-            {state.message}
-          </div>
-        ) : null}
+        {state?.kind === "error" ? <ErrorWell>{state.message}</ErrorWell> : null}
 
-        {err && (
-          <div className="rounded-sm bg-vermilion-pale p-3 text-[13px] text-vermilion">
-            {err}
-          </div>
-        )}
+        {err && <ErrorWell>{err}</ErrorWell>}
       </div>
     </div>
   );
@@ -638,11 +586,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
         </button>
       </div>
 
-      {err ? (
-        <div className="mb-4 rounded-sm bg-vermilion-pale p-3.5 text-[13px] text-vermilion">
-          {err}
-        </div>
-      ) : null}
+      {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
 
       {channels.length === 0 ? (
         <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
