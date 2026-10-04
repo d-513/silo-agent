@@ -24,9 +24,9 @@ const math: Slot<typeof import("./mdMath")> = {};
 const code: Slot<typeof import("./mdCode")> = {};
 
 // Does the text have math ($…$, \(…\), \[…\], \begin{…})?
-const hasMath = (text: string) => /\$|\\\(|\\\[|\\begin\{/.test(text);
+export const hasMath = (text: string) => /\$|\\\(|\\\[|\\begin\{/.test(text);
 // Does it have a fenced code block?
-const hasCode = (text: string) => text.includes("```") || text.includes("~~~");
+export const hasCode = (text: string) => text.includes("```") || text.includes("~~~");
 
 // useMdModules loads KaTeX and the code highlighter only for messages that use them.
 export function useMdModules(text: string) {

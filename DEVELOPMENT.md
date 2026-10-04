@@ -132,6 +132,10 @@ make e2e           # Playwright against the already-running `make dev` stack
 
 The explicit Go package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. Feature tests use the deterministic DummyLLM provider (`internal/llm/dummy`) and the `internal/apptest` harness; the container tier boots the real Bot image and cleans up everything it creates. See [TESTING.md](TESTING.md) for tiers, environment knobs, and live checks.
 
+## Web bundle
+
+Only the chat is in the first load. Every other Bot tab, the admin area and the skills hub are `lazyNamed(() => import(...), "Export")` chunks wrapped in `Suspense`; add a new page the same way, and never import a lazy page's module statically from eager code (that pulls it back into the entry; `connectorAuth.ts` exists for that reason). KaTeX and highlight.js load through `mdPlugins.ts` and `highlight.ts` only when a message has math or code, and xterm loads with the Console. The type scale lives in `index.css` `@theme` (`text-title` is the page title); reach for a token before typing pixel values. `pnpm build` prints chunk sizes; the entry should stay near 400 KB plus the two vendor chunks.
+
 ## Commits
 
 Use **Conventional Commits**: `<type>(<scope>): <imperative summary>` — lowercase, no trailing period, ≤72 characters.
@@ -180,6 +184,8 @@ mcpimage/           STDIO sidecar Containerfile
 proto/silo/v1       ui.proto, worker.proto
 gen/                Go stubs (generated)
 web/                Vite + React
+web/src/bot/        the Bot page: BotPage, its tabs, chat list, run pane and hooks
+web/src/thread/     the conversation view: rows, tool rows, bubbles, scroll-following
 web/src/gen         TS stubs (generated)
 data/               per-bot volumes + skills (gitignored; the DB is Postgres)
 ```
