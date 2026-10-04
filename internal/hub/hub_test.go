@@ -31,12 +31,13 @@ func TestWaitViewer(t *testing.T) {
 func TestVNCPipes(t *testing.T) {
 	h := New()
 	s := h.Attach("bot")
-	go func() { s.ToBrowser <- []byte("rfb") }()
-	if got := string(<-s.ToBrowser); got != "rfb" {
+	toBrowser, toWorker := s.Pipes()
+	go func() { toBrowser <- []byte("rfb") }()
+	if got := string(<-toBrowser); got != "rfb" {
 		t.Fatalf("worker→browser: %q", got)
 	}
-	go func() { s.ToWorker <- []byte("ptr") }()
-	if got := string(<-s.ToWorker); got != "ptr" {
+	go func() { toWorker <- []byte("ptr") }()
+	if got := string(<-toWorker); got != "ptr" {
 		t.Fatalf("browser→worker: %q", got)
 	}
 }

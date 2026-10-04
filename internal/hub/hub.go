@@ -28,40 +28,144 @@ type ConsoleMsg struct {
 	Cols int32
 }
 
+// lane is one viewer-facing duplex pipe between a browser socket and the
+// worker's stream: VNC bytes, or console messages. The newest viewer owns it —
+// begin hands out fresh channels and an older viewer's end is ignored — and a
+// lane has no viewer until one begins. Lanes are independent of each other.
+type lane[T any] struct {
+	mu        sync.Mutex
+	on        chan struct{} // pinged (never blocks) when a viewer begins
+	toBrowser chan T
+	toWorker  chan T
+	leave     chan struct{} // nil without a viewer; closed when it goes
+	id        uint64
+}
+
+func newLane[T any]() *lane[T] {
+	return &lane[T]{on: make(chan struct{}, 1), toBrowser: make(chan T, 64), toWorker: make(chan T, 64)}
+}
+
+func (l *lane[T]) begin() (id uint64, toBrowser <-chan T, toWorker chan T) {
+	l.mu.Lock()
+	if l.leave != nil {
+		close(l.leave)
+	}
+	l.toBrowser = make(chan T, 64)
+	l.toWorker = make(chan T, 64)
+	l.leave = make(chan struct{})
+	l.id++
+	id, toBrowser, toWorker = l.id, l.toBrowser, l.toWorker
+	l.mu.Unlock()
+	select {
+	case l.on <- struct{}{}:
+	default:
+	}
+	return id, toBrowser, toWorker
+}
+
+// push hands v to the viewer. With no viewer it drops v; it gives up when the
+// viewer leaves, ctx ends, or the session dies.
+func (l *lane[T]) push(ctx context.Context, dead <-chan struct{}, v T) error {
+	l.mu.Lock()
+	ch := l.toBrowser
+	leave := l.leave
+	l.mu.Unlock()
+	if leave == nil {
+		return nil
+	}
+	select {
+	case ch <- v:
+		return nil
+	case <-leave:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-dead:
+		return ErrClosed
+	}
+}
+
+func (l *lane[T]) pipes() (toBrowser chan T, toWorker chan T) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.toBrowser, l.toWorker
+}
+
+// end releases the lane, unless a newer viewer has taken it over.
+func (l *lane[T]) end(id uint64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if id == 0 || id != l.id || l.leave == nil {
+		return
+	}
+	close(l.leave)
+	l.leave = nil
+}
+
+func (l *lane[T]) has() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.leave != nil
+}
+
+// wait blocks until a viewer is attached.
+func (l *lane[T]) wait(ctx context.Context, dead <-chan struct{}) error {
+	for {
+		if l.has() {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-dead:
+			return ErrClosed
+		case <-l.on:
+		}
+	}
+}
+
+// gone is closed when the current viewer leaves; already closed with none.
+func (l *lane[T]) gone() <-chan struct{} {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.leave == nil {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return l.leave
+}
+
+func (l *lane[T]) shutdown() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.leave != nil {
+		close(l.leave)
+		l.leave = nil
+	}
+}
+
 type Session struct {
 	BotID string
 	Send  chan *v1.Cmd
-	// ToBrowser: x11vnc bytes from the Worker. Browser WebSocket reads this.
-	ToBrowser chan []byte
-	// ToWorker: RFB input from the browser. Worker stream sends this to x11vnc.
-	ToWorker chan []byte
 
-	mu           sync.Mutex
-	wait         map[string]chan Result
-	viewOn       chan struct{}
-	leave        chan struct{}
-	viewID       uint64
-	conOn        chan struct{}
-	conLeave     chan struct{}
-	conID        uint64
-	conToBrowser chan ConsoleMsg
-	conToWorker  chan ConsoleMsg
-	dead         chan struct{}
-	once         sync.Once
+	vnc *lane[[]byte] // x11vnc bytes out, RFB input in
+	con *lane[ConsoleMsg]
+
+	mu   sync.Mutex
+	wait map[string]chan Result
+	dead chan struct{}
+	once sync.Once
 }
 
 func newSession(botID string) *Session {
 	return &Session{
-		BotID:        botID,
-		Send:         make(chan *v1.Cmd, 8),
-		ToBrowser:    make(chan []byte, 64),
-		ToWorker:     make(chan []byte, 64),
-		wait:         map[string]chan Result{},
-		viewOn:       make(chan struct{}, 1),
-		conOn:        make(chan struct{}, 1),
-		conToBrowser: make(chan ConsoleMsg, 64),
-		conToWorker:  make(chan ConsoleMsg, 64),
-		dead:         make(chan struct{}),
+		BotID: botID,
+		Send:  make(chan *v1.Cmd, 8),
+		vnc:   newLane[[]byte](),
+		con:   newLane[ConsoleMsg](),
+		wait:  map[string]chan Result{},
+		dead:  make(chan struct{}),
 	}
 }
 
@@ -71,16 +175,8 @@ func (s *Session) close() {
 	s.once.Do(func() {
 		close(s.dead)
 		s.FailAll(ErrClosed)
-		s.mu.Lock()
-		if s.leave != nil {
-			close(s.leave)
-			s.leave = nil
-		}
-		if s.conLeave != nil {
-			close(s.conLeave)
-			s.conLeave = nil
-		}
-		s.mu.Unlock()
+		s.vnc.shutdown()
+		s.con.shutdown()
 	})
 }
 
@@ -169,180 +265,45 @@ func (h *Hub) Connected(botID string) bool {
 }
 
 func (s *Session) BeginViewer() (id uint64, toBrowser <-chan []byte, toWorker chan []byte) {
-	s.mu.Lock()
-	if s.leave != nil {
-		close(s.leave)
-	}
-	s.ToBrowser = make(chan []byte, 64)
-	s.ToWorker = make(chan []byte, 64)
-	s.leave = make(chan struct{})
-	s.viewID++
-	id = s.viewID
-	toBrowser = s.ToBrowser
-	toWorker = s.ToWorker
-	s.mu.Unlock()
-	select {
-	case s.viewOn <- struct{}{}:
-	default:
-	}
-	return id, toBrowser, toWorker
+	return s.vnc.begin()
 }
 
 func (s *Session) PushBrowser(ctx context.Context, b []byte) error {
-	s.mu.Lock()
-	ch := s.ToBrowser
-	leave := s.leave
-	s.mu.Unlock()
-	if leave == nil {
-		return nil
-	}
-	select {
-	case ch <- b:
-		return nil
-	case <-leave:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.dead:
-		return ErrClosed
-	}
+	return s.vnc.push(ctx, s.dead, b)
 }
 
-func (s *Session) Pipes() (toBrowser chan []byte, toWorker chan []byte) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.ToBrowser, s.ToWorker
-}
+// Pipes returns the VNC channels: x11vnc bytes from the Worker (the browser
+// WebSocket reads them) and RFB input from the browser (the Worker stream
+// sends it to x11vnc).
+func (s *Session) Pipes() (toBrowser chan []byte, toWorker chan []byte) { return s.vnc.pipes() }
 
-func (s *Session) EndViewer(id uint64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if id == 0 || id != s.viewID || s.leave == nil {
-		return
-	}
-	close(s.leave)
-	s.leave = nil
-}
+func (s *Session) EndViewer(id uint64) { s.vnc.end(id) }
 
-func (s *Session) HasViewer() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.leave != nil
-}
+func (s *Session) HasViewer() bool { return s.vnc.has() }
 
-func (s *Session) WaitViewer(ctx context.Context) error {
-	for {
-		if s.HasViewer() {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-s.dead:
-			return ErrClosed
-		case <-s.viewOn:
-		}
-	}
-}
+func (s *Session) WaitViewer(ctx context.Context) error { return s.vnc.wait(ctx, s.dead) }
 
-func (s *Session) ViewerGone() <-chan struct{} {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.leave == nil {
-		ch := make(chan struct{})
-		close(ch)
-		return ch
-	}
-	return s.leave
-}
+func (s *Session) ViewerGone() <-chan struct{} { return s.vnc.gone() }
 
 func (s *Session) BeginConsole() (id uint64, toBrowser <-chan ConsoleMsg, toWorker chan ConsoleMsg) {
-	s.mu.Lock()
-	if s.conLeave != nil {
-		close(s.conLeave)
-	}
-	s.conToBrowser = make(chan ConsoleMsg, 64)
-	s.conToWorker = make(chan ConsoleMsg, 64)
-	s.conLeave = make(chan struct{})
-	s.conID++
-	id = s.conID
-	toBrowser = s.conToBrowser
-	toWorker = s.conToWorker
-	s.mu.Unlock()
-	select {
-	case s.conOn <- struct{}{}:
-	default:
-	}
-	return id, toBrowser, toWorker
+	return s.con.begin()
 }
 
 func (s *Session) PushConsole(ctx context.Context, m ConsoleMsg) error {
-	s.mu.Lock()
-	ch := s.conToBrowser
-	leave := s.conLeave
-	s.mu.Unlock()
-	if leave == nil {
-		return nil
-	}
-	select {
-	case ch <- m:
-		return nil
-	case <-leave:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.dead:
-		return ErrClosed
-	}
+	return s.con.push(ctx, s.dead, m)
 }
 
 func (s *Session) ConsolePipes() (toBrowser chan ConsoleMsg, toWorker chan ConsoleMsg) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.conToBrowser, s.conToWorker
+	return s.con.pipes()
 }
 
-func (s *Session) EndConsole(id uint64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if id == 0 || id != s.conID || s.conLeave == nil {
-		return
-	}
-	close(s.conLeave)
-	s.conLeave = nil
-}
+func (s *Session) EndConsole(id uint64) { s.con.end(id) }
 
-func (s *Session) HasConsole() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.conLeave != nil
-}
+func (s *Session) HasConsole() bool { return s.con.has() }
 
-func (s *Session) WaitConsole(ctx context.Context) error {
-	for {
-		if s.HasConsole() {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-s.dead:
-			return ErrClosed
-		case <-s.conOn:
-		}
-	}
-}
+func (s *Session) WaitConsole(ctx context.Context) error { return s.con.wait(ctx, s.dead) }
 
-func (s *Session) ConsoleGone() <-chan struct{} {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.conLeave == nil {
-		ch := make(chan struct{})
-		close(ch)
-		return ch
-	}
-	return s.conLeave
-}
+func (s *Session) ConsoleGone() <-chan struct{} { return s.con.gone() }
 
 func (h *Hub) Exec(ctx context.Context, botID string, cmd *v1.Cmd) (string, error) {
 	r, err := h.ExecResult(ctx, botID, cmd)
