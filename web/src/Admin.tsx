@@ -8,7 +8,7 @@ import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
-export { AdminSettings } from "./AdminSettings";
+export { AdminSettings } from "./admin/AdminSettings";
 export { AdminDebug } from "./AdminDebug";
 
 function AdminTab({ to, children }: { to: string; children: ReactNode }) {
