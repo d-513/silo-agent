@@ -133,7 +133,7 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 				return
 			}
 		}
-		if att, err := a.ws.Attachment(ctx, botID, args.Path); err == nil {
+		if att, err := a.Workspace.Attachment(ctx, botID, args.Path); err == nil {
 			send("File: "+att.Name, &att)
 			return
 		}
@@ -147,7 +147,7 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 					send("Skill: "+info.Name, &att)
 					return
 				}
-			} else if att, err := a.ws.Attachment(ctx, botID, info.Path); err == nil {
+			} else if att, err := a.Workspace.Attachment(ctx, botID, info.Path); err == nil {
 				send("Artifact: "+info.Title, &att)
 				return
 			}

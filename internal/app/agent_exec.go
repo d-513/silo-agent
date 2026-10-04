@@ -100,7 +100,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return out, "", err
 	}
 	if name == "switch_model" {
-		out, err := a.models.SwitchTool(chatID, str("model"))
+		out, err := a.Models.SwitchTool(chatID, str("model"))
 		return out, "", err
 	}
 	if name == "skill" {
@@ -183,7 +183,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	switch name {
 	case "write", "patch", "delete":
-		a.markKnowledgeDirty(botID, path)
+		a.Knowledge.Dirty(botID, path)
 	}
 	switch name {
 	case "read":

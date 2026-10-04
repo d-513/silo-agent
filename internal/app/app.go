@@ -21,6 +21,7 @@ import (
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/feed"
+	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
@@ -170,20 +171,17 @@ type App struct {
 	collecting sync.Map
 	// collectPause (unix nanos) holds the sweep back after a provider error.
 	collectPause atomic.Int64
-	// knowLocks serializes syncs per knowledge folder; knowCancel stops a
-	// running one when its folder is removed; knowPause (unix nanos) holds the
-	// sweep back after a provider error.
-	knowLocks  sync.Map
-	knowCancel sync.Map
-	knowPause  atomic.Int64
 	// wakeTimers debounce waking a lead chat when its subagents finish.
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
 
-	feed   *feed.Service
-	models *models.Service
-	ws     *workspace.Service
-	voice  *voice.Service
+	// The domain services: each owns one slice of the UI service and of the
+	// Bot's tools. uiHandler promotes their RPCs.
+	Feed      *feed.Service
+	Models    *models.Service
+	Workspace *workspace.Service
+	Voice     *voice.Service
+	Knowledge *knowledge.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -209,10 +207,11 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 
 		stopAutomations: make(chan struct{}),
 	}
-	a.models = models.New(a.DB, a.cfg)
-	a.ws = workspace.New(a.DB, a.Hub, a.Mask, a.markKnowledgeDirty)
-	a.voice = voice.New(a.DB, a.cfg, a.models, a.ws)
-	a.feed = feed.New(a.DB, a)
+	a.Models = models.New(a.DB, a.cfg)
+	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
+	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
+	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
+	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
@@ -224,8 +223,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		a.rescheduleAutomations()
 		go tickLoop(a.stopAutomations, automationTick, func(now time.Time) { a.FireDueAutomations(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
-		a.recoverKnowledge()
-		go tickLoop(a.stopAutomations, knowledgeTick, func(now time.Time) { a.SweepKnowledge(now) })
+		a.Knowledge.Recover()
+		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
 	}
 	return a
 }

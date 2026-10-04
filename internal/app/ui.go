@@ -82,7 +82,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Memory:          b.Memory,
 		AutoApprove:     b.AutoApprove,
 		Model:           b.Model,
-		FeedUnread:      a.feed.Unread(b.ID),
+		FeedUnread:      a.Feed.Unread(b.ID),
 	}
 }
 
@@ -253,7 +253,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Run{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.LLMLog{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Memory{})
-	a.dropKnowledge(b.ID)
+	a.Knowledge.Drop(b.ID)
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
@@ -444,12 +444,12 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
 			}
 			if k == "embedding_model" && v != "" {
-				if err := a.models.CanEmbed(v); err != nil {
+				if err := a.Models.CanEmbed(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
 			if k == "transcribe_model" && v != "" && !strings.EqualFold(strings.TrimSpace(v), config.TranscribeOff) {
-				if err := a.voice.CanTranscribe(v); err != nil {
+				if err := a.Voice.CanTranscribe(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
@@ -552,7 +552,7 @@ func (a *App) settings() (*v1.Settings, error) {
 		})
 	}
 	out.Providers = providerProtos()
-	out.Models = modelOptionProtos(a.models.Allowed())
+	out.Models = modelOptionProtos(a.Models.Allowed())
 	for _, v := range a.Store.ConnectorVars() {
 		out.ConnectorVars = append(out.ConnectorVars, &v1.ConnectorVar{
 			Name:    v.Name,

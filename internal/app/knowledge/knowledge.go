@@ -1,4 +1,8 @@
-package app
+// Package knowledge is the Bot's document search: the owner picks workspace
+// folders, a sweep indexes their text into Postgres (chunks, embeddings and a
+// keyword index), and the Bot searches them with search_docs. Files stay on the
+// Bot's machine; the worker only walks and extracts.
+package knowledge
 
 import (
 	"context"
@@ -8,6 +12,8 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -16,9 +22,13 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/workspace"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/textx"
 )
 
 const (
@@ -35,38 +45,59 @@ const (
 	knowledgeIssues  = 20
 )
 
-// knowledgeActive reports whether search_docs is offered: knowledge is on and
+// Service indexes and searches the Bots' folders.
+type Service struct {
+	db     *gorm.DB
+	hub    *hub.Hub
+	cfg    func() config.Config
+	models *models.Service
+	ws     *workspace.Service
+
+	// locks serializes syncs per folder; cancel stops a running one when its
+	// folder is removed; pause (unix nanos) holds the sweep back after a
+	// provider error.
+	locks  sync.Map
+	cancel sync.Map
+	pause  atomic.Int64
+}
+
+func New(gdb *gorm.DB, h *hub.Hub, cfg func() config.Config, m *models.Service, ws *workspace.Service) *Service {
+	return &Service{db: gdb, hub: h, cfg: cfg, models: m, ws: ws}
+}
+
+// Active reports whether search_docs is offered: knowledge is on and
 // the Bot has at least one folder.
-func (a *App) knowledgeActive(botID string) bool {
-	if a.DB == nil || !a.cfg().Knowledge.Enabled {
+func (s *Service) Active(botID string) bool {
+	if s.db == nil || !s.cfg().Knowledge.Enabled {
 		return false
 	}
 	var n int64
-	a.DB.Model(&db.KnowledgeFolder{}).Where("bot_id = ?", botID).Limit(1).Count(&n)
+	s.db.Model(&db.KnowledgeFolder{}).Where("bot_id = ?", botID).Limit(1).Count(&n)
 	return n > 0
 }
 
-func (a *App) knowledgeFolders(botID string) []db.KnowledgeFolder {
-	if a.DB == nil || !a.cfg().Knowledge.Enabled {
+func (s *Service) Folders(botID string) []db.KnowledgeFolder {
+	if s.db == nil || !s.cfg().Knowledge.Enabled {
 		return nil
 	}
 	var rows []db.KnowledgeFolder
-	a.DB.Where("bot_id = ?", botID).Order("path").Find(&rows)
+	s.db.Where("bot_id = ?", botID).Order("path").Find(&rows)
 	return rows
 }
 
-// knowledgeSections lists the indexed folders. Only paths: counts change on
-// every sync and would bust the cached prompt tier.
-func (a *App) knowledgeSections(pc promptContext) []promptSection {
-	if len(pc.knowledge) == 0 {
-		return nil
+// Prompt is the system-prompt section listing the indexed folders: only paths,
+// since counts change on every sync and would bust the cached prompt tier. ""
+// when there are none.
+func Prompt(folders []db.KnowledgeFolder) string {
+	if len(folders) == 0 {
+		return ""
 	}
 	var b strings.Builder
 	b.WriteString("The owner indexed these folders so you can search them. For a question about what their files say, call `search_docs` first: it matches meaning and exact words and cites the file plus page or line. Then `read` the cited path before relying on a snippet — the index can lag recent edits. Searching does not replace `grep` for code or for a file you already know.\n")
-	for _, f := range pc.knowledge {
+	for _, f := range folders {
 		b.WriteString("- " + f.Path + "\n")
 	}
-	return []promptSection{{title: "Searchable documents", body: b.String()}}
+	return b.String()
 }
 
 // knowledgePath normalizes a folder the owner picked: workspace-relative, no
@@ -93,7 +124,7 @@ func within(child, parent string) bool {
 	return child == parent || strings.HasPrefix(child, parent+"/")
 }
 
-func (a *App) knowledgeView(f db.KnowledgeFolder) *v1.KnowledgeFolder {
+func (s *Service) view(f db.KnowledgeFolder) *v1.KnowledgeFolder {
 	out := &v1.KnowledgeFolder{
 		Id: f.ID, Path: f.Path, Status: f.Status, Detail: f.Detail,
 		Files: int32(f.Files), Skipped: int32(f.Skipped), Chunks: int32(f.Chunks),
@@ -103,7 +134,7 @@ func (a *App) knowledgeView(f db.KnowledgeFolder) *v1.KnowledgeFolder {
 		out.LastSyncAt = f.LastSyncAt.Format(time.RFC3339)
 	}
 	var bad []db.KnowledgeSource
-	a.DB.Select("path, detail, status").Where("folder_id = ? AND status <> 'ok'", f.ID).
+	s.db.Select("path, detail, status").Where("folder_id = ? AND status <> 'ok'", f.ID).
 		Order("path").Limit(knowledgeIssues).Find(&bad)
 	for _, s := range bad {
 		d := s.Detail
@@ -115,12 +146,12 @@ func (a *App) knowledgeView(f db.KnowledgeFolder) *v1.KnowledgeFolder {
 	return out
 }
 
-func (a *App) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.KnowledgeFolder, error) {
-	b, err := a.ownBot(ctx, botID)
+func (s *Service) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.KnowledgeFolder, error) {
+	b, err := access.OwnBot(ctx, s.db, botID)
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := access.BotRow[db.KnowledgeFolder](a.DB, b.ID, id, "folder")
+	f, err := access.BotRow[db.KnowledgeFolder](s.db, b.ID, id, "folder")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,26 +160,26 @@ func (a *App) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.Kno
 
 // --- RPCs ---
 
-func (a *App) ListKnowledge(ctx context.Context, req *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) ListKnowledge(ctx context.Context, req *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
 	var rows []db.KnowledgeFolder
-	a.DB.Where("bot_id = ?", b.ID).Order("path").Find(&rows)
-	out := &v1.ListKnowledgeResponse{Enabled: a.cfg().Knowledge.Enabled}
+	s.db.Where("bot_id = ?", b.ID).Order("path").Find(&rows)
+	out := &v1.ListKnowledgeResponse{Enabled: s.cfg().Knowledge.Enabled}
 	for _, f := range rows {
-		out.Folders = append(out.Folders, a.knowledgeView(f))
+		out.Folders = append(out.Folders, s.view(f))
 	}
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.AddKnowledgeFolderRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.AddKnowledgeFolderRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
-	if !a.cfg().Knowledge.Enabled {
+	if !s.cfg().Knowledge.Enabled {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("knowledge is turned off by the operator (knowledge.enabled)"))
 	}
 	p, err := knowledgePath(req.Msg.GetPath())
@@ -156,7 +187,7 @@ func (a *App) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.Ad
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	var have []db.KnowledgeFolder
-	a.DB.Where("bot_id = ?", b.ID).Find(&have)
+	s.db.Where("bot_id = ?", b.ID).Find(&have)
 	for _, f := range have {
 		switch {
 		case f.Path == p:
@@ -169,7 +200,7 @@ func (a *App) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.Ad
 	}
 	// The folder must be readable now: a typo or an unmounted drive fails here
 	// instead of becoming an empty index.
-	if _, _, err := a.walkWorker(ctx, b.ID, p, 1); err != nil {
+	if _, _, err := s.walk(ctx, b.ID, p, 1); err != nil {
 		var ce *connect.Error
 		if errors.As(err, &ce) {
 			return nil, err
@@ -177,41 +208,41 @@ func (a *App) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.Ad
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("cannot read %s: %w", p, err))
 	}
 	f := db.KnowledgeFolder{ID: ids.New(), BotID: b.ID, Path: p, Status: "syncing"}
-	if err := a.DB.Create(&f).Error; err != nil {
+	if err := s.db.Create(&f).Error; err != nil {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("that folder is already indexed"))
 	}
-	a.startKnowledgeSync(f.ID)
-	return connect.NewResponse(a.knowledgeView(f)), nil
+	s.startSync(f.ID)
+	return connect.NewResponse(s.view(f)), nil
 }
 
-func (a *App) RemoveKnowledgeFolder(ctx context.Context, req *connect.Request[v1.RemoveKnowledgeFolderRequest]) (*connect.Response[v1.RemoveKnowledgeFolderResponse], error) {
-	_, f, err := a.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+func (s *Service) RemoveKnowledgeFolder(ctx context.Context, req *connect.Request[v1.RemoveKnowledgeFolderRequest]) (*connect.Response[v1.RemoveKnowledgeFolderResponse], error) {
+	_, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	a.dropKnowledgeFolder(f.ID)
+	s.dropFolder(f.ID)
 	return connect.NewResponse(&v1.RemoveKnowledgeFolderResponse{}), nil
 }
 
-func (a *App) SyncKnowledge(ctx context.Context, req *connect.Request[v1.SyncKnowledgeRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
-	b, f, err := a.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+func (s *Service) SyncKnowledge(ctx context.Context, req *connect.Request[v1.SyncKnowledgeRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
+	b, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 	if f.Status == "syncing" {
-		return connect.NewResponse(a.knowledgeView(*f)), nil
+		return connect.NewResponse(s.view(*f)), nil
 	}
-	if !a.Hub.Connected(b.ID) {
+	if !s.hub.Connected(b.ID) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the Bot's machine is not running"))
 	}
-	a.DB.Model(f).Update("status", "syncing")
+	s.db.Model(f).Update("status", "syncing")
 	f.Status = "syncing"
-	a.startKnowledgeSync(f.ID)
-	return connect.NewResponse(a.knowledgeView(*f)), nil
+	s.startSync(f.ID)
+	return connect.NewResponse(s.view(*f)), nil
 }
 
-func (a *App) SearchKnowledge(ctx context.Context, req *connect.Request[v1.SearchKnowledgeRequest]) (*connect.Response[v1.SearchKnowledgeResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) SearchKnowledge(ctx context.Context, req *connect.Request[v1.SearchKnowledgeRequest]) (*connect.Response[v1.SearchKnowledgeResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
@@ -219,8 +250,8 @@ func (a *App) SearchKnowledge(ctx context.Context, req *connect.Request[v1.Searc
 	if k <= 0 {
 		k = knowledgeRPCK
 	}
-	hits, err := a.searchKnowledge(ctx, b.ID, req.Msg.GetQuery(), min(k, knowledgeMaxK), req.Msg.GetPath())
-	if errors.Is(err, errNoQuery) {
+	hits, err := s.search(ctx, b.ID, req.Msg.GetQuery(), min(k, knowledgeMaxK), req.Msg.GetPath())
+	if errors.Is(err, models.ErrNoQuery) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err != nil {
@@ -282,12 +313,12 @@ func likeEscape(s string) string {
 // searchKnowledge is hybrid retrieval: the closest chunks by cosine and the
 // best keyword matches (every word first, then any word), fused by reciprocal
 // rank. A vector-only neighbour farther than knowledgeMaxDistance is dropped.
-func (a *App) searchKnowledge(ctx context.Context, botID, query string, k int, prefix string) ([]knowledgeHit, error) {
+func (s *Service) search(ctx context.Context, botID, query string, k int, prefix string) ([]knowledgeHit, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, errNoQuery
+		return nil, models.ErrNoQuery
 	}
-	vecs, _, err := a.models.Embed(ctx, []string{query})
+	vecs, _, err := s.models.Embed(ctx, []string{query})
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +377,7 @@ FROM fused f JOIN knowledge_chunks c ON c.id = f.id JOIN knowledge_sources s ON 
 ORDER BY f.score DESC, s.path, c.ord LIMIT ` + limit
 
 	var out []knowledgeHit
-	err = a.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// With the bot filter the HNSW scan can run dry before it has k rows;
 		// iterative scan (pgvector 0.8) keeps going. Older servers lack it, and
 		// a failed SET must not poison the transaction.
@@ -375,22 +406,19 @@ ORDER BY f.score DESC, s.path, c.ord LIMIT ` + limit
 
 // --- the Bot's tool ---
 
-// knowledgeTool is search_docs (chat tool and silo_runtime.search_docs). The
+// Tool is search_docs (chat tool and silo_runtime.search_docs). The
 // caller already authorized bot.search_docs.
-func (a *App) knowledgeTool(ctx context.Context, botID string, args map[string]any, structured bool) (string, error) {
-	query, _ := args["query"].(string)
-	prefix, _ := args["path"].(string)
-	k := num(args, "limit")
+func (s *Service) Tool(ctx context.Context, botID, query, prefix string, k int, structured bool) (string, error) {
 	if k <= 0 {
 		k = knowledgeToolK
 	}
-	if !a.cfg().Knowledge.Enabled {
+	if !s.cfg().Knowledge.Enabled {
 		return "", errors.New("document search is turned off by the operator")
 	}
-	if !a.knowledgeActive(botID) {
+	if !s.Active(botID) {
 		return "", errors.New("no folders are indexed; the owner adds them on the Knowledge page")
 	}
-	hits, err := a.searchKnowledge(ctx, botID, query, min(k, knowledgeToolMaxK), prefix)
+	hits, err := s.search(ctx, botID, query, min(k, knowledgeToolMaxK), prefix)
 	if err != nil {
 		return "", err
 	}
@@ -406,7 +434,7 @@ func (a *App) knowledgeTool(ctx context.Context, botID string, args map[string]a
 			Results []result `json:"results"`
 		}{Results: []result{}}
 		for _, h := range hits {
-			out.Results = append(out.Results, result{h.Path, h.Locator, capRunes(h.Content, knowledgeSnippet), h.Score, h.IndexedAt.Format(time.RFC3339)})
+			out.Results = append(out.Results, result{h.Path, h.Locator, textx.CapRunes(h.Content, knowledgeSnippet), h.Score, h.IndexedAt.Format(time.RFC3339)})
 		}
 		b, err := json.Marshal(out)
 		return string(b), err
@@ -416,7 +444,7 @@ func (a *App) knowledgeTool(ctx context.Context, botID string, args map[string]a
 	}
 	var b strings.Builder
 	for i, h := range hits {
-		fmt.Fprintf(&b, "[%d] %s · %s (indexed %s)\n%s\n\n", i+1, h.Path, h.Locator, h.IndexedAt.Format("2006-01-02"), capRunes(h.Content, knowledgeSnippet))
+		fmt.Fprintf(&b, "[%d] %s · %s (indexed %s)\n%s\n\n", i+1, h.Path, h.Locator, h.IndexedAt.Format("2006-01-02"), textx.CapRunes(h.Content, knowledgeSnippet))
 	}
 	b.WriteString("Snippets come from an index that can lag edits: `read` the path to confirm before relying on one.")
 	return b.String(), nil

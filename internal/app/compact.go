@@ -101,7 +101,7 @@ func (a *App) contextWindow(ctx context.Context, modelID string) int {
 	if n := cfg.WindowFor(modelID); n > 0 {
 		return n
 	}
-	if client, _, model, err := a.models.Client(modelID); err == nil {
+	if client, _, model, err := a.Models.Client(modelID); err == nil {
 		if cw, ok := client.(llm.ContextWindower); ok {
 			if n, err := cw.ContextWindow(ctx, model); err == nil && n > 0 {
 				return n
@@ -254,7 +254,7 @@ func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID
 	}
 	after := a.lastEventID(chatID)
 	a.emit(botID, chatID, runID, compactingKind, "", reason)
-	client, _, model, err := a.models.Observed(modelID, botID, "compact")
+	client, _, model, err := a.Models.Observed(modelID, botID, "compact")
 	if err != nil {
 		return nil, err
 	}

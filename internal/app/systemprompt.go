@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
@@ -262,7 +263,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 	}
 	pc.channels = a.enabledChannels(botID)
 	pc.drives = a.botDrives(botID)
-	pc.knowledge = a.knowledgeFolders(botID)
+	pc.knowledge = a.Knowledge.Folders(botID)
 	if origin != nil {
 		pc.channel = origin.channel
 		pc.recall = origin.recall
@@ -270,4 +271,9 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 		pc.subagent = origin.subagent
 	}
 	return pc
+}
+
+// knowledgeSections lists the indexed folders for the session tier.
+func (a *App) knowledgeSections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Searchable documents", body: knowledge.Prompt(pc.knowledge)}}
 }

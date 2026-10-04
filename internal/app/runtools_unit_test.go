@@ -17,8 +17,8 @@ func TestRunToolsDropsTranscribeWhenVoiceOff(t *testing.T) {
 		return false
 	}
 	a := &App{}
-	a.models = models.New(nil, a.cfg)
-	a.voice = voice.New(nil, a.cfg, a.models, nil)
+	a.Models = models.New(nil, a.cfg)
+	a.Voice = voice.New(nil, a.cfg, a.Models, nil)
 	if has(a) {
 		t.Fatal("no config: transcribe must not be offered")
 	}

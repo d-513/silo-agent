@@ -67,3 +67,12 @@ func Plural(n int) string {
 	}
 	return "s"
 }
+
+// CapRunes cuts s to at most n runes and marks the cut with an ellipsis.
+func CapRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
+}

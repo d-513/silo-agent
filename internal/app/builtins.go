@@ -66,7 +66,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		return a.taskTool(ctx, bot, runID, name, args, structured)
 	case security.Bot:
 		if name == "feed" {
-			return a.feed.Tool(ctx, bot, runID, args)
+			return a.Feed.Tool(ctx, bot, runID, args)
 		}
 	}
 	argsJSON, _ := json.Marshal(args)
@@ -101,11 +101,11 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case "forget":
 		return a.forget(bot.ID, str("id"))
 	case "search_docs":
-		return a.knowledgeTool(ctx, bot.ID, args, structured)
+		return a.Knowledge.Tool(ctx, bot.ID, str("query"), str("path"), num(args, "limit"), structured)
 	case "list_models":
-		return a.models.ListTool(bot.ID, a.ChatOfRun(runID))
+		return a.Models.ListTool(bot.ID, a.ChatOfRun(runID))
 	case "transcribe":
-		return a.voice.Tool(ctx, bot.ID, str("path"), str("language"), structured)
+		return a.Voice.Tool(ctx, bot.ID, str("path"), str("language"), structured)
 	}
 	return "", fmt.Errorf("unknown tool %s", name)
 }

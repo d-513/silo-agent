@@ -63,7 +63,7 @@ func TestContainerKnowledgeAllFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := h.App.SyncKnowledgeFolder(h.Ctx(), added.Msg.GetId()); err != nil {
+	if err := h.App.Knowledge.SyncFolder(h.Ctx(), added.Msg.GetId()); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	list, err := h.Client.ListKnowledge(h.Ctx(), connect.NewRequest(&v1.ListKnowledgeRequest{BotId: id}))

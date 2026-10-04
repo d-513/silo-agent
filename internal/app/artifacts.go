@@ -95,7 +95,7 @@ func (a *App) describeArtifact(ctx context.Context, botID, rel, kind, title stri
 }
 
 func (a *App) fileArtifact(ctx context.Context, botID, rel, title string) (artifactInfo, error) {
-	raw, err := a.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
+	raw, err := a.Workspace.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
 		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: 1},
 	}})
 	if err != nil {
@@ -176,7 +176,7 @@ func (a *App) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *d
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	raw, err := a.ws.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
+	raw, err := a.Workspace.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
 		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: workspace.PresentLimit},
 	}})
 	if err != nil {

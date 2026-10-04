@@ -39,7 +39,7 @@ func (f *knowledgeFixture) write(t *testing.T, rel, body string) {
 
 func (f *knowledgeFixture) sync(t *testing.T) {
 	t.Helper()
-	if err := f.h.App.SyncKnowledgeFolder(f.h.Ctx(), f.folder.GetId()); err != nil {
+	if err := f.h.App.Knowledge.SyncFolder(f.h.Ctx(), f.folder.GetId()); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 }
@@ -276,7 +276,7 @@ func TestKnowledgeDriveFolderNeverWipedByAFlakyMount(t *testing.T) {
 	if err := os.Remove(filepath.Join(f.ws, "drives/gd/plan.md")); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.h.App.SyncKnowledgeFolder(f.h.Ctx(), f.folder.GetId()); err == nil {
+	if err := f.h.App.Knowledge.SyncFolder(f.h.Ctx(), f.folder.GetId()); err == nil {
 		t.Fatal("an empty drive folder with an index must be treated as disconnected")
 	}
 	if fo := f.list(t); fo.GetStatus() != "error" || !strings.Contains(strings.ToLower(fo.GetDetail()), "drive") {
@@ -291,7 +291,7 @@ func TestKnowledgeDriveFolderNeverWipedByAFlakyMount(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(f.ws, "drives/gd")); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.h.App.SyncKnowledgeFolder(f.h.Ctx(), f.folder.GetId()); err == nil {
+	if err := f.h.App.Knowledge.SyncFolder(f.h.Ctx(), f.folder.GetId()); err == nil {
 		t.Fatal("a missing folder must be an error")
 	}
 	if f.chunkIDs("drives/gd/plan.md") != before {
@@ -373,19 +373,19 @@ func TestKnowledgeDeleteBotDropsIndex(t *testing.T) {
 func TestKnowledgeSweepRespectsDirtyAndInterval(t *testing.T) {
 	f := newKnowledge(t, "docs", docsFixture)
 	now := time.Now()
-	if got := f.h.App.SweepKnowledge(now); got != 0 {
+	if got := f.h.App.Knowledge.Sweep(now); got != 0 {
 		t.Fatalf("a just-synced folder was swept again (%d)", got)
 	}
 	f.write(t, "docs/cats.md", "# Cats\n\nThe office cat is now named Pixel.\n")
 	f.h.DB.Model(&db.KnowledgeFolder{}).Where("id = ?", f.folder.GetId()).Update("dirty_at", now.Add(-time.Minute))
-	if got := f.h.App.SweepKnowledge(now); got != 1 {
+	if got := f.h.App.Knowledge.Sweep(now); got != 1 {
 		t.Fatalf("a dirty folder was not swept (%d)", got)
 	}
 	if hits := f.search(t, "office cat Pixel"); len(hits) == 0 || !strings.Contains(hits[0].GetSnippet(), "Pixel") {
 		t.Fatalf("sweep did not index the edit: %+v", hits)
 	}
 	// Past the interval an idle folder is re-checked even when nothing is dirty.
-	if got := f.h.App.SweepKnowledge(now.Add(time.Hour)); got != 1 {
+	if got := f.h.App.Knowledge.Sweep(now.Add(time.Hour)); got != 1 {
 		t.Fatalf("a stale folder was not re-checked (%d)", got)
 	}
 }

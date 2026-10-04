@@ -290,7 +290,7 @@ func (a *App) autoDecision(ctx context.Context, bot *db.Bot, conn, action, argsJ
 		return security.Ask
 	}
 	cfg := a.cfg()
-	client, provider, model, err := a.models.Observed(cfg.ApprovalModel(), bot.ID, "approval")
+	client, provider, model, err := a.Models.Observed(cfg.ApprovalModel(), bot.ID, "approval")
 	if err != nil {
 		log.Printf("auto-approval model: %v", err)
 		return security.Ask

@@ -70,7 +70,7 @@ func isAgentTool(name string) bool {
 // lead-only tools for a subagent and search_docs while nothing is indexed.
 func (a *App) toolsFor(botID string, origin *runOrigin) []llm.Tool {
 	all := a.runTools()
-	if !a.knowledgeActive(botID) {
+	if !a.Knowledge.Active(botID) {
 		kept := make([]llm.Tool, 0, len(all))
 		for _, t := range all {
 			if t.Name != "search_docs" {

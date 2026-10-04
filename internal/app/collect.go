@@ -76,13 +76,6 @@ type collectReply struct {
 	Forget []string `json:"forget"`
 }
 
-// providerError marks a failure that should leave the watermark in place and
-// pause the sweep: the model or the embedder could not be reached.
-type providerError struct{ err error }
-
-func (e providerError) Error() string { return e.err.Error() }
-func (e providerError) Unwrap() error { return e.err }
-
 // collectChat reads chatID's events after its watermark and saves what the
 // collector model picks out.
 func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, error) {
@@ -118,9 +111,9 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	var bot db.Bot
 	a.DB.Select("id, memory").Where("id = ?", ch.BotID).Limit(1).Find(&bot)
 	modelID := a.cfg().MemoryModel()
-	client, provider, model, err := a.models.Observed(modelID, ch.BotID, "memory")
+	client, provider, model, err := a.Models.Observed(modelID, ch.BotID, "memory")
 	if err != nil {
-		return collectResult{}, providerError{err}
+		return collectResult{}, models.ProviderError{Err: err}
 	}
 	cache := models.CachePolicy(a.cfg().ProviderSettings(provider), "memory")
 	cache.Key, cache.Messages = "silo-memory-collector", false
@@ -136,7 +129,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		}
 		shown, err := a.search(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown, 0)
 		if err != nil {
-			return res, providerError{err}
+			return res, models.ProviderError{Err: err}
 		}
 		out, err := client.Complete(ctx, llm.Request{
 			Model:     model,
@@ -146,7 +139,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 			MaxTokens: 1500,
 		})
 		if err != nil {
-			return res, providerError{err}
+			return res, models.ProviderError{Err: err}
 		}
 		reply, ok := parseCollectReply(out.Text)
 		if !ok {
@@ -183,7 +176,7 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []recalled, r
 		}
 		saved, err := a.saveMemory(ctx, newMemory{botID: ch.BotID, chatID: ch.ID, kind: kind, content: text})
 		if err != nil {
-			return providerError{err}
+			return models.ProviderError{Err: err}
 		}
 		res.IDs = append(res.IDs, saved.id)
 		if saved.updated {
@@ -360,7 +353,7 @@ func (a *App) SweepMemories(now time.Time) int {
 		read++
 		if err != nil {
 			log.Printf("memory collector: chat %s: %v", r.ID, err)
-			var pe providerError
+			var pe models.ProviderError
 			if errors.As(err, &pe) {
 				a.collectPause.Store(now.Add(collectPauseFor).UnixNano())
 				return read

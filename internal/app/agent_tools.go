@@ -326,7 +326,7 @@ var toolDefs = []llm.Tool{
 // runTools is the chat tool list for one run: toolDefs minus transcribe when
 // voice is off or unconfigured, so the model is never offered a dead tool.
 func (a *App) runTools() []llm.Tool {
-	if a.voice.Enabled() {
+	if a.Voice.Enabled() {
 		return toolDefs
 	}
 	out := make([]llm.Tool, 0, len(toolDefs))

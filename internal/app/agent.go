@@ -278,8 +278,8 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 	defer close(done)
 	defer a.untrackRun(runID)
 
-	modelID := a.models.Resolve(botID, chatID)
-	client, provider, model, err := a.models.Observed(modelID, botID, "chat")
+	modelID := a.Models.Resolve(botID, chatID)
+	client, provider, model, err := a.Models.Observed(modelID, botID, "chat")
 	if err != nil {
 		a.emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
@@ -353,8 +353,8 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		}
 		// Re-resolve each turn so a switch_model tool call takes effect on the
 		// next model call without restarting the run.
-		if m := a.models.Resolve(botID, chatID); m != modelID {
-			if c, pr, mo, e := a.models.Observed(m, botID, "chat"); e == nil {
+		if m := a.Models.Resolve(botID, chatID); m != modelID {
+			if c, pr, mo, e := a.Models.Observed(m, botID, "chat"); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
 				window = a.contextWindow(ctx, modelID)
@@ -401,7 +401,7 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 			Cache:    models.CachePolicy(settings, botID),
 			// Read each turn, like the model, so a change in the composer
 			// applies from the next model call.
-			Thinking: a.models.ChatThinking(ctx, chatID, modelID),
+			Thinking: a.Models.ChatThinking(ctx, chatID, modelID),
 		}
 		res, err := a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
 		// The estimate can be off: a provider that refuses the request as too
@@ -504,7 +504,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if len(snippet) > 800 {
 		snippet = textx.TruncateUTF8(snippet, 800)
 	}
-	client, provider, model, err := a.models.Observed(a.models.Title(botID, chatID), botID, "title")
+	client, provider, model, err := a.Models.Observed(a.Models.Title(botID, chatID), botID, "title")
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)
 		return

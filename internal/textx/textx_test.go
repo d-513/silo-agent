@@ -66,3 +66,12 @@ func TestPlural(t *testing.T) {
 		}
 	}
 }
+
+func TestCapRunes(t *testing.T) {
+	if got := CapRunes("héllo", 5); got != "héllo" {
+		t.Fatalf("uncut: %q", got)
+	}
+	if got := CapRunes("héllo wörld", 5); got != "héllo…" {
+		t.Fatalf("cut: %q", got)
+	}
+}

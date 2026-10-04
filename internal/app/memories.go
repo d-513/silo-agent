@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -98,7 +99,7 @@ func (a *App) saveMemory(ctx context.Context, m newMemory) (savedMemory, error) 
 	if kind != memoryLesson {
 		kind = memoryFact
 	}
-	vecs, model, err := a.models.Embed(ctx, []string{content})
+	vecs, model, err := a.Models.Embed(ctx, []string{content})
 	if err != nil {
 		return savedMemory{}, err
 	}
@@ -133,7 +134,7 @@ func (a *App) rewriteMemory(ctx context.Context, botID, id, content string) erro
 	if content == "" || len(content) > rememberMax {
 		return fmt.Errorf("memory text must be 1..%d characters", rememberMax)
 	}
-	vecs, model, err := a.models.Embed(ctx, []string{content})
+	vecs, model, err := a.Models.Embed(ctx, []string{content})
 	if err != nil {
 		return err
 	}
@@ -142,15 +143,13 @@ func (a *App) rewriteMemory(ctx context.Context, botID, id, content string) erro
 	}).Error
 }
 
-var errNoQuery = errors.New("query required")
-
 // search ranks the bot's memories against query without marking them used.
 func (a *App) search(ctx context.Context, botID, query string, k int, maxDist float64) ([]recalled, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, errNoQuery
+		return nil, models.ErrNoQuery
 	}
-	vecs, _, err := a.models.Embed(ctx, []string{query})
+	vecs, _, err := a.Models.Embed(ctx, []string{query})
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +260,7 @@ func (a *App) SearchMemories(ctx context.Context, req *connect.Request[v1.Search
 		k = searchK
 	}
 	rows, err := a.search(ctx, botID, req.Msg.GetQuery(), min(k, searchMaxK), 0)
-	if errors.Is(err, errNoQuery) {
+	if errors.Is(err, models.ErrNoQuery) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err != nil {

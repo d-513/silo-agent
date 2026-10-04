@@ -130,10 +130,10 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 	}
 	cfg := a.cfg()
 	return connect.NewResponse(&v1.ListModelsResponse{
-		Models:       modelOptionProtos(a.models.WithThinking(ctx, a.models.Allowed())),
-		DefaultModel: a.models.BotDefault(b.ID),
+		Models:       modelOptionProtos(a.Models.WithThinking(ctx, a.Models.Allowed())),
+		DefaultModel: a.Models.BotDefault(b.ID),
 		TitleModel:   cfg.ModelTitle,
-		VoiceEnabled: a.voice.Enabled(),
+		VoiceEnabled: a.Voice.Enabled(),
 	}), nil
 }
 

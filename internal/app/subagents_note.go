@@ -9,6 +9,7 @@ import (
 
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/textx"
 ) // --- per-turn note ---
 
 // withTurnNote returns msgs with note appended to the last message, for one
@@ -120,5 +121,5 @@ func (a *App) subagentActivity(sa *db.Subagent) string {
 }
 
 func oneLine(s string, n int) string {
-	return capRunes(strings.Join(strings.Fields(s), " "), n)
+	return textx.CapRunes(strings.Join(strings.Fields(s), " "), n)
 }

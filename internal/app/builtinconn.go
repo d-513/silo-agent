@@ -205,7 +205,7 @@ func (e botEnv) ReadFile(ctx context.Context, rel string) (string, []byte, error
 	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
 		return "", nil, errors.New("the Bot's machine is not running")
 	}
-	f, err := e.a.ws.Attachment(ctx, e.botID, p)
+	f, err := e.a.Workspace.Attachment(ctx, e.botID, p)
 	if err != nil {
 		return "", nil, err
 	}
@@ -223,7 +223,7 @@ func (e botEnv) WriteFile(ctx context.Context, rel string, data []byte) error {
 	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
 		return errors.New("the Bot's machine is not running")
 	}
-	_, err = e.a.ws.Call(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
+	_, err = e.a.Workspace.Call(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
 	return err
 }
 
