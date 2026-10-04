@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
@@ -259,4 +260,12 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promp
 // knowledgeSections lists the indexed folders for the session tier.
 func (a *App) knowledgeSections(pc promptContext) []promptSection {
 	return []promptSection{{title: "Searchable documents", body: knowledge.Prompt(pc.knowledge)}}
+}
+
+// automationSections adds the per-run note when an automation started the run.
+func (a *App) automationSections(pc promptContext) []promptSection {
+	if pc.automation == nil {
+		return nil
+	}
+	return []promptSection{{title: "This run", body: automation.Prompt(pc.automation), trailing: true}}
 }

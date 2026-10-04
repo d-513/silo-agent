@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -184,7 +185,7 @@ func (a *App) dropSubagents(botID, leadChatID string) {
 	for _, sa := range a.subagentsOf(leadChatID) {
 		a.quietSubagents("stopped", "id = ?", sa.ID)
 		a.StopChatLive(botID, sa.ChatID)
-		a.dropChat(sa.ChatID)
+		chats.Drop(a.DB, sa.ChatID)
 		a.DB.Delete(&db.Subagent{}, "id = ?", sa.ID)
 	}
 	a.DB.Where("chat_id = ?", leadChatID).Delete(&db.TaskItem{})

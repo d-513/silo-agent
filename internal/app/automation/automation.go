@@ -1,4 +1,9 @@
-package app
+// Package automation is scheduled background prompts: a name, a prompt, a cron
+// schedule and an on/off switch per Bot. The scheduler fires due rows once into
+// the same run engine as chat, from a fresh context each time; every Bot also
+// has one pinned Heartbeat. This package owns the rows, their RPCs and Bot
+// tools, and the scheduler.
+package automation
 
 import (
 	"context"
@@ -12,9 +17,12 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/robfig/cron/v3"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/host"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -23,12 +31,13 @@ import (
 	"silo.agent/internal/textx"
 )
 
+// Tick is how often the scheduler looks for due automations.
+const Tick = 20 * time.Second
+
 const (
 	automationHeartbeat = "heartbeat"
 	automationCustom    = "custom"
 
-	// automationTick is how often the scheduler looks for due automations.
-	automationTick = 20 * time.Second
 	// automationMinGap is the shortest allowed interval between two firings,
 	// so a typo such as "* * * * *" cannot burn a model call every minute.
 	automationMinGap = 5 * time.Minute
@@ -36,6 +45,20 @@ const (
 	automationName   = 80
 	automationPrompt = 8000
 )
+
+// Host is what the automations need from the App around them.
+type Host interface {
+	host.Authorizer
+}
+
+// Service owns the automation rows, their tools and the scheduler.
+type Service struct {
+	db     *gorm.DB
+	engine run.Engine
+	host   Host
+}
+
+func New(gdb *gorm.DB, e run.Engine, h Host) *Service { return &Service{db: gdb, engine: e, host: h} }
 
 var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 
@@ -78,11 +101,11 @@ func nextRun(au *db.Automation, from time.Time) *time.Time {
 
 // --- store ---
 
-// ensureHeartbeat creates the pinned Heartbeat for a Bot if it has none. It is
+// EnsureHeartbeat creates the pinned Heartbeat for a Bot if it has none. It is
 // created without a schedule, so it never fires until someone sets one.
-func (a *App) ensureHeartbeat(botID string) {
+func (s *Service) EnsureHeartbeat(botID string) {
 	var n int64
-	a.DB.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, automationHeartbeat).Count(&n)
+	s.db.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, automationHeartbeat).Count(&n)
 	if n > 0 {
 		return
 	}
@@ -92,24 +115,24 @@ func (a *App) ensureHeartbeat(botID string) {
 		Prompt: strings.TrimSpace(prompts.Heartbeat), Enabled: true, CreatedBy: "user",
 		CreatedAt: now, UpdatedAt: now,
 	}
-	a.ensureAutomationChat(&au)
-	if err := a.DB.Create(&au).Error; err != nil {
+	s.ensureAutomationChat(&au)
+	if err := s.db.Create(&au).Error; err != nil {
 		log.Printf("heartbeat %s: %v", botID, err)
 	}
 }
 
 // ensureAutomationChat gives an automation its hidden log Chat.
-func (a *App) ensureAutomationChat(au *db.Automation) {
+func (s *Service) ensureAutomationChat(au *db.Automation) {
 	if au.ChatID != "" {
 		var n int64
-		a.DB.Model(&db.Chat{}).Where("id = ?", au.ChatID).Count(&n)
+		s.db.Model(&db.Chat{}).Where("id = ?", au.ChatID).Count(&n)
 		if n > 0 {
 			return
 		}
 	}
 	now := time.Now()
 	c := db.Chat{ID: ids.New(), BotID: au.BotID, AutomationID: au.ID, Title: au.Name, CreatedAt: now, UpdatedAt: now}
-	if err := a.DB.Create(&c).Error; err != nil {
+	if err := s.db.Create(&c).Error; err != nil {
 		log.Printf("automation chat %s: %v", au.ID, err)
 		return
 	}
@@ -117,29 +140,29 @@ func (a *App) ensureAutomationChat(au *db.Automation) {
 	if au.CreatedAt.IsZero() {
 		return // not persisted yet; the caller's Create writes chat_id
 	}
-	a.DB.Model(&db.Automation{}).Where("id = ?", au.ID).Update("chat_id", c.ID)
+	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Update("chat_id", c.ID)
 }
 
-func (a *App) listAutomations(botID string) []db.Automation {
-	a.ensureHeartbeat(botID)
+func (s *Service) listAutomations(botID string) []db.Automation {
+	s.EnsureHeartbeat(botID)
 	var rows []db.Automation
 	// Heartbeat is pinned first; the rest newest first.
-	a.DB.Where("bot_id = ?", botID).
+	s.db.Where("bot_id = ?", botID).
 		Order("CASE WHEN kind = 'heartbeat' THEN 0 ELSE 1 END").
 		Order("created_at desc").Find(&rows)
 	return rows
 }
 
 // findAutomation resolves an id or a (case-insensitive) name within a Bot.
-func (a *App) findAutomation(botID, ref string) (*db.Automation, error) {
+func (s *Service) findAutomation(botID, ref string) (*db.Automation, error) {
 	ref = strings.TrimSpace(ref)
 	if ref == "" {
 		return nil, errors.New("automation required")
 	}
 	var au db.Automation
-	a.DB.Where("bot_id = ? AND id = ?", botID, ref).Limit(1).Find(&au)
+	s.db.Where("bot_id = ? AND id = ?", botID, ref).Limit(1).Find(&au)
 	if au.ID == "" {
-		a.DB.Where("bot_id = ? AND lower(name) = lower(?)", botID, ref).Limit(1).Find(&au)
+		s.db.Where("bot_id = ? AND lower(name) = lower(?)", botID, ref).Limit(1).Find(&au)
 	}
 	if au.ID == "" {
 		return nil, fmt.Errorf("unknown automation %q", ref)
@@ -156,11 +179,11 @@ type automationPatch struct {
 
 // saveAutomation validates and applies a patch. A nil au creates a custom
 // automation owned by createdBy.
-func (a *App) saveAutomation(botID string, au *db.Automation, p automationPatch, createdBy string) (*db.Automation, error) {
+func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPatch, createdBy string) (*db.Automation, error) {
 	creating := au == nil
 	if creating {
 		var n int64
-		a.DB.Model(&db.Automation{}).Where("bot_id = ?", botID).Count(&n)
+		s.db.Model(&db.Automation{}).Where("bot_id = ?", botID).Count(&n)
 		if n >= automationMax {
 			return nil, fmt.Errorf("a Bot can have at most %d automations", automationMax)
 		}
@@ -194,7 +217,7 @@ func (a *App) saveAutomation(botID string, au *db.Automation, p automationPatch,
 		return nil, err
 	}
 	var clash db.Automation
-	a.DB.Where("bot_id = ? AND lower(name) = lower(?) AND id <> ?", botID, au.Name, au.ID).Limit(1).Find(&clash)
+	s.db.Where("bot_id = ? AND lower(name) = lower(?) AND id <> ?", botID, au.Name, au.ID).Limit(1).Find(&clash)
 	if clash.ID != "" {
 		return nil, fmt.Errorf("an automation named %q already exists", au.Name)
 	}
@@ -203,67 +226,67 @@ func (a *App) saveAutomation(botID string, au *db.Automation, p automationPatch,
 	au.UpdatedAt = now
 	if creating {
 		au.CreatedAt = now
-		a.ensureAutomationChat(au)
-		if err := a.DB.Create(au).Error; err != nil {
+		s.ensureAutomationChat(au)
+		if err := s.db.Create(au).Error; err != nil {
 			return nil, err
 		}
 		return au, nil
 	}
-	if err := a.DB.Save(au).Error; err != nil {
+	if err := s.db.Save(au).Error; err != nil {
 		return nil, err
 	}
-	a.DB.Model(&db.Chat{}).Where("id = ?", au.ChatID).Update("title", au.Name)
+	s.db.Model(&db.Chat{}).Where("id = ?", au.ChatID).Update("title", au.Name)
 	return au, nil
 }
 
-func (a *App) deleteAutomation(au *db.Automation) error {
+func (s *Service) deleteAutomation(au *db.Automation) error {
 	if au.Kind == automationHeartbeat {
 		return errors.New("the Heartbeat is pinned; clear its schedule or pause it instead")
 	}
 	if au.ChatID != "" {
-		a.StopChatLive(au.BotID, au.ChatID)
-		a.dropChat(au.ChatID)
+		s.engine.StopChatLive(au.BotID, au.ChatID)
+		chats.Drop(s.db, au.ChatID)
 	}
-	return a.DB.Delete(au).Error
+	return s.db.Delete(au).Error
 }
 
 // dropChat deletes a chat with its runs and events.
-func (a *App) dropChat(chatID string) {
-	a.DB.Where("run_id IN (?)", a.DB.Model(&db.Run{}).Select("id").Where("chat_id = ?", chatID)).Delete(&db.RunEvent{})
-	a.DB.Where("chat_id = ?", chatID).Delete(&db.Run{})
-	a.DB.Where("id = ?", chatID).Delete(&db.Chat{})
+func (s *Service) dropChat(chatID string) {
+	s.db.Where("run_id IN (?)", s.db.Model(&db.Run{}).Select("id").Where("chat_id = ?", chatID)).Delete(&db.RunEvent{})
+	s.db.Where("chat_id = ?", chatID).Delete(&db.Run{})
+	s.db.Where("id = ?", chatID).Delete(&db.Chat{})
 }
 
 // --- scheduler ---
 
-// rescheduleAutomations recomputes every pending firing from now. Firings missed
+// Reschedule recomputes every pending firing from now. Firings missed
 // while the Control Plane was down are skipped, not backfilled.
-func (a *App) rescheduleAutomations() {
-	if a.DB == nil {
+func (s *Service) Reschedule() {
+	if s.db == nil {
 		return
 	}
 	var rows []db.Automation
-	a.DB.Where("next_run_at IS NOT NULL AND next_run_at < ?", time.Now()).Find(&rows)
+	s.db.Where("next_run_at IS NOT NULL AND next_run_at < ?", time.Now()).Find(&rows)
 	for i := range rows {
-		a.DB.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], time.Now()))
+		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], time.Now()))
 	}
 }
 
-// FireDueAutomations starts every enabled automation whose next firing is at or
+// FireDue starts every enabled automation whose next firing is at or
 // before now and moves it to its following slot. It returns how many started.
-func (a *App) FireDueAutomations(now time.Time) int {
+func (s *Service) FireDue(now time.Time) int {
 	var due []db.Automation
-	a.DB.Where("enabled = ? AND next_run_at IS NOT NULL AND next_run_at <= ?", true, now).Find(&due)
+	s.db.Where("enabled = ? AND next_run_at IS NOT NULL AND next_run_at <= ?", true, now).Find(&due)
 	fired := 0
 	for i := range due {
 		au := &due[i]
 		next := nextRun(au, now)
 		// Claim the slot: only the writer that moves next_run_at fires it.
-		res := a.DB.Model(&db.Automation{}).Where("id = ? AND next_run_at = ?", au.ID, au.NextRunAt).Update("next_run_at", next)
+		res := s.db.Model(&db.Automation{}).Where("id = ? AND next_run_at = ?", au.ID, au.NextRunAt).Update("next_run_at", next)
 		if res.RowsAffected != 1 {
 			continue
 		}
-		if _, err := a.fireAutomation(au); err != nil {
+		if _, err := s.fireAutomation(au); err != nil {
 			log.Printf("automation %s (%s): %v", au.Name, au.ID, err)
 			continue
 		}
@@ -276,37 +299,35 @@ var errAutomationBusy = errors.New("this automation is still running")
 
 // fireAutomation starts one run of an automation in its log chat. A firing that
 // lands while the previous run is live is skipped, never queued.
-func (a *App) fireAutomation(au *db.Automation) (string, error) {
-	a.ensureAutomationChat(au)
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+func (s *Service) fireAutomation(au *db.Automation) (string, error) {
+	s.ensureAutomationChat(au)
 	now := time.Now()
-	if a.LiveRunID(au.BotID, au.ChatID) != "" {
-		a.DB.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_status": "skipped", "last_run_at": now})
+	runID, err := s.engine.StartIfIdle(run.Request{BotID: au.BotID, ChatID: au.ChatID, Text: au.Prompt, Origin: &run.Origin{Automation: au}})
+	if errors.Is(err, run.ErrBusy) {
+		s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_status": "skipped", "last_run_at": now})
 		return "", errAutomationBusy
 	}
-	runID, err := a.StartRun(run.Request{BotID: au.BotID, ChatID: au.ChatID, Text: au.Prompt, Origin: &run.Origin{Automation: au}})
 	if err != nil {
 		return "", err
 	}
-	a.DB.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": now, "last_status": ""})
+	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": now, "last_status": ""})
 	return runID, nil
 }
 
 // --- proto / RPC ---
 
-func (a *App) automationStatus(au *db.Automation) (string, bool) {
-	running := au.ChatID != "" && a.LiveRunID(au.BotID, au.ChatID) != ""
+func (s *Service) automationStatus(au *db.Automation) (string, bool) {
+	running := au.ChatID != "" && s.engine.LiveRunID(au.BotID, au.ChatID) != ""
 	if au.LastStatus != "" || au.LastRunID == "" {
 		return au.LastStatus, running
 	}
 	var run db.Run
-	a.DB.Where("id = ?", au.LastRunID).Limit(1).Find(&run)
+	s.db.Where("id = ?", au.LastRunID).Limit(1).Find(&run)
 	return run.Status, running
 }
 
-func (a *App) protoAutomation(au *db.Automation) *v1.Automation {
-	status, running := a.automationStatus(au)
+func (s *Service) protoAutomation(au *db.Automation) *v1.Automation {
+	status, running := s.automationStatus(au)
 	return &v1.Automation{
 		Id: au.ID, BotId: au.BotID, Name: au.Name, Prompt: au.Prompt, Schedule: au.Schedule,
 		Enabled: au.Enabled, Kind: au.Kind, ChatId: au.ChatID,
@@ -315,67 +336,67 @@ func (a *App) protoAutomation(au *db.Automation) *v1.Automation {
 	}
 }
 
-func (a *App) ownAutomation(ctx context.Context, botID, id string) (*db.Automation, error) {
-	return access.OwnBotRow[db.Automation](ctx, a.DB, botID, id, "automation")
+func (s *Service) ownAutomation(ctx context.Context, botID, id string) (*db.Automation, error) {
+	return access.OwnBotRow[db.Automation](ctx, s.db, botID, id, "automation")
 }
 
-func (a *App) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	out := &v1.ListAutomationsResponse{}
-	rows := a.listAutomations(req.Msg.GetBotId())
+	rows := s.listAutomations(req.Msg.GetBotId())
 	for i := range rows {
-		out.Automations = append(out.Automations, a.protoAutomation(&rows[i]))
+		out.Automations = append(out.Automations, s.protoAutomation(&rows[i]))
 	}
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) CreateAutomation(ctx context.Context, req *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) CreateAutomation(ctx context.Context, req *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	m := req.Msg
 	name, prompt, schedule, enabled := m.GetName(), m.GetPrompt(), m.GetSchedule(), m.GetEnabled()
-	au, err := a.saveAutomation(m.GetBotId(), nil, automationPatch{name: &name, prompt: &prompt, schedule: &schedule, enabled: &enabled}, "user")
+	au, err := s.saveAutomation(m.GetBotId(), nil, automationPatch{name: &name, prompt: &prompt, schedule: &schedule, enabled: &enabled}, "user")
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(a.protoAutomation(au)), nil
+	return connect.NewResponse(s.protoAutomation(au)), nil
 }
 
-func (a *App) UpdateAutomation(ctx context.Context, req *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error) {
+func (s *Service) UpdateAutomation(ctx context.Context, req *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error) {
 	m := req.Msg
-	au, err := a.ownAutomation(ctx, m.GetBotId(), m.GetId())
+	au, err := s.ownAutomation(ctx, m.GetBotId(), m.GetId())
 	if err != nil {
 		return nil, err
 	}
 	name, prompt, schedule, enabled := m.GetName(), m.GetPrompt(), m.GetSchedule(), m.GetEnabled()
-	au, err = a.saveAutomation(m.GetBotId(), au, automationPatch{name: &name, prompt: &prompt, schedule: &schedule, enabled: &enabled}, "")
+	au, err = s.saveAutomation(m.GetBotId(), au, automationPatch{name: &name, prompt: &prompt, schedule: &schedule, enabled: &enabled}, "")
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(a.protoAutomation(au)), nil
+	return connect.NewResponse(s.protoAutomation(au)), nil
 }
 
-func (a *App) DeleteAutomation(ctx context.Context, req *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error) {
-	au, err := a.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+func (s *Service) DeleteAutomation(ctx context.Context, req *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error) {
+	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	if err := a.deleteAutomation(au); err != nil {
+	if err := s.deleteAutomation(au); err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return connect.NewResponse(&v1.DeleteAutomationResponse{}), nil
 }
 
 // RunAutomation fires an automation now, outside its schedule.
-func (a *App) RunAutomation(ctx context.Context, req *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error) {
-	au, err := a.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+func (s *Service) RunAutomation(ctx context.Context, req *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error) {
+	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	runID, err := a.fireAutomation(au)
+	runID, err := s.fireAutomation(au)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
@@ -384,7 +405,7 @@ func (a *App) RunAutomation(ctx context.Context, req *connect.Request[v1.RunAuto
 
 // --- Bot tools ---
 
-func automationLine(a *App, au *db.Automation) string {
+func (s *Service) automationLine(au *db.Automation) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "- %s  %s", au.ID, au.Name)
 	if au.Kind == automationHeartbeat {
@@ -402,7 +423,7 @@ func automationLine(a *App, au *db.Automation) string {
 		fmt.Fprintf(&b, "; next: %s", au.NextRunAt.Local().Format("Mon 2006-01-02 15:04 MST"))
 	}
 	if au.LastRunAt != nil {
-		status, _ := a.automationStatus(au)
+		status, _ := s.automationStatus(au)
 		fmt.Fprintf(&b, "; last: %s (%s)", au.LastRunAt.Local().Format("Mon 2006-01-02 15:04 MST"), status)
 	}
 	p := au.Prompt
@@ -413,7 +434,7 @@ func automationLine(a *App, au *db.Automation) string {
 	return b.String()
 }
 
-func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name string, args map[string]any) (string, error) {
+func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, args map[string]any) (string, error) {
 	action := map[string]string{
 		"list_automations":  "list",
 		"create_automation": "create",
@@ -444,7 +465,7 @@ func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name strin
 		if ref == nil {
 			return "", errors.New("automation required (id or name)")
 		}
-		au, err := a.findAutomation(bot.ID, *ref)
+		au, err := s.findAutomation(bot.ID, *ref)
 		if err != nil {
 			return "", err
 		}
@@ -452,35 +473,35 @@ func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name strin
 		slip["automation"] = au.Name
 	}
 	slipJSON, _ := json.Marshal(slip)
-	if _, err := a.AuthorizeAction(ctx, bot, runID, security.Automations, action, string(slipJSON), ""); err != nil {
+	if _, err := s.host.AuthorizeAction(ctx, bot, runID, security.Automations, action, string(slipJSON), ""); err != nil {
 		return "", err
 	}
 	switch action {
 	case "list":
-		rows := a.listAutomations(bot.ID)
+		rows := s.listAutomations(bot.ID)
 		var b strings.Builder
 		b.WriteString("Automations (cron in the machine's local time):\n")
 		for i := range rows {
-			b.WriteString(automationLine(a, &rows[i]))
+			b.WriteString(s.automationLine(&rows[i]))
 		}
 		return b.String(), nil
 	case "create":
-		au, err := a.saveAutomation(bot.ID, nil, p, "bot")
+		au, err := s.saveAutomation(bot.ID, nil, p, "bot")
 		if err != nil {
 			return "", err
 		}
-		return "created\n" + automationLine(a, au), nil
+		return "created\n" + s.automationLine(au), nil
 	case "update":
 		if target.Kind == automationHeartbeat {
 			p.name = nil
 		}
-		au, err := a.saveAutomation(bot.ID, target, p, "")
+		au, err := s.saveAutomation(bot.ID, target, p, "")
 		if err != nil {
 			return "", err
 		}
-		return "updated\n" + automationLine(a, au), nil
+		return "updated\n" + s.automationLine(au), nil
 	case "delete":
-		if err := a.deleteAutomation(target); err != nil {
+		if err := s.deleteAutomation(target); err != nil {
 			return "", err
 		}
 		return "deleted " + target.Name, nil
@@ -488,17 +509,16 @@ func (a *App) automationTool(ctx context.Context, bot *db.Bot, runID, name strin
 	return "", fmt.Errorf("unknown tool %s", name)
 }
 
-// automationSections adds the per-run note when an automation started the run.
-func (a *App) automationSections(pc promptContext) []promptSection {
-	if pc.automation == nil {
-		return nil
-	}
+// Prompt is the per-run system-prompt note when an automation started the
+// run: its name and schedule, then the standing instructions for unattended
+// runs.
+func Prompt(au *db.Automation) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "This run is the automation “%s”", pc.automation.Name)
-	if s := pc.automation.Schedule; s != "" {
-		fmt.Fprintf(&b, " (schedule `%s`)", s)
+	fmt.Fprintf(&b, "This run is the automation “%s”", au.Name)
+	if sched := au.Schedule; sched != "" {
+		fmt.Fprintf(&b, " (schedule `%s`)", sched)
 	}
 	b.WriteString(".\n\n")
 	b.WriteString(strings.TrimSpace(prompts.Automation))
-	return []promptSection{{title: "This run", body: b.String(), trailing: true}}
+	return b.String()
 }

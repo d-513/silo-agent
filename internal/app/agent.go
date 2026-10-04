@@ -76,6 +76,17 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	return runID, nil
 }
 
+// StartIfIdle is StartRun for callers that must not steer or stack on a live
+// run: it holds the conversation lock across the check and the start.
+func (a *App) StartIfIdle(req run.Request) (string, error) {
+	a.convMu.Lock()
+	defer a.convMu.Unlock()
+	if a.LiveRunID(req.BotID, req.ChatID) != "" {
+		return "", run.ErrBusy
+	}
+	return a.StartRun(req)
+}
+
 // LiveRunID returns the active run for a conversation, if any.
 func (a *App) LiveRunID(botID, chatID string) string {
 	a.mu.Lock()

@@ -5,6 +5,8 @@
 package run
 
 import (
+	"errors"
+
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
@@ -50,6 +52,10 @@ type Request struct {
 	Report *Report
 }
 
+// ErrBusy is what StartIfIdle returns when the conversation already has a live
+// run.
+var ErrBusy = errors.New("a run is already live for this conversation")
+
 // Engine is the part of the agent runtime other domains drive.
 type Engine interface {
 	// StartRun records a run and launches the agent loop. A caller with a live
@@ -58,6 +64,9 @@ type Engine interface {
 	// StartOrInject steers a live run for the conversation with the message,
 	// or starts a new one: the single entry point for chats and channels.
 	StartOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *Origin) (string, error)
+	// StartIfIdle starts a run only when the conversation has no live one,
+	// otherwise it returns ErrBusy: a scheduled firing is skipped, never queued.
+	StartIfIdle(Request) (string, error)
 	// LiveRunID is the active run of a conversation, or "".
 	LiveRunID(botID, chatID string) string
 	// StopChatLive stops any live run of the conversation and waits for it.

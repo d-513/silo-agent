@@ -55,3 +55,10 @@ func Source(gdb *gorm.DB, chatID string) (kind, name string) {
 	}
 	return "chat", title
 }
+
+// Drop deletes a chat with its runs and events.
+func Drop(gdb *gorm.DB, chatID string) {
+	gdb.Where("run_id IN (?)", gdb.Model(&db.Run{}).Select("id").Where("chat_id = ?", chatID)).Delete(&db.RunEvent{})
+	gdb.Where("chat_id = ?", chatID).Delete(&db.Run{})
+	gdb.Where("id = ?", chatID).Delete(&db.Chat{})
+}

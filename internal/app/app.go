@@ -20,6 +20,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
@@ -175,13 +176,14 @@ type App struct {
 
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
-	Feed      *feed.Service
-	Models    *models.Service
-	Workspace *workspace.Service
-	Voice     *voice.Service
-	Knowledge *knowledge.Service
-	Memory    *memory.Service
-	Drives    *drive.Service
+	Feed        *feed.Service
+	Models      *models.Service
+	Workspace   *workspace.Service
+	Voice       *voice.Service
+	Knowledge   *knowledge.Service
+	Memory      *memory.Service
+	Drives      *drive.Service
+	Automations *automation.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -212,6 +214,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
+	a.Automations = automation.New(a.DB, a, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
@@ -222,8 +225,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.migrateSettings()
 	a.reconcileChannels()
 	if a.DB != nil {
-		a.rescheduleAutomations()
-		go tickLoop(a.stopAutomations, automationTick, func(now time.Time) { a.FireDueAutomations(now) })
+		a.Automations.Reschedule()
+		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })

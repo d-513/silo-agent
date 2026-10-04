@@ -146,10 +146,10 @@ func TestAutomationSchedulerFiresDueOnce(t *testing.T) {
 	past := time.Now().Add(-time.Minute)
 	h.DB.Model(&db.Automation{}).Where("id = ?", au.GetId()).Update("next_run_at", past)
 
-	if n := h.App.FireDueAutomations(time.Now()); n != 1 {
+	if n := h.App.Automations.FireDue(time.Now()); n != 1 {
 		t.Fatalf("fired %d, want 1", n)
 	}
-	if n := h.App.FireDueAutomations(time.Now()); n != 0 {
+	if n := h.App.Automations.FireDue(time.Now()); n != 0 {
 		t.Fatalf("fired again: %d", n)
 	}
 	var row db.Automation

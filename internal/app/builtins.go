@@ -60,7 +60,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	switch key[0] {
 	case security.Automations:
 		// automationTool gates itself: its slip names the automation.
-		return a.automationTool(ctx, bot, runID, name, args)
+		return a.Automations.Tool(ctx, bot, runID, name, args)
 	case security.Tasks:
 		// taskTool gates itself: a subagent may not reset the shared board.
 		return a.taskTool(ctx, bot, runID, name, args, structured)
