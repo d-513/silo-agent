@@ -36,7 +36,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 
 	var host db.DriveHost
 	a.DB.Where("bot_id = ?", b.ID).Limit(1).Find(&host)
-	if n := len(a.botDrives(b.ID)); n > 0 || host.ContainerID != "" {
+	if n := len(a.Drives.BotDrives(b.ID)); n > 0 || host.ContainerID != "" {
 		detail := fmt.Sprintf("rclone for %d drive%s", n, textx.Plural(n))
 		if n == 0 {
 			detail = "No drives left"
@@ -109,27 +109,9 @@ func (a *App) RemoveBotContainers(ctx context.Context, req *connect.Request[v1.G
 		return nil, err
 	}
 	a.destroyBot(ctx, b)
-	a.removeDriveSidecar(ctx, b.ID)
+	a.Drives.RemoveSidecar(ctx, b.ID)
 	a.dropBotStdio(b.ID)
 	b.Status = "stopped"
 	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
-}
-
-// removeDriveSidecar drops the Bot's drive sidecar but keeps its drives: the
-// next start makes a new sidecar and mounts them again.
-func (a *App) removeDriveSidecar(ctx context.Context, botID string) {
-	unlock := a.lockDrives(botID)
-	defer unlock()
-	if s := a.driveHub().get(botID); s != nil {
-		a.driveHub().remove(s)
-	}
-	var host db.DriveHost
-	a.DB.Where("bot_id = ?", botID).Limit(1).Find(&host)
-	if a.Docker != nil {
-		a.Docker.DropDrive(ctx, botID, host.ContainerID)
-	}
-	a.DB.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
-	a.DB.Model(&db.Drive{}).Where("bot_id = ? AND draft = ?", botID, false).
-		Updates(map[string]any{"state": driveStopped, "state_detail": ""})
 }

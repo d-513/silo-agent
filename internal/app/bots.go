@@ -114,7 +114,7 @@ func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) 
 func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	defer func() {
 		if err == nil {
-			a.ensureDrivesBg(b.ID)
+			a.Drives.EnsureBg(b.ID)
 		}
 	}()
 	unlock := a.lockBot(b.ID)
@@ -211,7 +211,7 @@ func (a *App) haltBot(ctx context.Context, b *db.Bot) {
 		_ = a.Docker.Stop(ctx, b.ContainerID)
 	}
 	_ = a.Docker.Stop(ctx, dockerx.Name(b.ID))
-	a.stopDrives(ctx, b.ID)
+	a.Drives.Stop(ctx, b.ID)
 }
 
 func (a *App) destroyBot(ctx context.Context, b *db.Bot) {

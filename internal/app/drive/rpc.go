@@ -1,4 +1,4 @@
-package app
+package drive
 
 import (
 	"context"
@@ -32,7 +32,8 @@ var driveNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 // driveAuthTTL bounds how long a started sign-in may take.
 const driveAuthTTL = 15 * time.Minute
 
-func drivePath(name string) string { return "/workspace/drives/" + name }
+// Path is where a drive is mounted in the Bot's workspace.
+func Path(name string) string { return "/workspace/drives/" + name }
 
 func protoDriveVar(v drives.Var) *v1.DriveVar {
 	out := &v1.DriveVar{
@@ -46,8 +47,8 @@ func protoDriveVar(v drives.Var) *v1.DriveVar {
 	return out
 }
 
-func (a *App) protoDriveTemplate(t *drives.Template, public string) *v1.DriveTemplate {
-	missing := t.MissingSystem(a.driveSystem(t.Key))
+func (s *Service) protoDriveTemplate(t *drives.Template, public string) *v1.DriveTemplate {
+	missing := t.MissingSystem(s.driveSystem(t.Key))
 	out := &v1.DriveTemplate{
 		Key: t.Key, Title: t.Title, Blurb: t.Blurb, Category: t.Category,
 		Guide:     t.Guide,
@@ -69,20 +70,20 @@ func (a *App) protoDriveTemplate(t *drives.Template, public string) *v1.DriveTem
 	return out
 }
 
-func (a *App) driveSystem(key string) map[string]string {
-	if a.Store == nil {
+func (s *Service) driveSystem(key string) map[string]string {
+	if s.store == nil {
 		return map[string]string{}
 	}
-	return a.Store.DriveSystem(key)
+	return s.store.DriveSystem(key)
 }
 
-func (a *App) protoDrive(d *db.Drive) *v1.Drive {
+func (s *Service) protoDrive(d *db.Drive) *v1.Drive {
 	out := &v1.Drive{
 		Id: d.ID, BotId: d.BotID, Name: d.Name, Template: d.Template, ReadOnly: d.ReadOnly, Draft: d.Draft,
 		State: d.State, StateDetail: d.StateDetail, Options: decodeMap(d.OptionsJSON),
 	}
 	if !d.Draft {
-		out.Path = drivePath(d.Name)
+		out.Path = Path(d.Name)
 	} else {
 		out.Name = ""
 	}
@@ -98,34 +99,34 @@ func (a *App) protoDrive(d *db.Drive) *v1.Drive {
 	return out
 }
 
-func (a *App) ListDriveTemplates(ctx context.Context, _ *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error) {
-	public := a.publicURL(ctx)
+func (s *Service) ListDriveTemplates(ctx context.Context, _ *connect.Request[v1.ListDriveTemplatesRequest]) (*connect.Response[v1.ListDriveTemplatesResponse], error) {
+	public := s.host.PublicURL(ctx)
 	out := &v1.ListDriveTemplatesResponse{RedirectUrl: public + "/oauth/callback"}
-	for _, t := range a.driveTemplates().All() {
-		out.Templates = append(out.Templates, a.protoDriveTemplate(t, public))
+	for _, t := range s.templates().All() {
+		out.Templates = append(out.Templates, s.protoDriveTemplate(t, public))
 	}
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
 	if err != nil {
 		return nil, err
 	}
 	out := &v1.ListDrivesResponse{BindOk: true}
-	for _, d := range a.botDrives(b.ID) {
-		out.Drives = append(out.Drives, a.protoDrive(&d))
+	for _, d := range s.BotDrives(b.ID) {
+		out.Drives = append(out.Drives, s.protoDrive(&d))
 	}
 	if id := req.Msg.GetDraftId(); id != "" {
 		var d db.Drive
-		if a.DB.Where("id = ? AND bot_id = ? AND draft = ?", id, b.ID, true).Limit(1).Find(&d); d.ID != "" {
-			out.Drives = append(out.Drives, a.protoDrive(&d))
+		if s.db.Where("id = ? AND bot_id = ? AND draft = ?", id, b.ID, true).Limit(1).Find(&d); d.ID != "" {
+			out.Drives = append(out.Drives, s.protoDrive(&d))
 		}
 	}
 	// A box created before drives existed has no /workspace/drives bind; it
 	// sees nothing until it is recreated.
-	if b.ContainerID != "" && a.Docker != nil && len(out.Drives) > 0 {
-		if ok, err := a.Docker.HasDriveBind(ctx, b.ContainerID); err == nil && !ok {
+	if b.ContainerID != "" && s.docker != nil && len(out.Drives) > 0 {
+		if ok, err := s.docker.HasDriveBind(ctx, b.ContainerID); err == nil && !ok {
 			out.BindOk = false
 		}
 	}
@@ -133,15 +134,15 @@ func (a *App) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrives
 }
 
 // ownDrive loads a drive the signed-in user owns through its Bot.
-func (a *App) ownDrive(ctx context.Context, id string) (*db.Drive, *drives.Template, error) {
+func (s *Service) ownDrive(ctx context.Context, id string) (*db.Drive, *drives.Template, error) {
 	var d db.Drive
-	if a.DB.Where("id = ?", id).Limit(1).Find(&d); d.ID == "" {
+	if s.db.Where("id = ?", id).Limit(1).Find(&d); d.ID == "" {
 		return nil, nil, connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
 	}
-	if _, err := a.ownBot(ctx, d.BotID); err != nil {
+	if _, err := access.OwnBot(ctx, s.db, d.BotID); err != nil {
 		return nil, nil, err
 	}
-	t, ok := a.driveTemplates().Get(d.Template)
+	t, ok := s.templates().Get(d.Template)
 	if !ok {
 		return nil, nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("unknown drive type %q", d.Template))
 	}
@@ -201,16 +202,16 @@ func missingMessage(t *drives.Template, m *drives.MissingError) string {
 	return "Fill in " + strings.Join(labels, ", ") + "."
 }
 
-func (a *App) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error) {
+func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error) {
 	m := req.Msg
 	var d *db.Drive
 	var t *drives.Template
 	if m.GetId() == "" {
-		b, err := a.ownBot(ctx, m.GetBotId())
+		b, err := access.OwnBot(ctx, s.db, m.GetBotId())
 		if err != nil {
 			return nil, err
 		}
-		tt, ok := a.driveTemplates().Get(m.GetTemplate())
+		tt, ok := s.templates().Get(m.GetTemplate())
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown drive type %q", m.GetTemplate()))
 		}
@@ -219,7 +220,7 @@ func (a *App) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRe
 		t = tt
 	} else {
 		var err error
-		if d, t, err = a.ownDrive(ctx, m.GetId()); err != nil {
+		if d, t, err = s.ownDrive(ctx, m.GetId()); err != nil {
 			return nil, err
 		}
 	}
@@ -262,13 +263,13 @@ func (a *App) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRe
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a drive name is lowercase letters, digits, and dashes (up to 40)"))
 		}
 		var clash int64
-		a.DB.Model(&db.Drive{}).Where("bot_id = ? AND name = ? AND id <> ?", d.BotID, name, d.ID).Count(&clash)
+		s.db.Model(&db.Drive{}).Where("bot_id = ? AND name = ? AND id <> ?", d.BotID, name, d.ID).Count(&clash)
 		if clash > 0 {
 			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("this Bot already has a drive named %q", name))
 		}
 		// Adding a drive must be complete: a system value an admin later
 		// removes is fine (the row says so), but the owner's own part is not.
-		if err := t.Check(a.driveValues(d, t)); err != nil {
+		if err := t.Check(s.driveValues(d, t)); err != nil {
 			if mi, ok := drives.AsMissing(err); ok && mi.State() != drives.StateNeedsSetup {
 				return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(missingMessage(t, mi)))
 			}
@@ -280,32 +281,32 @@ func (a *App) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDriveRe
 			d.StateDetail = ""
 		}
 	}
-	if err := a.DB.Save(d).Error; err != nil {
+	if err := s.db.Save(d).Error; err != nil {
 		return nil, err
 	}
 	if !d.Draft {
-		a.applyDrives(d.BotID)
+		s.applyDrives(d.BotID)
 	}
-	return connect.NewResponse(a.protoDrive(d)), nil
+	return connect.NewResponse(s.protoDrive(d)), nil
 }
 
-func (a *App) DeleteDrive(ctx context.Context, req *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
-	d, _, err := a.ownDrive(ctx, req.Msg.GetId())
+func (s *Service) DeleteDrive(ctx context.Context, req *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
+	d, _, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	a.DB.Delete(&db.Drive{}, "id = ?", d.ID)
+	s.db.Delete(&db.Drive{}, "id = ?", d.ID)
 	if !d.Draft {
-		a.applyDrives(d.BotID)
+		s.applyDrives(d.BotID)
 	}
-	if dir := a.cfg().DataDir; dir != "" {
+	if dir := s.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "drives", d.BotID, "cache", d.ID))
 	}
 	return connect.NewResponse(&v1.DeleteDriveResponse{}), nil
 }
 
-func (a *App) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
-	d, t, err := a.ownDrive(ctx, req.Msg.GetId())
+func (s *Service) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -313,8 +314,8 @@ func (a *App) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginD
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(t.Title+" does not use sign-in"))
 	}
 	state := ids.New()
-	redirect := a.publicURL(ctx) + "/oauth/callback"
-	u, err := t.AuthCodeURL(a.driveValues(d, t), redirect, state)
+	redirect := s.host.PublicURL(ctx) + "/oauth/callback"
+	u, err := t.AuthCodeURL(s.driveValues(d, t), redirect, state)
 	if err != nil {
 		if m, ok := drives.AsMissing(err); ok {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(missingMessage(t, m)))
@@ -322,22 +323,15 @@ func (a *App) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginD
 		return nil, err
 	}
 	driveID := d.ID
-	a.mu.Lock()
-	a.oauth[state] = &oauthWait{drive: func(ctx context.Context, q url.Values) error {
-		return a.completeDriveAuth(ctx, driveID, redirect, q)
-	}}
-	a.mu.Unlock()
-	time.AfterFunc(driveAuthTTL, func() {
-		a.mu.Lock()
-		delete(a.oauth, state)
-		a.mu.Unlock()
+	s.host.AwaitOAuth(state, driveAuthTTL, func(ctx context.Context, q url.Values) error {
+		return s.completeDriveAuth(ctx, driveID, redirect, q)
 	})
 	return connect.NewResponse(&v1.BeginDriveAuthResponse{Url: u}), nil
 }
 
 // completeDriveAuth finishes a sign-in: token exchange, account label and
 // other lookups, auto-picks, then a remount if the drive is live.
-func (a *App) completeDriveAuth(ctx context.Context, driveID, redirect string, q url.Values) error {
+func (s *Service) completeDriveAuth(ctx context.Context, driveID, redirect string, q url.Values) error {
 	if e := q.Get("error"); e != "" {
 		if d := q.Get("error_description"); d != "" {
 			return errors.New(d)
@@ -345,25 +339,25 @@ func (a *App) completeDriveAuth(ctx context.Context, driveID, redirect string, q
 		return errors.New("the provider refused: " + e)
 	}
 	var d db.Drive
-	if a.DB.Where("id = ?", driveID).Limit(1).Find(&d); d.ID == "" {
+	if s.db.Where("id = ?", driveID).Limit(1).Find(&d); d.ID == "" {
 		return errors.New("this drive was removed while signing in")
 	}
-	t, ok := a.driveTemplates().Get(d.Template)
+	t, ok := s.templates().Get(d.Template)
 	if !ok {
 		return errors.New("unknown drive type")
 	}
-	v := a.driveValues(&d, t)
+	v := s.driveValues(&d, t)
 	dyn := map[string]string{}
 	for k, val := range t.CallbackValues(q) {
 		dyn[k] = val
 	}
 	v.Dynamic = dyn
-	tok, err := t.Exchange(a.driveCtx(ctx), v, redirect, q.Get("code"))
+	tok, err := t.Exchange(s.driveCtx(ctx), v, redirect, q.Get("code"))
 	if err != nil {
 		return fmt.Errorf("could not finish signing in: %w", err)
 	}
 	dyn["token"] = tok
-	if res, err := t.Resolve(ctx, a.DriveHTTP, v); err == nil {
+	if res, err := t.Resolve(ctx, s.httpClient(), v); err == nil {
 		for k, val := range res {
 			dyn[k] = val
 		}
@@ -377,7 +371,7 @@ func (a *App) completeDriveAuth(ctx context.Context, driveID, redirect string, q
 		if pv.Type != drives.TypePick || !pv.AutoPick || opts[pv.Key] != "" {
 			continue
 		}
-		choices, err := t.Pick(ctx, a.DriveHTTP, drives.Values{User: opts, System: v.System, Dynamic: dyn}, pv.Key)
+		choices, err := t.Pick(ctx, s.httpClient(), drives.Values{User: opts, System: v.System, Dynamic: dyn}, pv.Key)
 		if err != nil || len(choices) == 0 {
 			continue
 		}
@@ -388,42 +382,42 @@ func (a *App) completeDriveAuth(ctx context.Context, driveID, redirect string, q
 	}
 	sec := decodeSecrets(d.SecretsJSON)
 	sec.Dynamic = dyn
-	a.DB.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{
+	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{
 		"secrets_json": mustJSONString(sec),
 		"options_json": mustJSONString(opts),
 	})
 	if !d.Draft {
-		a.applyDrives(d.BotID)
+		s.applyDrives(d.BotID)
 	}
 	return nil
 }
 
 // freshDriveToken renews an expired token before a lookup or listing, storing
 // it (and remounting with it) so the sidecar and the CP never diverge.
-func (a *App) freshDriveToken(ctx context.Context, d *db.Drive, t *drives.Template) error {
+func (s *Service) freshDriveToken(ctx context.Context, d *db.Drive, t *drives.Template) error {
 	if t.Auth.Kind != drives.AuthOAuth2 {
 		return nil
 	}
-	tok, err := t.Refresh(a.driveCtx(ctx), a.driveValues(d, t))
+	tok, err := t.Refresh(s.driveCtx(ctx), s.driveValues(d, t))
 	if err != nil || tok == "" {
 		return err
 	}
 	sec := decodeSecrets(d.SecretsJSON)
 	sec.Dynamic["token"] = tok
 	d.SecretsJSON = mustJSONString(sec)
-	a.DB.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", d.SecretsJSON)
+	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", d.SecretsJSON)
 	if !d.Draft {
-		a.applyDrives(d.BotID)
+		s.applyDrives(d.BotID)
 	}
 	return nil
 }
 
 // driveCtx carries DriveHTTP to the oauth2 package.
-func (a *App) driveCtx(ctx context.Context) context.Context {
-	if a.DriveHTTP == nil {
+func (s *Service) driveCtx(ctx context.Context) context.Context {
+	if s.httpClient() == nil {
 		return ctx
 	}
-	return context.WithValue(ctx, oauth2.HTTPClient, a.DriveHTTP)
+	return context.WithValue(ctx, oauth2.HTTPClient, s.httpClient())
 }
 
 // driveErr maps engine errors to what the form should show.
@@ -434,15 +428,15 @@ func driveErr(t *drives.Template, err error) error {
 	return connect.NewError(connect.CodeUnavailable, err)
 }
 
-func (a *App) PickDriveOptions(ctx context.Context, req *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
-	d, t, err := a.ownDrive(ctx, req.Msg.GetId())
+func (s *Service) PickDriveOptions(ctx context.Context, req *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	if err := a.freshDriveToken(ctx, d, t); err != nil {
+	if err := s.freshDriveToken(ctx, d, t); err != nil {
 		return nil, driveErr(t, err)
 	}
-	opts, err := t.Pick(ctx, a.DriveHTTP, a.driveValues(d, t), req.Msg.GetKey())
+	opts, err := t.Pick(ctx, s.httpClient(), s.driveValues(d, t), req.Msg.GetKey())
 	if err != nil {
 		return nil, driveErr(t, err)
 	}
@@ -453,12 +447,12 @@ func (a *App) PickDriveOptions(ctx context.Context, req *connect.Request[v1.Pick
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
-	d, t, err := a.ownDrive(ctx, req.Msg.GetId())
+func (s *Service) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	if err := a.freshDriveToken(ctx, d, t); err != nil {
+	if err := s.freshDriveToken(ctx, d, t); err != nil {
 		return nil, driveErr(t, err)
 	}
 	// Browse from the remote's root: the folder field holds a path from there.
@@ -470,7 +464,7 @@ func (a *App) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDri
 		}
 	}
 	probe.OptionsJSON = mustJSONString(opts)
-	res, err := a.listDrive(ctx, &probe, req.Msg.GetPath())
+	res, err := s.listDrive(ctx, &probe, req.Msg.GetPath())
 	if err != nil {
 		return nil, driveErr(t, err)
 	}
@@ -484,14 +478,14 @@ func (a *App) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDri
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) driveSettings(ctx context.Context) *v1.DriveSettings {
-	out := &v1.DriveSettings{RedirectUrl: a.publicURL(ctx) + "/oauth/callback"}
-	for _, t := range a.driveTemplates().All() {
+func (s *Service) driveSettings(ctx context.Context) *v1.DriveSettings {
+	out := &v1.DriveSettings{RedirectUrl: s.host.PublicURL(ctx) + "/oauth/callback"}
+	for _, t := range s.templates().All() {
 		vars := t.VarsOf(drives.KindSystem)
 		if len(vars) == 0 {
 			continue
 		}
-		sys := a.driveSystem(t.Key)
+		sys := s.driveSystem(t.Key)
 		p := &v1.DriveProviderSettings{Template: t.Key, Ready: len(t.MissingSystem(sys)) == 0}
 		for _, v := range vars {
 			key := config.DriveSystemKey(t.Key, v.Key)
@@ -499,8 +493,8 @@ func (a *App) driveSettings(ctx context.Context) *v1.DriveSettings {
 				Key: v.Key, Label: v.Label, Help: v.Help, Type: v.Type, Secret: v.IsSecret(), Required: v.Required,
 				Set: sys[v.Key] != "", EnvName: config.EnvName(key),
 			}
-			if a.Store != nil {
-				f.Source = string(a.Store.Source(key))
+			if s.store != nil {
+				f.Source = string(s.store.Source(key))
 			}
 			if !f.Secret {
 				f.Value = sys[v.Key]
@@ -512,18 +506,18 @@ func (a *App) driveSettings(ctx context.Context) *v1.DriveSettings {
 	return out
 }
 
-func (a *App) GetDriveSettings(ctx context.Context, _ *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+func (s *Service) GetDriveSettings(ctx context.Context, _ *connect.Request[v1.GetDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(a.driveSettings(ctx)), nil
+	return connect.NewResponse(s.driveSettings(ctx)), nil
 }
 
-func (a *App) PutDriveSettings(ctx context.Context, req *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
+func (s *Service) PutDriveSettings(ctx context.Context, req *connect.Request[v1.PutDriveSettingsRequest]) (*connect.Response[v1.DriveSettings], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	t, ok := a.driveTemplates().Get(req.Msg.GetTemplate())
+	t, ok := s.templates().Get(req.Msg.GetTemplate())
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown drive type"))
 	}
@@ -534,23 +528,24 @@ func (a *App) PutDriveSettings(ctx context.Context, req *connect.Request[v1.PutD
 		}
 		patch[config.DriveSystemKey(t.Key, k)] = strings.TrimSpace(val)
 	}
-	if a.Store == nil {
+	if s.store == nil {
 		return nil, errors.New("no config store")
 	}
-	if err := a.Store.Patch(patch); err != nil {
+	if err := s.store.Patch(patch); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	// Drives waiting on this setup can mount now.
 	var bots []string
-	a.DB.Model(&db.Drive{}).Where("template = ? AND draft = ?", t.Key, false).Distinct().Pluck("bot_id", &bots)
+	s.db.Model(&db.Drive{}).Where("template = ? AND draft = ?", t.Key, false).Distinct().Pluck("bot_id", &bots)
 	for _, b := range bots {
-		a.applyDrives(b)
+		s.applyDrives(b)
 	}
-	return connect.NewResponse(a.driveSettings(ctx)), nil
+	return connect.NewResponse(s.driveSettings(ctx)), nil
 }
 
-// drivePopupPage closes the sign-in popup and tells the add form how it went.
-func drivePopupPage(err error) string {
+// PopupPage is the page the sign-in popup shows once the provider redirects
+// back: it closes the window and tells the add form how it went.
+func PopupPage(err error) string {
 	msg, ok := "Connected. You can close this window.", "true"
 	if err != nil {
 		msg, ok = err.Error(), "false"
@@ -562,4 +557,28 @@ func drivePopupPage(err error) string {
 		`<p>` + esc + `</p><script>try{window.opener&&window.opener.postMessage({silo:"drive-auth",ok:` + ok +
 		`,message:` + js + `},"*")}catch(e){}` + map[bool]string{true: `setTimeout(function(){window.close()},600)`, false: ``}[err == nil] +
 		`</script></body>`
+}
+
+// Prompt is the system-prompt section listing a Bot's drives. It carries only
+// what rarely changes (names, providers, access) so it stays in the cached
+// session tier; live mount state would bust the cache on every reconnect. ""
+// when there are none.
+func (s *Service) Prompt(list []db.Drive) string {
+	if len(list) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("The owner mounted these remote drives. They are ordinary folders: use `read`, `write`, `grep`, the terminal, and Python on them like any workspace path. Every access goes over the network to the provider, so open specific paths — never walk or grep a whole drive (a workspace-wide `grep` skips drives; pass a path inside one to search it). If a drive's folder is empty or missing, it is disconnected: tell the owner to check the Drives tab rather than retrying. You cannot add or remove drives.\n")
+	for _, d := range list {
+		title := d.Template
+		if t, ok := s.templates().Get(d.Template); ok {
+			title = t.Title
+		}
+		line := fmt.Sprintf("- %s — %s", Path(d.Name), title)
+		if d.ReadOnly {
+			line += " (read-only)"
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String()
 }

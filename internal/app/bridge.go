@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 )
 
@@ -253,5 +254,5 @@ func (a *App) interceptBridgeStream(next connect.StreamingHandlerFunc) connect.S
 }
 
 func (a *App) bridgeFromToken(h string) (*db.BotConnector, string, error) {
-	return rowByToken[db.BotConnector](a.DB, "bridge_token_hash", h)
+	return access.RowByToken[db.BotConnector](a.DB, "bridge_token_hash", h)
 }

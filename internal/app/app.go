@@ -20,6 +20,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/memory"
@@ -32,7 +33,6 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/hub"
-	"silo.agent/internal/ids"
 	"silo.agent/internal/masker"
 	"silo.agent/internal/mcpx"
 	"silo.agent/internal/rpcx"
@@ -153,9 +153,6 @@ type App struct {
 	lifecycle sync.Map
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
-	// drivesHub holds each Bot's live drive sidecar session.
-	drivesOnce sync.Once
-	drivesHub  *driveHub
 
 	// convMu serializes the inject-or-start decision per conversation. chatMu
 	// serializes find-or-create of a channel conversation.
@@ -184,6 +181,7 @@ type App struct {
 	Voice     *voice.Service
 	Knowledge *knowledge.Service
 	Memory    *memory.Service
+	Drives    *drive.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -214,11 +212,12 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
+	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
 	a.initConnectors()
 	a.reconcileStdio()
-	a.reconcileDrives()
+	a.Drives.Reconcile()
 	a.resumeConnectors()
 	a.migrateSettings()
 	a.reconcileChannels()
@@ -493,27 +492,8 @@ func currentBot(ctx context.Context) *db.Bot {
 	return b
 }
 
-// rowByToken resolves an Authorization header to the row whose hashColumn holds
-// the hash of its bearer token, and returns the raw token so the caller can mask
-// it. A missing or unknown token is Unauthenticated; a store failure is itself.
-func rowByToken[T any](gdb *gorm.DB, hashColumn, header string) (*T, string, error) {
-	tok := strings.TrimPrefix(header, "Bearer ")
-	if tok == "" || gdb == nil {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	var row T
-	res := gdb.Where(hashColumn+" = ?", ids.Hash(tok)).Limit(1).Find(&row)
-	if res.Error != nil {
-		return nil, "", res.Error
-	}
-	if res.RowsAffected == 0 {
-		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
-	}
-	return &row, tok, nil
-}
-
 func (a *App) botFromToken(h string) (*db.Bot, string, error) {
-	return rowByToken[db.Bot](a.DB, "token_hash", h)
+	return access.RowByToken[db.Bot](a.DB, "token_hash", h)
 }
 
 func (a *App) Handler() http.Handler {
@@ -521,7 +501,7 @@ func (a *App) Handler() http.Handler {
 	uiPath, uiH := silov1connect.NewUIHandler(a.uiHandler(), connect.WithInterceptors(rpcx.Handler{Unary: a.interceptUI, Stream: a.interceptUIStream}))
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
 	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptBridgeStream}))
-	drPath, drH := silov1connect.NewDriveHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptDriveStream}))
+	drPath, drH := silov1connect.NewDriveHostHandler(a.Drives, connect.WithInterceptors(rpcx.Handler{Stream: a.Drives.Intercept}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
 	mux.Handle(brPath, brH)

@@ -1,4 +1,9 @@
-package app
+// Package drive is the control plane's side of Bot drives: rclone remotes
+// mounted under /workspace/drives by one sidecar container per Bot. It owns the
+// drive rows and their add flow (sign-in, pickers, browsing), renders each
+// drive for the sidecar, keeps the sidecar's session and lifecycle, and serves
+// the DriveHost endpoint the sidecar dials.
+package drive
 
 import (
 	"context"
@@ -6,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,8 +20,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/drives"
@@ -77,19 +87,57 @@ func mustJSONString(v any) string {
 	return string(b)
 }
 
-// driveTemplates is the catalog the app serves; a seam for tests.
-func (a *App) driveTemplates() *drives.Registry { return drives.Builtin() }
+// Host is what the drives need from the App around them.
+type Host interface {
+	// PublicURL is the address the browser (and an OAuth provider) reaches the
+	// control plane at.
+	PublicURL(ctx context.Context) string
+	// AwaitOAuth registers a pending sign-in under state: when the provider
+	// redirects back to /oauth/callback, complete runs with the query and its
+	// outcome is shown in the popup. The entry lapses after ttl.
+	AwaitOAuth(state string, ttl time.Duration, complete func(ctx context.Context, q url.Values) error)
+}
+
+// Service owns every drive and each Bot's drive sidecar.
+type Service struct {
+	db     *gorm.DB
+	docker dockerx.Host
+	store  *config.Store
+	cfg    func() config.Config
+	host   Host
+	// http reaches drive providers (OAuth token endpoints and account
+	// lookups); it is read on every call so a test can swap in a fake.
+	http func() *http.Client
+
+	hub *driveHub
+	// locks serializes sidecar start and removal per Bot.
+	locks sync.Map
+}
+
+func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Config, h Host, httpClient func() *http.Client) *Service {
+	return &Service{db: gdb, docker: d, store: store, cfg: cfg, host: h, http: httpClient, hub: &driveHub{live: map[string]*driveSession{}}}
+}
+
+func (s *Service) httpClient() *http.Client {
+	if s.http == nil {
+		return nil
+	}
+	return s.http()
+}
+
+// templates is the catalog the app serves; a seam for tests.
+func (s *Service) templates() *drives.Registry { return drives.Builtin() }
 
 // driveValues assembles a drive's answers by kind.
-func (a *App) driveValues(d *db.Drive, t *drives.Template) drives.Values {
+func (s *Service) driveValues(d *db.Drive, t *drives.Template) drives.Values {
 	sec := decodeSecrets(d.SecretsJSON)
 	user := decodeMap(d.OptionsJSON)
 	for k, v := range sec.User {
 		user[k] = v
 	}
 	sys := map[string]string{}
-	if a.Store != nil {
-		sys = a.Store.DriveSystem(t.Key)
+	if s.store != nil {
+		sys = s.store.DriveSystem(t.Key)
 	}
 	return drives.Values{User: user, System: sys, Dynamic: sec.Dynamic}
 }
@@ -97,12 +145,12 @@ func (a *App) driveValues(d *db.Drive, t *drives.Template) drives.Values {
 // driveSpec renders one drive for the sidecar. An OAuth token moves from env
 // to the spec's token field: the sidecar writes it to a private config file,
 // the only place rclone saves a refresh to (env would shadow the file).
-func (a *App) driveSpec(d *db.Drive) (*v1.DriveSpec, *drives.Template, error) {
-	t, ok := a.driveTemplates().Get(d.Template)
+func (s *Service) driveSpec(d *db.Drive) (*v1.DriveSpec, *drives.Template, error) {
+	t, ok := s.templates().Get(d.Template)
 	if !ok {
 		return nil, nil, fmt.Errorf("unknown drive type %q", d.Template)
 	}
-	r, err := t.Render(a.driveValues(d, t), d.Name)
+	r, err := t.Render(s.driveValues(d, t), d.Name)
 	if err != nil {
 		return nil, t, err
 	}
@@ -122,40 +170,40 @@ func (a *App) driveSpec(d *db.Drive) (*v1.DriveSpec, *drives.Template, error) {
 	return spec, t, nil
 }
 
-func (a *App) setDriveState(id, state, detail string) {
-	if a.DB == nil {
+func (s *Service) setDriveState(id, state, detail string) {
+	if s.db == nil {
 		return
 	}
-	a.DB.Model(&db.Drive{}).Where("id = ? AND draft = ?", id, false).
+	s.db.Model(&db.Drive{}).Where("id = ? AND draft = ?", id, false).
 		Updates(map[string]any{"state": state, "state_detail": textx.ClipRunes(detail, 500)})
 }
 
-// botDrives lists a Bot's saved (non-draft) drives.
-func (a *App) botDrives(botID string) []db.Drive {
+// BotDrives lists a Bot's saved (non-draft) drives.
+func (s *Service) BotDrives(botID string) []db.Drive {
 	var out []db.Drive
-	a.DB.Where("bot_id = ? AND draft = ?", botID, false).Order("name").Find(&out)
+	s.db.Where("bot_id = ? AND draft = ?", botID, false).Order("name").Find(&out)
 	return out
 }
 
 // renderApply builds the desired set. A drive that cannot render (an admin
 // has not set it up, it needs a new sign-in, a field is empty) is left out and
 // its row says why, so one broken drive never blocks the rest.
-func (a *App) renderApply(botID string) *v1.DriveApply {
-	out := &v1.DriveApply{CacheMaxSize: strings.TrimSpace(a.cfg().Drives.CacheMaxSize)}
-	for _, d := range a.botDrives(botID) {
-		spec, _, err := a.driveSpec(&d)
+func (s *Service) renderApply(botID string) *v1.DriveApply {
+	out := &v1.DriveApply{CacheMaxSize: strings.TrimSpace(s.cfg().Drives.CacheMaxSize)}
+	for _, d := range s.BotDrives(botID) {
+		spec, _, err := s.driveSpec(&d)
 		if err != nil {
 			state, detail := driveError, err.Error()
 			if m, ok := drives.AsMissing(err); ok {
 				state = m.State()
 			}
 			if d.State != state || d.StateDetail != detail {
-				a.setDriveState(d.ID, state, detail)
+				s.setDriveState(d.ID, state, detail)
 			}
 			continue
 		}
 		if d.State == drives.StateNeedsSetup || d.State == drives.StateNeedsAuth || d.State == drives.StateNeedsInput || d.State == "" {
-			a.setDriveState(d.ID, driveMounting, "")
+			s.setDriveState(d.ID, driveMounting, "")
 		}
 		out.Drives = append(out.Drives, spec)
 	}
@@ -189,10 +237,7 @@ type driveHub struct {
 	live map[string]*driveSession
 }
 
-func (a *App) driveHub() *driveHub {
-	a.drivesOnce.Do(func() { a.drivesHub = &driveHub{live: map[string]*driveSession{}} })
-	return a.drivesHub
-}
+func (s *Service) driveHub() *driveHub { return s.hub }
 
 func (h *driveHub) get(botID string) *driveSession {
 	h.mu.Lock()
@@ -229,23 +274,23 @@ func (h *driveHub) remove(s *driveSession) {
 }
 
 // Session is the DriveHost endpoint the sidecar dials.
-func (a *App) Session(ctx context.Context, stream *connect.BidiStream[v1.DriveUp, v1.DriveDown]) error {
+func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.DriveUp, v1.DriveDown]) error {
 	host, _ := ctx.Value(driveHostKey).(*db.DriveHost)
 	if host == nil {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
 	}
-	s := &driveSession{
+	sess := &driveSession{
 		botID:   host.BotID,
 		send:    make(chan *v1.DriveDown, 16),
 		done:    make(chan struct{}),
 		waiters: map[string]chan *v1.DriveListResult{},
 	}
-	h := a.driveHub()
-	h.put(s)
-	defer h.remove(s)
+	h := s.driveHub()
+	h.put(sess)
+	defer h.remove(sess)
 
 	// Every session starts from the full desired set.
-	s.send <- &v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: a.renderApply(host.BotID)}}
+	sess.send <- &v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(host.BotID)}}
 
 	errc := make(chan error, 2)
 	go func() {
@@ -254,10 +299,10 @@ func (a *App) Session(ctx context.Context, stream *connect.BidiStream[v1.DriveUp
 			case <-ctx.Done():
 				errc <- ctx.Err()
 				return
-			case <-s.done:
+			case <-sess.done:
 				errc <- nil
 				return
-			case m := <-s.send:
+			case m := <-sess.send:
 				if err := stream.Send(m); err != nil {
 					errc <- err
 					return
@@ -272,7 +317,7 @@ func (a *App) Session(ctx context.Context, stream *connect.BidiStream[v1.DriveUp
 				errc <- err
 				return
 			}
-			a.driveUp(s, up)
+			s.driveUp(sess, up)
 		}
 	}()
 	err := <-errc
@@ -281,22 +326,22 @@ func (a *App) Session(ctx context.Context, stream *connect.BidiStream[v1.DriveUp
 
 // driveUp handles one frame from a sidecar. Every write is scoped to the
 // session's Bot so a sidecar can only touch its own drives.
-func (a *App) driveUp(s *driveSession, up *v1.DriveUp) {
+func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 	switch b := up.GetBody().(type) {
 	case *v1.DriveUp_Status:
 		st := b.Status
 		var d db.Drive
-		if a.DB.Where("id = ? AND bot_id = ?", st.GetId(), s.botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
+		if s.db.Where("id = ? AND bot_id = ?", st.GetId(), sess.botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
 			return
 		}
-		a.setDriveState(d.ID, st.GetState(), st.GetDetail())
+		s.setDriveState(d.ID, st.GetState(), st.GetDetail())
 	case *v1.DriveUp_Token:
-		a.saveDriveToken(s.botID, b.Token.GetId(), b.Token.GetToken())
+		s.saveDriveToken(sess.botID, b.Token.GetId(), b.Token.GetToken())
 	case *v1.DriveUp_List:
-		s.mu.Lock()
-		w := s.waiters[b.List.GetRequestId()]
-		delete(s.waiters, b.List.GetRequestId())
-		s.mu.Unlock()
+		sess.mu.Lock()
+		w := sess.waiters[b.List.GetRequestId()]
+		delete(sess.waiters, b.List.GetRequestId())
+		sess.mu.Unlock()
 		if w != nil {
 			w <- b.List
 		}
@@ -305,12 +350,12 @@ func (a *App) driveUp(s *driveSession, up *v1.DriveUp) {
 
 // saveDriveToken stores a token rclone refreshed. Only a token that parses is
 // kept: a truncated write must not replace a working one.
-func (a *App) saveDriveToken(botID, driveID, tok string) {
+func (s *Service) saveDriveToken(botID, driveID, tok string) {
 	if _, err := drives.ParseToken(tok); err != nil {
 		return
 	}
 	var d db.Drive
-	if a.DB.Where("id = ? AND bot_id = ?", driveID, botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
+	if s.db.Where("id = ? AND bot_id = ?", driveID, botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
 		return
 	}
 	sec := decodeSecrets(d.SecretsJSON)
@@ -318,16 +363,16 @@ func (a *App) saveDriveToken(botID, driveID, tok string) {
 		return
 	}
 	sec.Dynamic["token"] = tok
-	a.DB.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", mustJSONString(sec))
+	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", mustJSONString(sec))
 }
 
 type driveHostCtxKey struct{}
 
 var driveHostKey = driveHostCtxKey{}
 
-func (a *App) interceptDriveStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (s *Service) Intercept(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		host, _, err := rowByToken[db.DriveHost](a.DB, "token_hash", conn.RequestHeader().Get("Authorization"))
+		host, _, err := access.RowByToken[db.DriveHost](s.db, "token_hash", conn.RequestHeader().Get("Authorization"))
 		if err != nil {
 			return err
 		}
@@ -335,8 +380,8 @@ func (a *App) interceptDriveStream(next connect.StreamingHandlerFunc) connect.St
 	}
 }
 
-func (a *App) lockDrives(botID string) func() {
-	v, _ := a.lifecycle.LoadOrStore("drive:"+botID, &sync.Mutex{})
+func (s *Service) lockSidecar(botID string) func() {
+	v, _ := s.locks.LoadOrStore(botID, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
 	mu.Lock()
 	return mu.Unlock
@@ -345,43 +390,43 @@ func (a *App) lockDrives(botID string) func() {
 // ensureDrives brings the Bot's drive sidecar up (when it has drives, or when
 // force is set for an add-form listing) and pushes the desired set. It is
 // cheap when the sidecar is already connected.
-func (a *App) ensureDrives(ctx context.Context, botID string, force bool) (*driveSession, error) {
-	if a.DB == nil {
+func (s *Service) ensureDrives(ctx context.Context, botID string, force bool) (*driveSession, error) {
+	if s.db == nil {
 		return nil, errors.New("no database")
 	}
-	if !force && len(a.botDrives(botID)) == 0 {
+	if !force && len(s.BotDrives(botID)) == 0 {
 		return nil, nil
 	}
-	h := a.driveHub()
-	if s := h.get(botID); s != nil {
-		s.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: a.renderApply(botID)}})
-		return s, nil
+	h := s.driveHub()
+	if sess := h.get(botID); sess != nil {
+		sess.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(botID)}})
+		return sess, nil
 	}
-	if a.Docker == nil {
+	if s.docker == nil {
 		return nil, errors.New("docker unavailable")
 	}
-	unlock := a.lockDrives(botID)
+	unlock := s.lockSidecar(botID)
 	defer unlock()
-	if s := h.get(botID); s != nil {
-		return s, nil
+	if sess := h.get(botID); sess != nil {
+		return sess, nil
 	}
 	var host db.DriveHost
-	a.DB.Where("bot_id = ?", botID).Limit(1).Find(&host)
-	cfg := a.cfg()
-	if err := a.Docker.PrepareDriveDir(ctx, cfg.DriveImage(), cfg.DriveMountRoot(), botID); err != nil {
+	s.db.Where("bot_id = ?", botID).Limit(1).Find(&host)
+	cfg := s.cfg()
+	if err := s.docker.PrepareDriveDir(ctx, cfg.DriveImage(), cfg.DriveMountRoot(), botID); err != nil {
 		return nil, fmt.Errorf("drives are not available on this host: %w", err)
 	}
 	started := false
 	if host.ContainerID != "" {
-		st, err := a.Docker.Inspect(ctx, host.ContainerID)
+		st, err := s.docker.Inspect(ctx, host.ContainerID)
 		switch {
 		case err == nil && st.Running:
 			started = true
 		case err == nil:
-			if a.Docker.Start(ctx, st.ID) == nil {
+			if s.docker.Start(ctx, st.ID) == nil {
 				started = true
 			} else {
-				a.Docker.DropDrive(ctx, botID, st.ID)
+				s.docker.DropDrive(ctx, botID, st.ID)
 			}
 		case dockerx.IsNotFound(err):
 		default:
@@ -389,18 +434,18 @@ func (a *App) ensureDrives(ctx context.Context, botID string, force bool) (*driv
 		}
 	}
 	if !started {
-		if err := a.startDriveSidecar(ctx, botID); err != nil {
+		if err := s.startDriveSidecar(ctx, botID); err != nil {
 			return nil, err
 		}
 	}
-	return a.waitDriveSession(ctx, botID)
+	return s.waitDriveSession(ctx, botID)
 }
 
-func (a *App) startDriveSidecar(ctx context.Context, botID string) error {
-	cfg := a.cfg()
-	a.Docker.DropDrive(ctx, botID, "")
+func (s *Service) startDriveSidecar(ctx context.Context, botID string) error {
+	cfg := s.cfg()
+	s.docker.DropDrive(ctx, botID, "")
 	token := ids.New() + ids.New()
-	cid, err := a.Docker.CreateDrive(ctx, dockerx.DriveSpec{
+	cid, err := s.docker.CreateDrive(ctx, dockerx.DriveSpec{
 		BotID: botID,
 		Image: cfg.DriveImage(),
 		Env: []string{
@@ -414,19 +459,19 @@ func (a *App) startDriveSidecar(ctx context.Context, botID string) error {
 	if err != nil {
 		return err
 	}
-	if err := a.Docker.Start(ctx, cid); err != nil {
-		a.Docker.DropDrive(ctx, botID, cid)
+	if err := s.docker.Start(ctx, cid); err != nil {
+		s.docker.DropDrive(ctx, botID, cid)
 		return err
 	}
 	// Persist the container and token hash only after a successful start.
-	return a.DB.Save(&db.DriveHost{BotID: botID, ContainerID: cid, TokenHash: ids.Hash(token)}).Error
+	return s.db.Save(&db.DriveHost{BotID: botID, ContainerID: cid, TokenHash: ids.Hash(token)}).Error
 }
 
-func (a *App) waitDriveSession(ctx context.Context, botID string) (*driveSession, error) {
+func (s *Service) waitDriveSession(ctx context.Context, botID string) (*driveSession, error) {
 	deadline := time.Now().Add(driveWait)
 	for {
-		if s := a.driveHub().get(botID); s != nil {
-			return s, nil
+		if sess := s.driveHub().get(botID); sess != nil {
+			return sess, nil
 		}
 		if time.Now().After(deadline) {
 			return nil, errors.New("the drive sidecar did not connect to the control plane")
@@ -439,53 +484,53 @@ func (a *App) waitDriveSession(ctx context.Context, botID string) (*driveSession
 	}
 }
 
-// ensureDrivesBg is the fire-and-forget form used when a Bot starts.
-func (a *App) ensureDrivesBg(botID string) {
-	if a.DB == nil || a.Docker == nil || a.driveHub().get(botID) != nil {
+// EnsureBg is the fire-and-forget form used when a Bot starts.
+func (s *Service) EnsureBg(botID string) {
+	if s.db == nil || s.docker == nil || s.driveHub().get(botID) != nil {
 		return
 	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
-		if _, err := a.ensureDrives(ctx, botID, false); err != nil {
+		if _, err := s.ensureDrives(ctx, botID, false); err != nil {
 			log.Printf("drives bot=%s: %v", botID, err)
-			for _, d := range a.botDrives(botID) {
-				a.setDriveState(d.ID, driveError, err.Error())
+			for _, d := range s.BotDrives(botID) {
+				s.setDriveState(d.ID, driveError, err.Error())
 			}
 		}
 	}()
 }
 
 // applyDrives pushes the desired set to a connected sidecar, or starts one.
-func (a *App) applyDrives(botID string) {
-	if s := a.driveHub().get(botID); s != nil {
-		s.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: a.renderApply(botID)}})
+func (s *Service) applyDrives(botID string) {
+	if sess := s.driveHub().get(botID); sess != nil {
+		sess.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(botID)}})
 		return
 	}
-	a.ensureDrivesBg(botID)
+	s.EnsureBg(botID)
 }
 
 // listDrive asks the sidecar to list folders of a drive (saved or draft).
-func (a *App) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.DriveListResult, error) {
-	spec, _, err := a.driveSpec(d)
+func (s *Service) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.DriveListResult, error) {
+	spec, _, err := s.driveSpec(d)
 	if err != nil {
 		return nil, err
 	}
-	s, err := a.ensureDrives(ctx, d.BotID, true)
+	sess, err := s.ensureDrives(ctx, d.BotID, true)
 	if err != nil {
 		return nil, err
 	}
 	req := ids.New()
 	w := make(chan *v1.DriveListResult, 1)
-	s.mu.Lock()
-	s.waiters[req] = w
-	s.mu.Unlock()
+	sess.mu.Lock()
+	sess.waiters[req] = w
+	sess.mu.Unlock()
 	defer func() {
-		s.mu.Lock()
-		delete(s.waiters, req)
-		s.mu.Unlock()
+		sess.mu.Lock()
+		delete(sess.waiters, req)
+		sess.mu.Unlock()
 	}()
-	if !s.push(&v1.DriveDown{Body: &v1.DriveDown_List{List: &v1.DriveList{RequestId: req, Spec: spec, Path: path}}}) {
+	if !sess.push(&v1.DriveDown{Body: &v1.DriveDown_List{List: &v1.DriveList{RequestId: req, Spec: spec, Path: path}}}) {
 		return nil, errors.New("the drive sidecar disconnected")
 	}
 	ctx, cancel := context.WithTimeout(ctx, driveListWait)
@@ -493,66 +538,66 @@ func (a *App) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.Driv
 	select {
 	case <-ctx.Done():
 		return nil, errors.New("the drive sidecar did not answer in time")
-	case <-s.done:
+	case <-sess.done:
 		return nil, errors.New("the drive sidecar disconnected")
 	case res := <-w:
 		if tok := res.GetToken(); tok != "" {
-			a.saveDriveToken(d.BotID, d.ID, tok)
+			s.saveDriveToken(d.BotID, d.ID, tok)
 		}
 		return res, nil
 	}
 }
 
-// stopDrives stops the sidecar with the Bot (Stop Bot). Its container and
+// Stop stops the sidecar with the Bot (Stop Bot). Its container and
 // cache stay; the next start mounts again.
-func (a *App) stopDrives(ctx context.Context, botID string) {
-	if s := a.driveHub().get(botID); s != nil {
-		a.driveHub().remove(s)
+func (s *Service) Stop(ctx context.Context, botID string) {
+	if sess := s.driveHub().get(botID); sess != nil {
+		s.driveHub().remove(sess)
 	}
-	if a.Docker != nil {
-		_ = a.Docker.Stop(ctx, dockerx.DriveName(botID))
+	if s.docker != nil {
+		_ = s.docker.Stop(ctx, dockerx.DriveName(botID))
 	}
-	if a.DB != nil {
-		a.DB.Model(&db.Drive{}).Where("bot_id = ? AND draft = ? AND state IN ?", botID, false,
+	if s.db != nil {
+		s.db.Model(&db.Drive{}).Where("bot_id = ? AND draft = ? AND state IN ?", botID, false,
 			[]string{driveMounting, driveMounted}).Updates(map[string]any{"state": driveStopped, "state_detail": ""})
 	}
 }
 
-// dropDrives removes the sidecar, its cache, and the Bot's drive dir for good
+// Drop removes the sidecar, its cache, and the Bot's drive dir for good
 // (DeleteBot).
-func (a *App) dropDrives(ctx context.Context, botID string) {
-	unlock := a.lockDrives(botID)
+func (s *Service) Drop(ctx context.Context, botID string) {
+	unlock := s.lockSidecar(botID)
 	defer unlock()
-	if s := a.driveHub().get(botID); s != nil {
-		a.driveHub().remove(s)
+	if sess := s.driveHub().get(botID); sess != nil {
+		s.driveHub().remove(sess)
 	}
 	var host db.DriveHost
-	a.DB.Where("bot_id = ?", botID).Limit(1).Find(&host)
-	if a.Docker != nil {
-		a.Docker.DropDrive(ctx, botID, host.ContainerID)
-		cfg := a.cfg()
-		if err := a.Docker.RemoveDriveDir(ctx, cfg.DriveImage(), cfg.DriveMountRoot(), botID); err != nil {
+	s.db.Where("bot_id = ?", botID).Limit(1).Find(&host)
+	if s.docker != nil {
+		s.docker.DropDrive(ctx, botID, host.ContainerID)
+		cfg := s.cfg()
+		if err := s.docker.RemoveDriveDir(ctx, cfg.DriveImage(), cfg.DriveMountRoot(), botID); err != nil {
 			log.Printf("drives bot=%s: remove dir: %v", botID, err)
 		}
 	}
-	a.DB.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
-	a.DB.Where("bot_id = ?", botID).Delete(&db.Drive{})
-	if dir := a.cfg().DataDir; dir != "" {
+	s.db.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
+	s.db.Where("bot_id = ?", botID).Delete(&db.Drive{})
+	if dir := s.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "drives", botID))
 	}
 }
 
-// reconcileDrives reclaims sidecars whose Bot is gone and sweeps stale drafts.
+// Reconcile reclaims sidecars whose Bot is gone and sweeps stale drafts.
 // Live sidecars reconnect on their own and get a fresh DriveApply.
-func (a *App) reconcileDrives() {
-	if a.DB == nil {
+func (s *Service) Reconcile() {
+	if s.db == nil {
 		return
 	}
-	a.DB.Where("draft = ? AND created_at < ?", true, time.Now().Add(-draftTTL)).Delete(&db.Drive{})
-	if a.Docker == nil {
+	s.db.Where("draft = ? AND created_at < ?", true, time.Now().Add(-draftTTL)).Delete(&db.Drive{})
+	if s.docker == nil {
 		return
 	}
-	list, err := a.Docker.ListDrives(context.Background())
+	list, err := s.docker.ListDrives(context.Background())
 	if err != nil {
 		return
 	}
@@ -562,10 +607,28 @@ func (a *App) reconcileDrives() {
 			bot = strings.TrimPrefix(c.Name, "silo-drive-")
 		}
 		var n int64
-		a.DB.Model(&db.Bot{}).Where("id = ?", bot).Count(&n)
+		s.db.Model(&db.Bot{}).Where("id = ?", bot).Count(&n)
 		if n == 0 {
-			a.Docker.DropDrive(context.Background(), bot, c.ID)
-			a.DB.Where("bot_id = ?", bot).Delete(&db.DriveHost{})
+			s.docker.DropDrive(context.Background(), bot, c.ID)
+			s.db.Where("bot_id = ?", bot).Delete(&db.DriveHost{})
 		}
 	}
+}
+
+// RemoveSidecar drops the Bot's drive sidecar but keeps its drives: the next
+// start makes a new sidecar and mounts them again.
+func (s *Service) RemoveSidecar(ctx context.Context, botID string) {
+	unlock := s.lockSidecar(botID)
+	defer unlock()
+	if sess := s.driveHub().get(botID); sess != nil {
+		s.driveHub().remove(sess)
+	}
+	var host db.DriveHost
+	s.db.Where("bot_id = ?", botID).Limit(1).Find(&host)
+	if s.docker != nil {
+		s.docker.DropDrive(ctx, botID, host.ContainerID)
+	}
+	s.db.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
+	s.db.Model(&db.Drive{}).Where("bot_id = ? AND draft = ?", botID, false).
+		Updates(map[string]any{"state": driveStopped, "state_detail": ""})
 }

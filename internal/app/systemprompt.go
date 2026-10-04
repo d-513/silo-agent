@@ -118,27 +118,9 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 	return out
 }
 
-// driveSections lists the Bot's drives. It carries only what rarely changes
-// (names, providers, access) so it stays in the cached session tier; live
-// mount state would bust the cache on every reconnect.
+// driveSections lists the Bot's drives for the session tier.
 func (a *App) driveSections(pc promptContext) []promptSection {
-	if len(pc.drives) == 0 {
-		return nil
-	}
-	var b strings.Builder
-	b.WriteString("The owner mounted these remote drives. They are ordinary folders: use `read`, `write`, `grep`, the terminal, and Python on them like any workspace path. Every access goes over the network to the provider, so open specific paths — never walk or grep a whole drive (a workspace-wide `grep` skips drives; pass a path inside one to search it). If a drive's folder is empty or missing, it is disconnected: tell the owner to check the Drives tab rather than retrying. You cannot add or remove drives.\n")
-	for _, d := range pc.drives {
-		title := d.Template
-		if t, ok := a.driveTemplates().Get(d.Template); ok {
-			title = t.Title
-		}
-		line := fmt.Sprintf("- %s — %s", drivePath(d.Name), title)
-		if d.ReadOnly {
-			line += " (read-only)"
-		}
-		b.WriteString(line + "\n")
-	}
-	return []promptSection{{title: "Drives", body: b.String()}}
+	return []promptSection{{title: "Drives", body: a.Drives.Prompt(pc.drives)}}
 }
 
 // systemPromptBuilder assembles the system prompt as ordered cache tiers:
@@ -262,7 +244,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *runOrigin) prompt
 		pc.connectors = append(pc.connectors, connectorView{link: links[i], conn: c})
 	}
 	pc.channels = a.enabledChannels(botID)
-	pc.drives = a.botDrives(botID)
+	pc.drives = a.Drives.BotDrives(botID)
 	pc.knowledge = a.Knowledge.Folders(botID)
 	if origin != nil {
 		pc.channel = origin.channel

@@ -7,11 +7,13 @@ package access
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
 )
 
 type userKey struct{}
@@ -70,4 +72,23 @@ func OwnBotRow[T any](ctx context.Context, gdb *gorm.DB, botID, id, what string)
 		return nil, err
 	}
 	return BotRow[T](gdb, botID, id, what)
+}
+
+// RowByToken resolves an Authorization header to the row whose hashColumn holds
+// the hash of its bearer token, and returns the raw token so the caller can mask
+// it. A missing or unknown token is Unauthenticated; a store failure is itself.
+func RowByToken[T any](gdb *gorm.DB, hashColumn, header string) (*T, string, error) {
+	tok := strings.TrimPrefix(header, "Bearer ")
+	if tok == "" || gdb == nil {
+		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+	var row T
+	res := gdb.Where(hashColumn+" = ?", ids.Hash(tok)).Limit(1).Find(&row)
+	if res.Error != nil {
+		return nil, "", res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, "", connect.NewError(connect.CodeUnauthenticated, nil)
+	}
+	return &row, tok, nil
 }

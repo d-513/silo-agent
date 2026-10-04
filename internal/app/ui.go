@@ -274,7 +274,7 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 		a.deleteChannel(&c)
 	}
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
-	a.dropDrives(ctx, b.ID)
+	a.Drives.Drop(ctx, b.ID)
 	a.DB.Delete(b)
 	if dir := a.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "bots", b.ID))

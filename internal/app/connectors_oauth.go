@@ -17,6 +17,7 @@ import (
 	"golang.org/x/oauth2"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/drive"
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
 )
@@ -37,7 +38,7 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("connector does not use oauth"))
 	}
 	c = *a.resolveConnector(&c)
-	redirect := a.publicURL(ctx) + "/oauth/callback"
+	redirect := a.PublicURL(ctx) + "/oauth/callback"
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
@@ -111,7 +112,7 @@ func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if wait.drive != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		_, _ = io.WriteString(w, drivePopupPage(wait.drive(ctx, q)))
+		_, _ = io.WriteString(w, drive.PopupPage(wait.drive(ctx, q)))
 		return
 	}
 	iss := q.Get("iss")
@@ -180,7 +181,9 @@ func (a *App) saveToken(id string, tok *oauth2.Token) {
 	a.DB.Model(&db.BotConnector{}).Where("id = ?", id).Update("token_json", mustJSON(tok))
 }
 
-func (a *App) publicURL(ctx context.Context) string {
+// PublicURL is the address the browser (and an OAuth provider) reaches the
+// control plane at.
+func (a *App) PublicURL(ctx context.Context) string {
 	if u := strings.TrimSpace(a.cfg().PublicURL); u != "" {
 		return strings.TrimRight(u, "/")
 	}
@@ -263,6 +266,19 @@ type oauthWait struct {
 	ch     chan *mcpauth.AuthorizationResult
 	issuer string
 	drive  func(ctx context.Context, q url.Values) error
+}
+
+// AwaitOAuth registers a pending sign-in whose callback finishes in complete
+// (the drives' flow); the entry lapses after ttl.
+func (a *App) AwaitOAuth(state string, ttl time.Duration, complete func(ctx context.Context, q url.Values) error) {
+	a.mu.Lock()
+	a.oauth[state] = &oauthWait{drive: complete}
+	a.mu.Unlock()
+	time.AfterFunc(ttl, func() {
+		a.mu.Lock()
+		delete(a.oauth, state)
+		a.mu.Unlock()
+	})
 }
 
 func tokenFromJSON(raw string) *oauth2.Token {

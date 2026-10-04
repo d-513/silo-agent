@@ -1,6 +1,7 @@
 package app
 
 import (
+	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/memory"
@@ -18,6 +19,7 @@ type (
 	voiceRPC  = voice.Service
 	knowRPC   = knowledge.Service
 	memRPC    = memory.Service
+	driveRPC  = drive.Service
 )
 
 // uiHandler is the whole UI service: App's own RPCs plus the ones the domain
@@ -30,8 +32,9 @@ type uiHandler struct {
 	*voiceRPC
 	*knowRPC
 	*memRPC
+	*driveRPC
 }
 
 func (a *App) uiHandler() *uiHandler {
-	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory}
+	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives}
 }
