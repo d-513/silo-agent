@@ -1,6 +1,6 @@
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
-import { Composer } from "../Composer";
+import { Composer } from "../composer/Composer";
 import { fail } from "../errors";
 import type { Bot, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
 import { SubagentTray } from "../SubagentTray";
