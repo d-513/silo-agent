@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
@@ -19,7 +20,7 @@ import (
 // sleepTool pauses a run until the time is up, a message arrives, or (for a
 // lead) a subagent finishes. A reason already pending returns at once.
 func (a *App) sleepTool(ctx context.Context, chatID, runID string, args map[string]any) (string, error) {
-	secs := num(args, "seconds")
+	secs := toolarg.Int(args, "seconds")
 	if secs < 1 {
 		secs = 1
 	}
@@ -102,7 +103,7 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 		if err != nil {
 			return "", err
 		}
-		return a.subagentDetail(sa, num(args, "events")), nil
+		return a.subagentDetail(sa, toolarg.Int(args, "events")), nil
 	case "message_agent":
 		sa, err := a.findSubagent(chatID, str("name"))
 		if err != nil {

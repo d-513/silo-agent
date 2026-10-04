@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/desktop"
@@ -25,7 +26,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	path := workspace.Rel(str("path"))
 	if name == "click" || name == "scroll" {
-		if err := desktop.CheckPoint(num(args, "x"), num(args, "y")); err != nil {
+		if err := desktop.CheckPoint(toolarg.Int(args, "x"), toolarg.Int(args, "y")); err != nil {
 			return "", "", err
 		}
 	}
@@ -35,7 +36,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	if name == "key" && str("name") == "" {
 		return "", "", fmt.Errorf("key required")
 	}
-	if name == "scroll" && num(args, "dy") == 0 {
+	if name == "scroll" && toolarg.Int(args, "dy") == 0 {
 		return "", "", fmt.Errorf("dy required")
 	}
 	if name == "present" && path == "" {
@@ -57,11 +58,11 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return "", "", fmt.Errorf("text required")
 	}
 	if name == "channel" {
-		out, err := a.channelSendTool(ctx, botID, runID, args)
+		out, err := a.Channels.SendTool(ctx, botID, runID, args)
 		return out, "", err
 	}
 	if name == "chats" {
-		out, err := a.chatsReadTool(ctx, botID, runID, args)
+		out, err := a.Channels.ChatsTool(ctx, botID, runID, args)
 		return out, "", err
 	}
 	if name == "sleep" {
@@ -130,7 +131,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: code}}}
 	case "read":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileRead{FileRead: &v1.FileReadCmd{
-			Path: path, Offset: int32(num(args, "offset")), Limit: int32(num(args, "limit")),
+			Path: path, Offset: int32(toolarg.Int(args, "offset")), Limit: int32(toolarg.Int(args, "limit")),
 		}}}
 	case "write":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_FileWrite{FileWrite: &v1.FileWriteCmd{Path: path, Content: str("content")}}}
@@ -139,7 +140,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	case "delete":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Remove{Remove: &v1.RemoveCmd{Path: path}}}
 	case "grep":
-		max := int32(num(args, "max_hits"))
+		max := int32(toolarg.Int(args, "max_hits"))
 		if max <= 0 {
 			max = 80
 		}
@@ -152,7 +153,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
 	case "click":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Click{Click: &v1.ClickCmd{
-			X: int32(num(args, "x")), Y: int32(num(args, "y")), Button: str("button"),
+			X: int32(toolarg.Int(args, "x")), Y: int32(toolarg.Int(args, "y")), Button: str("button"),
 		}}}
 	case "type":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Type{Type: &v1.TypeCmd{Text: str("text")}}}
@@ -160,7 +161,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Key{Key: &v1.KeyCmd{Name: str("name")}}}
 	case "scroll":
 		cmd = &v1.Cmd{Id: id, RunId: runID, Body: &v1.Cmd_Scroll{Scroll: &v1.ScrollCmd{
-			X: int32(num(args, "x")), Y: int32(num(args, "y")), Dy: int32(num(args, "dy")),
+			X: int32(toolarg.Int(args, "x")), Y: int32(toolarg.Int(args, "y")), Dy: int32(toolarg.Int(args, "dy")),
 		}}}
 	default:
 		return "", "", fmt.Errorf("unknown tool %s", name)
@@ -187,9 +188,9 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	}
 	switch name {
 	case "read":
-		return formatRead(out.Out, num(args, "offset")), "", nil
+		return formatRead(out.Out, toolarg.Int(args, "offset")), "", nil
 	case "grep":
-		max := num(args, "max_hits")
+		max := toolarg.Int(args, "max_hits")
 		if max <= 0 {
 			max = 80
 		}
@@ -237,18 +238,4 @@ func jsonLooksComplete(s string) bool {
 	}
 	var v any
 	return json.Unmarshal([]byte(s), &v) == nil
-}
-
-func num(args map[string]any, k string) int {
-	switch v := args[k].(type) {
-	case float64:
-		return int(v)
-	case int:
-		return v
-	case json.Number:
-		n, _ := v.Int64()
-		return int(n)
-	default:
-		return 0
-	}
 }

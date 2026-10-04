@@ -62,7 +62,7 @@ func (a *App) wakeLead(botID, leadChatID string) {
 	if chat.ChannelID != "" {
 		var ch db.Channel
 		if a.DB.Where("id = ?", chat.ChannelID).Limit(1).Find(&ch); ch.ID != "" {
-			origin = a.channelOrigin(&ch, chat.ExternalID)
+			origin = a.Channels.Origin(&ch, chat.ExternalID)
 		}
 	}
 	if _, err := a.StartRun(run.Request{BotID: botID, ChatID: leadChatID, Origin: origin, Report: rep}); err != nil {

@@ -269,9 +269,9 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
 	a.reconcileStdio()
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})
-	for _, ch := range a.allChannels(b.ID) {
+	for _, ch := range a.Channels.All(b.ID) {
 		c := ch
-		a.deleteChannel(&c)
+		a.Channels.Delete(&c)
 	}
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.Drives.Drop(ctx, b.ID)

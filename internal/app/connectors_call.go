@@ -134,7 +134,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		tool := security.Key(slug, action)
 		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
-		out, err := a.channelSendTool(ctx, bot.ID, runID, args)
+		out, err := a.Channels.SendTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -149,7 +149,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		_ = json.Unmarshal([]byte(argsJSON), &args)
 		tool := security.Key(slug, action)
 		a.emit(bot.ID, a.ChatOfRun(runID), runID, "call", "Read chats", tool)
-		out, err := a.chatsReadTool(ctx, bot.ID, runID, args)
+		out, err := a.Channels.ChatsTool(ctx, bot.ID, runID, args)
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil

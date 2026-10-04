@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
@@ -147,7 +148,7 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 				}
 			}
 		}
-		if n := num(args, "id"); n > 0 {
+		if n := toolarg.Int(args, "id"); n > 0 {
 			ns = append(ns, n)
 		}
 		if len(ns) == 0 {

@@ -545,3 +545,22 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.emit(botID, chatID, runID, "done", st, "")
 	a.afterRun(botID, chatID, runID, st)
 }
+
+// StartOrInject serializes the decision to either steer a live run or start a
+// new one. This is the single entry point for chats and channels.
+func (a *App) StartOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
+	a.convMu.Lock()
+	defer a.convMu.Unlock()
+	return a.startOrInjectLocked(botID, chatID, text, atts, origin)
+}
+
+// startOrInjectLocked is startOrInject with convMu already held, so callers can
+// truncate history and start the replacement run atomically.
+func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
+	if runID := a.LiveRunID(botID, chatID); runID != "" {
+		if a.inject(botID, chatID, runID, text, atts, "") {
+			return runID, nil
+		}
+	}
+	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Atts: atts, Origin: origin})
+}

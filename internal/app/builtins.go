@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/security"
 )
@@ -78,9 +79,9 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 		return a.Memory.Remember(ctx, bot.ID, runID, str("content"))
 	case "recall":
 		if !structured {
-			return a.Memory.RecallTool(ctx, bot.ID, str("query"), num(args, "limit"))
+			return a.Memory.RecallTool(ctx, bot.ID, str("query"), toolarg.Int(args, "limit"))
 		}
-		rows, err := a.Memory.Recall(ctx, bot.ID, str("query"), num(args, "limit"), 0)
+		rows, err := a.Memory.Recall(ctx, bot.ID, str("query"), toolarg.Int(args, "limit"), 0)
 		if err != nil {
 			return "", err
 		}
@@ -101,7 +102,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case "forget":
 		return a.Memory.Forget(bot.ID, str("id"))
 	case "search_docs":
-		return a.Knowledge.Tool(ctx, bot.ID, str("query"), str("path"), num(args, "limit"), structured)
+		return a.Knowledge.Tool(ctx, bot.ID, str("query"), str("path"), toolarg.Int(args, "limit"), structured)
 	case "list_models":
 		return a.Models.ListTool(bot.ID, a.ChatOfRun(runID))
 	case "transcribe":

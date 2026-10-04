@@ -1,4 +1,4 @@
-package app
+package channel
 
 import (
 	"context"
@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/security"
 )
 
-// channelSendTool implements the `channel` chat tool and the Python
+// SendTool implements the `channel` chat tool and the Python
 // `silo_runtime.send_channel` path. It defaults to the channel the run came
 // from and gates on a per-channel rule (channels.<channelID>).
-func (a *App) channelSendTool(ctx context.Context, botID, runID string, args map[string]any) (string, error) {
+func (s *Service) SendTool(ctx context.Context, botID, runID string, args map[string]any) (string, error) {
 	text, _ := args["text"].(string)
 	if strings.TrimSpace(text) == "" {
 		return "", fmt.Errorf("text required")
@@ -24,14 +25,14 @@ func (a *App) channelSendTool(ctx context.Context, botID, runID string, args map
 	var ch db.Channel
 	if strings.TrimSpace(name) == "" {
 		var run db.Run
-		if a.DB.First(&run, "id = ?", runID).Error != nil || run.ChannelID == "" {
+		if s.db.First(&run, "id = ?", runID).Error != nil || run.ChannelID == "" {
 			return "", fmt.Errorf("no channel context; pass channel")
 		}
-		if a.DB.First(&ch, "id = ?", run.ChannelID).Error != nil {
+		if s.db.First(&ch, "id = ?", run.ChannelID).Error != nil {
 			return "", fmt.Errorf("origin channel not found")
 		}
-	} else if a.DB.First(&ch, "bot_id = ? AND name = ?", botID, strings.TrimSpace(name)).Error != nil {
-		if a.DB.First(&ch, "bot_id = ? AND id = ?", botID, strings.TrimSpace(name)).Error != nil {
+	} else if s.db.First(&ch, "bot_id = ? AND name = ?", botID, strings.TrimSpace(name)).Error != nil {
+		if s.db.First(&ch, "bot_id = ? AND id = ?", botID, strings.TrimSpace(name)).Error != nil {
 			return "", fmt.Errorf("unknown channel %q", name)
 		}
 	}
@@ -40,11 +41,11 @@ func (a *App) channelSendTool(ctx context.Context, botID, runID string, args map
 	}
 
 	var bot db.Bot
-	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+	if err := s.db.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", fmt.Errorf("unknown bot")
 	}
 	argsJSON, _ := json.Marshal(map[string]string{"channel": ch.Name, "text": text})
-	if _, err := a.AuthorizeAction(ctx, &bot, runID, security.Channels, ch.ID, string(argsJSON), ""); err != nil {
+	if _, err := s.host.AuthorizeAction(ctx, &bot, runID, security.Channels, ch.ID, string(argsJSON), ""); err != nil {
 		return "", err
 	}
 
@@ -52,25 +53,25 @@ func (a *App) channelSendTool(ctx context.Context, botID, runID string, args map
 	if !ok {
 		return "", fmt.Errorf("adapter %q is not available", ch.Adapter)
 	}
-	cfg := a.channelConfig(&ch)
+	cfg := s.channelConfig(&ch)
 	if err := adapter.Send(ctx, &ch, cfg, channels.Outbound{ExternalID: ch.ExternalID, Text: text}); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("sent to %s", ch.Name), nil
 }
 
-// chatsReadTool implements the `chats` chat tool and the Python
+// ChatsTool implements the `chats` chat tool and the Python
 // `silo_runtime.read_chats` path: list this Bot's chats, or read one's history.
-func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[string]any) (string, error) {
+func (s *Service) ChatsTool(ctx context.Context, botID, runID string, args map[string]any) (string, error) {
 	var bot db.Bot
-	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
+	if err := s.db.First(&bot, "id = ?", botID).Error; err != nil {
 		return "", fmt.Errorf("unknown bot")
 	}
-	if _, err := a.AuthorizeAction(ctx, &bot, runID, security.Chats, "read", "", ""); err != nil {
+	if _, err := s.host.AuthorizeAction(ctx, &bot, runID, security.Chats, "read", "", ""); err != nil {
 		return "", err
 	}
 	chatQuery, _ := args["chat"].(string)
-	limit := num(args, "limit")
+	limit := toolarg.Int(args, "limit")
 	if limit <= 0 {
 		limit = 20
 	}
@@ -80,7 +81,7 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 
 	if strings.TrimSpace(chatQuery) == "" {
 		var convs []db.Chat
-		a.DB.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&convs)
+		s.db.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&convs)
 		if len(convs) == 0 {
 			return "no chats", nil
 		}
@@ -103,8 +104,8 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 	}
 
 	var c db.Chat
-	if a.DB.First(&c, "bot_id = ? AND id = ?", botID, strings.TrimSpace(chatQuery)).Error != nil {
-		if err := a.DB.Where("bot_id = ? AND title = ?", botID, strings.TrimSpace(chatQuery)).Limit(1).Find(&c).Error; err != nil || c.ID == "" {
+	if s.db.First(&c, "bot_id = ? AND id = ?", botID, strings.TrimSpace(chatQuery)).Error != nil {
+		if err := s.db.Where("bot_id = ? AND title = ?", botID, strings.TrimSpace(chatQuery)).Limit(1).Find(&c).Error; err != nil || c.ID == "" {
 			return "", fmt.Errorf("unknown chat %q", chatQuery)
 		}
 	}
@@ -112,24 +113,24 @@ func (a *App) chatsReadTool(ctx context.Context, botID, runID string, args map[s
 	// history first. Bot accounts cannot read it (BOT_METHOD_INVALID), in which
 	// case fall back to what this Bot has received.
 	if c.ChannelID != "" {
-		if out, err := a.channelHistoryTool(ctx, c, limit); err == nil {
+		if out, err := s.channelHistoryTool(ctx, c, limit); err == nil {
 			return out, nil
 		}
 	}
-	return a.localHistoryTool(c, limit), nil
+	return s.localHistoryTool(c, limit), nil
 }
 
 // localHistoryTool reads the messages this Bot has recorded for a chat.
-func (a *App) localHistoryTool(c db.Chat, limit int) string {
+func (s *Service) localHistoryTool(c db.Chat, limit int) string {
 	var runs []db.Run
-	a.DB.Where("chat_id = ?", c.ID).Order("created_at").Find(&runs)
+	s.db.Where("chat_id = ?", c.ID).Order("created_at").Find(&runs)
 	ids := make([]string, len(runs))
 	for i := range runs {
 		ids[i] = runs[i].ID
 	}
 	var evs []db.RunEvent
 	if len(ids) > 0 {
-		a.DB.Where("run_id IN ? AND kind IN ?", ids, []string{"user", "assistant", "section"}).Order("seq").Find(&evs)
+		s.db.Where("run_id IN ? AND kind IN ?", ids, []string{"user", "assistant", "section"}).Order("seq").Find(&evs)
 	}
 	if len(evs) > limit {
 		evs = evs[len(evs)-limit:]
@@ -148,16 +149,16 @@ func (a *App) localHistoryTool(c db.Chat, limit int) string {
 
 // channelHistoryTool reads a channel conversation's messages from the adapter
 // (the platform), not the local run log.
-func (a *App) channelHistoryTool(ctx context.Context, c db.Chat, limit int) (string, error) {
+func (s *Service) channelHistoryTool(ctx context.Context, c db.Chat, limit int) (string, error) {
 	var ch db.Channel
-	if a.DB.First(&ch, "id = ?", c.ChannelID).Error != nil {
+	if s.db.First(&ch, "id = ?", c.ChannelID).Error != nil {
 		return "", fmt.Errorf("channel for this chat no longer exists")
 	}
 	ad, ok := channels.Lookup(ch.Adapter)
 	if !ok {
 		return "", fmt.Errorf("adapter %q is not available", ch.Adapter)
 	}
-	msgs, err := ad.History(ctx, &ch, a.channelConfig(&ch), c.ExternalID, limit)
+	msgs, err := ad.History(ctx, &ch, s.channelConfig(&ch), c.ExternalID, limit)
 	if err != nil {
 		return "", err
 	}

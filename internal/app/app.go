@@ -21,6 +21,7 @@ import (
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/automation"
+	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
@@ -29,7 +30,6 @@ import (
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/auth"
-	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -155,13 +155,8 @@ type App struct {
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
 
-	// convMu serializes the inject-or-start decision per conversation. chatMu
-	// serializes find-or-create of a channel conversation.
-	convMu     sync.Mutex
-	chatMu     sync.Mutex
-	chanMu     sync.Mutex
-	chanCancel map[string]context.CancelFunc
-	chanStates map[string]channels.State
+	// convMu serializes the inject-or-start decision per conversation.
+	convMu sync.Mutex
 	// stopAutomations ends the scheduler loop on Shutdown.
 	stopAutomations chan struct{}
 	stopOnce        sync.Once
@@ -184,6 +179,7 @@ type App struct {
 	Memory      *memory.Service
 	Drives      *drive.Service
 	Automations *automation.Service
+	Channels    *channel.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -192,20 +188,18 @@ type App struct {
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a := &App{
-		Store:      store,
-		DB:         gdb,
-		Docker:     eng,
-		Hub:        hub.New(),
-		Bus:        newBus(),
-		approvals:  map[string]*waiter{},
-		cmdRun:     map[string]string{},
-		runs:       map[string]*liveRun{},
-		mask:       map[string]*masker.Masker{},
-		oauth:      map[string]*oauthWait{},
-		mcp:        map[string]*mcpx.Session{},
-		bridges:    map[string]*bridgeTunnel{},
-		chanCancel: map[string]context.CancelFunc{},
-		chanStates: map[string]channels.State{},
+		Store:     store,
+		DB:        gdb,
+		Docker:    eng,
+		Hub:       hub.New(),
+		Bus:       newBus(),
+		approvals: map[string]*waiter{},
+		cmdRun:    map[string]string{},
+		runs:      map[string]*liveRun{},
+		mask:      map[string]*masker.Masker{},
+		oauth:     map[string]*oauthWait{},
+		mcp:       map[string]*mcpx.Session{},
+		bridges:   map[string]*bridgeTunnel{},
 
 		stopAutomations: make(chan struct{}),
 	}
@@ -215,6 +209,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Automations = automation.New(a.DB, a, a)
+	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
@@ -223,7 +218,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Drives.Reconcile()
 	a.resumeConnectors()
 	a.migrateSettings()
-	a.reconcileChannels()
+	a.Channels.Reconcile()
 	if a.DB != nil {
 		a.Automations.Reschedule()
 		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
@@ -326,12 +321,7 @@ func (a *App) ensureTerminalEvent(run db.Run, status string) {
 
 func (a *App) Shutdown() {
 	a.stopOnce.Do(func() { close(a.stopAutomations) })
-	a.chanMu.Lock()
-	for id, cancel := range a.chanCancel {
-		cancel()
-		delete(a.chanCancel, id)
-	}
-	a.chanMu.Unlock()
+	a.Channels.StopAll()
 	a.Hub.CloseAll()
 	a.mu.Lock()
 	for _, lr := range a.runs {

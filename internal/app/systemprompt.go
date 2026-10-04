@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"silo.agent/internal/app/automation"
+	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
@@ -90,34 +91,10 @@ func (a *App) recallSections(pc promptContext) []promptSection {
 // from one, embeds that channel's user-configured prompt plus the section
 // delivery contract.
 func (a *App) channelSections(pc promptContext) []promptSection {
-	if len(pc.channels) == 0 && pc.channel == nil {
-		return nil
+	return []promptSection{
+		{title: "Channels", body: channel.ListPrompt(pc.channels, pc.channel)},
+		{title: "This conversation", body: channel.ConversationPrompt(pc.channel), trailing: true},
 	}
-	var out []promptSection
-	if len(pc.channels) > 0 {
-		var b strings.Builder
-		b.WriteString("This Bot is reachable through these channels. Use the `channel` tool to send a message to one (it defaults to the current conversation) and the `chats` tool to read chat history.\n")
-		for i := range pc.channels {
-			c := &pc.channels[i]
-			line := fmt.Sprintf("- %s (adapter: %s)", c.Name, c.Adapter)
-			if pc.channel != nil && pc.channel.ID == c.ID {
-				line += " — this conversation"
-			}
-			b.WriteString(line + "\n")
-		}
-		out = append(out, promptSection{title: "Channels", body: b.String()})
-	}
-	if pc.channel != nil {
-		var b strings.Builder
-		fmt.Fprintf(&b, "This conversation is the %s channel “%s”.\n\n", pc.channel.Adapter, pc.channel.Name)
-		if p := strings.TrimSpace(pc.channel.Prompt); p != "" {
-			b.WriteString(p)
-			b.WriteString("\n\n")
-		}
-		b.WriteString(strings.TrimSpace(prompts.Channel))
-		out = append(out, promptSection{title: "This conversation", body: b.String(), trailing: true})
-	}
-	return out
 }
 
 // driveSections lists the Bot's drives for the session tier.
@@ -245,7 +222,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promp
 		}
 		pc.connectors = append(pc.connectors, connectorView{link: links[i], conn: c})
 	}
-	pc.channels = a.enabledChannels(botID)
+	pc.channels = a.Channels.Enabled(botID)
 	pc.drives = a.Drives.BotDrives(botID)
 	pc.knowledge = a.Knowledge.Folders(botID)
 	if origin != nil {
