@@ -23,6 +23,7 @@ import (
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
+	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
@@ -37,18 +38,12 @@ import (
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/masker"
-	"silo.agent/internal/mcpx"
 	"silo.agent/internal/rpcx"
 )
 
 type ctxKey int
 
-const (
-	reqKey ctxKey = iota
-	rwKey
-	botKey
-	bridgeKey
-)
+const botKey ctxKey = iota
 
 type bus struct {
 	mu   sync.Mutex
@@ -151,11 +146,7 @@ type App struct {
 	cmdRun    map[string]string
 	runs      map[string]*liveRun
 	mask      map[string]*masker.Masker
-	oauth     map[string]*oauthWait
-	mcp       map[string]*mcpx.Session
 	lifecycle sync.Map
-	bridgesMu sync.Mutex
-	bridges   map[string]*bridgeTunnel // botConnectorID -> live reverse tunnel
 
 	// convMu serializes the inject-or-start decision per conversation.
 	convMu sync.Mutex
@@ -179,6 +170,7 @@ type App struct {
 	Voice       *voice.Service
 	Knowledge   *knowledge.Service
 	Memory      *memory.Service
+	Connectors  *connector.Service
 	Drives      *drive.Service
 	Automations *automation.Service
 	Channels    *channel.Service
@@ -201,9 +193,6 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		cmdRun:    map[string]string{},
 		runs:      map[string]*liveRun{},
 		mask:      map[string]*masker.Masker{},
-		oauth:     map[string]*oauthWait{},
-		mcp:       map[string]*mcpx.Session{},
-		bridges:   map[string]*bridgeTunnel{},
 
 		stopAutomations: make(chan struct{}),
 	}
@@ -216,13 +205,14 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
 	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)
-	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a, func() *http.Client { return a.DriveHTTP })
+	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
+	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.recoverOrphans()
-	a.initConnectors()
-	a.reconcileStdio()
+	a.Connectors.Init()
+	a.Connectors.ReconcileStdio()
 	a.Drives.Reconcile()
-	a.resumeConnectors()
+	a.Connectors.Resume()
 	a.migrateSettings()
 	a.Channels.Reconcile()
 	if a.DB != nil {
@@ -341,11 +331,8 @@ func (a *App) Shutdown() {
 		}
 		delete(a.approvals, id)
 	}
-	for id, s := range a.mcp {
-		go s.Close()
-		delete(a.mcp, id)
-	}
 	a.mu.Unlock()
+	a.Connectors.CloseAll()
 	// Deliberately leave STDIO sidecars running: their bridges reconnect when
 	// the CP comes back, so a CP restart does not re-pull npm packages. Genuine
 	// orphans are reclaimed by reconcileStdio on the next start.
@@ -395,30 +382,12 @@ func (a *App) Mask(botID string) *masker.Masker {
 	return m
 }
 
-func withHTTP(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), reqKey, r)
-		ctx = context.WithValue(ctx, rwKey, w)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func httpReq(ctx context.Context) *http.Request {
-	r, _ := ctx.Value(reqKey).(*http.Request)
-	return r
-}
-
-func httpRW(ctx context.Context) http.ResponseWriter {
-	w, _ := ctx.Value(rwKey).(http.ResponseWriter)
-	return w
-}
-
 func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		if strings.HasSuffix(req.Spec().Procedure, "SignIn") {
 			return next(ctx, req)
 		}
-		r := httpReq(ctx)
+		r := access.Request(ctx)
 		if r == nil {
 			return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 		}
@@ -432,7 +401,7 @@ func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 
 func (a *App) interceptUIStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		r := httpReq(ctx)
+		r := access.Request(ctx)
 		if r == nil {
 			return connect.NewError(connect.CodeUnauthenticated, nil)
 		}
@@ -489,7 +458,7 @@ func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	uiPath, uiH := silov1connect.NewUIHandler(a.uiHandler(), connect.WithInterceptors(rpcx.Handler{Unary: a.interceptUI, Stream: a.interceptUIStream}))
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
-	brPath, brH := silov1connect.NewMCPHostHandler(a, connect.WithInterceptors(rpcx.Handler{Stream: a.interceptBridgeStream}))
+	brPath, brH := silov1connect.NewMCPHostHandler(a.Connectors, connect.WithInterceptors(rpcx.Handler{Stream: a.Connectors.InterceptBridge}))
 	drPath, drH := silov1connect.NewDriveHostHandler(a.Drives, connect.WithInterceptors(rpcx.Handler{Stream: a.Drives.Intercept}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
@@ -498,11 +467,11 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
 	mux.HandleFunc("/console", a.handleConsole)
-	mux.HandleFunc("/oauth/callback", a.handleOAuthCallback)
-	mux.HandleFunc("/connectors/", a.handleConnectorImage)
+	mux.HandleFunc("/oauth/callback", a.Connectors.ServeOAuthCallback)
+	mux.HandleFunc("/connectors/", a.Connectors.ServeImage)
 	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
 	log.Printf("mounted %s %s", uiPath, wkPath)
-	return withHTTP(mux)
+	return access.WithHTTP(mux)
 }
 
 func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) {

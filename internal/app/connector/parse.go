@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"encoding/json"
@@ -54,7 +54,7 @@ func parseConnector(in connectorIn) (db.Connector, error) {
 		Transport: tr, DefaultMode: security.Rule(in.Mode), Prompt: strings.TrimSpace(in.Prompt),
 		CreatedAt: time.Now(),
 	}
-	if tr == transportSTDIO {
+	if tr == TransportSTDIO {
 		row.Auth = authNone
 		if in.RequireComplete || strings.TrimSpace(in.StdioCommand) != "" {
 			if err := mcpbridge.ValidCommand(in.StdioCommand); err != nil {
@@ -89,7 +89,7 @@ func parseConnector(in connectorIn) (db.Connector, error) {
 	if au == "" {
 		au = authNone
 	}
-	if au != authNone && au != authOAuth {
+	if au != authNone && au != AuthOAuth {
 		return db.Connector{}, errors.New("auth must be none or oauth")
 	}
 	if in.RequireComplete && strings.TrimSpace(in.HTTPURL) == "" {
@@ -121,7 +121,7 @@ type connectorIn struct {
 
 func checkTransport(tr string) error {
 	switch tr {
-	case transportHTTP, transportSTDIO:
+	case transportHTTP, TransportSTDIO:
 		return nil
 	default:
 		return errors.New("transport must be http or stdio")

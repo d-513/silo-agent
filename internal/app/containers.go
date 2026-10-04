@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/connector"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/mcpbridge"
@@ -48,7 +49,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 	a.DB.Where("bot_id = ?", b.ID).Order("created_at").Find(&links)
 	for _, l := range links {
 		var c db.Connector
-		if a.DB.Where("id = ?", l.ConnectorID).Limit(1).Find(&c); c.ID == "" || c.Transport != transportSTDIO {
+		if a.DB.Where("id = ?", l.ConnectorID).Limit(1).Find(&c); c.ID == "" || c.Transport != connector.TransportSTDIO {
 			continue
 		}
 		cmd := strings.TrimSpace(c.StdioCommand + " " + strings.Join(mcpbridge.ParseArgs(c.StdioArgsJSON), " "))
@@ -110,7 +111,7 @@ func (a *App) RemoveBotContainers(ctx context.Context, req *connect.Request[v1.G
 	}
 	a.destroyBot(ctx, b)
 	a.Drives.RemoveSidecar(ctx, b.ID)
-	a.dropBotStdio(b.ID)
+	a.Connectors.DropBotStdio(b.ID)
 	b.Status = "stopped"
 	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil

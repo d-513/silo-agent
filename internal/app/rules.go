@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/connector"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/mcpx"
@@ -82,7 +83,7 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 			Title:   c.Name,
 			Summary: fmt.Sprintf("When there is no override, this connector uses %s.", modeWord(c.DefaultMode)),
 		}
-		if c.Transport == transportBuiltin {
+		if c.Transport == connector.TransportBuiltin {
 			sec.Summary = "Each action has its own default: reading is allowed, anything that sends or changes mail asks."
 		}
 		var tools []mcpx.Tool
@@ -94,7 +95,7 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 			if t.Name == "" {
 				continue
 			}
-			r := a.effectiveRule(botID, slug, t.Name, t.Name, stored, builtinMode(&c, t.Name))
+			r := a.effectiveRule(botID, slug, t.Name, t.Name, stored, connector.BuiltinMode(&c, t.Name))
 			sec.Rules = append(sec.Rules, r)
 			out.Rules = append(out.Rules, r)
 		}
@@ -123,7 +124,7 @@ func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleReques
 	}), nil
 }
 
-func (a *App) pruneConnectorRules(botID, slug string, keepActions []string) {
+func (a *App) PruneRules(botID, slug string, keepActions []string) {
 	if keepActions == nil {
 		a.DB.Where("bot_id = ? AND connector = ?", botID, slug).Delete(&db.Rule{})
 		return

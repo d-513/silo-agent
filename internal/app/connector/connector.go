@@ -1,4 +1,9 @@
-package app
+// Package connector is how a Bot reaches outside tools: the library of
+// connector presets, each Bot's attached copies, their MCP sessions over HTTP or
+// a STDIO sidecar, OAuth sign-ins, and connectors written in Go. It owns the
+// tools the Bot finds under `import tools`; calling them (and gating each call)
+// stays with the app's tool gateway.
+package connector
 
 import (
 	"context"
@@ -7,17 +12,25 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/workspace"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/dockerx"
+	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/masker"
 	"silo.agent/internal/mcpbridge"
+	"silo.agent/internal/mcpx"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
@@ -25,26 +38,64 @@ import (
 const (
 	connTypeMCP    = "mcp"
 	transportHTTP  = "http"
-	transportSTDIO = "stdio"
-	// transportBuiltin connectors run Go code on the CP (internal/builtin).
-	transportBuiltin = "builtin"
+	TransportSTDIO = "stdio"
+	// TransportBuiltin connectors run Go code on the CP (internal/builtin).
+	TransportBuiltin = "builtin"
 	authNone         = "none"
-	authOAuth        = "oauth"
+	AuthOAuth        = "oauth"
 	statusNone       = "none"
-	statusInit       = "initializing"
-	statusNeedsAuth  = "needs_auth"
-	statusOK         = "authorized"
-	statusErr        = "error"
+	StatusInit       = "initializing"
+	StatusNeedsAuth  = "needs_auth"
+	StatusOK         = "authorized"
+	StatusErr        = "error"
 	imageMax         = 512 << 10
 
 	// connectorInitWait bounds an async connect+tool-discovery job.
 	connectorInitWait = 10 * time.Minute
 )
 
-func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
+// Host is what the connectors need from the App around them.
+type Host interface {
+	// PruneRules drops the rules of a connector's actions that no longer
+	// exist, keeping those named (see rules).
+	PruneRules(botID, slug string, keepActions []string)
+}
+
+// Service owns the connector library, each Bot's attached copies, their MCP
+// sessions (HTTP and STDIO), OAuth sign-ins, built-in connectors and the STDIO
+// sidecars with their reverse tunnels.
+type Service struct {
+	db     *gorm.DB
+	docker dockerx.Host
+	hub    *hub.Hub
+	store  *config.Store
+	cfg    func() config.Config
+	ws     *workspace.Service
+	mask   func(botID string) *masker.Masker
+	host   Host
+
+	// mu guards oauth (pending sign-ins by state) and mcp (live sessions).
+	mu    sync.Mutex
+	oauth map[string]*oauthWait
+	mcp   map[string]*mcpx.Session
+	// locks serializes session dials and sidecar starts per connector.
+	locks sync.Map
+	// bridges are the live reverse tunnels from STDIO sidecars.
+	bridgesMu sync.Mutex
+	bridges   map[string]*bridgeTunnel
+}
+
+func New(gdb *gorm.DB, d dockerx.Host, h *hub.Hub, store *config.Store, cfg func() config.Config, ws *workspace.Service, mask func(botID string) *masker.Masker, host Host) *Service {
+	return &Service{
+		db: gdb, docker: d, hub: h, store: store, cfg: cfg, ws: ws, mask: mask, host: host,
+		oauth: map[string]*oauthWait{}, mcp: map[string]*mcpx.Session{}, bridges: map[string]*bridgeTunnel{},
+	}
+}
+
+func (s *Service) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
 	admin := access.User(ctx) != nil && access.User(ctx).Admin
 	var rows []db.Connector
-	a.DB.Where("kind = ?", catalog.KindLibrary).Order("name").Find(&rows)
+	s.db.Where("kind = ?", catalog.KindLibrary).Order("name").Find(&rows)
 	out := &v1.ListConnectorsResponse{}
 	for i := range rows {
 		out.Connectors = append(out.Connectors, protoConnector(&rows[i], admin))
@@ -52,7 +103,7 @@ func (a *App) ListConnectors(ctx context.Context, _ *connect.Request[v1.ListConn
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+func (s *Service) CreateConnector(ctx context.Context, req *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
@@ -69,29 +120,29 @@ func (a *App) CreateConnector(ctx context.Context, req *connect.Request[v1.Creat
 	}
 	row.AutoAttach = m.GetAutoAttach()
 	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
-	if row.Transport == transportSTDIO {
+	if row.Transport == TransportSTDIO {
 		row.Auth = authNone
 		row.OAuthClientID = ""
 		row.OAuthClientSecret = ""
 	}
 	row.Kind = catalog.KindLibrary
-	if err := a.DB.Create(&row).Error; err != nil {
+	if err := s.db.Create(&row).Error; err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(protoConnector(&row, true)), nil
 }
 
-func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
+func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
 	var row db.Connector
-	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
+	if err := s.db.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	if err := a.editConnector(ctx, &row); err != nil {
+	if err := s.editConnector(ctx, &row); err != nil {
 		return nil, err
 	}
 	m := req.Msg
 	if n := strings.TrimSpace(m.GetName()); n != "" {
-		if row.Kind == catalog.KindCustom && a.slugTaken(row.BotID, n, row.ID) {
+		if row.Kind == catalog.KindCustom && s.slugTaken(row.BotID, n, row.ID) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
 		}
 		if row.Kind == catalog.KindCustom && security.Reserved(toolsgen.Slug(n)) {
@@ -107,7 +158,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	if row.Kind == catalog.KindLibrary {
 		row.AutoAttach = m.GetAutoAttach()
 	}
-	if row.Transport == transportBuiltin {
+	if row.Transport == TransportBuiltin {
 		// A library preset holds no account: config lives on each Bot copy.
 		if row.Kind == catalog.KindCustom {
 			if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
@@ -120,8 +171,8 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		if err := setConnectorImage(&row, m); err != nil {
 			return nil, err
 		}
-		a.DB.Save(&row)
-		a.restartConnector(&row)
+		s.db.Save(&row)
+		s.restartConnector(&row)
 		return connect.NewResponse(protoConnector(&row, true)), nil
 	}
 	if m.GetTransport() != "" {
@@ -131,7 +182,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		}
 		row.Transport = tr
 	}
-	if row.Transport == transportSTDIO {
+	if row.Transport == TransportSTDIO {
 		row.Auth = authNone
 		row.HTTPURL = ""
 		row.HeadersJSON = "{}"
@@ -171,7 +222,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 		}
 		if m.GetAuth() != "" {
 			au := strings.ToLower(m.GetAuth())
-			if au != authNone && au != authOAuth {
+			if au != authNone && au != AuthOAuth {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("auth must be none or oauth"))
 			}
 			row.Auth = au
@@ -187,7 +238,7 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	if m.GetDefaultMode() != "" {
 		row.DefaultMode = security.Rule(m.GetDefaultMode())
 	}
-	if row.Transport != transportSTDIO {
+	if row.Transport != TransportSTDIO {
 		applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), false)
 	} else {
 		row.OAuthClientSecret = ""
@@ -195,36 +246,36 @@ func (a *App) UpdateConnector(ctx context.Context, req *connect.Request[v1.Updat
 	if err := setConnectorImage(&row, m); err != nil {
 		return nil, err
 	}
-	a.DB.Save(&row)
-	a.restartConnector(&row)
+	s.db.Save(&row)
+	s.restartConnector(&row)
 	return connect.NewResponse(protoConnector(&row, true)), nil
 }
 
-func (a *App) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
+func (s *Service) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	var row db.Connector
-	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
+	if err := s.db.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	if row.Kind == catalog.KindCustom {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("remove a custom connector from the Bot"))
 	}
-	a.DB.Delete(&row)
+	s.db.Delete(&row)
 	return connect.NewResponse(&v1.DeleteConnectorResponse{}), nil
 }
 
-func (a *App) ListBotConnectors(ctx context.Context, req *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) ListBotConnectors(ctx context.Context, req *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	var rows []db.BotConnector
-	a.DB.Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
+	s.db.Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
 	out := &v1.ListBotConnectorsResponse{}
 	for i := range rows {
 		var c db.Connector
-		if a.DB.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
+		if s.db.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
 			continue
 		}
 		out.Connectors = append(out.Connectors, protoBotConnector(&rows[i], &c, true))
@@ -232,31 +283,31 @@ func (a *App) ListBotConnectors(ctx context.Context, req *connect.Request[v1.Lis
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+func (s *Service) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := a.ownBot(ctx, botID); err != nil {
+	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
 		return nil, err
 	}
 	var lib db.Connector
-	if err := a.DB.First(&lib, "id = ? AND kind = ?", req.Msg.GetConnectorId(), catalog.KindLibrary).Error; err != nil {
+	if err := s.db.First(&lib, "id = ? AND kind = ?", req.Msg.GetConnectorId(), catalog.KindLibrary).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	out, err := a.putBotConnector(ctx, botID, cloneLibrary(&lib, botID))
+	out, err := s.putBotConnector(ctx, botID, cloneLibrary(&lib, botID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	m := req.Msg
-	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
+	if _, err := access.OwnBot(ctx, s.db, m.GetBotId()); err != nil {
 		return nil, err
 	}
 	admin := access.User(ctx) != nil && access.User(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
-	if lib := a.libraryBuiltin(from); lib != nil {
-		out, err := a.attachBuiltin(ctx, m.GetBotId(), lib, m)
+	if lib := s.libraryBuiltin(from); lib != nil {
+		out, err := s.attachBuiltin(ctx, m.GetBotId(), lib, m)
 		if err != nil {
 			return nil, err
 		}
@@ -272,25 +323,25 @@ func (a *App) CreateBotConnector(ctx context.Context, req *connect.Request[v1.Cr
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if row.Transport != transportSTDIO {
+	if row.Transport != TransportSTDIO {
 		applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
 	}
-	if err := a.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv()); err != nil {
+	if err := s.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv()); err != nil {
 		return nil, err
 	}
-	out, err := a.putBotConnector(ctx, m.GetBotId(), row)
+	out, err := s.putBotConnector(ctx, m.GetBotId(), row)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(out), nil
 }
 
-func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput) error {
+func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput) error {
 	if src == "" {
 		return nil
 	}
 	var lib db.Connector
-	if err := a.DB.First(&lib, "id = ? AND kind = ?", src, catalog.KindLibrary).Error; err != nil {
+	if err := s.db.First(&lib, "id = ? AND kind = ?", src, catalog.KindLibrary).Error; err != nil {
 		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
 	row.SourceID = lib.ID
@@ -338,47 +389,47 @@ func (a *App) overlayLibrary(src string, row *db.Connector, headers []*v1.Header
 		}
 		row.EnvJSON = merged
 	}
-	if row.Transport == transportSTDIO && row.StdioCommand == "" {
+	if row.Transport == TransportSTDIO && row.StdioCommand == "" {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("stdio_command required"))
 	}
 	return nil
 }
 
-func (a *App) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
-	if err := a.DB.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
+	if err := s.db.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	a.dropMCP(row.ID)
-	a.dropStdio(&row)
+	s.DropMCP(row.ID)
+	s.DropStdio(&row)
 	var c db.Connector
-	if a.DB.First(&c, "id = ?", row.ConnectorID).Error == nil {
-		a.pruneConnectorRules(row.BotID, toolsgen.Slug(c.Name), nil)
+	if s.db.First(&c, "id = ?", row.ConnectorID).Error == nil {
+		s.host.PruneRules(row.BotID, toolsgen.Slug(c.Name), nil)
 		if c.Kind == catalog.KindCustom {
-			a.DB.Delete(&c)
+			s.db.Delete(&c)
 		}
 	}
-	a.DB.Delete(&row)
-	go a.pushTools(row.BotID)
+	s.db.Delete(&row)
+	go s.PushTools(row.BotID)
 	return connect.NewResponse(&v1.DetachConnectorResponse{}), nil
 }
 
-func (a *App) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
-	if err := a.DB.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
+	if err := s.db.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	var c db.Connector
-	if a.DB.First(&c, "id = ?", row.ConnectorID).Error != nil {
+	if s.db.First(&c, "id = ?", row.ConnectorID).Error != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	if c.Auth == authOAuth && row.AuthStatus == statusNeedsAuth {
+	if c.Auth == AuthOAuth && row.AuthStatus == StatusNeedsAuth {
 		return connect.NewResponse(&v1.BotConnector{
 			Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
 			StatusDetail: row.StatusDetail,
@@ -387,9 +438,9 @@ func (a *App) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.R
 	}
 	// Dropping the MCP session also closes the sidecar tunnel; its bridge
 	// reconnects and spawns a fresh child, reusing the container's npm cache.
-	a.dropMCP(row.ID)
-	a.applyInit(&row, c.Transport)
-	a.startRefresh(row.ID)
+	s.DropMCP(row.ID)
+	s.applyInit(&row, c.Transport)
+	s.startRefresh(row.ID)
 	return connect.NewResponse(&v1.BotConnector{
 		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
 		StatusDetail: row.StatusDetail,
@@ -397,8 +448,8 @@ func (a *App) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.R
 	}), nil
 }
 
-func (a *App) handleConnectorImage(w http.ResponseWriter, r *http.Request) {
-	if _, err := siloauth.UserFromRequest(a.DB, r); err != nil {
+func (s *Service) ServeImage(w http.ResponseWriter, r *http.Request) {
+	if _, err := siloauth.UserFromRequest(s.db, r); err != nil {
 		access.HTTPSessionError(w, err)
 		return
 	}
@@ -408,7 +459,7 @@ func (a *App) handleConnectorImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c db.Connector
-	if a.DB.First(&c, "id = ?", id).Error != nil || len(c.Image) == 0 {
+	if s.db.First(&c, "id = ?", id).Error != nil || len(c.Image) == 0 {
 		http.NotFound(w, r)
 		return
 	}
@@ -421,12 +472,12 @@ func (a *App) handleConnectorImage(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(c.Image)
 }
 
-func (a *App) findBotConnector(botID, slug string) (*db.BotConnector, *db.Connector, error) {
+func (s *Service) FindBotConnector(botID, slug string) (*db.BotConnector, *db.Connector, error) {
 	var rows []db.BotConnector
-	a.DB.Where("bot_id = ?", botID).Find(&rows)
+	s.db.Where("bot_id = ?", botID).Find(&rows)
 	for i := range rows {
 		var c db.Connector
-		if a.DB.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
+		if s.db.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
 			continue
 		}
 		if toolsgen.Slug(c.Name) == slug {
@@ -439,21 +490,21 @@ func (a *App) findBotConnector(botID, slug string) (*db.BotConnector, *db.Connec
 // attachDefaultConnectors copies every library preset flagged auto_attach onto
 // a newly created Bot. It runs exactly once, from CreateBot, so a preset the
 // human later removes from the Bot is never silently re-added.
-func (a *App) attachDefaultConnectors(ctx context.Context, botID string) {
-	if a.DB == nil {
+func (s *Service) AttachDefaults(ctx context.Context, botID string) {
+	if s.db == nil {
 		return
 	}
 	var libs []db.Connector
-	a.DB.Where("kind = ? AND auto_attach = ?", catalog.KindLibrary, true).Order("name").Find(&libs)
+	s.db.Where("kind = ? AND auto_attach = ?", catalog.KindLibrary, true).Order("name").Find(&libs)
 	for i := range libs {
-		if _, err := a.putBotConnector(ctx, botID, cloneLibrary(&libs[i], botID)); err != nil {
+		if _, err := s.putBotConnector(ctx, botID, cloneLibrary(&libs[i], botID)); err != nil {
 			log.Printf("default connector %s bot=%s: %v", libs[i].Name, botID, err)
 		}
 	}
 }
 
-func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {
-	c.Name = a.uniqueName(botID, c.Name, c.ID)
+func (s *Service) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {
+	c.Name = s.uniqueName(botID, c.Name, c.ID)
 	if security.Reserved(toolsgen.Slug(c.Name)) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that name is reserved"))
 	}
@@ -465,50 +516,50 @@ func (a *App) putBotConnector(ctx context.Context, botID string, c db.Connector)
 	if c.CreatedAt.IsZero() {
 		c.CreatedAt = time.Now()
 	}
-	if err := a.DB.Create(&c).Error; err != nil {
+	if err := s.db.Create(&c).Error; err != nil {
 		return nil, err
 	}
-	st := statusInit
+	st := StatusInit
 	detail := initDetail(c.Transport)
-	if c.Auth == authOAuth {
-		st = statusNeedsAuth
+	if c.Auth == AuthOAuth {
+		st = StatusNeedsAuth
 		detail = ""
 	}
 	row := db.BotConnector{
 		ID: ids.New(), BotID: botID, ConnectorID: c.ID,
 		AuthStatus: st, StatusDetail: detail, CreatedAt: time.Now(),
 	}
-	if err := a.DB.Create(&row).Error; err != nil {
-		a.DB.Delete(&c)
+	if err := s.db.Create(&row).Error; err != nil {
+		s.db.Delete(&c)
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
 	}
-	if c.Auth != authOAuth {
-		a.startRefresh(row.ID)
+	if c.Auth != AuthOAuth {
+		s.startRefresh(row.ID)
 	}
 	return protoBotConnector(&row, &c, true), nil
 }
 
-func (a *App) uniqueName(botID, name, exceptID string) string {
+func (s *Service) uniqueName(botID, name, exceptID string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		name = "Connector"
 	}
-	if !a.slugTaken(botID, name, exceptID) {
+	if !s.slugTaken(botID, name, exceptID) {
 		return name
 	}
 	for n := 2; n < 10000; n++ {
 		cand := fmt.Sprintf("%s %d", name, n)
-		if !a.slugTaken(botID, cand, exceptID) {
+		if !s.slugTaken(botID, cand, exceptID) {
 			return cand
 		}
 	}
 	return name + " " + ids.New()[:6]
 }
 
-func (a *App) slugTaken(botID, name, exceptID string) bool {
+func (s *Service) slugTaken(botID, name, exceptID string) bool {
 	slug := toolsgen.Slug(name)
 	var rows []db.Connector
-	a.DB.Where("bot_id = ?", botID).Find(&rows)
+	s.db.Where("bot_id = ?", botID).Find(&rows)
 	for i := range rows {
 		if rows[i].ID != exceptID && toolsgen.Slug(rows[i].Name) == slug {
 			return true
@@ -517,19 +568,19 @@ func (a *App) slugTaken(botID, name, exceptID string) bool {
 	return false
 }
 
-func (a *App) editConnector(ctx context.Context, row *db.Connector) error {
+func (s *Service) editConnector(ctx context.Context, row *db.Connector) error {
 	if row.Kind == catalog.KindCustom && row.BotID != "" {
-		_, err := a.ownBot(ctx, row.BotID)
+		_, err := access.OwnBot(ctx, s.db, row.BotID)
 		return err
 	}
 	return access.RequireAdmin(ctx)
 }
 
-func (a *App) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
+func (s *Service) SeedConnectors(ctx context.Context, _ *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	if err := catalog.Seed(a.DB); err != nil {
+	if err := catalog.Seed(s.db); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&v1.SeedConnectorsResponse{}), nil

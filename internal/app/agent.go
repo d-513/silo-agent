@@ -508,27 +508,6 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	a.Emit(botID, chatID, runID, "chat_title", title, "")
 }
 
-// waitWorker blocks until the Bot's worker connects, so a message that arrives
-// while the machine is starting still gets its tools. Bounded; callers fail the
-// tool call if it never comes up.
-func (a *App) waitWorker(ctx context.Context, botID string, d time.Duration) bool {
-	if a.Hub.Connected(botID) {
-		return true
-	}
-	deadline := time.Now().Add(d)
-	for time.Now().Before(deadline) {
-		select {
-		case <-ctx.Done():
-			return a.Hub.Connected(botID)
-		case <-time.After(250 * time.Millisecond):
-		}
-		if a.Hub.Connected(botID) {
-			return true
-		}
-	}
-	return a.Hub.Connected(botID)
-}
-
 func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 	if ctx.Err() == nil {
 		return false

@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"context"
@@ -54,34 +54,34 @@ func (b *bridgeTunnel) err() error {
 	return errors.New("bridge disconnected")
 }
 
-func (a *App) registerBridge(id string, b *bridgeTunnel) {
-	a.bridgesMu.Lock()
-	a.bridges[id] = b
-	a.bridgesMu.Unlock()
+func (s *Service) registerBridge(id string, b *bridgeTunnel) {
+	s.bridgesMu.Lock()
+	s.bridges[id] = b
+	s.bridgesMu.Unlock()
 }
 
-func (a *App) unregisterBridge(id string, b *bridgeTunnel) {
-	a.bridgesMu.Lock()
-	if a.bridges[id] == b {
-		delete(a.bridges, id)
+func (s *Service) unregisterBridge(id string, b *bridgeTunnel) {
+	s.bridgesMu.Lock()
+	if s.bridges[id] == b {
+		delete(s.bridges, id)
 	}
-	a.bridgesMu.Unlock()
+	s.bridgesMu.Unlock()
 }
 
-func (a *App) lookupBridge(id string) *bridgeTunnel {
-	a.bridgesMu.Lock()
-	defer a.bridgesMu.Unlock()
-	return a.bridges[id]
+func (s *Service) lookupBridge(id string) *bridgeTunnel {
+	s.bridgesMu.Lock()
+	defer s.bridgesMu.Unlock()
+	return s.bridges[id]
 }
 
 // waitBridge blocks until a sidecar for id has dialed in, up to timeout.
-func (a *App) waitBridge(ctx context.Context, id string, timeout time.Duration) (*bridgeTunnel, error) {
+func (s *Service) waitBridge(ctx context.Context, id string, timeout time.Duration) (*bridgeTunnel, error) {
 	deadline := time.Now().Add(timeout)
 	for {
-		if b := a.lookupBridge(id); b != nil {
+		if b := s.lookupBridge(id); b != nil {
 			select {
 			case <-b.done:
-				a.unregisterBridge(id, b)
+				s.unregisterBridge(id, b)
 			default:
 				return b, nil
 			}
@@ -100,8 +100,8 @@ func (a *App) waitBridge(ctx context.Context, id string, timeout time.Duration) 
 	}
 }
 
-func (a *App) setBridgeStatus(id, status string) {
-	if a.DB == nil {
+func (s *Service) setBridgeStatus(id, status string) {
+	if s.db == nil {
 		return
 	}
 	// Bridge status is progress for a connection that is still coming up. Only
@@ -110,7 +110,7 @@ func (a *App) setBridgeStatus(id, status string) {
 	// onto an already-authorized connector left a stale
 	// "Authorized · Starting MCP server…" in the UI forever.
 	var row db.BotConnector
-	if err := a.DB.First(&row, "id = ?", id).Error; err != nil || row.AuthStatus != statusInit {
+	if err := s.db.First(&row, "id = ?", id).Error; err != nil || row.AuthStatus != StatusInit {
 		return
 	}
 	detail := map[string]string{
@@ -119,20 +119,24 @@ func (a *App) setBridgeStatus(id, status string) {
 	if detail == "" {
 		detail = status
 	}
-	a.DB.Model(&db.BotConnector{}).Where("id = ?", id).Update("status_detail", detail)
+	s.db.Model(&db.BotConnector{}).Where("id = ?", id).Update("status_detail", detail)
 }
 
 // Tunnel is the reverse MCP host endpoint. Sidecars authenticate with their
 // bridge token; the resolved BotConnector is carried on the context.
-func (a *App) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.BridgeFrame, v1.BridgeFrame]) error {
+type bridgeCtxKey struct{}
+
+var bridgeKey bridgeCtxKey
+
+func (s *Service) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.BridgeFrame, v1.BridgeFrame]) error {
 	row, _ := ctx.Value(bridgeKey).(*db.BotConnector)
 	if row == nil {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 	b := newBridgeTunnel(row.ID)
-	a.registerBridge(row.ID, b)
+	s.registerBridge(row.ID, b)
 	defer func() {
-		a.unregisterBridge(row.ID, b)
+		s.unregisterBridge(row.ID, b)
 		b.close(nil)
 	}()
 
@@ -144,7 +148,7 @@ func (a *App) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.BridgeFr
 				return
 			}
 			if status := frame.GetStatus(); status != "" {
-				a.setBridgeStatus(row.ID, status)
+				s.setBridgeStatus(row.ID, status)
 				continue
 			}
 			data := frame.GetData()
@@ -180,12 +184,12 @@ func (a *App) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.BridgeFr
 // bridgeTransport adapts a live reverse tunnel to the MCP SDK's client
 // transport interface.
 type bridgeTransport struct {
-	a   *App
+	s   *Service
 	row *db.BotConnector
 }
 
 func (t *bridgeTransport) Connect(ctx context.Context) (mcp.Connection, error) {
-	b, err := t.a.waitBridge(ctx, t.row.ID, stdioInitWait)
+	b, err := t.s.waitBridge(ctx, t.row.ID, stdioInitWait)
 	if err != nil {
 		return nil, err
 	}
@@ -242,17 +246,17 @@ func (l *bridgeLink) Close() error {
 
 func (l *bridgeLink) SessionID() string { return "" }
 
-func (a *App) interceptBridgeStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+func (s *Service) InterceptBridge(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		row, tok, err := a.bridgeFromToken(conn.RequestHeader().Get("Authorization"))
+		row, tok, err := s.bridgeFromToken(conn.RequestHeader().Get("Authorization"))
 		if err != nil {
 			return err
 		}
-		a.Mask(row.BotID).Add(tok)
+		s.mask(row.BotID).Add(tok)
 		return next(context.WithValue(ctx, bridgeKey, row), conn)
 	}
 }
 
-func (a *App) bridgeFromToken(h string) (*db.BotConnector, string, error) {
-	return access.RowByToken[db.BotConnector](a.DB, "bridge_token_hash", h)
+func (s *Service) bridgeFromToken(h string) (*db.BotConnector, string, error) {
+	return access.RowByToken[db.BotConnector](s.db, "bridge_token_hash", h)
 }

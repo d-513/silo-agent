@@ -167,7 +167,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
 	log.Printf("exec %s bot=%s run=%s", name, botID, runID)
-	if !a.waitWorker(ctx, botID, 90*time.Second) {
+	if !a.Hub.WaitConnected(ctx, botID, 90*time.Second) {
 		return "", "", fmt.Errorf("the Bot machine is not running yet")
 	}
 	a.mu.Lock()

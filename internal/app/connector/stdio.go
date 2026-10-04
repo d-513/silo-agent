@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"context"
@@ -21,8 +21,8 @@ import (
 // MCP session to come up. npm pulls on a cold container can be slow.
 const stdioInitWait = 10 * time.Minute
 
-func (a *App) lockStdio(id string) func() {
-	v, _ := a.lifecycle.LoadOrStore("mcp:"+id, &sync.Mutex{})
+func (s *Service) lockStdio(id string) func() {
+	v, _ := s.locks.LoadOrStore("mcp:"+id, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
 	mu.Lock()
 	return mu.Unlock
@@ -30,84 +30,84 @@ func (a *App) lockStdio(id string) func() {
 
 // ensureStdio makes sure the sidecar container for row is running and its
 // bridge has connected to the CP. It is safe to call repeatedly.
-func (a *App) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
-	unlock := a.lockStdio(row.ID)
+func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+	unlock := s.lockStdio(row.ID)
 	defer unlock()
-	if a.Docker == nil {
+	if s.docker == nil {
 		return errors.New("docker unavailable")
 	}
-	if strings.TrimSpace(a.cfg().DataDir) == "" {
+	if strings.TrimSpace(s.cfg().DataDir) == "" {
 		return errors.New("data_dir required for stdio")
 	}
-	if b := a.lookupBridge(row.ID); b != nil {
+	if b := s.lookupBridge(row.ID); b != nil {
 		select {
 		case <-b.done:
-			a.unregisterBridge(row.ID, b)
+			s.unregisterBridge(row.ID, b)
 		default:
 			return nil
 		}
 	}
 	if row.ContainerID != "" {
-		st, err := a.Docker.Inspect(ctx, row.ContainerID)
+		st, err := s.docker.Inspect(ctx, row.ContainerID)
 		switch {
 		case err == nil && !st.Running:
-			if err := a.Docker.Start(ctx, st.ID); err != nil {
-				a.dropStdio(row)
+			if err := s.docker.Start(ctx, st.ID); err != nil {
+				s.DropStdio(row)
 			} else {
-				return a.awaitBridge(ctx, row)
+				return s.awaitBridge(ctx, row)
 			}
 		case err == nil:
-			return a.awaitBridge(ctx, row)
+			return s.awaitBridge(ctx, row)
 		case dockerx.IsNotFound(err):
-			a.dropStdio(row)
+			s.DropStdio(row)
 		default:
 			return err
 		}
 	} else {
-		a.Docker.DropStdio(ctx, row.ID, "")
+		s.docker.DropStdio(ctx, row.ID, "")
 	}
-	if err := a.startStdio(ctx, row, c); err != nil {
+	if err := s.startStdio(ctx, row, c); err != nil {
 		return err
 	}
-	return a.awaitBridge(ctx, row)
+	return s.awaitBridge(ctx, row)
 }
 
-func (a *App) awaitBridge(ctx context.Context, row *db.BotConnector) error {
-	if _, err := a.waitBridge(ctx, row.ID, stdioInitWait); err != nil {
-		a.dropStdio(row)
+func (s *Service) awaitBridge(ctx context.Context, row *db.BotConnector) error {
+	if _, err := s.waitBridge(ctx, row.ID, stdioInitWait); err != nil {
+		s.DropStdio(row)
 		return fmt.Errorf("stdio sidecar not ready: %w", err)
 	}
 	return nil
 }
 
-func (a *App) startStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
-	env, err := a.stdioEnv(row.BotID, c)
+func (s *Service) startStdio(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+	env, err := s.stdioEnv(row.BotID, c)
 	if err != nil {
 		return err
 	}
 	image := strings.TrimSpace(c.StdioImage)
 	if image == "" {
-		image = a.cfg().MCPStdioImage
+		image = s.cfg().MCPStdioImage
 	}
 	token := ids.New() + ids.New()
 	env = append(env,
 		"SILO_MCP_CMD="+c.StdioCommand,
 		"SILO_MCP_ARGS="+mustJSON(mcpbridge.ParseArgs(c.StdioArgsJSON)),
-		"SILO_CP_URL="+a.cfg().CPURL,
+		"SILO_CP_URL="+s.cfg().CPURL,
 		"SILO_BRIDGE_TOKEN="+token,
 	)
-	a.Mask(row.BotID).Add(token)
-	cid, err := a.Docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, Image: image, Env: env})
+	s.mask(row.BotID).Add(token)
+	cid, err := s.docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, Image: image, Env: env})
 	if err != nil {
 		return err
 	}
-	if err := a.Docker.Start(ctx, cid); err != nil {
-		a.Docker.DropStdio(ctx, row.ID, cid)
+	if err := s.docker.Start(ctx, cid); err != nil {
+		s.docker.DropStdio(ctx, row.ID, cid)
 		return err
 	}
 	// Persist the container and token hash only after a successful create.
 	hash := ids.Hash(token)
-	a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
+	s.db.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
 		"container_id":      cid,
 		"bridge_token_hash": hash,
 	})
@@ -119,26 +119,26 @@ func (a *App) startStdio(ctx context.Context, row *db.BotConnector, c *db.Connec
 // dropStdio tears down a sidecar for good: closes the session and tunnel,
 // removes the container (by ID and by name), wipes its data dir, and clears
 // the remembered container/token. Idempotent.
-func (a *App) dropStdio(row *db.BotConnector) {
+func (s *Service) DropStdio(row *db.BotConnector) {
 	if row == nil {
 		return
 	}
-	a.dropMCP(row.ID)
-	if b := a.lookupBridge(row.ID); b != nil {
-		a.unregisterBridge(row.ID, b)
+	s.DropMCP(row.ID)
+	if b := s.lookupBridge(row.ID); b != nil {
+		s.unregisterBridge(row.ID, b)
 		b.close(errors.New("sidecar dropped"))
 	}
-	if a.Docker != nil {
-		a.Docker.DropStdio(context.Background(), row.ID, row.ContainerID)
+	if s.docker != nil {
+		s.docker.DropStdio(context.Background(), row.ID, row.ContainerID)
 	}
-	if dir := a.cfg().DataDir; dir != "" {
+	if dir := s.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "mcp", row.ID))
 	}
 	if row.ContainerID != "" || row.BridgeTokenHash != "" {
 		row.ContainerID = ""
 		row.BridgeTokenHash = ""
-		if a.DB != nil {
-			a.DB.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
+		if s.db != nil {
+			s.db.Model(&db.BotConnector{}).Where("id = ?", row.ID).Updates(map[string]any{
 				"container_id":      "",
 				"bridge_token_hash": "",
 			})
@@ -146,24 +146,24 @@ func (a *App) dropStdio(row *db.BotConnector) {
 	}
 }
 
-func (a *App) dropBotStdio(botID string) {
-	if a.DB == nil {
+func (s *Service) DropBotStdio(botID string) {
+	if s.db == nil {
 		return
 	}
 	var rows []db.BotConnector
-	a.DB.Where("bot_id = ?", botID).Find(&rows)
+	s.db.Where("bot_id = ?", botID).Find(&rows)
 	for i := range rows {
-		a.dropStdio(&rows[i])
+		s.DropStdio(&rows[i])
 	}
 }
 
 // reconcileStdio reclaims sidecar containers whose BotConnector row is gone
 // (crash mid-delete, DB reset, older-version leftovers). Runs at startup.
-func (a *App) reconcileStdio() {
-	if a.DB == nil || a.Docker == nil {
+func (s *Service) ReconcileStdio() {
+	if s.db == nil || s.docker == nil {
 		return
 	}
-	containers, err := a.Docker.ListStdio(context.Background())
+	containers, err := s.docker.ListStdio(context.Background())
 	if err != nil {
 		return
 	}
@@ -172,7 +172,7 @@ func (a *App) reconcileStdio() {
 	}
 	valid := map[string]bool{}
 	var rows []db.BotConnector
-	a.DB.Find(&rows)
+	s.db.Find(&rows)
 	for i := range rows {
 		valid[rows[i].ID] = true
 	}
@@ -184,31 +184,31 @@ func (a *App) reconcileStdio() {
 		if id != "" && valid[id] {
 			continue
 		}
-		a.Docker.DropStdio(context.Background(), id, c.ID)
-		if dir := a.cfg().DataDir; dir != "" && id != "" {
+		s.docker.DropStdio(context.Background(), id, c.ID)
+		if dir := s.cfg().DataDir; dir != "" && id != "" {
 			_ = os.RemoveAll(filepath.Join(dir, "mcp", id))
 		}
 		log.Printf("reclaimed orphaned stdio sidecar %s (%s)", c.ID, c.Name)
 	}
 }
 
-func (a *App) stdioEnv(botID string, c *db.Connector) ([]string, error) {
+func (s *Service) stdioEnv(botID string, c *db.Connector) ([]string, error) {
 	entries := parseEnv(c.EnvJSON)
 	out := make([]string, 0, len(entries))
 	for _, e := range entries {
 		val := e.Value
 		if e.Secret != "" {
-			var s db.Secret
-			if err := a.DB.Where("bot_id = ? AND name = ?", botID, e.Secret).Limit(1).Find(&s).Error; err != nil {
+			var sec db.Secret
+			if err := s.db.Where("bot_id = ? AND name = ?", botID, e.Secret).Limit(1).Find(&sec).Error; err != nil {
 				return nil, err
 			}
-			if s.ID == "" {
+			if sec.ID == "" {
 				return nil, fmt.Errorf("secret %s not found", e.Secret)
 			}
-			val = s.Value
+			val = sec.Value
 		}
 		if val != "" {
-			a.Mask(botID).Add(val)
+			s.mask(botID).Add(val)
 		}
 		out = append(out, e.Name+"="+val)
 	}

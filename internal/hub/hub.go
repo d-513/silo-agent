@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	v1 "silo.agent/gen/silo/v1"
 )
@@ -262,6 +263,27 @@ func (h *Hub) Get(botID string) *Session {
 
 func (h *Hub) Connected(botID string) bool {
 	return h.Get(botID) != nil
+}
+
+// WaitConnected waits up to d for the Bot's worker to connect, so work that
+// arrives while the box is still starting can go on once it is up. It reports
+// whether the worker is connected when the wait ends (or ctx is done).
+func (h *Hub) WaitConnected(ctx context.Context, botID string, d time.Duration) bool {
+	if h.Connected(botID) {
+		return true
+	}
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return h.Connected(botID)
+		case <-time.After(250 * time.Millisecond):
+		}
+		if h.Connected(botID) {
+			return true
+		}
+	}
+	return h.Connected(botID)
 }
 
 func (s *Session) BeginViewer() (id uint64, toBrowser <-chan []byte, toWorker chan []byte) {

@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -30,26 +31,26 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	if security.Reserved(slug) {
 		return a.callBuiltin(ctx, bot, slug, action, req.Msg.GetArgsJson(), runID)
 	}
-	bc, c, err := a.findBotConnector(bot.ID, slug)
+	bc, c, err := a.Connectors.FindBotConnector(bot.ID, slug)
 	if err != nil {
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
-	if c.Auth == authOAuth && bc.AuthStatus != statusOK {
+	if c.Auth == connector.AuthOAuth && bc.AuthStatus != connector.StatusOK {
 		return connect.NewResponse(&v1.ToolRes{Error: "connector is not authorized"}), nil
 	}
-	if hdr, err := mcpx.HeadersFromJSON(a.resolveConnector(c).HeadersJSON); err == nil {
+	if hdr, err := mcpx.HeadersFromJSON(a.Connectors.ResolveConnector(c).HeadersJSON); err == nil {
 		for _, v := range hdr {
 			a.Mask(bot.ID).Add(v)
 		}
 	}
 	tool := slug + "." + action
 	a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
-	if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), builtinMode(c, action)); err != nil {
+	if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), connector.BuiltinMode(c, action)); err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
-	if c.Transport == transportBuiltin {
-		out, err := a.runBuiltin(ctx, bot, c, action, req.Msg.GetArgsJson())
+	if c.Transport == connector.TransportBuiltin {
+		out, err := a.Connectors.RunBuiltin(ctx, bot, c, action, req.Msg.GetArgsJson())
 		if err != nil {
 			a.emitCallDone(bot.ID, runID, tool, err.Error())
 			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -57,7 +58,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
 	}
-	sess, err := a.mcpSession(ctx, bc, c)
+	sess, err := a.Connectors.MCPSession(ctx, bc, c)
 	if err != nil {
 		a.emitCallDone(bot.ID, runID, tool, err.Error())
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
@@ -76,8 +77,8 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	}
 	out, err := mcpx.Call(ctx, sess, action, args)
 	if err != nil && errors.Is(err, mcpx.ErrSessionGone) {
-		a.dropMCP(bc.ID)
-		sess, err = a.mcpSession(ctx, bc, c)
+		a.Connectors.DropMCP(bc.ID)
+		sess, err = a.Connectors.MCPSession(ctx, bc, c)
 		if err == nil {
 			out, err = mcpx.Call(ctx, sess, action, args)
 		}

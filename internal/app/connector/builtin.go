@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"context"
@@ -28,7 +28,7 @@ const builtinCallWait = 2 * time.Minute
 
 // builtinOf returns the registry entry behind a builtin connector row.
 func builtinOf(c *db.Connector) (builtin.Connector, bool) {
-	if c == nil || c.Transport != transportBuiltin {
+	if c == nil || c.Transport != TransportBuiltin {
 		return nil, false
 	}
 	return builtin.Lookup(c.Builtin)
@@ -109,7 +109,7 @@ func builtinTools(d builtin.Descriptor) []mcpx.Tool {
 // refreshBuiltin checks a builtin's config and caches its tools. A config
 // with a required field unset waits for the human (needs_auth) instead of
 // failing.
-func (a *App) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
 	bc, ok := builtinOf(c)
 	if !ok {
 		return fmt.Errorf("unknown built-in connector %q", c.Builtin)
@@ -117,21 +117,21 @@ func (a *App) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *db.Co
 	d := bc.Descriptor()
 	cfg := builtinConfig(d, c)
 	if f := builtin.Missing(d, cfg); f != nil {
-		row.AuthStatus = statusNeedsAuth
+		row.AuthStatus = StatusNeedsAuth
 		row.StatusDetail = "Fill in " + f.Label + " in the connector's settings."
 		row.LastError = ""
-		a.DB.Save(row)
+		s.db.Save(row)
 		return nil
 	}
 	if err := bc.Check(ctx, cfg); err != nil {
 		return err
 	}
-	return a.storeTools(row, c, builtinTools(d))
+	return s.storeTools(row, c, builtinTools(d))
 }
 
-// builtinMode is a builtin action's default rule: the tool's own mode, then
+// BuiltinMode is a builtin action's default rule: the tool's own mode, then
 // the connector's.
-func builtinMode(c *db.Connector, action string) string {
+func BuiltinMode(c *db.Connector, action string) string {
 	if bc, ok := builtinOf(c); ok {
 		if t, ok := bc.Descriptor().Tool(action); ok {
 			return t.Mode
@@ -142,7 +142,7 @@ func builtinMode(c *db.Connector, action string) string {
 
 // runBuiltin runs one builtin action after AuthorizeAction allowed it.
 // Every secret is masked out of the result.
-func (a *App) runBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, action, argsJSON string) (string, error) {
+func (s *Service) RunBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, action, argsJSON string) (string, error) {
 	bc, ok := builtinOf(c)
 	if !ok {
 		return "", fmt.Errorf("unknown built-in connector %q", c.Builtin)
@@ -153,7 +153,7 @@ func (a *App) runBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, acti
 		return "", fmt.Errorf("%s has no action %q", c.Name, action)
 	}
 	cfg := builtinConfig(d, c)
-	mask := a.Mask(bot.ID)
+	mask := s.mask(bot.ID)
 	for k, v := range decodeStrMap(c.SecretsJSON) {
 		if f, ok := d.Field(k); ok && f.Type == builtin.FieldSecret {
 			mask.Add(v)
@@ -168,7 +168,7 @@ func (a *App) runBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, acti
 	}
 	cctx, cancel := context.WithTimeout(ctx, builtinCallWait)
 	defer cancel()
-	res, err := t.Run(cctx, botEnv{a: a, botID: bot.ID}, cfg, json.RawMessage(raw))
+	res, err := t.Run(cctx, botEnv{s: s, botID: bot.ID}, cfg, json.RawMessage(raw))
 	if err != nil {
 		return "", errors.New(mask.Apply(err.Error()))
 	}
@@ -181,7 +181,7 @@ func (a *App) runBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, acti
 
 // botEnv is the Bot's workspace as a builtin sees it, through the worker.
 type botEnv struct {
-	a     *App
+	s     *Service
 	botID string
 }
 
@@ -202,10 +202,10 @@ func (e botEnv) ReadFile(ctx context.Context, rel string) (string, []byte, error
 	if err != nil {
 		return "", nil, err
 	}
-	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
+	if !e.s.hub.WaitConnected(ctx, e.botID, 2*time.Minute) {
 		return "", nil, errors.New("the Bot's machine is not running")
 	}
-	f, err := e.a.Workspace.Attachment(ctx, e.botID, p)
+	f, err := e.s.ws.Attachment(ctx, e.botID, p)
 	if err != nil {
 		return "", nil, err
 	}
@@ -220,15 +220,15 @@ func (e botEnv) WriteFile(ctx context.Context, rel string, data []byte) error {
 	if len(data) > workspace.PutMax {
 		return fmt.Errorf("file too large (max %d MB)", workspace.PutMax>>20)
 	}
-	if !e.a.waitWorker(ctx, e.botID, 2*time.Minute) {
+	if !e.s.hub.WaitConnected(ctx, e.botID, 2*time.Minute) {
 		return errors.New("the Bot's machine is not running")
 	}
-	_, err = e.a.Workspace.Call(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
+	_, err = e.s.ws.Call(ctx, e.botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: p, Data: data}}})
 	return err
 }
 
 // attachBuiltin copies a builtin library preset onto a Bot with its config.
-func (a *App) attachBuiltin(ctx context.Context, botID string, lib *db.Connector, m *v1.CreateBotConnectorRequest) (*v1.BotConnector, error) {
+func (s *Service) attachBuiltin(ctx context.Context, botID string, lib *db.Connector, m *v1.CreateBotConnectorRequest) (*v1.BotConnector, error) {
 	row := cloneLibrary(lib, botID)
 	if n := strings.TrimSpace(m.GetName()); n != "" {
 		row.Name = n
@@ -245,16 +245,16 @@ func (a *App) attachBuiltin(ctx context.Context, botID string, lib *db.Connector
 	if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return a.putBotConnector(ctx, botID, row)
+	return s.putBotConnector(ctx, botID, row)
 }
 
 // libraryBuiltin loads a library row when it is a builtin preset.
-func (a *App) libraryBuiltin(id string) *db.Connector {
+func (s *Service) libraryBuiltin(id string) *db.Connector {
 	if id == "" {
 		return nil
 	}
 	var lib db.Connector
-	if a.DB.Where("id = ? AND kind = ? AND transport = ?", id, catalog.KindLibrary, transportBuiltin).Limit(1).Find(&lib); lib.ID == "" {
+	if s.db.Where("id = ? AND kind = ? AND transport = ?", id, catalog.KindLibrary, TransportBuiltin).Limit(1).Find(&lib); lib.ID == "" {
 		return nil
 	}
 	return &lib

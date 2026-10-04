@@ -6,6 +6,7 @@ import (
 
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
+	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/skill"
@@ -35,18 +36,11 @@ func (s promptSection) render() string {
 	return "\n\n## " + s.title + "\n" + body
 }
 
-// connectorView joins an attachment link with its connector definition so
-// providers do not each re-query the DB.
-type connectorView struct {
-	link db.BotConnector
-	conn db.Connector
-}
-
 // promptContext is the per-run snapshot providers read from. It is built from
 // the DB and never carries worker state.
 type promptContext struct {
 	bot        *db.Bot
-	connectors []connectorView
+	connectors []connector.View
 	skills     []skills.Info
 	// channel is the origin channel when this run came from one; channels is
 	// every enabled channel the Bot can send to.
@@ -214,15 +208,7 @@ func (a *App) buildSystemBlocks(botID string, origin ...*run.Origin) []llm.Syste
 // promptContext snapshots the session state providers may depend on.
 func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promptContext {
 	pc := promptContext{bot: bot, skills: a.Skills.Enabled(botID)}
-	var links []db.BotConnector
-	a.DB.Where("bot_id = ?", botID).Find(&links)
-	for i := range links {
-		var c db.Connector
-		if a.DB.First(&c, "id = ?", links[i].ConnectorID).Error != nil {
-			continue
-		}
-		pc.connectors = append(pc.connectors, connectorView{link: links[i], conn: c})
-	}
+	pc.connectors = a.Connectors.Views(botID)
 	pc.channels = a.Channels.Enabled(botID)
 	pc.drives = a.Drives.BotDrives(botID)
 	pc.knowledge = a.Knowledge.Folders(botID)
@@ -251,4 +237,9 @@ func (a *App) automationSections(pc promptContext) []promptSection {
 // skillSections lists the enabled skills for the session tier.
 func (a *App) skillSections(pc promptContext) []promptSection {
 	return []promptSection{{title: "Skills", body: skill.Prompt(pc.skills)}}
+}
+
+// connectorSections lists the attached connectors for the session tier.
+func (a *App) connectorSections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Connectors", body: a.Connectors.Prompt(pc.connectors)}}
 }

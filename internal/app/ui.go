@@ -33,7 +33,7 @@ func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]
 	if email == "" || pass == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and password required"))
 	}
-	w := httpRW(ctx)
+	w := access.ResponseWriter(ctx)
 	var count int64
 	a.DB.Model(&db.User{}).Count(&count)
 	var u db.User
@@ -55,7 +55,7 @@ func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]
 }
 
 func (a *App) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
-	auth.ClearSession(httpRW(ctx))
+	auth.ClearSession(access.ResponseWriter(ctx))
 	return connect.NewResponse(&v1.SignOutResponse{}), nil
 }
 
@@ -137,7 +137,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
 	a.Skills.EnsureDefaults(id)
 	a.Automations.EnsureHeartbeat(id)
-	a.attachDefaultConnectors(ctx, id)
+	a.Connectors.AttachDefaults(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
 	}
@@ -264,10 +264,10 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	var bcs []db.BotConnector
 	a.DB.Where("bot_id = ?", b.ID).Find(&bcs)
 	for i := range bcs {
-		a.dropStdio(&bcs[i])
+		a.Connectors.DropStdio(&bcs[i])
 	}
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotConnector{})
-	a.reconcileStdio()
+	a.Connectors.ReconcileStdio()
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.BotSkill{})
 	for _, ch := range a.Channels.All(b.ID) {
 		c := ch

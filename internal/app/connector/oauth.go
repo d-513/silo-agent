@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"context"
@@ -17,37 +17,38 @@ import (
 	"golang.org/x/oauth2"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
 )
 
-func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
+	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
-	if err := a.DB.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
+	if err := s.db.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	var c db.Connector
-	if a.DB.First(&c, "id = ?", row.ConnectorID).Error != nil {
+	if s.db.First(&c, "id = ?", row.ConnectorID).Error != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	if c.Auth != authOAuth {
+	if c.Auth != AuthOAuth {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("connector does not use oauth"))
 	}
-	c = *a.resolveConnector(&c)
-	redirect := a.PublicURL(ctx) + "/oauth/callback"
+	c = *s.ResolveConnector(&c)
+	redirect := s.PublicURL(ctx) + "/oauth/callback"
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
-	h, err := a.oauthHandler(&c, &row, redirect, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
+	h, err := s.oauthHandler(&c, &row, redirect, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 		u := args.URL
 		if st := queryParam(u, "state"); st != "" {
-			a.mu.Lock()
-			a.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u)}
-			a.mu.Unlock()
+			s.mu.Lock()
+			s.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u)}
+			s.mu.Unlock()
 		}
 		select {
 		case urlCh <- u:
@@ -66,10 +67,10 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 	go func() {
 		cctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		sess, err := mcpx.Connect(cctx, a.dial(&c, h))
+		sess, err := mcpx.Connect(cctx, s.dial(&c, h))
 		if err != nil {
 			err = wrapOAuth(err)
-			a.DB.Model(&row).Updates(map[string]any{"auth_status": statusErr, "last_error": err.Error()})
+			s.db.Model(&row).Updates(map[string]any{"auth_status": StatusErr, "last_error": err.Error()})
 			select {
 			case errCh <- err:
 			default:
@@ -77,12 +78,12 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 			return
 		}
 		defer sess.Close()
-		a.persistOAuthToken(h, &row)
-		row.AuthStatus = statusOK
+		s.persistOAuthToken(h, &row)
+		row.AuthStatus = StatusOK
 		row.LastError = ""
 		row.StatusDetail = ""
-		a.DB.Save(&row)
-		_ = a.refreshTools(cctx, &row, &c)
+		s.db.Save(&row)
+		_ = s.refreshTools(cctx, &row, &c)
 	}()
 	select {
 	case u := <-urlCh:
@@ -96,13 +97,13 @@ func (a *App) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.St
 	}
 }
 
-func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	state := q.Get("state")
-	a.mu.Lock()
-	wait := a.oauth[state]
-	delete(a.oauth, state)
-	a.mu.Unlock()
+	s.mu.Lock()
+	wait := s.oauth[state]
+	delete(s.oauth, state)
+	s.mu.Unlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if wait == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -126,7 +127,7 @@ func (a *App) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
 }
 
-func (a *App) oauthHandler(c *db.Connector, row *db.BotConnector, redirect string, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
+func (s *Service) oauthHandler(c *db.Connector, row *db.BotConnector, redirect string, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
 	if fetch == nil {
 		fetch = func(context.Context, *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 			return nil, errors.New("authorization required")
@@ -146,7 +147,7 @@ func (a *App) oauthHandler(c *db.Connector, row *db.BotConnector, redirect strin
 		},
 		NewTokenSource: func(ctx context.Context, oc *oauth2.Config, tok *oauth2.Token) (oauth2.TokenSource, error) {
 			src := oc.TokenSource(ctx, tok)
-			return persistSrc{inner: src, save: func(t *oauth2.Token) { a.saveToken(row.ID, t) }}, nil
+			return persistSrc{inner: src, save: func(t *oauth2.Token) { s.saveToken(row.ID, t) }}, nil
 		},
 	}
 	if creds := preregisteredClient(c); creds != nil {
@@ -155,13 +156,13 @@ func (a *App) oauthHandler(c *db.Connector, row *db.BotConnector, redirect strin
 	if tok := tokenFromJSON(row.TokenJSON); tok != nil {
 		cfg.InitialTokenSource = persistSrc{
 			inner: oauth2.ReuseTokenSource(tok, oauth2.StaticTokenSource(tok)),
-			save:  func(t *oauth2.Token) { a.saveToken(row.ID, t) },
+			save:  func(t *oauth2.Token) { s.saveToken(row.ID, t) },
 		}
 	}
 	return mcpauth.NewAuthorizationCodeHandler(cfg)
 }
 
-func (a *App) persistOAuthToken(h *mcpauth.AuthorizationCodeHandler, row *db.BotConnector) {
+func (s *Service) persistOAuthToken(h *mcpauth.AuthorizationCodeHandler, row *db.BotConnector) {
 	src, err := h.TokenSource(context.Background())
 	if err != nil || src == nil {
 		return
@@ -170,24 +171,24 @@ func (a *App) persistOAuthToken(h *mcpauth.AuthorizationCodeHandler, row *db.Bot
 	if err != nil || tok == nil {
 		return
 	}
-	a.saveToken(row.ID, tok)
+	s.saveToken(row.ID, tok)
 	row.TokenJSON = mustJSON(tok)
 }
 
-func (a *App) saveToken(id string, tok *oauth2.Token) {
+func (s *Service) saveToken(id string, tok *oauth2.Token) {
 	if tok == nil {
 		return
 	}
-	a.DB.Model(&db.BotConnector{}).Where("id = ?", id).Update("token_json", mustJSON(tok))
+	s.db.Model(&db.BotConnector{}).Where("id = ?", id).Update("token_json", mustJSON(tok))
 }
 
 // PublicURL is the address the browser (and an OAuth provider) reaches the
 // control plane at.
-func (a *App) PublicURL(ctx context.Context) string {
-	if u := strings.TrimSpace(a.cfg().PublicURL); u != "" {
+func (s *Service) PublicURL(ctx context.Context) string {
+	if u := strings.TrimSpace(s.cfg().PublicURL); u != "" {
 		return strings.TrimRight(u, "/")
 	}
-	r := httpReq(ctx)
+	r := access.Request(ctx)
 	if r == nil {
 		return "http://127.0.0.1:5173"
 	}
@@ -205,8 +206,8 @@ func (a *App) PublicURL(ctx context.Context) string {
 	return scheme + "://" + host
 }
 
-func (a *App) redirectURL() string {
-	if u := strings.TrimSpace(a.cfg().PublicURL); u != "" {
+func (s *Service) redirectURL() string {
+	if u := strings.TrimSpace(s.cfg().PublicURL); u != "" {
 		return strings.TrimRight(u, "/") + "/oauth/callback"
 	}
 	return "http://127.0.0.1:5173/oauth/callback"
@@ -270,14 +271,14 @@ type oauthWait struct {
 
 // AwaitOAuth registers a pending sign-in whose callback finishes in complete
 // (the drives' flow); the entry lapses after ttl.
-func (a *App) AwaitOAuth(state string, ttl time.Duration, complete func(ctx context.Context, q url.Values) error) {
-	a.mu.Lock()
-	a.oauth[state] = &oauthWait{drive: complete}
-	a.mu.Unlock()
+func (s *Service) AwaitOAuth(state string, ttl time.Duration, complete func(ctx context.Context, q url.Values) error) {
+	s.mu.Lock()
+	s.oauth[state] = &oauthWait{drive: complete}
+	s.mu.Unlock()
 	time.AfterFunc(ttl, func() {
-		a.mu.Lock()
-		delete(a.oauth, state)
-		a.mu.Unlock()
+		s.mu.Lock()
+		delete(s.oauth, state)
+		s.mu.Unlock()
 	})
 }
 

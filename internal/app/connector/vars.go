@@ -1,4 +1,4 @@
-package app
+package connector
 
 import (
 	"encoding/json"
@@ -9,11 +9,11 @@ import (
 )
 
 // connectorVars is the effective connector variable map, nil-safe.
-func (a *App) connectorVars() map[string]string {
-	if a.Store == nil {
+func (s *Service) connectorVars() map[string]string {
+	if s.store == nil {
 		return nil
 	}
-	return a.Store.ConnectorVarMap()
+	return s.store.ConnectorVarMap()
 }
 
 // resolveConnector returns a copy of c with operator connector variables
@@ -21,11 +21,11 @@ func (a *App) connectorVars() map[string]string {
 // untouched. The raw row keeps the placeholders; only the connection path sees
 // the resolved values, so changing a variable takes effect on the next
 // reconnect without rewriting connectors.
-func (a *App) resolveConnector(c *db.Connector) *db.Connector {
+func (s *Service) ResolveConnector(c *db.Connector) *db.Connector {
 	if c == nil {
 		return c
 	}
-	vars := a.connectorVars()
+	vars := s.connectorVars()
 	if len(vars) == 0 {
 		return c
 	}

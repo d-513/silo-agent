@@ -105,3 +105,32 @@ func HTTPSessionError(w http.ResponseWriter, err error) {
 	log.Printf("session lookup: %v", err)
 	http.Error(w, "session store unavailable", http.StatusServiceUnavailable)
 }
+
+type httpKey int
+
+const (
+	reqKey httpKey = iota
+	rwKey
+)
+
+// WithHTTP makes the request and its response writer reachable from the
+// context of the RPCs served through next (the sign-in cookie, the public URL).
+func WithHTTP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), reqKey, r)
+		ctx = context.WithValue(ctx, rwKey, w)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Request is the HTTP request an RPC arrived on, or nil.
+func Request(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(reqKey).(*http.Request)
+	return r
+}
+
+// ResponseWriter is the HTTP response writer an RPC will answer on, or nil.
+func ResponseWriter(ctx context.Context) http.ResponseWriter {
+	w, _ := ctx.Value(rwKey).(http.ResponseWriter)
+	return w
+}

@@ -265,3 +265,26 @@ func TestCloseAllWakesWaitViewer(t *testing.T) {
 		t.Fatal("WaitViewer stuck after CloseAll")
 	}
 }
+
+func TestWaitConnected(t *testing.T) {
+	h := New()
+	ctx := context.Background()
+	if h.WaitConnected(ctx, "b1", 10*time.Millisecond) {
+		t.Fatal("no worker yet")
+	}
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		h.Attach("b1")
+	}()
+	if !h.WaitConnected(ctx, "b1", 2*time.Second) {
+		t.Fatal("the worker connected during the wait")
+	}
+	if !h.WaitConnected(ctx, "b1", 0) {
+		t.Fatal("an already connected worker needs no wait")
+	}
+	cctx, cancel := context.WithCancel(ctx)
+	cancel()
+	if h.WaitConnected(cctx, "b2", 5*time.Second) {
+		t.Fatal("a canceled wait must give up")
+	}
+}
