@@ -58,3 +58,11 @@ func TestValidUTF8ReplacesBadBytesAndDropsNUL(t *testing.T) {
 		t.Fatalf("lost the good bytes: %q", got)
 	}
 }
+
+func TestPlural(t *testing.T) {
+	for n, want := range map[int]string{0: "s", 1: "", 2: "s"} {
+		if got := Plural(n); got != want {
+			t.Errorf("Plural(%d) = %q, want %q", n, got, want)
+		}
+	}
+}

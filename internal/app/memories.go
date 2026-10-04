@@ -12,10 +12,8 @@ import (
 	"gorm.io/gorm/clause"
 
 	v1 "silo.agent/gen/silo/v1"
-	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
-	"silo.agent/internal/llm"
 )
 
 const (
@@ -41,55 +39,6 @@ type recalled struct {
 	Content   string
 	CreatedAt time.Time
 	Distance  float64
-}
-
-// embedModelID is the operator's embedding model, or the default.
-func (a *App) embedModelID() string {
-	if m := strings.TrimSpace(a.cfg().EmbedModel); m != "" {
-		return m
-	}
-	return config.DefaultEmbeddingModel
-}
-
-// embed turns texts into vectors with the operator's embedding model.
-func (a *App) embed(ctx context.Context, texts []string) ([]pgvector.Vector, string, error) {
-	modelID := a.embedModelID()
-	client, provider, model, err := a.providerClient(modelID)
-	if err != nil {
-		return nil, modelID, err
-	}
-	e, ok := client.(llm.Embedder)
-	if !ok {
-		return nil, modelID, fmt.Errorf("%s cannot embed; set embedding_model to an OpenAI-compatible model", provider)
-	}
-	raw, err := e.Embed(ctx, model, texts)
-	if err != nil {
-		return nil, modelID, fmt.Errorf("embed: %w", err)
-	}
-	out := make([]pgvector.Vector, len(raw))
-	for i, v := range raw {
-		out[i] = pgvector.NewVector(v)
-	}
-	return out, modelID, nil
-}
-
-// canEmbed reports whether modelID names a provider that implements
-// llm.Embedder, without needing its API key.
-func (a *App) canEmbed(modelID string) error {
-	return providerCan[llm.Embedder](a, modelID, "embed")
-}
-
-// providerCan reports whether modelID names a provider whose client implements
-// the capability interface T; verb names what it cannot do in the error.
-func providerCan[T any](a *App, modelID, verb string) error {
-	client, provider, err := a.probeClient(modelID)
-	if err != nil {
-		return err
-	}
-	if _, ok := client.(T); !ok {
-		return fmt.Errorf("%s cannot %s; pick an OpenAI-compatible provider", provider, verb)
-	}
-	return nil
 }
 
 // nearest returns up to k of the bot's memories closest to vec, closest first,
@@ -149,7 +98,7 @@ func (a *App) saveMemory(ctx context.Context, m newMemory) (savedMemory, error) 
 	if kind != memoryLesson {
 		kind = memoryFact
 	}
-	vecs, model, err := a.embed(ctx, []string{content})
+	vecs, model, err := a.models.Embed(ctx, []string{content})
 	if err != nil {
 		return savedMemory{}, err
 	}
@@ -184,7 +133,7 @@ func (a *App) rewriteMemory(ctx context.Context, botID, id, content string) erro
 	if content == "" || len(content) > rememberMax {
 		return fmt.Errorf("memory text must be 1..%d characters", rememberMax)
 	}
-	vecs, model, err := a.embed(ctx, []string{content})
+	vecs, model, err := a.models.Embed(ctx, []string{content})
 	if err != nil {
 		return err
 	}
@@ -201,7 +150,7 @@ func (a *App) search(ctx context.Context, botID, query string, k int, maxDist fl
 	if query == "" {
 		return nil, errNoQuery
 	}
-	vecs, _, err := a.embed(ctx, []string{query})
+	vecs, _, err := a.models.Embed(ctx, []string{query})
 	if err != nil {
 		return nil, err
 	}

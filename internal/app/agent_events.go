@@ -12,6 +12,7 @@ import (
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
 
@@ -182,4 +183,18 @@ func dataURLAttachment(path, dataURL string) (channels.Attachment, bool) {
 		name = "file"
 	}
 	return channels.Attachment{Name: name, Mime: mime, Data: raw}, true
+}
+
+// emitUsage reports token accounting for a turn, with the model's context
+// window, so the composer can show the cache chip and the context meter. It
+// persists like any other run event.
+func (a *App) emitUsage(botID, chatID, runID string, u llm.Usage, window int) {
+	body, _ := json.Marshal(map[string]int{
+		"input":       u.InputTokens,
+		"output":      u.OutputTokens,
+		"cache_read":  u.CacheReadTokens,
+		"cache_write": u.CacheWriteTokens,
+		"window":      window,
+	})
+	a.emit(botID, chatID, runID, "usage", string(body), "")
 }

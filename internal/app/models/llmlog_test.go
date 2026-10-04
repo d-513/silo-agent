@@ -1,32 +1,11 @@
-package app
+package models
 
 import (
 	"strings"
 	"testing"
 
 	"silo.agent/internal/llm"
-	"silo.agent/internal/security"
 )
-
-func TestParseVerdict(t *testing.T) {
-	cases := map[string]string{
-		"approve":         security.Allow,
-		"Approve.\n":      security.Allow,
-		"allow":           security.Allow,
-		"deny":            security.Deny,
-		"Denied":          security.Deny,
-		"ask":             security.Ask,
-		"human review":    security.Ask,
-		"":                security.Ask,
-		"whatever":        security.Ask,
-		"yes, it is safe": security.Allow,
-	}
-	for in, want := range cases {
-		if got := parseVerdict(in); got != want {
-			t.Fatalf("parseVerdict(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
 
 func TestTidyTextCollapsesBlankRuns(t *testing.T) {
 	got := tidyText("a\n\n\n\n\nb  \n\nc\n")

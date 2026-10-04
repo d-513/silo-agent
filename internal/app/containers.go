@@ -37,7 +37,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 	var host db.DriveHost
 	a.DB.Where("bot_id = ?", b.ID).Limit(1).Find(&host)
 	if n := len(a.botDrives(b.ID)); n > 0 || host.ContainerID != "" {
-		detail := fmt.Sprintf("rclone for %d drive%s", n, plural(n))
+		detail := fmt.Sprintf("rclone for %d drive%s", n, textx.Plural(n))
 		if n == 0 {
 			detail = "No drives left"
 		}

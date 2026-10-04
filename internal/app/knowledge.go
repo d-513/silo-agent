@@ -286,7 +286,7 @@ func (a *App) searchKnowledge(ctx context.Context, botID, query string, k int, p
 	if query == "" {
 		return nil, errNoQuery
 	}
-	vecs, _, err := a.embed(ctx, []string{query})
+	vecs, _, err := a.models.Embed(ctx, []string{query})
 	if err != nil {
 		return nil, err
 	}

@@ -103,7 +103,7 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case "search_docs":
 		return a.knowledgeTool(ctx, bot.ID, args, structured)
 	case "list_models":
-		return a.listModelsTool(bot.ID, a.ChatOfRun(runID))
+		return a.models.ListTool(bot.ID, a.ChatOfRun(runID))
 	case "transcribe":
 		return a.transcribeTool(ctx, bot.ID, str("path"), str("language"), structured)
 	}

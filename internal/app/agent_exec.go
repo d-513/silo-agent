@@ -99,7 +99,7 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		return out, "", err
 	}
 	if name == "switch_model" {
-		out, err := a.switchModelTool(chatID, str("model"))
+		out, err := a.models.SwitchTool(chatID, str("model"))
 		return out, "", err
 	}
 	if name == "skill" {

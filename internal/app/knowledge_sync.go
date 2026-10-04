@@ -175,7 +175,7 @@ func waitsForOCR(s *db.KnowledgeSource) bool { return strings.Contains(s.Detail,
 // syncFolder does the work; the caller records the outcome. The returned note
 // is shown beside an otherwise healthy folder (a truncated walk).
 func (a *App) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string, error) {
-	model := a.embedModelID()
+	model := a.models.EmbedModelID()
 	ocr := a.cfg().Knowledge.OCR
 	files, truncated, err := a.walkWorker(ctx, f.BotID, f.Path, knowledgeMaxFiles)
 	if err != nil {
@@ -301,7 +301,7 @@ func (a *App) embedBatches(ctx context.Context, texts []string) ([]pgvector.Vect
 			return nil, err
 		}
 		end := min(i+knowledgeEmbedBatch, len(texts))
-		vecs, _, err := a.embed(ctx, texts[i:end])
+		vecs, _, err := a.models.Embed(ctx, texts[i:end])
 		if err != nil {
 			return nil, err
 		}

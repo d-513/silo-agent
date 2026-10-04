@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
@@ -30,7 +31,7 @@ func (a *App) voiceEnabled() bool {
 	if modelID == "" {
 		return false
 	}
-	client, _, _, err := a.providerClient(modelID)
+	client, _, _, err := a.models.Client(modelID)
 	if err != nil {
 		return false
 	}
@@ -51,7 +52,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	if len(audio.Data) > llm.MaxAudioBytes {
 		return llm.Transcript{}, fmt.Errorf("audio is %d MB; the cap is %d MB", len(audio.Data)>>20, llm.MaxAudioBytes>>20)
 	}
-	client, provider, model, err := a.providerClient(modelID)
+	client, provider, model, err := a.models.Client(modelID)
 	if err != nil {
 		return llm.Transcript{}, err
 	}
@@ -64,7 +65,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 	start := time.Now()
 	out, err := tr.Transcribe(ctx, model, audio)
 	out.Text = textx.ValidUTF8(strings.TrimSpace(out.Text))
-	a.recordLLM(botID, label, llm.Record{
+	a.models.Record(botID, label, llm.Record{
 		Provider: provider,
 		Model:    model,
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: fmt.Sprintf("[audio %s, %d bytes, %.1fs]", audio.MIME, len(audio.Data), out.Seconds)}},
@@ -81,7 +82,7 @@ func (a *App) transcribe(ctx context.Context, botID, label string, audio llm.Aud
 // canTranscribe reports whether modelID names a provider that implements
 // llm.Transcriber, without needing its API key.
 func (a *App) canTranscribe(modelID string) error {
-	return providerCan[llm.Transcriber](a, modelID, "transcribe")
+	return models.Can[llm.Transcriber](a.models, modelID, "transcribe")
 }
 
 // Transcribe is composer dictation: the browser records, the CP transcribes,

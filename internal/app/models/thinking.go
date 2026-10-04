@@ -1,4 +1,4 @@
-package app
+package models
 
 import (
 	"context"
@@ -10,21 +10,22 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 )
 
-// thinkingLevels is what a model accepts, least reasoning first: an operator
+// ThinkingLevels is what a model accepts, least reasoning first: an operator
 // per-model override (thinking.levels), then the provider's report
 // (llm.Thinker: OpenRouter /models, the Anthropic Models API, OpenAI model
 // families). A model neither can describe has no levels, so the picker hides
 // and nothing is sent.
-func (a *App) thinkingLevels(ctx context.Context, modelID string) []string {
-	if levels, ok := a.cfg().Thinking.LevelsFor(modelID); ok {
+func (s *Service) ThinkingLevels(ctx context.Context, modelID string) []string {
+	if levels, ok := s.cfg().Thinking.LevelsFor(modelID); ok {
 		return llm.SortThinking(levels)
 	}
-	client, _, model, err := a.providerClient(modelID)
+	client, _, model, err := s.Client(modelID)
 	if err != nil {
 		return nil
 	}
@@ -39,32 +40,32 @@ func (a *App) thinkingLevels(ctx context.Context, modelID string) []string {
 	return llm.SortThinking(levels)
 }
 
-// chatThinking is the chat's chosen level fitted to modelID: the nearest level
+// ChatThinking is the chat's chosen level fitted to modelID: the nearest level
 // the model accepts, or "" (the model default) when it has none or the chat
 // never chose one.
-func (a *App) chatThinking(ctx context.Context, chatID, modelID string) string {
+func (s *Service) ChatThinking(ctx context.Context, chatID, modelID string) string {
 	if chatID == "" {
 		return ""
 	}
 	var c db.Chat
-	if err := a.DB.Select("thinking").Find(&c, "id = ?", chatID).Error; err != nil || c.Thinking == "" {
+	if err := s.db.Select("thinking").Find(&c, "id = ?", chatID).Error; err != nil || c.Thinking == "" {
 		return ""
 	}
-	return llm.NearestThinking(c.Thinking, a.thinkingLevels(ctx, modelID))
+	return llm.NearestThinking(c.Thinking, s.ThinkingLevels(ctx, modelID))
 }
 
-// withThinking fills each model option's levels. Lookups run in parallel and
+// WithThinking fills each model option's levels. Lookups run in parallel and
 // are bounded so a slow provider cannot hold up the composer; providers cache
 // their answers, so this is cheap after the first call.
-func (a *App) withThinking(ctx context.Context, opts []modelOption) []modelOption {
+func (s *Service) WithThinking(ctx context.Context, opts []Option) []Option {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var wg sync.WaitGroup
 	for i := range opts {
 		wg.Add(1)
-		go func(o *modelOption) {
+		go func(o *Option) {
 			defer wg.Done()
-			o.Thinking = a.thinkingLevels(ctx, o.ID)
+			o.Thinking = s.ThinkingLevels(ctx, o.ID)
 		}(&opts[i])
 	}
 	wg.Wait()
@@ -74,8 +75,8 @@ func (a *App) withThinking(ctx context.Context, opts []modelOption) []modelOptio
 // SetChatThinking persists a chat's thinking level. Any known level is kept,
 // even one the current model lacks: each turn fits it to the model, so the
 // choice survives a model switch.
-func (a *App) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error) {
-	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId())
+func (s *Service) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error) {
+	c, err := access.OwnBotRow[db.Chat](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetChatId(), "chat")
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +85,7 @@ func (a *App) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetCh
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown thinking level"))
 	}
 	c.Thinking = level
-	if err := a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).Update("thinking", level).Error; err != nil {
+	if err := s.db.Model(&db.Chat{}).Where("id = ?", c.ID).Update("thinking", level).Error; err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(chats.Proto(c)), nil

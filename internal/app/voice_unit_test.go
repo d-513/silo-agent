@@ -1,6 +1,10 @@
 package app
 
-import "testing"
+import (
+	"testing"
+
+	"silo.agent/internal/app/models"
+)
 
 func TestAudioMIME(t *testing.T) {
 	for name, want := range map[string]string{
@@ -23,6 +27,7 @@ func TestRunToolsDropsTranscribeWhenVoiceOff(t *testing.T) {
 		return false
 	}
 	a := &App{}
+	a.models = models.New(nil, a.cfg)
 	if has(a) {
 		t.Fatal("no config: transcribe must not be offered")
 	}

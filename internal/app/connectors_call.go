@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
@@ -289,7 +290,7 @@ func (a *App) autoDecision(ctx context.Context, bot *db.Bot, conn, action, argsJ
 		return security.Ask
 	}
 	cfg := a.cfg()
-	client, provider, model, err := a.modelClient(cfg.ApprovalModel(), bot.ID, "approval")
+	client, provider, model, err := a.models.Observed(cfg.ApprovalModel(), bot.ID, "approval")
 	if err != nil {
 		log.Printf("auto-approval model: %v", err)
 		return security.Ask
@@ -310,7 +311,7 @@ func (a *App) autoDecision(ctx context.Context, bot *db.Bot, conn, action, argsJ
 			{Text: "The operator's auto-approval policy:\n" + policy},
 		},
 		Messages:  []llm.Message{{Role: llm.RoleUser, Text: b.String()}},
-		Cache:     cachePolicy(cfg.ProviderSettings(provider), bot.ID),
+		Cache:     models.CachePolicy(cfg.ProviderSettings(provider), bot.ID),
 		MaxTokens: 8,
 	})
 	if err != nil {

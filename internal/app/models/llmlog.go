@@ -1,4 +1,4 @@
-package app
+package models
 
 import (
 	"context"
@@ -25,11 +25,11 @@ const llmlogLimit = 500
 // bloat a row. Raw is preserved up to this many runes.
 const llmlogTextMax = 200_000
 
-// recordLLM persists one observed model call when the operator turned debug on.
+// Record persists one observed model call when the operator turned debug on.
 // It runs synchronously on the caller's goroutine; the insert is small and
 // SQLite handles concurrent writers with the configured busy timeout.
-func (a *App) recordLLM(botID, label string, rec llm.Record) {
-	if a.DB == nil || !a.cfg().Debug {
+func (s *Service) Record(botID, label string, rec llm.Record) {
+	if s.db == nil || !s.cfg().Debug {
 		return
 	}
 	row := db.LLMLog{
@@ -48,39 +48,39 @@ func (a *App) recordLLM(botID, label string, rec llm.Record) {
 	if rec.Error != nil {
 		row.Error = rec.Error.Error()
 	}
-	if err := a.DB.Create(&row).Error; err != nil {
+	if err := s.db.Create(&row).Error; err != nil {
 		log.Printf("llm log: %v", err)
 		return
 	}
-	a.pruneLLMLogs()
+	s.pruneLLMLogs()
 }
 
-func (a *App) pruneLLMLogs() {
+func (s *Service) pruneLLMLogs() {
 	var n int64
-	a.DB.Model(&db.LLMLog{}).Count(&n)
+	s.db.Model(&db.LLMLog{}).Count(&n)
 	if n <= llmlogLimit {
 		return
 	}
 	var oldest []db.LLMLog
-	a.DB.Order("at").Limit(int(n - llmlogLimit)).Find(&oldest)
+	s.db.Order("at").Limit(int(n - llmlogLimit)).Find(&oldest)
 	idsToDrop := make([]string, 0, len(oldest))
 	for _, r := range oldest {
 		idsToDrop = append(idsToDrop, r.ID)
 	}
 	if len(idsToDrop) > 0 {
-		a.DB.Where("id IN ?", idsToDrop).Delete(&db.LLMLog{})
+		s.db.Where("id IN ?", idsToDrop).Delete(&db.LLMLog{})
 	}
 }
 
-func (a *App) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
+func (s *Service) ListLLMLogs(ctx context.Context, req *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	out := &v1.ListLLMLogsResponse{Enabled: a.cfg().Debug}
+	out := &v1.ListLLMLogsResponse{Enabled: s.cfg().Debug}
 	if !out.Enabled {
 		return connect.NewResponse(out), nil
 	}
-	q := a.DB.Order("at desc").Limit(200)
+	q := s.db.Order("at desc").Limit(200)
 	if botID := strings.TrimSpace(req.Msg.GetBotId()); botID != "" {
 		q = q.Where("bot_id = ?", botID)
 	}
@@ -146,7 +146,7 @@ func formatMessage(m llm.Message) string {
 		b.WriteString("\n")
 	}
 	if n := len(m.Images); n > 0 {
-		fmt.Fprintf(&b, "(%d image%s)\n", n, plural(n))
+		fmt.Fprintf(&b, "(%d image%s)\n", n, textx.Plural(n))
 	}
 	for _, tc := range m.ToolCalls {
 		fmt.Fprintf(&b, "→ %s %s\n", tc.Name, strings.TrimSpace(tc.Arguments))
@@ -208,11 +208,4 @@ func tidyText(s string) string {
 		out = append(out, ln)
 	}
 	return strings.TrimSpace(strings.Join(out, "\n"))
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }

@@ -59,3 +59,11 @@ func FirstLine(s string) string {
 	}
 	return ""
 }
+
+// Plural is "s" unless n is exactly 1, for "%d file%s".
+func Plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}

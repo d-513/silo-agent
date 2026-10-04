@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
@@ -117,11 +118,11 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	var bot db.Bot
 	a.DB.Select("id, memory").Where("id = ?", ch.BotID).Limit(1).Find(&bot)
 	modelID := a.cfg().MemoryModel()
-	client, provider, model, err := a.modelClient(modelID, ch.BotID, "memory")
+	client, provider, model, err := a.models.Observed(modelID, ch.BotID, "memory")
 	if err != nil {
 		return collectResult{}, providerError{err}
 	}
-	cache := cachePolicy(a.cfg().ProviderSettings(provider), "memory")
+	cache := models.CachePolicy(a.cfg().ProviderSettings(provider), "memory")
 	cache.Key, cache.Messages = "silo-memory-collector", false
 
 	var res collectResult

@@ -14,6 +14,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
@@ -442,7 +443,7 @@ func (a *App) PutSettings(ctx context.Context, req *connect.Request[v1.PutSettin
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown search engine %q", v))
 			}
 			if k == "embedding_model" && v != "" {
-				if err := a.canEmbed(v); err != nil {
+				if err := a.models.CanEmbed(v); err != nil {
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
@@ -479,7 +480,7 @@ func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRe
 	if a.Store == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
 	}
-	models := make([]string, 0, len(req.Msg.GetModels()))
+	allow := make([]string, 0, len(req.Msg.GetModels()))
 	for _, m := range req.Msg.GetModels() {
 		m = strings.TrimSpace(m)
 		if m == "" {
@@ -488,9 +489,9 @@ func (a *App) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRe
 		if _, _, err := llm.Parse(m); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		models = append(models, m)
+		allow = append(allow, m)
 	}
-	if err := a.Store.SetModels(models); err != nil {
+	if err := a.Store.SetModels(allow); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	s, err := a.settings()
@@ -550,7 +551,7 @@ func (a *App) settings() (*v1.Settings, error) {
 		})
 	}
 	out.Providers = providerProtos()
-	out.Models = modelOptionProtos(a.allowedModels())
+	out.Models = modelOptionProtos(a.models.Allowed())
 	for _, v := range a.Store.ConnectorVars() {
 		out.ConnectorVars = append(out.ConnectorVars, &v1.ConnectorVar{
 			Name:    v.Name,
@@ -584,7 +585,7 @@ func providerProtos() []*v1.Provider {
 	return out
 }
 
-func modelOptionProtos(opts []modelOption) []*v1.ModelOption {
+func modelOptionProtos(opts []models.Option) []*v1.ModelOption {
 	out := make([]*v1.ModelOption, 0, len(opts))
 	for _, o := range opts {
 		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking})

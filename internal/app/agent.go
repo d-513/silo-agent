@@ -10,6 +10,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -277,8 +278,8 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 	defer close(done)
 	defer a.untrackRun(runID)
 
-	modelID := a.resolveModel(botID, chatID)
-	client, provider, model, err := a.modelClient(modelID, botID, "chat")
+	modelID := a.models.Resolve(botID, chatID)
+	client, provider, model, err := a.models.Observed(modelID, botID, "chat")
 	if err != nil {
 		a.emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
@@ -352,8 +353,8 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 		}
 		// Re-resolve each turn so a switch_model tool call takes effect on the
 		// next model call without restarting the run.
-		if m := a.resolveModel(botID, chatID); m != modelID {
-			if c, pr, mo, e := a.modelClient(m, botID, "chat"); e == nil {
+		if m := a.models.Resolve(botID, chatID); m != modelID {
+			if c, pr, mo, e := a.models.Observed(m, botID, "chat"); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
 				window = a.contextWindow(ctx, modelID)
@@ -397,10 +398,10 @@ func (a *App) runLoop(req runRequest, runID string, inbox chan inboxMsg, done ch
 			System:   system,
 			Messages: withTurnNote(msgs, note),
 			Tools:    tools,
-			Cache:    cachePolicy(settings, botID),
+			Cache:    models.CachePolicy(settings, botID),
 			// Read each turn, like the model, so a change in the composer
 			// applies from the next model call.
-			Thinking: a.chatThinking(ctx, chatID, modelID),
+			Thinking: a.models.ChatThinking(ctx, chatID, modelID),
 		}
 		res, err := a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
 		// The estimate can be off: a provider that refuses the request as too
@@ -503,7 +504,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if len(snippet) > 800 {
 		snippet = textx.TruncateUTF8(snippet, 800)
 	}
-	client, provider, model, err := a.modelClient(a.titleModel(botID, chatID), botID, "title")
+	client, provider, model, err := a.models.Observed(a.models.Title(botID, chatID), botID, "title")
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)
 		return
@@ -512,7 +513,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 		Model:    model,
 		System:   []llm.SystemBlock{{Text: "Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation."}},
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: snippet}},
-		Cache:    cachePolicy(a.cfg().ProviderSettings(provider), botID),
+		Cache:    models.CachePolicy(a.cfg().ProviderSettings(provider), botID),
 	})
 	if err != nil {
 		log.Printf("name chat %s: %v", chatID, err)

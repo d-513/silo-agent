@@ -21,6 +21,7 @@ import (
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/feed"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
@@ -177,7 +178,8 @@ type App struct {
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
 
-	feed *feed.Service
+	feed   *feed.Service
+	models *models.Service
 
 	// bridgeTransportFn is a test seam; when set it replaces the real
 	// sidecar container + reverse tunnel for STDIO connectors.
@@ -203,6 +205,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 
 		stopAutomations: make(chan struct{}),
 	}
+	a.models = models.New(a.DB, a.cfg)
 	a.feed = feed.New(a.DB, a)
 	a.recoverOrphans()
 	a.initConnectors()

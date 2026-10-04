@@ -148,7 +148,7 @@ func (a *App) subagentDefaultModel(botID, leadChatID string) string {
 	if m := strings.TrimSpace(cfg.ModelSubagent); m != "" && llm.Allowed(m, cfg.Models) {
 		return m
 	}
-	return a.resolveModel(botID, leadChatID)
+	return a.models.Resolve(botID, leadChatID)
 }
 
 func subagentBrief(goal, ctxText string) string {
