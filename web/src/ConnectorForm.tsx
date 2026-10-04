@@ -569,7 +569,7 @@ export function ConnectorFields({
       </div>
       {catalogGuide && (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Before you add</p>
+          <p className="mb-2 text-label-caps uppercase text-ink-3">Before you add</p>
           <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{catalogGuide}</p>
         </div>
       )}

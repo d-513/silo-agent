@@ -12,7 +12,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   return (
     <div className="overflow-hidden rounded-sm bg-well">
       <div className="flex h-8 items-center justify-between pr-1 pl-3 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">{displayLang || "code"}</span>
+        <span className="text-label-caps leading-4 text-ink-3 uppercase">{displayLang || "code"}</span>
         <CopyButton text={code} title="Copy code" label size={12} />
       </div>
       <Highlighted code={code} lang={lang} preClass="whitespace-pre-wrap break-words p-3 font-mono text-[12.5px] leading-5" codeClass="hljs whitespace-pre-wrap break-words" />

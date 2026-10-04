@@ -79,7 +79,7 @@ export function Panel({
       {title ? (
         <header className="flex items-start justify-between gap-3 px-5 py-4 shadow-[inset_0_-1px_0_var(--color-line)]">
           <div className="min-w-0">
-            <h3 className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-ink">{title}</h3>
+            <h3 className="text-card-title leading-5 text-ink">{title}</h3>
             {note ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : null}
           </div>
           {action}

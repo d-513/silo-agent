@@ -136,7 +136,7 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
   const { shape, color } = unpackCrest(value);
   return (
     <div className="rounded-card bg-surface p-4 shadow-card">
-      <div className="mb-2 text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase">Shape</div>
+      <div className="mb-2 text-label-caps text-ink-3 uppercase">Shape</div>
       <div className="mb-4 grid grid-cols-4 gap-1.5">
         {NAMES.map((name, i) => {
           const on = i === shape;
@@ -157,7 +157,7 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
           );
         })}
       </div>
-      <div className="mb-2 text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase">Color</div>
+      <div className="mb-2 text-label-caps text-ink-3 uppercase">Color</div>
       <div className="flex flex-wrap gap-2 px-0.5">
         {CREST_FILLS.map(({ name, fill: hex }, i) => {
           const on = i === color;

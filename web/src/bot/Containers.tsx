@@ -45,7 +45,7 @@ const BOX_KIND: Record<string, { icon: typeof MessageCircle; chip: string }> = {
 function BoxStat({ label, value, meter }: { label: string; value: string; meter?: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] font-medium uppercase leading-4 tracking-[0.08em] text-ink-3">{label}</div>
+      <div className="text-label-caps uppercase leading-4 text-ink-3">{label}</div>
       <div className="mt-0.5 truncate font-mono text-[15px] font-medium tabular-nums tracking-tight text-ink">{value}</div>
       {meter ? <div className="mt-1.5">{meter}</div> : null}
     </div>
@@ -118,7 +118,7 @@ export function ContainersPane({ bot, onStart, onStop, onChanged }: { bot: Bot; 
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{b.label}</span>
+                      <span className="text-card-title text-ink">{b.label}</span>
                       <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{kind.chip}</span>
                     </div>
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{b.detail}</div>

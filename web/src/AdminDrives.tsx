@@ -171,7 +171,7 @@ export function AdminDrives() {
               if (items.length === 0) return null;
               return (
                 <section key={c}>
-                  <h3 className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{CATEGORY_LABEL[c]}</h3>
+                  <h3 className="mb-2.5 text-label-caps uppercase text-ink-3">{CATEGORY_LABEL[c]}</h3>
                   <div className="space-y-2">
                     {items.map((t) => (
                       <ProviderFolio key={t.key} t={t} p={byKey.get(t.key)!} redirect={settings.redirectUrl} onSaved={setSettings} />

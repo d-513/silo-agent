@@ -70,7 +70,7 @@ export function BotsPage() {
               ) : null}
               <Crest index={b.crest} size={56} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] leading-5 font-semibold tracking-[-0.01em]">{b.name}</div>
+                <div className="truncate text-card-title leading-5">{b.name}</div>
                 {b.description ? <div className="mt-0.5 truncate text-[12.5px] leading-[18px] text-ink-2">{b.description}</div> : null}
                 <div className="mt-2 flex items-center gap-2">
                   <Lamp status={b.status} />

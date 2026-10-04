@@ -14,7 +14,7 @@ export function BotHeader({ id, bot, tab, chatId, onStart, onStop }: { id: strin
       <span className="blink hidden wide:inline-flex">
         <Crest index={bot.crest} size={28} />
       </span>
-      <h1 className="sr-only min-w-0 truncate text-[15px] leading-5 font-semibold tracking-[-0.01em] wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
+      <h1 className="sr-only min-w-0 truncate text-card-title leading-5 wide:not-sr-only wide:max-w-[12rem]">{bot.name}</h1>
       <span className="hidden shrink-0 items-center gap-2 wide:inline-flex">
         <Lamp status={bot.status} />
         <StatusWord status={bot.status} />

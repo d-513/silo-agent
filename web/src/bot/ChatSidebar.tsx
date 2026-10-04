@@ -44,7 +44,7 @@ export function ChatSidebar({
         <SideLink to={`/bots/${id}/feed`} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
       </nav>
       <div className="flex h-12 items-center justify-between pr-2 pl-4">
-        <span className="text-[11px] leading-4 font-medium tracking-[0.08em] text-ink-3 uppercase">Chats</span>
+        <span className="text-label-caps leading-4 text-ink-3 uppercase">Chats</span>
         <Btn kind="ghost" size="sm" iconOnly title="New chat" aria-label="New chat" icon={<SquarePen size={15} />} onClick={onNewChat} />
       </div>
       <div className="min-h-0 flex-1 space-y-0.5 overflow-auto px-2 pb-3">

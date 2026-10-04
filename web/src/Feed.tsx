@@ -100,7 +100,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
             <article key={p.id} className="group rounded-card bg-surface px-5 py-4 shadow-card">
               <header className="mb-2 flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  {p.title ? <h3 className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-ink">{p.title}</h3> : null}
+                  {p.title ? <h3 className="text-card-title leading-5 text-ink">{p.title}</h3> : null}
                   <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-ink-3">
                     {fresh.has(p.id) ? <span aria-label="New" className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
                     <span className="shrink-0 font-mono">{feedStamp(p.createdAt)}</span>

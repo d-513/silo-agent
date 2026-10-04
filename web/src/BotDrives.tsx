@@ -83,7 +83,7 @@ function Step({ n, title, note, done, locked, children }: { n: number; title: st
           {done ? <Check size={13} strokeWidth={2.5} /> : n}
         </span>
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold leading-6 tracking-[-0.01em] text-ink">{title}</h3>
+          <h3 className="text-card-title leading-6 text-ink">{title}</h3>
           {note ? <p className="text-[12.5px] leading-[18px] text-ink-2">{note}</p> : null}
         </div>
       </header>
@@ -496,7 +496,7 @@ function DriveForm({
 
       {!editing && t.guide ? (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">Before you add</p>
+          <p className="mb-1.5 text-label-caps uppercase text-ink-3">Before you add</p>
           <div className="silo-md text-[14px] leading-[22px] text-ink">
             <Markdown remarkPlugins={[remarkGfm]}>{t.guide}</Markdown>
           </div>
@@ -686,7 +686,7 @@ function Gallery({ botId, templates, admin, onBack }: { botId: string; templates
       <div className="space-y-6">
         {groups.map(({ c, items }) => (
           <section key={c}>
-            <h3 className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{CATEGORY_LABEL[c]}</h3>
+            <h3 className="mb-2.5 text-label-caps uppercase text-ink-3">{CATEGORY_LABEL[c]}</h3>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {items.map((t) => {
                 const tile = (
@@ -755,7 +755,7 @@ function DriveRow({ botId, d, t, onReconnect, onRemoved }: { botId: string; d: D
         <DriveMark svg={t?.iconSvg} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{d.name}</span>
+            <span className="text-card-title text-ink">{d.name}</span>
             <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t?.title ?? d.template}</span>
             {d.readOnly ? <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">Read-only</span> : null}
           </div>
@@ -920,7 +920,7 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
               <HardDrive size={22} />
             </div>
             <div>
-              <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">No drives yet</h3>
+              <h3 className="text-card-title text-ink">No drives yet</h3>
               <p className="text-[13px] text-ink-2">Give the Bot a folder from somewhere else.</p>
             </div>
           </div>
