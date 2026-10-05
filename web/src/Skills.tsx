@@ -1,140 +1,122 @@
-import { Plus, RotateCcw, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { BookOpen, Check, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ui } from "./api";
-import { ArmedButton } from "./Feedback";
-import { SkeletonRows } from "./Field";
 import { Btn } from "./Btn";
-import { Segmented } from "./connectors/form";
+import { fail } from "./errors";
+import { ArmedButton } from "./Feedback";
+import { ErrorWell } from "./Field";
 import { SkillBrowserOverlay } from "./FileBrowser";
-import { Switch } from "./Switch";
 import { skillSource } from "./fs";
 import type { BotSkill, Skill } from "./gen/silo/v1/ui_pb";
-import { fail } from "./errors";
+import { widePage } from "./PageHead";
+import { InstallPanel } from "./skills/InstallPanel";
+import { filterSkills } from "./skills/model";
+import { SkillCard } from "./skills/SkillCard";
+import { Switch } from "./Switch";
+import { TabPill, TabPills } from "./TabPills";
+import { ToolbarSearch } from "./ToolbarSearch";
 
-export function InstallField({
-  scope,
-  onDone,
-}: {
-  scope: "library" | "personal";
-  onDone: () => void;
-}) {
-  const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [note, setNote] = useState("");
-  const file = useRef<HTMLInputElement>(null);
-  function report(r: { installed: string[]; skipped: string[] }) {
-    const parts = [];
-    if (r.installed.length) parts.push("installed " + r.installed.join(", "));
-    if (r.skipped.length) parts.push("already had " + r.skipped.join(", "));
-    setNote(parts.join("; ") || "nothing new");
-    onDone();
-  }
-  async function go(e: FormEvent) {
-    e.preventDefault();
-    setErr("");
-    setNote("");
-    setBusy(true);
-    try {
-      report(await ui.installSkill({ scope, url: url.trim() }));
-      setUrl("");
-    } catch (ex) {
-      setErr(fail(ex));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function upload(list: FileList | null) {
-    const f = list?.[0];
-    if (!f) return;
-    setErr("");
-    setNote("");
-    if (f.size > 10 << 20) {
-      setErr("zip is larger than 10 MB");
-      return;
-    }
-    setBusy(true);
-    try {
-      report(await ui.installSkill({ scope, archive: new Uint8Array(await f.arrayBuffer()), filename: f.name }));
-    } catch (ex) {
-      setErr(fail(ex));
-    } finally {
-      setBusy(false);
-    }
-  }
+function SkillGrid({ columns = 2, children }: { columns?: 1 | 2; children: ReactNode }) {
+  return <div className={`grid grid-cols-1 gap-4 ${columns === 2 ? "md:grid-cols-2" : ""}`}>{children}</div>;
+}
+
+// A titled run of cards with its count, like a category in the connector library.
+function Section({ title, count, children }: { title: string; count: number; children: ReactNode }) {
   return (
-    <form className="mb-4 flex flex-wrap items-start gap-2" onSubmit={(e) => void go(e)}>
-      <input
-        className="h-9 min-w-0 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 outline-none wide:min-w-[240px]"
-        placeholder="GitHub URL or owner/repo"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-      />
-      <Btn kind="primary" type="submit" disabled={busy || !url.trim()} icon={<Plus size={12} />}>
-        {busy ? "Installing…" : "Install"}
-      </Btn>
-      <Btn kind="secondary" type="button" disabled={busy} icon={<Upload size={12} />} onClick={() => file.current?.click()}>
-        Upload zip
-      </Btn>
-      <input
-        ref={file}
-        type="file"
-        accept=".zip,.tgz,.tar.gz,application/zip"
-        className="hidden"
-        onChange={(e) => {
-          void upload(e.target.files);
-          e.target.value = "";
-        }}
-      />
-      {err && <p className="w-full text-vermilion">{err}</p>}
-      {note && <p className="w-full text-ink-2">{note}</p>}
-    </form>
+    <section className="space-y-3">
+      <div className="flex items-center gap-2 border-b border-line/70 pb-2">
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <span className="rounded-full bg-well px-2 py-0.5 text-[10px] font-medium text-ink-3">{count}</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
+        <BookOpen size={28} />
+      </div>
+      <h3 className="text-base font-semibold text-ink">{title}</h3>
+      <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{children}</p>
+      {actions ? <div className="mt-6 flex items-center justify-center gap-3">{actions}</div> : null}
+    </div>
+  );
+}
+
+function NoMatch({ search, onClear }: { search: string; onClear: () => void }) {
+  return (
+    <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
+      <p className="text-[13px]">No skills match “{search}”.</p>
+      <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={onClear}>
+        Clear search
+      </button>
+    </div>
+  );
+}
+
+function SkeletonCards() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-busy="true" aria-label="Loading">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="skeleton h-[140px] rounded-card" />
+      ))}
+    </div>
+  );
+}
+
+function Header({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
+  return (
+    <div className="mb-6 space-y-1.5">
+      <div className="flex items-center gap-2.5">
+        <h1 className="text-title text-ink">{title}</h1>
+        {count !== undefined ? <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{count}</span> : null}
+      </div>
+      <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">{children}</p>
+    </div>
   );
 }
 
 export function SkillRows({
   rows,
+  columns = 2,
   onRemove,
   onOpen,
 }: {
   rows: Skill[];
+  columns?: 1 | 2;
   onRemove?: (name: string) => void;
-  onOpen?: (s: Skill) => void;
+  onOpen: (s: Skill) => void;
 }) {
-  if (rows.length === 0) {
-    return <p className="text-ink-2">No skills here yet.</p>;
-  }
   return (
-    <div className="flex flex-col gap-2">
+    <SkillGrid columns={columns}>
       {rows.map((s) => (
-        <div
+        <SkillCard
           key={s.kind + s.name}
-          className={`flex items-start gap-3 rounded-card shadow-card bg-surface px-3 py-3 ${onOpen ? "cursor-pointer hover:border-cobalt" : ""}`}
-          onClick={() => onOpen?.(s)}
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{s.name}</span>
-              {s.seeded ? <span className="font-mono text-[11px] text-ink-3">catalog</span> : null}
-            </div>
-            <p className="text-ink-2">{s.description}</p>
-            {s.source ? <p className="truncate font-mono text-[11px] text-ink-3">{s.source}</p> : null}
-          </div>
-          {onRemove && (
-            <ArmedButton
-              kind="ghost"
-              size="sm"
-              className="shrink-0"
-              armedLabel="Click again to remove"
-              icon={<Trash2 size={13} />}
-              onConfirm={() => onRemove(s.name)}
-            >
-              Remove
-            </ArmedButton>
-          )}
-        </div>
+          name={s.name}
+          description={s.description}
+          source={s.source}
+          catalog={s.seeded}
+          onOpen={() => onOpen(s)}
+          actions={
+            onRemove ? (
+              <ArmedButton
+                kind="ghost"
+                size="sm"
+                armedLabel="Click again to remove"
+                icon={<Trash2 size={13} />}
+                onConfirm={() => onRemove(s.name)}
+              >
+                Remove
+              </ArmedButton>
+            ) : null
+          }
+        />
       ))}
-    </div>
+    </SkillGrid>
   );
 }
 
@@ -174,39 +156,42 @@ export function AdminSkills() {
   }
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
         <h2 className="text-title">Skills Library</h2>
         <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
           Re-add defaults
         </Btn>
       </div>
-      <p className="mb-4 text-ink-2">Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.</p>
-      {err && <p className="mb-3 text-vermilion">{err}</p>}
-      <InstallField scope="library" onDone={() => void load()} />
+      <p className="mb-6 text-[13px] leading-relaxed text-ink-2">Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.</p>
+      {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
+      <InstallPanel scope="library" onDone={() => void load()} />
       {rows === null ? (
-        <SkeletonRows rows={3} height={64} />
+        <SkeletonCards />
+      ) : rows.length === 0 ? (
+        <EmptyState title="The library is empty">Install a skill above, or re-add the defaults.</EmptyState>
       ) : (
-        <SkillRows rows={rows} onRemove={(n) => void remove(n)} onOpen={(s) => setOpen(s.name)} />
+        <SkillRows rows={rows} columns={1} onRemove={(n) => void remove(n)} onOpen={(s) => setOpen(s.name)} />
       )}
       {open ? <SkillPeek scope="library" name={open} onClose={() => setOpen("")} /> : null}
     </div>
   );
 }
 
+type Scope = "personal" | "library";
+
 export function SkillHub() {
-  const [scope, setScope] = useState<"personal" | "library">("personal");
-  const [rows, setRows] = useState<Skill[] | null>(null);
+  const [scope, setScope] = useState<Scope>("personal");
+  const [lists, setLists] = useState<Record<Scope, Skill[]> | null>(null);
+  const [search, setSearch] = useState("");
   const [err, setErr] = useState("");
   const [open, setOpen] = useState("");
-  async function load(s = scope) {
-    const r = await ui.listSkills({ scope: s });
-    setRows(r.skills);
+  async function load() {
+    const [personal, library] = await Promise.all([ui.listSkills({ scope: "personal" }), ui.listSkills({ scope: "library" })]);
+    setLists({ personal: personal.skills, library: library.skills });
   }
   useEffect(() => {
-    setRows(null);
-    setOpen("");
-    load(scope).catch((e) => setErr(fail(e)));
-  }, [scope]);
+    load().catch((e) => setErr(fail(e)));
+  }, []);
   async function remove(name: string) {
     setErr("");
     try {
@@ -216,30 +201,67 @@ export function SkillHub() {
       setErr(fail(e));
     }
   }
+
+  const all = lists?.[scope] ?? [];
+  const shown = useMemo(() => filterSkills(all, search), [all, search]);
+  const catalog = shown.filter((s) => s.seeded);
+  const added = shown.filter((s) => !s.seeded);
+  const onOpen = (s: Skill) => setOpen(s.name);
+
   return (
-    <div className="silo-page">
-      <h1 className="text-title">Skills</h1>
-      <p className="mb-4 text-ink-2">Personal skills are yours. Library skills are site-wide; enable them on a Bot.</p>
-      <div className="mb-4 w-full max-w-[280px]">
-        <Segmented
-          value={scope}
-          onChange={(v) => setScope(v as "personal" | "library")}
-          options={[
-            { id: "personal", label: "Personal" },
-            { id: "library", label: "Library" },
-          ]}
-        />
+    <div className={widePage}>
+      <Header title="Skills">
+        Skills are instructions and scripts a Bot loads when a task calls for them. Personal skills are yours; Library skills are site-wide. Enable either on a Bot's Skills tab.
+      </Header>
+
+      {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <TabPills>
+          <TabPill on={scope === "personal"} onClick={() => setScope("personal")} count={lists?.personal.length}>
+            <span>Personal</span>
+          </TabPill>
+          <TabPill on={scope === "library"} onClick={() => setScope("library")} count={lists?.library.length}>
+            <span>Library</span>
+          </TabPill>
+        </TabPills>
+        <ToolbarSearch value={search} onChange={setSearch} placeholder="Search skills..." />
       </div>
-      {err && <p className="mb-3 text-vermilion">{err}</p>}
-      {scope === "personal" && <InstallField scope="personal" onDone={() => void load()} />}
-      {rows === null ? (
-        <SkeletonRows rows={3} height={64} />
+
+      {scope === "personal" ? <InstallPanel scope="personal" onDone={() => void load()} /> : null}
+
+      {lists === null ? (
+        err ? null : <SkeletonCards />
+      ) : all.length === 0 ? (
+        scope === "personal" ? (
+          <EmptyState
+            title="No personal skills yet"
+            actions={
+              <Btn kind="secondary" type="button" onClick={() => setScope("library")}>
+                Browse the Library
+              </Btn>
+            }
+          >
+            Install one above to teach your Bots something new, or see what the Library already offers.
+          </EmptyState>
+        ) : (
+          <EmptyState title="The Library is empty">An admin can add site-wide skills in Admin → Skills Library.</EmptyState>
+        )
+      ) : shown.length === 0 ? (
+        <NoMatch search={search} onClear={() => setSearch("")} />
+      ) : scope === "personal" ? (
+        <SkillRows rows={shown} onRemove={(n) => void remove(n)} onOpen={onOpen} />
+      ) : catalog.length > 0 && added.length > 0 ? (
+        <div className="space-y-7">
+          <Section title="Catalog" count={catalog.length}>
+            <SkillRows rows={catalog} onOpen={onOpen} />
+          </Section>
+          <Section title="Added by admins" count={added.length}>
+            <SkillRows rows={added} onOpen={onOpen} />
+          </Section>
+        </div>
       ) : (
-        <SkillRows
-          rows={rows}
-          onRemove={scope === "personal" ? (n) => void remove(n) : undefined}
-          onOpen={(s) => setOpen(s.name)}
-        />
+        <SkillRows rows={shown} onOpen={onOpen} />
       )}
       {open ? <SkillPeek scope={scope} name={open} onClose={() => setOpen("")} /> : null}
     </div>
@@ -248,6 +270,7 @@ export function SkillHub() {
 
 export function BotSkills({ botId }: { botId: string }) {
   const [rows, setRows] = useState<BotSkill[] | null>(null);
+  const [search, setSearch] = useState("");
   const [err, setErr] = useState("");
   const [open, setOpen] = useState<BotSkill | null>(null);
   async function load() {
@@ -266,19 +289,48 @@ export function BotSkills({ botId }: { botId: string }) {
       setErr(fail(e));
     }
   }
-  const library = (rows ?? []).filter((s) => s.kind === "library");
-  const personal = (rows ?? []).filter((s) => s.kind === "personal");
+  const shown = filterSkills(rows ?? [], search);
+  const library = shown.filter((s) => s.kind === "library");
+  const personal = shown.filter((s) => s.kind === "personal");
+  const on = (rows ?? []).filter((s) => s.enabled).length;
   return (
-    <div className="silo-page">
-      <h2 className="mb-2 text-title">Skills</h2>
-      <p className="mb-4 text-ink-2">Enabled skills show as name + description in the prompt. The Bot loads the rest with `skill`.</p>
-      {err && <p className="mb-3 text-vermilion">{err}</p>}
+    <div className={widePage}>
+      <Header title="Skills" count={rows ? on : undefined}>
+        Enabled skills show as name + description in the Bot's prompt; it loads the rest with <code className="rounded-xs bg-well px-1 py-0.5 font-mono text-[12px] text-ink">skill</code> when it needs them.
+        {rows ? ` ${on} of ${rows.length} on.` : ""}
+      </Header>
+      {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       {rows === null ? (
-        <SkeletonRows rows={3} height={64} />
+        err ? null : <SkeletonCards />
       ) : (
         <>
-          <Group title="Library" rows={library} onToggle={(s) => void toggle(s)} onOpen={setOpen} />
-          <Group title="Personal" rows={personal} onToggle={(s) => void toggle(s)} onOpen={setOpen} />
+          {rows.length > 0 ? (
+            <div className="mb-6">
+              <ToolbarSearch value={search} onChange={setSearch} placeholder="Search skills..." className="sm:w-80" />
+            </div>
+          ) : null}
+          {rows.length > 0 && shown.length === 0 ? (
+            <NoMatch search={search} onClear={() => setSearch("")} />
+          ) : (
+            <div className="space-y-7">
+              <Group title="Library" rows={library} empty="No Library skills yet. An admin adds them in Admin → Skills Library." onToggle={(s) => void toggle(s)} onOpen={setOpen} />
+              <Group
+                title="Personal"
+                rows={personal}
+                empty={
+                  <>
+                    You have no personal skills. Install one in the{" "}
+                    <Link to="/skills" className="font-medium text-cobalt hover:underline">
+                      Skill Hub
+                    </Link>
+                    .
+                  </>
+                }
+                onToggle={(s) => void toggle(s)}
+                onOpen={setOpen}
+              />
+            </div>
+          )}
         </>
       )}
       {open ? <SkillPeek scope={open.kind} name={open.name} onClose={() => setOpen(null)} /> : null}
@@ -289,36 +341,44 @@ export function BotSkills({ botId }: { botId: string }) {
 function Group({
   title,
   rows,
+  empty,
   onToggle,
   onOpen,
 }: {
   title: string;
   rows: BotSkill[];
+  empty: ReactNode;
   onToggle: (s: BotSkill) => void;
   onOpen: (s: BotSkill) => void;
 }) {
   return (
-    <div className="mb-6">
-      <h3 className="mb-2 text-[12px] font-medium tracking-wide text-ink-3">{title}</h3>
+    <Section title={title} count={rows.length}>
       {rows.length === 0 ? (
-        <p className="text-ink-2">None.</p>
+        <div className="rounded-card bg-well p-5 text-[13px] text-ink-2">{empty}</div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <SkillGrid>
           {rows.map((s) => (
-            <div
+            <SkillCard
               key={s.kind + s.name}
-              className="flex cursor-pointer items-start gap-3 rounded-card shadow-card bg-surface px-3 py-3 hover:shadow-float"
-              onClick={() => onOpen(s)}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{s.name}</div>
-                <p className="text-ink-2">{s.description}</p>
-              </div>
-              <Switch on={s.enabled} onChange={() => onToggle(s)} />
-            </div>
+              name={s.name}
+              description={s.description}
+              source={s.source}
+              onOpen={() => onOpen(s)}
+              aside={<Switch on={s.enabled} onChange={() => onToggle(s)} title={s.enabled ? "Disable" : "Enable"} />}
+              actions={
+                s.enabled ? (
+                  <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-emerald">
+                    <Check size={13} />
+                    In the prompt
+                  </span>
+                ) : (
+                  <span className="text-[12.5px] font-medium text-ink-3">Off</span>
+                )
+              }
+            />
           ))}
-        </div>
+        </SkillGrid>
       )}
-    </div>
+    </Section>
   );
 }
