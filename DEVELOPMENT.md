@@ -134,13 +134,15 @@ make test-fast     # skip the container tier (no Podman needed)
 make e2e           # Playwright against the already-running `make dev` stack
 ```
 
+`web/e2e/routes.spec.ts` walks every documented URL (tabs, sub-routes, redirects, sign-in return, the tunnel handoff) without sending a message, so it costs no tokens: run it after any change to `web/src/router.tsx` (`pnpm --dir web exec playwright test e2e/routes.spec.ts`; `pnpm --dir web run e2e:install` once per Playwright version).
+
 Web unit tests are plain scripts: `node --experimental-strip-types web/src/<dir>/<x>_test.ts` runs one, and `npx tsc --noEmit` in `web/` typechecks (test files are excluded). A module a test imports needs relative imports that Node can resolve, so inside such a folder (today `web/src/fold`, `rules`, `composer`, `connectors`) pure logic lives in `.ts` files with no runtime dependency on React, and a folder whose files import each other uses explicit `.ts` extensions (`allowImportingTsExtensions` is on).
 
 The explicit Go package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. Feature tests use the deterministic DummyLLM provider (`internal/llm/dummy`) and the `internal/apptest` harness; the container tier boots the real Bot image and cleans up everything it creates. See [TESTING.md](TESTING.md) for tiers, environment knobs, and live checks.
 
 ## Web bundle
 
-Only the chat is in the first load. Every other Bot tab, the admin area and the skills hub are `lazyNamed(() => import(...), "Export")` chunks wrapped in `Suspense`; add a new page the same way, and never import a lazy page's module statically from eager code (that pulls it back into the entry; `connectorAuth.ts` exists for that reason). KaTeX and highlight.js load through `mdPlugins.ts` and `highlight.ts` only when a message has math or code, and xterm loads with the Console. The type scale lives in `index.css` `@theme` (`text-title` is the page title); reach for a token before typing pixel values. `pnpm build` prints chunk sizes; the entry should stay near 400 KB plus the two vendor chunks.
+Only the chat is in the first load. Every other Bot tab is a `lazyNamed(() => import(...), "Export")` chunk wrapped in `Suspense` in `web/src/bot/routes.tsx`, and the admin area and the skills hub are `lazyRouteComponent` routes in `web/src/router.tsx`; add a new page the same way, and never import a lazy page's module statically from eager code (that pulls it back into the entry; `connectorAuth.ts` exists for that reason). KaTeX and highlight.js load through `mdPlugins.ts` and `highlight.ts` only when a message has math or code, and xterm loads with the Console. The type scale lives in `index.css` `@theme` (`text-title` is the page title); reach for a token before typing pixel values. `pnpm build` prints chunk sizes; the entry should stay near 400 KB plus the two vendor chunks.
 
 ## Commits
 
