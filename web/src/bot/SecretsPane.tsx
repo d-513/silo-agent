@@ -7,7 +7,7 @@ import type { SecretsState } from "./useSecrets";
 // The Secrets tab: names and last use only; values go to the Bot after you
 // allow it and are masked before the model sees output.
 export function SecretsPane({ botId, state, onError }: { botId: string; state: SecretsState; onError: (message: string) => void }) {
-  const { secrets, setSecrets, saver, name, setName, value, setValue } = state;
+  const { secrets, removed, reload, saver, name, setName, value, setValue } = state;
   return (
     <div className="silo-page">
       <h2 className="text-title">Secrets</h2>
@@ -29,7 +29,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                 size="sm"
                 onConfirm={async () => {
                   await ui.deleteSecret({ botId, id: s.id });
-                  setSecrets((xs) => (xs ?? []).filter((x) => x.id !== s.id));
+                  removed(s.id);
                 }}
               >
                 Delete
@@ -47,7 +47,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
               await saver.run(() => ui.addSecret({ botId, name, value }));
               setName("");
               setValue("");
-              setSecrets((await ui.listSecrets({ botId })).secrets);
+              await reload();
             } catch (ex) {
               onError(fail(ex));
             }

@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ui } from "./api";
-import { useBots } from "./bots";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
 import { fail } from "./errors";
+import { UI } from "./gen/silo/v1/ui_pb";
+import { reload } from "./query";
 import { inputClass, textareaClass } from "./Field";
 
 function randomCrest() {
@@ -13,7 +14,6 @@ function randomCrest() {
 
 export function NewBotPage() {
   const nav = useNavigate();
-  const { refresh } = useBots();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [crest, setCrest] = useState(randomCrest);
@@ -26,7 +26,7 @@ export function NewBotPage() {
     setErr("");
     try {
       const b = await ui.createBot({ name: name.trim(), crest, description: description.trim() });
-      refresh();
+      void reload(UI.method.listBots);
       nav(`/bots/${b.id}/run`);
     } catch (ex) {
       setErr(fail(ex));

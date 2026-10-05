@@ -4,12 +4,12 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
 import { useAuth } from "../auth";
-import { useBots } from "../bots";
 import { fail } from "../errors";
 import { SkeletonRows } from "../Field";
 import { lazyNamed } from "../lazyNamed";
 import { PaneFallback } from "../PaneFallback";
-import type { BotConnector } from "../gen/silo/v1/ui_pb";
+import { reload, setBot } from "../query";
+import { UI, type BotConnector } from "../gen/silo/v1/ui_pb";
 import { useRunStream } from "../useRunStream";
 import { useSubagents } from "../useSubagents";
 import { BotHeader } from "./BotHeader";
@@ -21,7 +21,7 @@ import { RunPane } from "./RunPane";
 import { SecretsPane } from "./SecretsPane";
 import { isNavTab, isSideTab, onChatSide, type Tab } from "./tabs";
 import { useBotLive } from "./useBotLive";
-import { useChatList } from "./useChatList";
+import { patchChats, useChatList } from "./useChatList";
 import { useComposerDraft } from "./useComposerDraft";
 import { useSecrets } from "./useSecrets";
 
@@ -77,7 +77,6 @@ export function BotPage() {
   const { admin } = useAuth();
   const { id, "*": splat } = useParams();
   const nav = useNavigate();
-  const { refresh } = useBots();
   const parts = (splat ?? "").split("/").filter(Boolean);
   const tabParam = parts[0];
   const chatId = tabParam === "run" ? parts[1] : undefined;
@@ -86,8 +85,8 @@ export function BotPage() {
   const tab: Tab = chatId ? "run" : tabParam === "console" ? "console" : isNavTab(tabParam) || isSideTab(tabParam) ? tabParam : "run";
   const chatSide = onChatSide(tab);
   const [actErr, setActErr] = useState("");
-  const { bot, setBot, loadErr, pending, setPending, reloadApprovals } = useBotLive(id, chatId);
-  const { chats, setChats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId }, setActErr);
+  const { bot, loadErr, pending, reloadApprovals } = useBotLive(id, chatId);
+  const { chats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId }, setActErr);
   const draft = useComposerDraft(id ?? "", bot?.workerConnected);
   const secrets = useSecrets(id, tab === "secrets", setActErr);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
@@ -97,9 +96,9 @@ export function BotPage() {
   const subs = useSubagents(id, chatId);
   const run = useRunStream(id, chatId, {
     onApproval: reloadApprovals,
-    onTitle: (title) => setChats((xs) => xs.map((c) => (c.id === chatId ? { ...c, title } : c))),
+    onTitle: (title) => id && patchChats(id, (xs) => xs.map((c) => (c.id === chatId ? { ...c, title } : c))),
     onDone: () => {
-      if (id) ui.listChats({ botId: id }).then((r) => setChats(r.chats)).catch(() => {});
+      if (id) void reload(UI.method.listChats, { botId: id });
       subs.refresh();
     },
     onPing: () => subs.refresh(),
@@ -144,13 +143,12 @@ export function BotPage() {
     return a && id && chatId ? `/bots/${id}/run/${chatId}/agent/${a.id}` : undefined;
   }
 
-  const actions = runActions({ id, chatId, draft, run, setBot, setChats, setPending, onError: setActErr, nav });
+  const actions = runActions({ id, chatId, draft, run, onError: setActErr, nav });
 
   async function start() {
     setActErr("");
     try {
       setBot(await ui.startBot({ id: id! }));
-      refresh();
     } catch (e) {
       setActErr(fail(e));
     }
@@ -159,7 +157,6 @@ export function BotPage() {
     setActErr("");
     try {
       setBot(await ui.stopBot({ id: id! }));
-      refresh();
     } catch (e) {
       setActErr(fail(e));
     }
@@ -176,10 +173,6 @@ export function BotPage() {
   const onSaveSkill = (a: Artifact) => void saveSkill(a);
   const onNewChat = () => newChat().catch((e) => setActErr(fail(e)));
   const onDeleteChat = (cid: string) => deleteChat(cid).catch((e) => setActErr(fail(e)));
-  const savedBot = (next: typeof bot) => {
-    setBot(next);
-    refresh();
-  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -233,7 +226,7 @@ export function BotPage() {
               )}
               {tab === "memories" && (
                 <ScrollPane>
-                  <MemoriesPane bot={bot} onSaved={setBot} onError={setActErr} />
+                  <MemoriesPane bot={bot} onError={setActErr} />
                 </ScrollPane>
               )}
               {tab === "knowledge" && (
@@ -247,7 +240,7 @@ export function BotPage() {
                     bot={bot}
                     onError={setActErr}
                     onQuoted={(c) => {
-                      setChats((xs) => [c, ...xs.filter((x) => x.id !== c.id)]);
+                      patchChats(id, (xs) => [c, ...xs.filter((x) => x.id !== c.id)]);
                       nav(`/bots/${id}/run/${c.id}`);
                     }}
                   />
@@ -349,12 +342,12 @@ export function BotPage() {
         )}
         {tab === "container" && (
           <ScrollPane>
-            <ContainersPane bot={bot} onStart={start} onStop={stop} onChanged={savedBot} />
+            <ContainersPane bot={bot} onStart={start} onStop={stop} />
           </ScrollPane>
         )}
         {tab === "settings" && (
           <ScrollPane>
-            <SettingsPane bot={bot} onSaved={savedBot} onError={setActErr} onRefresh={refresh} />
+            <SettingsPane bot={bot} onError={setActErr} />
           </ScrollPane>
         )}
         {tab === "rules" && (
@@ -362,7 +355,7 @@ export function BotPage() {
             <RulesPane botId={id} />
           </ScrollPane>
         )}
-        <BotSlip bot={bot} pending={pending} setPending={setPending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
+        <BotSlip bot={bot} pending={pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
         {inspect ? (
           <Suspense fallback={null}>
             <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} />

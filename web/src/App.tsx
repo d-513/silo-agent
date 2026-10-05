@@ -5,13 +5,13 @@ import { AccountPage } from "./AccountPage";
 import { AuthCtx, useAuth } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import { BotsPage } from "./BotsPage";
-import { BotsProvider } from "./bots";
 import { isSignedOut } from "./errors";
 import { lazyNamed } from "./lazyNamed";
 import { preloadMarkdown } from "./mdPlugins";
 import { NewBotPage } from "./NewBotPage";
 import { OfflineBanner, Unreachable } from "./Offline";
 import { PaneFallback } from "./PaneFallback";
+import { queryClient } from "./query";
 import { Shell } from "./Shell";
 import { SignIn } from "./SignIn";
 
@@ -24,8 +24,7 @@ function Authed() {
   // Replies with code are common: fetch the highlighter once the browser is idle.
   useEffect(() => preloadMarkdown(), []);
   return (
-    <BotsProvider>
-      <Routes>
+    <Routes>
         <Route
           path="/"
           element={
@@ -80,8 +79,7 @@ function Authed() {
         />
         <Route path="/signin" element={<Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </BotsProvider>
+    </Routes>
   );
 }
 
@@ -124,6 +122,10 @@ export default function App() {
     };
   }, []);
   useEffect(() => onSignedOut(() => setSession(null)), []);
+  // Nothing one account loaded is shown to the next.
+  useEffect(() => {
+    if (session === null) queryClient.clear();
+  }, [session]);
   if (session === undefined) return unreachable ? <Unreachable /> : null;
   return (
     <AuthCtx.Provider value={{ email: session?.email ?? "", admin: session?.admin ?? false, setSession }}>

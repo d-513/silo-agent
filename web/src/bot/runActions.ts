@@ -2,7 +2,9 @@ import type { FormEvent } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import { ui } from "../api";
 import { fail } from "../errors";
-import type { Approval, Bot, Chat } from "../gen/silo/v1/ui_pb";
+import { UI } from "../gen/silo/v1/ui_pb";
+import { reload, reloadBot } from "../query";
+import { putChat } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
 
 type Ctx = {
@@ -10,9 +12,6 @@ type Ctx = {
   chatId?: string;
   draft: ComposerDraft;
   run: { markSent: () => void; setSending: (v: boolean) => void; resync: () => void };
-  setBot: (b: Bot) => void;
-  setChats: (f: (xs: Chat[]) => Chat[]) => void;
-  setPending: (xs: Approval[]) => void;
   onError: (message: string) => void;
   nav: NavigateFunction;
 };
@@ -22,7 +21,7 @@ type Ctx = {
 // reports its own failure there.
 export function runActions(c: Ctx) {
   const { id, chatId, draft, run, onError } = c;
-  const refreshChats = () => ui.listChats({ botId: id }).then((r) => c.setChats(() => r.chats)).catch(() => {});
+  const refreshChats = () => reload(UI.method.listChats, { botId: id });
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
@@ -40,7 +39,7 @@ export function runActions(c: Ctx) {
         attachments: atts.map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
       });
       draft.setAtts([]);
-      ui.getBot({ id }).then(c.setBot);
+      reloadBot(id);
       void refreshChats();
     } catch (ex) {
       run.setSending(false);
@@ -60,7 +59,7 @@ export function runActions(c: Ctx) {
         attachments: (attachments ?? []).map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
       });
       run.resync();
-      ui.getBot({ id }).then(c.setBot);
+      reloadBot(id);
       void refreshChats();
     } catch (ex) {
       onError(fail(ex));
@@ -95,8 +94,7 @@ export function runActions(c: Ctx) {
     if (!chatId) return;
     onError("");
     try {
-      const row = await ui.setChatModel({ botId: id, chatId, model });
-      c.setChats((xs) => xs.map((x) => (x.id === row.id ? row : x)));
+      putChat(id, await ui.setChatModel({ botId: id, chatId, model }));
     } catch (ex) {
       onError(fail(ex));
     }
@@ -106,8 +104,7 @@ export function runActions(c: Ctx) {
     if (!chatId) return;
     onError("");
     try {
-      const row = await ui.setChatThinking({ botId: id, chatId, thinking });
-      c.setChats((xs) => xs.map((x) => (x.id === row.id ? row : x)));
+      putChat(id, await ui.setChatThinking({ botId: id, chatId, thinking }));
     } catch (ex) {
       onError(fail(ex));
     }
@@ -130,8 +127,8 @@ export function runActions(c: Ctx) {
     onError("");
     try {
       await ui.stopRun({ botId: id, chatId });
-      ui.listApprovals({ botId: id }).then((r) => c.setPending(r.approvals)).catch(() => {});
-      ui.getBot({ id }).then(c.setBot).catch(() => {});
+      void reload(UI.method.listApprovals, { botId: id });
+      reloadBot(id);
     } catch (ex) {
       onError(fail(ex));
     }

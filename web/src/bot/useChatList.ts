@@ -1,8 +1,10 @@
+import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ui } from "../api";
 import { fail } from "../errors";
-import type { Chat, ModelOption } from "../gen/silo/v1/ui_pb";
+import { UI, type Chat } from "../gen/silo/v1/ui_pb";
+import { key, patch, queryClient } from "../query";
 import type { Tab } from "./tabs";
 
 // Renaming a chat in place: the title being typed, and the one commit/cancel
@@ -18,42 +20,40 @@ export type ChatRename = {
   blur: (cid: string) => void;
 };
 
+/** Edit a Bot's cached chat list in place (a rename, a new chat, a new title). */
+export function patchChats(botId: string, f: (xs: Chat[]) => Chat[]) {
+  patch(UI.method.listChats, { botId }, (r) => ({ ...r, chats: f(r.chats) }));
+}
+
+/** Put one changed chat row back into the list. */
+export function putChat(botId: string, row: Chat) {
+  patchChats(botId, (xs) => xs.map((c) => (c.id === row.id ? row : c)));
+}
+
 // useChatList loads a Bot's chats and models while a chat-side page is open,
 // opens the newest chat when none is picked, and owns create, rename and delete.
 export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string }, onError: (message: string) => void) {
   const { tab, chatSide, chatId } = route;
   const nav = useNavigate();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [defaultModel, setDefaultModel] = useState("");
-  const [voice, setVoice] = useState(false);
+  const on = id && chatSide ? { botId: id } : skipToken;
+  const chatsQ = useQuery(UI.method.listChats, on);
+  const modelsQ = useQuery(UI.method.listModels, on);
+  const chats = chatsQ.data?.chats ?? [];
   const [editingChat, setEditingChat] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const renameCancel = useRef(false);
 
+  // Moving between chats and side pages rereads the list: a channel or an
+  // automation may have added to it.
   useEffect(() => {
-    if (!id || !chatSide) return;
-    let dead = false;
-    ui.listChats({ botId: id })
-      .then((r) => {
-        if (dead) return;
-        setChats(r.chats);
-        if (tab === "run" && !chatId && r.chats[0]) nav(`/bots/${id}/run/${r.chats[0].id}`, { replace: true });
-      })
-      .catch(() => {});
-    ui.listModels({ botId: id })
-      .then((r) => {
-        if (!dead) {
-          setModels(r.models);
-          setDefaultModel(r.defaultModel);
-          setVoice(r.voiceEnabled);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      dead = true;
-    };
-  }, [id, tab, chatSide, chatId, nav]);
+    // (Not on top of a load that is already out.)
+    if (id && chatSide) void queryClient.invalidateQueries({ queryKey: key(UI.method.listChats, { botId: id }) }, { cancelRefetch: false });
+  }, [id, tab, chatSide, chatId]);
+
+  const newest = chatsQ.data?.chats[0]?.id;
+  useEffect(() => {
+    if (id && tab === "run" && !chatId && newest) nav(`/bots/${id}/run/${newest}`, { replace: true });
+  }, [id, tab, chatId, newest, nav]);
 
   async function renameChat(cid: string) {
     if (!id) return;
@@ -63,8 +63,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     const cur = chats.find((x) => x.id === cid);
     if (cur && cur.title === title) return;
     try {
-      const row = await ui.renameChat({ botId: id, id: cid, title });
-      setChats((xs) => xs.map((c) => (c.id === cid ? row : c)));
+      putChat(id, await ui.renameChat({ botId: id, id: cid, title }));
     } catch (e) {
       onError(fail(e));
     }
@@ -73,7 +72,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
   async function newChat() {
     if (!id) return;
     const c = await ui.createChat({ botId: id });
-    setChats((xs) => [c, ...xs]);
+    patchChats(id, (xs) => [c, ...xs]);
     nav(`/bots/${id}/run/${c.id}`);
   }
 
@@ -81,12 +80,12 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     if (!id) return;
     await ui.deleteChat({ botId: id, id: cid });
     const next = chats.filter((x) => x.id !== cid);
-    setChats(next);
+    patchChats(id, () => next);
     if (cid === chatId) {
       if (next[0]) nav(`/bots/${id}/run/${next[0].id}`);
       else {
         const created = await ui.createChat({ botId: id });
-        setChats([created]);
+        patchChats(id, () => [created]);
         nav(`/bots/${id}/run/${created.id}`);
       }
     }
@@ -114,5 +113,13 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     },
   };
 
-  return { chats, setChats, models, defaultModel, voice, rename, newChat, deleteChat };
+  return {
+    chats,
+    models: modelsQ.data?.models ?? [],
+    defaultModel: modelsQ.data?.defaultModel ?? "",
+    voice: modelsQ.data?.voiceEnabled ?? false,
+    rename,
+    newChat,
+    deleteChat,
+  };
 }

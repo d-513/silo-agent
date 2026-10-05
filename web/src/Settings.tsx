@@ -5,7 +5,8 @@ import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
 import { Select } from "./Select";
-import type { Bot, ModelOption } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type ModelOption } from "./gen/silo/v1/ui_pb";
+import { reload, setBot } from "./query";
 import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
 
@@ -51,14 +52,10 @@ function DangerRow({ title, note, action }: { title: string; note: string; actio
 
 export function SettingsPane({
   bot,
-  onSaved,
   onError,
-  onRefresh,
 }: {
   bot: Bot;
-  onSaved: (b: Bot) => void;
   onError: (s: string) => void;
-  onRefresh: () => void;
 }) {
   const [name, setName] = useState(bot.name);
   const [description, setDescription] = useState(bot.description);
@@ -104,7 +101,7 @@ export function SettingsPane({
         autoApprove: bot.autoApprove,
         model: selectedModel,
       }));
-      onSaved(next);
+      setBot(next);
       setSoul(next.soul);
       setModel(next.model);
     } catch (ex) {
@@ -116,11 +113,10 @@ export function SettingsPane({
     onError("");
     try {
       if (which === "reset") {
-        onSaved(await ui.resetContainer({ id: bot.id }));
-        onRefresh();
+        setBot(await ui.resetContainer({ id: bot.id }));
       } else {
         await ui.deleteBot({ id: bot.id });
-        onRefresh();
+        void reload(UI.method.listBots);
         nav("/");
         return;
       }

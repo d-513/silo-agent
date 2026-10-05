@@ -54,7 +54,7 @@ const watch: Interceptor = (next) => async (req) => {
   }
 };
 
-const transport = createConnectTransport({
+export const transport = createConnectTransport({
   baseUrl: "/",
   fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
   interceptors: [watch],

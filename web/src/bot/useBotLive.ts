@@ -1,60 +1,36 @@
-import { useCallback, useEffect, useState } from "react";
-import { ui } from "../api";
+import { skipToken, useQuery } from "@connectrpc/connect-query";
+import { useCallback, useEffect } from "react";
 import { fail, isGone } from "../errors";
-import type { Approval, Bot } from "../gen/silo/v1/ui_pb";
+import { UI } from "../gen/silo/v1/ui_pb";
+import { reload } from "../query";
+import { botPollMs } from "../queryPolicy";
 
 // useBotLive keeps a Bot's row and its pending approvals current: polled fast
 // until the box settles (online or stopped), slowly after. Only a Bot that is
 // gone (deleted, not ours) ends the page; a blip keeps the last row and the
 // next tick recovers.
 export function useBotLive(id: string | undefined, chatId: string | undefined) {
-  const [bot, setBot] = useState<Bot | null>(null);
-  const [loadErr, setLoadErr] = useState("");
-  const [pending, setPending] = useState<Approval[]>([]);
+  const botQ = useQuery(UI.method.getBot, id ? { id } : skipToken, {
+    refetchInterval: (q) => (isGone(q.state.error) ? false : botPollMs(q.state.data)),
+  });
+  const bot = botQ.data ?? null;
+  const approvals = useQuery(UI.method.listApprovals, id ? { botId: id } : skipToken, {
+    refetchInterval: botPollMs(botQ.data),
+  });
 
-  useEffect(() => {
-    setLoadErr("");
+  const reloadApprovals = useCallback(() => {
+    if (id) void reload(UI.method.listApprovals, { botId: id });
   }, [id]);
-
-  const settled = Boolean(bot && (bot.workerConnected || bot.status === "stopped"));
-  useEffect(() => {
-    if (!id) return;
-    let dead = false;
-    const tick = () => {
-      ui.getBot({ id })
-        .then((b) => {
-          if (dead) return;
-          setBot(b);
-          setLoadErr("");
-        })
-        .catch((e) => {
-          if (dead || !isGone(e)) return;
-          setLoadErr(fail(e));
-          clearInterval(t);
-        });
-      ui.listApprovals({ botId: id })
-        .then((r) => {
-          if (!dead) setPending(r.approvals);
-        })
-        .catch(() => {});
-    };
-    const t = setInterval(tick, settled ? 3000 : 500);
-    tick();
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, [id, settled]);
 
   // Opening a chat looks for approvals right away instead of waiting for a tick.
   useEffect(() => {
-    if (!id || !chatId) return;
-    ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
-  }, [id, chatId]);
+    if (chatId) reloadApprovals();
+  }, [chatId, reloadApprovals]);
 
-  const reloadApprovals = useCallback(() => {
-    if (id) ui.listApprovals({ botId: id }).then((r) => setPending(r.approvals)).catch(() => {});
-  }, [id]);
-
-  return { bot, setBot, loadErr, pending, setPending, reloadApprovals };
+  return {
+    bot,
+    loadErr: isGone(botQ.error) ? fail(botQ.error) : "",
+    pending: approvals.data?.approvals ?? [],
+    reloadApprovals,
+  };
 }

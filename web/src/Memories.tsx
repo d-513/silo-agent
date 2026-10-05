@@ -8,6 +8,7 @@ import { PromptWell } from "./Settings";
 import { useSearch } from "./useSearch";
 import type { Bot, Memory } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
+import { setBot } from "./query";
 import { day } from "./format";
 
 // match turns a cosine distance (0 = same, 2 = opposite) into a 0–100 score.
@@ -15,7 +16,7 @@ function match(distance: number) {
   return Math.round(Math.max(0, Math.min(1, 1 - distance)) * 100);
 }
 
-function CorePanel({ bot, onSaved, onError }: { bot: Bot; onSaved: (b: Bot) => void; onError: (s: string) => void }) {
+function CorePanel({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   const [memory, setMemory] = useState(bot.memory);
   const saver = useSave();
   useEffect(() => {
@@ -36,7 +37,7 @@ function CorePanel({ bot, onSaved, onError }: { bot: Bot; onSaved: (b: Bot) => v
           model: bot.model,
         }),
       );
-      onSaved(next);
+      setBot(next);
     } catch (ex) {
       onError(fail(ex));
     }
@@ -141,12 +142,12 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
   );
 }
 
-export function MemoriesPane({ bot, onSaved, onError }: { bot: Bot; onSaved: (b: Bot) => void; onError: (s: string) => void }) {
+export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   return (
     <div className="silo-page pb-12">
       <h2 className="text-title">Memories</h2>
       <p className="mb-6 text-ink-2">Core memory rides in every prompt. Long-term memories are unlimited and recalled by meaning.</p>
-      <CorePanel bot={bot} onSaved={onSaved} onError={onError} />
+      <CorePanel bot={bot} onError={onError} />
       <LongTermPanel botId={bot.id} onError={onError} />
     </div>
   );

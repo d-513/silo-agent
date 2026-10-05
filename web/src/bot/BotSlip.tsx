@@ -2,25 +2,26 @@ import { ui } from "../api";
 import { ApprovalSlip, ConnectorAuthSlip, SlipPresence } from "../Approval";
 import { startConnectorAuth } from "../connectorAuth";
 import { fail } from "../errors";
-import type { Approval, Bot, BotConnector } from "../gen/silo/v1/ui_pb";
+import { UI, type Approval, type Bot, type BotConnector } from "../gen/silo/v1/ui_pb";
+import { patch } from "../query";
 
 // The right-hand "Needs you" slip: the oldest pending approval, else the
 // connector sign-in the Connectors tab asked for.
 export function BotSlip({
   bot,
   pending,
-  setPending,
   authPrompt,
   setAuthPrompt,
   onError,
 }: {
   bot: Bot;
   pending: Approval[];
-  setPending: (f: (xs: Approval[]) => Approval[]) => void;
   authPrompt: BotConnector | null;
   setAuthPrompt: (c: BotConnector | null) => void;
   onError: (message: string) => void;
 }) {
+  // A decided approval leaves the slip at once; the next poll confirms it.
+  const decided = (id: string) => patch(UI.method.listApprovals, { botId: bot.id }, (r) => ({ ...r, approvals: r.approvals.filter((a) => a.id !== id) }));
   return (
     <SlipPresence show={!!(pending[0] || authPrompt?.connector)}>
       {pending[0] ? (
@@ -29,8 +30,9 @@ export function BotSlip({
           bot={bot}
           approval={pending[0]}
           onDecide={async (decision) => {
-            await ui.decideApproval({ id: pending[0].id, decision });
-            setPending((xs) => xs.slice(1));
+            const { id } = pending[0];
+            await ui.decideApproval({ id, decision });
+            decided(id);
           }}
           onAutoApprove={async () => {
             try {
@@ -40,8 +42,9 @@ export function BotSlip({
                 action: pending[0].action,
                 decision: "auto",
               });
-              await ui.decideApproval({ id: pending[0].id, decision: "allow_once" });
-              setPending((xs) => xs.slice(1));
+              const { id } = pending[0];
+              await ui.decideApproval({ id, decision: "allow_once" });
+              decided(id);
             } catch (e) {
               onError(fail(e));
             }

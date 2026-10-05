@@ -8,6 +8,7 @@ import { Panel, SkeletonRows } from "../Field";
 import type { Bot, BotContainer } from "../gen/silo/v1/ui_pb";
 import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
+import { setBot } from "../query";
 
 function n64(v: bigint | number | undefined) {
   if (typeof v === "bigint") return Number(v);
@@ -54,7 +55,7 @@ function BoxStat({ label, value, meter }: { label: string; value: string; meter?
 
 // ContainersPane is everything a Bot runs on: its machine, the drive sidecar,
 // and one sidecar per STDIO connector, with live usage from the engine.
-export function ContainersPane({ bot, onStart, onStop, onChanged }: { bot: Bot; onStart: () => void; onStop: () => void; onChanged: (b: Bot) => void }) {
+export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: () => void; onStop: () => void }) {
   const [boxes, setBoxes] = useState<BotContainer[] | null>(null);
   const [err, setErr] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -164,7 +165,7 @@ export function ContainersPane({ bot, onStart, onStop, onChanged }: { bot: Bot; 
             disabled={!anyUp}
             onConfirm={async () => {
               try {
-                onChanged(await ui.removeBotContainers({ id: bot.id }));
+                setBot(await ui.removeBotContainers({ id: bot.id }));
                 setRemoved(true);
               } catch (e) {
                 setErr(fail(e));

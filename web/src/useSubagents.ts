@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ui } from "./api";
-import type { Subagent, TaskItem } from "./gen/silo/v1/ui_pb";
+import { skipToken, useQuery } from "@connectrpc/connect-query";
+import { useCallback } from "react";
+import { UI, type TaskItem } from "./gen/silo/v1/ui_pb";
+import { patch, reload } from "./query";
+import { subagentPollMs } from "./queryPolicy";
 
 // useSubagents loads a chat's subagents and the Taskboard it shares with them.
 // chatId may be a lead chat or a subagent's log (the board resolves to the
@@ -9,38 +11,29 @@ import type { Subagent, TaskItem } from "./gen/silo/v1/ui_pb";
 // activity lines move.
 export function useSubagents(botId: string | undefined, chatId: string | undefined, opts: { lead?: boolean } = {}) {
   const lead = opts.lead ?? true;
-  const [agents, setAgents] = useState<Subagent[]>([]);
-  const [board, setBoard] = useState<TaskItem[]>([]);
-  const gen = useRef(0);
+  const input = botId && chatId ? { botId, chatId } : undefined;
+  const agentsQ = useQuery(UI.method.listSubagents, input && lead ? input : skipToken, {
+    refetchInterval: (q) => subagentPollMs(q.state.data?.subagents ?? [], lead),
+  });
+  const agents = agentsQ.data?.subagents ?? [];
+  const boardQ = useQuery(UI.method.getTaskboard, input ?? skipToken, {
+    refetchInterval: subagentPollMs(agents, lead),
+  });
 
   const refresh = useCallback(() => {
     if (!botId || !chatId) return;
-    const mine = gen.current;
-    ui.getTaskboard({ botId, chatId })
-      .then((r) => mine === gen.current && setBoard(r.items))
-      .catch(() => {});
-    if (lead) {
-      ui.listSubagents({ botId, chatId })
-        .then((r) => mine === gen.current && setAgents(r.subagents))
-        .catch(() => {});
-    }
+    void reload(UI.method.getTaskboard, { botId, chatId });
+    if (lead) void reload(UI.method.listSubagents, { botId, chatId });
   }, [botId, chatId, lead]);
 
-  useEffect(() => {
-    gen.current++;
-    setAgents([]);
-    setBoard([]);
-    refresh();
-  }, [refresh]);
+  const setBoard = useCallback(
+    (items: TaskItem[]) => {
+      if (botId && chatId) patch(UI.method.getTaskboard, { botId, chatId }, (r) => ({ ...r, items }));
+    },
+    [botId, chatId],
+  );
 
-  const live = agents.some((a) => a.running);
-  useEffect(() => {
-    if (!live && lead) return;
-    const t = setInterval(refresh, live ? 2500 : 5000);
-    return () => clearInterval(t);
-  }, [live, lead, refresh]);
-
-  return { agents, board, setBoard, refresh };
+  return { agents, board: boardQ.data?.items ?? [], setBoard, refresh };
 }
 
 // elapsed renders "42s", "3m", "1h05m" since an RFC 3339 time.
