@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
-import { ErrorWell, inputClass } from "../Field";
+import { ErrorWell, inputClass, Panel } from "../Field";
 import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { widePage } from "../PageHead";
 import { channelLook } from "../statusLook";
 import { AdapterHead } from "./AdapterHead";
+import { GuideCard } from "./GuideCard";
+
+const caps = "text-label-caps uppercase text-ink-3";
 
 export function ChannelSetup({
   botId,
@@ -65,112 +68,132 @@ export function ChannelSetup({
     }
   }
 
+  const look = channelLook(channel.status);
+  const buttons = adapter.actions?.length ? (
+    <div className="flex flex-wrap items-center gap-2.5">
+      {adapter.actions.map((a) => (
+        <Btn key={a.key} kind="secondary" type="button" disabled={busy} title={a.description || undefined} onClick={() => void run(a.key)}>
+          {a.label}
+        </Btn>
+      ))}
+    </div>
+  ) : null;
+  const message =
+    state?.message && state.kind !== "qr" && state.kind !== "error" ? <div className="rounded-sm bg-well p-3 text-[13px] text-ink-2">{state.message}</div> : null;
+
   return (
     <div className={widePage}>
-      <AdapterHead adapter={adapter} title={channel.name} subtitle={`${adapter.name} Setup`} onBack={onBack} />
+      <AdapterHead adapter={adapter} title={channel.name} subtitle={`${adapter.name} setup`} onBack={onBack} />
 
-      <div className="max-w-2xl rounded-card shadow-card bg-surface p-6 space-y-5">
-        {/* Status line */}
-        <div className="flex items-center gap-2 rounded-sm bg-well px-3.5 py-2.5 text-[12px] font-medium text-ink-3">
-          <Lamp status={channelLook(channel.status).lamp} />
-          <span className="text-ink">{channelLook(channel.status).word}</span>
-          {channel.statusDetail && <span className="text-ink-3">· {channel.statusDetail}</span>}
+      <div className={`grid items-start gap-6 ${adapter.guide ? "lg:grid-cols-[minmax(0,1fr)_360px]" : "max-w-3xl"}`}>
+        {adapter.guide ? (
+          <div className="min-w-0 lg:order-2">
+            <GuideCard guide={adapter.guide} title={`${adapter.name} setup guide`} />
+          </div>
+        ) : null}
+
+        <div className="min-w-0 space-y-4 lg:order-1">
+          <div className="flex items-center gap-2 rounded-card bg-surface px-4 py-3 text-[13px] shadow-card">
+            <Lamp status={look.lamp} />
+            <span className={`font-medium ${look.tone === "text-ink-3" ? "text-ink" : look.tone}`}>{look.word}</span>
+            {channel.statusDetail ? <span className="min-w-0 truncate text-ink-3">· {channel.statusDetail}</span> : null}
+          </div>
+
+          {/* A login in progress comes first: nothing else works until it is scanned. */}
+          {state?.kind === "qr" && state.qr ? (
+            <Panel title="Link your device" note="Scan this code in the app. It refreshes by itself until you do.">
+              <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
+                <img src={state.qr} alt="Login QR code" className="w-56 rounded-card bg-surface p-2 shadow-card" />
+                <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
+              </div>
+            </Panel>
+          ) : null}
+
+          {adapter.requiresTarget ? (
+            <Panel title="Target chat" note="The one conversation this channel reads and writes. The Bot ignores every other chat.">
+              <div className="space-y-5">
+                <div className="rounded-sm bg-well px-3.5 py-3 text-[14px]">
+                  {target.id ? (
+                    <span className="flex items-center gap-1.5 font-medium text-ink">
+                      <CircleCheck size={16} className="shrink-0 text-emerald" />
+                      <span>
+                        Bound to <span className="font-semibold">{target.title || target.id}</span>
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-vermilion">
+                      <CircleAlert size={16} className="shrink-0" />
+                      No chat picked yet. This channel is inactive until you pick one.
+                    </span>
+                  )}
+                </div>
+
+                {buttons ? (
+                  <div className="space-y-2">
+                    <div className={caps}>Actions</div>
+                    {buttons}
+                  </div>
+                ) : null}
+                {message}
+
+                {state?.kind === "select" && state.options.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className={caps}>Available chats</div>
+                    <div className="grid max-h-[320px] gap-2 overflow-auto sm:grid-cols-2">
+                      {state.options.map((o) => {
+                        const on = o.value === target.id;
+                        return (
+                          <button
+                            key={o.value}
+                            type="button"
+                            disabled={busy}
+                            aria-pressed={on}
+                            className={`flex items-center justify-between gap-2 rounded-control p-3 text-left text-[13px] transition-[background-color,box-shadow] duration-[160ms] ease-quiet disabled:cursor-not-allowed disabled:opacity-60 ${
+                              on ? "bg-cobalt-pale font-medium text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "bg-surface shadow-card hover:shadow-float"
+                            }`}
+                            onClick={() => void choose(o.value, o.label)}
+                          >
+                            <span className="truncate">{o.label}</span>
+                            {on ? <CircleCheck size={16} className="shrink-0 text-cobalt" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="space-y-2 border-t border-line pt-5">
+                  <div className={caps}>Set chat directly</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className={`${inputClass} min-w-0 flex-1`}
+                      placeholder="Chat id, @username, link, or phone number"
+                      aria-label="Chat id, @username, link, or phone number"
+                      value={manual}
+                      onChange={(e) => setManual(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && manual.trim()) void choose(manual.trim(), manual.trim());
+                      }}
+                    />
+                    <Btn kind="secondary" type="button" disabled={busy || !manual.trim()} onClick={() => void choose(manual.trim(), manual.trim())}>
+                      Set target
+                    </Btn>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          ) : buttons || message ? (
+            <Panel title="Actions">
+              <div className="space-y-5">
+                {buttons}
+                {message}
+              </div>
+            </Panel>
+          ) : null}
+
+          {state?.kind === "error" ? <ErrorWell>{state.message}</ErrorWell> : null}
+          {err ? <ErrorWell>{err}</ErrorWell> : null}
         </div>
-
-        {/* A login in progress comes first: nothing else works until it is scanned. */}
-        {state?.kind === "qr" && state.qr ? (
-          <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
-            <img src={state.qr} alt="Login QR code" className="w-56 rounded-card shadow-card bg-surface p-2" />
-            <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
-          </div>
-        ) : null}
-
-        {adapter.requiresTarget ? (
-          <div className="rounded-card bg-well p-4">
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3">Target Chat</div>
-            <p className="text-[14px]">
-              {target.id ? (
-                <span className="flex items-center gap-1.5 text-ink font-medium">
-                  <CircleCheck size={16} className="text-emerald shrink-0" />
-                  Bound to <span className="font-semibold">{target.title || target.id}</span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-vermilion">
-                  <CircleAlert size={16} className="shrink-0" />
-                  No chat picked yet — this channel is currently inactive.
-                </span>
-              )}
-            </p>
-          </div>
-        ) : null}
-
-        {adapter.actions?.length ? (
-          <div className="space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Actions</div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              {adapter.actions.map((a) => (
-                <Btn key={a.key} kind="secondary" type="button" disabled={busy} onClick={() => void run(a.key)}>
-                  {a.label}
-                </Btn>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {adapter.requiresTarget ? (
-          <div className="space-y-2 pt-1 border-t border-line/80">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Set chat directly</div>
-            <div className="flex items-center gap-2">
-              <input
-                className={`${inputClass} min-w-0 flex-1`}
-                placeholder="Chat id, @username, link, or phone number"
-                value={manual}
-                onChange={(e) => setManual(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && manual.trim()) void choose(manual.trim(), manual.trim());
-                }}
-              />
-              <Btn kind="secondary" type="button" disabled={busy || !manual.trim()} onClick={() => void choose(manual.trim(), manual.trim())}>
-                Set Target
-              </Btn>
-            </div>
-          </div>
-        ) : null}
-
-        {state?.message && state.kind !== "qr" && state.kind !== "error" ? (
-          <div className="rounded-sm bg-well p-3 text-[13px] text-ink-3">
-            {state.message}
-          </div>
-        ) : null}
-
-        {state?.kind === "select" && state.options.length > 0 ? (
-          <div className="space-y-2 pt-2 border-t border-line/80">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Available chats</div>
-            <div className="grid max-h-[320px] gap-2 overflow-auto">
-              {state.options.map((o) => {
-                const isSelected = o.value === target.id;
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    disabled={busy}
-                    className={`flex items-center justify-between rounded-sm border p-3 text-left text-[13px] transition-[background-color,color,box-shadow] ${ isSelected ? "border-cobalt bg-cobalt-pale text-ink font-medium"
-                        : "border-line bg-surface hover:border-cobalt"
-                    }`}
-                    onClick={() => void choose(o.value, o.label)}
-                  >
-                    <span className="truncate">{o.label}</span>
-                    {isSelected ? <CircleCheck size={16} className="shrink-0 text-cobalt" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
-        {state?.kind === "error" ? <ErrorWell>{state.message}</ErrorWell> : null}
-
-        {err && <ErrorWell>{err}</ErrorWell>}
       </div>
     </div>
   );

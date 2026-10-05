@@ -1,4 +1,4 @@
-import { Plus, Radio } from "lucide-react";
+import { ChevronRight, Plus, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ui } from "../api";
@@ -7,6 +7,7 @@ import { fail } from "../errors";
 import { ErrorWell } from "../Field";
 import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { PageHead, widePage } from "../PageHead";
+import { AdapterLogo } from "./AdapterLogo";
 import { AdapterPicker } from "./AdapterPicker";
 import { ChannelCard } from "./ChannelCard";
 import { ChannelForm } from "./ChannelForm";
@@ -58,10 +59,11 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
   }, [botId]);
 
   const segs = sub ?? [];
+  const counts = channels.reduce<Record<string, number>>((m, c) => ({ ...m, [c.adapter]: (m[c.adapter] ?? 0) + 1 }), {});
 
   // /bots/:id/channels/new
   if (segs[0] === "new" && segs.length === 1) {
-    return <AdapterPicker botId={botId} adapters={adapters} loaded={loaded} onBack={back} />;
+    return <AdapterPicker botId={botId} adapters={adapters} counts={counts} loaded={loaded} onBack={back} />;
   }
 
   // /bots/:id/channels/new/:adapter
@@ -90,15 +92,15 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
   // /bots/:id/channels
   return (
     <div className={widePage}>
-      {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h1 className="text-title text-ink">Channels</h1>
-            <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{channels.length}</span>
+            {loaded ? <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{channels.length}</span> : null}
           </div>
           <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
-            Ways to talk to this Bot. Connect Telegram, WhatsApp, or Discord to talk with this Bot from your favorite chat apps.
+            Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers
+            there, and can send to it from its tools.
           </p>
         </div>
 
@@ -110,24 +112,41 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
 
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
 
-      {channels.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
+      {!loaded ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5" aria-busy="true" aria-label="Loading">
+          {[0, 1].map((i) => (
+            <div key={i} className="skeleton h-[160px] rounded-card" />
+          ))}
+        </div>
+      ) : channels.length === 0 ? (
+        <div className="rounded-card border border-dashed border-line bg-surface px-6 py-12 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Radio size={28} />
           </div>
-          <h3 className="text-base font-semibold text-ink">No channels connected yet</h3>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">
-            Connect external chat adapters to talk with this Bot directly from mobile or desktop messengers.
-          </p>
-          <div className="mt-6">
-            <button type="button" className={btnClass("primary")} onClick={() => navigate(newPath)}>
-              <Plus size={15} />
-              Add channel
-            </button>
-          </div>
+          <h3 className="text-base font-semibold text-ink">No channels yet</h3>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">Pick an app to start with. You can add more later, one conversation each.</p>
+          {adapters.length > 0 ? (
+            <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2.5 text-left sm:grid-cols-3">
+              {adapters.map((a) => (
+                <button
+                  key={a.slug}
+                  type="button"
+                  className="group flex items-center gap-3 rounded-card bg-surface p-3 shadow-card transition-[box-shadow,transform] duration-[160ms] ease-quiet hover:-translate-y-px hover:shadow-float active:scale-[.995]"
+                  onClick={() => navigate(`${newPath}/${a.slug}`)}
+                >
+                  <AdapterLogo adapter={a} size={36} />
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{a.name}</span>
+                  <ChevronRight size={15} className="shrink-0 text-ink-3 transition-transform duration-[160ms] ease-quiet group-hover:translate-x-0.5" />
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button type="button" className="mt-5 text-[12.5px] font-medium text-cobalt hover:underline" onClick={() => navigate(newPath)}>
+            Compare channels
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5">
           {channels.map((c) => (
             <ChannelCard key={c.id} botId={botId} c={c} a={adapters.find((x) => x.slug === c.adapter)} onLog={() => setLog(c)} onDeleted={() => void refresh()} />
           ))}

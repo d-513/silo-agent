@@ -13,9 +13,14 @@ import { AdapterLogo } from "./AdapterLogo";
 export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; c: Channel; a?: ChannelAdapter; onLog: () => void; onDeleted: () => void }) {
   const navigate = useNavigate();
   const needsSetup = !!a?.requiresTarget && !c.externalId;
+  const look = channelLook(c.status);
+  // A channel that needs you wears the 2px vermilion ribbon, like a Bot or a drive.
+  const attention = needsSetup || look.lamp === "needs_you";
   return (
     <div
-      className="flex flex-col justify-between rounded-card shadow-card bg-surface p-5 transition-[background-color,color,box-shadow] hover:shadow-float hover:shadow-xs min-h-[140px]"
+      className={`relative flex min-h-[140px] flex-col justify-between overflow-hidden rounded-card bg-surface p-5 shadow-card transition-shadow duration-[160ms] ease-quiet hover:shadow-float ${
+        attention ? "before:absolute before:inset-y-0 before:left-0 before:w-[2px] before:bg-vermilion" : ""
+      }`}
     >
       <div>
         <div className="flex items-start gap-4">
@@ -55,8 +60,8 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
 
             {/* Status */}
             <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-ink-3">
-              <Lamp status={channelLook(c.status).lamp} />
-              <span className={channelLook(c.status).tone}>{channelLook(c.status).word}</span>
+              <Lamp status={look.lamp} />
+              <span className={look.tone}>{look.word}</span>
               {c.statusDetail && (
                 <span className="truncate text-ink-3">· {c.statusDetail}</span>
               )}

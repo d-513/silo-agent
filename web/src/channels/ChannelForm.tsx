@@ -1,16 +1,19 @@
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { SaveButton, useSave } from "../Feedback";
 import { ErrorWell, Field, inputClass, textareaClass } from "../Field";
 import { FieldInput } from "../FieldInput";
-import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
+import type { Channel, ChannelAdapter, ChannelField } from "../gen/silo/v1/ui_pb";
 import { widePage } from "../PageHead";
+import { Step } from "../Step";
 import { ToggleRow } from "../Switch";
 import { AdapterHead } from "./AdapterHead";
+import { GuideCard } from "./GuideCard";
+
+// A field that fits beside another: not a secret (tokens are long) or a textarea.
+const isShort = (f: ChannelField) => !f.secret && f.type !== "textarea";
 
 export function ChannelForm({
   botId,
@@ -35,33 +38,54 @@ export function ChannelForm({
 
   const setCfg = (k: string, v: string) => setConfig((c) => ({ ...c, [k]: v }));
 
-  async function save() {
+  // Credentials come first; everything else the adapter declares is behavior.
+  const connect = adapter.fields.filter((f) => f.secret || f.required);
+  const behavior = adapter.fields.filter((f) => !(f.secret || f.required));
+  const filled = (f: ChannelField) =>
+    f.type === "toggle" || (f.secret ? !!secrets[f.key]?.trim() || !!channel?.secretsSet?.includes(f.key) : !!config[f.key]?.trim());
+  const connected = !!name.trim() && connect.filter((f) => f.required).every(filled);
+  const nameAlone = !connect.some(isShort);
+
+  const input = (f: ChannelField) => (
+    <div key={f.key} className={isShort(f) ? "" : "sm:col-span-2"}>
+      <FieldInput
+        field={f}
+        value={f.secret ? secrets[f.key] ?? "" : config[f.key] ?? ""}
+        setValue={(v) => (f.secret ? setSecrets((s) => ({ ...s, [f.key]: v })) : setCfg(f.key, v))}
+        isSet={channel?.secretsSet?.includes(f.key)}
+      />
+    </div>
+  );
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (busy || (!channel && !name.trim())) return;
     setBusy(true);
     setErr("");
     try {
       await saver.run(async () => {
-      const cleanSecrets: Record<string, string> = {};
-      for (const [k, v] of Object.entries(secrets)) if (v.trim()) cleanSecrets[k] = v;
-      if (channel) {
-        await ui.updateChannel({
-          botId,
-          id: channel.id,
-          name,
-          enabled,
-          inbound,
-          prompt,
-          config,
-          secrets: cleanSecrets,
-          externalId: channel.externalId,
-          targetTitle: channel.targetTitle,
-        });
-      } else {
-        await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
-      }
+        const cleanSecrets: Record<string, string> = {};
+        for (const [k, v] of Object.entries(secrets)) if (v.trim()) cleanSecrets[k] = v;
+        if (channel) {
+          await ui.updateChannel({
+            botId,
+            id: channel.id,
+            name,
+            enabled,
+            inbound,
+            prompt,
+            config,
+            secrets: cleanSecrets,
+            externalId: channel.externalId,
+            targetTitle: channel.targetTitle,
+          });
+        } else {
+          await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
+        }
       });
       onBack();
-    } catch (e) {
-      setErr(fail(e));
+    } catch (ex) {
+      setErr(fail(ex));
     } finally {
       setBusy(false);
     }
@@ -72,73 +96,71 @@ export function ChannelForm({
       <AdapterHead
         adapter={adapter}
         title={channel ? channel.name : adapter.name}
-        subtitle={channel ? adapter.name : `Configure ${adapter.name}`}
+        subtitle={channel ? adapter.name : `Add a ${adapter.name} channel`}
         onBack={onBack}
       />
 
-      <div className="max-w-2xl space-y-6">
+      <div className={`grid items-start gap-6 ${adapter.guide ? "lg:grid-cols-[minmax(0,1fr)_360px]" : "max-w-3xl"}`}>
         {adapter.guide ? (
-          <details open className="rounded-card bg-well p-4">
-            <summary className="cursor-pointer select-none font-medium text-xs text-ink-3 tracking-wide uppercase">
-              Setup Instructions & Guide
-            </summary>
-            <div className="silo-md border-t border-line/80 mt-3 pt-3 text-[13px] leading-relaxed">
-              <Markdown remarkPlugins={[remarkGfm]}>{adapter.guide}</Markdown>
-            </div>
-          </details>
+          <div className="min-w-0 lg:order-2">
+            <GuideCard guide={adapter.guide} title={`${adapter.name} setup guide`} />
+          </div>
         ) : null}
 
-        <div className="rounded-card shadow-card bg-surface p-6 space-y-5">
-          <Field label="Name" required>
-            <input className={inputClass} value={name} placeholder={adapter.name} onChange={(e) => setName(e.target.value)} />
-          </Field>
+        <form className="min-w-0 space-y-4 lg:order-1" onSubmit={(e) => void save(e)}>
+          <Step
+            n={1}
+            title={connect.length ? "Connect" : "Name it"}
+            note={
+              connect.length
+                ? `What ${adapter.name} needs to sign in. Secrets are write-only: once saved they are never shown again.`
+                : `This is how the channel appears in the list. ${adapter.name} signs in on the next screen.`
+            }
+            done={connected}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name" required className={nameAlone ? "sm:col-span-2" : ""}>
+                <input className={inputClass} value={name} placeholder={adapter.name} autoFocus={!channel} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              {connect.map(input)}
+            </div>
+          </Step>
 
-          {adapter.fields.map((f) => (
-            <FieldInput
-              key={f.key}
-              field={f}
-              value={f.secret ? secrets[f.key] ?? "" : config[f.key] ?? ""}
-              setValue={(v) => (f.secret ? setSecrets((s) => ({ ...s, [f.key]: v })) : setCfg(f.key, v))}
-              isSet={channel?.secretsSet?.includes(f.key)}
-            />
-          ))}
+          <Step n={2} title="Behavior" note={`How the Bot answers on ${adapter.name}.`}>
+            {behavior.length ? <div className="grid gap-4 sm:grid-cols-2">{behavior.map(input)}</div> : null}
 
-          <ToggleRow
-            className="rounded-card shadow-card bg-surface px-3.5 py-3"
-            label="Enabled"
-            hint="Connect this channel when saved."
-            on={enabled}
-            onChange={setEnabled}
-          />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ToggleRow className="rounded-control bg-well px-3.5 py-3" label="Enabled" hint="Connect this channel when saved." on={enabled} onChange={setEnabled} />
+              <ToggleRow
+                className="rounded-control bg-well px-3.5 py-3"
+                label="Deliver messages to the Bot"
+                hint="Off makes it send-only, used by tools."
+                on={inbound}
+                onChange={setInbound}
+              />
+            </div>
 
-          <ToggleRow
-            className="rounded-card shadow-card bg-surface px-3.5 py-3"
-            label="Deliver messages to the Bot"
-            hint="Off makes it send-only, used by tools."
-            on={inbound}
-            onChange={setInbound}
-          />
+            <Field label="Prompt" hint="Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”">
+              <textarea
+                className={`${textareaClass} h-[130px] font-mono text-[13px] leading-5`}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Keep answers concise..."
+              />
+            </Field>
+          </Step>
 
-          <Field label="Prompt" hint="Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”">
-            <textarea
-              className={`${textareaClass} h-[130px] font-mono text-[13px] leading-5`}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Keep answers concise..."
-            />
-          </Field>
+          {err ? <ErrorWell>{err}</ErrorWell> : null}
 
-          {err && <ErrorWell>{err}</ErrorWell>}
-
-          <div className="flex items-center gap-2.5 pt-2">
-            <SaveButton type="button" state={saver.state} disabled={busy || (!channel && !name.trim())} onClick={() => void save()}>
+          <div className="flex items-center gap-2.5">
+            <SaveButton type="submit" state={saver.state} disabled={busy || (!channel && !name.trim())}>
               {channel ? "Save changes" : "Add channel"}
             </SaveButton>
             <Btn kind="ghost" type="button" onClick={onBack}>
               Cancel
             </Btn>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
