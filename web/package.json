@@ -42,6 +42,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.1.8",
+    "@tanstack/react-query-devtools": "^5.104.1",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",

@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { transport } from "./api";
 import App from "./App";
+import { Devtools } from "./Devtools";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { queryClient } from "./query";
 import "./index.css";
@@ -15,6 +16,7 @@ createRoot(document.getElementById("root")!).render(
         <ErrorBoundary>
           <App />
         </ErrorBoundary>
+        <Devtools />
       </QueryClientProvider>
     </TransportProvider>
   </StrictMode>,

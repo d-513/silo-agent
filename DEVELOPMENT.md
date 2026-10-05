@@ -140,6 +140,8 @@ Web unit tests are plain scripts: `node --experimental-strip-types web/src/<dir>
 
 The explicit Go package patterns are intentional — `go test ./...` would walk `data/`, and a container-owned Chromium profile can be unreadable from the host. Feature tests use the deterministic DummyLLM provider (`internal/llm/dummy`) and the `internal/apptest` harness; the container tier boots the real Bot image and cleans up everything it creates. See [TESTING.md](TESTING.md) for tiers, environment knobs, and live checks.
 
+To see what the web app has cached and what is polling, turn on the TanStack Query panel (development only): run `localStorage.setItem("silo.devtools", "1")` in the browser console and reload.
+
 ## Web bundle
 
 Only the chat is in the first load. Every other Bot tab is a `lazyNamed(() => import(...), "Export")` chunk wrapped in `Suspense` in `web/src/bot/routes.tsx`, and the admin area and the skills hub are `lazyRouteComponent` routes in `web/src/router.tsx`; add a new page the same way, and never import a lazy page's module statically from eager code (that pulls it back into the entry; `connectorAuth.ts` exists for that reason). KaTeX and highlight.js load through `mdPlugins.ts` and `highlight.ts` only when a message has math or code, and xterm loads with the Console. The type scale lives in `index.css` `@theme` (`text-title` is the page title); reach for a token before typing pixel values. `pnpm build` prints chunk sizes; the entry should stay near 400 KB plus the two vendor chunks.
