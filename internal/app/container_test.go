@@ -1,8 +1,11 @@
 package app_test
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +17,7 @@ import (
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/config"
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
 )
@@ -60,7 +64,7 @@ search:
 `, port, dataDir, dockerHost, port, apptest.BotImage())
 }
 
-func newContainerHarness(t *testing.T) *apptest.H {
+func newContainerHarness(t *testing.T, extraYAML ...string) *apptest.H {
 	t.Helper()
 	dataDir := t.TempDir()
 	ln, err := net.Listen("tcp", "0.0.0.0:0")
@@ -70,7 +74,7 @@ func newContainerHarness(t *testing.T) *apptest.H {
 	port := ln.Addr().(*net.TCPAddr).Port
 	return apptest.New(t,
 		apptest.WithListener(ln),
-		apptest.WithYAML(containerYAML(t, dataDir, port)),
+		apptest.WithYAML(containerYAML(t, dataDir, port)+strings.Join(extraYAML, "")),
 		apptest.WithHostFactory(func(store *config.Store) (dockerx.Host, error) {
 			return dockerx.New(store)
 		}),
@@ -137,5 +141,69 @@ func TestContainerLifecycle(t *testing.T) {
 	// Inspect by name: after reset the stored id is cleared and the box gone.
 	if _, err := h.Host.Inspect(h.Ctx(), dockerx.Name(id)); err == nil {
 		t.Fatal("container still exists after reset")
+	}
+}
+
+// TestContainerTunnel is the whole feature against a real box: a web server
+// started inside the Bot's container is fetched through its tunnel address.
+func TestContainerTunnel(t *testing.T) {
+	if !apptest.ContainersEnabled(t) {
+		return
+	}
+	h := newContainerHarness(t, "tunnels:\n  host: tunnels.test\n")
+	id := h.SeedBot("Tunneled")
+	h.StartSeededBot(id)
+
+	// A service on the box's own localhost, in the background.
+	start := &v1.Cmd{Id: ids.New(), Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{
+		Command: "mkdir -p /tmp/site && echo tunnel-works > /tmp/site/hello.txt && cd /tmp/site && (setsid python3 -m http.server 8123 --bind 127.0.0.1 >/dev/null 2>&1 &) ; sleep 1; echo started",
+	}}}
+	if out, err := h.App.Hub.Exec(h.Ctx(), id, start); err != nil || !strings.Contains(out, "started") {
+		t.Fatalf("start service: %q, %v", out, err)
+	}
+
+	tun, err := h.Client.CreateTunnel(h.Ctx(), connect.NewRequest(&v1.CreateTunnelRequest{BotId: id, Port: 8123, Public: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp := strings.TrimPrefix(h.URL, "http://")
+	hc := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, network, cp)
+		},
+	}}
+	deadline := time.Now().Add(20 * time.Second)
+	var body string
+	for {
+		res, err := hc.Get("http://" + tun.Msg.GetName() + ".tunnels.test/hello.txt")
+		if err == nil {
+			b, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			if res.StatusCode == 200 {
+				body = string(b)
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("tunnel never served the file (last err %v)", err)
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	if strings.TrimSpace(body) != "tunnel-works" {
+		t.Fatalf("body %q", body)
+	}
+
+	// Nothing listens on 8124: a clear 502, and the tunnel row is untouched.
+	closed, err := h.Client.CreateTunnel(h.Ctx(), connect.NewRequest(&v1.CreateTunnelRequest{BotId: id, Port: 8124, Public: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := hc.Get("http://" + closed.Msg.GetName() + ".tunnels.test/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != 502 {
+		t.Fatalf("closed port status %d, want 502", res.StatusCode)
 	}
 }
