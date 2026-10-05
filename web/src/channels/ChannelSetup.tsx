@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
@@ -24,6 +24,14 @@ export function ChannelSetup({
   onChanged: () => void;
 }) {
   const [state, setState] = useState(channel.state);
+
+  // A QR login rotates its code by itself, so the page follows the server's
+  // state while a login is in progress (and for the step that ends it). Any
+  // other state is left alone: the chat picker's list is the user's to keep.
+  useEffect(() => {
+    const pairing = (kind?: string) => kind === "qr" || kind === "auth";
+    setState((cur) => (pairing(channel.state?.kind) || pairing(cur?.kind) ? channel.state : cur));
+  }, [channel.state]);
   const [target, setTarget] = useState({ id: channel.externalId, title: channel.targetTitle });
   const [manual, setManual] = useState("");
   const [busy, setBusy] = useState(false);
@@ -69,6 +77,14 @@ export function ChannelSetup({
           {channel.statusDetail && <span className="text-ink-3">· {channel.statusDetail}</span>}
         </div>
 
+        {/* A login in progress comes first: nothing else works until it is scanned. */}
+        {state?.kind === "qr" && state.qr ? (
+          <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
+            <img src={state.qr} alt="Login QR code" className="w-56 rounded-card shadow-card bg-surface p-2" />
+            <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
+          </div>
+        ) : null}
+
         {adapter.requiresTarget ? (
           <div className="rounded-card bg-well p-4">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3">Target Chat</div>
@@ -107,7 +123,7 @@ export function ChannelSetup({
             <div className="flex items-center gap-2">
               <input
                 className={`${inputClass} min-w-0 flex-1`}
-                placeholder="@username, t.me/link, or chat id"
+                placeholder="Chat id, @username, link, or phone number"
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 onKeyDown={(e) => {
@@ -121,7 +137,7 @@ export function ChannelSetup({
           </div>
         ) : null}
 
-        {state?.message ? (
+        {state?.message && state.kind !== "qr" && state.kind !== "error" ? (
           <div className="rounded-sm bg-well p-3 text-[13px] text-ink-3">
             {state.message}
           </div>
@@ -149,13 +165,6 @@ export function ChannelSetup({
                 );
               })}
             </div>
-          </div>
-        ) : null}
-
-        {state?.kind === "qr" && state.qr ? (
-          <div className="flex flex-col items-center gap-3 pt-3 border-t border-line/80">
-            <img src={state.qr} alt="Scan QR" className="w-52 rounded-card shadow-card bg-surface p-2" />
-            <span className="text-xs text-ink-3">Scan with Telegram or your camera app</span>
           </div>
         ) : null}
 

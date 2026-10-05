@@ -98,7 +98,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
             <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{channels.length}</span>
           </div>
           <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
-            Ways to talk to this Bot. Connect Telegram, Slack, or other platforms to talk with this Bot from your favorite chat apps.
+            Ways to talk to this Bot. Connect Telegram, WhatsApp, or Discord to talk with this Bot from your favorite chat apps.
           </p>
         </div>
 

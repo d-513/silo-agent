@@ -12,6 +12,9 @@ export function channelLook(status: string): StatusLook {
       return { lamp: "online", word: "Connected", tone: "text-ink-3" };
     case "starting":
       return { lamp: "starting", word: "Starting…", tone: "text-ink-3" };
+    case "pending_auth":
+      // A QR login waiting to be scanned (WhatsApp).
+      return { lamp: "needs_you", word: "Needs linking", tone: "text-vermilion" };
     case "error":
       return { lamp: "needs_you", word: "Error", tone: "text-vermilion" };
     case "stopped":
