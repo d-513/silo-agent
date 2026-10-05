@@ -1,4 +1,4 @@
-export const tabs = ["run", "desktop", "files", "drives", "connectors", "channels", "skills", "secrets", "rules", "container", "settings"] as const;
+export const tabs = ["run", "desktop", "files", "drives", "connectors", "channels", "tunnels", "skills", "secrets", "rules", "container", "settings"] as const;
 export type NavTab = (typeof tabs)[number];
 // Side tabs live in the chat sidebar (the conversation lifecycle); the top
 // strip is config and machine. The Chat tab stays lit on all of them.

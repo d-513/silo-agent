@@ -103,6 +103,10 @@ VS Code tasks and launch configs live in `.vscode/`:
 
 Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id>`; MCP sidecars use `podman logs -f silo-mcp-<connector-id>`. A worker change needs an image rebuild because the binary is copied in; a CP change does not.
 
+## Tunnels in development
+
+With `public_url` on `localhost`/`127.0.0.1` (the example config), tunnels need no setup: a Bot's tunnel is `http://<name>.localhost:8080`, served by the control plane directly (browsers send `*.localhost` to loopback; Vite is not involved, since it would answer with the SPA). The private-tunnel sign-in starts at `public_url`, which Vite proxies (`/tunnels`) to the control plane. Tunnels need the worker that understands `OpenTunnel`, so after pulling this change run `make bot-image` and recreate the Bot's container. To try one: ask the Bot to run `python -m http.server 8000` in the background and open a tunnel, or add port 8000 on the Bot's **Tunnels** tab.
+
 ## After you change…
 
 | What                         | Then                                                                                  |

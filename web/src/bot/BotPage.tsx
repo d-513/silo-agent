@@ -36,6 +36,7 @@ const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
 const BotDrives = lazyNamed(() => import("../drives/BotDrives"), "BotDrives");
 const BotChannels = lazyNamed(() => import("../channels/BotChannels"), "BotChannels");
+const TunnelsPane = lazyNamed(() => import("./Tunnels"), "TunnelsPane");
 const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
 const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
 const SettingsPane = lazyNamed(() => import("../Settings"), "SettingsPane");
@@ -329,6 +330,11 @@ export function BotPage() {
         {tab === "channels" && (
           <ScrollPane>
             <BotChannels botId={id} sub={parts.slice(1)} />
+          </ScrollPane>
+        )}
+        {tab === "tunnels" && (
+          <ScrollPane>
+            <TunnelsPane botId={id} />
           </ScrollPane>
         )}
         {tab === "skills" && (

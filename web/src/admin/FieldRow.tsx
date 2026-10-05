@@ -26,12 +26,15 @@ export function FieldRow({
   value,
   engines,
   providers,
+  placeholder,
   onChange,
 }: {
   field: ConfigField;
   value: string;
   engines: SearchEngine[];
   providers: Provider[];
+  // placeholder overrides the static one, for a default only the server knows.
+  placeholder?: string;
   onChange: (v: string) => void;
 }) {
   const locked = field.source === ConfigSource.ENV;
@@ -70,7 +73,7 @@ export function FieldRow({
         className={inputClass}
         type={field.secret ? "password" : "text"}
         autoComplete="off"
-        placeholder={PLACEHOLDERS[field.key]}
+        placeholder={placeholder ?? PLACEHOLDERS[field.key]}
         value={value}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}

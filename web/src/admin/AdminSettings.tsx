@@ -7,14 +7,14 @@ import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
 import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
 import { SaveBar } from "./SaveBar";
-import { BOOTSTRAP_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MEMORY_NOTE, groupOf } from "./fields";
+import { BOOTSTRAP_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MEMORY_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { useAdminSettings } from "./useAdminSettings";
 
 const YamlEditor = lazy(() => import("../YamlEditor").then((m) => ({ default: m.YamlEditor })));
 
 export function AdminSettings() {
   const {
-    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit,
+    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit, tunnelsHost,
     formSaver, yamlSaver, err, dirty, discard, saveForm, saveYaml, saveModels, saveConnVars,
   } = useAdminSettings();
 
@@ -72,6 +72,7 @@ export function AdminSettings() {
         <FieldGroup title="Memory" note={MEMORY_NOTE} rows={rowsIn("memory")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Knowledge" note={KNOWLEDGE_NOTE} rows={rowsIn("knowledge")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Context" note={CONTEXT_NOTE} rows={rowsIn("context")} values={values} engines={engines} providers={providers} onChange={setValue} />
+        <FieldGroup title="Tunnels" note={TUNNELS_NOTE} rows={rowsIn("tunnels")} values={values} engines={engines} providers={providers} placeholders={{ "tunnels.host": tunnelsHost || "tunnels.example.com" }} onChange={setValue} />
         <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />
         <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />

@@ -13,6 +13,9 @@ export const LABELS: Record<string, string> = {
   "knowledge.enabled": "Document search",
   "knowledge.sync_interval": "Re-check folders every",
   "knowledge.ocr": "Read scans and images (OCR)",
+  "tunnels.enabled": "Tunnels",
+  "tunnels.host": "Domain suffix",
+  "tunnels.scheme": "Link scheme",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
@@ -36,12 +39,16 @@ export const HINTS: Record<string, string> = {
   embedding_model: "For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync).",
   "knowledge.sync_interval": "A Go duration such as 15m or 1h (minimum 1m).",
   "knowledge.ocr": "Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those.",
+  "tunnels.host": "A tunnel is served at <name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port.",
+  "tunnels.scheme": "http or https. Leave empty to follow the Public URL; set it when TLS ends at a proxy and the Public URL is an internal address.",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
 
 export const PLACEHOLDERS: Record<string, string> = {
   embedding_model: "openrouter/openai/text-embedding-3-small",
   transcribe_model: "openrouter/openai/whisper-1",
+  "tunnels.host": "tunnels.example.com",
+  "tunnels.scheme": "follows Public URL",
 };
 
 export const CONTEXT_NOTE = "When a conversation nears the model's context window, it is summarized into one turn. The thread keeps everything; the model sees the summary.";
@@ -52,12 +59,16 @@ export const MEMORY_NOTE =
 export const KNOWLEDGE_NOTE =
   "Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.";
 
+export const TUNNELS_NOTE =
+  "Tunnels give the owner addresses for services running on a Bot's machine, served by this control plane at <name>.<domain suffix>. Changing the suffix moves every existing tunnel at once; private tunnels ask their owner to sign in again.";
+
 export const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 export function groupOf(key: string) {
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
+  if (key.startsWith("tunnels.")) return "tunnels";
   if (key.startsWith("context.") || key.startsWith("runs.")) return "context";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";

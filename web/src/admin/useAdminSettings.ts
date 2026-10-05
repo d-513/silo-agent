@@ -18,11 +18,16 @@ export function useAdminSettings() {
   const [yamlText, setYamlText] = useState("");
   const [yamlPath, setYamlPath] = useState("");
   const [audit, setAudit] = useState<AuditRow[]>([]);
+  // The effective tunnels.host (explicit or derived), shown where it is unset.
+  const [tunnelsHost, setTunnelsHost] = useState("");
   const formSaver = useSave();
   const yamlSaver = useSave();
   const [err, setErr] = useState("");
 
-  const apply = (x: Settings) => applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels, setConnVars);
+  const apply = (x: Settings) => {
+    applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels, setConnVars);
+    setTunnelsHost(x.tunnelsHost);
+  };
 
   useEffect(() => {
     ui.getSettings({}).then(apply).catch((e) => setErr(fail(e)));
@@ -104,7 +109,7 @@ export function useAdminSettings() {
 
 
   return {
-    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit,
+    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit, tunnelsHost,
     formSaver, yamlSaver, err, dirty, discard, saveForm, saveYaml, saveModels, saveConnVars,
   };
 }

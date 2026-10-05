@@ -1,4 +1,4 @@
-import { Book, Box, ChevronDown, Folder, HardDrive, Key, ListChecks, MessageCircle, Monitor, Plug, Radio, SlidersHorizontal, SquareTerminal } from "lucide-react";
+import { Book, Box, ChevronDown, Folder, HardDrive, Key, ListChecks, MessageCircle, Monitor, Plug, Radio, SlidersHorizontal, SquareTerminal, Waypoints } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link, NavLink } from "react-router-dom";
@@ -13,6 +13,7 @@ const tabMeta: Record<NavTab, { label: string; icon: typeof MessageCircle }> = {
   drives: { label: "Drives", icon: HardDrive },
   connectors: { label: "Connectors", icon: Plug },
   channels: { label: "Channels", icon: Radio },
+  tunnels: { label: "Tunnels", icon: Waypoints },
   skills: { label: "Skills", icon: Book },
   secrets: { label: "Secrets", icon: Key },
   rules: { label: "Rules", icon: ListChecks },

@@ -32,6 +32,8 @@ export default defineConfig({
       "/oauth": { target: "http://127.0.0.1:8080" },
       "/connectors": { target: "http://127.0.0.1:8080" },
       "/artifacts": { target: "http://127.0.0.1:8080" },
+      // The private-tunnel sign-in handoff starts at public_url (the Vite origin).
+      "/tunnels": { target: "http://127.0.0.1:8080" },
     },
   },
 });

@@ -43,6 +43,16 @@ providers:
     # cache: true
     # cache_ttl: 5m         # 5m or 1h; requires cache: true
 
+# Tunnels: addresses for services a Bot runs on its own localhost, served by
+# this control plane at <name>.<host>. Needs wildcard DNS + TLS for *.<host>,
+# on a domain separate from the control plane's. With a local public_url (as
+# above) the host defaults to localhost:<http_addr port>, so nothing is needed
+# in development. Env: SILO_TUNNELS__HOST, SILO_TUNNELS__ENABLED, SILO_TUNNELS__SCHEME
+# tunnels:
+#   host: tunnels.example.com
+#   enabled: true
+#   scheme: https           # default: follows public_url
+
 # Web search engine. Env: SILO_SEARCH__ENGINE
 search:
   engine: duckduckgo_scraper

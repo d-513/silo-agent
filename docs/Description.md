@@ -62,10 +62,13 @@ service BotWorker {
   rpc CallTool(ToolReq) returns (ToolRes);
   rpc VNC(stream Frame) returns (stream Frame);
   rpc Console(stream ConsoleIO) returns (stream ConsoleIO);
+  rpc Tunnel(stream TunnelFrame) returns (stream TunnelFrame);
 }
 ```
 
 Approvals: `GetSecret` does not return until the security engine decides. The Python HTTP request simply blocks. Heartbeat on `Commands` so a long approval does not look like a dead Worker. The VNC RPC waits until a browser viewer attaches, then the Worker dials local x11vnc. Console is the same wait-then-pipe, but the Worker opens a PTY (`bash` in `/workspace`) instead of x11vnc. Resize is rows/cols on `ConsoleIO`. Do not `docker exec` / `podman exec` for this — a remote Docker host has no such path.
+
+**Tunnels** use the same shape for byte streams the CP initiates: to proxy an HTTP request into the box, the CP sends `Cmd.open_tunnel{conn_id, port}` on `Commands`; the Worker (which dialed out, so it needs no inbound path) dials `127.0.0.1:port` and opens a `Tunnel` stream named by `conn_id`. Each end wraps the stream in `internal/tunnel.Conn`, a `net.Conn`, and the CP hands its end to `httputil.ReverseProxy` as the result of a dial, so keep-alive, SSE and WebSockets come for free. See AGENTS.md for the access model.
 
 When the Worker spawns Python or a shell, it **strips** `SILO_BOT_TOKEN` and `SILO_CP_URL` from the child env. Children get `SILO_WORKER_SOCK=/var/run/silo/worker.sock` and `SILO_RUN_ID` for the current run.
 

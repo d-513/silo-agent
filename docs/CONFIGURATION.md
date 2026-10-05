@@ -37,6 +37,9 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `drives.image` | `localhost/silo-drive:v1` | `SILO_DRIVES__IMAGE` | The rclone drive sidecar (`make drive-image`) |
 | `drives.mount_root` | `<data_dir>/drives-mnt`; on macOS `/var/tmp/silo-drives` | `SILO_DRIVES__MOUNT_ROOT` | Where drive mounts live, as a path the container engine sees. It must be able to carry mount propagation, so on podman machine it is inside the VM, not the virtiofs `data/` share |
 | `drives.cache_max_size` | `10G` | `SILO_DRIVES__CACHE_MAX_SIZE` | rclone VFS cache cap per drive, kept in `data/drives/<bot>/cache` |
+| `tunnels.enabled` | `true` | `SILO_TUNNELS__ENABLED` | Master switch for tunnels. Off: the proxy, the Bot's tunnel tools and the Tunnels tab's add form are gone (existing rows are kept) |
+| `tunnels.host` | derived (see Tunnels) | `SILO_TUNNELS__HOST` | Domain suffix tunnels are served under, `host[:port]`: a tunnel is `<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
+| `tunnels.scheme` | follows `public_url` | `SILO_TUNNELS__SCHEME` | `http` or `https`, for the links tunnels are shown with. Set it when TLS ends at a proxy and `public_url` is an internal address |
 | `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
@@ -64,6 +67,24 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
 | `search.engine` | `duckduckgo_scraper` | `SILO_SEARCH__ENGINE` | Web search engine. Future engines may add keys under `search.<engine_id>` |
 | `connector_vars.<name>` | (none) | `SILO_CONNECTOR_VARS__<NAME>` | Connector variable. Referenced as `${NAME}` in connector settings. **Plain text, not a secret** |
+
+## Tunnels
+
+A Bot can run a web service on its own localhost (a dev server, a dashboard, a notebook); a **tunnel** gives the owner an address for it, served by this control plane at `<name>.<tunnels.host>` (the name is generated, like `quiet-amber-heron`). Private tunnels open for the Bot's owner, signed in to Silo; public ones for anyone with the link. Make one on the Bot's **Tunnels** tab, or the Bot opens one with `open_tunnel` (making one public asks the owner first).
+
+```yaml
+tunnels:
+  host: tunnels.example.com   # required unless public_url is local (below)
+  # enabled: true
+  # scheme: https             # default: public_url's scheme
+```
+
+- **Local development**: with `public_url` on `localhost`/`127.0.0.1`, `host` defaults to `localhost:<port of http_addr>` (links like `http://quiet-amber-heron.localhost:8080`). Browsers resolve `*.localhost` to loopback, so no DNS is needed. It uses the control plane's own port, not Vite's.
+- **Anywhere else, set `host`.** Without it tunnels are "not configured": the tab says so and the Bot has no tunnel tools.
+- **DNS and TLS**: point a wildcard record `*.<host>` at the control plane and serve a certificate for `*.<host>` (a wildcard certificate, or on-demand TLS in the fronting proxy). The proxy in front must pass WebSocket upgrades and the original `Host` header.
+- **Use a separate domain** from the control plane's (`silo.example.com` → tunnels under `silo-tunnels.example.com`, not `tunnels.silo.example.com`). A page a Bot serves could otherwise set cookies for the whole domain and reach the control plane with them; a `host` equal to the `public_url` host is refused outright.
+- **Changing `host`** takes effect on the next request and re-points every existing tunnel (rows store only the name). Private tunnels' sign-in cookies belong to the old host, so owners sign in again.
+- Ports `5900` (the desktop) and `9222` (Chromium's debugging port) are never tunnelled; a Bot has at most 20 tunnels. A tunnel request never starts a stopped Bot.
 
 ## Drive providers
 

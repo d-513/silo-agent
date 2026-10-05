@@ -9,6 +9,7 @@ export function FieldGroup({
   values,
   engines,
   providers,
+  placeholders,
   onChange,
 }: {
   title: string;
@@ -17,6 +18,8 @@ export function FieldGroup({
   values: Record<string, string>;
   engines: SearchEngine[];
   providers: Provider[];
+  // placeholders by field key, for defaults only the server knows.
+  placeholders?: Record<string, string>;
   onChange: (key: string, v: string) => void;
 }) {
   if (rows.length === 0) return null;
@@ -30,6 +33,7 @@ export function FieldGroup({
               value={values[f.key] ?? ""}
               engines={engines}
               providers={providers}
+              placeholder={placeholders?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
             />
           </div>
