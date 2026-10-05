@@ -170,6 +170,27 @@ def feed(text: str, title: str | None = None) -> dict:
     return call("bot", "feed", args)
 
 
+def open_tunnel(port: int, public: bool | None = None) -> dict:
+    """Give the human an address for a service listening on this machine.
+
+    Returns {name, url, port, public, created}. Private by default: only the
+    owner, signed in to Silo, can open it. `public=True` opens it to anyone
+    with the link and asks the human first. Start the service first; calling
+    again for the same port returns the same address.
+    """
+    return call("tunnels", "open", {"port": port, "public": public})
+
+
+def list_tunnels() -> dict:
+    """List this Bot's tunnels: {tunnels: [{name, url, port, public}, ...]}."""
+    return call("tunnels", "list", {})
+
+
+def close_tunnel(name: str | None = None, port: int | None = None) -> dict:
+    """Close a tunnel by name or port. Returns {closed, port}. The service keeps running."""
+    return call("tunnels", "close", {"name": name, "port": port})
+
+
 def remember(content: str) -> dict:
     """Save one durable fact to long-term memory (same as the `remember` tool).
 

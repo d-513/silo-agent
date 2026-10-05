@@ -86,6 +86,14 @@ const (
 	UIDeleteFeedPostProcedure = "/silo.v1.UI/DeleteFeedPost"
 	// UIQuoteFeedPostProcedure is the fully-qualified name of the UI's QuoteFeedPost RPC.
 	UIQuoteFeedPostProcedure = "/silo.v1.UI/QuoteFeedPost"
+	// UIListTunnelsProcedure is the fully-qualified name of the UI's ListTunnels RPC.
+	UIListTunnelsProcedure = "/silo.v1.UI/ListTunnels"
+	// UICreateTunnelProcedure is the fully-qualified name of the UI's CreateTunnel RPC.
+	UICreateTunnelProcedure = "/silo.v1.UI/CreateTunnel"
+	// UIUpdateTunnelProcedure is the fully-qualified name of the UI's UpdateTunnel RPC.
+	UIUpdateTunnelProcedure = "/silo.v1.UI/UpdateTunnel"
+	// UIDeleteTunnelProcedure is the fully-qualified name of the UI's DeleteTunnel RPC.
+	UIDeleteTunnelProcedure = "/silo.v1.UI/DeleteTunnel"
 	// UIListAutomationsProcedure is the fully-qualified name of the UI's ListAutomations RPC.
 	UIListAutomationsProcedure = "/silo.v1.UI/ListAutomations"
 	// UICreateAutomationProcedure is the fully-qualified name of the UI's CreateAutomation RPC.
@@ -281,6 +289,11 @@ type UIClient interface {
 	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
 	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
 	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
+	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
+	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
+	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
+	UpdateTunnel(context.Context, *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
+	DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -530,6 +543,30 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIQuoteFeedPostProcedure,
 			connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
+			connect.WithClientOptions(opts...),
+		),
+		listTunnels: connect.NewClient[v1.ListTunnelsRequest, v1.ListTunnelsResponse](
+			httpClient,
+			baseURL+UIListTunnelsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListTunnels")),
+			connect.WithClientOptions(opts...),
+		),
+		createTunnel: connect.NewClient[v1.CreateTunnelRequest, v1.Tunnel](
+			httpClient,
+			baseURL+UICreateTunnelProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateTunnel")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTunnel: connect.NewClient[v1.UpdateTunnelRequest, v1.Tunnel](
+			httpClient,
+			baseURL+UIUpdateTunnelProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateTunnel")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteTunnel: connect.NewClient[v1.DeleteTunnelRequest, v1.DeleteTunnelResponse](
+			httpClient,
+			baseURL+UIDeleteTunnelProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteTunnel")),
 			connect.WithClientOptions(opts...),
 		),
 		listAutomations: connect.NewClient[v1.ListAutomationsRequest, v1.ListAutomationsResponse](
@@ -1037,6 +1074,10 @@ type uIClient struct {
 	markFeedRead          *connect.Client[v1.MarkFeedReadRequest, v1.MarkFeedReadResponse]
 	deleteFeedPost        *connect.Client[v1.DeleteFeedPostRequest, v1.DeleteFeedPostResponse]
 	quoteFeedPost         *connect.Client[v1.QuoteFeedPostRequest, v1.QuoteFeedPostResponse]
+	listTunnels           *connect.Client[v1.ListTunnelsRequest, v1.ListTunnelsResponse]
+	createTunnel          *connect.Client[v1.CreateTunnelRequest, v1.Tunnel]
+	updateTunnel          *connect.Client[v1.UpdateTunnelRequest, v1.Tunnel]
+	deleteTunnel          *connect.Client[v1.DeleteTunnelRequest, v1.DeleteTunnelResponse]
 	listAutomations       *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
 	createAutomation      *connect.Client[v1.CreateAutomationRequest, v1.Automation]
 	updateAutomation      *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
@@ -1246,6 +1287,26 @@ func (c *uIClient) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.D
 // QuoteFeedPost calls silo.v1.UI.QuoteFeedPost.
 func (c *uIClient) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
 	return c.quoteFeedPost.CallUnary(ctx, req)
+}
+
+// ListTunnels calls silo.v1.UI.ListTunnels.
+func (c *uIClient) ListTunnels(ctx context.Context, req *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error) {
+	return c.listTunnels.CallUnary(ctx, req)
+}
+
+// CreateTunnel calls silo.v1.UI.CreateTunnel.
+func (c *uIClient) CreateTunnel(ctx context.Context, req *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
+	return c.createTunnel.CallUnary(ctx, req)
+}
+
+// UpdateTunnel calls silo.v1.UI.UpdateTunnel.
+func (c *uIClient) UpdateTunnel(ctx context.Context, req *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
+	return c.updateTunnel.CallUnary(ctx, req)
+}
+
+// DeleteTunnel calls silo.v1.UI.DeleteTunnel.
+func (c *uIClient) DeleteTunnel(ctx context.Context, req *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error) {
+	return c.deleteTunnel.CallUnary(ctx, req)
 }
 
 // ListAutomations calls silo.v1.UI.ListAutomations.
@@ -1678,6 +1739,11 @@ type UIHandler interface {
 	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
 	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
 	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
+	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
+	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
+	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
+	UpdateTunnel(context.Context, *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
+	DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -1923,6 +1989,30 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIQuoteFeedPostProcedure,
 		svc.QuoteFeedPost,
 		connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListTunnelsHandler := connect.NewUnaryHandler(
+		UIListTunnelsProcedure,
+		svc.ListTunnels,
+		connect.WithSchema(uIMethods.ByName("ListTunnels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateTunnelHandler := connect.NewUnaryHandler(
+		UICreateTunnelProcedure,
+		svc.CreateTunnel,
+		connect.WithSchema(uIMethods.ByName("CreateTunnel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateTunnelHandler := connect.NewUnaryHandler(
+		UIUpdateTunnelProcedure,
+		svc.UpdateTunnel,
+		connect.WithSchema(uIMethods.ByName("UpdateTunnel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteTunnelHandler := connect.NewUnaryHandler(
+		UIDeleteTunnelProcedure,
+		svc.DeleteTunnel,
+		connect.WithSchema(uIMethods.ByName("DeleteTunnel")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListAutomationsHandler := connect.NewUnaryHandler(
@@ -2453,6 +2543,14 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteFeedPostHandler.ServeHTTP(w, r)
 		case UIQuoteFeedPostProcedure:
 			uIQuoteFeedPostHandler.ServeHTTP(w, r)
+		case UIListTunnelsProcedure:
+			uIListTunnelsHandler.ServeHTTP(w, r)
+		case UICreateTunnelProcedure:
+			uICreateTunnelHandler.ServeHTTP(w, r)
+		case UIUpdateTunnelProcedure:
+			uIUpdateTunnelHandler.ServeHTTP(w, r)
+		case UIDeleteTunnelProcedure:
+			uIDeleteTunnelHandler.ServeHTTP(w, r)
 		case UIListAutomationsProcedure:
 			uIListAutomationsHandler.ServeHTTP(w, r)
 		case UICreateAutomationProcedure:
@@ -2722,6 +2820,22 @@ func (UnimplementedUIHandler) DeleteFeedPost(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.QuoteFeedPost is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListTunnels is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateTunnel is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateTunnel(context.Context, *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateTunnel is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteTunnel is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {

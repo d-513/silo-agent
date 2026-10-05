@@ -192,6 +192,7 @@ func (s *Service) settings() (*v1.Settings, error) {
 	}
 	cfg := s.cfg()
 	out.DefaultModel = cfg.Model
+	out.TunnelsHost = cfg.TunnelHost()
 	out.TitleModel = cfg.ModelTitle
 	out.Yaml = string(raw)
 	out.YamlPath = s.store.Path()

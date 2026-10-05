@@ -157,7 +157,7 @@ func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJS
 		}
 		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
 		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
-	case security.Bot, security.Automations, security.Model, security.Tasks:
+	case security.Bot, security.Automations, security.Model, security.Tasks, security.Tunnels:
 		// Actions shared with a chat tool run the same code (runShared); the
 		// rest of these connectors (soul, core_memory, switch_model) are chat-only.
 		name, ok := sharedToolName(slug, action)

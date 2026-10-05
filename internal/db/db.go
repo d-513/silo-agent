@@ -409,6 +409,32 @@ type TaskItem struct {
 	DoneAt    *time.Time
 }
 
+// Tunnel is a declared route into a service on a Bot's localhost: a generated
+// name (the subdomain), the port, and who may open it. Public tunnels need no
+// sign-in; private ones need a TunnelGrant from the Bot's owner. A Bot has one
+// tunnel per port.
+type Tunnel struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"uniqueIndex:idx_tunnel_bot_port"`
+	Port       int    `gorm:"uniqueIndex:idx_tunnel_bot_port"`
+	Name       string `gorm:"uniqueIndex"`
+	Public     bool
+	CreatedBy  string // "owner" or "bot"
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+}
+
+// TunnelGrant is a browser's permission to open one private tunnel: the owner
+// signed in on the Control Plane and was handed a cookie for the tunnel's
+// origin. ID is the hash of the cookie value, so a database leak is not a
+// session leak.
+type TunnelGrant struct {
+	ID        string `gorm:"primaryKey"`
+	TunnelID  string `gorm:"index"`
+	UserID    string
+	ExpiresAt time.Time `gorm:"index"`
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
@@ -418,6 +444,7 @@ func Models() []any {
 		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
+		&Tunnel{}, &TunnelGrant{},
 	}
 }
 

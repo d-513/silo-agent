@@ -212,6 +212,25 @@ var toolDefs = []llm.Tool{
 		},
 		"required": []string{"path"},
 	}),
+	tool("open_tunnel", "Give the human an address for a service listening on this machine's localhost (a web app, dashboard, notebook). Returns the URL. Private by default: only the owner, signed in to Silo, can open it. public=true makes it open to anyone with the link and asks the human first. Start the service first and keep it running. Calling it again for the same port returns the same address. Python: silo_runtime.open_tunnel(port).", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"port":   map[string]any{"type": "integer", "description": "the port the service listens on (1-65535; the desktop's own 5900 and 9222 are refused)"},
+			"public": map[string]any{"type": "boolean", "description": "open to anyone with the link, no sign-in; asks the human. Leave out unless they asked for a shareable link."},
+		},
+		"required": []string{"port"},
+	}),
+	tool("list_tunnels", "List this Bot's tunnels: address, port, and who can open each.", map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}),
+	tool("close_tunnel", "Close a tunnel by name or by port. The service keeps running; its address stops working.", map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{"type": "string", "description": "the tunnel's name (the first part of its address)"},
+			"port": map[string]any{"type": "integer"},
+		},
+	}),
 	tool("channel", "Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -323,17 +342,23 @@ var toolDefs = []llm.Tool{
 	}),
 }
 
-// runTools is the chat tool list for one run: toolDefs minus transcribe when
-// voice is off or unconfigured, so the model is never offered a dead tool.
+// tunnelTools are the chat tools that exist only while tunnels are usable.
+var tunnelTools = map[string]bool{"open_tunnel": true, "list_tunnels": true, "close_tunnel": true}
+
+// runTools is the chat tool list for one run: toolDefs minus the tools whose
+// feature is off (transcribe without voice, the tunnel tools without a tunnel
+// domain), so the model is never offered a dead tool.
 func (a *App) runTools() []llm.Tool {
-	if a.Voice.Enabled() {
+	voice, tunnels := a.Voice.Enabled(), a.Tunnels.Usable()
+	if voice && tunnels {
 		return toolDefs
 	}
 	out := make([]llm.Tool, 0, len(toolDefs))
 	for _, t := range toolDefs {
-		if t.Name != "transcribe" {
-			out = append(out, t)
+		if (t.Name == "transcribe" && !voice) || (tunnelTools[t.Name] && !tunnels) {
+			continue
 		}
+		out = append(out, t)
 	}
 	return out
 }

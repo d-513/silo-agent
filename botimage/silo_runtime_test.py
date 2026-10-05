@@ -79,10 +79,35 @@ def test_taskboard_calls():
     if seen != want:
         raise SystemExit(f"bodies {seen}")
 
+def test_tunnel_calls():
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"result": {"ok": True}}
+
+    silo_runtime._post = post
+    silo_runtime.open_tunnel(8000)
+    silo_runtime.open_tunnel(8001, public=True)
+    silo_runtime.list_tunnels()
+    silo_runtime.close_tunnel(name="quiet-amber-heron")
+    silo_runtime.close_tunnel(port=8001)
+    args = [(b["connector"], b["action"], b["args"]) for _, b in seen]
+    want = [
+        ("tunnels", "open", {"port": 8000}),
+        ("tunnels", "open", {"port": 8001, "public": True}),
+        ("tunnels", "list", {}),
+        ("tunnels", "close", {"name": "quiet-amber-heron"}),
+        ("tunnels", "close", {"port": 8001}),
+    ]
+    if args != want:
+        raise SystemExit(f"calls {args}")
+
 
 if __name__ == "__main__":
     test_chrome_page_ensures()
     test_web_search_call()
     test_transcribe_call()
     test_taskboard_calls()
+    test_tunnel_calls()
     print("ok")

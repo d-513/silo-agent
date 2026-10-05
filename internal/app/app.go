@@ -30,6 +30,7 @@ import (
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/skill"
+	"silo.agent/internal/app/tunnels"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/auth"
@@ -165,6 +166,7 @@ type App struct {
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
 	Feed        *feed.Service
+	Tunnels     *tunnels.Service
 	Models      *models.Service
 	Workspace   *workspace.Service
 	Voice       *voice.Service
@@ -205,6 +207,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
+	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice)
 	a.recoverOrphans()
 	a.Connectors.Init()
@@ -468,8 +471,10 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/oauth/callback", a.Connectors.ServeOAuthCallback)
 	mux.HandleFunc("/connectors/", a.Connectors.ServeImage)
 	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
+	mux.HandleFunc("/tunnels/auth", a.Tunnels.ServeAuth)
 	log.Printf("mounted %s %s", uiPath, wkPath)
-	return access.WithHTTP(mux)
+	// <name>.<tunnels.host> is a tunnel; every other host is the control plane.
+	return a.Tunnels.Route(access.WithHTTP(mux))
 }
 
 func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) {

@@ -2,6 +2,7 @@ package apptest
 
 import (
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,7 +15,10 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
+	"silo.agent/internal/auth"
+	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/ids"
 	"silo.agent/internal/rpcx"
 )
 
@@ -77,6 +81,25 @@ func (h *H) WorkerClient(botID string) silov1connect.BotWorkerClient {
 		h.T.Fatalf("no container token recorded for bot %s (create the bot via the API first)", botID)
 	}
 	return silov1connect.NewBotWorkerClient(&http.Client{}, h.URL, connect.WithInterceptors(rpcx.Bearer(tok)))
+}
+
+// SignedInUser creates a non-admin user and signs them in. It returns their UI
+// client and the HTTP client that holds their session cookie, for tests of what
+// one user must not reach in another's Bot.
+func (h *H) SignedInUser(email string) (silov1connect.UIClient, *http.Client) {
+	h.T.Helper()
+	hash, err := auth.HashPassword("pw")
+	if err != nil {
+		h.T.Fatal(err)
+	}
+	h.DB.Create(&db.User{ID: ids.New(), Email: email, PasswordHash: hash})
+	jar, _ := cookiejar.New(nil)
+	hc := &http.Client{Jar: jar}
+	cl := silov1connect.NewUIClient(hc, h.URL)
+	if _, err := cl.SignIn(h.Ctx(), connect.NewRequest(&v1.SignInRequest{Email: email, Password: "pw"})); err != nil {
+		h.T.Fatalf("sign in %s: %v", email, err)
+	}
+	return cl, hc
 }
 
 // WaitConnector blocks until the named bot connector leaves the initializing

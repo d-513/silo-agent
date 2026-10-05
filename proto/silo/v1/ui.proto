@@ -39,6 +39,11 @@ service UI {
   rpc MarkFeedRead(MarkFeedReadRequest) returns (MarkFeedReadResponse);
   rpc DeleteFeedPost(DeleteFeedPostRequest) returns (DeleteFeedPostResponse);
   rpc QuoteFeedPost(QuoteFeedPostRequest) returns (QuoteFeedPostResponse);
+  // Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
+  rpc ListTunnels(ListTunnelsRequest) returns (ListTunnelsResponse);
+  rpc CreateTunnel(CreateTunnelRequest) returns (Tunnel);
+  rpc UpdateTunnel(UpdateTunnelRequest) returns (Tunnel);
+  rpc DeleteTunnel(DeleteTunnelRequest) returns (DeleteTunnelResponse);
   rpc ListAutomations(ListAutomationsRequest) returns (ListAutomationsResponse);
   rpc CreateAutomation(CreateAutomationRequest) returns (Automation);
   rpc UpdateAutomation(UpdateAutomationRequest) returns (Automation);
@@ -404,6 +409,56 @@ message QuoteFeedPostRequest {
 message QuoteFeedPostResponse {
   Chat chat = 1;
 }
+
+// Tunnel is one declared route into a service on a Bot's localhost: a generated
+// name, a port, and who may open it. url is built from tunnels.host, so it
+// follows a change of the domain.
+message Tunnel {
+  string id = 1;
+  string name = 2;
+  int32 port = 3;
+  // public: anyone with the URL can open it. Private: the Bot's owner, signed in.
+  bool public = 4;
+  string url = 5;
+  // created_by is "owner" or "bot".
+  string created_by = 6;
+  string created_at = 7;
+  string last_used_at = 8; // empty until first used
+}
+
+message ListTunnelsRequest {
+  string bot_id = 1;
+}
+
+message ListTunnelsResponse {
+  repeated Tunnel tunnels = 1;
+  // state is "ok", "off" (tunnels.enabled is false) or "no_host" (no
+  // tunnels.host and none derivable from public_url).
+  string state = 2;
+  // host is the effective domain suffix, empty when there is none.
+  string host = 3;
+  // max is how many tunnels one Bot may declare.
+  int32 max = 4;
+}
+
+message CreateTunnelRequest {
+  string bot_id = 1;
+  int32 port = 2;
+  bool public = 3;
+}
+
+message UpdateTunnelRequest {
+  string bot_id = 1;
+  string id = 2;
+  bool public = 3;
+}
+
+message DeleteTunnelRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteTunnelResponse {}
 
 // Automation is a scheduled background prompt. Each one owns a hidden Chat
 // (chat_id) whose runs are its log; every firing starts with a fresh context.
@@ -910,6 +965,9 @@ message Settings {
   string default_model = 7;
   string title_model = 8;
   repeated ConnectorVar connector_vars = 9;
+  // tunnels_host is the effective tunnels.host (explicit or derived), empty
+  // when tunnels have no domain; the form shows it where the field is unset.
+  string tunnels_host = 10;
 }
 
 message Provider {

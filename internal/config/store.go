@@ -26,6 +26,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
 	_ = k.Set("drives.image", DefaultDriveImage)
 	_ = k.Set("drives.cache_max_size", "10G")
+	_ = k.Set("tunnels.enabled", true)
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
@@ -305,6 +306,9 @@ func validateYAML(raw []byte) error {
 	}
 	if e := strings.TrimSpace(k.String("search.engine")); e != "" && !search.Known(e) {
 		return fmt.Errorf("unknown search engine %q", e)
+	}
+	if err := validateTunnels(k.String("tunnels.host"), k.String("tunnels.scheme"), k.String("public_url")); err != nil {
+		return err
 	}
 	if cv := k.Get("connector_vars"); cv != nil {
 		m, ok := cv.(map[string]any)

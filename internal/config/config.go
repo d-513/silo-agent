@@ -269,6 +269,7 @@ type Config struct {
 	Providers   map[string]Provider `koanf:"providers"`
 	Search      Search              `koanf:"search"`
 	Drives      Drives              `koanf:"drives"`
+	Tunnels     Tunnels             `koanf:"tunnels"`
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
@@ -400,6 +401,9 @@ var fieldDefs = []fieldMeta{
 	{Key: "drives.image"},
 	{Key: "drives.mount_root"},
 	{Key: "drives.cache_max_size"},
+	{Key: "tunnels.enabled", Type: "bool"},
+	{Key: "tunnels.host"},
+	{Key: "tunnels.scheme"},
 	{Key: "bootstrap.email", Restart: true},
 	{Key: "bootstrap.password", Secret: true, Restart: true},
 }

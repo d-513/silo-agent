@@ -96,6 +96,19 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `quoteFeedPost`(request: Silo_V1_QuoteFeedPostRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_QuoteFeedPostResponse>
 
+    /// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
+    @available(iOS 13, *)
+    func `listTunnels`(request: Silo_V1_ListTunnelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListTunnelsResponse>
+
+    @available(iOS 13, *)
+    func `createTunnel`(request: Silo_V1_CreateTunnelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Tunnel>
+
+    @available(iOS 13, *)
+    func `updateTunnel`(request: Silo_V1_UpdateTunnelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Tunnel>
+
+    @available(iOS 13, *)
+    func `deleteTunnel`(request: Silo_V1_DeleteTunnelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteTunnelResponse>
+
     @available(iOS 13, *)
     func `listAutomations`(request: Silo_V1_ListAutomationsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListAutomationsResponse>
 
@@ -473,6 +486,26 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `quoteFeedPost`(request: Silo_V1_QuoteFeedPostRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_QuoteFeedPostResponse> {
         return await self.client.unary(path: "/silo.v1.UI/QuoteFeedPost", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listTunnels`(request: Silo_V1_ListTunnelsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListTunnelsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListTunnels", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `createTunnel`(request: Silo_V1_CreateTunnelRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Tunnel> {
+        return await self.client.unary(path: "/silo.v1.UI/CreateTunnel", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateTunnel`(request: Silo_V1_UpdateTunnelRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Tunnel> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateTunnel", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteTunnel`(request: Silo_V1_DeleteTunnelRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteTunnelResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteTunnel", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -898,6 +931,10 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let markFeedRead = Connect.MethodSpec(name: "MarkFeedRead", service: "silo.v1.UI", type: .unary)
             public static let deleteFeedPost = Connect.MethodSpec(name: "DeleteFeedPost", service: "silo.v1.UI", type: .unary)
             public static let quoteFeedPost = Connect.MethodSpec(name: "QuoteFeedPost", service: "silo.v1.UI", type: .unary)
+            public static let listTunnels = Connect.MethodSpec(name: "ListTunnels", service: "silo.v1.UI", type: .unary)
+            public static let createTunnel = Connect.MethodSpec(name: "CreateTunnel", service: "silo.v1.UI", type: .unary)
+            public static let updateTunnel = Connect.MethodSpec(name: "UpdateTunnel", service: "silo.v1.UI", type: .unary)
+            public static let deleteTunnel = Connect.MethodSpec(name: "DeleteTunnel", service: "silo.v1.UI", type: .unary)
             public static let listAutomations = Connect.MethodSpec(name: "ListAutomations", service: "silo.v1.UI", type: .unary)
             public static let createAutomation = Connect.MethodSpec(name: "CreateAutomation", service: "silo.v1.UI", type: .unary)
             public static let updateAutomation = Connect.MethodSpec(name: "UpdateAutomation", service: "silo.v1.UI", type: .unary)

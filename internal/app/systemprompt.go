@@ -70,6 +70,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.channelSections,
 		a.driveSections,
 		a.knowledgeSections,
+		a.tunnelSections,
 		a.automationSections,
 		a.subagentSections,
 		a.recallSections,
@@ -90,6 +91,13 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 		{title: "Channels", body: channel.ListPrompt(pc.channels, pc.channel)},
 		{title: "This conversation", body: channel.ConversationPrompt(pc.channel), trailing: true},
 	}
+}
+
+// tunnelSections explains the tunnel tools, only while the operator has tunnels
+// on and a domain for them. The text is the same for every Bot, so it stays in
+// the cached prefix.
+func (a *App) tunnelSections(promptContext) []promptSection {
+	return []promptSection{{title: "Tunnels", body: a.Tunnels.Prompt(prompts.Tunnels)}}
 }
 
 // driveSections lists the Bot's drives for the session tier.

@@ -25,6 +25,11 @@ public protocol Silo_V1_BotWorkerClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `console`(headers: Connect.Headers) -> any Connect.BidirectionalAsyncStreamInterface<Silo_V1_ConsoleIO, Silo_V1_ConsoleIO>
+
+    /// Tunnel carries one proxied TCP connection into the Bot: the CP asks for it
+    /// with Cmd.open_tunnel, the worker dials the port and opens this stream.
+    @available(iOS 13, *)
+    func `tunnel`(headers: Connect.Headers) -> any Connect.BidirectionalAsyncStreamInterface<Silo_V1_TunnelFrame, Silo_V1_TunnelFrame>
 }
 
 /// Concrete implementation of `Silo_V1_BotWorkerClientInterface`.
@@ -60,6 +65,11 @@ public final class Silo_V1_BotWorkerClient: Silo_V1_BotWorkerClientInterface, Se
         return self.client.bidirectionalStream(path: "/silo.v1.BotWorker/Console", headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `tunnel`(headers: Connect.Headers = [:]) -> any Connect.BidirectionalAsyncStreamInterface<Silo_V1_TunnelFrame, Silo_V1_TunnelFrame> {
+        return self.client.bidirectionalStream(path: "/silo.v1.BotWorker/Tunnel", headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let commands = Connect.MethodSpec(name: "Commands", service: "silo.v1.BotWorker", type: .bidirectionalStream)
@@ -67,6 +77,7 @@ public final class Silo_V1_BotWorkerClient: Silo_V1_BotWorkerClientInterface, Se
             public static let callTool = Connect.MethodSpec(name: "CallTool", service: "silo.v1.BotWorker", type: .unary)
             public static let vnc = Connect.MethodSpec(name: "VNC", service: "silo.v1.BotWorker", type: .bidirectionalStream)
             public static let console = Connect.MethodSpec(name: "Console", service: "silo.v1.BotWorker", type: .bidirectionalStream)
+            public static let tunnel = Connect.MethodSpec(name: "Tunnel", service: "silo.v1.BotWorker", type: .bidirectionalStream)
         }
     }
 }

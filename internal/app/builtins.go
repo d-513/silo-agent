@@ -32,6 +32,9 @@ var sharedTools = map[string][2]string{
 	"task_list":         {security.Tasks, "read"},
 	"task_done":         {security.Tasks, "done"},
 	"task_reset":        {security.Tasks, "reset"},
+	"open_tunnel":       {security.Tunnels, "open"},
+	"list_tunnels":      {security.Tunnels, "list"},
+	"close_tunnel":      {security.Tunnels, "close"},
 }
 
 // sharedToolName is the chat tool behind connector.action, if it is shared.
@@ -65,6 +68,9 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case security.Tasks:
 		// taskTool gates itself: a subagent may not reset the shared board.
 		return a.taskTool(ctx, bot, runID, name, args, structured)
+	case security.Tunnels:
+		// tunnels.Tool gates itself: opening is one rule, going public another.
+		return a.Tunnels.Tool(ctx, bot, runID, name, args, structured)
 	case security.Bot:
 		if name == "feed" {
 			return a.Feed.Tool(ctx, bot, runID, args)

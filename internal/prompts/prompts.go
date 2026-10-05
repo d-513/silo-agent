@@ -43,3 +43,8 @@ var Memory string
 //
 //go:embed SUBAGENT.md
 var Subagent string
+
+// Tunnels is the system-prompt section for a Bot that has the tunnel tools.
+//
+//go:embed TUNNELS.md
+var Tunnels string

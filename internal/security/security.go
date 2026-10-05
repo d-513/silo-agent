@@ -43,6 +43,9 @@ const (
 	Agents = "agents"
 	// Tasks is the per-chat Taskboard shared by a lead and its subagents.
 	Tasks = "tasks"
+	// Tunnels give the owner addresses for services on the Bot's localhost.
+	// Opening one is private to the owner; making one public asks.
+	Tunnels = "tunnels"
 )
 
 type Field struct {
@@ -72,7 +75,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true,
+	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true, Tunnels: true,
 	// Drives are mounted folders, not a connector; keep the name free of MCP slugs.
 	"drives": true,
 }
@@ -108,6 +111,10 @@ var catalog = map[string]spec{
 	"tasks.add":          {title: "Add tasks", mode: Allow, summary: want("add tasks to the taskboard")},
 	"tasks.done":         {title: "Complete tasks", mode: Allow, summary: want("mark taskboard tasks done")},
 	"tasks.reset":        {title: "Reset taskboard", mode: Allow, summary: want("clear the taskboard")},
+	"tunnels.open":       {title: "Open tunnel", mode: Allow, summary: tunnelSummary("open a tunnel to"), fields: tunnelFields},
+	"tunnels.list":       {title: "List tunnels", mode: Allow, summary: want("list its tunnels")},
+	"tunnels.close":      {title: "Close tunnel", mode: Allow, summary: want("close a tunnel")},
+	"tunnels.public":     {title: "Make tunnel public", mode: Ask, summary: tunnelPublicSummary, fields: tunnelFields},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
@@ -125,6 +132,33 @@ func switchFields(args map[string]string) []Field {
 		return []Field{{Label: "Model", Value: m}}
 	}
 	return nil
+}
+
+func tunnelSummary(verb string) func(map[string]string) string {
+	return func(args map[string]string) string {
+		if p := strings.TrimSpace(args["port"]); p != "" {
+			return "This Bot wants to " + verb + " port " + p + " on its machine."
+		}
+		return "This Bot wants to " + verb + " a service on its machine."
+	}
+}
+
+// tunnelPublicSummary says plainly what a public tunnel is: it is the one
+// tunnel action that reaches people other than the owner.
+func tunnelPublicSummary(args map[string]string) string {
+	port := "a service"
+	if p := strings.TrimSpace(args["port"]); p != "" {
+		port = "port " + p
+	}
+	return "This Bot wants to make " + port + " on its machine public: anyone with the link can open it, without signing in."
+}
+
+func tunnelFields(args map[string]string) []Field {
+	var out []Field
+	if v := strings.TrimSpace(args["port"]); v != "" {
+		out = append(out, Field{Label: "Port", Value: v})
+	}
+	return out
 }
 
 func automationSummary(verb string) func(map[string]string) string {
@@ -234,6 +268,10 @@ func BuiltinRows() []Row {
 		{Tasks, "add", "Add tasks"},
 		{Tasks, "done", "Complete tasks"},
 		{Tasks, "reset", "Reset taskboard"},
+		{Tunnels, "open", "Open tunnel"},
+		{Tunnels, "list", "List tunnels"},
+		{Tunnels, "close", "Close tunnel"},
+		{Tunnels, "public", "Make tunnel public"},
 	}
 }
 
