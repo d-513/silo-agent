@@ -3,6 +3,7 @@ import type { Artifact } from "../Artifact";
 import { Composer } from "../composer/Composer";
 import { fail } from "../errors";
 import type { Bot, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
+import type { AgentLink } from "../links";
 import { SubagentTray } from "../SubagentTray";
 import { Taskboard } from "../Taskboard";
 import { Thread } from "../Thread";
@@ -44,7 +45,7 @@ export function RunPane({
   actions: RunActions;
   // Runs of subagents that are paused on an approval.
   waitingRuns: Set<string>;
-  agentHref: (name: string) => string | undefined;
+  agentHref: (name: string) => AgentLink | undefined;
   onInspectArtifact: (a: Artifact) => void;
   onSaveSkill: (a: Artifact) => void;
   onError: (message: string) => void;

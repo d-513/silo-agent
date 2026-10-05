@@ -1,6 +1,6 @@
 import { Check, Plug, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { btnClass } from "../Btn";
 import type { ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { PageHead, widePage } from "../PageHead";
@@ -112,7 +112,7 @@ export function AdapterPicker({
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {shown.map((a) => (
-            <AdapterCard key={a.slug} a={a} count={counts[a.slug] ?? 0} onAdd={() => navigate(`/bots/${botId}/channels/new/${a.slug}`)} />
+            <AdapterCard key={a.slug} a={a} count={counts[a.slug] ?? 0} onAdd={() => void navigate({ to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter: a.slug } })} />
           ))}
         </div>
       )}
@@ -127,7 +127,7 @@ export function AdapterPicker({
             <p className="text-xs text-ink-2">Those are Connectors: the Bot calls them as tools instead of chatting through them.</p>
           </div>
         </div>
-        <button type="button" className={btnClass("secondary")} onClick={() => navigate(`/bots/${botId}/connectors`)}>
+        <button type="button" className={btnClass("secondary")} onClick={() => void navigate({ to: "/bots/$botId/connectors", params: { botId } })}>
           Browse Connectors
         </button>
       </div>

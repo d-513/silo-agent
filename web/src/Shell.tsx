@@ -1,13 +1,15 @@
 import { Book, LayoutGrid, LogOut, Plus, Wrench } from "lucide-react";
-import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { AccountPage } from "./AccountPage";
 import { ui } from "./api";
 import { useAuth } from "./auth";
 import { useBots } from "./bots";
 import { Crest } from "./Crest";
-import { ErrorBoundary } from "./ErrorBoundary";
 import { isSignedOut } from "./errors";
 import { Lamp } from "./Lamp";
+import { preloadMarkdown } from "./mdPlugins";
+import { OfflineBanner } from "./Offline";
 import { SiloMark } from "./SiloMark";
 
 // Rail items: 40px hit areas. The active one is a lifted surface well with a
@@ -28,12 +30,12 @@ function railBar(on: boolean) {
   );
 }
 
-function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
+type Page = "bots" | "admin" | "account" | "skills";
+
+function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
   const { admin, email, setSession } = useAuth();
   const { bots } = useBots();
   const loc = useLocation();
-  const botMatch = loc.pathname.match(/^\/bots\/([^/]+)/);
-  const activeBotId = botMatch?.[1];
   const homeActive = page === "bots" && !activeBotId && loc.pathname !== "/new";
   const initial = (email.trim()[0] ?? "?").toUpperCase();
   return (
@@ -55,7 +57,8 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
             return (
               <Link
                 key={b.id}
-                to={`/bots/${b.id}/run`}
+                to="/bots/$botId/run"
+                params={{ botId: b.id }}
                 title={b.name}
                 className={railHit(on, `blink ${b.status === "working" ? "blink-idle" : ""}`)}
               >
@@ -75,7 +78,7 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
       </nav>
       <div className="flex items-center gap-1 max-wide:pr-2 wide:mb-4 wide:flex-col">
         {admin && (
-          <Link to="/admin" title="Admin" className={railHit(page === "admin")}>
+          <Link to="/admin/settings" title="Admin" className={railHit(page === "admin")}>
             {railBar(page === "admin")}
             <Wrench size={20} />
           </Link>
@@ -105,14 +108,25 @@ function Rail({ page }: { page: "bots" | "admin" | "account" | "skills" }) {
   );
 }
 
-export function Shell({ page, fill, children }: { page: "bots" | "admin" | "account" | "skills"; fill?: boolean; children: ReactNode }) {
+// Shell is every signed-in page: the rail, and the page beside it.
+export function Shell() {
   const { pathname } = useLocation();
+  const activeBotId = pathname.match(/^\/bots\/([^/]+)/)?.[1];
+  const page: Page = pathname.startsWith("/admin") ? "admin" : pathname.startsWith("/account") ? "account" : pathname.startsWith("/skills") ? "skills" : "bots";
+  // Replies with code are common: fetch the highlighter once the browser is idle.
+  useEffect(() => preloadMarkdown(), []);
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
-      <Rail page={page} />
-      <main className={`min-w-0 flex-1 ${fill ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
-        <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+      <Rail page={page} activeBotId={activeBotId} />
+      {/* A Bot page fills the height and scrolls inside its own panes. */}
+      <main className={`min-w-0 flex-1 ${activeBotId ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
+        <Outlet />
       </main>
+      <OfflineBanner />
     </div>
   );
+}
+
+export function AccountRoute() {
+  return <AccountPage email={useAuth().email} />;
 }

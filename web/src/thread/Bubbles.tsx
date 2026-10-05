@@ -1,6 +1,7 @@
 import { Bot, GitBranch, Inbox, Paperclip, Pencil, RotateCcw, Timer, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+import type { AgentLink } from "../links";
 import { Btn } from "../Btn";
 import { CopyButton, useArmed } from "../Feedback";
 import type { Attachment } from "../fold";
@@ -175,7 +176,7 @@ const reportTone: Record<string, string> = {
 
 // SubagentReport opens a lead's wake run: which subagents finished, each a
 // link to its page, with the report the lead was handed folded underneath.
-export function SubagentReport({ text, agents, href }: { text: string; agents: { name: string; status: string }[]; href?: (name: string) => string | undefined }) {
+export function SubagentReport({ text, agents, href }: { text: string; agents: { name: string; status: string }[]; href?: (name: string) => AgentLink | undefined }) {
   return (
     <FoldRow
       lead={
@@ -201,7 +202,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
               <span key={ag.name} className="inline-flex shrink-0 items-center gap-1">
                 {i > 0 ? <span className="text-ink-3">·</span> : null}
                 {to ? (
-                  <Link to={to} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-xs hover:underline">
+                  <Link {...to} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-xs hover:underline">
                     {label}
                   </Link>
                 ) : (

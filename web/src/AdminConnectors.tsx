@@ -1,6 +1,6 @@
 import { Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Btn, btnClass } from "./Btn";
@@ -9,16 +9,6 @@ import { inputClass, SkeletonRows } from "./Field";
 import { Select } from "./Select";
 import type { Connector } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-
-export function AdminConnectors() {
-  return (
-    <Routes>
-      <Route index element={<CatalogList />} />
-      <Route path="new" element={<LibraryForm />} />
-      <Route path=":id" element={<LibraryForm />} />
-    </Routes>
-  );
-}
 
 function byName(a: Connector, b: Connector) {
   return a.name.localeCompare(b.name);
@@ -31,7 +21,7 @@ function categoryOf(c: Connector) {
 function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
   return (
     <div className="group flex items-start justify-between gap-3 rounded-card shadow-card bg-surface p-4 transition-colors hover:shadow-float">
-      <Link to={`/admin/connectors/${c.id}`} className="flex min-w-0 flex-1 items-start gap-3">
+      <Link to="/admin/connectors/$connectorId" params={{ connectorId: c.id }} className="flex min-w-0 flex-1 items-start gap-3">
         <div className="shrink-0 pt-0.5">
           <ConnectorMark id={c.id} hasImage={c.hasImage} size={40} />
         </div>
@@ -69,7 +59,7 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
   );
 }
 
-function CatalogList() {
+export function CatalogList() {
   const [rows, setRows] = useState<Connector[] | null>(null);
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
@@ -203,8 +193,9 @@ function CatalogList() {
   );
 }
 
-function LibraryForm() {
-  const { id } = useParams();
+// /admin/connectors/new adds a preset; /admin/connectors/$connectorId edits one.
+export function LibraryForm() {
+  const { connectorId: id } = useParams({ strict: false });
   const nav = useNavigate();
   const [draft, setDraft] = useState<ConnectorDraft>(emptyDraft());
   const [err, setErr] = useState("");
@@ -235,7 +226,7 @@ function LibraryForm() {
         if (id) await ui.updateConnector({ id, ...spec });
         else await ui.createConnector(spec);
       });
-      nav("/admin/connectors");
+      nav({ to: "/admin/connectors" });
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -246,7 +237,7 @@ function LibraryForm() {
     setErr("");
     try {
       await ui.deleteConnector({ id });
-      nav("/admin/connectors");
+      nav({ to: "/admin/connectors" });
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -263,7 +254,7 @@ function LibraryForm() {
         <SaveButton type="submit" state={saver.state}>
           {id ? "Save" : "Add to library"}
         </SaveButton>
-        <Btn kind="ghost" type="button" onClick={() => nav("/admin/connectors")}>
+        <Btn kind="ghost" type="button" onClick={() => nav({ to: "/admin/connectors" })}>
           Cancel
         </Btn>
         {id && (

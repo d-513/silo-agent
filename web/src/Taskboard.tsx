@@ -1,10 +1,11 @@
 import { Check, ChevronRight, ListChecks, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+import type { AgentLink } from "./links";
 import { useArmed } from "./Feedback";
 import type { TaskItem } from "./gen/silo/v1/ui_pb";
 
-function AgentChip({ name, to }: { name: string; to?: string }) {
+function AgentChip({ name, to }: { name: string; to?: AgentLink }) {
   const inner = (
     <>
       <span className="truncate font-mono text-[11.5px] leading-4">{name}</span>
@@ -12,7 +13,7 @@ function AgentChip({ name, to }: { name: string; to?: string }) {
   );
   const cls = "inline-flex h-5 max-w-[9rem] shrink-0 items-center rounded-xs bg-pressed px-1.5 text-ink-2";
   return to ? (
-    <Link to={to} onClick={(e) => e.stopPropagation()} className={`${cls} hover:text-ink`}>
+    <Link {...to} onClick={(e) => e.stopPropagation()} className={`${cls} hover:text-ink`}>
       {inner}
     </Link>
   ) : (
@@ -31,7 +32,7 @@ export function Taskboard({
 }: {
   items: TaskItem[];
   onClear?: () => void;
-  agentHref?: (name: string) => string | undefined;
+  agentHref?: (name: string) => AgentLink | undefined;
   // On a subagent's page: its own tasks are lit, the rest dimmed.
   mine?: string;
 }) {

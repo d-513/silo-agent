@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { useBots } from "./bots";
 import { btnClass } from "./Btn";
 import { Crest } from "./Crest";
@@ -61,7 +61,8 @@ export function BotsPage() {
           {bots.map((b, i) => (
             <Link
               key={b.id}
-              to={`/bots/${b.id}/run`}
+              to="/bots/$botId/run"
+              params={{ botId: b.id }}
               style={{ animationDelay: `${Math.min(i * 45, 270)}ms` }}
               className="rise blink group relative flex items-center gap-4 overflow-hidden rounded-card bg-surface p-5 shadow-card transition-[box-shadow,transform] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float active:scale-[.995] active:duration-[70ms] motion-reduce:hover:translate-y-0"
             >

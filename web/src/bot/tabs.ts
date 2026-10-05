@@ -6,14 +6,6 @@ export const sideTabs = ["automations", "memories", "knowledge", "feed"] as cons
 export type SideTab = (typeof sideTabs)[number];
 export type Tab = NavTab | SideTab | "console";
 
-export function isNavTab(s: string | undefined): s is NavTab {
-  return !!s && (tabs as readonly string[]).includes(s);
-}
-
-export function isSideTab(s: string | undefined): s is SideTab {
-  return !!s && (sideTabs as readonly string[]).includes(s);
-}
-
 export function onChatSide(t: Tab) {
-  return t === "run" || isSideTab(t);
+  return t === "run" || (sideTabs as readonly string[]).includes(t);
 }

@@ -1,5 +1,5 @@
 import { FolderOpen, Pencil, RefreshCw, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { ArmedButton, CopyButton } from "../Feedback";
@@ -52,12 +52,12 @@ export function DriveRow({ botId, d, t, onReconnect, onRemoved }: { botId: strin
             Reconnect
           </Btn>
         ) : d.state === "mounted" ? (
-          <Btn kind="ghost" size="sm" type="button" onClick={() => navigate(`/bots/${botId}/files?open=${encodeURIComponent(`drives/${d.name}`)}`)}>
+          <Btn kind="ghost" size="sm" type="button" onClick={() => void navigate({ to: "/bots/$botId/files", params: { botId }, search: { open: `drives/${d.name}` } })}>
             <FolderOpen size={14} />
             Open in Files
           </Btn>
         ) : null}
-        <Btn kind="ghost" size="sm" iconOnly type="button" aria-label={`Edit ${d.name}`} title="Edit" onClick={() => navigate(`/bots/${botId}/drives/${d.id}`)}>
+        <Btn kind="ghost" size="sm" iconOnly type="button" aria-label={`Edit ${d.name}`} title="Edit" onClick={() => void navigate({ to: "/bots/$botId/drives/$driveId", params: { botId, driveId: d.id } })}>
           <Pencil size={14} />
         </Btn>
         <ArmedButton

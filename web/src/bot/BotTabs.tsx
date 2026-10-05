@@ -1,7 +1,8 @@
 import { Book, Box, ChevronDown, Folder, HardDrive, Key, ListChecks, MessageCircle, Monitor, Plug, Radio, SlidersHorizontal, SquareTerminal, Waypoints } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Link, NavLink } from "react-router-dom";
+import { Link, type LinkProps } from "@tanstack/react-router";
+import { chatLink } from "../links";
 import { useDismiss } from "../useMenu";
 import { FadeScroll } from "./FadeScroll";
 import { onChatSide, tabs, type NavTab, type Tab } from "./tabs";
@@ -31,24 +32,41 @@ function tabClass(on: boolean, compact?: boolean) {
   } ${on ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"}`;
 }
 
+// Where each tab goes. A tab without a line here does not compile.
+const tabTo = {
+  run: "/bots/$botId/run",
+  desktop: "/bots/$botId/desktop",
+  console: "/bots/$botId/console",
+  files: "/bots/$botId/files",
+  drives: "/bots/$botId/drives",
+  connectors: "/bots/$botId/connectors",
+  channels: "/bots/$botId/channels",
+  tunnels: "/bots/$botId/tunnels",
+  skills: "/bots/$botId/skills",
+  secrets: "/bots/$botId/secrets",
+  rules: "/bots/$botId/rules",
+  container: "/bots/$botId/container",
+  settings: "/bots/$botId/settings",
+} as const satisfies Record<NavTab | "console", LinkProps["to"]>;
+
 function TabLink({
-  to,
+  link,
   on,
   icon: Icon,
   label,
   compact,
 }: {
-  to: string;
+  link: LinkProps;
   on: boolean;
   icon: typeof MessageCircle;
   label: string;
   compact?: boolean;
 }) {
   return (
-    <NavLink to={to} title={label} data-tab-on={on || undefined} className={tabClass(on, compact)}>
+    <Link {...link} title={label} data-tab-on={on || undefined} className={tabClass(on, compact)}>
       <Icon size={15} />
       {(!compact || on) && label}
-    </NavLink>
+    </Link>
   );
 }
 
@@ -128,8 +146,8 @@ export function BotTabs({
           if (splitMachine) {
             return (
               <span key="machine" className="contents">
-                <TabLink to={`/bots/${id}/desktop`} on={tab === "desktop"} icon={Monitor} label="Desktop" compact={compact} />
-                <TabLink to={`/bots/${id}/console`} on={tab === "console"} icon={SquareTerminal} label="Console" compact={compact} />
+                <TabLink link={{ to: tabTo.desktop, params: { botId: id } }} on={tab === "desktop"} icon={Monitor} label="Desktop" compact={compact} />
+                <TabLink link={{ to: tabTo.console, params: { botId: id } }} on={tab === "console"} icon={SquareTerminal} label="Console" compact={compact} />
               </span>
             );
           }
@@ -139,7 +157,7 @@ export function BotTabs({
         return (
           <TabLink
             key={t}
-            to={t === "run" && chatId ? `/bots/${id}/run/${chatId}` : `/bots/${id}/${t}`}
+            link={t === "run" ? chatLink(id, chatId) : { to: tabTo[t], params: { botId: id } }}
             on={t === "run" ? onChatSide(tab) : tab === t}
             icon={icon}
             label={label}
@@ -160,8 +178,8 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
   const onConsole = tab === "console";
   const label = onConsole ? "Console" : "Desktop";
   const Icon = onConsole ? SquareTerminal : Monitor;
-  const href = onConsole ? `/bots/${id}/console` : `/bots/${id}/desktop`;
-  const other = onConsole ? `/bots/${id}/desktop` : `/bots/${id}/console`;
+  const href = onConsole ? tabTo.console : tabTo.desktop;
+  const other = onConsole ? tabTo.desktop : tabTo.console;
   const otherLabel = onConsole ? "Desktop" : "Console";
   const OtherIcon = onConsole ? Monitor : SquareTerminal;
   useEffect(() => {
@@ -177,10 +195,10 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
       className={`group/machine flex h-8 shrink-0 items-stretch self-center rounded-sm transition-colors duration-[160ms] ease-quiet ${ onMachine ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"
       }`}
     >
-      <NavLink to={href} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pr-1 pl-2.5 text-[13px] font-medium">
+      <Link to={href} params={{ botId: id }} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pr-1 pl-2.5 text-[13px] font-medium">
         <Icon size={15} />
         {label}
-      </NavLink>
+      </Link>
       <button
         type="button"
         title={otherLabel}
@@ -199,6 +217,7 @@ function MachineNav({ id, tab }: { id: string; tab: Tab }) {
           >
             <Link
               to={other}
+              params={{ botId: id }}
               onClick={() => setOpen(false)}
               className="flex h-8 items-center gap-2 rounded-sm px-2.5 text-[13px] font-medium text-ink transition-colors duration-[160ms] hover:bg-well"
             >

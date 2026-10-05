@@ -1,7 +1,8 @@
 import { ChevronLeft, Play, Plus, Square, Timer } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
+import type { SubPage } from "./bot/context";
 import { Btn } from "./Btn";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "./Field";
@@ -174,7 +175,7 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
     <div className={`flex items-center gap-3 px-5 py-3.5 shadow-[inset_0_-1px_0_var(--color-line)] transition-colors duration-[160ms] last:shadow-none ${lead ? "bg-well" : "hover:bg-well"}`}>
       {/* The switch is a sibling, not a child, of the Link: a control nested in
           an anchor would navigate on click. */}
-      <Link to={`/bots/${bot.id}/automations/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+      <Link to="/bots/$botId/automations/$automationId" params={{ botId: bot.id, automationId: a.id }} className="flex min-w-0 flex-1 items-center gap-3">
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-ink-2 ${lead ? "bg-surface shadow-card" : "bg-well"}`}>
           <Timer size={15} />
         </span>
@@ -196,14 +197,15 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
 
 export function AutomationsPane({
   bot,
-  sub,
+  at,
   onError,
   onApprovals,
   onInspectArtifact,
   onSaveSkill,
 }: {
   bot: Bot;
-  sub: string[];
+  // new is the editor for a new one; edit is one automation's log.
+  at: SubPage;
   onError: (s: string) => void;
   onApprovals: () => void;
   onInspectArtifact: (a: Artifact) => void;
@@ -212,7 +214,7 @@ export function AutomationsPane({
   const nav = useNavigate();
   const [list, setList] = useState<Automation[] | null>(null);
   const [editing, setEditing] = useState(false);
-  const selId = sub[0] && sub[0] !== "new" ? sub[0] : "";
+  const selId = at.view === "edit" ? (at.id ?? "") : "";
   const sel = list?.find((a) => a.id === selId);
   const stream = useRunStream(bot.id, sel?.chatId, { onApproval: onApprovals });
 
@@ -242,11 +244,11 @@ export function AutomationsPane({
     }
   }
 
-  if (sub[0] === "new") {
+  if (at.view === "new") {
     return (
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="silo-page">
-          <Link to={`/bots/${bot.id}/automations`} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+          <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
             <ChevronLeft size={14} /> Automations
           </Link>
           <h2 className="mb-6 text-title">New automation</h2>
@@ -256,7 +258,7 @@ export function AutomationsPane({
               onError={onError}
               onSaved={(a) => {
                 upsert(a);
-                nav(`/bots/${bot.id}/automations/${a.id}`, { replace: true });
+                void nav({ to: "/bots/$botId/automations/$automationId", params: { botId: bot.id, automationId: a.id }, replace: true });
               }}
             />
           </Panel>
@@ -273,7 +275,7 @@ export function AutomationsPane({
     return (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="shrink-0 px-4 pt-4 wide:px-7">
-          <Link to={`/bots/${bot.id}/automations`} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+          <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
             <ChevronLeft size={14} /> Automations
           </Link>
           <div className="flex flex-wrap items-center gap-3">
@@ -319,7 +321,7 @@ export function AutomationsPane({
                 }}
                 onDeleted={() => {
                   setList((xs) => (xs ?? []).filter((x) => x.id !== sel.id));
-                  nav(`/bots/${bot.id}/automations`, { replace: true });
+                  void nav({ to: "/bots/$botId/automations", params: { botId: bot.id }, replace: true });
                 }}
               />
             </Panel>
@@ -351,7 +353,7 @@ export function AutomationsPane({
             <h2 className="text-title">Automations</h2>
             <p className="text-ink-2">Prompts {bot.name} runs on its own, on a schedule. Each run starts fresh and lands in its log.</p>
           </div>
-          <Btn kind="primary" icon={<Plus size={13} />} onClick={() => nav(`/bots/${bot.id}/automations/new`)}>
+          <Btn kind="primary" icon={<Plus size={13} />} onClick={() => void nav({ to: "/bots/$botId/automations/new", params: { botId: bot.id } })}>
             New
           </Btn>
         </div>

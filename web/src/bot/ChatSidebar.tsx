@@ -1,5 +1,5 @@
 import { Brain, Inbox, Library, Pencil, SquarePen, Timer, Trash2 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
 import { chatWhen } from "../format";
@@ -38,10 +38,10 @@ export function ChatSidebar({
   return (
     <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
       <nav className="space-y-0.5 px-2 pt-2" aria-label="Conversation">
-        <SideLink to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
-        <SideLink to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
-        <SideLink to={`/bots/${id}/knowledge`} on={tab === "knowledge"} icon={Library} label="Knowledge" />
-        <SideLink to={`/bots/${id}/feed`} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
+        <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label="Automations" />
+        <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
+        <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
+        <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
       </nav>
       <div className="flex h-12 items-center justify-between pr-2 pl-4">
         <span className="text-label-caps leading-4 text-ink-3 uppercase">Chats</span>
@@ -63,8 +63,9 @@ export function ChatSidebar({
                   <ChatTitleInput rename={rename} cid={c.id} className={`${inputClass} h-8 px-2 text-[13.5px]`} />
                 </div>
               ) : (
-                <NavLink
-                  to={`/bots/${id}/run/${c.id}`}
+                <Link
+                  to="/bots/$botId/run/$chatId"
+                  params={{ botId: id, chatId: c.id }}
                   onDoubleClick={(e) => {
                     e.preventDefault();
                     rename.begin(c);
@@ -78,7 +79,7 @@ export function ChatSidebar({
                   <span className={`block truncate text-[12.5px] leading-[18px] ${waiting && on ? "text-vermilion" : "text-ink-3"}`}>
                     {on && waiting ? "Waiting for you" : on && sending ? "Working…" : chatWhen(c.updatedAt)}
                   </span>
-                </NavLink>
+                </Link>
               )}
               {rename.editing !== c.id && (
                 <span className="absolute top-1.5 right-1.5 hidden items-center group-focus-within:flex group-hover:flex">

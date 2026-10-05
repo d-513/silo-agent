@@ -1,6 +1,7 @@
 import { Bot, ChevronDown, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+import { agentLink, type AgentLink } from "./links";
 import type { Subagent } from "./gen/silo/v1/ui_pb";
 import { Lamp, StatusWord } from "./Lamp";
 import { elapsed, shortModel } from "./useSubagents";
@@ -33,7 +34,7 @@ export function SubagentTray({
     return () => clearInterval(t);
   }, [running.length]);
   if (agents.length === 0) return null;
-  const href = (a: Subagent) => `/bots/${botId}/run/${chatId}/agent/${a.id}`;
+  const href = (a: Subagent) => agentLink(botId, chatId, a.id);
   return (
     <div className="shrink-0 px-3 pb-1.5 wide:px-6">
       <div className="mx-auto flex max-w-[760px] items-center gap-1.5">
@@ -45,7 +46,7 @@ export function SubagentTray({
                 key={a.id}
                 className="group relative w-[232px] shrink-0 rounded-card bg-surface shadow-card transition-[transform,box-shadow] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float"
               >
-                <Link to={href(a)} className="flex flex-col gap-1 rounded-card px-3 py-2.5">
+                <Link {...href(a)} className="flex flex-col gap-1 rounded-card px-3 py-2.5">
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className="min-w-0 flex-1 truncate text-[13.5px] leading-[18px] font-medium text-ink">{a.name}</span>
                     <span className="shrink-0 font-mono text-[11.5px] leading-4 text-ink-3 transition-opacity duration-[160ms] group-focus-within:opacity-0 group-hover:opacity-0">
@@ -90,7 +91,7 @@ export function SubagentTray({
 
 const statusTone: Record<string, string> = { done: "text-emerald", error: "text-vermilion" };
 
-function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) => string }) {
+function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) => AgentLink }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -118,7 +119,7 @@ function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) =>
           {agents.map((a) => (
             <Link
               key={a.id}
-              to={href(a)}
+              {...href(a)}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-control px-2.5 py-1.5 text-[13px] hover:bg-well"
             >

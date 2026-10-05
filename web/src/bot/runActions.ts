@@ -1,5 +1,4 @@
 import type { FormEvent } from "react";
-import type { NavigateFunction } from "react-router-dom";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { UI } from "../gen/silo/v1/ui_pb";
@@ -13,7 +12,8 @@ type Ctx = {
   draft: ComposerDraft;
   run: { markSent: () => void; setSending: (v: boolean) => void; resync: () => void };
   onError: (message: string) => void;
-  nav: NavigateFunction;
+  // Open another chat of this Bot.
+  openChat: (chatId: string) => void;
 };
 
 // The things a human does in a chat: send, edit, delete, diverge, pick a model
@@ -84,7 +84,7 @@ export function runActions(c: Ctx) {
       const res = await ui.divergeChat({ botId: id, chatId, eventId });
       if (!res.chat) return;
       void refreshChats();
-      c.nav(`/bots/${id}/run/${res.chat.id}`);
+      c.openChat(res.chat.id);
     } catch (ex) {
       onError(fail(ex));
     }

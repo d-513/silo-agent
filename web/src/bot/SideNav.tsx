@@ -1,11 +1,16 @@
 import { MessageCircle } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+
+// The conversation-side pages of a Bot.
+type SideTo = "/bots/$botId/automations" | "/bots/$botId/memories" | "/bots/$botId/knowledge" | "/bots/$botId/feed";
+type SideProps = { to: SideTo; botId: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number };
 
 // SideLink is a one-line row above the chats list: the conversation-side pages.
-export function SideLink({ to, on, icon: Icon, label, badge = 0 }: { to: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number }) {
+export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SideProps) {
   return (
-    <NavLink
+    <Link
       to={to}
+      params={{ botId }}
       className={`flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,box-shadow,color] duration-[160ms] ease-quiet ${
         on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
@@ -13,7 +18,7 @@ export function SideLink({ to, on, icon: Icon, label, badge = 0 }: { to: string;
       <Icon size={15} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge > 0 ? <UnreadBadge n={badge} /> : null}
-    </NavLink>
+    </Link>
   );
 }
 
@@ -31,10 +36,11 @@ function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
 }
 
 // SideChip is SideLink in the narrow chip strip: icon only unless active.
-export function SideChip({ to, on, icon: Icon, label, badge = 0 }: { to: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number }) {
+export function SideChip({ to, botId, on, icon: Icon, label, badge = 0 }: SideProps) {
   return (
-    <NavLink
+    <Link
       to={to}
+      params={{ botId }}
       title={label}
       aria-label={label}
       className={`relative flex h-10 shrink-0 items-center gap-2 rounded-control px-3 text-[13px] font-medium ${
@@ -44,6 +50,6 @@ export function SideChip({ to, on, icon: Icon, label, badge = 0 }: { to: string;
       <Icon size={15} />
       {on && label}
       {badge > 0 && !on ? <UnreadBadge n={badge} dot /> : null}
-    </NavLink>
+    </Link>
   );
 }

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Square } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+import { chatLink } from "./links";
 import { ui } from "./api";
 import type { Artifact } from "./Artifact";
 import { Btn } from "./Btn";
@@ -60,13 +61,13 @@ export function SubagentPage({
     };
   }, [botId, agentId]);
 
-  const back = `/bots/${botId}/run/${chatId}`;
+  const back = chatLink(botId, chatId);
   if (!sa) {
     return (
       <div className="p-7">
         {gone ? (
           <p className="text-ink-2">
-            This subagent is gone. <Link to={back} className="text-cobalt">Back to the chat</Link>
+            This subagent is gone. <Link {...back} className="text-cobalt">Back to the chat</Link>
           </p>
         ) : (
           <SkeletonRows rows={3} />
@@ -79,7 +80,7 @@ export function SubagentPage({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-3 wide:px-7">
-        <Link to={back} className="mb-1.5 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+        <Link {...back} className="mb-1.5 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
           <ChevronLeft size={14} /> Back to the lead
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

@@ -1,6 +1,6 @@
 import { BookOpen, Check, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { fail } from "./errors";

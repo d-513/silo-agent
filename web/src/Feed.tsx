@@ -1,6 +1,7 @@
 import { Inbox, MessageSquareQuote, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
+import { chatLink } from "./links";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
@@ -108,7 +109,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                       <>
                         <span aria-hidden>·</span>
                         {p.sourceKind === "chat" && p.chatId ? (
-                          <Link to={`/bots/${bot.id}/run/${p.chatId}`} className="truncate hover:text-ink hover:underline">
+                          <Link {...chatLink(bot.id, p.chatId)} className="truncate hover:text-ink hover:underline">
                             {sourceLabel(p)}
                           </Link>
                         ) : (

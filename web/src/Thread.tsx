@@ -1,6 +1,7 @@
 import { ArrowDown } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Artifact } from "./Artifact";
+import type { AgentLink } from "./links";
 import { foldEvents, type Attachment, type Block, type Ev } from "./fold";
 import { EmptyThread } from "./thread/EmptyThread";
 import { isBotScratch } from "./thread/Present";
@@ -61,7 +62,7 @@ export function Thread({
   // message is the automation's own prompt, not something a human typed).
   userAs?: "bubble" | "run";
   // Links a subagent named in a wake report to its page.
-  agentHref?: (name: string) => string | undefined;
+  agentHref?: (name: string) => AgentLink | undefined;
 }) {
   const marks = useConnectorMarks(botId);
   const blocks = foldEvents(events);

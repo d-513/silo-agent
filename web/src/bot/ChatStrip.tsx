@@ -1,5 +1,5 @@
 import { Brain, Inbox, Library, Pencil, SquarePen, Timer, Trash2 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
@@ -38,10 +38,10 @@ export function ChatStrip({
   return (
     <FadeScroll className="shrink-0 bg-well shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden" innerClass="flex items-center gap-1 px-2 py-1.5" fade="from-well">
       <Btn kind="ghost" size="sm" iconOnly title="New chat" aria-label="New chat" className="h-10 w-10" icon={<SquarePen size={15} />} onClick={onNewChat} />
-      <SideChip to={`/bots/${id}/automations`} on={tab === "automations"} icon={Timer} label="Automations" />
-      <SideChip to={`/bots/${id}/memories`} on={tab === "memories"} icon={Brain} label="Memories" />
-      <SideChip to={`/bots/${id}/knowledge`} on={tab === "knowledge"} icon={Library} label="Knowledge" />
-      <SideChip to={`/bots/${id}/feed`} on={tab === "feed"} icon={Inbox} label="Feed" badge={bot.feedUnread} />
+      <SideChip to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label="Automations" />
+      <SideChip to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
+      <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
+      <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={bot.feedUnread} />
       <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />
       {chats.map((c) => {
         const on = tab === "run" && c.id === chatId;
@@ -54,8 +54,9 @@ export function ChatStrip({
             {rename.editing === c.id ? (
               <ChatTitleInput rename={rename} cid={c.id} className={`${inputClass} h-8 w-40 px-2`} />
             ) : (
-              <NavLink
-                to={`/bots/${id}/run/${c.id}`}
+              <Link
+                to="/bots/$botId/run/$chatId"
+                params={{ botId: id, chatId: c.id }}
                 onDoubleClick={(e) => {
                   e.preventDefault();
                   rename.begin(c);
@@ -64,7 +65,7 @@ export function ChatStrip({
               >
                 <span className="truncate">{c.title || "New chat"}</span>
                 {on && (waiting || sending) ? <Lamp status={waiting ? "needs_you" : "working"} /> : null}
-              </NavLink>
+              </Link>
             )}
             {on && rename.editing !== c.id && (
               <button

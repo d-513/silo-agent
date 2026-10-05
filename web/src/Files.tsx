@@ -1,6 +1,5 @@
 import { FolderPlus, Plus, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { FileBrowser } from "./FileBrowser";
@@ -9,10 +8,8 @@ import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
-export function FilesPane({ bot, onStart }: { bot: Bot; onStart: () => void }) {
-  // ?open=drives/work lands the tree in that folder (Drives → Open in Files).
-  const [params] = useSearchParams();
-  const openAt = params.get("open") ?? "";
+// openAt lands the tree in that folder (Drives → Open in Files).
+export function FilesPane({ bot, onStart, openAt }: { bot: Bot; onStart: () => void; openAt: string }) {
   const source = useMemo(() => botSource(bot.id), [bot.id]);
   const [cwd, setCwd] = useState("");
   const [err, setErr] = useState("");

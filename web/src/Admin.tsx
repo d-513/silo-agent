@@ -1,6 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, Outlet, type LinkProps } from "@tanstack/react-router";
 import { ui } from "./api";
 import { SaveButton, useSave } from "./Feedback";
 import { Field, Panel } from "./Field";
@@ -8,19 +8,16 @@ import { Select } from "./Select";
 import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
-export { AdminSettings } from "./admin/AdminSettings";
-export { AdminDebug } from "./AdminDebug";
-
-function AdminTab({ to, children }: { to: string; children: ReactNode }) {
+function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }) {
   return (
-    <NavLink
+    <Link
       to={to}
-      className={({ isActive }) =>
-        `shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet ${isActive ? "border-cobalt text-ink" : "border-transparent text-ink-3 hover:text-ink"}`
-      }
+      className="shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-[160ms] ease-quiet"
+      activeProps={{ className: "border-cobalt text-ink" }}
+      inactiveProps={{ className: "border-transparent text-ink-3 hover:text-ink" }}
     >
       {children}
-    </NavLink>
+    </Link>
   );
 }
 

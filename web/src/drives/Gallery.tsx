@@ -1,6 +1,6 @@
 import { ChevronRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { inputClass } from "../Field";
 import { PageHead } from "../PageHead";
 import { Tip, TipAction, TipTitle } from "../Tip";
@@ -41,8 +41,8 @@ export function Gallery({ botId, templates, admin, onBack }: { botId: string; te
                       t.available || admin ? "hover:-translate-y-px hover:shadow-float active:scale-[.995]" : "cursor-default"
                     }`}
                     onClick={() => {
-                      if (t.available) navigate(`/bots/${botId}/drives/new/${t.key}`);
-                      else if (admin) navigate("/admin/drives");
+                      if (t.available) void navigate({ to: "/bots/$botId/drives/new/$template", params: { botId, template: t.key } });
+                      else if (admin) void navigate({ to: "/admin/drives" });
                     }}
                   >
                     <DriveMark svg={t.iconSvg} size={40} muted={!t.available} />

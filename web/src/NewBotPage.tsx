@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
@@ -27,7 +27,7 @@ export function NewBotPage() {
     try {
       const b = await ui.createBot({ name: name.trim(), crest, description: description.trim() });
       void reload(UI.method.listBots);
-      nav(`/bots/${b.id}/run`);
+      void nav({ to: "/bots/$botId/run", params: { botId: b.id } });
     } catch (ex) {
       setErr(fail(ex));
       setBusy(false);

@@ -1,6 +1,7 @@
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
+import { chatLink } from "../links";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { UI, type Chat } from "../gen/silo/v1/ui_pb";
@@ -52,7 +53,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
 
   const newest = chatsQ.data?.chats[0]?.id;
   useEffect(() => {
-    if (id && tab === "run" && !chatId && newest) nav(`/bots/${id}/run/${newest}`, { replace: true });
+    if (id && tab === "run" && !chatId && newest) void nav({ ...chatLink(id, newest), replace: true });
   }, [id, tab, chatId, newest, nav]);
 
   async function renameChat(cid: string) {
@@ -73,7 +74,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     if (!id) return;
     const c = await ui.createChat({ botId: id });
     patchChats(id, (xs) => [c, ...xs]);
-    nav(`/bots/${id}/run/${c.id}`);
+    void nav(chatLink(id, c.id));
   }
 
   async function deleteChat(cid: string) {
@@ -82,11 +83,11 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     const next = chats.filter((x) => x.id !== cid);
     patchChats(id, () => next);
     if (cid === chatId) {
-      if (next[0]) nav(`/bots/${id}/run/${next[0].id}`);
+      if (next[0]) void nav(chatLink(id, next[0].id));
       else {
         const created = await ui.createChat({ botId: id });
         patchChats(id, () => [created]);
-        nav(`/bots/${id}/run/${created.id}`);
+        void nav(chatLink(id, created.id));
       }
     }
   }

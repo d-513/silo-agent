@@ -1,5 +1,5 @@
 import { CircleAlert, History, Pencil, Settings, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { ArmedButton } from "../Feedback";
@@ -78,7 +78,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
               <Btn
                 kind="primary"
                 type="button"
-                onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
+                onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId/setup", params: { botId, channelId: c.id } })}
               >
                 <Settings size={14} className="breathe" />
                 <span>Set up</span>
@@ -87,7 +87,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
               <Btn
                 kind="ghost"
                 type="button"
-                onClick={() => navigate(`/bots/${botId}/channels/${c.id}/setup`)}
+                onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId/setup", params: { botId, channelId: c.id } })}
               >
                 <Settings size={14} />
                 <span>Set up</span>
@@ -110,7 +110,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
           <Btn
             kind="ghost"
             type="button"
-            onClick={() => navigate(`/bots/${botId}/channels/${c.id}`)}
+            onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId", params: { botId, channelId: c.id } })}
             title="Configure channel"
           >
             <Pencil size={14} />

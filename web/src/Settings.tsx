@@ -1,6 +1,6 @@
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, Panel, inputClass, textareaClass } from "./Field";
@@ -117,7 +117,7 @@ export function SettingsPane({
       } else {
         await ui.deleteBot({ id: bot.id });
         void reload(UI.method.listBots);
-        nav("/");
+        void nav({ to: "/" });
         return;
       }
     } catch (ex) {

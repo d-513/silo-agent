@@ -1,7 +1,8 @@
 import { ChevronRight, CircleAlert, HardDrive, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
+import type { SubPage } from "../bot/context";
 import { Btn, btnClass } from "../Btn";
 import { ErrorWell, SkeletonRows } from "../Field";
 import { PageHead } from "../PageHead";
@@ -14,13 +15,16 @@ import { Gallery } from "./Gallery";
 
 const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", "s3", "r2", "b2", "sftp"];
 
-export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[]; admin: boolean }) {
+// The Drives tab: the list, and the pages it opens (`at`: new is the provider
+// gallery, add a provider, edit a drive).
+export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; admin: boolean }) {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<DriveTemplate[] | null>(null);
   const [drives, setDrives] = useState<Drive[] | null>(null);
   const [bindOk, setBindOk] = useState(true);
   const [err, setErr] = useState("");
-  const back = useCallback(() => navigate(`/bots/${botId}/drives`), [botId, navigate]);
+  const back = useCallback(() => void navigate({ to: "/bots/$botId/drives", params: { botId } }), [botId, navigate]);
+  const gallery = () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } });
 
   const refresh = useCallback(async () => {
     try {
@@ -63,19 +67,18 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
     return () => window.removeEventListener("message", onMsg);
   }, [refresh]);
 
-  const segs = sub ?? [];
-  if (segs[0] === "new" && segs.length === 1) {
+  if (at.view === "new") {
     return templates ? <Gallery botId={botId} templates={templates} admin={admin} onBack={back} /> : <Loading onBack={back} />;
   }
-  if (segs[0] === "new" && segs[1]) {
-    const t = byKey.get(segs[1]);
+  if (at.view === "add") {
+    const t = byKey.get(at.id ?? "");
     if (!templates || !drives) return <Loading onBack={back} />;
     if (!t) return <Missing onBack={back} />;
     return <DriveForm key={t.key} botId={botId} t={t} taken={taken} onDone={back} />;
   }
-  if (segs[0]) {
+  if (at.view === "edit") {
     if (!templates || !drives) return <Loading onBack={back} />;
-    const d = drives.find((x) => x.id === segs[0]);
+    const d = drives.find((x) => x.id === at.id);
     const t = d && byKey.get(d.template);
     if (!d || !t) return <Missing onBack={back} />;
     return <DriveForm key={d.id} botId={botId} t={t} drive={d} taken={taken} onDone={back} />;
@@ -91,7 +94,7 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
           </p>
         </div>
         {drives && drives.length > 0 ? (
-          <button type="button" className={btnClass("primary")} onClick={() => navigate(`/bots/${botId}/drives/new`)}>
+          <button type="button" className={btnClass("primary")} onClick={gallery}>
             <Plus size={15} />
             Add drive
           </button>
@@ -108,7 +111,7 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card bg-well px-4 py-3">
           <CircleAlert size={16} className="shrink-0 text-vermilion" />
           <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink">This Bot’s container was made before it had drives. Reset it once so the Bot can see them. Its files are kept.</p>
-          <Btn kind="secondary" size="sm" type="button" onClick={() => navigate(`/bots/${botId}/container`)}>
+          <Btn kind="secondary" size="sm" type="button" onClick={() => void navigate({ to: "/bots/$botId/container", params: { botId } })}>
             Go to Containers
           </Btn>
         </div>
@@ -135,14 +138,14 @@ export function BotDrives({ botId, sub, admin }: { botId: string; sub: string[];
                   key={t.key}
                   type="button"
                   className="flex flex-col items-center gap-2 rounded-control bg-well px-2 pb-2.5 pt-3.5 text-center transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-pressed active:scale-[.97]"
-                  onClick={() => navigate(t.available ? `/bots/${botId}/drives/new/${t.key}` : `/bots/${botId}/drives/new`)}
+                  onClick={() => (t.available ? void navigate({ to: "/bots/$botId/drives/new/$template", params: { botId, template: t.key } }) : gallery())}
                 >
                   <DriveMark svg={t.iconSvg} size={36} className="bg-surface" muted={!t.available} />
                   <span className={`w-full truncate text-[12.5px] font-medium ${t.available ? "text-ink" : "text-ink-3"}`}>{t.title}</span>
                 </button>
               ))}
           </div>
-          <button type="button" className="mt-4 flex items-center gap-1 text-[13px] font-medium text-cobalt hover:text-cobalt-deep" onClick={() => navigate(`/bots/${botId}/drives/new`)}>
+          <button type="button" className="mt-4 flex items-center gap-1 text-[13px] font-medium text-cobalt hover:text-cobalt-deep" onClick={gallery}>
             All {templates.length} providers <ChevronRight size={14} />
           </button>
         </div>

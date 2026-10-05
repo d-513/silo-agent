@@ -1,6 +1,6 @@
 import { ExternalLink, Globe, Lock, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { ui } from "../api";
 import { useAuth } from "../auth";
 import { Btn } from "../Btn";

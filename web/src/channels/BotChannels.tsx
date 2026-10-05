@@ -1,7 +1,8 @@
 import { ChevronRight, Plus, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
+import type { SubPage } from "../bot/context";
 import { btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
@@ -23,9 +24,9 @@ function Opening({ onBack }: { onBack: () => void }) {
   );
 }
 
-// /bots/:id/channels[/new[/:adapter]|/:channelID[/setup]]: the list, and the
-// pages it opens. Browser back works because each page is a route.
-export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
+// The Channels tab: the list, and the pages it opens (`at`: new, add an
+// adapter, edit, setup). Browser back works because each page is a route.
+export function BotChannels({ botId, at }: { botId: string; at: SubPage }) {
   const navigate = useNavigate();
   const [adapters, setAdapters] = useState<ChannelAdapter[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -33,8 +34,9 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
   const [log, setLog] = useState<Channel | null>(null);
   const [err, setErr] = useState("");
 
-  const back = () => navigate(`/bots/${botId}/channels`);
-  const newPath = `/bots/${botId}/channels/new`;
+  const back = () => void navigate({ to: "/bots/$botId/channels", params: { botId } });
+  const add = (adapter?: string) =>
+    void navigate(adapter ? { to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter } } : { to: "/bots/$botId/channels/new", params: { botId } });
 
   async function refresh() {
     try {
@@ -58,38 +60,32 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botId]);
 
-  const segs = sub ?? [];
   const counts = channels.reduce<Record<string, number>>((m, c) => ({ ...m, [c.adapter]: (m[c.adapter] ?? 0) + 1 }), {});
 
-  // /bots/:id/channels/new
-  if (segs[0] === "new" && segs.length === 1) {
+  if (at.view === "new") {
     return <AdapterPicker botId={botId} adapters={adapters} counts={counts} loaded={loaded} onBack={back} />;
   }
 
-  // /bots/:id/channels/new/:adapter
-  if (segs[0] === "new" && segs.length >= 2) {
-    const adapter = adapters.find((a) => a.slug === segs[1]);
+  if (at.view === "add") {
+    const adapter = adapters.find((a) => a.slug === at.id);
     if (!adapter) return <Opening onBack={back} />;
     return <ChannelForm botId={botId} adapter={adapter} onBack={back} />;
   }
 
-  // /bots/:id/channels/:id/setup
-  if (segs.length === 2 && segs[1] === "setup") {
-    const channel = channels.find((c) => c.id === segs[0]);
+  if (at.view === "setup") {
+    const channel = channels.find((c) => c.id === at.id);
     const adapter = channel && adapters.find((a) => a.slug === channel.adapter);
     if (!channel || !adapter) return <Opening onBack={back} />;
     return <ChannelSetup botId={botId} channel={channel} adapter={adapter} onBack={back} onChanged={() => void refresh()} />;
   }
 
-  // /bots/:id/channels/:id
-  if (segs.length === 1 && segs[0] !== "new") {
-    const channel = channels.find((c) => c.id === segs[0]);
+  if (at.view === "edit") {
+    const channel = channels.find((c) => c.id === at.id);
     const adapter = channel && adapters.find((a) => a.slug === channel.adapter);
     if (!channel || !adapter) return <Opening onBack={back} />;
     return <ChannelForm botId={botId} adapter={adapter} channel={channel} onBack={back} />;
   }
 
-  // /bots/:id/channels
   return (
     <div className={widePage}>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -104,7 +100,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
           </p>
         </div>
 
-        <button type="button" className={btnClass("primary")} onClick={() => navigate(newPath)}>
+        <button type="button" className={btnClass("primary")} onClick={() => add()}>
           <Plus size={15} />
           <span>Add channel</span>
         </button>
@@ -132,7 +128,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
                   key={a.slug}
                   type="button"
                   className="group flex items-center gap-3 rounded-card bg-surface p-3 shadow-card transition-[box-shadow,transform] duration-[160ms] ease-quiet hover:-translate-y-px hover:shadow-float active:scale-[.995]"
-                  onClick={() => navigate(`${newPath}/${a.slug}`)}
+                  onClick={() => add(a.slug)}
                 >
                   <AdapterLogo adapter={a} size={36} />
                   <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{a.name}</span>
@@ -141,7 +137,7 @@ export function BotChannels({ botId, sub }: { botId: string; sub: string[] }) {
               ))}
             </div>
           ) : null}
-          <button type="button" className="mt-5 text-[12.5px] font-medium text-cobalt hover:underline" onClick={() => navigate(newPath)}>
+          <button type="button" className="mt-5 text-[12.5px] font-medium text-cobalt hover:underline" onClick={() => add()}>
             Compare channels
           </button>
         </div>

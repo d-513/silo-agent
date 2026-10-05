@@ -1,3 +1,4 @@
+import type { AgentLink } from "../links";
 import type { ReactNode } from "react";
 import { ArtifactCard, downloadArtifact, type Artifact } from "../Artifact";
 import type { Attachment, Block } from "../fold";
@@ -21,7 +22,7 @@ export type BlockCtx = {
   lastAssistantKey?: string;
   // Re-sends the last user message; offered on the last reply only.
   retry?: () => void;
-  agentHref?: (name: string) => string | undefined;
+  agentHref?: (name: string) => AgentLink | undefined;
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
   onEditMessage?: (eventId: string, text: string, attachments?: Attachment[]) => void;
