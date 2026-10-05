@@ -6,9 +6,9 @@ Competitor facts come from their public docs and press as of this date (links at
 
 ## TL;DR
 
-- **Of the 20 gaps in the old list: 2 are done, 10 are partly done, 7 are still open, 1 we chose to skip.** The #1 gap (scheduling and proactivity) now has cron automations, a Heartbeat, a feed and "run now". Subagents and compaction, #3 and #6, are done.
+- **Of the 20 gaps in the old list: 2 are done, 11 are partly done, 6 are still open, 1 we chose to skip.** The #1 gap (scheduling and proactivity) now has cron automations, a Heartbeat, a feed and "run now". Subagents and compaction, #3 and #6, are done.
 - **Silo's edge is the architecture, not the feature count.** It is the only one of the four that is self-hosted, multi-user, isolated by default, and lets a human step into the agent's real desktop. Provider keys, OAuth tokens and secrets never enter the box.
-- **What is still behind:** reach (Telegram only against Hermes' 20+ and OpenClaw's ~24 channels), voice output and phone calls, event/webhook triggers, push notifications, and an egress firewall like Muse's Sentinel.
+- **What is still behind:** reach (Telegram, WhatsApp and Discord against Hermes' 20+ and OpenClaw's ~24 channels), voice output and phone calls, event/webhook triggers, push notifications, and an egress firewall like Muse's Sentinel.
 - **Built in about a month:** 178 commits across 17 working days since 2026-09-05.
 
 ## 1. Snapshot
@@ -24,7 +24,7 @@ Competitor facts come from their public docs and press as of this date (links at
 | Drive providers | 15 (S3, B2, R2, GDrive, OneDrive, Dropbox, Box, pCloud, Nextcloud, ownCloud, Seafile, SFTP, SMB, WebDAV, S3-compatible) |
 | Default skills | 6 (pdf, word, spreadsheets, presentations, images, product-self-knowledge) |
 | LLM providers | OpenRouter, OpenAI, Anthropic (native), `local` (any self-hosted OpenAI-compatible server) |
-| Channels | Telegram (MTProto) |
+| Channels | Telegram (MTProto), WhatsApp (linked device), Discord |
 
 ## 2. The field
 
@@ -33,8 +33,8 @@ Competitor facts come from their public docs and press as of this date (links at
 | Hosting | Self-hosted, MIT | Self-hosted, open source | Cloud only, Meta infrastructure | Hosted, invite-only US beta | Self-hosted |
 | Users | Multi-user not documented | Multi-user not documented | One consumer per VM | One consumer per agent | Accounts, admin, per-user Bots and skills |
 | Where tools run | Seven backends: local, Docker, SSH, Modal, Daytona, Singularity, Vercel Sandbox | On the host for the main session; per-session Docker sandbox is opt-in | Dedicated "Secure VM" per user | Hosted | One container per Bot, always |
-| Interface | TUI + messaging gateway | Local gateway to chat apps | iOS/Android apps, web, WhatsApp | iMessage, WhatsApp, calls, web settings | Web console + native iOS app, Telegram |
-| Channels | 20+ platforms through one gateway | ~24 (WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix, LINE, WeChat, …) | App, web, WhatsApp | iMessage, WhatsApp, phone | Telegram |
+| Interface | TUI + messaging gateway | Local gateway to chat apps | iOS/Android apps, web, WhatsApp | iMessage, WhatsApp, calls, web settings | Web console + native iOS app, Telegram, WhatsApp, Discord |
+| Channels | 20+ platforms through one gateway | ~24 (WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix, LINE, WeChat, …) | App, web, WhatsApp | iMessage, WhatsApp, phone | Telegram, WhatsApp, Discord |
 | Security story | Command approval, container backends | Optional sandbox; exec reviewer and DM pairing† | Sentinel: separate agent as sole authority for connector actions and network egress; `authd` swaps surrogate tokens for real credentials at the network edge | Terms let the agent "bind you as if you had signed"; trains on your data by default (opt-out) | One authorization gate, per-action rules, approvals, masker, keys never in the box |
 
 ## 3. What only Silo has
@@ -79,12 +79,12 @@ Status: **Done** / **Partial** / **Missing** / **Skip** (chosen not to do).
 | 4 | Deep memory and retrieval | **Partial** | Shipped: memories, auto-recall, collector, Knowledge RAG. Left: search over all past conversations (`chats` reads one chat), external memory providers, a write-approval gate on `remember` |
 | 5 | Self-improving skills | **Partial** | Shipped: the Bot can write a skill directory and offer it through `artifact`, and the human clicks **Save skill**. Left: autonomous skill creation after a hard task, skills that patch themselves |
 | 6 | Compaction and session lifecycle | **Done** | Shipped: compaction, edit/branch/delete, stop, steering by injection, run cap now `runs.max_duration` (120 min). Left: one-click retry, undo (see 17) |
-| 7 | Channel breadth | **Missing** | Telegram only. The adapter framework (declarative fields, QR/picker state, Setup actions, GUIDE.md) was built for the next ones. Email is a connector, not yet a channel |
+| 7 | Channel breadth | **Partial** | Telegram (MTProto bot), WhatsApp (linked device paired by QR, unofficial protocol) and Discord (bot on the gateway). Left: Slack, Signal, iMessage, Matrix, Teams, and Email as a channel (it is a connector today) |
 | 8 | Agent-owned identity | **Missing** | A Bot can use a mailbox you give it (Email connector); nothing provisions an address or number for it |
 | 9 | Payments and credential rails | **Missing** | Secrets are per-name, Ask-gated and typed via `silo_runtime.type_text`; no virtual cards, no password-manager integration |
 | 10 | Agent-to-agent and multiplayer | **Missing** | Subagents inside one Bot work; nothing across users or Bots |
 | 11 | Native nodes and personal data | **Missing** | The iOS app is a client of the Control Plane, not a device node (no camera, location, contacts) |
-| 12 | Notifications | **Partial** | In-app Feed badge, and the Bot can message you on Telegram. No APNs or web push; iOS polls |
+| 12 | Notifications | **Partial** | In-app Feed badge, and the Bot can message you on Telegram, WhatsApp or Discord. No APNs or web push; iOS polls |
 | 13 | Media generation, interactive artifacts | **Partial** | The fal.ai connector preset and the images/pdf/word/spreadsheets/presentations skills cover a lot; Tunnels let a Bot serve a live app. No native image, video or music tool |
 | 14 | Web extract and browser backends | **Partial** | Lightpanda (auto-attached markdown reader), Exa / Tavily / Firecrawl / Perplexity presets, real Chromium with Playwright. One native search engine (DuckDuckGo scraper); native page extract still "later" |
 | 15 | Hooks, plugins, webhooks | **Missing** | Extensibility today is MCP, skills and in-tree Go connectors |
@@ -108,7 +108,7 @@ Status: **Done** / **Partial** / **Missing** / **Skip** (chosen not to do).
 Ordered by leverage, with the engine seams that already exist in brackets.
 
 1. **Webhook and event triggers, plus one-shot schedules** (finishes #1; the automation engine and `RunAutomation` are there).
-2. **Email as a channel, then WhatsApp** (reach; the QR setup path is already designed in the adapter contract).
+2. **Email as a channel** (reach; WhatsApp and Discord are in, and the adapter contract carries QR, picker and `Remover` for the next one).
 3. **Search across all past chats** (finishes #4; run events and pgvector are there).
 4. **Push notifications to the iOS app** (finishes #12; the app and the Feed unread count exist).
 5. **Text to speech** (finishes #2; speech to text already shares the `models` path).
@@ -134,7 +134,8 @@ Honest caveats to say out loud:
 
 - Auth is session cookies; OIDC is not in yet.
 - The Docker host can be remote at the protocol level, but there is no multi-host UI.
-- Telegram bot accounts cannot read history, so `chats` falls back to the local log.
+- Telegram bot accounts and WhatsApp linked devices cannot read history, so `chats` falls back to the local log.
+- WhatsApp runs on the unofficial linked-device protocol: use a spare number, and expect WhatsApp to be free to restrict automated accounts. Inbound media arrives as a placeholder, not a file.
 - `docker inspect` can still read the Bot's token and a STDIO sidecar's injected environment (the documented v1 ceiling).
 - The iOS app has no Desktop, Console, channel setup wizard, connector OAuth, Admin, Knowledge or Tunnels (`ios/todo_skipped.md`).
 - A box made before Drives needs a Container reset to get the mount.
