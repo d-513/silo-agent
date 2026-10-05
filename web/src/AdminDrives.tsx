@@ -1,5 +1,6 @@
 import { ChevronRight, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ui } from "./api";
@@ -7,8 +8,9 @@ import { CATEGORY_LABEL, DriveMark } from "./drives/DriveMark";
 import { Btn } from "./Btn";
 import { ArmedButton, CopyButton, SaveButton, useSave } from "./Feedback";
 import { ErrorWell, Field, inputClass, Panel, SkeletonRows } from "./Field";
-import type { DriveProviderSettings, DriveSettings, DriveSystemField, DriveTemplate } from "./gen/silo/v1/ui_pb";
+import { UI, type DriveProviderSettings, type DriveSettings, type DriveSystemField, type DriveTemplate } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
+import { put } from "./query";
 
 function SystemField({
   f,
@@ -125,19 +127,13 @@ function ProviderFolio({ t, p, redirect, onSaved }: { t: DriveTemplate; p: Drive
 }
 
 export function AdminDrives() {
-  const [templates, setTemplates] = useState<DriveTemplate[] | null>(null);
-  const [settings, setSettings] = useState<DriveSettings | null>(null);
-  const [err, setErr] = useState("");
+  const templatesQ = useQuery(UI.method.listDriveTemplates, {});
+  const settingsQ = useQuery(UI.method.getDriveSettings, {});
+  const templates = templatesQ.data?.templates ?? null;
+  const settings = settingsQ.data ?? null;
+  const failed = templatesQ.error ?? settingsQ.error;
+  const err = failed ? fail(failed) : "";
   const [q, setQ] = useState("");
-
-  useEffect(() => {
-    Promise.all([ui.listDriveTemplates({}), ui.getDriveSettings({})])
-      .then(([t, s]) => {
-        setTemplates(t.templates);
-        setSettings(s);
-      })
-      .catch((e) => setErr(fail(e)));
-  }, []);
 
   const byKey = useMemo(() => new Map((settings?.providers ?? []).map((p) => [p.template, p])), [settings]);
   const s = q.trim().toLowerCase();
@@ -174,7 +170,7 @@ export function AdminDrives() {
                   <h3 className="mb-2.5 text-label-caps uppercase text-ink-3">{CATEGORY_LABEL[c]}</h3>
                   <div className="space-y-2">
                     {items.map((t) => (
-                      <ProviderFolio key={t.key} t={t} p={byKey.get(t.key)!} redirect={settings.redirectUrl} onSaved={setSettings} />
+                      <ProviderFolio key={t.key} t={t} p={byKey.get(t.key)!} redirect={settings.redirectUrl} onSaved={(x) => put(UI.method.getDriveSettings, {}, x)} />
                     ))}
                   </div>
                 </section>

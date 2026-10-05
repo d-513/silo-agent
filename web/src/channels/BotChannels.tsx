@@ -41,9 +41,13 @@ export function BotChannels({ botId, at }: { botId: string; at: SubPage }) {
   const failed = adaptersQ.error ?? channelsQ.error;
   const err = failed ? fail(failed) : "";
   const [log, setLog] = useState<Channel | null>(null);
-  const refresh = () => reload(UI.method.listBotChannels, { botId });
 
-  const back = () => void navigate({ to: "/bots/$botId/channels", params: { botId } });
+  const refresh = () => reload(UI.method.listBotChannels, { botId });
+  // Leaving a form rereads the list: it may have added or changed a channel.
+  const back = () => {
+    void refresh();
+    void navigate({ to: "/bots/$botId/channels", params: { botId } });
+  };
   const add = (adapter?: string) =>
     void navigate(adapter ? { to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter } } : { to: "/bots/$botId/channels/new", params: { botId } });
 

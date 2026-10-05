@@ -1,44 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "../api";
-import { useSave } from "../Feedback";
-import { ConfigSource, type AuditRow, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
-import { applySettings } from "./fields";
+import { useSave } from "../Feedback";
+import { ConfigSource, UI, type AuditRow, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
+import { put, reload } from "../query";
 
-// useAdminSettings loads the operator settings and holds the form: the values
-// being edited, what differs from the server (the patch), and the four ways to
-// save (the form, silo.yaml, the model allowlist, connector variables).
+const noFields: ConfigField[] = [];
+const noEngines: SearchEngine[] = [];
+const noProviders: Provider[] = [];
+const noModels: ModelOption[] = [];
+const noVars: ConnectorVar[] = [];
+const noAudit: AuditRow[] = [];
+
+// useAdminSettings is the operator settings form. What the server holds is the
+// cached getSettings answer; the form keeps only what the human changed on top
+// of it (`edits`, and a silo.yaml draft), so the patch to save is exactly the
+// edits that differ. There are four ways to save: the form, silo.yaml, the
+// model allowlist, connector variables.
 export function useAdminSettings() {
-  const [fields, setFields] = useState<ConfigField[]>([]);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [engines, setEngines] = useState<SearchEngine[]>([]);
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [connVars, setConnVars] = useState<ConnectorVar[]>([]);
-  const [yamlText, setYamlText] = useState("");
-  const [yamlPath, setYamlPath] = useState("");
-  const [audit, setAudit] = useState<AuditRow[]>([]);
-  // The effective tunnels.host (explicit or derived), shown where it is unset.
-  const [tunnelsHost, setTunnelsHost] = useState("");
+  const settingsQ = useQuery(UI.method.getSettings, {});
+  const auditQ = useQuery(UI.method.listAudit, {});
+  const server = settingsQ.data;
+  const fields = server?.fields ?? noFields;
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  // null until the YAML editor is typed in: it then shows the file as saved.
+  const [yamlDraft, setYamlText] = useState<string | null>(null);
   const formSaver = useSave();
   const yamlSaver = useSave();
-  const [err, setErr] = useState("");
+  const [actErr, setErr] = useState("");
+  const failed = settingsQ.error ?? auditQ.error;
 
+  const values = useMemo(() => ({ ...Object.fromEntries(fields.map((f) => [f.key, f.value])), ...edits }), [fields, edits]);
+
+  // A save answers with the settings as they now are: every reader of the
+  // cache gets them, and the form goes back to showing the server's values.
   const apply = (x: Settings) => {
-    applySettings(x, setFields, setValues, setYamlText, setYamlPath, setEngines, setProviders, setModels, setConnVars);
-    setTunnelsHost(x.tunnelsHost);
+    put(UI.method.getSettings, {}, x);
+    setEdits({});
+    setYamlText(null);
+    void reload(UI.method.listAudit);
   };
 
-  useEffect(() => {
-    ui.getSettings({}).then(apply).catch((e) => setErr(fail(e)));
-    ui.listAudit({})
-      .then((x) => setAudit(x.rows))
-      .catch((e) => setErr(fail(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function setValue(key: string, v: string) {
-    setValues((prev) => ({ ...prev, [key]: v }));
+    setEdits((prev) => ({ ...prev, [key]: v }));
   }
 
   // patch is every form field that differs from what the server holds.
@@ -52,7 +57,7 @@ export function useAdminSettings() {
 
   function discard() {
     setErr("");
-    setValues(Object.fromEntries(fields.map((f) => [f.key, f.value])));
+    setEdits({});
   }
 
   async function saveForm() {
@@ -82,7 +87,7 @@ export function useAdminSettings() {
   async function saveYaml() {
     setErr("");
     try {
-      apply(await yamlSaver.run(() => ui.putSettings({ yaml: yamlText })));
+      apply(await yamlSaver.run(() => ui.putSettings({ yaml: yamlDraft ?? server?.yaml ?? "" })));
     } catch (ex) {
       setErr(fail(ex));
     }
@@ -109,7 +114,27 @@ export function useAdminSettings() {
 
 
   return {
-    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit, tunnelsHost,
-    formSaver, yamlSaver, err, dirty, discard, saveForm, saveYaml, saveModels, saveConnVars,
+    fields,
+    values,
+    setValue,
+    engines: server?.searchEngines ?? noEngines,
+    providers: server?.providers ?? noProviders,
+    models: server?.models ?? noModels,
+    connVars: server?.connectorVars ?? noVars,
+    yamlText: yamlDraft ?? server?.yaml ?? "",
+    setYamlText,
+    yamlPath: server?.yamlPath ?? "",
+    audit: auditQ.data?.rows ?? noAudit,
+    // The effective tunnels.host (explicit or derived), shown where it is unset.
+    tunnelsHost: server?.tunnelsHost ?? "",
+    formSaver,
+    yamlSaver,
+    err: actErr || (failed ? fail(failed) : ""),
+    dirty,
+    discard,
+    saveForm,
+    saveYaml,
+    saveModels,
+    saveConnVars,
   };
 }

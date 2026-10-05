@@ -202,3 +202,26 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   }
 });
+
+// The admin form edits on top of what the server holds: typing counts a change,
+// Discard goes back to the saved value. Nothing is saved here.
+test("admin settings form tracks and discards edits", async ({ page }) => {
+  await page.goto("/admin/settings");
+  await signIn(page);
+  await expect(page).toHaveURL(/\/admin\/settings$/);
+  const field = page.locator('main input[type="text"]:not([disabled]), main input:not([type]):not([disabled])').first();
+  await expect(field).toBeVisible();
+  const saved = await field.inputValue();
+  await field.fill(`${saved}x`);
+  await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await page.getByRole("button", { name: /discard/i }).click();
+  await expect(field).toHaveValue(saved);
+  await expect(page.getByText("1 unsaved change")).toHaveCount(0);
+  // The other admin pages load their lists.
+  for (const p of ["connectors", "skills", "drives", "search-extract"]) {
+    await page.goto(`/admin/${p}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/${p}$`));
+    await expect(page.locator(".skeleton")).toHaveCount(0);
+    await expect(page.getByText("This page hit a snag")).toHaveCount(0);
+  }
+});

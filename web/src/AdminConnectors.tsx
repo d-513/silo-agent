@@ -195,25 +195,20 @@ export function CatalogList() {
 export function LibraryForm() {
   const { connectorId: id } = useParams({ strict: false });
   const nav = useNavigate();
+  const q = useQuery(UI.method.listConnectors, {}, { enabled: !!id });
+  const preset = id ? q.data?.connectors.find((x) => x.id === id) : undefined;
   const [draft, setDraft] = useState<ConnectorDraft>(emptyDraft());
-  const [err, setErr] = useState("");
+  // The preset fills the form once; after that the form is the human's.
   const [loaded, setLoaded] = useState(!id);
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : id && q.data && !preset && !loaded ? "not found" : "");
   const saver = useSave();
 
   useEffect(() => {
-    if (!id) return;
-    ui.listConnectors({})
-      .then((r) => {
-        const c = r.connectors.find((x) => x.id === id);
-        if (!c) {
-          setErr("not found");
-          return;
-        }
-        setDraft(draftFrom(c));
-        setLoaded(true);
-      })
-      .catch((e) => setErr(fail(e)));
-  }, [id]);
+    if (!preset || loaded) return;
+    setDraft(draftFrom(preset));
+    setLoaded(true);
+  }, [preset, loaded]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

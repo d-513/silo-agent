@@ -42,6 +42,11 @@ export function patch<I extends DescMessage, O extends DescMessage>(
   queryClient.setQueryData(key(method, input), (prev: MessageShape<O> | undefined) => (prev ? update(prev) : prev));
 }
 
+/** Store the answer of one call that a save just returned. */
+export function put<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>, input: MessageInitShape<I>, data: MessageShape<O>) {
+  queryClient.setQueryData(key(method, input), data);
+}
+
 /** A Bot row the server just returned: the Bot page and the rail both get it. */
 export function setBot(bot: Bot) {
   queryClient.setQueryData(key(UI.method.getBot, { id: bot.id }), bot);

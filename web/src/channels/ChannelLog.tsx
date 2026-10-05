@@ -1,62 +1,20 @@
 import { Radio, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { ui } from "../api";
-import type { Ev } from "../fold";
-import type { Channel, Chat } from "../gen/silo/v1/ui_pb";
+import { useQuery } from "@connectrpc/connect-query";
+import { useState } from "react";
+import { UI, type Channel, type Chat } from "../gen/silo/v1/ui_pb";
 import { Thread } from "../Thread";
+import { useRunStream } from "../useRunStream";
 
+const none: Chat[] = [];
+
+// ChannelLog is a channel's conversations, read-only, in the shared Thread. It
+// follows the open one live, like a chat.
 export function ChannelLog({ botId, channel, onClose }: { botId: string; channel: Channel; onClose: () => void }) {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [chatId, setChatId] = useState("");
-  const [events, setEvents] = useState<Ev[]>([]);
-
-  useEffect(() => {
-    let dead = false;
-    ui.listChats({ botId, channelId: channel.id })
-      .then((r) => {
-        if (dead) return;
-        setChats(r.chats);
-        setChatId(r.chats[0]?.id ?? "");
-      })
-      .catch(() => {});
-    return () => {
-      dead = true;
-    };
-  }, [botId, channel.id]);
-
-  useEffect(() => {
-    if (!chatId) {
-      setEvents([]);
-      return;
-    }
-    let dead = false;
-    const ac = new AbortController();
-    setEvents([]);
-    (async () => {
-      try {
-        for await (const ev of ui.streamRun({ botId, chatId, afterEventId: "" }, { signal: ac.signal })) {
-          if (dead) return;
-          setEvents((xs) => [
-            ...xs,
-            {
-              id: ev.id,
-              kind: ev.kind,
-              body: ev.body,
-              tool: ev.tool,
-              runId: ev.runId,
-              attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
-            },
-          ]);
-        }
-      } catch {
-        /* closed */
-      }
-    })();
-    return () => {
-      dead = true;
-      ac.abort();
-    };
-  }, [botId, chatId]);
+  const chats = useQuery(UI.method.listChats, { botId, channelId: channel.id }).data?.chats ?? none;
+  // Until one is picked, the newest conversation is open.
+  const [picked, setChatId] = useState("");
+  const chatId = picked || (chats[0]?.id ?? "");
+  const { events } = useRunStream(botId, chatId || undefined);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/30 backdrop-blur-xs p-4" onClick={onClose}>

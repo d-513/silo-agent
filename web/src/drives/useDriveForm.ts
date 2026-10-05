@@ -1,7 +1,8 @@
+import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "../api";
 import { useSave } from "../Feedback";
-import type { Drive, DriveOption, DriveTemplate } from "../gen/silo/v1/ui_pb";
+import { UI, type Drive, type DriveOption, type DriveTemplate } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
 import { NAME_RE, uniqueName, visible } from "./driveModel";
 
@@ -87,6 +88,21 @@ export function useDriveForm({
   }, [botId]);
 
   // The sign-in popup posts back when it is done; polling covers a lost message.
+  const polled = useQuery(UI.method.listDrives, authBusy && draft ? { botId, draftId: draft.draft ? draft.id : "" } : skipToken, {
+    refetchInterval: 2000,
+    // The sign-in happens in another window, so keep asking while this one is behind it.
+    refetchIntervalInBackground: true,
+  });
+  useEffect(() => {
+    const cur = draftRef.current;
+    const fresh = cur && polled.data?.drives.find((x) => x.id === cur.id);
+    if (!cur || !fresh || !authBusy) return;
+    if (fresh.connected && fresh.account !== cur.account) {
+      setAuthBusy(false);
+      setDraft(fresh);
+      setValues((m) => ({ ...fresh.options, ...m }));
+    }
+  }, [polled.data, authBusy]);
   useEffect(() => {
     if (!authBusy) return;
     const onMsg = (e: MessageEvent) => {
@@ -97,23 +113,7 @@ export function useDriveForm({
       void reloadDraft();
     };
     window.addEventListener("message", onMsg);
-    const poll = setInterval(() => {
-      void (async () => {
-        const cur = draftRef.current;
-        if (!cur) return;
-        const r = await ui.listDrives({ botId, draftId: cur.draft ? cur.id : "" }).catch(() => null);
-        const fresh = r?.drives.find((x) => x.id === cur.id);
-        if (fresh && fresh.connected && fresh.account !== cur.account) {
-          setAuthBusy(false);
-          setDraft(fresh);
-          setValues((m) => ({ ...fresh.options, ...m }));
-        }
-      })();
-    }, 2000);
-    return () => {
-      window.removeEventListener("message", onMsg);
-      clearInterval(poll);
-    };
+    return () => window.removeEventListener("message", onMsg);
   }, [authBusy, botId, reloadDraft]);
 
   async function signIn() {

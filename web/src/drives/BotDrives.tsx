@@ -34,9 +34,13 @@ export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; ad
   const [actErr, setErr] = useState("");
   const failed = templatesQ.error ?? drivesQ.error;
   const err = actErr || (failed ? fail(failed) : "");
-  const back = useCallback(() => void navigate({ to: "/bots/$botId/drives", params: { botId } }), [botId, navigate]);
-  const gallery = () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } });
   const refresh = useCallback(() => reload(UI.method.listDrives, { botId }), [botId]);
+  // Leaving a form rereads the list: it may have added or changed a drive.
+  const back = useCallback(() => {
+    void refresh();
+    void navigate({ to: "/bots/$botId/drives", params: { botId } });
+  }, [botId, navigate, refresh]);
+  const gallery = () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } });
 
   const byKey = useMemo(() => new Map((templates ?? []).map((t) => [t.key, t])), [templates]);
   const taken = useMemo(() => new Set((drives ?? []).map((d) => d.name)), [drives]);

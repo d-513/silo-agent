@@ -1,6 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, Outlet, type LinkProps } from "@tanstack/react-router";
 import { ui } from "./api";
 import { SaveButton, useSave } from "./Feedback";
@@ -8,6 +8,7 @@ import { Field, Panel } from "./Field";
 import { Select } from "./Select";
 import { ConfigSource, UI, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
+import { put } from "./query";
 
 function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }) {
   return (
@@ -40,34 +41,27 @@ export function AdminLayout() {
   );
 }
 
+const noEngines: SearchEngine[] = [];
+
 function fieldOf(fields: ConfigField[], key: string) {
   return fields.find((f) => f.key === key);
 }
 
 export function AdminSearchExtract() {
-  const [engine, setEngine] = useState("");
-  const [engines, setEngines] = useState<SearchEngine[]>([]);
-  const [engineField, setEngineField] = useState<ConfigField | undefined>();
+  const q = useQuery(UI.method.getSettings, {});
+  const engines = q.data?.searchEngines ?? noEngines;
+  const engineField = q.data ? fieldOf(q.data.fields, "search.engine") : undefined;
+  // null until the human picks: the box then shows the saved engine.
+  const [picked, setEngine] = useState<string | null>(null);
+  const engine = picked ?? (engineField?.value || engines[0]?.id || "");
   const saver = useSave();
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    ui.getSettings({})
-      .then((x) => {
-        const f = fieldOf(x.fields, "search.engine");
-        setEngineField(f);
-        setEngine(f?.value || x.searchEngines[0]?.id || "");
-        setEngines(x.searchEngines);
-      })
-      .catch((e) => setErr(fail(e)));
-  }, []);
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
   async function save() {
     setErr("");
     try {
-      const x = await saver.run(() => ui.putSettings({ fields: { "search.engine": engine } }));
-      const f = fieldOf(x.fields, "search.engine");
-      setEngineField(f);
-      setEngine(f?.value || engine);
-      setEngines(x.searchEngines);
+      put(UI.method.getSettings, {}, await saver.run(() => ui.putSettings({ fields: { "search.engine": engine } })));
+      setEngine(null);
     } catch (ex) {
       setErr(fail(ex));
     }

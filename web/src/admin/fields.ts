@@ -1,4 +1,4 @@
-import { ConfigSource, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
+import { ConfigSource, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
 
 export const LABELS: Record<string, string> = {
   model: "Default model",
@@ -97,26 +97,4 @@ export function sourceWord(s: ConfigSource) {
   if (s === ConfigSource.ENV) return "env";
   if (s === ConfigSource.YAML) return "yaml";
   return "default";
-}
-
-
-export function applySettings(
-  x: Settings,
-  setFields: (f: ConfigField[]) => void,
-  setValues: (v: Record<string, string>) => void,
-  setYaml: (s: string) => void,
-  setYamlPath: (s: string) => void,
-  setEngines: (e: SearchEngine[]) => void,
-  setProviders: (p: Provider[]) => void,
-  setModels: (m: ModelOption[]) => void,
-  setConnVars: (v: ConnectorVar[]) => void,
-) {
-  setFields(x.fields);
-  setValues(Object.fromEntries(x.fields.map((f) => [f.key, f.value])));
-  setYaml(x.yaml);
-  setYamlPath(x.yamlPath);
-  setEngines(x.searchEngines);
-  setProviders(x.providers);
-  setModels(x.models);
-  setConnVars(x.connectorVars);
 }
