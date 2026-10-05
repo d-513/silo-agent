@@ -124,3 +124,58 @@ func TestEnsureBootstrapIdempotentAndPromotes(t *testing.T) {
 		t.Fatalf("empty bootstrap should be a no-op: %v", err)
 	}
 }
+
+func TestSessionFromRequestNamesTheSession(t *testing.T) {
+	gdb := dbtest.New(t)
+	gdb.Create(&db.User{ID: "u1", Email: "a@b.c"})
+	rec := httptest.NewRecorder()
+	if err := NewSession(gdb, "u1", rec); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(rec.Result().Cookies()[0])
+	s, u, err := SessionFromRequest(gdb, req)
+	if err != nil || s.ID != rec.Result().Cookies()[0].Value || u.ID != "u1" {
+		t.Fatalf("SessionFromRequest = %+v %+v %v", s, u, err)
+	}
+	if _, _, err := SessionFromRequest(gdb, httptest.NewRequest(http.MethodGet, "/", nil)); !errors.Is(err, ErrAuth) {
+		t.Fatalf("no cookie: %v", err)
+	}
+}
+
+// Signing out ends the session on the server, not just in the browser: a
+// captured cookie must be worthless afterwards, and so must anything granted
+// from that session.
+func TestEndSessionDeletesTheSessionAndItsTunnelGrants(t *testing.T) {
+	gdb := dbtest.New(t)
+	gdb.Create(&db.User{ID: "u1", Email: "a@b.c"})
+	rec := httptest.NewRecorder()
+	if err := NewSession(gdb, "u1", rec); err != nil {
+		t.Fatal(err)
+	}
+	cookie := rec.Result().Cookies()[0]
+	gdb.Create(&db.TunnelGrant{ID: "g-mine", TunnelID: "t", UserID: "u1", SessionID: cookie.Value, ExpiresAt: time.Now().Add(time.Hour)})
+	gdb.Create(&db.TunnelGrant{ID: "g-other", TunnelID: "t", UserID: "u1", SessionID: "another-session", ExpiresAt: time.Now().Add(time.Hour)})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.AddCookie(cookie)
+	if err := EndSession(gdb, req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := UserFromRequest(gdb, req); !errors.Is(err, ErrAuth) {
+		t.Fatalf("the old cookie still works: %v", err)
+	}
+	var grants []db.TunnelGrant
+	gdb.Find(&grants)
+	if len(grants) != 1 || grants[0].ID != "g-other" {
+		t.Fatalf("grants after sign-out: %+v", grants)
+	}
+
+	// Nothing to end is not an error (signing out twice, or never signed in).
+	if err := EndSession(gdb, httptest.NewRequest(http.MethodPost, "/", nil)); err != nil {
+		t.Fatalf("no cookie: %v", err)
+	}
+	if err := EndSession(gdb, req); err != nil {
+		t.Fatalf("second sign-out: %v", err)
+	}
+}

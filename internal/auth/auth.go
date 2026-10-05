@@ -125,27 +125,50 @@ func EnsureAdmin(gdb *gorm.DB) error {
 	return gdb.Save(&u).Error
 }
 
-// UserFromRequest resolves the session cookie. Only a missing, unknown, or
-// expired session is ErrAuth; a store failure is returned as-is so callers do
-// not report a sign-out when Postgres is briefly unreachable.
-func UserFromRequest(gdb *gorm.DB, r *http.Request) (*db.User, error) {
+// SessionFromRequest resolves the session cookie to the session and its user.
+// Only a missing, unknown, or expired session is ErrAuth; a store failure is
+// returned as-is so callers do not report a sign-out when Postgres is briefly
+// unreachable.
+func SessionFromRequest(gdb *gorm.DB, r *http.Request) (*db.Session, *db.User, error) {
 	c, err := r.Cookie(cookieName)
 	if err != nil || c.Value == "" {
-		return nil, ErrAuth
+		return nil, nil, ErrAuth
 	}
 	var s db.Session
 	if err := gdb.Where("id = ?", c.Value).Limit(1).Find(&s).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if s.ID == "" || time.Now().After(s.ExpiresAt) {
-		return nil, ErrAuth
+		return nil, nil, ErrAuth
 	}
 	var u db.User
 	if err := gdb.Where("id = ?", s.UserID).Limit(1).Find(&u).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if u.ID == "" {
-		return nil, ErrAuth
+		return nil, nil, ErrAuth
 	}
-	return &u, nil
+	return &s, &u, nil
+}
+
+// UserFromRequest is the signed-in user of a request, or ErrAuth.
+func UserFromRequest(gdb *gorm.DB, r *http.Request) (*db.User, error) {
+	_, u, err := SessionFromRequest(gdb, r)
+	return u, err
+}
+
+// EndSession signs the request's session out on the server: the row goes, so a
+// copied cookie is worthless, and so does everything granted from it (a private
+// tunnel's access). A request with no session has nothing to end.
+func EndSession(gdb *gorm.DB, r *http.Request) error {
+	c, err := r.Cookie(cookieName)
+	if err != nil || c.Value == "" {
+		return nil
+	}
+	return gdb.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("session_id = ?", c.Value).Delete(&db.TunnelGrant{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id = ?", c.Value).Delete(&db.Session{}).Error
+	})
 }

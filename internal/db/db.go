@@ -426,12 +426,16 @@ type Tunnel struct {
 
 // TunnelGrant is a browser's permission to open one private tunnel: the owner
 // signed in on the Control Plane and was handed a cookie for the tunnel's
-// origin. ID is the hash of the cookie value, so a database leak is not a
-// session leak.
+// origin, bound to their Silo session. ID is the hash of the cookie value, so a
+// database leak is not a session leak.
 type TunnelGrant struct {
-	ID        string `gorm:"primaryKey"`
-	TunnelID  string `gorm:"index"`
-	UserID    string
+	ID       string `gorm:"primaryKey"`
+	TunnelID string `gorm:"index"`
+	UserID   string
+	// SessionID is the Silo session the owner was signed in with when they
+	// opened the tunnel. The grant is good only while that session is: signing
+	// out (or it expiring) ends tunnel access with it.
+	SessionID string    `gorm:"index"`
 	ExpiresAt time.Time `gorm:"index"`
 }
 

@@ -579,3 +579,85 @@ func TestProxyRecordsLastUse(t *testing.T) {
 		t.Fatalf("last_used_at = %v", row.LastUsedAt)
 	}
 }
+
+// A private tunnel is only as private as the Silo session behind it: signing
+// out must end access at once, not when a 12-hour cookie runs out.
+func TestProxySigningOutEndsPrivateTunnelAccess(t *testing.T) {
+	e := newProxyEnv(t, "")
+	tun := e.tunnel(t, false)
+	owner := e.signedIn()
+	api := map[string]string{"Accept": "application/json"}
+
+	if res, _ := owner.do(t, "GET", tunnelURL(tun, "/"), nav, nil); res.StatusCode != 200 {
+		t.Fatalf("before sign-out: %d", res.StatusCode)
+	}
+	if res, _ := owner.noFollow().do(t, "GET", tunnelURL(tun, "/again"), api, nil); res.StatusCode != 200 {
+		t.Fatalf("grant not in place: %d", res.StatusCode)
+	}
+	hits := len(e.up.requests())
+
+	if _, err := e.h.Client.SignOut(e.h.Ctx(), connect.NewRequest(&v1.SignOutRequest{})); err != nil {
+		t.Fatal(err)
+	}
+
+	// The grant cookie is still in the browser, and still dead.
+	nf := owner.noFollow()
+	if res, _ := nf.do(t, "GET", tunnelURL(tun, "/after"), api, nil); res.StatusCode != 401 {
+		t.Fatalf("API after sign-out: %d, want 401", res.StatusCode)
+	}
+	res, _ := nf.do(t, "GET", tunnelURL(tun, "/after"), nav, nil)
+	if loc, _ := res.Location(); res.StatusCode != 302 || loc == nil || loc.Path != "/tunnels/auth" {
+		t.Fatalf("page after sign-out: %d -> %v", res.StatusCode, res.Header.Get("Location"))
+	}
+	if n := len(e.up.requests()); n != hits {
+		t.Fatalf("the service saw %d requests after sign-out", n-hits)
+	}
+
+	// The captured Silo session cookie is dead on the server too: the handoff
+	// sends it to sign in instead of handing out a ticket.
+	res, _ = owner.noFollow().do(t, "GET", "http://"+e.cp+"/tunnels/auth?name="+tun.GetName(), nil, nil)
+	if loc := res.Header.Get("Location"); res.StatusCode != 302 || !strings.HasPrefix(loc, "/signin?next=") {
+		t.Fatalf("handoff with a signed-out session: %d -> %q", res.StatusCode, loc)
+	}
+}
+
+// Signing back in is a new session: the old grant stays dead, and a fresh
+// handoff works.
+func TestProxyNewSignInDoesNotReviveAnOldGrant(t *testing.T) {
+	e := newProxyEnv(t, "")
+	tun := e.tunnel(t, false)
+	old := e.signedIn()
+	api := map[string]string{"Accept": "application/json"}
+	old.do(t, "GET", tunnelURL(tun, "/"), nav, nil)
+
+	e.h.Client.SignOut(e.h.Ctx(), connect.NewRequest(&v1.SignOutRequest{}))
+	if _, err := e.h.Client.SignIn(e.h.Ctx(), connect.NewRequest(&v1.SignInRequest{Email: e.h.Email, Password: e.h.Password})); err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := old.noFollow().do(t, "GET", tunnelURL(tun, "/"), api, nil); res.StatusCode != 401 {
+		t.Fatalf("old grant after a new sign-in: %d", res.StatusCode)
+	}
+	if res, body := e.signedIn().do(t, "GET", tunnelURL(tun, "/fresh"), nav, nil); res.StatusCode != 200 || decode(t, body).Path != "/fresh" {
+		t.Fatalf("fresh handoff: %d %q", res.StatusCode, body)
+	}
+}
+
+// A grant cannot outlive the session it came from, even without a sign-out:
+// when the session expires, so does access.
+func TestProxyGrantDiesWithItsSession(t *testing.T) {
+	e := newProxyEnv(t, "")
+	tun := e.tunnel(t, false)
+	owner := e.signedIn()
+	owner.do(t, "GET", tunnelURL(tun, "/"), nav, nil)
+
+	var g db.TunnelGrant
+	e.h.DB.First(&g, "tunnel_id = ?", tun.GetId())
+	if g.SessionID == "" {
+		t.Fatal("grant is not bound to a session")
+	}
+	e.h.DB.Model(&db.Session{}).Where("id = ?", g.SessionID).Update("expires_at", time.Now().Add(-time.Minute))
+	res, _ := owner.noFollow().do(t, "GET", tunnelURL(tun, "/"), map[string]string{"Accept": "application/json"}, nil)
+	if res.StatusCode != 401 {
+		t.Fatalf("grant of an expired session: %d", res.StatusCode)
+	}
+}

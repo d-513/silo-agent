@@ -36,8 +36,8 @@ const (
 type tunnelKey struct{}
 
 type ticket struct {
-	tunnelID, userID string
-	exp              time.Time
+	tunnelID, userID, sessionID string
+	exp                         time.Time
 }
 
 // proxyState is the per-Service part of serving tunnels.
@@ -91,7 +91,7 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, name string) {
 }
 
 // granted reports whether the request carries a live grant for this tunnel
-// from the Bot's current owner.
+// from the Bot's current owner, made in a Silo session that is still live.
 func (s *Service) granted(r *http.Request, t *db.Tunnel) bool {
 	c, err := r.Cookie(cookieName)
 	if err != nil || c.Value == "" {
@@ -100,6 +100,13 @@ func (s *Service) granted(r *http.Request, t *db.Tunnel) bool {
 	var g db.TunnelGrant
 	res := s.db.Where("id = ? AND tunnel_id = ? AND expires_at > ?", ids.Hash(c.Value), t.ID, time.Now()).Limit(1).Find(&g)
 	if res.Error != nil || res.RowsAffected == 0 {
+		return false
+	}
+	// The grant lives only as long as the Silo session it came from: signing
+	// out, or that session expiring, ends access immediately.
+	var live int64
+	s.db.Model(&db.Session{}).Where("id = ? AND user_id = ? AND expires_at > ?", g.SessionID, g.UserID, time.Now()).Count(&live)
+	if live != 1 {
 		return false
 	}
 	var n int64
@@ -129,7 +136,7 @@ func (s *Service) askToSignIn(w http.ResponseWriter, r *http.Request, t *db.Tunn
 // owner of the tunnel's Bot is redirected to the tunnel's origin with a
 // single-use ticket. The CP session cookie never leaves the CP's origin.
 func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
-	u, err := auth.UserFromRequest(s.db, r)
+	sess, u, err := auth.SessionFromRequest(s.db, r)
 	if err != nil {
 		if errors.Is(err, auth.ErrAuth) {
 			// Sign in, then come straight back here: the UI honors `next` for this
@@ -147,7 +154,7 @@ func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusNotFound, "No such tunnel", "This tunnel does not exist, or it is not on one of your Bots.")
 		return
 	}
-	tk := s.mintTicket(t.ID, u.ID)
+	tk := s.mintTicket(t.ID, u.ID, sess.ID)
 	q := url.Values{"ticket": {tk}, "rd": {safeReturn(r.URL.Query().Get("rd"))}}
 	http.Redirect(w, r, s.cfg().TunnelURL(t.Name)+authPath+"?"+q.Encode(), http.StatusFound)
 }
@@ -173,7 +180,7 @@ func (s *Service) redeem(w http.ResponseWriter, r *http.Request, t *db.Tunnel) {
 	value := hex.EncodeToString(raw)
 	now := time.Now()
 	s.db.Where("expires_at < ?", now).Delete(&db.TunnelGrant{})
-	if err := s.db.Create(&db.TunnelGrant{ID: ids.Hash(value), TunnelID: t.ID, UserID: tk.userID, ExpiresAt: now.Add(grantTTL)}).Error; err != nil {
+	if err := s.db.Create(&db.TunnelGrant{ID: ids.Hash(value), TunnelID: t.ID, UserID: tk.userID, SessionID: tk.sessionID, ExpiresAt: now.Add(grantTTL)}).Error; err != nil {
 		log.Printf("tunnel grant: %v", err)
 		http.Error(w, "could not sign you in", http.StatusInternalServerError)
 		return
@@ -185,7 +192,7 @@ func (s *Service) redeem(w http.ResponseWriter, r *http.Request, t *db.Tunnel) {
 	http.Redirect(w, r, safeReturn(r.URL.Query().Get("rd")), http.StatusFound)
 }
 
-func (s *Service) mintTicket(tunnelID, userID string) string {
+func (s *Service) mintTicket(tunnelID, userID, sessionID string) string {
 	raw := make([]byte, 24)
 	_, _ = rand.Read(raw)
 	id := hex.EncodeToString(raw)
@@ -201,7 +208,7 @@ func (s *Service) mintTicket(tunnelID, userID string) string {
 			delete(p.tickets, k)
 		}
 	}
-	p.tickets[id] = ticket{tunnelID: tunnelID, userID: userID, exp: now.Add(ticketTTL)}
+	p.tickets[id] = ticket{tunnelID: tunnelID, userID: userID, sessionID: sessionID, exp: now.Add(ticketTTL)}
 	return id
 }
 

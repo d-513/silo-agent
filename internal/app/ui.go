@@ -51,6 +51,13 @@ func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]
 }
 
 func (a *App) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
+	// End the session on the server first: clearing the cookie alone leaves it
+	// valid for anyone who has a copy, and keeps tunnel grants alive.
+	if r := access.Request(ctx); r != nil {
+		if err := auth.EndSession(a.DB, r); err != nil {
+			return nil, sessionError(err)
+		}
+	}
 	auth.ClearSession(access.ResponseWriter(ctx))
 	return connect.NewResponse(&v1.SignOutResponse{}), nil
 }

@@ -84,6 +84,7 @@ tunnels:
 - **DNS and TLS**: point a wildcard record `*.<host>` at the control plane and serve a certificate for `*.<host>` (a wildcard certificate, or on-demand TLS in the fronting proxy). The proxy in front must pass WebSocket upgrades and the original `Host` header.
 - **Use a separate domain** from the control plane's (`silo.example.com` → tunnels under `silo-tunnels.example.com`, not `tunnels.silo.example.com`). A page a Bot serves could otherwise set cookies for the whole domain and reach the control plane with them; a `host` equal to the `public_url` host is refused outright.
 - **Changing `host`** takes effect on the next request and re-points every existing tunnel (rows store only the name). Private tunnels' sign-in cookies belong to the old host, so owners sign in again.
+- **Private means signed in to Silo.** A private tunnel's access is tied to the owner's Silo session: signing out (or the session expiring) ends it immediately, and the next visit asks them to sign in again. An already-open WebSocket is not cut off until it closes.
 - Ports `5900` (the desktop) and `9222` (Chromium's debugging port) are never tunnelled; a Bot has at most 20 tunnels. A tunnel request never starts a stopped Bot.
 
 ## Drive providers
