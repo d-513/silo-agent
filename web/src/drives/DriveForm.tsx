@@ -11,7 +11,7 @@ import type { Drive, DriveTemplate } from "../gen/silo/v1/ui_pb";
 import { DriveMark } from "./DriveMark";
 import { FolderPicker } from "./FolderPicker";
 import { PickInput } from "./PickInput";
-import { Step } from "./Step";
+import { Step } from "../Step";
 import { VarInput } from "./VarInput";
 import { useDriveForm } from "./useDriveForm";
 

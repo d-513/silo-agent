@@ -1,5 +1,5 @@
 import { Copy, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { startConnectorAuth } from "../connectorAuth";
@@ -44,20 +44,6 @@ export function BotConnectors({
 
   // Which connector is being refreshed
   const [busy, setBusy] = useState("");
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Keyboard shortcut ⌘K / Ctrl+K for search
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const categories = useMemo(() => categoriesOf(catalog), [catalog]);
   const filteredCatalog = useMemo(() => filterCatalog(catalog, search, selectedCategory), [catalog, search, selectedCategory]);
@@ -194,7 +180,6 @@ export function BotConnectors({
         catalogCount={catalog.length}
         search={search}
         setSearch={setSearch}
-        searchRef={searchInputRef}
       />
 
       {tab === "in_use" && (
