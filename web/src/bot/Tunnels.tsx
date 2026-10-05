@@ -9,9 +9,8 @@ import { ArmedButton, CopyButton } from "../Feedback";
 import { Field, inputClass, SkeletonRows } from "../Field";
 import { ago } from "../format";
 import type { ListTunnelsResponse, Tunnel } from "../gen/silo/v1/ui_pb";
-import { Switch } from "../Switch";
-import { Tip, TipTitle } from "../Tip";
-import { parsePort, tunnelNotice } from "../tunnels";
+import { accessOf, parsePort, tunnelNotice } from "../tunnels";
+import { TunnelAccess } from "./TunnelAccess";
 
 // TunnelsPane lists the addresses that reach services on this Bot's machine.
 // A tunnel is a generated name and a port; private ones open for the owner
@@ -137,26 +136,15 @@ export function TunnelsPane({ botId }: { botId: string }) {
               }}
             />
           </Field>
-          <div className="flex h-[52px] items-end gap-2.5 pb-[5px]">
-            <Tip
-              content={
-                <>
-                  <TipTitle>Public</TipTitle>
-                  <p className="mt-1 max-w-[260px]">Anyone with the link can open it, without signing in. Leave it off to keep the tunnel for you.</p>
-                </>
-              }
-            >
-              <span className="flex items-center gap-2.5">
-                <Switch on={pub} onChange={setPub} />
-                <span className="text-[13px] text-ink-2">Public</span>
-              </span>
-            </Tip>
-          </div>
-          <div className="flex h-[52px] items-end">
+          <Field label="Who can open it" className="w-fit">
+            <TunnelAccess isPublic={pub} onChange={setPub} />
+          </Field>
+          <div className="pt-[22px]">
             <Btn kind="primary" type="submit" disabled={busy || full} icon={<Plus size={13} />}>
               Open tunnel
             </Btn>
           </div>
+          <p className={`basis-full text-[12.5px] leading-[18px] ${pub ? "text-vermilion" : "text-ink-3"}`}>{accessOf(pub).caption}</p>
           {full ? <p className="basis-full text-[12.5px] text-ink-3">This Bot has {data?.max} tunnels, the most it can have. Delete one to add another.</p> : null}
         </form>
       ) : null}
@@ -182,6 +170,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
                 ) : (
                   <span className="block truncate font-mono text-[13.5px] font-medium text-ink">{t.name}</span>
                 )}
+                <p className={`mt-0.5 text-[12.5px] ${t.public ? "text-vermilion" : "text-ink-2"}`}>{accessOf(t.public).caption}</p>
                 <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">
                   <span>Port {t.port}</span>
                   <span aria-hidden>·</span>
@@ -191,19 +180,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <Tip
-                  content={
-                    <>
-                      <TipTitle>{t.public ? "Public" : "Private"}</TipTitle>
-                      <p className="mt-1 max-w-[260px]">{t.public ? "Anyone with the link can open it, without signing in." : "Only you, signed in to Silo, can open it."}</p>
-                    </>
-                  }
-                >
-                  <span className="mr-1 flex items-center gap-2">
-                    <Switch on={t.public} onChange={(on) => void setPublic(t, on)} />
-                    <span className="w-11 text-[12.5px] text-ink-2">{t.public ? "Public" : "Private"}</span>
-                  </span>
-                </Tip>
+                <TunnelAccess isPublic={t.public} confirm onChange={(on) => void setPublic(t, on)} />
                 {t.url ? <CopyButton text={t.url} title="Copy address" /> : null}
                 {t.url ? (
                   <a

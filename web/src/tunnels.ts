@@ -24,3 +24,13 @@ export function tunnelNotice(state: string, isAdmin: boolean): { text: string; a
   if (state === "no_host") return { text: "Tunnels need a domain: the operator sets tunnels.host, the suffix tunnels are served under.", admin: isAdmin };
   return null;
 }
+
+// The two ways a tunnel can be opened, as the card and the add form say them.
+const ACCESS = {
+  private: { label: "Private", caption: "Only you, signed in to Silo, can open it" },
+  public: { label: "Public", caption: "Anyone with the link can open it, no sign-in" },
+} as const;
+
+export function accessOf(isPublic: boolean) {
+  return isPublic ? ACCESS.public : ACCESS.private;
+}

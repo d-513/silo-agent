@@ -1,5 +1,5 @@
 import { eq } from "./testing.ts";
-import { parsePort, tunnelNotice } from "./tunnels.ts";
+import { accessOf, parsePort, tunnelNotice } from "./tunnels.ts";
 
 eq(parsePort("8000"), { port: 8000 }, "plain port");
 eq(parsePort("  3000 "), { port: 3000 }, "surrounding space");
@@ -31,3 +31,9 @@ eq(tunnelNotice("no_host", false)?.text.includes("tunnels.host"), true, "no_host
 eq(tunnelNotice("no_host", true)?.admin, true, "no_host links admins to settings");
 eq(tunnelNotice("off", true)?.text.includes("tunnels.enabled"), true, "off names the switch");
 eq(tunnelNotice("", true), null, "unknown state is not a notice");
+
+// Who can open a tunnel, in the words the card and the add form both use.
+eq(accessOf(false).label, "Private", "private label");
+eq(accessOf(true).label, "Public", "public label");
+eq(accessOf(false).caption, "Only you, signed in to Silo, can open it", "private caption");
+eq(accessOf(true).caption, "Anyone with the link can open it, no sign-in", "public caption");
