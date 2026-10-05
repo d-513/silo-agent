@@ -1,5 +1,6 @@
 import { FolderPlus, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useEffect, useState } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { fail } from "./errors";
@@ -7,8 +8,9 @@ import { ArmedButton, Spinner } from "./Feedback";
 import { FolderNav, type FolderEntry } from "./FolderNav";
 import { ago, day } from "./format";
 import { Panel } from "./Field";
-import type { Bot, KnowledgeFolder, KnowledgeHit } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type KnowledgeFolder, type KnowledgeHit } from "./gen/silo/v1/ui_pb";
 import { NeedMachine } from "./NeedMachine";
+import { patch, reload } from "./query";
 import { SearchBox } from "./SearchBox";
 import { useSearch } from "./useSearch";
 
@@ -210,34 +212,22 @@ function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) =
 }
 
 export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s: string) => void; onStart: () => void }) {
-  const [folders, setFolders] = useState<KnowledgeFolder[] | null>(null);
-  const [enabled, setEnabled] = useState(true);
+  // Poll while something is indexing; an idle page does not need to.
+  const q = useQuery(
+    UI.method.listKnowledge,
+    { botId: bot.id },
+    { refetchInterval: (x) => (x.state.data?.folders.some((f) => f.status === "syncing") ? 2500 : false) },
+  );
+  const folders = q.data?.folders ?? null;
+  const enabled = q.data?.enabled ?? true;
   const [picking, setPicking] = useState(false);
   const [adding, setAdding] = useState(false);
-
-  const load = useCallback(() => {
-    return ui
-      .listKnowledge({ botId: bot.id })
-      .then((r) => {
-        setFolders(r.folders);
-        setEnabled(r.enabled);
-      })
-      .catch((e) => onError(fail(e)));
-  }, [bot.id, onError]);
+  const load = () => reload(UI.method.listKnowledge, { botId: bot.id });
 
   useEffect(() => {
-    setFolders(null);
-    setPicking(false);
-    void load();
-  }, [load]);
-
-  // Poll while something is indexing; an idle page does not need to.
-  const busy = folders?.some((f) => f.status === "syncing") ?? false;
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(() => void load(), 2500);
-    return () => clearInterval(t);
-  }, [busy, load]);
+    if (q.error) onError(fail(q.error));
+  }, [q.error, onError]);
+  useEffect(() => setPicking(false), [bot.id]);
 
   async function add(path: string) {
     onError("");
@@ -267,7 +257,7 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
     onError("");
     try {
       await ui.removeKnowledgeFolder({ botId: bot.id, id });
-      setFolders((cur) => (cur ?? []).filter((f) => f.id !== id));
+      patch(UI.method.listKnowledge, { botId: bot.id }, (r) => ({ ...r, folders: r.folders.filter((f) => f.id !== id) }));
     } catch (e) {
       onError(fail(e));
     }

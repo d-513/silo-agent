@@ -1,5 +1,6 @@
 import { ExternalLink, Globe, Lock, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ui } from "../api";
 import { useAuth } from "../auth";
@@ -8,7 +9,8 @@ import { fail } from "../errors";
 import { ArmedButton, CopyButton } from "../Feedback";
 import { Field, inputClass, SkeletonRows } from "../Field";
 import { ago } from "../format";
-import type { ListTunnelsResponse, Tunnel } from "../gen/silo/v1/ui_pb";
+import { UI, type Tunnel } from "../gen/silo/v1/ui_pb";
+import { patch } from "../query";
 import { accessOf, parsePort, tunnelNotice } from "../tunnels";
 import { TunnelAccess } from "./TunnelAccess";
 
@@ -18,36 +20,16 @@ import { TunnelAccess } from "./TunnelAccess";
 // them too (open_tunnel), so the list refreshes while the tab is open.
 export function TunnelsPane({ botId }: { botId: string }) {
   const { admin } = useAuth();
-  const [data, setData] = useState<ListTunnelsResponse | null>(null);
-  const [err, setErr] = useState("");
+  const q = useQuery(UI.method.listTunnels, { botId }, { refetchInterval: 5000 });
+  const data = q.data ?? null;
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
   const [port, setPort] = useState("");
   const [portErr, setPortErr] = useState("");
   const [pub, setPub] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let dead = false;
-    setData(null);
-    const load = () => {
-      ui.listTunnels({ botId })
-        .then((r) => {
-          if (dead) return;
-          setData(r);
-          setErr("");
-        })
-        .catch((e) => {
-          if (!dead) setErr(fail(e));
-        });
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, [botId]);
-
-  const change = (fn: (rows: Tunnel[]) => Tunnel[]) => setData((d) => (d ? ({ ...d, tunnels: fn(d.tunnels) } as ListTunnelsResponse) : d));
+  const change = (fn: (rows: Tunnel[]) => Tunnel[]) => patch(UI.method.listTunnels, { botId }, (d) => ({ ...d, tunnels: fn(d.tunnels) }));
 
   async function add() {
     const p = parsePort(port);

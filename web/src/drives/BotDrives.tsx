@@ -1,4 +1,5 @@
 import { ChevronRight, CircleAlert, HardDrive, Plus } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
@@ -6,7 +7,8 @@ import type { SubPage } from "../bot/context";
 import { Btn, btnClass } from "../Btn";
 import { ErrorWell, SkeletonRows } from "../Field";
 import { PageHead } from "../PageHead";
-import type { Drive, DriveTemplate } from "../gen/silo/v1/ui_pb";
+import { UI, type Drive, type DriveTemplate } from "../gen/silo/v1/ui_pb";
+import { reload } from "../query";
 import { fail } from "../errors";
 import { DriveForm } from "./DriveForm";
 import { DriveMark } from "./DriveMark";
@@ -19,32 +21,22 @@ const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", 
 // gallery, add a provider, edit a drive).
 export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; admin: boolean }) {
   const navigate = useNavigate();
-  const [templates, setTemplates] = useState<DriveTemplate[] | null>(null);
-  const [drives, setDrives] = useState<Drive[] | null>(null);
-  const [bindOk, setBindOk] = useState(true);
-  const [err, setErr] = useState("");
+  const templatesQ = useQuery(UI.method.listDriveTemplates, {});
+  // Poll quickly while something is connecting, slowly otherwise.
+  const drivesQ = useQuery(
+    UI.method.listDrives,
+    { botId, draftId: "" },
+    { refetchInterval: (q) => (q.state.data?.drives.some((d) => d.state === "mounting") ? 1500 : 6000) },
+  );
+  const templates = templatesQ.data?.templates ?? null;
+  const drives = drivesQ.data?.drives ?? null;
+  const bindOk = drivesQ.data?.bindOk ?? true;
+  const [actErr, setErr] = useState("");
+  const failed = templatesQ.error ?? drivesQ.error;
+  const err = actErr || (failed ? fail(failed) : "");
   const back = useCallback(() => void navigate({ to: "/bots/$botId/drives", params: { botId } }), [botId, navigate]);
   const gallery = () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } });
-
-  const refresh = useCallback(async () => {
-    try {
-      const [ts, ds] = await Promise.all([ui.listDriveTemplates({}), ui.listDrives({ botId, draftId: "" })]);
-      setTemplates(ts.templates);
-      setDrives(ds.drives);
-      setBindOk(ds.bindOk);
-      setErr("");
-    } catch (e) {
-      setErr(fail(e));
-    }
-  }, [botId]);
-
-  // Poll quickly while something is connecting, slowly otherwise.
-  const busy = drives?.some((d) => d.state === "mounting") ?? false;
-  useEffect(() => {
-    void refresh();
-    const t = setInterval(() => void refresh(), busy ? 1500 : 6000);
-    return () => clearInterval(t);
-  }, [refresh, busy]);
+  const refresh = useCallback(() => reload(UI.method.listDrives, { botId }), [botId]);
 
   const byKey = useMemo(() => new Map((templates ?? []).map((t) => [t.key, t])), [templates]);
   const taken = useMemo(() => new Set((drives ?? []).map((d) => d.name)), [drives]);

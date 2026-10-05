@@ -1,11 +1,12 @@
 import { TriangleAlert } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Outlet, type LinkProps } from "@tanstack/react-router";
 import { ui } from "./api";
 import { SaveButton, useSave } from "./Feedback";
 import { Field, Panel } from "./Field";
 import { Select } from "./Select";
-import { ConfigSource, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
+import { ConfigSource, UI, type ConfigField, type SearchEngine } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
 function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }) {
@@ -22,12 +23,7 @@ function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }
 }
 
 export function AdminLayout() {
-  const [debug, setDebug] = useState(false);
-  useEffect(() => {
-    ui.getSettings({})
-      .then((x) => setDebug(x.fields.some((f) => f.key === "debug" && f.value === "true")))
-      .catch(() => {});
-  }, []);
+  const debug = useQuery(UI.method.getSettings, {}).data?.fields.some((f) => f.key === "debug" && f.value === "true") ?? false;
   return (
     <div className="silo-page">
       <h1 className="text-title">Admin</h1>

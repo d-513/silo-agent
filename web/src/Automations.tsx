@@ -1,4 +1,5 @@
 import { ChevronLeft, Play, Plus, Square, Timer } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
@@ -14,7 +15,8 @@ import { Thread } from "./Thread";
 import type { Artifact } from "./Artifact";
 import { clock, DAY_SHORT, describe, HOUR_STEPS, MINUTE_STEPS, parse, toCron, type Mode, type Sched } from "./schedule";
 import { useRunStream } from "./useRunStream";
-import type { Automation, Bot } from "./gen/silo/v1/ui_pb";
+import { UI, type Automation, type Bot } from "./gen/silo/v1/ui_pb";
+import { patch } from "./query";
 import { fail } from "./errors";
 import { nextWhen } from "./format";
 
@@ -212,29 +214,21 @@ export function AutomationsPane({
   onSaveSkill: (a: Artifact) => void;
 }) {
   const nav = useNavigate();
-  const [list, setList] = useState<Automation[] | null>(null);
+  // The Bot can add and change automations itself, so the list is polled.
+  const q = useQuery(UI.method.listAutomations, { botId: bot.id }, { refetchInterval: 5000 });
+  const list = q.data?.automations ?? null;
+  useEffect(() => {
+    if (q.error) onError(fail(q.error));
+  }, [q.error, onError]);
+  const setList = (f: (xs: Automation[]) => Automation[]) => patch(UI.method.listAutomations, { botId: bot.id }, (r) => ({ ...r, automations: f(r.automations) }));
   const [editing, setEditing] = useState(false);
   const selId = at.view === "edit" ? (at.id ?? "") : "";
   const sel = list?.find((a) => a.id === selId);
   const stream = useRunStream(bot.id, sel?.chatId, { onApproval: onApprovals });
 
-  useEffect(() => {
-    let dead = false;
-    const load = () =>
-      ui
-        .listAutomations({ botId: bot.id })
-        .then((r) => !dead && setList(r.automations))
-        .catch((e) => !dead && onError(fail(e)));
-    load();
-    const t = setInterval(load, 5000);
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, [bot.id, onError]);
   useEffect(() => setEditing(false), [selId]);
 
-  const upsert = (a: Automation) => setList((xs) => (xs?.some((x) => x.id === a.id) ? xs.map((x) => (x.id === a.id ? a : x)) : [...(xs ?? []), a]));
+  const upsert = (a: Automation) => setList((xs) => (xs.some((x) => x.id === a.id) ? xs.map((x) => (x.id === a.id ? a : x)) : [...xs, a]));
 
   async function toggle(a: Automation, enabled: boolean) {
     try {
@@ -320,7 +314,7 @@ export function AutomationsPane({
                   setEditing(false);
                 }}
                 onDeleted={() => {
-                  setList((xs) => (xs ?? []).filter((x) => x.id !== sel.id));
+                  setList((xs) => xs.filter((x) => x.id !== sel.id));
                   void nav({ to: "/bots/$botId/automations", params: { botId: bot.id }, replace: true });
                 }}
               />

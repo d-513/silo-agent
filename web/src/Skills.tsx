@@ -1,5 +1,6 @@
 import { BookOpen, Check, RotateCcw, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn } from "./Btn";
@@ -8,7 +9,8 @@ import { ArmedButton } from "./Feedback";
 import { ErrorWell } from "./Field";
 import { SkillBrowserOverlay } from "./FileBrowser";
 import { skillSource } from "./fs";
-import type { BotSkill, Skill } from "./gen/silo/v1/ui_pb";
+import { UI, type BotSkill, type Skill } from "./gen/silo/v1/ui_pb";
+import { reload } from "./query";
 import { widePage } from "./PageHead";
 import { InstallPanel } from "./skills/InstallPanel";
 import { filterSkills } from "./skills/model";
@@ -126,16 +128,12 @@ function SkillPeek({ scope, name, onClose }: { scope: string; name: string; onCl
 }
 
 export function AdminSkills() {
-  const [rows, setRows] = useState<Skill[] | null>(null);
-  const [err, setErr] = useState("");
+  const q = useQuery(UI.method.listSkills, { scope: "library" });
+  const rows = q.data?.skills ?? null;
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
   const [open, setOpen] = useState("");
-  async function load() {
-    const r = await ui.listSkills({ scope: "library" });
-    setRows(r.skills);
-  }
-  useEffect(() => {
-    load().catch((e) => setErr(fail(e)));
-  }, []);
+  const load = () => reload(UI.method.listSkills);
   async function seed() {
     setErr("");
     try {
@@ -181,17 +179,15 @@ type Scope = "personal" | "library";
 
 export function SkillHub() {
   const [scope, setScope] = useState<Scope>("personal");
-  const [lists, setLists] = useState<Record<Scope, Skill[]> | null>(null);
+  const personalQ = useQuery(UI.method.listSkills, { scope: "personal" });
+  const libraryQ = useQuery(UI.method.listSkills, { scope: "library" });
+  const lists: Record<Scope, Skill[]> | null = personalQ.data && libraryQ.data ? { personal: personalQ.data.skills, library: libraryQ.data.skills } : null;
   const [search, setSearch] = useState("");
-  const [err, setErr] = useState("");
+  const [actErr, setErr] = useState("");
+  const failed = personalQ.error ?? libraryQ.error;
+  const err = actErr || (failed ? fail(failed) : "");
   const [open, setOpen] = useState("");
-  async function load() {
-    const [personal, library] = await Promise.all([ui.listSkills({ scope: "personal" }), ui.listSkills({ scope: "library" })]);
-    setLists({ personal: personal.skills, library: library.skills });
-  }
-  useEffect(() => {
-    load().catch((e) => setErr(fail(e)));
-  }, []);
+  const load = () => reload(UI.method.listSkills);
   async function remove(name: string) {
     setErr("");
     try {
@@ -269,17 +265,13 @@ export function SkillHub() {
 }
 
 export function BotSkills({ botId }: { botId: string }) {
-  const [rows, setRows] = useState<BotSkill[] | null>(null);
+  const q = useQuery(UI.method.listBotSkills, { botId });
+  const rows = q.data?.skills ?? null;
   const [search, setSearch] = useState("");
-  const [err, setErr] = useState("");
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
   const [open, setOpen] = useState<BotSkill | null>(null);
-  async function load() {
-    const r = await ui.listBotSkills({ botId });
-    setRows(r.skills);
-  }
-  useEffect(() => {
-    load().catch((e) => setErr(fail(e)));
-  }, [botId]);
+  const load = () => reload(UI.method.listBotSkills, { botId });
   async function toggle(s: BotSkill) {
     setErr("");
     try {

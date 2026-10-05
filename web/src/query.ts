@@ -28,6 +28,11 @@ export function reload<I extends DescMessage, O extends DescMessage>(method: Des
   return queryClient.invalidateQueries({ queryKey: key(method, input) });
 }
 
+/** Like reload, but a load that is already out is left to finish (for "the page was opened" rereads). */
+export function recheck<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>, input?: MessageInitShape<I>) {
+  return queryClient.invalidateQueries({ queryKey: key(method, input) }, { cancelRefetch: false });
+}
+
 /** Write the cached answer of one call, from the previous one. */
 export function patch<I extends DescMessage, O extends DescMessage>(
   method: DescMethodUnary<I, O>,

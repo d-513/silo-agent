@@ -5,7 +5,7 @@ import { chatLink } from "../links";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { UI, type Chat } from "../gen/silo/v1/ui_pb";
-import { key, patch, queryClient } from "../query";
+import { patch, recheck } from "../query";
 import type { Tab } from "./tabs";
 
 // Renaming a chat in place: the title being typed, and the one commit/cancel
@@ -47,8 +47,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
   // Moving between chats and side pages rereads the list: a channel or an
   // automation may have added to it.
   useEffect(() => {
-    // (Not on top of a load that is already out.)
-    if (id && chatSide) void queryClient.invalidateQueries({ queryKey: key(UI.method.listChats, { botId: id }) }, { cancelRefetch: false });
+    if (id && chatSide) void recheck(UI.method.listChats, { botId: id });
   }, [id, tab, chatSide, chatId]);
 
   const newest = chatsQ.data?.chats[0]?.id;

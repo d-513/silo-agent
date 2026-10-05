@@ -1,14 +1,16 @@
 import { Inbox, MessageSquareQuote, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { chatLink } from "./links";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
-import type { Bot, Chat, FeedPost } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type Chat, type FeedPost } from "./gen/silo/v1/ui_pb";
 import { feedStamp } from "./format";
 import { Md } from "./Md";
 import { fail } from "./errors";
+import { patch, recheck, reloadBot } from "./query";
 
 function sourceLabel(p: FeedPost) {
   switch (p.sourceKind) {
@@ -27,44 +29,37 @@ function sourceLabel(p: FeedPost) {
 // first. Opening it marks everything read; posts that were unread keep their
 // dot for this visit. The human can delete a post or quote it into a new chat.
 export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: string) => void; onQuoted: (c: Chat) => void }) {
-  const [posts, setPosts] = useState<FeedPost[] | null>(null);
+  const q = useQuery(UI.method.listFeed, { botId: bot.id });
+  const posts = q.data?.posts ?? null;
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [quoting, setQuoting] = useState("");
-  const seq = useRef(0);
 
   // Reload whenever the unread count moves (the bot row is polled), so a post
   // that lands while the Feed is open shows up and is marked read.
   useEffect(() => {
-    let dead = false;
-    const n = ++seq.current;
-    ui.listFeed({ botId: bot.id })
-      .then((r) => {
-        if (dead || n !== seq.current) return;
-        setPosts(r.posts);
-        const unread = r.posts.filter((p) => !p.read).map((p) => p.id);
-        if (unread.length) {
-          setFresh((cur) => new Set([...cur, ...unread]));
-          ui.markFeedRead({ botId: bot.id }).catch(() => {});
-        }
-      })
-      .catch((e) => {
-        if (!dead) onError(fail(e));
-      });
-    return () => {
-      dead = true;
-    };
+    void recheck(UI.method.listFeed, { botId: bot.id });
   }, [bot.id, bot.feedUnread]);
-
   useEffect(() => {
-    setPosts(null);
-    setFresh(new Set());
-  }, [bot.id]);
+    const unread = (q.data?.posts ?? []).filter((p) => !p.read).map((p) => p.id);
+    if (!unread.length) return;
+    setFresh((cur) => new Set([...cur, ...unread]));
+    ui.markFeedRead({ botId: bot.id })
+      .then(() => {
+        patch(UI.method.listFeed, { botId: bot.id }, (r) => ({ ...r, posts: r.posts.map((p) => ({ ...p, read: true })) }));
+        reloadBot(bot.id);
+      })
+      .catch(() => {});
+  }, [q.data, bot.id]);
+  useEffect(() => {
+    if (q.error) onError(fail(q.error));
+  }, [q.error]);
+  useEffect(() => setFresh(new Set()), [bot.id]);
 
   async function remove(id: string) {
     onError("");
     try {
       await ui.deleteFeedPost({ botId: bot.id, id });
-      setPosts((cur) => (cur ?? []).filter((p) => p.id !== id));
+      patch(UI.method.listFeed, { botId: bot.id }, (r) => ({ ...r, posts: r.posts.filter((p) => p.id !== id) }));
     } catch (e) {
       onError(fail(e));
     }

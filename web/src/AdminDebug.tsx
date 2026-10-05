@@ -1,10 +1,11 @@
 import { RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { ui } from "./api";
+import { useQuery } from "@connectrpc/connect-query";
+import { useMemo, useState } from "react";
 import { SkeletonRows } from "./Field";
 import { Btn } from "./Btn";
 import { Select } from "./Select";
-import type { Bot, LLMLog } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type LLMLog } from "./gen/silo/v1/ui_pb";
+import { reload } from "./query";
 import { fail } from "./errors";
 
 const labelClass: Record<string, string> = {
@@ -55,40 +56,17 @@ function LogRow({ log }: { log: LLMLog }) {
   );
 }
 
+const noLogs: LLMLog[] = [];
+const noBots: Bot[] = [];
+
 export function AdminDebug() {
-  const [logs, setLogs] = useState<LLMLog[]>([]);
-  const [enabled, setEnabled] = useState(false);
-  const [bots, setBots] = useState<Bot[]>([]);
   const [botId, setBotId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-
-  async function load() {
-    try {
-      const r = await ui.listLLMLogs({ botId });
-      setLogs(r.logs);
-      setEnabled(r.enabled);
-      setErr("");
-    } catch (e) {
-      setErr(fail(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    ui.listBots({})
-      .then((r) => setBots(r.bots))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    void load();
-    const t = setInterval(() => void load(), 2000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botId]);
+  const logsQ = useQuery(UI.method.listLLMLogs, { botId }, { refetchInterval: 2000 });
+  const logs = logsQ.data?.logs ?? noLogs;
+  const enabled = logsQ.data?.enabled ?? false;
+  const loading = logsQ.isPending;
+  const err = logsQ.error ? fail(logsQ.error) : "";
+  const bots = useQuery(UI.method.listBots, {}).data?.bots ?? noBots;
 
   const botName = useMemo(() => {
     const m = new Map(bots.map((b) => [b.id, b.name]));
@@ -123,7 +101,7 @@ export function AdminDebug() {
               options={[{ value: "", label: "All Bots" }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
             />
           </div>
-          <Btn kind="secondary" icon={<RefreshCw size={12} />} onClick={() => void load()}>
+          <Btn kind="secondary" icon={<RefreshCw size={12} />} onClick={() => void reload(UI.method.listLLMLogs)}>
             Refresh
           </Btn>
         </div>

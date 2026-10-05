@@ -67,6 +67,7 @@ test("every route loads, stays put, and lights its tab", async ({ page }) => {
       await page.goto(`${bot}/${path}`);
       await expect(litTab(page), path).toContainText(label);
       await expect(page, path).toHaveURL(new RegExp(`${bot}/${path}$`));
+      await expect(page.getByText("This page hit a snag"), path).toHaveCount(0);
     }
 
     // Redirects.
@@ -168,6 +169,26 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(litTab(page)).toContainText("Chat");
     await page.goto(second);
     await expect(page.getByPlaceholder(/Ask /)).toBeVisible();
+
+    // A list that is written to shows the change without a reload.
+    await page.goto(`${bot}/secrets`);
+    await expect(page.getByText("No secrets on this Bot yet.")).toBeVisible();
+    await page.getByPlaceholder("vendor_password").fill("e2e_secret");
+    await page.locator('input[type="password"]').fill("hunter2");
+    await page.getByRole("button", { name: /^add$/i }).click();
+    await expect(page.getByText("e2e_secret")).toBeVisible();
+    await page.getByRole("button", { name: /^delete$/i }).click();
+    await page.getByRole("button", { name: /again/i }).click();
+    await expect(page.getByText("No secrets on this Bot yet.")).toBeVisible();
+
+    // Renaming the Bot reaches the header and the rail at once.
+    await page.goto(`${bot}/settings`);
+    const renamed = `Renamed ${Date.now()}`;
+    await page.locator("input").first().fill(renamed);
+    await page.getByRole("button", { name: /^save/i }).first().click();
+    await expect(page.getByRole("heading", { name: renamed })).toBeAttached();
+    await expect(page.getByTitle(renamed)).toBeVisible();
+    await page.goto(second);
 
     // The rail goes home and back to the Bot.
     await page.getByTitle("Bots", { exact: true }).click();

@@ -1,4 +1,5 @@
 import { RotateCcw, Trash2 } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
@@ -50,6 +51,8 @@ function DangerRow({ title, note, action }: { title: string; note: string; actio
   );
 }
 
+const noModels: ModelOption[] = [];
+
 export function SettingsPane({
   bot,
   onError,
@@ -61,7 +64,7 @@ export function SettingsPane({
   const [description, setDescription] = useState(bot.description);
   const [soul, setSoul] = useState(bot.soul);
   const [model, setModel] = useState(bot.model);
-  const [models, setModels] = useState<ModelOption[]>([]);
+  const models = useQuery(UI.method.listModels, { botId: bot.id }).data?.models ?? noModels;
   const saver = useSave();
   const [dangerBusy, setDangerBusy] = useState(false);
   const nav = useNavigate();
@@ -71,17 +74,6 @@ export function SettingsPane({
     setSoul(bot.soul);
     setModel(bot.model);
     setDangerBusy(false);
-  }, [bot.id]);
-  useEffect(() => {
-    let dead = false;
-    ui.listModels({ botId: bot.id })
-      .then((r) => {
-        if (!dead) setModels(r.models);
-      })
-      .catch(() => {});
-    return () => {
-      dead = true;
-    };
   }, [bot.id]);
   // Drop a stored model the operator has since removed from the allowlist, so
   // saving an unrelated field does not fail validation.

@@ -1,19 +1,23 @@
 import { ChevronRight, Plus, Radio } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ui } from "../api";
 import type { SubPage } from "../bot/context";
 import { btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
-import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
+import { UI, type Channel, type ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { PageHead, widePage } from "../PageHead";
+import { reload } from "../query";
 import { AdapterLogo } from "./AdapterLogo";
 import { AdapterPicker } from "./AdapterPicker";
 import { ChannelCard } from "./ChannelCard";
 import { ChannelForm } from "./ChannelForm";
 import { ChannelLog } from "./ChannelLog";
 import { ChannelSetup } from "./ChannelSetup";
+
+const noAdapters: ChannelAdapter[] = [];
+const noChannels: Channel[] = [];
 
 function Opening({ onBack }: { onBack: () => void }) {
   return (
@@ -28,37 +32,20 @@ function Opening({ onBack }: { onBack: () => void }) {
 // adapter, edit, setup). Browser back works because each page is a route.
 export function BotChannels({ botId, at }: { botId: string; at: SubPage }) {
   const navigate = useNavigate();
-  const [adapters, setAdapters] = useState<ChannelAdapter[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // The Bot can be given channels from a chat too, so the list is polled.
+  const adaptersQ = useQuery(UI.method.listChannelAdapters, {});
+  const channelsQ = useQuery(UI.method.listBotChannels, { botId }, { refetchInterval: 4000 });
+  const adapters = adaptersQ.data?.adapters ?? noAdapters;
+  const channels = channelsQ.data?.channels ?? noChannels;
+  const loaded = adaptersQ.isFetched && channelsQ.isFetched;
+  const failed = adaptersQ.error ?? channelsQ.error;
+  const err = failed ? fail(failed) : "";
   const [log, setLog] = useState<Channel | null>(null);
-  const [err, setErr] = useState("");
+  const refresh = () => reload(UI.method.listBotChannels, { botId });
 
   const back = () => void navigate({ to: "/bots/$botId/channels", params: { botId } });
   const add = (adapter?: string) =>
     void navigate(adapter ? { to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter } } : { to: "/bots/$botId/channels/new", params: { botId } });
-
-  async function refresh() {
-    try {
-      const [a, c] = await Promise.all([ui.listChannelAdapters({}), ui.listBotChannels({ botId })]);
-      setAdapters(a.adapters);
-      setChannels(c.channels);
-      setErr("");
-    } catch (e) {
-      setErr(fail(e));
-    } finally {
-      setLoaded(true);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-    const t = setInterval(() => {
-      void refresh();
-    }, 4000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botId]);
 
   const counts = channels.reduce<Record<string, number>>((m, c) => ({ ...m, [c.adapter]: (m[c.adapter] ?? 0) + 1 }), {});
 

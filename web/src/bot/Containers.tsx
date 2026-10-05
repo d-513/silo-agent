@@ -1,11 +1,12 @@
 import { HardDrive, MessageCircle, Monitor, Plug, Power } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useState, type ReactNode } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { ArmedButton } from "../Feedback";
 import { Panel, SkeletonRows } from "../Field";
-import type { Bot, BotContainer } from "../gen/silo/v1/ui_pb";
+import { UI, type Bot } from "../gen/silo/v1/ui_pb";
 import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
 import { setBot } from "../query";
@@ -56,31 +57,13 @@ function BoxStat({ label, value, meter }: { label: string; value: string; meter?
 // ContainersPane is everything a Bot runs on: its machine, the drive sidecar,
 // and one sidecar per STDIO connector, with live usage from the engine.
 export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: () => void; onStop: () => void }) {
-  const [boxes, setBoxes] = useState<BotContainer[] | null>(null);
-  const [err, setErr] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const q = useQuery(UI.method.listBotContainers, { id: bot.id }, { refetchInterval: 2500 });
+  const boxes = q.data?.containers ?? null;
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
+  // Uptimes are counted from the moment the engine last answered.
+  const now = q.dataUpdatedAt || Date.now();
   const [removed, setRemoved] = useState(false);
-  useEffect(() => {
-    let dead = false;
-    const load = () => {
-      ui.listBotContainers({ id: bot.id })
-        .then((r) => {
-          if (dead) return;
-          setBoxes(r.containers);
-          setNow(Date.now());
-          setErr("");
-        })
-        .catch((e) => {
-          if (!dead) setErr(fail(e));
-        });
-    };
-    load();
-    const t = setInterval(load, 2500);
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, [bot.id]);
 
   const running = (boxes ?? []).filter((b) => b.state === "running");
   const cpu = running.reduce((n, b) => n + b.cpuPercent, 0);

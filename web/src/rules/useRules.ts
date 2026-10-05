@@ -1,31 +1,28 @@
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState } from "react";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { useSave } from "../Feedback";
-import type { Rule, RuleSection } from "../gen/silo/v1/ui_pb";
+import { UI, type Rule, type RuleSection } from "../gen/silo/v1/ui_pb";
+import { patch, reload, setBot } from "../query";
 import { withDecision, withSectionDecision } from "./model";
+
+const none: RuleSection[] = [];
 
 // useRules loads a Bot's rule sections and auto-approve policy and saves each
 // change: a decision shows at once and rolls back if the server refuses it.
 export function useRules(botId: string) {
-  const [sections, setSections] = useState<RuleSection[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [err, setErr] = useState("");
-  const [policy, setPolicy] = useState("");
-  const [savedPolicy, setSavedPolicy] = useState("");
+  const sectionsQ = useQuery(UI.method.listRules, { botId });
+  const sections = sectionsQ.data?.sections ?? none;
+  const botQ = useQuery(UI.method.getBot, { id: botId });
+  const savedPolicy = botQ.data?.autoApprove ?? "";
+  // null until the human types: the box then shows the saved policy.
+  const [draft, setPolicy] = useState<string | null>(null);
+  const [actErr, setErr] = useState("");
   const saver = useSave();
+  const failed = sectionsQ.error ?? botQ.error;
 
-  async function load() {
-    const [r, b] = await Promise.all([ui.listRules({ botId }), ui.getBot({ id: botId })]);
-    setSections(r.sections);
-    setLoaded(true);
-    setPolicy(b.autoApprove);
-    setSavedPolicy(b.autoApprove);
-  }
-
-  useEffect(() => {
-    load().catch((e) => setErr(fail(e)));
-  }, [botId]);
+  useEffect(() => setPolicy(null), [botId]);
 
   async function savePolicy() {
     setErr("");
@@ -38,12 +35,12 @@ export function useRules(botId: string) {
           description: b.description,
           soul: b.soul,
           memory: b.memory,
-          autoApprove: policy,
+          autoApprove: draft ?? savedPolicy,
           model: b.model,
         });
       });
-      setPolicy(next.autoApprove);
-      setSavedPolicy(next.autoApprove);
+      setBot(next);
+      setPolicy(null);
     } catch (e) {
       setErr(fail(e));
     }
@@ -54,12 +51,13 @@ export function useRules(botId: string) {
   async function change(optimistic: (curr: RuleSection[]) => RuleSection[], save: () => Promise<unknown>) {
     setErr("");
     const prev = sections;
-    setSections(optimistic);
+    const put = (next: RuleSection[]) => patch(UI.method.listRules, { botId }, (r) => ({ ...r, sections: next }));
+    put(optimistic(prev));
     try {
       await save();
-      await load();
+      await reload(UI.method.listRules, { botId });
     } catch (e) {
-      setSections(prev);
+      put(prev);
       setErr(fail(e));
     }
   }
@@ -79,5 +77,16 @@ export function useRules(botId: string) {
     );
   }
 
-  return { sections, loaded, err, policy, setPolicy, savedPolicy, saver, savePolicy, setDecision, setSection };
+  return {
+    sections,
+    loaded: !!sectionsQ.data,
+    err: actErr || (failed ? fail(failed) : ""),
+    policy: draft ?? savedPolicy,
+    setPolicy,
+    savedPolicy,
+    saver,
+    savePolicy,
+    setDecision,
+    setSection,
+  };
 }

@@ -1,4 +1,5 @@
 import { Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ui } from "./api";
@@ -7,7 +8,8 @@ import { Btn, btnClass } from "./Btn";
 import { ConnectorFields, ConnectorMark, McpChip, CategoryChip, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./connectors/form";
 import { inputClass, SkeletonRows } from "./Field";
 import { Select } from "./Select";
-import type { Connector } from "./gen/silo/v1/ui_pb";
+import { UI, type Connector } from "./gen/silo/v1/ui_pb";
+import { reload } from "./query";
 import { fail } from "./errors";
 
 function byName(a: Connector, b: Connector) {
@@ -60,17 +62,13 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
 }
 
 export function CatalogList() {
-  const [rows, setRows] = useState<Connector[] | null>(null);
-  const [err, setErr] = useState("");
+  const q = useQuery(UI.method.listConnectors, {});
+  const rows = q.data?.connectors ?? null;
+  const [actErr, setErr] = useState("");
+  const err = actErr || (q.error ? fail(q.error) : "");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("category");
-  async function load() {
-    const r = await ui.listConnectors({});
-    setRows(r.connectors);
-  }
-  useEffect(() => {
-    load().catch((e) => setErr(fail(e)));
-  }, []);
+  const load = () => reload(UI.method.listConnectors);
   async function seed() {
     setErr("");
     try {
@@ -226,6 +224,7 @@ export function LibraryForm() {
         if (id) await ui.updateConnector({ id, ...spec });
         else await ui.createConnector(spec);
       });
+      void reload(UI.method.listConnectors);
       nav({ to: "/admin/connectors" });
     } catch (ex) {
       setErr(fail(ex));
@@ -237,6 +236,7 @@ export function LibraryForm() {
     setErr("");
     try {
       await ui.deleteConnector({ id });
+      void reload(UI.method.listConnectors);
       nav({ to: "/admin/connectors" });
     } catch (ex) {
       setErr(fail(ex));

@@ -1,4 +1,5 @@
 import { Trash2 } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { ui } from "./api";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
@@ -6,9 +7,9 @@ import { Panel } from "./Field";
 import { SearchBox } from "./SearchBox";
 import { PromptWell } from "./Settings";
 import { useSearch } from "./useSearch";
-import type { Bot, Memory } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type Memory } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
-import { setBot } from "./query";
+import { patch, setBot } from "./query";
 import { day } from "./format";
 
 // match turns a cosine distance (0 = same, 2 = opposite) into a 0–100 score.
@@ -60,31 +61,21 @@ function CorePanel({ bot, onError }: { bot: Bot; onError: (s: string) => void })
 // by meaning for a query. The Bot writes them with `remember`; the human reads,
 // searches and deletes.
 function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string) => void }) {
-  const [all, setAll] = useState<Memory[] | null>(null);
+  const q = useQuery(UI.method.listMemories, { botId });
+  const all = q.data?.memories ?? null;
   const [query, setQuery] = useState("");
   const { hits, setHits, searching, error: searchErr } = useSearch<Memory>(query, (q) => ui.searchMemories({ botId, query: q }).then((r) => r.memories), 350, [botId]);
 
+  useEffect(() => setQuery(""), [botId]);
   useEffect(() => {
-    let dead = false;
-    setAll(null);
-    setQuery("");
-    ui.listMemories({ botId })
-      .then((r) => {
-        if (!dead) setAll(r.memories);
-      })
-      .catch((e) => {
-        if (!dead) onError(fail(e));
-      });
-    return () => {
-      dead = true;
-    };
-  }, [botId]);
+    if (q.error) onError(fail(q.error));
+  }, [q.error]);
 
   async function remove(id: string) {
     onError("");
     try {
       await ui.deleteMemory({ botId, id });
-      setAll((cur) => (cur ?? []).filter((m) => m.id !== id));
+      patch(UI.method.listMemories, { botId }, (r) => ({ ...r, memories: r.memories.filter((m) => m.id !== id) }));
       setHits((cur) => (cur ? cur.filter((m) => m.id !== id) : cur));
     } catch (e) {
       onError(fail(e));

@@ -1,11 +1,12 @@
 import { ChevronLeft, ChevronRight, Square } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { chatLink } from "./links";
 import { ui } from "./api";
 import type { Artifact } from "./Artifact";
 import { Btn } from "./Btn";
-import type { Subagent } from "./gen/silo/v1/ui_pb";
+import { UI } from "./gen/silo/v1/ui_pb";
 import { Lamp } from "./Lamp";
 import { SkeletonRows } from "./Field";
 import { Taskboard } from "./Taskboard";
@@ -38,28 +39,12 @@ export function SubagentPage({
   onInspectArtifact: (a: Artifact) => void;
   onSaveSkill: (a: Artifact) => void;
 }) {
-  const [sa, setSa] = useState<Subagent | null>(null);
-  const [gone, setGone] = useState(false);
+  const q = useQuery(UI.method.getSubagent, { botId, id: agentId }, { refetchInterval: 3000, retry: false });
+  const sa = q.data ?? null;
+  const gone = !sa && !!q.error;
   const [brief, setBrief] = useState(false);
   const { board, refresh } = useSubagents(botId, sa?.chatId, { lead: false });
   const stream = useRunStream(botId, sa?.chatId, { onApproval: onApprovals, onDone: refresh });
-
-  useEffect(() => {
-    let dead = false;
-    setSa(null);
-    setGone(false);
-    const load = () =>
-      ui
-        .getSubagent({ botId, id: agentId })
-        .then((r) => !dead && setSa(r))
-        .catch(() => !dead && setGone(true));
-    load();
-    const t = setInterval(load, 3000);
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, [botId, agentId]);
 
   const back = chatLink(botId, chatId);
   if (!sa) {
