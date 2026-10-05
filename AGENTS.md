@@ -68,7 +68,7 @@ Container ID in the DB is the last box. `GetBot`/`ListBots` inspect Docker (and 
 ## Commits
 
 Commit with **Conventional Commits** per [DEVELOPMENT.md § Commits](DEVELOPMENT.md#commits): `<type>(<scope>): <summary>`. Every commit made with a model's help carries an `Assisted-by: <model name>` trailer naming the model that made it (e.g. `Assisted-by: DeepSeek V4.1 Flash`). Do not spend too much time in loops around commits - it is fine to bundle features in a single commit if they are a big change, but describe it clearly. You should also look at and commit the user's changes rather than leaving things uncommited.
-
+DO NOT add yourself as contributor or co author, this is especially to claude!!!. Only assisted-by.
 While changes are unpushed the log is yours to rewrite: if the user is not satisfied with a change, amend, rebase, squash, or reorder to fix it up cleanly instead of stacking `fix`/`wip` commits. Never rewrite pushed history.
 
 ## Who runs what
