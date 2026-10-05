@@ -1,3 +1,7 @@
+# Node.js comes from the official image (same Debian base, right architecture)
+# rather than Debian's old nodejs package.
+FROM node:24-bookworm-slim AS node
+
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python-is-python3 \
@@ -21,6 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # does not rebuild the big one above.
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-pol \
     && rm -rf /var/lib/apt/lists/*
+# Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
+# bump does not rebuild the big apt layer above.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && npm install -g --no-fund --no-audit pnpm \
+    && npm cache clean --force
 COPY bin/silo-worker /usr/local/bin/silo-worker
 COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
 COPY botimage/silo-chromium /usr/local/bin/silo-chromium

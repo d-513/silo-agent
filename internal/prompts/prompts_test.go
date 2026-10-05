@@ -22,6 +22,16 @@ func TestSystemPromptKeepsHardRules(t *testing.T) {
 	}
 }
 
+// The box ships Node.js and pnpm (botimage/Containerfile); the model only
+// reaches for them if the prompt says they are there.
+func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
+	for _, want := range []string{"Node.js", "npm", "pnpm"} {
+		if !strings.Contains(System, want) {
+			t.Fatalf("SYSTEM.md does not say %s is installed", want)
+		}
+	}
+}
+
 func TestChannelPromptTeachesSections(t *testing.T) {
 	if !strings.Contains(Channel, "<section_send />") {
 		t.Fatal("CHANNEL.md no longer teaches the section sentinel")
