@@ -188,7 +188,7 @@ internal/app/…      one package per domain the app is built from, each a Servi
 internal/textx      string helpers (valid UTF-8, caps, clips) shared by the above
 internal/rpcx       ConnectRPC plumbing shared by the CP and everything that dials it: h2c client, Bearer interceptor, EnableH2C
 internal/desktop    what the CP and the worker agree on about the Bot's X11 desktop (screen size, point check)
-internal/channels   channel adapter engine (telegram/ is gotd MTProto; GUIDE.md go:embed’d)
+internal/channels   channel adapter engine (telegram/ gotd MTProto, whatsapp/ whatsmeow, discord/ discordgo; GUIDE.md go:embed’d)
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)
 botimage/           Containerfile, start.sh, Thunar, wallpaper, dock

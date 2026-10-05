@@ -172,6 +172,9 @@ type Host interface {
 	CurrentChannel(id string) (*db.Channel, bool)
 	// DataDir is the Control Plane's data directory, for adapter sessions.
 	DataDir() string
+	// DatabaseURL is the Control Plane's Postgres, for an adapter whose library
+	// keeps its session in SQL (WhatsApp). It carries the password: never log it.
+	DatabaseURL() string
 }
 
 // Adapter is one built-in transport.
@@ -190,6 +193,14 @@ type Adapter interface {
 	History(ctx context.Context, ch *db.Channel, cfg Config, externalID string, limit int) ([]Message, error)
 	// Action handles a UI-initiated adapter action (list_dialogs, refresh, …).
 	Action(ctx context.Context, ch *db.Channel, cfg Config, action string, payload map[string]string) (State, error)
+}
+
+// Remover is an optional Adapter hook. The host calls it when a channel is
+// deleted, before its worker stops, so a transport can end its own session: the
+// WhatsApp adapter unlinks the device from the owner's phone and drops its keys.
+// A failure is logged, never blocks the delete.
+type Remover interface {
+	Remove(ctx context.Context, ch *db.Channel, host Host) error
 }
 
 var (

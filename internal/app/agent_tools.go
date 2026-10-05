@@ -231,7 +231,7 @@ var toolDefs = []llm.Tool{
 			"port": map[string]any{"type": "integer"},
 		},
 	}),
-	tool("channel", "Send a message to one of this Bot's channels (Telegram, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
+	tool("channel", "Send a message to one of this Bot's channels (Telegram, WhatsApp, Discord, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.", map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"channel": map[string]any{"type": "string", "description": "channel name; omit for the current channel"},

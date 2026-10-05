@@ -65,7 +65,7 @@ type Rule struct {
 type Chat struct {
 	ID string `gorm:"primaryKey"`
 	// ChannelID is empty for a Web UI chat. Non-empty binds the thread to a
-	// channel (Telegram, …) and ExternalID is the adapter's conversation id.
+	// channel (Telegram, WhatsApp, Discord, …) and ExternalID is the adapter's conversation id.
 	BotID      string `gorm:"index"`
 	ChannelID  string `gorm:"index"`
 	ExternalID string

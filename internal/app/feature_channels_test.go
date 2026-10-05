@@ -237,3 +237,46 @@ func TestDeleteChannelClearsItsConversationsSecretsAndRules(t *testing.T) {
 		t.Fatal("the channel row survives")
 	}
 }
+
+// removableAdapter is a fake adapter that ends a session of its own when its
+// channel is deleted, as the WhatsApp adapter does.
+type removableAdapter struct {
+	*apptest.FakeAdapter
+	err     error
+	removed chan db.Channel
+}
+
+func (r *removableAdapter) Remove(_ context.Context, ch *db.Channel, _ channels.Host) error {
+	r.removed <- *ch
+	return r.err
+}
+
+func TestDeleteChannelLetsTheAdapterEndItsSession(t *testing.T) {
+	for name, removeErr := range map[string]error{"clean": nil, "failing": context.DeadlineExceeded} {
+		t.Run(name, func(t *testing.T) {
+			slug := apptest.UniqueSlug("rmchan")
+			adapter := &removableAdapter{FakeAdapter: apptest.NewFakeAdapter(slug), err: removeErr, removed: make(chan db.Channel, 1)}
+			channels.Register(adapter)
+			h := apptest.New(t)
+			bot := h.CreateBot("Unlink")
+			ch := newInboundChannel(t, h, bot.GetId(), adapter.FakeAdapter, slug, "chat-4")
+
+			if _, err := h.Client.DeleteChannel(h.Ctx(), connect.NewRequest(&v1.DeleteChannelRequest{BotId: bot.GetId(), Id: ch.ID})); err != nil {
+				t.Fatalf("a session that cannot be ended must not block the delete: %v", err)
+			}
+			select {
+			case got := <-adapter.removed:
+				if got.ID != ch.ID || got.BotID != bot.GetId() {
+					t.Fatalf("Remove got %+v", got)
+				}
+			default:
+				t.Fatal("the adapter was never asked to end its session")
+			}
+			var n int64
+			h.DB.Model(&db.Channel{}).Where("id = ?", ch.ID).Count(&n)
+			if n != 0 {
+				t.Fatal("the channel row survives")
+			}
+		})
+	}
+}

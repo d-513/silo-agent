@@ -27,7 +27,9 @@ import (
 	"silo.agent/internal/prompts"
 
 	// Register built-in adapters.
+	_ "silo.agent/internal/channels/discord"
 	_ "silo.agent/internal/channels/telegram"
+	_ "silo.agent/internal/channels/whatsapp"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -88,6 +90,8 @@ func (h adapterHost) CurrentChannel(id string) (*db.Channel, bool) {
 }
 
 func (h adapterHost) DataDir() string { return h.s.cfg().DataDir }
+
+func (h adapterHost) DatabaseURL() string { return h.s.cfg().DatabaseURL }
 
 // --- config ---
 
@@ -573,6 +577,7 @@ func (s *Service) clearChannelChats(channelID string) {
 }
 
 func (s *Service) Delete(ch *db.Channel) {
+	s.removeSession(ch)
 	s.stopChannel(ch.ID)
 	s.clearChannelChats(ch.ID)
 	s.db.Where("bot_id = ? AND name LIKE ?", ch.BotID, "channel."+ch.ID+".%").Delete(&db.Secret{})
@@ -581,6 +586,26 @@ func (s *Service) Delete(ch *db.Channel) {
 	s.mu.Lock()
 	delete(s.states, ch.ID)
 	s.mu.Unlock()
+}
+
+// removeSession lets an adapter end its own session before the channel goes
+// (WhatsApp unlinks the device from the owner's phone and drops its keys). It
+// runs before the worker stops, while the session is still connected. A failure
+// is logged and never keeps the owner from deleting the channel.
+func (s *Service) removeSession(ch *db.Channel) {
+	ad, ok := channels.Lookup(ch.Adapter)
+	if !ok {
+		return
+	}
+	rm, ok := ad.(channels.Remover)
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := rm.Remove(ctx, ch, adapterHost{s}); err != nil {
+		log.Printf("channel %s (%s): end session: %v", ch.ID, ch.Adapter, err)
+	}
 }
 
 func (s *Service) ChannelAction(ctx context.Context, req *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error) {
