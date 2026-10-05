@@ -43,6 +43,8 @@ const (
 	BotWorkerVNCProcedure = "/silo.v1.BotWorker/VNC"
 	// BotWorkerConsoleProcedure is the fully-qualified name of the BotWorker's Console RPC.
 	BotWorkerConsoleProcedure = "/silo.v1.BotWorker/Console"
+	// BotWorkerTunnelProcedure is the fully-qualified name of the BotWorker's Tunnel RPC.
+	BotWorkerTunnelProcedure = "/silo.v1.BotWorker/Tunnel"
 )
 
 // BotWorkerClient is a client for the silo.v1.BotWorker service.
@@ -52,6 +54,9 @@ type BotWorkerClient interface {
 	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context) *connect.BidiStreamForClient[v1.Frame, v1.Frame]
 	Console(context.Context) *connect.BidiStreamForClient[v1.ConsoleIO, v1.ConsoleIO]
+	// Tunnel carries one proxied TCP connection into the Bot: the CP asks for it
+	// with Cmd.open_tunnel, the worker dials the port and opens this stream.
+	Tunnel(context.Context) *connect.BidiStreamForClient[v1.TunnelFrame, v1.TunnelFrame]
 }
 
 // NewBotWorkerClient constructs a client for the silo.v1.BotWorker service. By default, it uses the
@@ -95,6 +100,12 @@ func NewBotWorkerClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(botWorkerMethods.ByName("Console")),
 			connect.WithClientOptions(opts...),
 		),
+		tunnel: connect.NewClient[v1.TunnelFrame, v1.TunnelFrame](
+			httpClient,
+			baseURL+BotWorkerTunnelProcedure,
+			connect.WithSchema(botWorkerMethods.ByName("Tunnel")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -105,6 +116,7 @@ type botWorkerClient struct {
 	callTool  *connect.Client[v1.ToolReq, v1.ToolRes]
 	vNC       *connect.Client[v1.Frame, v1.Frame]
 	console   *connect.Client[v1.ConsoleIO, v1.ConsoleIO]
+	tunnel    *connect.Client[v1.TunnelFrame, v1.TunnelFrame]
 }
 
 // Commands calls silo.v1.BotWorker.Commands.
@@ -132,6 +144,11 @@ func (c *botWorkerClient) Console(ctx context.Context) *connect.BidiStreamForCli
 	return c.console.CallBidiStream(ctx)
 }
 
+// Tunnel calls silo.v1.BotWorker.Tunnel.
+func (c *botWorkerClient) Tunnel(ctx context.Context) *connect.BidiStreamForClient[v1.TunnelFrame, v1.TunnelFrame] {
+	return c.tunnel.CallBidiStream(ctx)
+}
+
 // BotWorkerHandler is an implementation of the silo.v1.BotWorker service.
 type BotWorkerHandler interface {
 	Commands(context.Context, *connect.BidiStream[v1.CmdEvent, v1.Cmd]) error
@@ -139,6 +156,9 @@ type BotWorkerHandler interface {
 	CallTool(context.Context, *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error)
 	VNC(context.Context, *connect.BidiStream[v1.Frame, v1.Frame]) error
 	Console(context.Context, *connect.BidiStream[v1.ConsoleIO, v1.ConsoleIO]) error
+	// Tunnel carries one proxied TCP connection into the Bot: the CP asks for it
+	// with Cmd.open_tunnel, the worker dials the port and opens this stream.
+	Tunnel(context.Context, *connect.BidiStream[v1.TunnelFrame, v1.TunnelFrame]) error
 }
 
 // NewBotWorkerHandler builds an HTTP handler from the service implementation. It returns the path
@@ -178,6 +198,12 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(botWorkerMethods.ByName("Console")),
 		connect.WithHandlerOptions(opts...),
 	)
+	botWorkerTunnelHandler := connect.NewBidiStreamHandler(
+		BotWorkerTunnelProcedure,
+		svc.Tunnel,
+		connect.WithSchema(botWorkerMethods.ByName("Tunnel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.BotWorker/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BotWorkerCommandsProcedure:
@@ -190,6 +216,8 @@ func NewBotWorkerHandler(svc BotWorkerHandler, opts ...connect.HandlerOption) (s
 			botWorkerVNCHandler.ServeHTTP(w, r)
 		case BotWorkerConsoleProcedure:
 			botWorkerConsoleHandler.ServeHTTP(w, r)
+		case BotWorkerTunnelProcedure:
+			botWorkerTunnelHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -217,4 +245,8 @@ func (UnimplementedBotWorkerHandler) VNC(context.Context, *connect.BidiStream[v1
 
 func (UnimplementedBotWorkerHandler) Console(context.Context, *connect.BidiStream[v1.ConsoleIO, v1.ConsoleIO]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.Console is not implemented"))
+}
+
+func (UnimplementedBotWorkerHandler) Tunnel(context.Context, *connect.BidiStream[v1.TunnelFrame, v1.TunnelFrame]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.BotWorker.Tunnel is not implemented"))
 }

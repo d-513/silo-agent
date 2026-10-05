@@ -10,6 +10,9 @@ service BotWorker {
   rpc CallTool(ToolReq) returns (ToolRes);
   rpc VNC(stream Frame) returns (stream Frame);
   rpc Console(stream ConsoleIO) returns (stream ConsoleIO);
+  // Tunnel carries one proxied TCP connection into the Bot: the CP asks for it
+  // with Cmd.open_tunnel, the worker dials the port and opens this stream.
+  rpc Tunnel(stream TunnelFrame) returns (stream TunnelFrame);
 }
 
 message Cmd {
@@ -38,6 +41,7 @@ message Cmd {
     SyncSkillsCmd sync_skills = 22;
     WalkCmd walk = 23;
     ExtractCmd extract = 24;
+    OpenTunnelCmd open_tunnel = 25;
   }
 }
 
@@ -127,6 +131,23 @@ message ExtractCmd {
   // Read scanned PDF pages and image files with tesseract. Off, a scan is
   // reported (detail says OCR is off) instead of read.
   bool ocr = 3;
+}
+
+// OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open
+// a Tunnel stream for it, named conn_id. It gets no CmdDone: the stream is the
+// answer.
+message OpenTunnelCmd {
+  string conn_id = 1;
+  int32 port = 2;
+}
+
+// TunnelFrame is one chunk of a proxied connection. The worker's first frame
+// names the connection (conn_id) or reports a failed dial (error); every later
+// frame, in both directions, carries data only.
+message TunnelFrame {
+  string conn_id = 1;
+  bytes data = 2;
+  string error = 3;
 }
 
 message MkdirCmd {

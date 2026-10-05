@@ -127,6 +127,11 @@ func (w *worker) commands(client silov1connect.BotWorkerClient) error {
 		if err != nil {
 			return err
 		}
+		if open := cmd.GetOpenTunnel(); open != nil {
+			// A tunnel is a stream of its own, not a command: no timeout, no CmdDone.
+			go w.openTunnel(client, open.GetConnId(), int(open.GetPort()))
+			continue
+		}
 		go w.run(st, cmd)
 	}
 }

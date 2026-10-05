@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Cmd, CmdEvent, ConsoleIO, Frame, SecretReq, SecretRes, ToolReq, ToolRes } from "./worker_pb.js";
+import { Cmd, CmdEvent, ConsoleIO, Frame, SecretReq, SecretRes, ToolReq, ToolRes, TunnelFrame } from "./worker_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,18 @@ export const BotWorker = {
       name: "Console",
       I: ConsoleIO,
       O: ConsoleIO,
+      kind: MethodKind.BiDiStreaming,
+    },
+    /**
+     * Tunnel carries one proxied TCP connection into the Bot: the CP asks for it
+     * with Cmd.open_tunnel, the worker dials the port and opens this stream.
+     *
+     * @generated from rpc silo.v1.BotWorker.Tunnel
+     */
+    tunnel: {
+      name: "Tunnel",
+      I: TunnelFrame,
+      O: TunnelFrame,
       kind: MethodKind.BiDiStreaming,
     },
   }

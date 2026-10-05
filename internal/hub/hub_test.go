@@ -3,6 +3,8 @@ package hub
 import (
 	"context"
 	"errors"
+	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -286,5 +288,163 @@ func TestWaitConnected(t *testing.T) {
 	cancel()
 	if h.WaitConnected(cctx, "b2", 5*time.Second) {
 		t.Fatal("a canceled wait must give up")
+	}
+}
+
+// openedTunnel waits for the OpenTunnel command DialTunnel queues.
+func openedTunnel(t *testing.T, s *Session) *v1.OpenTunnelCmd {
+	t.Helper()
+	select {
+	case cmd := <-s.Send:
+		open := cmd.GetOpenTunnel()
+		if open == nil {
+			t.Fatalf("queued %T, want open_tunnel", cmd.GetBody())
+		}
+		if cmd.GetId() != open.GetConnId() {
+			t.Fatalf("cmd id %q != conn id %q", cmd.GetId(), open.GetConnId())
+		}
+		return open
+	case <-time.After(time.Second):
+		t.Fatal("no open_tunnel command queued")
+		return nil
+	}
+}
+
+func TestDialTunnelReturnsTheClaimedConn(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	got := make(chan net.Conn, 1)
+	go func() {
+		c, err := h.DialTunnel(context.Background(), "bot", 8000)
+		if err != nil {
+			t.Error(err)
+		}
+		got <- c
+	}()
+	open := openedTunnel(t, s)
+	if open.GetPort() != 8000 {
+		t.Fatalf("port = %d", open.GetPort())
+	}
+	deliver, ok := s.ClaimTunnel(open.GetConnId())
+	if !ok {
+		t.Fatal("claim refused")
+	}
+	a, b := net.Pipe()
+	defer b.Close()
+	deliver(a, nil)
+	select {
+	case c := <-got:
+		if c != a {
+			t.Fatal("DialTunnel returned another conn")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("DialTunnel never returned")
+	}
+}
+
+func TestDialTunnelNoWorker(t *testing.T) {
+	if _, err := New().DialTunnel(context.Background(), "bot", 80); !errors.Is(err, ErrNoWorker) {
+		t.Fatalf("err = %v, want ErrNoWorker", err)
+	}
+}
+
+func TestDialTunnelDeliveredError(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	errc := make(chan error, 1)
+	go func() {
+		_, err := h.DialTunnel(context.Background(), "bot", 80)
+		errc <- err
+	}()
+	deliver, _ := s.ClaimTunnel(openedTunnel(t, s).GetConnId())
+	deliver(nil, errors.New("connection refused"))
+	if err := <-errc; err == nil || err.Error() != "connection refused" {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestDialTunnelClaimIsOneShot(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	go h.DialTunnel(context.Background(), "bot", 80)
+	id := openedTunnel(t, s).GetConnId()
+	if _, ok := s.ClaimTunnel("nope"); ok {
+		t.Fatal("claimed an unknown id")
+	}
+	if _, ok := s.ClaimTunnel(id); !ok {
+		t.Fatal("first claim refused")
+	}
+	if _, ok := s.ClaimTunnel(id); ok {
+		t.Fatal("second claim of the same id succeeded")
+	}
+}
+
+func TestDialTunnelContextEnds(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	ctx, cancel := context.WithCancel(context.Background())
+	errc := make(chan error, 1)
+	go func() {
+		_, err := h.DialTunnel(ctx, "bot", 80)
+		errc <- err
+	}()
+	id := openedTunnel(t, s).GetConnId()
+	cancel()
+	if err := <-errc; !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+	if _, ok := s.ClaimTunnel(id); ok {
+		t.Fatal("a late worker could still claim an abandoned dial")
+	}
+}
+
+func TestDialTunnelTimesOut(t *testing.T) {
+	old := TunnelTimeout
+	TunnelTimeout = 30 * time.Millisecond
+	defer func() { TunnelTimeout = old }()
+	h := New()
+	h.Attach("bot")
+	if _, err := h.DialTunnel(context.Background(), "bot", 80); !errors.Is(err, ErrTunnelTimeout) {
+		t.Fatalf("err = %v, want ErrTunnelTimeout", err)
+	}
+}
+
+func TestDialTunnelSessionDies(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	errc := make(chan error, 1)
+	go func() {
+		_, err := h.DialTunnel(context.Background(), "bot", 80)
+		errc <- err
+	}()
+	openedTunnel(t, s)
+	h.Detach("bot", s)
+	if err := <-errc; !errors.Is(err, ErrClosed) {
+		t.Fatalf("err = %v, want ErrClosed", err)
+	}
+}
+
+// A worker that claims just as the dialer gives up must not leave the conn open.
+func TestDialTunnelClosesAConnDeliveredAfterTheDialerLeft(t *testing.T) {
+	h := New()
+	s := h.Attach("bot")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		h.DialTunnel(ctx, "bot", 80)
+		close(done)
+	}()
+	deliver, ok := s.ClaimTunnel(openedTunnel(t, s).GetConnId())
+	if !ok {
+		t.Fatal("claim refused")
+	}
+	cancel()
+	<-done
+	a, b := net.Pipe()
+	defer b.Close()
+	deliver(a, nil)
+	b.SetReadDeadline(time.Now().Add(time.Second))
+	if _, err := b.Read(make([]byte, 1)); err == nil || errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatalf("delivered conn was left open: %v", err)
 	}
 }

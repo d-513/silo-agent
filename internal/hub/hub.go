@@ -155,18 +155,21 @@ type Session struct {
 
 	mu   sync.Mutex
 	wait map[string]chan Result
-	dead chan struct{}
-	once sync.Once
+	// tunnels are dials waiting for the worker to claim its Tunnel stream.
+	tunnels map[string]chan tunnelResult
+	dead    chan struct{}
+	once    sync.Once
 }
 
 func newSession(botID string) *Session {
 	return &Session{
-		BotID: botID,
-		Send:  make(chan *v1.Cmd, 8),
-		vnc:   newLane[[]byte](),
-		con:   newLane[ConsoleMsg](),
-		wait:  map[string]chan Result{},
-		dead:  make(chan struct{}),
+		BotID:   botID,
+		Send:    make(chan *v1.Cmd, 8),
+		vnc:     newLane[[]byte](),
+		con:     newLane[ConsoleMsg](),
+		wait:    map[string]chan Result{},
+		tunnels: map[string]chan tunnelResult{},
+		dead:    make(chan struct{}),
 	}
 }
 

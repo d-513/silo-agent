@@ -15,6 +15,7 @@ import (
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
+	"silo.agent/internal/tunnel"
 )
 
 func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEvent, v1.Cmd]) error {
@@ -276,6 +277,71 @@ func (a *App) Console(ctx context.Context, stream *connect.BidiStream[v1.Console
 			}
 		}
 	}
+}
+
+// Tunnel is the worker's side of one proxied connection: it claims the dial the
+// CP queued with OpenTunnel (named by the first frame), and from then on the
+// stream is the conn the proxy talks HTTP over. It returns when the conn closes.
+func (a *App) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.TunnelFrame, v1.TunnelFrame]) error {
+	bot := currentBot(ctx)
+	sess := a.Hub.Get(bot.ID)
+	if sess == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("no command session"))
+	}
+	first, err := stream.Receive()
+	if err != nil {
+		return err
+	}
+	deliver, ok := sess.ClaimTunnel(first.GetConnId())
+	if !ok {
+		return connect.NewError(connect.CodeNotFound, errors.New("unknown or expired tunnel"))
+	}
+	if msg := first.GetError(); msg != "" {
+		deliver(nil, errors.New(msg))
+		return nil
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	// connect forbids Send once the handler has returned, but the conn's write
+	// goroutine can outlive a closed conn. The guard waits out an in-flight Send
+	// before returning (bounded: a Send stuck on a stalled worker must not hold
+	// the handler forever) and refuses any later one.
+	send := make(chan struct{}, 1)
+	finished := false
+	defer func() {
+		select {
+		case send <- struct{}{}:
+			finished = true
+			<-send
+		case <-time.After(5 * time.Second):
+		}
+	}()
+	deliver(tunnel.New(tunnel.Funcs{
+		SendFn: func(b []byte) error {
+			send <- struct{}{}
+			defer func() { <-send }()
+			if finished {
+				return io.ErrClosedPipe
+			}
+			return stream.Send(&v1.TunnelFrame{Data: b})
+		},
+		RecvFn: func() ([]byte, error) {
+			fr, err := stream.Receive()
+			if err != nil {
+				return nil, err
+			}
+			return fr.GetData(), nil
+		},
+		CloseFn: func() error {
+			cancel()
+			return nil
+		},
+	}), nil)
+	select {
+	case <-ctx.Done():
+	case <-sess.Done():
+	}
+	return nil
 }
 
 func (a *App) ruleDecision(botID, conn, action, fallback string) string {
