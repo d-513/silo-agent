@@ -3,7 +3,6 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ui } from "../api";
-import type { SubPage } from "../bot/context";
 import { Btn, btnClass } from "../Btn";
 import { ErrorWell, SkeletonRows } from "../Field";
 import { PageHead } from "../PageHead";
@@ -17,9 +16,9 @@ import { Gallery } from "./Gallery";
 
 const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", "s3", "r2", "b2", "sftp"];
 
-// The Drives tab: the list, and the pages it opens (`at`: new is the provider
-// gallery, add a provider, edit a drive).
-export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; admin: boolean }) {
+// A Bot's drives and the provider templates, shared by the pages of the
+// Drives tab (each a route in router.tsx).
+function useDrives(botId: string) {
   const navigate = useNavigate();
   const templatesQ = useQuery(UI.method.listDriveTemplates, {});
   // Poll quickly while something is connecting, slowly otherwise.
@@ -30,20 +29,59 @@ export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; ad
   );
   const templates = templatesQ.data?.templates ?? null;
   const drives = drivesQ.data?.drives ?? null;
-  const bindOk = drivesQ.data?.bindOk ?? true;
-  const [actErr, setErr] = useState("");
   const failed = templatesQ.error ?? drivesQ.error;
-  const err = actErr || (failed ? fail(failed) : "");
   const refresh = useCallback(() => reload(UI.method.listDrives, { botId }), [botId]);
   // Leaving a form rereads the list: it may have added or changed a drive.
   const back = useCallback(() => {
     void refresh();
     void navigate({ to: "/bots/$botId/drives", params: { botId } });
   }, [botId, navigate, refresh]);
-  const gallery = () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } });
-
   const byKey = useMemo(() => new Map((templates ?? []).map((t) => [t.key, t])), [templates]);
   const taken = useMemo(() => new Set((drives ?? []).map((d) => d.name)), [drives]);
+  return {
+    templates,
+    drives,
+    bindOk: drivesQ.data?.bindOk ?? true,
+    loadErr: failed ? fail(failed) : "",
+    refresh,
+    back,
+    gallery: () => void navigate({ to: "/bots/$botId/drives/new", params: { botId } }),
+    byKey,
+    taken,
+  };
+}
+
+// /bots/$botId/drives/new: the provider gallery.
+export function DriveNew({ botId, admin }: { botId: string; admin: boolean }) {
+  const { templates, back } = useDrives(botId);
+  return templates ? <Gallery botId={botId} templates={templates} admin={admin} onBack={back} /> : <Loading onBack={back} />;
+}
+
+// /bots/$botId/drives/new/$template: the form for a new drive.
+export function DriveAdd({ botId, template }: { botId: string; template: string }) {
+  const { templates, drives, byKey, taken, back } = useDrives(botId);
+  const t = byKey.get(template);
+  if (!templates || !drives) return <Loading onBack={back} />;
+  if (!t) return <Missing onBack={back} />;
+  return <DriveForm key={t.key} botId={botId} t={t} taken={taken} onDone={back} />;
+}
+
+// /bots/$botId/drives/$driveId: edit a drive.
+export function DriveEdit({ botId, driveId }: { botId: string; driveId: string }) {
+  const { templates, drives, byKey, taken, back } = useDrives(botId);
+  if (!templates || !drives) return <Loading onBack={back} />;
+  const d = drives.find((x) => x.id === driveId);
+  const t = d && byKey.get(d.template);
+  if (!d || !t) return <Missing onBack={back} />;
+  return <DriveForm key={d.id} botId={botId} t={t} drive={d} taken={taken} onDone={back} />;
+}
+
+// /bots/$botId/drives: the Bot's drives.
+export function DrivesList({ botId }: { botId: string }) {
+  const navigate = useNavigate();
+  const { templates, drives, bindOk, loadErr, refresh, gallery, byKey } = useDrives(botId);
+  const [actErr, setErr] = useState("");
+  const err = actErr || loadErr;
 
   async function reconnect(d: Drive) {
     const w = window.open("about:blank", "silo-drive-auth", "width=520,height=720");
@@ -62,23 +100,6 @@ export function BotDrives({ botId, at, admin }: { botId: string; at: SubPage; ad
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [refresh]);
-
-  if (at.view === "new") {
-    return templates ? <Gallery botId={botId} templates={templates} admin={admin} onBack={back} /> : <Loading onBack={back} />;
-  }
-  if (at.view === "add") {
-    const t = byKey.get(at.id ?? "");
-    if (!templates || !drives) return <Loading onBack={back} />;
-    if (!t) return <Missing onBack={back} />;
-    return <DriveForm key={t.key} botId={botId} t={t} taken={taken} onDone={back} />;
-  }
-  if (at.view === "edit") {
-    if (!templates || !drives) return <Loading onBack={back} />;
-    const d = drives.find((x) => x.id === at.id);
-    const t = d && byKey.get(d.template);
-    if (!d || !t) return <Missing onBack={back} />;
-    return <DriveForm key={d.id} botId={botId} t={t} drive={d} taken={taken} onDone={back} />;
-  }
 
   return (
     <div className="silo-page">

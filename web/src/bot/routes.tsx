@@ -1,9 +1,9 @@
-import { Outlet, useMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Suspense, type ReactNode } from "react";
 import { lazyNamed } from "../lazyNamed";
 import { chatLink } from "../links";
 import { PaneFallback } from "../PaneFallback";
-import { useBotPage, type SubPage } from "./context";
+import { useBotPage } from "./context";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatStrip } from "./ChatStrip";
 import { RunPane } from "./RunPane";
@@ -13,15 +13,24 @@ import { patchChats } from "./useChatList";
 // The pages under /bots/$botId (router.tsx). Each is a thin adapter: it takes
 // what its pane needs from BotPage and renders the pane. Everything but the
 // chat is loaded the first time its tab opens.
-const AutomationsPane = lazyNamed(() => import("../Automations"), "AutomationsPane");
+const AutomationsList = lazyNamed(() => import("../Automations"), "AutomationsList");
+const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew");
+const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
-const BotDrives = lazyNamed(() => import("../drives/BotDrives"), "BotDrives");
-const BotChannels = lazyNamed(() => import("../channels/BotChannels"), "BotChannels");
+const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
+const DriveNew = lazyNamed(() => import("../drives/BotDrives"), "DriveNew");
+const DriveAdd = lazyNamed(() => import("../drives/BotDrives"), "DriveAdd");
+const DriveEdit = lazyNamed(() => import("../drives/BotDrives"), "DriveEdit");
+const ChannelsList = lazyNamed(() => import("../channels/BotChannels"), "ChannelsList");
+const ChannelNew = lazyNamed(() => import("../channels/BotChannels"), "ChannelNew");
+const ChannelAdd = lazyNamed(() => import("../channels/BotChannels"), "ChannelAdd");
+const ChannelEdit = lazyNamed(() => import("../channels/BotChannels"), "ChannelEdit");
+const ChannelSetupPage = lazyNamed(() => import("../channels/BotChannels"), "ChannelSetupPage");
 const TunnelsPane = lazyNamed(() => import("./Tunnels"), "TunnelsPane");
 const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
 const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
@@ -37,11 +46,13 @@ function ScrollPane({ children }: { children: ReactNode }) {
   );
 }
 
-// Which sub-page of a pane the URL names.
-function useSubPage(): SubPage {
-  const view = useMatches({ select: (ms) => ms[ms.length - 1]?.staticData.view });
-  const p = useParams({ strict: false });
-  return { view, id: p.automationId ?? p.channelId ?? p.adapter ?? p.driveId ?? p.template };
+// The frame of a tab with sub-pages: they scroll in it, one at a time.
+export function ScrollLayout() {
+  return (
+    <ScrollPane>
+      <Outlet />
+    </ScrollPane>
+  );
 }
 
 // The chat side: the chats column (a strip when narrow) beside whichever
@@ -124,13 +135,30 @@ export function AgentRoute() {
   );
 }
 
-export function AutomationsRoute() {
-  const p = useBotPage();
+// Automations lay themselves out (the log fills the height), so their frame
+// only waits for the code.
+export function AutomationsLayout() {
   return (
     <Suspense fallback={<PaneFallback />}>
-      <AutomationsPane bot={p.bot} at={useSubPage()} onError={p.onError} onApprovals={p.reloadApprovals} onInspectArtifact={p.inspectArtifact} onSaveSkill={p.saveSkill} />
+      <Outlet />
     </Suspense>
   );
+}
+
+export function AutomationsRoute() {
+  const p = useBotPage();
+  return <AutomationsList bot={p.bot} onError={p.onError} />;
+}
+
+export function AutomationNewRoute() {
+  const p = useBotPage();
+  return <AutomationNew bot={p.bot} onError={p.onError} />;
+}
+
+export function AutomationRoute() {
+  const p = useBotPage();
+  const { automationId } = useParams({ from: "/_authed/bots/$botId/_chat/automations/$automationId" });
+  return <AutomationLog key={automationId} bot={p.bot} automationId={automationId} onError={p.onError} onApprovals={p.reloadApprovals} onInspectArtifact={p.inspectArtifact} onSaveSkill={p.saveSkill} />;
 }
 
 export function MemoriesRoute() {
@@ -192,21 +220,45 @@ export function ConnectorsRoute() {
 }
 
 export function DrivesRoute() {
+  return <DrivesList botId={useBotPage().id} />;
+}
+
+export function DriveNewRoute() {
   const p = useBotPage();
-  return (
-    <ScrollPane>
-      <BotDrives botId={p.id} at={useSubPage()} admin={p.admin} />
-    </ScrollPane>
-  );
+  return <DriveNew botId={p.id} admin={p.admin} />;
+}
+
+export function DriveAddRoute() {
+  const { template } = useParams({ from: "/_authed/bots/$botId/drives/new/$template" });
+  return <DriveAdd botId={useBotPage().id} template={template} />;
+}
+
+export function DriveRoute() {
+  const { driveId } = useParams({ from: "/_authed/bots/$botId/drives/$driveId" });
+  return <DriveEdit botId={useBotPage().id} driveId={driveId} />;
 }
 
 export function ChannelsRoute() {
-  const p = useBotPage();
-  return (
-    <ScrollPane>
-      <BotChannels botId={p.id} at={useSubPage()} />
-    </ScrollPane>
-  );
+  return <ChannelsList botId={useBotPage().id} />;
+}
+
+export function ChannelNewRoute() {
+  return <ChannelNew botId={useBotPage().id} />;
+}
+
+export function ChannelAddRoute() {
+  const { adapter } = useParams({ from: "/_authed/bots/$botId/channels/new/$adapter" });
+  return <ChannelAdd botId={useBotPage().id} adapter={adapter} />;
+}
+
+export function ChannelRoute() {
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId" });
+  return <ChannelEdit botId={useBotPage().id} channelId={channelId} />;
+}
+
+export function ChannelSetupRoute() {
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId/setup" });
+  return <ChannelSetupPage botId={useBotPage().id} channelId={channelId} />;
 }
 
 export function TunnelsRoute() {

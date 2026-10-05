@@ -99,6 +99,28 @@ test("every route loads, stays put, and lights its tab", async ({ page }) => {
     await page.goto(`${bot}/channels/new/telegram`);
     await expect(page.getByText(/telegram/i).first()).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`${bot}/channels/new/telegram$`));
+    // Each sub-page is its own route with its own content.
+    await page.goto(`${bot}/automations/new`);
+    await expect(page.getByRole("heading", { name: "New automation" })).toBeVisible();
+    await page.goto(`${bot}/automations/nope`);
+    await expect(page.getByText("This automation is gone.")).toBeVisible();
+    await expect(litTab(page)).toContainText("Chat");
+    await page.goto(`${bot}/drives/new/sftp`);
+    await expect(page.getByText(/sftp/i).first()).toBeVisible();
+    await expect(litTab(page)).toContainText("Drives");
+    await page.goto(`${bot}/drives/nope`);
+    await expect(page.getByText("That drive is gone.")).toBeVisible();
+    await page.goto(`${bot}/channels/nope/setup`);
+    await expect(page.getByText("Opening…")).toBeVisible();
+    await expect(litTab(page)).toContainText("Channels");
+    // The pinned Heartbeat opens its log, and Back returns to the list.
+    await page.goto(`${bot}/automations`);
+    await page.getByRole("link", { name: /heartbeat/i }).first().click();
+    await expect(page).toHaveURL(new RegExp(`${bot}/automations/[^/]+$`));
+    await expect(page.getByText(/No runs yet/)).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "Automations" })).toBeVisible();
+
     await page.goto("/admin/connectors/new");
     await expect(page).toHaveURL(/\/admin\/connectors\/new$/);
     await page.goto("/skills");

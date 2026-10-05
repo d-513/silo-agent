@@ -3,11 +3,21 @@ import { getSession, onSession } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
   AgentRoute,
+  AutomationNewRoute,
+  AutomationRoute,
+  AutomationsLayout,
   AutomationsRoute,
+  ChannelAddRoute,
+  ChannelNewRoute,
+  ChannelRoute,
+  ChannelSetupRoute,
   ChannelsRoute,
   ChatLayout,
   ConnectorsRoute,
   ContainerRoute,
+  DriveAddRoute,
+  DriveNewRoute,
+  DriveRoute,
   DrivesRoute,
   FeedRoute,
   FilesRoute,
@@ -15,6 +25,7 @@ import {
   MemoriesRoute,
   RulesRoute,
   RunRoute,
+  ScrollLayout,
   SecretsRoute,
   SettingsRoute,
   SkillsRoute,
@@ -42,9 +53,7 @@ import { SignIn } from "./SignIn";
 //       desktop console files drives/… connectors channels/… tunnels skills
 //       secrets rules container settings
 //
-// `staticData.tab` is the tab a route lights; `staticData.view` names a
-// sub-page of a pane that keeps one component (and its loaded lists) mounted
-// across its sub-routes.
+// `staticData.tab` is the tab a route lights (a sub-page lights its parent's).
 
 declare module "@tanstack/react-router" {
   interface Register {
@@ -52,7 +61,6 @@ declare module "@tanstack/react-router" {
   }
   interface StaticDataRouteOption {
     tab?: Tab;
-    view?: "new" | "add" | "edit" | "setup";
   }
 }
 
@@ -142,9 +150,10 @@ const chat = createRoute({ getParentRoute: () => bot, id: "_chat", component: Ch
 const run = createRoute({ getParentRoute: () => chat, path: "run", staticData: { tab: "run" }, component: RunRoute });
 const runChat = createRoute({ getParentRoute: () => chat, path: "run/$chatId", staticData: { tab: "run" }, component: RunRoute });
 const runAgent = createRoute({ getParentRoute: () => chat, path: "run/$chatId/agent/$agentId", staticData: { tab: "run" }, component: AgentRoute });
-const automations = createRoute({ getParentRoute: () => chat, path: "automations", staticData: { tab: "automations" }, component: AutomationsRoute });
-const automationNew = createRoute({ getParentRoute: () => automations, path: "new", staticData: { view: "new" } });
-const automation = createRoute({ getParentRoute: () => automations, path: "$automationId", staticData: { view: "edit" } });
+const automations = createRoute({ getParentRoute: () => chat, path: "automations", staticData: { tab: "automations" }, component: AutomationsLayout });
+const automationsIndex = createRoute({ getParentRoute: () => automations, path: "/", component: AutomationsRoute });
+const automationNew = createRoute({ getParentRoute: () => automations, path: "new", component: AutomationNewRoute });
+const automation = createRoute({ getParentRoute: () => automations, path: "$automationId", component: AutomationRoute });
 const memories = createRoute({ getParentRoute: () => chat, path: "memories", staticData: { tab: "memories" }, component: MemoriesRoute });
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
@@ -161,16 +170,18 @@ const files = createRoute({
   validateSearch: (s: Record<string, unknown>): { open?: string } => (typeof s.open === "string" ? { open: s.open } : {}),
   component: FilesRoute,
 });
-const drives = createRoute({ getParentRoute: () => bot, path: "drives", staticData: { tab: "drives" }, component: DrivesRoute });
-const driveNew = createRoute({ getParentRoute: () => drives, path: "new", staticData: { view: "new" } });
-const driveAdd = createRoute({ getParentRoute: () => drives, path: "new/$template", staticData: { view: "add" } });
-const drive = createRoute({ getParentRoute: () => drives, path: "$driveId", staticData: { view: "edit" } });
+const drives = createRoute({ getParentRoute: () => bot, path: "drives", staticData: { tab: "drives" }, component: ScrollLayout });
+const drivesIndex = createRoute({ getParentRoute: () => drives, path: "/", component: DrivesRoute });
+const driveNew = createRoute({ getParentRoute: () => drives, path: "new", component: DriveNewRoute });
+const driveAdd = createRoute({ getParentRoute: () => drives, path: "new/$template", component: DriveAddRoute });
+const drive = createRoute({ getParentRoute: () => drives, path: "$driveId", component: DriveRoute });
 const connectors = createRoute({ getParentRoute: () => bot, path: "connectors", staticData: { tab: "connectors" }, component: ConnectorsRoute });
-const channels = createRoute({ getParentRoute: () => bot, path: "channels", staticData: { tab: "channels" }, component: ChannelsRoute });
-const channelNew = createRoute({ getParentRoute: () => channels, path: "new", staticData: { view: "new" } });
-const channelAdd = createRoute({ getParentRoute: () => channels, path: "new/$adapter", staticData: { view: "add" } });
-const channel = createRoute({ getParentRoute: () => channels, path: "$channelId", staticData: { view: "edit" } });
-const channelSetup = createRoute({ getParentRoute: () => channels, path: "$channelId/setup", staticData: { view: "setup" } });
+const channels = createRoute({ getParentRoute: () => bot, path: "channels", staticData: { tab: "channels" }, component: ScrollLayout });
+const channelsIndex = createRoute({ getParentRoute: () => channels, path: "/", component: ChannelsRoute });
+const channelNew = createRoute({ getParentRoute: () => channels, path: "new", component: ChannelNewRoute });
+const channelAdd = createRoute({ getParentRoute: () => channels, path: "new/$adapter", component: ChannelAddRoute });
+const channel = createRoute({ getParentRoute: () => channels, path: "$channelId", component: ChannelRoute });
+const channelSetup = createRoute({ getParentRoute: () => channels, path: "$channelId/setup", component: ChannelSetupRoute });
 const tunnels = createRoute({ getParentRoute: () => bot, path: "tunnels", staticData: { tab: "tunnels" }, component: TunnelsRoute });
 const botSkills = createRoute({ getParentRoute: () => bot, path: "skills", staticData: { tab: "skills" }, component: SkillsRoute });
 const secrets = createRoute({ getParentRoute: () => bot, path: "secrets", staticData: { tab: "secrets" }, component: SecretsRoute });
@@ -197,13 +208,13 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationNew, automation]), memories, knowledge, feed]),
+      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
       desktop,
       consoleTab,
       files,
-      drives.addChildren([driveNew, driveAdd, drive]),
+      drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
       connectors,
-      channels.addChildren([channelNew, channelAdd, channel, channelSetup]),
+      channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
       tunnels,
       botSkills,
       secrets,

@@ -2,7 +2,6 @@ import { ChevronRight, Plus, Radio } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SubPage } from "../bot/context";
 import { btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
@@ -28,54 +27,74 @@ function Opening({ onBack }: { onBack: () => void }) {
   );
 }
 
-// The Channels tab: the list, and the pages it opens (`at`: new, add an
-// adapter, edit, setup). Browser back works because each page is a route.
-export function BotChannels({ botId, at }: { botId: string; at: SubPage }) {
+// A Bot's channels and the adapters they can use, shared by the pages of the
+// Channels tab (each a route in router.tsx, so browser back works). The Bot
+// can be given channels from a chat too, so the list is polled.
+function useChannels(botId: string) {
   const navigate = useNavigate();
-  // The Bot can be given channels from a chat too, so the list is polled.
   const adaptersQ = useQuery(UI.method.listChannelAdapters, {});
   const channelsQ = useQuery(UI.method.listBotChannels, { botId }, { refetchInterval: 4000 });
   const adapters = adaptersQ.data?.adapters ?? noAdapters;
   const channels = channelsQ.data?.channels ?? noChannels;
-  const loaded = adaptersQ.isFetched && channelsQ.isFetched;
   const failed = adaptersQ.error ?? channelsQ.error;
-  const err = failed ? fail(failed) : "";
-  const [log, setLog] = useState<Channel | null>(null);
-
   const refresh = () => reload(UI.method.listBotChannels, { botId });
-  // Leaving a form rereads the list: it may have added or changed a channel.
-  const back = () => {
-    void refresh();
-    void navigate({ to: "/bots/$botId/channels", params: { botId } });
+  return {
+    adapters,
+    channels,
+    loaded: adaptersQ.isFetched && channelsQ.isFetched,
+    err: failed ? fail(failed) : "",
+    refresh,
+    // Leaving a form rereads the list: it may have added or changed a channel.
+    back: () => {
+      void refresh();
+      void navigate({ to: "/bots/$botId/channels", params: { botId } });
+    },
+    add: (adapter?: string) =>
+      void navigate(adapter ? { to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter } } : { to: "/bots/$botId/channels/new", params: { botId } }),
+    // The channel a route names, with its adapter, once both lists are in.
+    find: (channelId: string) => {
+      const channel = channels.find((c) => c.id === channelId);
+      const adapter = channel && adapters.find((x) => x.slug === channel.adapter);
+      return channel && adapter ? { channel, adapter } : null;
+    },
   };
-  const add = (adapter?: string) =>
-    void navigate(adapter ? { to: "/bots/$botId/channels/new/$adapter", params: { botId, adapter } } : { to: "/bots/$botId/channels/new", params: { botId } });
+}
 
+// /bots/$botId/channels/new: compare the adapters and pick one.
+export function ChannelNew({ botId }: { botId: string }) {
+  const { adapters, channels, loaded, back } = useChannels(botId);
   const counts = channels.reduce<Record<string, number>>((m, c) => ({ ...m, [c.adapter]: (m[c.adapter] ?? 0) + 1 }), {});
+  return <AdapterPicker botId={botId} adapters={adapters} counts={counts} loaded={loaded} onBack={back} />;
+}
 
-  if (at.view === "new") {
-    return <AdapterPicker botId={botId} adapters={adapters} counts={counts} loaded={loaded} onBack={back} />;
-  }
+// /bots/$botId/channels/new/$adapter: the form for a new channel.
+export function ChannelAdd({ botId, adapter: slug }: { botId: string; adapter: string }) {
+  const { adapters, back } = useChannels(botId);
+  const adapter = adapters.find((a) => a.slug === slug);
+  if (!adapter) return <Opening onBack={back} />;
+  return <ChannelForm botId={botId} adapter={adapter} onBack={back} />;
+}
 
-  if (at.view === "add") {
-    const adapter = adapters.find((a) => a.slug === at.id);
-    if (!adapter) return <Opening onBack={back} />;
-    return <ChannelForm botId={botId} adapter={adapter} onBack={back} />;
-  }
+// /bots/$botId/channels/$channelId: edit a channel.
+export function ChannelEdit({ botId, channelId }: { botId: string; channelId: string }) {
+  const { find, back } = useChannels(botId);
+  const at = find(channelId);
+  if (!at) return <Opening onBack={back} />;
+  return <ChannelForm botId={botId} adapter={at.adapter} channel={at.channel} onBack={back} />;
+}
 
-  if (at.view === "setup") {
-    const channel = channels.find((c) => c.id === at.id);
-    const adapter = channel && adapters.find((a) => a.slug === channel.adapter);
-    if (!channel || !adapter) return <Opening onBack={back} />;
-    return <ChannelSetup botId={botId} channel={channel} adapter={adapter} onBack={back} onChanged={() => void refresh()} />;
-  }
+// /bots/$botId/channels/$channelId/setup: sign in, pick the conversation.
+export function ChannelSetupPage({ botId, channelId }: { botId: string; channelId: string }) {
+  const { find, back, refresh } = useChannels(botId);
+  const at = find(channelId);
+  if (!at) return <Opening onBack={back} />;
+  return <ChannelSetup botId={botId} channel={at.channel} adapter={at.adapter} onBack={back} onChanged={() => void refresh()} />;
+}
 
-  if (at.view === "edit") {
-    const channel = channels.find((c) => c.id === at.id);
-    const adapter = channel && adapters.find((a) => a.slug === channel.adapter);
-    if (!channel || !adapter) return <Opening onBack={back} />;
-    return <ChannelForm botId={botId} adapter={adapter} channel={channel} onBack={back} />;
-  }
+// /bots/$botId/channels: the Bot's channels.
+export function ChannelsList({ botId }: { botId: string }) {
+  const { adapters, channels, loaded, err, refresh, add } = useChannels(botId);
+  const [log, setLog] = useState<Channel | null>(null);
 
   return (
     <div className={widePage}>

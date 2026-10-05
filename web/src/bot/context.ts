@@ -55,8 +55,3 @@ export function useBotPage() {
   if (!c) throw new Error("useBotPage outside a Bot page");
   return c;
 }
-
-// A pane with sub-pages (Channels, Drives, Automations) stays mounted across
-// them and is told which one the URL names: `view` from the route's
-// staticData, `id` from its path param. No view is the list.
-export type SubPage = { view?: "new" | "add" | "edit" | "setup"; id?: string };

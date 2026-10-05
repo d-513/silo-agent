@@ -3,7 +3,6 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
-import type { SubPage } from "./bot/context";
 import { Btn } from "./Btn";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "./Field";
@@ -197,38 +196,145 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
   );
 }
 
-export function AutomationsPane({
+// A Bot's automations, shared by the three pages below. The Bot can add and
+// change automations itself, so the list is polled.
+function useAutomations(bot: Bot, onError: (s: string) => void) {
+  const q = useQuery(UI.method.listAutomations, { botId: bot.id }, { refetchInterval: 5000 });
+  useEffect(() => {
+    if (q.error) onError(fail(q.error));
+  }, [q.error, onError]);
+  const setList = (f: (xs: Automation[]) => Automation[]) => patch(UI.method.listAutomations, { botId: bot.id }, (r) => ({ ...r, automations: f(r.automations) }));
+  const upsert = (a: Automation) => setList((xs) => (xs.some((x) => x.id === a.id) ? xs.map((x) => (x.id === a.id ? a : x)) : [...xs, a]));
+  return { list: q.data?.automations ?? null, setList, upsert };
+}
+
+// /bots/$botId/automations/new: the editor for a new automation.
+export function AutomationNew({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
+  const nav = useNavigate();
+  const { upsert } = useAutomations(bot, onError);
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      <div className="silo-page">
+        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+          <ChevronLeft size={14} /> Automations
+        </Link>
+        <h2 className="mb-6 text-title">New automation</h2>
+        <Panel>
+          <Editor
+            bot={bot}
+            onError={onError}
+            onSaved={(a) => {
+              upsert(a);
+              void nav({ to: "/bots/$botId/automations/$automationId", params: { botId: bot.id, automationId: a.id }, replace: true });
+            }}
+          />
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+// /bots/$botId/automations/$automationId: one automation's run log, with its
+// editor folded behind Edit.
+export function AutomationLog({
   bot,
-  at,
+  automationId,
   onError,
   onApprovals,
   onInspectArtifact,
   onSaveSkill,
 }: {
   bot: Bot;
-  // new is the editor for a new one; edit is one automation's log.
-  at: SubPage;
+  automationId: string;
   onError: (s: string) => void;
   onApprovals: () => void;
   onInspectArtifact: (a: Artifact) => void;
   onSaveSkill: (a: Artifact) => void;
 }) {
   const nav = useNavigate();
-  // The Bot can add and change automations itself, so the list is polled.
-  const q = useQuery(UI.method.listAutomations, { botId: bot.id }, { refetchInterval: 5000 });
-  const list = q.data?.automations ?? null;
-  useEffect(() => {
-    if (q.error) onError(fail(q.error));
-  }, [q.error, onError]);
-  const setList = (f: (xs: Automation[]) => Automation[]) => patch(UI.method.listAutomations, { botId: bot.id }, (r) => ({ ...r, automations: f(r.automations) }));
+  const { list, setList, upsert } = useAutomations(bot, onError);
   const [editing, setEditing] = useState(false);
-  const selId = at.view === "edit" ? (at.id ?? "") : "";
-  const sel = list?.find((a) => a.id === selId);
+  const sel = list?.find((a) => a.id === automationId);
   const stream = useRunStream(bot.id, sel?.chatId, { onApproval: onApprovals });
+  if (!sel) {
+    return <div className="p-7">{list === null ? <SkeletonRows rows={3} /> : <p className="text-ink-2">This automation is gone.</p>}</div>;
+  }
+  const busy = stream.sending || sel.running;
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="shrink-0 px-4 pt-4 wide:px-7">
+        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+          <ChevronLeft size={14} /> Automations
+        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
+          {busy ? <Lamp status="working" /> : null}
+          <span className="text-[12.5px] text-ink-3">
+            {describe(sel.schedule)} · {nextLine(sel)}
+          </span>
+          <span className="flex-1" />
+          <Btn kind="ghost" size="sm" onClick={() => setEditing((v) => !v)}>
+            {editing ? "Close" : "Edit"}
+          </Btn>
+          {busy ? (
+            <Btn kind="secondary" size="sm" icon={<Square size={11} />} onClick={() => ui.stopRun({ botId: bot.id, chatId: sel.chatId }).catch((e) => onError(fail(e)))}>
+              Stop
+            </Btn>
+          ) : (
+            <Btn
+              kind="primary"
+              size="sm"
+              icon={<Play size={12} />}
+              onClick={() =>
+                ui
+                  .runAutomation({ botId: bot.id, id: sel.id })
+                  .then(() => upsert({ ...sel, running: true } as Automation))
+                  .catch((e) => onError(fail(e)))
+              }
+            >
+              Run now
+            </Btn>
+          )}
+        </div>
+        {editing && (
+          <Panel className="mt-4 mb-2">
+            <Editor
+              key={sel.id}
+              bot={bot}
+              auto={sel}
+              onError={onError}
+              onSaved={(a) => {
+                upsert(a);
+                setEditing(false);
+              }}
+              onDeleted={() => {
+                setList((xs) => xs.filter((x) => x.id !== sel.id));
+                void nav({ to: "/bots/$botId/automations", params: { botId: bot.id }, replace: true });
+              }}
+            />
+          </Panel>
+        )}
+      </div>
+      <Thread
+        botId={bot.id}
+        botName={bot.name}
+        botCrest={bot.crest}
+        chatId={sel.chatId}
+        events={stream.events}
+        sending={stream.sending}
+        userAs="run"
+        onInspectArtifact={onInspectArtifact}
+        onSaveSkill={onSaveSkill}
+        emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">No runs yet. Run it now, or wait for its schedule.</p>}
+      />
+    </div>
+  );
+}
 
-  useEffect(() => setEditing(false), [selId]);
-
-  const upsert = (a: Automation) => setList((xs) => (xs.some((x) => x.id === a.id) ? xs.map((x) => (x.id === a.id ? a : x)) : [...xs, a]));
+// /bots/$botId/automations: the pinned Heartbeat and the scheduled ones.
+export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
+  const nav = useNavigate();
+  const { list, upsert } = useAutomations(bot, onError);
 
   async function toggle(a: Automation, enabled: boolean) {
     try {
@@ -236,105 +342,6 @@ export function AutomationsPane({
     } catch (e) {
       onError(fail(e));
     }
-  }
-
-  if (at.view === "new") {
-    return (
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div className="silo-page">
-          <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
-            <ChevronLeft size={14} /> Automations
-          </Link>
-          <h2 className="mb-6 text-title">New automation</h2>
-          <Panel>
-            <Editor
-              bot={bot}
-              onError={onError}
-              onSaved={(a) => {
-                upsert(a);
-                void nav({ to: "/bots/$botId/automations/$automationId", params: { botId: bot.id, automationId: a.id }, replace: true });
-              }}
-            />
-          </Panel>
-        </div>
-      </div>
-    );
-  }
-
-  if (selId) {
-    if (!sel) {
-      return <div className="p-7">{list === null ? <SkeletonRows rows={3} /> : <p className="text-ink-2">This automation is gone.</p>}</div>;
-    }
-    const busy = stream.sending || sel.running;
-    return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 px-4 pt-4 wide:px-7">
-          <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
-            <ChevronLeft size={14} /> Automations
-          </Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
-            {busy ? <Lamp status="working" /> : null}
-            <span className="text-[12.5px] text-ink-3">
-              {describe(sel.schedule)} · {nextLine(sel)}
-            </span>
-            <span className="flex-1" />
-            <Btn kind="ghost" size="sm" onClick={() => setEditing((v) => !v)}>
-              {editing ? "Close" : "Edit"}
-            </Btn>
-            {busy ? (
-              <Btn kind="secondary" size="sm" icon={<Square size={11} />} onClick={() => ui.stopRun({ botId: bot.id, chatId: sel.chatId }).catch((e) => onError(fail(e)))}>
-                Stop
-              </Btn>
-            ) : (
-              <Btn
-                kind="primary"
-                size="sm"
-                icon={<Play size={12} />}
-                onClick={() =>
-                  ui
-                    .runAutomation({ botId: bot.id, id: sel.id })
-                    .then(() => upsert({ ...sel, running: true } as Automation))
-                    .catch((e) => onError(fail(e)))
-                }
-              >
-                Run now
-              </Btn>
-            )}
-          </div>
-          {editing && (
-            <Panel className="mt-4 mb-2">
-              <Editor
-                key={sel.id}
-                bot={bot}
-                auto={sel}
-                onError={onError}
-                onSaved={(a) => {
-                  upsert(a);
-                  setEditing(false);
-                }}
-                onDeleted={() => {
-                  setList((xs) => xs.filter((x) => x.id !== sel.id));
-                  void nav({ to: "/bots/$botId/automations", params: { botId: bot.id }, replace: true });
-                }}
-              />
-            </Panel>
-          )}
-        </div>
-        <Thread
-          botId={bot.id}
-          botName={bot.name}
-          botCrest={bot.crest}
-          chatId={sel.chatId}
-          events={stream.events}
-          sending={stream.sending}
-          userAs="run"
-          onInspectArtifact={onInspectArtifact}
-          onSaveSkill={onSaveSkill}
-          emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">No runs yet. Run it now, or wait for its schedule.</p>}
-        />
-      </div>
-    );
   }
 
   const heartbeat = list?.filter((a) => a.kind === "heartbeat") ?? [];
