@@ -346,10 +346,21 @@ func TestProxyPrivateTunnelRefusesWithoutAGrant(t *testing.T) {
 	if n := len(e.up.requests()); n != 0 {
 		t.Fatalf("the service saw %d requests from someone with no grant", n)
 	}
-	// Followed through while signed out, the CP says to sign in.
-	res, body := e.browser().do(t, "GET", tunnelURL(tun, "/"), nav, nil)
-	if res.StatusCode != 401 || !strings.Contains(strings.ToLower(body), "sign in") {
-		t.Fatalf("signed out: %d %q", res.StatusCode, body)
+	// Signed out at the control plane, the handoff goes to the sign-in page and
+	// carries itself along as `next`, so signing in lands back on the tunnel.
+	res, _ = e.browser().noFollow().do(t, "GET", loc.String(), nil, nil)
+	to, err := url.Parse(res.Header.Get("Location"))
+	if res.StatusCode != 302 || err != nil || to.Path != "/signin" || to.Host != "" {
+		t.Fatalf("signed out at the CP: %d -> %q", res.StatusCode, res.Header.Get("Location"))
+	}
+	next := to.Query().Get("next")
+	if next != loc.RequestURI() {
+		t.Fatalf("next = %q, want the handoff %q", next, loc.RequestURI())
+	}
+	// After signing in, following next ends on the tunnel, at the page asked for.
+	res, body := e.signedIn().do(t, "GET", "http://"+e.cp+next, nav, nil)
+	if res.StatusCode != 200 || decode(t, body).Path != "/" {
+		t.Fatalf("after sign-in: %d %q", res.StatusCode, body)
 	}
 }
 

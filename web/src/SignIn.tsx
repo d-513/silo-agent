@@ -5,6 +5,7 @@ import { useAuth } from "./auth";
 import { Btn } from "./Btn";
 import { fail } from "./errors";
 import { inputClass } from "./Field";
+import { tunnelNext } from "./signinNext";
 import { SiloGlyph } from "./SiloMark";
 
 export function SignIn() {
@@ -21,6 +22,13 @@ export function SignIn() {
     setBusy(true);
     try {
       const r = await ui.signIn({ email, password });
+      // A private tunnel sent us here: carry on to its handoff, which is a
+      // server route, so leave the SPA (the session cookie is already set).
+      const handoff = tunnelNext(loc.search, window.location.origin);
+      if (handoff) {
+        window.location.assign(handoff);
+        return;
+      }
       setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
       // Back to where the session ended, not the Bots list.
       const from = (loc.state as { from?: string } | null)?.from;

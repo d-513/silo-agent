@@ -132,7 +132,10 @@ func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
 	u, err := auth.UserFromRequest(s.db, r)
 	if err != nil {
 		if errors.Is(err, auth.ErrAuth) {
-			page(w, http.StatusUnauthorized, "Sign in to Silo", "This tunnel is private. Sign in to Silo in this browser, then open the tunnel's address again.")
+			// Sign in, then come straight back here: the UI honors `next` for this
+			// path only. The redirect is relative, so it stays on whichever origin
+			// (public_url) the browser used to reach us.
+			http.Redirect(w, r, "/signin?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusFound)
 			return
 		}
 		log.Printf("tunnel auth: session lookup: %v", err)
