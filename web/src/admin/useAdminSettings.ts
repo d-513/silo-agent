@@ -17,8 +17,9 @@ const noAudit: AuditRow[] = [];
 // useAdminSettings is the operator settings form. What the server holds is the
 // cached getSettings answer; the form keeps only what the human changed on top
 // of it (`edits`, and a silo.yaml draft), so the patch to save is exactly the
-// edits that differ. There are four ways to save: the form, silo.yaml, the
-// model allowlist, connector variables. The settings layout calls it once and
+// edits that differ. There are five ways to save: the form, silo.yaml, the
+// model allowlist, connector variables, and the connectors every new Bot
+// gets. The settings layout calls it once and
 // every section reads it through useSettingsForm, so an edit made in one
 // section is still there after a look at another.
 export function useAdminSettings() {
@@ -98,7 +99,7 @@ export function useAdminSettings() {
     }
   }
 
-  // A save beside the form (the allowlist, connector variables) leaves the
+  // A save beside the form (the allowlist, the connector options) leaves the
   // form's edits alone. The YAML draft goes: the file changed under it.
   const applyAside = (x: Settings) => {
     put(UI.method.getSettings, {}, x);
@@ -139,6 +140,17 @@ export function useAdminSettings() {
     }
   }
 
+  async function saveAutoenable(identifiers: string[]) {
+    setErr("");
+    try {
+      applyAside(await ui.setAutoenableConnectors({ identifiers }));
+      // Each library row says whether the list names it.
+      void reload(UI.method.listConnectors);
+    } catch (ex) {
+      setErr(fail(ex));
+      throw ex;
+    }
+  }
 
   return {
     loading: settingsQ.isPending,
@@ -149,6 +161,7 @@ export function useAdminSettings() {
     providers: server?.providers ?? noProviders,
     models: server?.models ?? noModels,
     connVars: server?.connectorVars ?? noVars,
+    autoenable: server?.autoenableConnectors,
     yamlText: yamlDraft ?? server?.yaml ?? "",
     setYamlText,
     yamlPath: server?.yamlPath ?? "",
@@ -165,6 +178,7 @@ export function useAdminSettings() {
     setModel,
     busyModels,
     saveConnVars,
+    saveAutoenable,
   };
 }
 

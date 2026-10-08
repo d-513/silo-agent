@@ -1,5 +1,5 @@
 // Package admin is the operator's side of the control plane: the settings form
-// and YAML editor (config, providers, model allowlist, connector variables) and
+// and YAML editor (config, providers, model allowlist, connector options) and
 // the audit log of what the gate decided.
 package admin
 
@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/voice"
+	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -202,6 +203,30 @@ func (s *Service) SetConnectorVars(ctx context.Context, req *connect.Request[v1.
 	return connect.NewResponse(cur), nil
 }
 
+// SetAutoenableConnectors replaces autoenable_connectors, the library
+// connectors every new Bot gets. An identifier need not be in the library yet.
+func (s *Service) SetAutoenableConnectors(ctx context.Context, req *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if s.store == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
+	}
+	for _, raw := range req.Msg.GetIdentifiers() {
+		if strings.TrimSpace(raw) != "" && catalog.Identifier(raw) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector identifier %q", raw))
+		}
+	}
+	if err := s.store.SetAutoenableConnectors(catalog.Identifiers(req.Msg.GetIdentifiers())); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	cur, err := s.settings()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(cur), nil
+}
+
 func (s *Service) settings() (*v1.Settings, error) {
 	out := &v1.Settings{SearchEngines: searchEngineProtos()}
 	if s.store == nil {
@@ -233,6 +258,11 @@ func (s *Service) settings() (*v1.Settings, error) {
 		})
 	}
 	cfg := s.cfg()
+	out.AutoenableConnectors = &v1.AutoenableConnectors{
+		Identifiers: catalog.Identifiers(cfg.AutoenableConnectors),
+		Source:      sourceProto(s.store.Source("autoenable_connectors")),
+		EnvName:     config.EnvName("autoenable_connectors"),
+	}
 	out.DefaultModel = cfg.Model
 	out.TunnelsHost = cfg.TunnelHost()
 	out.TitleModel = cfg.ModelTitle

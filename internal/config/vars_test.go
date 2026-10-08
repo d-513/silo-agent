@@ -99,3 +99,58 @@ func TestConnectorVarEnvOverride(t *testing.T) {
 		t.Fatalf("source %s", s.ConnectorVarSource("TENANT"))
 	}
 }
+
+// autoenable_connectors is a YAML list, or a comma-separated SILO_ variable
+// that wins over it.
+func TestAutoenableConnectors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "silo.yaml")
+	if err := os.WriteFile(path, []byte("# keep me\nautoenable_connectors:\n  - lightpanda\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Config().AutoenableConnectors; len(got) != 1 || got[0] != "lightpanda" {
+		t.Fatalf("yaml list %v", got)
+	}
+	if s.Source("autoenable_connectors") != SourceYAML {
+		t.Fatalf("source %s", s.Source("autoenable_connectors"))
+	}
+	if err := s.SetAutoenableConnectors([]string{"fal_ai", "github"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Config().AutoenableConnectors; len(got) != 2 || got[0] != "fal_ai" || got[1] != "github" {
+		t.Fatalf("after set %v", got)
+	}
+	raw, _ := os.ReadFile(path)
+	if !strings.Contains(string(raw), "# keep me") || !strings.Contains(string(raw), "- fal_ai") {
+		t.Fatalf("yaml:\n%s", raw)
+	}
+	if err := s.SetAutoenableConnectors(nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Config().AutoenableConnectors; len(got) != 0 {
+		t.Fatalf("after clear %v", got)
+	}
+	for _, bad := range []string{"autoenable_connectors:\n  a: b\n", "autoenable_connectors: a, b\n"} {
+		if err := s.WriteYAML([]byte(bad)); err == nil {
+			t.Fatalf("not a list, should be rejected: %q", bad)
+		}
+	}
+
+	t.Setenv("SILO_AUTOENABLE_CONNECTORS", "lightpanda, fal_ai")
+	if err := s.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Config().AutoenableConnectors; len(got) != 2 || got[0] != "lightpanda" || got[1] != "fal_ai" {
+		t.Fatalf("env list %v", got)
+	}
+	if s.Source("autoenable_connectors") != SourceEnv {
+		t.Fatalf("env source %s", s.Source("autoenable_connectors"))
+	}
+	if EnvName("autoenable_connectors") != "SILO_AUTOENABLE_CONNECTORS" {
+		t.Fatal(EnvName("autoenable_connectors"))
+	}
+}

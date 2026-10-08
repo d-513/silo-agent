@@ -32,7 +32,7 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
             <span className="truncate font-medium text-ink">{c.name}</span>
             <McpChip transport={c.transport} />
             {c.category && <CategoryChip label={c.category} />}
-            {c.autoAttach && (
+            {(c.autoAttach || c.autoenabled) && (
               <span className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-[11px] font-medium text-cobalt">Default</span>
             )}
           </div>
@@ -94,6 +94,7 @@ export function CatalogList() {
       (c) =>
         !q ||
         c.name.toLowerCase().includes(q) ||
+        c.identifier.includes(q) ||
         (c.description || "").toLowerCase().includes(q) ||
         categoryOf(c).toLowerCase().includes(q) ||
         (c.transport || "").toLowerCase().includes(q),
@@ -244,7 +245,7 @@ export function LibraryForm() {
     <form onSubmit={onSubmit} className="max-w-[560px]">
       <h2 className="mb-4 text-title">{id ? "Edit preset" : "Add preset"}</h2>
       {err && <p className="mb-3 text-vermilion">{err}</p>}
-      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage allowAutoAttach showConfig={false} />
+      <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage allowAutoAttach allowIdentifier showConfig={false} />
       <div className="flex gap-2">
         <SaveButton type="submit" state={saver.state}>
           {id ? "Save" : "Add to library"}

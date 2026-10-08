@@ -67,6 +67,7 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
 | `search.engine` | `duckduckgo_scraper` | `SILO_SEARCH__ENGINE` | Web search engine. Future engines may add keys under `search.<engine_id>` |
 | `connector_vars.<name>` | (none) | `SILO_CONNECTOR_VARS__<NAME>` | Connector variable. Referenced as `${NAME}` in connector settings. **Plain text, not a secret** |
+| `autoenable_connectors` | (none) | `SILO_AUTOENABLE_CONNECTORS` | List of library connector identifiers every new Bot gets. The env form is comma-separated (`lightpanda,fal_ai`) |
 
 ## Tunnels
 
@@ -119,6 +120,24 @@ http_url: https://${MCP_HOST}/${TENANT}/mcp
 The **Lightpanda** library preset (auto-attached to new Bots) uses `http_url: ${LIGHTPANDA_URL}/mcp`, so define `LIGHTPANDA_URL` here (dev: `http://localhost:9223`, the shared instance `make db-up` starts). Until it is set the connector fails to connect.
 
 These are **variables, not secrets**. They are stored in `silo.yaml` in plain text and are not encrypted or masked; anyone who can read the config can read them. Use a Bot Secret for credentials. Values resolve when a connector connects, so a variable change takes effect on the next reconnect (use Refresh on the Connectors tab).
+
+## Connectors on every new Bot
+
+Every preset in the Connectors Library has an **identifier**: lowercase letters, digits and underscores, unique in the library (fal.ai is `fal_ai`, Google Drive is `google_drive`). The built-in presets come with one; for your own, the Add form fills it in from the name and you can change it. A preset from before identifiers existed keeps its long id as the identifier until you edit it.
+
+`autoenable_connectors` lists the identifiers of the presets every **new** Bot starts with:
+
+```yaml
+autoenable_connectors:
+  - lightpanda
+  - fal_ai
+```
+
+```
+export SILO_AUTOENABLE_CONNECTORS=lightpanda,fal_ai
+```
+
+It does the same thing as a preset's own **Add to new bots by default** switch, from the config instead of the database, and the two add up: a preset in both is still attached once. Case does not matter. An identifier with no library connector is logged and skipped, so the file can name a preset before it exists. Like the switch, it applies when a Bot is created: existing Bots are not changed, and a connector removed from a Bot is not re-added. Admin → Settings → Connector options edits the list (read-only while the env variable is set).
 
 This machine:
 

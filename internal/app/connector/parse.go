@@ -163,6 +163,7 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 		Kind: kind, SourceId: c.SourceID, CatalogGuide: catalog.Guide(c.SeedKey),
 		StdioCommand: c.StdioCommand, StdioArgs: mcpbridge.ParseArgs(c.StdioArgsJSON), StdioImage: c.StdioImage,
 		Prompt: c.Prompt, AutoAttach: c.AutoAttach, Slug: toolsgen.Slug(c.Name),
+		Identifier: c.Identifier,
 	}
 	protoBuiltin(c, out)
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)

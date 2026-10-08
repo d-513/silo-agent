@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -98,7 +99,7 @@ func (s *Service) ListConnectors(ctx context.Context, _ *connect.Request[v1.List
 	s.db.Where("kind = ?", catalog.KindLibrary).Order("name").Find(&rows)
 	out := &v1.ListConnectorsResponse{}
 	for i := range rows {
-		out.Connectors = append(out.Connectors, protoConnector(&rows[i], admin))
+		out.Connectors = append(out.Connectors, s.protoLibrary(&rows[i], admin))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -119,6 +120,9 @@ func (s *Service) CreateConnector(ctx context.Context, req *connect.Request[v1.C
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	row.AutoAttach = m.GetAutoAttach()
+	if row.Identifier, err = s.libraryIdentifier(m.GetIdentifier(), row.Name, row.ID); err != nil {
+		return nil, err
+	}
 	applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
 	if row.Transport == TransportSTDIO {
 		row.Auth = authNone
@@ -129,7 +133,7 @@ func (s *Service) CreateConnector(ctx context.Context, req *connect.Request[v1.C
 	if err := s.db.Create(&row).Error; err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(protoConnector(&row, true)), nil
+	return connect.NewResponse(s.protoLibrary(&row, true)), nil
 }
 
 func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error) {
@@ -157,6 +161,13 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	}
 	if row.Kind == catalog.KindLibrary {
 		row.AutoAttach = m.GetAutoAttach()
+		if strings.TrimSpace(m.GetIdentifier()) != "" {
+			ident, err := s.libraryIdentifier(m.GetIdentifier(), row.Name, row.ID)
+			if err != nil {
+				return nil, err
+			}
+			row.Identifier = ident
+		}
 	}
 	if row.Transport == TransportBuiltin {
 		// A library preset holds no account: config lives on each Bot copy.
@@ -173,7 +184,7 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 		}
 		s.db.Save(&row)
 		s.restartConnector(&row)
-		return connect.NewResponse(protoConnector(&row, true)), nil
+		return connect.NewResponse(s.protoLibrary(&row, true)), nil
 	}
 	if m.GetTransport() != "" {
 		tr := strings.ToLower(m.GetTransport())
@@ -248,7 +259,7 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	}
 	s.db.Save(&row)
 	s.restartConnector(&row)
-	return connect.NewResponse(protoConnector(&row, true)), nil
+	return connect.NewResponse(s.protoLibrary(&row, true)), nil
 }
 
 func (s *Service) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
@@ -487,20 +498,71 @@ func (s *Service) FindBotConnector(botID, slug string) (*db.BotConnector, *db.Co
 	return nil, nil, fmt.Errorf("unknown connector %s", slug)
 }
 
-// attachDefaultConnectors copies every library preset flagged auto_attach onto
-// a newly created Bot. It runs exactly once, from CreateBot, so a preset the
-// human later removes from the Bot is never silently re-added.
+// AttachDefaults copies onto a newly created Bot every library preset a Bot
+// starts with. It runs exactly once, from CreateBot, so a preset the human
+// later removes from the Bot is never silently re-added.
 func (s *Service) AttachDefaults(ctx context.Context, botID string) {
 	if s.db == nil {
 		return
 	}
-	var libs []db.Connector
-	s.db.Where("kind = ? AND auto_attach = ?", catalog.KindLibrary, true).Order("name").Find(&libs)
+	libs := s.defaults()
 	for i := range libs {
 		if _, err := s.putBotConnector(ctx, botID, cloneLibrary(&libs[i], botID)); err != nil {
 			log.Printf("default connector %s bot=%s: %v", libs[i].Name, botID, err)
 		}
 	}
+}
+
+// defaults are the library presets a new Bot starts with, by name. A preset
+// gets in by its own auto_attach or by the operator naming its identifier in
+// autoenable_connectors; one that is both is still a single copy.
+func (s *Service) defaults() []db.Connector {
+	named := s.autoenabled()
+	var libs []db.Connector
+	s.db.Where("kind = ? AND (auto_attach = ? OR identifier IN ?)", catalog.KindLibrary, true, named).Order("name").Find(&libs)
+	for _, ident := range named {
+		if !slices.ContainsFunc(libs, func(c db.Connector) bool { return c.Identifier == ident }) {
+			log.Printf("autoenable_connectors: no library connector %q", ident)
+		}
+	}
+	return libs
+}
+
+// autoenabled is the operator's autoenable_connectors as identifiers.
+func (s *Service) autoenabled() []string {
+	if s.cfg == nil {
+		return nil
+	}
+	return catalog.Identifiers(s.cfg().AutoenableConnectors)
+}
+
+// protoLibrary is protoConnector for a row that may be a library preset: it
+// marks the ones autoenable_connectors names.
+func (s *Service) protoLibrary(c *db.Connector, admin bool) *v1.Connector {
+	out := protoConnector(c, admin)
+	out.Autoenabled = c.Identifier != "" && slices.Contains(s.autoenabled(), c.Identifier)
+	return out
+}
+
+// libraryIdentifier settles a library preset's identifier. What the admin
+// typed is normalised and refused when another preset holds it; with nothing
+// typed it is made from the name, numbered if that one is taken.
+func (s *Service) libraryIdentifier(typed, name, exceptID string) (string, error) {
+	if strings.TrimSpace(typed) == "" {
+		base := catalog.Identifier(name)
+		if base == "" {
+			base = "connector"
+		}
+		return catalog.FreeIdentifier(s.db, base, exceptID), nil
+	}
+	ident := catalog.Identifier(typed)
+	if ident == "" {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("an identifier needs a letter or a digit"))
+	}
+	if catalog.IdentifierTaken(s.db, ident, exceptID) {
+		return "", connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("another library connector already uses the identifier %q", ident))
+	}
+	return ident, nil
 }
 
 func (s *Service) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {

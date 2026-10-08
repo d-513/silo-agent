@@ -96,6 +96,7 @@ service UI {
   rpc SetModels(SetModelsRequest) returns (Settings);
   rpc ListProviderModels(ListProviderModelsRequest) returns (ListProviderModelsResponse);
   rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
+  rpc SetAutoenableConnectors(SetAutoenableConnectorsRequest) returns (Settings);
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
 
@@ -969,6 +970,7 @@ message Settings {
   // tunnels_host is the effective tunnels.host (explicit or derived), empty
   // when tunnels have no domain; the form shows it where the field is unset.
   string tunnels_host = 10;
+  AutoenableConnectors autoenable_connectors = 11;
 }
 
 message Provider {
@@ -1023,6 +1025,20 @@ message ConnectorVar {
 
 message SetConnectorVarsRequest {
   repeated ConnectorVar connector_vars = 1;
+}
+
+// AutoenableConnectors is the operator's autoenable_connectors list: library
+// connectors, by identifier, that every new Bot gets on top of the ones whose
+// own auto_attach is on. An identifier with no library connector is kept (the
+// file may name one that is added later) and simply attaches nothing.
+message AutoenableConnectors {
+  repeated string identifiers = 1;
+  ConfigSource source = 2;
+  string env_name = 3;
+}
+
+message SetAutoenableConnectorsRequest {
+  repeated string identifiers = 1;
 }
 
 message SearchEngine {
@@ -1142,6 +1158,12 @@ message Connector {
   repeated ChannelField fields = 26;
   map<string, string> config = 27;
   repeated string secrets_set = 28;
+  // identifier names a library preset for the operator (lowercase letters,
+  // digits and underscores; unique in the library). A Bot's copy has none.
+  string identifier = 29;
+  // autoenabled is true when autoenable_connectors names this preset, so new
+  // Bots get it whatever auto_attach says.
+  bool autoenabled = 30;
 }
 
 message ListConnectorsRequest {}
@@ -1174,6 +1196,8 @@ message CreateConnectorRequest {
   string prompt = 16;
   bool auto_attach = 17;
   string category = 18;
+  // Normalised by the server; empty makes one from the name.
+  string identifier = 19;
 }
 
 message UpdateConnectorRequest {
@@ -1199,6 +1223,8 @@ message UpdateConnectorRequest {
   string category = 20;
   // Built-in config; an empty secret keeps the stored value.
   map<string, string> config = 21;
+  // Library presets only; empty keeps the stored one.
+  string identifier = 22;
 }
 
 message DeleteConnectorRequest {

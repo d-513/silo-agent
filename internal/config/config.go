@@ -270,6 +270,9 @@ type Config struct {
 	Search      Search              `koanf:"search"`
 	Drives      Drives              `koanf:"drives"`
 	Tunnels     Tunnels             `koanf:"tunnels"`
+	// AutoenableConnectors names library connectors (by identifier) that every
+	// new Bot gets, on top of the ones flagged in the library itself.
+	AutoenableConnectors []string `koanf:"autoenable_connectors"`
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
@@ -430,6 +433,25 @@ type Store struct {
 func envKey(s string) string {
 	s = strings.ToLower(strings.TrimPrefix(s, "SILO_"))
 	return strings.ReplaceAll(s, "__", ".")
+}
+
+// envLists are the settings that hold a list; the environment gives each as
+// one comma-separated string.
+var envLists = map[string]bool{"autoenable_connectors": true}
+
+// envValue maps one SILO_ variable to its key and value.
+func envValue(name, value string) (string, any) {
+	key := envKey(name)
+	if !envLists[key] {
+		return key, value
+	}
+	list := []string{}
+	for _, v := range strings.Split(value, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			list = append(list, v)
+		}
+	}
+	return key, list
 }
 
 func EnvName(key string) string {

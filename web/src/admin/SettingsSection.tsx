@@ -5,6 +5,7 @@ import { SaveButton } from "../Feedback";
 import { Panel } from "../Field";
 import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { AuditTable } from "./AuditTable";
+import { AutoenablePanel } from "./AutoenablePanel";
 import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
 import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
@@ -39,7 +40,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
       <Group title="Runs" note={RUNS_NOTE} id="runs" />
     </>
   ),
-  connectors: () => <ConnectorVars />,
+  connectors: () => <ConnectorOptions />,
   tunnels: () => <Tunnels />,
   server: () => (
     <>
@@ -89,9 +90,15 @@ function SearchSettings() {
   );
 }
 
-function ConnectorVars() {
-  const { connVars, saveConnVars } = useSettingsForm();
-  return <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />;
+// Two lists that each save on their own, beside the form.
+function ConnectorOptions() {
+  const { connVars, saveConnVars, autoenable, saveAutoenable } = useSettingsForm();
+  return (
+    <>
+      <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
+      <AutoenablePanel list={autoenable} onSave={saveAutoenable} />
+    </>
+  );
 }
 
 // The file itself. Saving it replaces what the form shows.

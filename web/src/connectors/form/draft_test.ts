@@ -1,5 +1,5 @@
 import { eq } from "../../testing.ts";
-import { draftFrom, emptyDraft, patchAt, setAt, specOf, withImage, withoutImage } from "./draft.ts";
+import { draftFrom, emptyDraft, patchAt, setAt, specOf, withImage, withName, withoutImage } from "./draft.ts";
 
 const conn = (extra: object = {}) =>
   ({ id: "c1", name: "GitHub", description: "d", category: "", prompt: "", autoAttach: false, httpUrl: "https://x/mcp", auth: "", defaultMode: "", transport: "",
@@ -35,6 +35,15 @@ eq((specOf(stdio) as any).stdioArgs, ["-y", "pkg"], "args are trimmed and blanks
 eq((specOf(stdio) as any).env, [{ name: "K", value: "v", secret: "s" }], "blank env names are dropped");
 const bi = specOf({ ...emptyDraft(), builtin: "email", config: { host: "h" } }) as any;
 eq([bi.config, "httpUrl" in bi, "transport" in bi], [{ host: "h" }, false, false], "a built-in sends config, not transport settings");
+
+// A new preset's identifier follows the name until someone types their own.
+const named = withName(withName(emptyDraft(), "fal", true), "fal.ai", true);
+eq([named.name, named.identifier], ["fal.ai", "fal_ai"], "the identifier follows the name");
+const own = withName({ ...named, identifier: "images" }, "fal.ai images", true);
+eq(own.identifier, "images", "a typed identifier is left alone");
+eq(withName({ ...named, identifier: "fal_ai" }, "Renamed", false).identifier, "fal_ai", "a saved preset keeps its identifier through a rename");
+eq((specOf({ ...emptyDraft(), identifier: "fal_" }) as any).identifier, "fal", "what is sent is settled");
+eq(draftFrom(conn({ identifier: "fal_ai", autoenabled: true })).identifier, "fal_ai", "a preset's identifier fills the form");
 
 // List edits.
 eq(patchAt([{ a: 1, b: 2 }, { a: 3, b: 4 }], 1, { b: 9 }), [{ a: 1, b: 2 }, { a: 3, b: 9 }], "patchAt merges into one item");

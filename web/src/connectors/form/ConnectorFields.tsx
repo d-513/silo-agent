@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { ToggleRow } from "../../Switch";
 import { CategoryChip, ConnectorMark, McpChip, Segmented } from "./atoms";
 import { BuiltinConfig } from "./BuiltinConfig";
-import { withImage, withoutImage, type ConnectorDraft } from "./draft";
+import { withImage, withName, withoutImage, type ConnectorDraft } from "./draft";
+import { identTyped } from "./ident";
 import { EnvEditor, HeadersEditor } from "./ListEditors";
 import { TextRow } from "./TextRow";
 import { TransportFields } from "./Transport";
@@ -137,6 +138,7 @@ export function ConnectorFields({
   catalogGuide,
   allowStdioImage,
   allowAutoAttach,
+  allowIdentifier,
   showConfig = true,
 }: {
   value: ConnectorDraft;
@@ -146,6 +148,8 @@ export function ConnectorFields({
   catalogGuide?: string;
   allowStdioImage?: boolean;
   allowAutoAttach?: boolean;
+  // Library presets carry an identifier; a Bot's own connector has none.
+  allowIdentifier?: boolean;
   // A library preset holds no account, so the admin form hides the config.
   showConfig?: boolean;
 }) {
@@ -154,7 +158,30 @@ export function ConnectorFields({
 
   const settings = (
     <>
-      <TextRow label="Name" value={value.name} onChange={(e) => set("name", e.target.value)} required={!fromCatalog} />
+      <TextRow
+        label="Name"
+        value={value.name}
+        onChange={(e) => onChange(withName(value, e.target.value, !!allowIdentifier && !existing))}
+        required={!fromCatalog}
+      />
+      {allowIdentifier && (
+        <TextRow
+          label="Identifier"
+          hint={
+            <>
+              What this preset is called in <span className="font-mono">autoenable_connectors</span>. Lowercase letters, digits and
+              underscores; no two presets share one.
+            </>
+          }
+          mono
+          value={value.identifier}
+          onChange={(e) => set("identifier", identTyped(e.target.value))}
+          placeholder="fal_ai"
+          spellCheck={false}
+          autoCapitalize="off"
+          required
+        />
+      )}
       {!fromCatalog && (
         <>
           <TextRow label="Description" value={value.description} onChange={(e) => set("description", e.target.value)} />
@@ -182,8 +209,18 @@ export function ConnectorFields({
         <ToggleRow
           className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"
           label="Add to new bots by default"
-          hint="New bots get this connector automatically. Removing it from a bot does not re-add it."
-          on={value.autoAttach}
+          hint={
+            value.autoenabled ? (
+              <>
+                On for every new bot: <span className="font-mono">autoenable_connectors</span> names this preset (Settings → Connector
+                options), whatever this switch says.
+              </>
+            ) : (
+              "New bots get this connector automatically. Removing it from a bot does not re-add it."
+            )
+          }
+          on={value.autoAttach || value.autoenabled}
+          disabled={value.autoenabled}
           onChange={(v) => set("autoAttach", v)}
         />
       )}

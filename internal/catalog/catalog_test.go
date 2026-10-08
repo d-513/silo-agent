@@ -310,3 +310,104 @@ func TestSeededName(t *testing.T) {
 		t.Fatal("unknown name")
 	}
 }
+
+func TestIdentifier(t *testing.T) {
+	for in, want := range map[string]string{
+		"fal.ai":           "fal_ai",
+		"  Google  Drive ": "google_drive",
+		"Monday.com":       "monday_com",
+		"a, b; c":          "a_b_c",
+		"__Git--Hub__":     "git_hub",
+		"Zażółć 9":         "za_9",
+		"...":              "",
+	} {
+		if got := Identifier(in); got != want {
+			t.Errorf("Identifier(%q) = %q, want %q", in, got, want)
+		}
+	}
+	got := Identifiers([]string{"Fal.AI", " ", "github", "fal_ai", "GitHub"})
+	if len(got) != 2 || got[0] != "fal_ai" || got[1] != "github" {
+		t.Fatalf("Identifiers %v", got)
+	}
+}
+
+// Every catalog preset is seeded with its identifier, the name an operator
+// writes in autoenable_connectors.
+func TestSeedIdentifiers(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string]string{"fal": "fal_ai", "google-drive": "google_drive", "lightpanda": "lightpanda"} {
+		var row db.Connector
+		if err := gdb.First(&row, "seed_key = ?", key).Error; err != nil {
+			t.Fatal(key, err)
+		}
+		if row.Identifier != want {
+			t.Fatalf("%s identifier %q, want %q", key, row.Identifier, want)
+		}
+	}
+	var blank int64
+	gdb.Model(&db.Connector{}).Where("kind = ? AND COALESCE(identifier, '') = ''", KindLibrary).Count(&blank)
+	if blank != 0 {
+		t.Fatalf("%d presets seeded without an identifier", blank)
+	}
+}
+
+// Presets from before identifiers existed get one on the next seed: the
+// catalog's when it is free, otherwise the row's own id.
+func TestSeedBackfillsIdentifiers(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	if err := gdb.Model(&db.Connector{}).Where("seed_key IN ?", []string{"github", "linear"}).Update("identifier", "").Error; err != nil {
+		t.Fatal(err)
+	}
+	// An admin's own preset from before, and one that took Linear's identifier.
+	own := db.Connector{ID: "0123456789abcdef0123456789abcdef", Kind: KindLibrary, Name: "Own"}
+	squat := db.Connector{ID: "fedcba9876543210fedcba9876543210", Kind: KindLibrary, Name: "Squat", Identifier: "linear"}
+	for _, r := range []*db.Connector{&own, &squat} {
+		if err := gdb.Create(r).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var gh, lin db.Connector
+	gdb.First(&gh, "seed_key = ?", "github")
+	gdb.First(&lin, "seed_key = ?", "linear")
+	gdb.First(&own, "id = ?", own.ID)
+	if gh.Identifier != "github" {
+		t.Fatalf("github identifier %q", gh.Identifier)
+	}
+	if lin.Identifier != lin.ID {
+		t.Fatalf("linear identifier %q, want its id %q", lin.Identifier, lin.ID)
+	}
+	if own.Identifier != own.ID {
+		t.Fatalf("own identifier %q, want its id", own.Identifier)
+	}
+}
+
+// A new catalog preset still lands when an admin's preset holds its identifier.
+func TestSeedIdentifierCollision(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := gdb.Create(&db.Connector{ID: "0123456789abcdef0123456789abcdef", Kind: KindLibrary, Name: "Mine", Identifier: "github"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := Seed(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var gh db.Connector
+	if err := gdb.First(&gh, "seed_key = ?", "github").Error; err != nil {
+		t.Fatal(err)
+	}
+	if gh.Identifier != "github_2" {
+		t.Fatalf("github identifier %q", gh.Identifier)
+	}
+	// Two presets can never share one, whatever the case.
+	if err := gdb.Create(&db.Connector{ID: "ffffffffffffffffffffffffffffffff", Kind: KindLibrary, Name: "Dup", Identifier: "github"}).Error; err == nil {
+		t.Fatal("a duplicate identifier was stored")
+	}
+}

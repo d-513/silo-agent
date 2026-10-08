@@ -234,7 +234,13 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     func `setModels`(request: Silo_V1_SetModelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Settings>
 
     @available(iOS 13, *)
+    func `listProviderModels`(request: Silo_V1_ListProviderModelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListProviderModelsResponse>
+
+    @available(iOS 13, *)
     func `setConnectorVars`(request: Silo_V1_SetConnectorVarsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Settings>
+
+    @available(iOS 13, *)
+    func `setAutoenableConnectors`(request: Silo_V1_SetAutoenableConnectorsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Settings>
 
     @available(iOS 13, *)
     func `listAudit`(request: Silo_V1_ListAuditRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListAuditResponse>
@@ -714,8 +720,18 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listProviderModels`(request: Silo_V1_ListProviderModelsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListProviderModelsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListProviderModels", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `setConnectorVars`(request: Silo_V1_SetConnectorVarsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Settings> {
         return await self.client.unary(path: "/silo.v1.UI/SetConnectorVars", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setAutoenableConnectors`(request: Silo_V1_SetAutoenableConnectorsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Settings> {
+        return await self.client.unary(path: "/silo.v1.UI/SetAutoenableConnectors", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -976,7 +992,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let getSettings = Connect.MethodSpec(name: "GetSettings", service: "silo.v1.UI", type: .unary)
             public static let putSettings = Connect.MethodSpec(name: "PutSettings", service: "silo.v1.UI", type: .unary)
             public static let setModels = Connect.MethodSpec(name: "SetModels", service: "silo.v1.UI", type: .unary)
+            public static let listProviderModels = Connect.MethodSpec(name: "ListProviderModels", service: "silo.v1.UI", type: .unary)
             public static let setConnectorVars = Connect.MethodSpec(name: "SetConnectorVars", service: "silo.v1.UI", type: .unary)
+            public static let setAutoenableConnectors = Connect.MethodSpec(name: "SetAutoenableConnectors", service: "silo.v1.UI", type: .unary)
             public static let listAudit = Connect.MethodSpec(name: "ListAudit", service: "silo.v1.UI", type: .unary)
             public static let listLlmlogs = Connect.MethodSpec(name: "ListLLMLogs", service: "silo.v1.UI", type: .unary)
             public static let listConnectors = Connect.MethodSpec(name: "ListConnectors", service: "silo.v1.UI", type: .unary)

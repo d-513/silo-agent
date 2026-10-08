@@ -195,6 +195,172 @@ func TestAutoAttachCopiedOnce(t *testing.T) {
 	}
 }
 
+// A library preset's identifier is normalised text, unique in the library
+// whatever the case; a Bot's copy carries none.
+func TestLibraryIdentifier(t *testing.T) {
+	h := apptest.New(t)
+	mk := func(name, ident string) (*v1.Connector, error) {
+		res, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
+			Name: name, Transport: "http", HttpUrl: "http://127.0.0.1:1", Identifier: ident,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	typed, err := mk("Image Maker", " Pix.AI ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.GetIdentifier() != "pix_ai" {
+		t.Fatalf("typed identifier %q", typed.GetIdentifier())
+	}
+	if _, err := mk("Other", "PIX_ai"); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("a duplicate identifier should be refused: %v", err)
+	}
+	if _, err := mk("Other", "..."); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("an identifier of punctuation should be refused: %v", err)
+	}
+	// Nothing typed: made from the name, numbered when that is taken.
+	first, err := mk("Auto Docs", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := mk("auto.docs", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GetIdentifier() != "auto_docs" || second.GetIdentifier() != "auto_docs_2" {
+		t.Fatalf("derived identifiers %q %q", first.GetIdentifier(), second.GetIdentifier())
+	}
+
+	upd := func(ident string) (*v1.Connector, error) {
+		res, err := h.Client.UpdateConnector(h.Ctx(), connect.NewRequest(&v1.UpdateConnectorRequest{
+			Id: second.GetId(), Name: second.GetName(), Identifier: ident,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	if _, err := upd("Pix.ai"); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("renaming onto a taken identifier should be refused: %v", err)
+	}
+	if got, err := upd(""); err != nil || got.GetIdentifier() != "auto_docs_2" {
+		t.Fatalf("a blank update should keep the identifier: %v %q", err, got.GetIdentifier())
+	}
+	if got, err := upd("Docs Two"); err != nil || got.GetIdentifier() != "docs_two" {
+		t.Fatalf("rename: %v %q", err, got.GetIdentifier())
+	}
+	if got, err := upd("docs_two"); err != nil || got.GetIdentifier() != "docs_two" {
+		t.Fatalf("saving its own identifier again: %v %q", err, got.GetIdentifier())
+	}
+
+	bot := h.CreateBot("Ident")
+	att, err := h.Client.AttachConnector(h.Ctx(), connect.NewRequest(&v1.AttachConnectorRequest{
+		BotId: bot.GetId(), ConnectorId: typed.GetId(),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := att.Msg.GetConnector().GetIdentifier(); got != "" {
+		t.Fatalf("a Bot copy took the identifier %q", got)
+	}
+}
+
+// autoenable_connectors names library connectors by identifier; every new Bot
+// gets them exactly like the ones whose own toggle is on.
+func TestAutoenableConnectors(t *testing.T) {
+	dir := t.TempDir()
+	// Any case, one that is also auto_attach, a repeat, and one that is not there.
+	y := apptest.DefaultYAML(dir) + "autoenable_connectors:\n  - Enabled.Docs\n  - lightpanda\n  - enabled_docs\n  - not_in_library\n"
+	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithYAML(y))
+	mk := func(name string) *v1.Connector {
+		res, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
+			Name: name, Transport: "http", HttpUrl: "http://127.0.0.1:1",
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	named, plain := mk("Enabled Docs"), mk("Plain Docs")
+	if !named.GetAutoenabled() || named.GetAutoAttach() || plain.GetAutoenabled() {
+		t.Fatalf("autoenabled flags: named %+v plain %+v", named, plain)
+	}
+	lib, _ := h.Client.ListConnectors(h.Ctx(), connect.NewRequest(&v1.ListConnectorsRequest{}))
+	for _, c := range lib.Msg.GetConnectors() {
+		if want := c.GetIdentifier() == "enabled_docs" || c.GetIdentifier() == "lightpanda"; c.GetAutoenabled() != want {
+			t.Fatalf("%s autoenabled = %v", c.GetIdentifier(), c.GetAutoenabled())
+		}
+	}
+
+	bot := h.CreateBot("Autoenable")
+	xs, _ := h.Client.ListBotConnectors(h.Ctx(), connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: bot.GetId()}))
+	if n := len(copiesOf(xs.Msg.GetConnectors(), named.GetId())); n != 1 {
+		t.Fatalf("named preset attached %d times: %+v", n, xs.Msg.GetConnectors())
+	}
+	if n := len(copiesOf(xs.Msg.GetConnectors(), plain.GetId())); n != 0 {
+		t.Fatalf("a preset nobody named was attached %d times", n)
+	}
+	lightpanda := 0
+	for _, x := range xs.Msg.GetConnectors() {
+		if strings.HasPrefix(x.GetConnector().GetName(), "Lightpanda") {
+			lightpanda++
+		}
+	}
+	if lightpanda != 1 {
+		t.Fatalf("lightpanda is named and auto_attach: want one copy, got %d", lightpanda)
+	}
+}
+
+func TestSetAutoenableConnectorsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "silo.yaml")
+	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h := apptest.New(t, apptest.WithConfigPath(path))
+	lib, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Round Trip", Transport: "http", HttpUrl: "http://127.0.0.1:1",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, _ := h.Client.GetSettings(h.Ctx(), connect.NewRequest(&v1.GetSettingsRequest{}))
+	if got := before.Msg.GetAutoenableConnectors(); len(got.GetIdentifiers()) != 0 || got.GetEnvName() != "SILO_AUTOENABLE_CONNECTORS" {
+		t.Fatalf("unset list %+v", got)
+	}
+	got, err := h.Client.SetAutoenableConnectors(h.Ctx(), connect.NewRequest(&v1.SetAutoenableConnectorsRequest{
+		Identifiers: []string{" Round.Trip ", "round_trip", "later_one"},
+	}))
+	if err != nil {
+		t.Fatalf("SetAutoenableConnectors: %v", err)
+	}
+	ae := got.Msg.GetAutoenableConnectors()
+	if ids := ae.GetIdentifiers(); len(ids) != 2 || ids[0] != "round_trip" || ids[1] != "later_one" {
+		t.Fatalf("identifiers %v", ids)
+	}
+	if ae.GetSource() != v1.ConfigSource_CONFIG_SOURCE_YAML {
+		t.Fatalf("source %v", ae.GetSource())
+	}
+	raw, _ := os.ReadFile(path)
+	if !strings.Contains(string(raw), "autoenable_connectors:") || !strings.Contains(string(raw), "- round_trip") {
+		t.Fatalf("yaml:\n%s", raw)
+	}
+	if _, err := h.Client.SetAutoenableConnectors(h.Ctx(), connect.NewRequest(&v1.SetAutoenableConnectorsRequest{
+		Identifiers: []string{"!!!"},
+	})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("an identifier of punctuation should be rejected: %v", err)
+	}
+	// The saved list applies to the next Bot without a restart.
+	bot := h.CreateBot("After save")
+	xs, _ := h.Client.ListBotConnectors(h.Ctx(), connect.NewRequest(&v1.ListBotConnectorsRequest{BotId: bot.GetId()}))
+	if n := len(copiesOf(xs.Msg.GetConnectors(), lib.Msg.GetId())); n != 1 {
+		t.Fatalf("saved list attached %d copies", n)
+	}
+}
+
 func TestConnectorValidation(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Validation")

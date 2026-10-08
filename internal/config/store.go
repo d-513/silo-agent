@@ -108,7 +108,7 @@ func (s *Store) reloadLocked() error {
 	y := koanf.New(".")
 	_ = y.Load(file.Provider(s.path), yaml.Parser())
 	e := koanf.New(".")
-	if err := e.Load(env.Provider("SILO_", ".", envKey), nil); err != nil {
+	if err := e.Load(env.ProviderWithValue("SILO_", ".", envValue), nil); err != nil {
 		return err
 	}
 	m := koanf.New(".")
@@ -225,6 +225,17 @@ func (s *Store) StringList(key string) []string {
 
 // SetModels writes the allowed-model allowlist and reloads.
 func (s *Store) SetModels(models []string) error {
+	return s.setList("models", models)
+}
+
+// SetAutoenableConnectors writes autoenable_connectors, the identifiers of the
+// library connectors every new Bot gets, and reloads.
+func (s *Store) SetAutoenableConnectors(identifiers []string) error {
+	return s.setList("autoenable_connectors", identifiers)
+}
+
+// setList replaces a top-level YAML sequence and reloads.
+func (s *Store) setList(key string, values []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	raw, err := os.ReadFile(s.path)
@@ -235,7 +246,7 @@ func (s *Store) SetModels(models []string) error {
 	if err != nil {
 		return err
 	}
-	if err := setNodeList(node, "models", models); err != nil {
+	if err := setNodeList(node, key, values); err != nil {
 		return err
 	}
 	out, err := encodeNode(node)
@@ -323,6 +334,11 @@ func validateYAML(raw []byte) error {
 				return fmt.Errorf("connector variable %q must be a string", name)
 			}
 		}
+	}
+	switch k.Get("autoenable_connectors").(type) {
+	case nil, []any, []string:
+	default:
+		return fmt.Errorf("autoenable_connectors must be a list of connector identifiers")
 	}
 	for _, key := range k.Keys() {
 		rest, ok := strings.CutPrefix(key, "providers.")

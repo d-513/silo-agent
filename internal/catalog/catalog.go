@@ -26,6 +26,7 @@ const (
 
 type entry struct {
 	Key          string   `json:"key"`
+	Identifier   string   `json:"identifier"`
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
 	Category     string   `json:"category"`
@@ -89,10 +90,18 @@ func Load() ([]entry, error) {
 	if err := json.Unmarshal(raw, &spec); err != nil {
 		return nil, err
 	}
+	idents := map[string]bool{}
 	for i, e := range spec.Connectors {
 		if strings.TrimSpace(e.Key) == "" || strings.TrimSpace(e.Name) == "" {
 			return nil, fmt.Errorf("catalog entry %d needs key and name", i)
 		}
+		if e.Identifier == "" || e.Identifier != Identifier(e.Identifier) {
+			return nil, fmt.Errorf("catalog entry %s needs a normalised identifier", e.Key)
+		}
+		if idents[e.Identifier] {
+			return nil, fmt.Errorf("catalog entry %s repeats identifier %s", e.Key, e.Identifier)
+		}
+		idents[e.Identifier] = true
 		tr := e.transportOf()
 		if tr == "builtin" {
 			// The app checks the key against the builtin registry at seed time.
@@ -147,7 +156,8 @@ func imageOf(name string) ([]byte, string, error) {
 // Seed inserts library presets that have never been seeded before. The
 // catalog_seeds table is the durable record of everything already offered, so a
 // preset an admin removes stays gone while new upstream presets are still
-// added. Existing rows (including admin edits) are left alone.
+// added. Existing rows (including admin edits) are left alone, except that one
+// from before identifiers existed is given its identifier.
 func Seed(gdb *gorm.DB) error {
 	if gdb == nil {
 		return nil
@@ -158,6 +168,9 @@ func Seed(gdb *gorm.DB) error {
 	}
 	seen, err := seededKeys(gdb)
 	if err != nil {
+		return err
+	}
+	if err := backfillIdentifiers(gdb, entries); err != nil {
 		return err
 	}
 	for _, e := range entries {
@@ -185,6 +198,8 @@ func Seed(gdb *gorm.DB) error {
 			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach,
 			CreatedAt: time.Now(),
 		}
+		// An admin's own preset may already hold the identifier: the seed still lands.
+		row.Identifier = FreeIdentifier(gdb, e.Identifier, "")
 		if row.Transport == "builtin" {
 			row.Type = "builtin"
 			row.Auth = "none"

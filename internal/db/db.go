@@ -177,6 +177,7 @@ type Connector struct {
 	Kind              string // library | custom
 	BotID             string `gorm:"index"`
 	SeedKey           string `gorm:"index"`
+	Identifier        string `gorm:"uniqueIndex:idx_connectors_identifier,where:identifier <> ''"` // library presets only; catalog.Identifier form
 	SourceID          string
 	Type              string
 	Name              string

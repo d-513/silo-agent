@@ -2,16 +2,21 @@
 // fields edit, a spec is what the server is sent. Plain functions, so the
 // round trip can be checked without a screen.
 import type { ChannelField, Connector } from "../../gen/silo/v1/ui_pb";
+import { identOf } from "./ident.ts";
 
 export type HeaderDraft = { name: string; value: string };
 export type EnvDraft = { name: string; value: string; secret: string };
 
 export type ConnectorDraft = {
   name: string;
+  // Library presets only: the name autoenable_connectors knows it by.
+  identifier: string;
   description: string;
   category: string;
   prompt: string;
   autoAttach: boolean;
+  // Read-only: autoenable_connectors names this preset.
+  autoenabled: boolean;
   httpUrl: string;
   auth: string;
   defaultMode: string;
@@ -40,10 +45,12 @@ export type ConnectorDraft = {
 export function emptyDraft(): ConnectorDraft {
   return {
     name: "",
+    identifier: "",
     description: "",
     category: "Custom",
     prompt: "",
     autoAttach: false,
+    autoenabled: false,
     httpUrl: "",
     auth: "none",
     defaultMode: "ask",
@@ -69,10 +76,12 @@ export function emptyDraft(): ConnectorDraft {
 export function draftFrom(c: Connector): ConnectorDraft {
   return {
     name: c.name,
+    identifier: c.identifier || "",
     description: c.description,
     category: c.category || "General",
     prompt: c.prompt || "",
     autoAttach: c.autoAttach,
+    autoenabled: !!c.autoenabled,
     httpUrl: c.httpUrl,
     auth: c.auth || "none",
     defaultMode: c.defaultMode || "ask",
@@ -113,6 +122,7 @@ export function specOf(d: ConnectorDraft) {
   if (d.builtin) {
     return {
       name: d.name,
+      identifier: identOf(d.identifier),
       description: d.description,
       category: d.category,
       prompt: d.prompt,
@@ -126,6 +136,7 @@ export function specOf(d: ConnectorDraft) {
   }
   return {
     name: d.name,
+    identifier: identOf(d.identifier),
     description: d.description,
     category: d.category,
     prompt: d.prompt,
@@ -145,6 +156,13 @@ export function specOf(d: ConnectorDraft) {
     imageType: d.imageType,
     clearImage: d.clearImage,
   };
+}
+
+// withName is d renamed. A new preset's identifier follows its name for as
+// long as nobody has typed a different one.
+export function withName(d: ConnectorDraft, name: string, follow: boolean): ConnectorDraft {
+  const identifier = follow && d.identifier === identOf(d.name) ? identOf(name) : d.identifier;
+  return { ...d, name, identifier };
 }
 
 // patchAt is xs with the item at i merged with patch; the list is not changed.

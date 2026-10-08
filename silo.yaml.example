@@ -67,3 +67,12 @@ search:
 #   TENANT: acme
 #   MCP_HOST: mcp.internal.example.com
 #   LIGHTPANDA_URL: http://localhost:9223   # Lightpanda preset (make db-up)
+
+# Library connectors every new Bot gets, by identifier (the Identifier field of
+# a preset in Admin → Connectors; fal.ai is fal_ai). This adds to the presets
+# whose own "Add to new bots by default" is on. Case does not matter; an
+# identifier with no library connector is skipped.
+# Env: SILO_AUTOENABLE_CONNECTORS=lightpanda,fal_ai
+# autoenable_connectors:
+#   - lightpanda
+#   - fal_ai

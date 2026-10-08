@@ -6,7 +6,7 @@ export const SECTIONS = [
   { id: "search", label: "Search & extract" },
   { id: "memory", label: "Memory & knowledge" },
   { id: "runs", label: "Context & runs" },
-  { id: "connectors", label: "Connector variables" },
+  { id: "connectors", label: "Connector options" },
   { id: "tunnels", label: "Tunnels" },
   { id: "server", label: "Server" },
   // The two below are not the form: the file itself, and the decision log.

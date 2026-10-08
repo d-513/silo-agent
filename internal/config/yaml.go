@@ -67,7 +67,8 @@ func strNode(v string) *yaml.Node {
 }
 
 // setNodeList replaces a top-level key with a YAML sequence, preserving any
-// comments on the existing key. Used for the model allowlist.
+// comments on the existing key. Used for the model allowlist and
+// autoenable_connectors.
 func setNodeList(doc *yaml.Node, key string, values []string) error {
 	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	for _, v := range values {
