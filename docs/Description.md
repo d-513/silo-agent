@@ -144,7 +144,7 @@ Catalog skills are `go:embed`’d under `internal/catalog/skills` and seeded int
 
 ### Web search
 
-CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is DuckDuckGo Scraper (`duckduckgo_scraper`) from Koanf `search.engine`. Admin `/admin/search-extract` writes that key in `silo.yaml`. Provider keys never enter the Bot. Chat tool `web_search` and `silo_runtime.web_search` both run `web.search` after `authorizeAction`. Page extract is not in yet.
+CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is DuckDuckGo Scraper (`duckduckgo_scraper`) from Koanf `search.engine`. Admin → Settings → Search & extract (`/admin/settings/search`) writes that key in `silo.yaml`. Provider keys never enter the Bot. Chat tool `web_search` and `silo_runtime.web_search` both run `web.search` after `authorizeAction`. Page extract is not in yet.
 
 ### Web / connectors
 

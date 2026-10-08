@@ -243,21 +243,43 @@ test("tabs and chats navigate by click", async ({ page }) => {
 });
 
 // The admin form edits on top of what the server holds: typing counts a change,
-// Discard goes back to the saved value. Nothing is saved here.
+// it is still there after a look at another category, and Discard goes back to
+// the saved value. Nothing is saved here.
 test("admin settings form tracks and discards edits", async ({ page }) => {
   await page.goto("/admin/settings");
   await signIn(page);
-  await expect(page).toHaveURL(/\/admin\/settings$/);
-  const field = page.locator('main input[type="text"]:not([disabled]), main input:not([type]):not([disabled])').first();
+  // Settings opens on its first category.
+  await expect(page).toHaveURL(/\/admin\/settings\/models$/);
+  const categories = page.getByRole("navigation", { name: "Settings" });
+  await categories.getByRole("link", { name: "Server" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/server$/);
+  const field = page.locator('main input[type="text"]:not([disabled])').first();
   await expect(field).toBeVisible();
   const saved = await field.inputValue();
   await field.fill(`${saved}x`);
   await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await categories.getByRole("link", { name: "Providers" }).click();
+  await expect(page.getByRole("button", { name: "List models" }).first()).toBeVisible();
+  await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await categories.getByRole("link", { name: "Server" }).click();
+  await expect(field).toHaveValue(`${saved}x`);
   await page.getByRole("button", { name: /discard/i }).click();
   await expect(field).toHaveValue(saved);
   await expect(page.getByText("1 unsaved change")).toHaveCount(0);
+  // Every category is a page of its own, and an unknown one falls back to the first.
+  for (const s of ["search", "memory", "runs", "connectors", "tunnels", "yaml", "audit"]) {
+    await page.goto(`/admin/settings/${s}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/settings/${s}$`));
+    await expect(categories.locator("[data-tab-on]")).toHaveCount(1);
+    await expect(page.getByText("This page hit a snag")).toHaveCount(0);
+  }
+  await page.goto("/admin/settings/nope");
+  await expect(page).toHaveURL(/\/admin\/settings\/models$/);
+  // Search & Extract was a tab; its old address lands on the category.
+  await page.goto("/admin/search-extract");
+  await expect(page).toHaveURL(/\/admin\/settings\/search$/);
   // The other admin pages load their lists.
-  for (const p of ["connectors", "skills", "drives", "search-extract"]) {
+  for (const p of ["connectors", "skills", "drives"]) {
     await page.goto(`/admin/${p}`);
     await expect(page).toHaveURL(new RegExp(`/admin/${p}$`));
     await expect(page.locator(".skeleton")).toHaveCount(0);

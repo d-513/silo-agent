@@ -617,6 +617,10 @@ button {
 .silo-page-sm {
   max-width: 560px;
 }
+/* Admin: room for the Settings categories beside the form. */
+.silo-page-lg {
+  max-width: 1000px;
+}
 @media (min-width: 960px) {
   .silo-page,
   .silo-page-sm {

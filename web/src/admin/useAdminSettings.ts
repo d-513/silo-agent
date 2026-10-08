@@ -1,10 +1,11 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { useSave } from "../Feedback";
 import { ConfigSource, UI, type AuditRow, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
-import { put, reload } from "../query";
+import { peek, put, reload } from "../query";
+import { withModel } from "./providerModels";
 
 const noFields: ConfigField[] = [];
 const noEngines: SearchEngine[] = [];
@@ -17,7 +18,9 @@ const noAudit: AuditRow[] = [];
 // cached getSettings answer; the form keeps only what the human changed on top
 // of it (`edits`, and a silo.yaml draft), so the patch to save is exactly the
 // edits that differ. There are four ways to save: the form, silo.yaml, the
-// model allowlist, connector variables.
+// model allowlist, connector variables. The settings layout calls it once and
+// every section reads it through useSettingsForm, so an edit made in one
+// section is still there after a look at another.
 export function useAdminSettings() {
   const settingsQ = useQuery(UI.method.getSettings, {});
   const auditQ = useQuery(UI.method.listAudit, {});
@@ -29,6 +32,8 @@ export function useAdminSettings() {
   const formSaver = useSave();
   const yamlSaver = useSave();
   const [actErr, setErr] = useState("");
+  // Models whose add or remove is on its way to the server.
+  const [busyModels, setBusy] = useState<ReadonlySet<string>>(new Set());
   const failed = settingsQ.error ?? auditQ.error;
 
   const values = useMemo(() => ({ ...Object.fromEntries(fields.map((f) => [f.key, f.value])), ...edits }), [fields, edits]);
@@ -93,19 +98,41 @@ export function useAdminSettings() {
     }
   }
 
-  async function saveModels(list: string[]) {
+  // A save beside the form (the allowlist, connector variables) leaves the
+  // form's edits alone. The YAML draft goes: the file changed under it.
+  const applyAside = (x: Settings) => {
+    put(UI.method.getSettings, {}, x);
+    setYamlText(null);
+  };
+
+  // Allowlist changes run one after another, each on top of what the server
+  // last answered, so two quick presses cannot drop each other's model.
+  const modelQueue = useRef<Promise<void>>(Promise.resolve());
+  function setModel(id: string, on: boolean) {
     setErr("");
-    try {
-      apply(await ui.setModels({ models: list }));
-    } catch (ex) {
-      setErr(fail(ex));
-    }
+    setBusy((prev) => new Set(prev).add(id));
+    modelQueue.current = modelQueue.current.then(async () => {
+      try {
+        const cur = (peek(UI.method.getSettings, {})?.models ?? []).map((m) => m.id);
+        const next = withModel(cur, id, on);
+        if (next !== cur) applyAside(await ui.setModels({ models: next }));
+      } catch (ex) {
+        setErr(fail(ex));
+      } finally {
+        setBusy((prev) => {
+          const left = new Set(prev);
+          left.delete(id);
+          return left;
+        });
+      }
+    });
+    return modelQueue.current;
   }
 
   async function saveConnVars(list: { name: string; value: string }[]) {
     setErr("");
     try {
-      apply(await ui.setConnectorVars({ connectorVars: list.map((v) => ({ name: v.name, value: v.value, source: ConfigSource.DEFAULT, envName: "" })) }));
+      applyAside(await ui.setConnectorVars({ connectorVars: list.map((v) => ({ name: v.name, value: v.value, source: ConfigSource.DEFAULT, envName: "" })) }));
     } catch (ex) {
       setErr(fail(ex));
       throw ex;
@@ -114,6 +141,7 @@ export function useAdminSettings() {
 
 
   return {
+    loading: settingsQ.isPending,
     fields,
     values,
     setValue,
@@ -134,7 +162,19 @@ export function useAdminSettings() {
     discard,
     saveForm,
     saveYaml,
-    saveModels,
+    setModel,
+    busyModels,
     saveConnVars,
   };
+}
+
+export type SettingsForm = ReturnType<typeof useAdminSettings>;
+
+export const SettingsFormContext = createContext<SettingsForm | null>(null);
+
+/** The settings form of the page a section sits in. */
+export function useSettingsForm(): SettingsForm {
+  const form = useContext(SettingsFormContext);
+  if (!form) throw new Error("useSettingsForm outside the settings layout");
+  return form;
 }

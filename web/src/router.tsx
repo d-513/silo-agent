@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from "@tanstack/react-router";
+import { FIRST_SECTION, isSection } from "./admin/sections";
 import { getSession, onSession } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
@@ -46,7 +47,9 @@ import { SignIn } from "./SignIn";
 //   /signin
 //   _authed                        the rail; signed out goes to /signin
 //     /  /new  /skills  /account
-//     /admin/…                     admins only
+//     /admin                       admins only: one tab per page
+//       settings/$section          Settings and its categories
+//       connectors[/new|/$id]  skills  drives  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
 //         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
@@ -107,7 +110,7 @@ const skills = createRoute({ getParentRoute: () => authed, path: "skills", compo
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
-const adminPage = (name: "AdminLayout" | "AdminSettings" | "AdminSkills" | "AdminDrives" | "AdminSearchExtract" | "AdminDebug" | "CatalogList" | "LibraryForm") =>
+const adminPage = (name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm") =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
 const admin = createRoute({
@@ -125,12 +128,32 @@ const adminIndex = createRoute({
     throw redirect({ to: "/admin/settings", replace: true });
   },
 });
+// Settings is a layout: its categories are pages under it (admin/sections.ts).
 const adminSettings = createRoute({ getParentRoute: () => admin, path: "settings", component: adminPage("AdminSettings") });
+const toFirstSection = () => {
+  throw redirect({ to: "/admin/settings/$section", params: { section: FIRST_SECTION }, replace: true });
+};
+const adminSettingsIndex = createRoute({ getParentRoute: () => adminSettings, path: "/", beforeLoad: toFirstSection });
+const adminSettingsSection = createRoute({
+  getParentRoute: () => adminSettings,
+  path: "$section",
+  beforeLoad: ({ params }) => {
+    if (!isSection(params.section)) toFirstSection();
+  },
+  component: adminPage("SettingsSection"),
+});
 const adminConnectors = createRoute({ getParentRoute: () => admin, path: "connectors", component: adminPage("CatalogList") });
 const adminConnectorNew = createRoute({ getParentRoute: () => admin, path: "connectors/new", component: adminPage("LibraryForm") });
 const adminConnector = createRoute({ getParentRoute: () => admin, path: "connectors/$connectorId", component: adminPage("LibraryForm") });
 const adminSkills = createRoute({ getParentRoute: () => admin, path: "skills", component: adminPage("AdminSkills") });
-const adminSearch = createRoute({ getParentRoute: () => admin, path: "search-extract", component: adminPage("AdminSearchExtract") });
+// Search & Extract was a tab of its own; it is a Settings category now.
+const adminSearch = createRoute({
+  getParentRoute: () => admin,
+  path: "search-extract",
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/settings/$section", params: { section: "search" }, replace: true });
+  },
+});
 const adminDrives = createRoute({ getParentRoute: () => admin, path: "drives", component: adminPage("AdminDrives") });
 const adminDebug = createRoute({ getParentRoute: () => admin, path: "debug", component: adminPage("AdminDebug") });
 const adminElse = createRoute({
@@ -211,7 +234,7 @@ const routeTree = root.addChildren([
     newBot,
     skills,
     account,
-    admin.addChildren([adminIndex, adminSettings, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),

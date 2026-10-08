@@ -42,6 +42,11 @@ export function patch<I extends DescMessage, O extends DescMessage>(
   queryClient.setQueryData(key(method, input), (prev: MessageShape<O> | undefined) => (prev ? update(prev) : prev));
 }
 
+/** The cached answer of one call as it is right now, outside a render. */
+export function peek<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>, input: MessageInitShape<I>) {
+  return queryClient.getQueryData<MessageShape<O>>(key(method, input));
+}
+
 /** Store the answer of one call that a save just returned. */
 export function put<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>, input: MessageInitShape<I>, data: MessageShape<O>) {
   queryClient.setQueryData(key(method, input), data);

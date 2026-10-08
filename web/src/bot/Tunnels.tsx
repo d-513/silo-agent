@@ -90,7 +90,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
         <div className="mb-5 rounded-card bg-well px-5 py-4 text-[13.5px] leading-[21px] text-ink-2">
           {notice.text}{" "}
           {notice.admin ? (
-            <Link to="/admin/settings" className="font-medium text-cobalt hover:underline">
+            <Link to="/admin/settings/$section" params={{ section: "tunnels" }} className="font-medium text-cobalt hover:underline">
               Open settings
             </Link>
           ) : null}

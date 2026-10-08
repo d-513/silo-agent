@@ -1,107 +1,86 @@
-import { TriangleAlert } from "lucide-react";
-import { lazy, Suspense } from "react";
-import { SaveButton } from "../Feedback";
-import { ConfigSource } from "../gen/silo/v1/ui_pb";
-import { AuditTable } from "./AuditTable";
-import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
-import { FieldGroup } from "./FieldGroup";
-import { ModelSettings } from "./ModelSettings";
+import { Braces, Cpu, Database, History, Plug, Search, Server, Timer, Variable, Waypoints, type LucideIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Link, Outlet, useParams } from "@tanstack/react-router";
+import { ActiveBar } from "../bot/SideNav";
+import { ErrorWell, SkeletonRows } from "../Field";
 import { SaveBar } from "./SaveBar";
-import { BOOTSTRAP_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MEMORY_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
-import { useAdminSettings } from "./useAdminSettings";
+import { FIRST_SECTION, SECTIONS, isFormSection, isSection, type SectionId } from "./sections";
+import { SettingsFormContext, useAdminSettings } from "./useAdminSettings";
 
-const YamlEditor = lazy(() => import("../YamlEditor").then((m) => ({ default: m.YamlEditor })));
+const ICONS: Record<SectionId, LucideIcon> = {
+  models: Cpu,
+  providers: Plug,
+  search: Search,
+  memory: Database,
+  runs: Timer,
+  connectors: Variable,
+  tunnels: Waypoints,
+  server: Server,
+  yaml: Braces,
+  audit: History,
+};
 
+// AdminSettings is the frame of Admin → Settings: the categories on the left
+// and the open one beside them. It holds the form, so an edit survives a look
+// at another category, and one Save bar covers them all.
 export function AdminSettings() {
-  const {
-    fields, values, setValue, engines, providers, models, connVars, yamlText, setYamlText, yamlPath, audit, tunnelsHost,
-    formSaver, yamlSaver, err, dirty, discard, saveForm, saveYaml, saveModels, saveConnVars,
-  } = useAdminSettings();
-
-  const envFields = fields.filter((f) => f.source === ConfigSource.ENV);
-  const rowsIn = (id: string) => fields.filter((f) => groupOf(f.key) === id);
-  const defaultModel = values["model"] ?? "";
-  const titleModel = values["model_title"] ?? "";
-  const approvalModel = values["model_approval"] ?? "";
-  const subagentModel = values["model_subagent"] ?? "";
-  const memoryModel = values["model_memory"] ?? "";
-  const embedModel = values["embedding_model"] ?? "";
-  const voiceModel = values["transcribe_model"] ?? "";
+  const form = useAdminSettings();
+  const { section } = useParams({ strict: false });
+  const open: SectionId = isSection(section) ? section : FIRST_SECTION;
+  const inForm = isFormSection(open);
 
   return (
-    <div>
-      <div className="grid gap-5">
-        <ModelSettings
-          models={models}
-          defaultModel={defaultModel}
-          titleModel={titleModel}
-          approvalModel={approvalModel}
-          defaultField={fields.find((f) => f.key === "model")}
-          titleField={fields.find((f) => f.key === "model_title")}
-          approvalField={fields.find((f) => f.key === "model_approval")}
-          subagentModel={subagentModel}
-          subagentField={fields.find((f) => f.key === "model_subagent")}
-          onSubagent={(v) => setValue("model_subagent", v)}
-          memoryModel={memoryModel}
-          memoryField={fields.find((f) => f.key === "model_memory")}
-          onMemory={(v) => setValue("model_memory", v)}
-          embedModel={embedModel}
-          embedField={fields.find((f) => f.key === "embedding_model")}
-          onEmbed={(v) => setValue("embedding_model", v)}
-          voiceModel={voiceModel}
-          voiceField={fields.find((f) => f.key === "transcribe_model")}
-          onVoice={(v) => setValue("transcribe_model", v)}
-          onDefault={(v) => setValue("model", v)}
-          onTitle={(v) => setValue("model_title", v)}
-          onApproval={(v) => setValue("model_approval", v)}
-          onSaveModels={saveModels}
-        />
-        <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
-        {providers.map((p) => (
-          <FieldGroup
-            key={p.id}
-            title={p.name}
-            note={p.description || undefined}
-            rows={rowsIn("providers").filter((f) => f.key.startsWith(`providers.${p.id}.`))}
-            values={values}
-            engines={engines}
-            providers={providers}
-            onChange={setValue}
-          />
-        ))}
-        <FieldGroup title="Memory" note={MEMORY_NOTE} rows={rowsIn("memory")} values={values} engines={engines} providers={providers} onChange={setValue} />
-        <FieldGroup title="Knowledge" note={KNOWLEDGE_NOTE} rows={rowsIn("knowledge")} values={values} engines={engines} providers={providers} onChange={setValue} />
-        <FieldGroup title="Context" note={CONTEXT_NOTE} rows={rowsIn("context")} values={values} engines={engines} providers={providers} onChange={setValue} />
-        <FieldGroup title="Tunnels" note={TUNNELS_NOTE} rows={rowsIn("tunnels")} values={values} engines={engines} providers={providers} placeholders={{ "tunnels.host": tunnelsHost || "tunnels.example.com" }} onChange={setValue} />
-        <FieldGroup title="Search" rows={rowsIn("search")} values={values} engines={engines} providers={providers} onChange={setValue} />
-        <FieldGroup title="Server" rows={rowsIn("server")} values={values} engines={engines} providers={providers} onChange={setValue} />
-        <FieldGroup title="Bootstrap" note={BOOTSTRAP_NOTE} rows={rowsIn("bootstrap")} values={values} engines={engines} providers={providers} onChange={setValue} />
+    <SettingsFormContext.Provider value={form}>
+      <div className="flex gap-8 max-wide:flex-col max-wide:gap-4">
+        <SectionList open={open} />
+        <div className="min-w-0 flex-1">
+          {!inForm && form.err ? <ErrorWell className="mb-4">{form.err}</ErrorWell> : null}
+          {form.loading ? <SkeletonRows rows={4} height={88} /> : <Outlet />}
+          {inForm ? <SaveBar dirty={form.dirty} state={form.formSaver.state} error={form.err} onSave={() => void form.saveForm()} onDiscard={form.discard} /> : null}
+        </div>
       </div>
+    </SettingsFormContext.Provider>
+  );
+}
 
-      <SaveBar dirty={dirty} state={formSaver.state} error={err} onSave={() => void saveForm()} onDiscard={discard} />
-
-      <h2 className="mt-10 mb-3 text-title">silo.yaml</h2>
-      <p className="mb-2 font-mono text-[12px] text-ink-3">{yamlPath || "silo.yaml"}</p>
-      {envFields.length > 0 ? (
-        <p className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
-          <TriangleAlert className="mt-0.5 shrink-0" size={16} />
-          <span>Overridden by env and will not apply until unset: {envFields.map((f) => f.envName).join(", ")}</span>
-        </p>
-      ) : null}
-      <Suspense fallback={<div className="h-80 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface" />}>
-        <YamlEditor
-          value={yamlText}
-          onChange={(v) => setYamlText(v)}
-        />
-      </Suspense>
-      <div className="mt-3">
-        <SaveButton state={yamlSaver.state} onClick={() => void saveYaml()}>
-          Save YAML
-        </SaveButton>
-      </div>
-
-      <h2 className="mt-10 mb-3 text-title">Audit</h2>
-      <AuditTable audit={audit} />
-    </div>
+// The categories: a column that stays in view on a wide window, one scrolling
+// row of chips on a narrow one.
+function SectionList({ open }: { open: SectionId }) {
+  const nav = useRef<HTMLElement>(null);
+  // In the chip row the open category can sit past the edge: bring it in.
+  useEffect(() => {
+    nav.current?.querySelector("[data-tab-on]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [open]);
+  return (
+    <nav
+      ref={nav}
+      aria-label="Settings"
+      className="flex shrink-0 gap-0.5 max-wide:-mx-4 max-wide:overflow-x-auto max-wide:overscroll-x-contain max-wide:px-4 max-wide:[scrollbar-width:none] wide:sticky wide:top-7 wide:w-[196px] wide:flex-col wide:self-start max-wide:[&::-webkit-scrollbar]:hidden"
+    >
+      {SECTIONS.map((s) => {
+        const on = s.id === open;
+        const Icon = ICONS[s.id];
+        return (
+          <span key={s.id} className="contents">
+            {s.id === "yaml" ? <span aria-hidden className="shrink-0 bg-line max-wide:mx-1.5 max-wide:h-6 max-wide:w-px max-wide:self-center wide:mx-3 wide:my-2 wide:h-px" /> : null}
+            <Link
+              to="/admin/settings/$section"
+              params={{ section: s.id }}
+              data-tab-on={on || undefined}
+              aria-current={on ? "page" : undefined}
+              className={`relative flex h-9 shrink-0 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium whitespace-nowrap transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+                on ? "bg-well text-ink" : "text-ink-2 hover:bg-well hover:text-ink"
+              }`}
+            >
+              <span className="contents max-wide:hidden">
+                <ActiveBar on={on} />
+              </span>
+              <Icon size={15} className="shrink-0" />
+              {s.label}
+            </Link>
+          </span>
+        );
+      })}
+    </nav>
   );
 }

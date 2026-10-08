@@ -4,7 +4,7 @@ import { Field, inputClass } from "../Field";
 import { Select } from "../Select";
 import { ToggleRow } from "../Switch";
 import { ConfigSource, type ConfigField, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
-import { HINTS, PLACEHOLDERS, labelOf, sourceWord } from "./fields";
+import { PLACEHOLDERS, hintOf, labelOf, sourceWord } from "./fields";
 
 export function SourceChips({ field }: { field: ConfigField }) {
   return (
@@ -27,6 +27,7 @@ export function FieldRow({
   engines,
   providers,
   placeholder,
+  hint,
   onChange,
 }: {
   field: ConfigField;
@@ -35,15 +36,19 @@ export function FieldRow({
   providers: Provider[];
   // placeholder overrides the static one, for a default only the server knows.
   placeholder?: string;
+  // hint overrides the field's own, for one that follows the value.
+  hint?: string;
   onChange: (v: string) => void;
 }) {
   const locked = field.source === ConfigSource.ENV;
   const label = labelOf(field.key, engines, providers);
+  const note = hint ?? hintOf(field.key, engines, providers);
 
   if (field.type === "bool") {
     return (
       <ToggleRow
         label={label}
+        hint={note}
         meta={<SourceChips field={field} />}
         on={value === "true"}
         disabled={locked}
@@ -82,7 +87,7 @@ export function FieldRow({
   }
 
   return (
-    <Field label={label} hint={HINTS[field.key]} headerRight={<SourceChips field={field} />}>
+    <Field label={label} hint={note} headerRight={<SourceChips field={field} />}>
       {control}
     </Field>
   );
