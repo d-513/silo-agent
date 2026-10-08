@@ -1,18 +1,17 @@
-import { Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { Suspense, type ReactNode } from "react";
 import { lazyNamed } from "../lazyNamed";
 import { chatLink } from "../links";
 import { PaneFallback } from "../PaneFallback";
 import { useBotPage } from "./context";
-import { ChatSidebar } from "./ChatSidebar";
-import { ChatStrip } from "./ChatStrip";
 import { RunPane } from "./RunPane";
 import { SecretsPane } from "./SecretsPane";
 import { patchChats } from "./useChatList";
 
 // The pages under /bots/$botId (router.tsx). Each is a thin adapter: it takes
 // what its pane needs from BotPage and renders the pane. Everything but the
-// chat is loaded the first time its tab opens.
+// chat is loaded the first time its page opens. Files, Desktop and Console have
+// no adapter: BotPage renders them itself, docked or as the page.
 const AutomationsList = lazyNamed(() => import("../Automations"), "AutomationsList");
 const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew");
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
@@ -20,7 +19,6 @@ const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
-const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
 const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
 const DriveNew = lazyNamed(() => import("../drives/BotDrives"), "DriveNew");
@@ -55,38 +53,12 @@ export function ScrollLayout() {
   );
 }
 
-// The chat side: the chats column (a strip when narrow) beside whichever
-// conversation page is open.
+// The chat side: the conversation, or one of the pages beside it.
 export function ChatLayout() {
-  const { id, bot, tab, chatId, chats, rename, waiting, run, agentsBusy, newChat, deleteChat } = useBotPage();
   return (
-    <>
-      <ChatSidebar
-        id={id}
-        bot={bot}
-        tab={tab}
-        chatId={chatId}
-        chats={chats}
-        rename={rename}
-        live={{ waiting, sending: run.sending, agentsBusy }}
-        onNewChat={newChat}
-        onDeleteChat={deleteChat}
-      />
-      <section className="flex min-w-0 flex-1 flex-col">
-        <ChatStrip
-          id={id}
-          bot={bot}
-          tab={tab}
-          chatId={chatId}
-          chats={chats}
-          rename={rename}
-          busy={{ waiting, sending: run.sending }}
-          onNewChat={newChat}
-          onDeleteChat={deleteChat}
-        />
-        <Outlet />
-      </section>
-    </>
+    <section className="flex min-w-0 flex-1 flex-col">
+      <Outlet />
+    </section>
   );
 }
 
@@ -196,18 +168,6 @@ export function FeedRoute() {
   );
 }
 
-export function FilesRoute() {
-  const p = useBotPage();
-  const { open } = useSearch({ from: "/_authed/bots/$botId/files" });
-  return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <Suspense fallback={<PaneFallback />}>
-        <FilesPane bot={p.bot} onStart={p.start} openAt={open ?? ""} />
-      </Suspense>
-    </section>
-  );
-}
-
 export function ConnectorsRoute() {
   const p = useBotPage();
   return (
@@ -229,12 +189,12 @@ export function DriveNewRoute() {
 }
 
 export function DriveAddRoute() {
-  const { template } = useParams({ from: "/_authed/bots/$botId/drives/new/$template" });
+  const { template } = useParams({ from: "/_authed/bots/$botId/_customize/drives/new/$template" });
   return <DriveAdd botId={useBotPage().id} template={template} />;
 }
 
 export function DriveRoute() {
-  const { driveId } = useParams({ from: "/_authed/bots/$botId/drives/$driveId" });
+  const { driveId } = useParams({ from: "/_authed/bots/$botId/_customize/drives/$driveId" });
   return <DriveEdit botId={useBotPage().id} driveId={driveId} />;
 }
 
@@ -247,17 +207,17 @@ export function ChannelNewRoute() {
 }
 
 export function ChannelAddRoute() {
-  const { adapter } = useParams({ from: "/_authed/bots/$botId/channels/new/$adapter" });
+  const { adapter } = useParams({ from: "/_authed/bots/$botId/_customize/channels/new/$adapter" });
   return <ChannelAdd botId={useBotPage().id} adapter={adapter} />;
 }
 
 export function ChannelRoute() {
-  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId" });
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/_customize/channels/$channelId" });
   return <ChannelEdit botId={useBotPage().id} channelId={channelId} />;
 }
 
 export function ChannelSetupRoute() {
-  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId/setup" });
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/_customize/channels/$channelId/setup" });
   return <ChannelSetupPage botId={useBotPage().id} channelId={channelId} />;
 }
 

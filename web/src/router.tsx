@@ -20,7 +20,6 @@ import {
   DriveRoute,
   DrivesRoute,
   FeedRoute,
-  FilesRoute,
   KnowledgeRoute,
   MemoriesRoute,
   RulesRoute,
@@ -31,6 +30,7 @@ import {
   SkillsRoute,
   TunnelsRoute,
 } from "./bot/routes";
+import { CustomizeLayout, SettingsLayout } from "./bot/SectionTabs";
 import type { Tab } from "./bot/tabs";
 import { BotsPage } from "./BotsPage";
 import { Snag } from "./ErrorBoundary";
@@ -47,13 +47,16 @@ import { SignIn } from "./SignIn";
 //   _authed                        the rail; signed out goes to /signin
 //     /  /new  /skills  /account
 //     /admin/…                     admins only
-//     /bots/$botId                 BotPage: header, tabs, what survives a tab change
-//       _chat                      the chats sidebar and its side pages
+//     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
+//       _chat                      the chat and the pages beside it
 //         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
-//       desktop console files drives/… connectors channels/… tunnels skills
-//       secrets rules container settings
+//       _customize                 Customize and its tabs
+//         connectors  skills  drives/…  channels/…
+//       _settings                  Settings and its tabs
+//         settings  rules  secrets  tunnels  container
+//       files desktop console      a machine pane as a page of its own
 //
-// `staticData.tab` is the tab a route lights (a sub-page lights its parent's).
+// `staticData.tab` is the page a route lights (a sub-page lights its parent's).
 
 declare module "@tanstack/react-router" {
   interface Register {
@@ -143,7 +146,7 @@ const toChat = ({ params }: { params: { botId: string } }) => {
   throw redirect({ to: "/bots/$botId/run", params: { botId: params.botId }, replace: true });
 };
 const botIndex = createRoute({ getParentRoute: () => bot, path: "/", beforeLoad: toChat });
-// A tab that does not exist opens the chat.
+// A page that does not exist opens the chat.
 const botElse = createRoute({ getParentRoute: () => bot, path: "$", beforeLoad: toChat });
 
 const chat = createRoute({ getParentRoute: () => bot, id: "_chat", component: ChatLayout });
@@ -158,8 +161,9 @@ const memories = createRoute({ getParentRoute: () => chat, path: "memories", sta
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
 
-// Desktop and Console render nothing here: BotPage keeps them mounted (hidden)
-// once opened, so their connections survive a trip to another tab.
+// The machine panes render nothing here: BotPage shows the same pane docked
+// beside the chat or, on these routes, as the page, and keeps it mounted
+// (hidden) once opened, so its connection survives a trip elsewhere.
 const desktop = createRoute({ getParentRoute: () => bot, path: "desktop", staticData: { tab: "desktop" } });
 const consoleTab = createRoute({ getParentRoute: () => bot, path: "console", staticData: { tab: "console" } });
 const files = createRoute({
@@ -168,26 +172,28 @@ const files = createRoute({
   staticData: { tab: "files" },
   // ?open=drives/work lands the tree in that folder (Drives → Open in Files).
   validateSearch: (s: Record<string, unknown>): { open?: string } => (typeof s.open === "string" ? { open: s.open } : {}),
-  component: FilesRoute,
 });
-const drives = createRoute({ getParentRoute: () => bot, path: "drives", staticData: { tab: "drives" }, component: ScrollLayout });
+
+const customize = createRoute({ getParentRoute: () => bot, id: "_customize", component: CustomizeLayout });
+const settingsSection = createRoute({ getParentRoute: () => bot, id: "_settings", component: SettingsLayout });
+const drives = createRoute({ getParentRoute: () => customize, path: "drives", staticData: { tab: "drives" }, component: ScrollLayout });
 const drivesIndex = createRoute({ getParentRoute: () => drives, path: "/", component: DrivesRoute });
 const driveNew = createRoute({ getParentRoute: () => drives, path: "new", component: DriveNewRoute });
 const driveAdd = createRoute({ getParentRoute: () => drives, path: "new/$template", component: DriveAddRoute });
 const drive = createRoute({ getParentRoute: () => drives, path: "$driveId", component: DriveRoute });
-const connectors = createRoute({ getParentRoute: () => bot, path: "connectors", staticData: { tab: "connectors" }, component: ConnectorsRoute });
-const channels = createRoute({ getParentRoute: () => bot, path: "channels", staticData: { tab: "channels" }, component: ScrollLayout });
+const connectors = createRoute({ getParentRoute: () => customize, path: "connectors", staticData: { tab: "connectors" }, component: ConnectorsRoute });
+const channels = createRoute({ getParentRoute: () => customize, path: "channels", staticData: { tab: "channels" }, component: ScrollLayout });
 const channelsIndex = createRoute({ getParentRoute: () => channels, path: "/", component: ChannelsRoute });
 const channelNew = createRoute({ getParentRoute: () => channels, path: "new", component: ChannelNewRoute });
 const channelAdd = createRoute({ getParentRoute: () => channels, path: "new/$adapter", component: ChannelAddRoute });
 const channel = createRoute({ getParentRoute: () => channels, path: "$channelId", component: ChannelRoute });
 const channelSetup = createRoute({ getParentRoute: () => channels, path: "$channelId/setup", component: ChannelSetupRoute });
-const tunnels = createRoute({ getParentRoute: () => bot, path: "tunnels", staticData: { tab: "tunnels" }, component: TunnelsRoute });
-const botSkills = createRoute({ getParentRoute: () => bot, path: "skills", staticData: { tab: "skills" }, component: SkillsRoute });
-const secrets = createRoute({ getParentRoute: () => bot, path: "secrets", staticData: { tab: "secrets" }, component: SecretsRoute });
-const rules = createRoute({ getParentRoute: () => bot, path: "rules", staticData: { tab: "rules" }, component: RulesRoute });
-const container = createRoute({ getParentRoute: () => bot, path: "container", staticData: { tab: "container" }, component: ContainerRoute });
-const settings = createRoute({ getParentRoute: () => bot, path: "settings", staticData: { tab: "settings" }, component: SettingsRoute });
+const tunnels = createRoute({ getParentRoute: () => settingsSection, path: "tunnels", staticData: { tab: "tunnels" }, component: TunnelsRoute });
+const botSkills = createRoute({ getParentRoute: () => customize, path: "skills", staticData: { tab: "skills" }, component: SkillsRoute });
+const secrets = createRoute({ getParentRoute: () => settingsSection, path: "secrets", staticData: { tab: "secrets" }, component: SecretsRoute });
+const rules = createRoute({ getParentRoute: () => settingsSection, path: "rules", staticData: { tab: "rules" }, component: RulesRoute });
+const container = createRoute({ getParentRoute: () => settingsSection, path: "container", staticData: { tab: "container" }, component: ContainerRoute });
+const settings = createRoute({ getParentRoute: () => settingsSection, path: "settings", staticData: { tab: "settings" }, component: SettingsRoute });
 
 // Any other address goes home (and from there to Sign in when signed out).
 const elsewhere = createRoute({
@@ -209,18 +215,16 @@ const routeTree = root.addChildren([
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
+      customize.addChildren([
+        connectors,
+        botSkills,
+        drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
+        channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
+      ]),
+      settingsSection.addChildren([settings, rules, secrets, tunnels, container]),
+      files,
       desktop,
       consoleTab,
-      files,
-      drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
-      connectors,
-      channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
-      tunnels,
-      botSkills,
-      secrets,
-      rules,
-      container,
-      settings,
       botElse,
     ]),
   ]),

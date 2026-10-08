@@ -1,6 +1,6 @@
-import { Link, Outlet, useMatches, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { X } from "lucide-react";
-import { Suspense, useEffect, useState, type CSSProperties } from "react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
 import { useAuth } from "../auth";
@@ -12,39 +12,50 @@ import { agentLink, chatLink } from "../links";
 import { reload, setBot } from "../query";
 import { useRunStream } from "../useRunStream";
 import { useSubagents } from "../useSubagents";
-import { BotHeader } from "./BotHeader";
+import { useWide } from "../useWide";
 import { BotPageCtx } from "./context";
+import { BotSidebar } from "./BotSidebar";
 import { BotSlip } from "./BotSlip";
+import { BotStrip } from "./BotStrip";
+import { MachineRail } from "./MachineRail";
+import { setDocked, useDocked } from "./paneStore";
 import { runActions } from "./runActions";
-import { onChatSide } from "./tabs";
+import { SidePane } from "./SidePane";
+import { onChatSide, paneOf, type PaneKind } from "./tabs";
 import { useBotLive } from "./useBotLive";
 import { patchChats, useChatList } from "./useChatList";
 import { useComposerDraft } from "./useComposerDraft";
 import { useSecrets } from "./useSecrets";
 
-const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
 const ArtifactOverlay = lazyNamed(() => import("../ArtifactOverlay"), "ArtifactOverlay");
 
 function LoadingBot() {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-12 items-center gap-3 px-4 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14">
-        <div className="skeleton hidden h-7 w-7 rounded-sm wide:block" />
-        <div className="skeleton hidden h-4 w-32 rounded-xs wide:block" />
-      </div>
-      <div className="flex min-h-0 flex-1">
-        <div className="hidden w-[248px] shrink-0 bg-well p-2 pt-12 wide:block">
-          <SkeletonRows rows={4} height={52} />
+    <div className="flex h-full">
+      <div className="hidden w-[248px] shrink-0 bg-well px-2 wide:block">
+        <div className="flex h-14 items-center px-3">
+          <div className="skeleton h-4 w-32 rounded-xs" />
         </div>
-        <div className="flex-1" />
+        <div className="skeleton mb-3 h-10 rounded-control" />
+        <SkeletonRows rows={5} height={36} />
       </div>
+      <div className="flex-1" />
+      <div className="hidden w-12 shrink-0 bg-well wide:block" />
     </div>
   );
 }
 
-// BotPage is the /bots/$botId layout: the Bot's header and tabs, with the open
-// tab's page (bot/routes.tsx) in its <Outlet>. It owns what must survive moving
-// between tabs (the live Bot row, the chat list, a half-written message, the
+// Where each machine pane lives as a page of its own.
+const paneTo = {
+  files: "/bots/$botId/files",
+  desktop: "/bots/$botId/desktop",
+  console: "/bots/$botId/console",
+} as const;
+
+// BotPage is the /bots/$botId layout: the sidebar on the left, the open page
+// (bot/routes.tsx) in its <Outlet>, and the machine on the right — the rail,
+// and the pane it docks beside the page. It owns what must survive moving
+// between pages (the live Bot row, the chat list, a half-written message, the
 // run stream) and hands it to those pages through useBotPage().
 export function BotPage() {
   const { admin } = useAuth();
@@ -60,8 +71,17 @@ export function BotPage() {
   const draft = useComposerDraft(id, bot?.workerConnected);
   const secrets = useSecrets(id, tab === "secrets", setActErr);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
-  const [keepDesk, setKeepDesk] = useState(tab === "desktop");
-  const [keepCon, setKeepCon] = useState(tab === "console");
+  // A machine pane is its own page on its route (`max`); on the chat side it
+  // is the one docked beside the page, where there is room for that. Customize
+  // and Settings keep their full width: a docked pane waits (still connected)
+  // until the chat is back.
+  const wide = useWide();
+  const docked = useDocked();
+  const max = paneOf(tab) !== "";
+  const pane = paneOf(tab) || (wide && chatSide ? docked.kind : "");
+  const { open } = useSearch({ strict: false });
+  const [openAt, setOpenAt] = useState(open ?? "");
+  const lastChat = useRef<string | undefined>(undefined);
   const [inspect, setInspect] = useState<Artifact | null>(null);
   const subs = useSubagents(id, chatId);
   const run = useRunStream(id, chatId, {
@@ -74,17 +94,18 @@ export function BotPage() {
     onPing: () => subs.refresh(),
   });
 
-  // The desktop and console stay mounted (hidden) once opened, so their
-  // connections survive a trip to another tab; a different Bot starts fresh.
   useEffect(() => {
-    setKeepDesk(tab === "desktop");
-    setKeepCon(tab === "console");
     setAuthPrompt(null);
+    lastChat.current = undefined;
   }, [id]);
+  // Docking a pane back goes to the chat it was opened from.
   useEffect(() => {
-    if (tab === "desktop") setKeepDesk(true);
-    if (tab === "console") setKeepCon(true);
-  }, [tab]);
+    if (chatId) lastChat.current = chatId;
+  }, [chatId]);
+  // Files keeps the folder a link opened it in after it is docked.
+  useEffect(() => {
+    if (open) setOpenAt(open);
+  }, [open]);
 
   if (loadErr) {
     return (
@@ -136,6 +157,21 @@ export function BotPage() {
     }
   }
   const onSaveSkill = (a: Artifact) => void saveSkill(a);
+  const onNewChat = () => void newChat().catch((e) => setActErr(fail(e)));
+  const onDeleteChat = (cid: string) => void deleteChat(cid).catch((e) => setActErr(fail(e)));
+
+  // The rail: on a pane's own page it moves between those pages; beside the
+  // chat it docks the pane, and a second press puts it away; from Customize or
+  // Settings it goes back to the chat with the pane docked.
+  function pickPane(kind: PaneKind) {
+    if (max) void navigate({ to: paneTo[kind], params: { botId: id } });
+    else if (chatSide) setDocked(docked.kind === kind ? "" : kind);
+    else dockPane(kind);
+  }
+  function dockPane(kind: PaneKind | "") {
+    if (kind) setDocked(kind);
+    void navigate(chatLink(id, lastChat.current));
+  }
 
   return (
     <BotPageCtx.Provider
@@ -159,8 +195,8 @@ export function BotPage() {
         defaultModel,
         voice,
         rename,
-        newChat: () => newChat().catch((e) => setActErr(fail(e))),
-        deleteChat: (cid) => deleteChat(cid).catch((e) => setActErr(fail(e))),
+        newChat: onNewChat,
+        deleteChat: onDeleteChat,
         run,
         subs,
         draft,
@@ -172,7 +208,6 @@ export function BotPage() {
       }}
     >
       <div className="flex h-full min-h-0 flex-col">
-        <BotHeader id={id} bot={bot} tab={tab} chatId={chatId} onStart={start} onStop={stop} />
         {actErr && (
           <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-[13px] text-vermilion">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
@@ -182,24 +217,50 @@ export function BotPage() {
             </button>
           </div>
         )}
-        <div className="relative flex min-h-0 flex-1" style={{ "--wash-left": chatSide ? "248px" : "0px" } as CSSProperties}>
-          <Outlet />
-          {tab === "desktop" || keepDesk ? (
-            <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "desktop" ? "flex" : "hidden"}`}>
-              <Suspense fallback={null}>
-                <MachinePane bot={bot} onStart={start} visible={tab === "desktop"} kind="desktop" />
-              </Suspense>
-              <p className="mt-2 text-[12.5px] text-ink-2">Same browser the Bot uses. You can type and click.</p>
-            </section>
-          ) : null}
-          {tab === "console" || keepCon ? (
-            <section className={`min-w-0 flex-1 flex-col p-3 ${tab === "console" ? "flex" : "hidden"}`}>
-              <Suspense fallback={null}>
-                <MachinePane bot={bot} onStart={start} visible={tab === "console"} kind="console" />
-              </Suspense>
-              <p className="mt-2 text-[12.5px] text-ink-2">A shell on this Bot, started in /workspace.</p>
-            </section>
-          ) : null}
+        <BotStrip
+          id={id}
+          bot={bot}
+          tab={tab}
+          chatId={chatId}
+          chats={chats}
+          rename={rename}
+          busy={{ waiting, sending: run.sending }}
+          onNewChat={onNewChat}
+          onDeleteChat={onDeleteChat}
+          onStart={start}
+          onStop={stop}
+        />
+        <div className="relative flex min-h-0 flex-1" style={{ "--wash-left": max ? "0px" : "248px" } as CSSProperties}>
+          {max ? null : (
+            <BotSidebar
+              id={id}
+              bot={bot}
+              tab={tab}
+              chatId={chatId}
+              chats={chats}
+              rename={rename}
+              live={{ waiting, sending: run.sending, agentsBusy }}
+              onNewChat={onNewChat}
+              onDeleteChat={onDeleteChat}
+            />
+          )}
+          <div className={`min-h-0 min-w-0 flex-1 ${max ? "hidden" : "flex"}`}>
+            <Outlet />
+          </div>
+          <SidePane
+            key={id}
+            bot={bot}
+            kind={pane}
+            max={max}
+            share={docked.share}
+            openAt={openAt}
+            canDock={wide}
+            onStart={start}
+            onMax={() => pane && void navigate({ to: paneTo[pane], params: { botId: id } })}
+            onDock={() => dockPane(pane)}
+            onClose={() => setDocked("")}
+          />
+          <MachineRail bot={bot} open={pane} onPick={pickPane} onStart={start} onStop={stop} />
           <BotSlip bot={bot} pending={pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
           {inspect ? (
             <Suspense fallback={null}>

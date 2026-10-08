@@ -139,14 +139,16 @@ export function FileBrowser({
     void toggleDir(path);
   }
   const treeCls = hatch
-    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-canvas max-wide:w-full max-wide:border-r-0"
-    : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink max-wide:w-full max-wide:border-r-0";
+    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-canvas @max-[640px]:w-full @max-[640px]:border-r-0"
+    : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink @max-[640px]:w-full @max-[640px]:border-r-0";
   const headCls = hatch
     ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-canvas"
     : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]";
 
+  // Under 640px of its own width (a phone, or a pane docked beside the chat)
+  // the browser shows the tree or the preview, not both.
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="@container flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={headCls}>
         {headerLeft}
         <div className="silo-scroll-x flex min-w-0 flex-1 items-center gap-2">
@@ -177,7 +179,7 @@ export function FileBrowser({
       </div>
       {err && <p className={`px-4 py-2 ${hatch ? "text-vermilion" : "text-vermilion"}`}>{err}</p>}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <nav className={`${treeCls} ${file ? "max-wide:hidden" : ""}`}>
+        <nav className={`${treeCls} ${file ? "@max-[640px]:hidden" : ""}`}>
           <Tree
             path=""
             depth={0}
@@ -191,7 +193,7 @@ export function FileBrowser({
             onDelete={onDelete}
           />
         </nav>
-        <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "max-wide:hidden"}`}>
+        <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "@max-[640px]:hidden"}`}>
           {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">Showing the first 2 MB.</p>}
           <div className="min-h-0 flex-1 overflow-auto p-3">
             {busy ? <p className="text-ink-2">Opening…</p> : null}

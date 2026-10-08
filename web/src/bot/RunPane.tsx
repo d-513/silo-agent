@@ -12,7 +12,7 @@ import type { useSubagents } from "../useSubagents";
 import type { RunActions } from "./runActions";
 import type { ComposerDraft } from "./useComposerDraft";
 
-// The Chat tab's working area: the shared taskboard, the thread, the tray of
+// The chat's working area: the shared taskboard, the thread, the tray of
 // subagents, and the composer.
 export function RunPane({
   id,

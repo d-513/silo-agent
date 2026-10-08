@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ConsoleTerm } from "../Console";
 import { Crest } from "../Crest";
 import type { Bot } from "../gen/silo/v1/ui_pb";
@@ -91,11 +91,14 @@ export function MachinePane({
   onStart,
   visible,
   kind,
+  actions,
 }: {
   bot: Bot;
   onStart: () => void;
   visible: boolean;
   kind: "desktop" | "console";
+  // Controls for the end of the hatch's header (dock, open as a page, close).
+  actions?: ReactNode;
 }) {
   const label = kind === "console" ? "Console" : "Desktop";
   if (!bot.workerConnected) {
@@ -115,6 +118,7 @@ export function MachinePane({
         <span className="font-mono text-[12px] text-white/60">{label}</span>
         <Lamp status={bot.status} />
         <span className="ml-auto font-mono text-[12px] text-white/80">{statusText(bot.status)}</span>
+        {actions ? <span className="-mr-1.5 flex shrink-0 items-center gap-0.5">{actions}</span> : null}
       </div>
       <div className="mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-sm bg-matte">
         {kind === "console" ? <ConsoleTerm botId={bot.id} live visible={visible} /> : <Hatch botId={bot.id} live visible={visible} />}

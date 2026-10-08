@@ -1,5 +1,5 @@
 import { FolderPlus, Plus, Upload, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { FileBrowser } from "./FileBrowser";
@@ -8,8 +8,9 @@ import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 
-// openAt lands the tree in that folder (Drives → Open in Files).
-export function FilesPane({ bot, onStart, openAt }: { bot: Bot; onStart: () => void; openAt: string }) {
+// openAt lands the tree in that folder (Drives → Open in Files). `actions` are
+// the pane's own controls (dock, open as a page, close), at the header's end.
+export function FilesPane({ bot, onStart, openAt, actions }: { bot: Bot; onStart: () => void; openAt: string; actions?: ReactNode }) {
   const source = useMemo(() => botSource(bot.id), [bot.id]);
   const [cwd, setCwd] = useState("");
   const [err, setErr] = useState("");
@@ -132,6 +133,12 @@ export function FilesPane({ bot, onStart, openAt }: { bot: Bot; onStart: () => v
               <Upload size={16} />
             </button>
             <input ref={upload} type="file" multiple className="hidden" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />
+            {actions ? (
+              <>
+                <span aria-hidden className="h-4 w-px shrink-0 bg-line-strong" />
+                <span className="-mx-1.5 flex shrink-0 items-center gap-0.5">{actions}</span>
+              </>
+            ) : null}
           </>
         }
       />

@@ -88,7 +88,7 @@ export function SettingsPane({
         name: name.trim(),
         description: description.trim(),
         soul,
-        // Core memory is edited on the Memories tab; send it back unchanged.
+        // Core memory is edited on the Memories page; send it back unchanged.
         memory: bot.memory,
         autoApprove: bot.autoApprove,
         model: selectedModel,
@@ -121,9 +121,9 @@ export function SettingsPane({
   return (
     <div className="silo-page pb-12">
       <h2 className="text-title">Settings</h2>
-      <p className="mb-6 text-ink-2">This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories tab.</p>
+      <p className="mb-6 text-ink-2">This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories page.</p>
       <form onSubmit={save} className="grid gap-4">
-        <Panel title="Identity" note="Shown on the folio and in the run header.">
+        <Panel title="Identity" note="Shown on the folio and in the sidebar.">
           <div className="grid gap-4">
             <Field label="Name" required>
               <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />

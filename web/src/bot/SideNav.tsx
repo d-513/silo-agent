@@ -1,8 +1,18 @@
 import { MessageCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
-// The conversation-side pages of a Bot.
-type SideTo = "/bots/$botId/automations" | "/bots/$botId/memories" | "/bots/$botId/knowledge" | "/bots/$botId/feed";
+// The pages a Bot's sidebar opens: the conversation-side ones, the first page
+// of Customize and of Settings, and (in the narrow strip) the machine panes.
+type SideTo =
+  | "/bots/$botId/automations"
+  | "/bots/$botId/memories"
+  | "/bots/$botId/knowledge"
+  | "/bots/$botId/feed"
+  | "/bots/$botId/connectors"
+  | "/bots/$botId/settings"
+  | "/bots/$botId/files"
+  | "/bots/$botId/desktop"
+  | "/bots/$botId/console";
 type SideProps = { to: SideTo; botId: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number };
 
 // ActiveBar is the cobalt "you are here" mark on the left edge of the open
@@ -19,13 +29,14 @@ export function ActiveBar({ on }: { on: boolean }) {
   );
 }
 
-// SideLink is a one-line row above the chats list: the conversation-side pages.
+// SideLink is a one-line row of the sidebar: a page beside the chats.
 // Flat like a chat row: the open one is lifted by tone alone.
 export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SideProps) {
   return (
     <Link
       to={to}
       params={{ botId }}
+      data-tab-on={on || undefined}
       className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
         on ? "bg-surface text-ink" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}

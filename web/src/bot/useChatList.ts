@@ -31,14 +31,14 @@ export function putChat(botId: string, row: Chat) {
   patchChats(botId, (xs) => xs.map((c) => (c.id === row.id ? row : c)));
 }
 
-// useChatList loads a Bot's chats and models while a chat-side page is open,
-// opens the newest chat when none is picked, and owns create, rename and delete.
+// useChatList loads a Bot's chats (the sidebar shows them on every page) and,
+// while a chat-side page is open, its models; it opens the newest chat when
+// none is picked, and owns create, rename and delete.
 export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string }, onError: (message: string) => void) {
   const { tab, chatSide, chatId } = route;
   const nav = useNavigate();
-  const on = id && chatSide ? { botId: id } : skipToken;
-  const chatsQ = useQuery(UI.method.listChats, on);
-  const modelsQ = useQuery(UI.method.listModels, on);
+  const chatsQ = useQuery(UI.method.listChats, id ? { botId: id } : skipToken);
+  const modelsQ = useQuery(UI.method.listModels, id && chatSide ? { botId: id } : skipToken);
   const chats = chatsQ.data?.chats ?? [];
   const [editingChat, setEditingChat] = useState("");
   const [editTitle, setEditTitle] = useState("");
@@ -47,8 +47,8 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
   // Moving between chats and side pages rereads the list: a channel or an
   // automation may have added to it.
   useEffect(() => {
-    if (id && chatSide) void recheck(UI.method.listChats, { botId: id });
-  }, [id, tab, chatSide, chatId]);
+    if (id) void recheck(UI.method.listChats, { botId: id });
+  }, [id, tab, chatId]);
 
   const newest = chatsQ.data?.chats[0]?.id;
   useEffect(() => {

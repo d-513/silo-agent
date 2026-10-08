@@ -1,4 +1,4 @@
-import { Brain, Inbox, Library, Pencil, SquarePen, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, Folder, Inbox, Library, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
@@ -7,12 +7,13 @@ import { Lamp } from "../Lamp";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { FadeScroll } from "./FadeScroll";
 import { SideChip } from "./SideNav";
-import type { Tab } from "./tabs";
+import { onCustomize, onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 
-// The narrow layout's chats: a sideways strip with the conversation-side pages
-// as icon chips at its start.
-export function ChatStrip({
+// The narrow layout's way around a Bot: one sideways strip with New chat, every
+// page as an icon chip (the machine panes too, which have no room to dock
+// here), Start/Stop, and then the chats.
+export function BotStrip({
   id,
   bot,
   tab,
@@ -22,6 +23,8 @@ export function ChatStrip({
   busy,
   onNewChat,
   onDeleteChat,
+  onStart,
+  onStop,
 }: {
   id: string;
   bot: Bot;
@@ -33,16 +36,28 @@ export function ChatStrip({
   busy: { waiting: boolean; sending: boolean };
   onNewChat: () => void;
   onDeleteChat: (cid: string) => void;
+  onStart: () => void;
+  onStop: () => void;
 }) {
   const { waiting, sending } = busy;
+  const starting = bot.status === "starting";
+  const power = bot.workerConnected ? "Stop Bot" : starting ? "Starting…" : "Start Bot";
+  const rule = <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />;
   return (
     <FadeScroll className="shrink-0 bg-well shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden" innerClass="flex items-center gap-1 px-2 py-1.5" fade="from-well">
-      <Btn kind="ghost" size="sm" iconOnly title="New chat" aria-label="New chat" className="h-10 w-10" icon={<SquarePen size={15} />} onClick={onNewChat} />
+      <Btn kind="primary" size="sm" iconOnly title="New chat" aria-label="New chat" className="h-10 w-10" icon={<Plus size={17} />} onClick={onNewChat} />
       <SideChip to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label="Automations" />
       <SideChip to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
       <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
       <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={bot.feedUnread} />
-      <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />
+      <SideChip to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
+      <SideChip to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label="Settings" />
+      {rule}
+      <SideChip to="/bots/$botId/files" botId={id} on={tab === "files"} icon={Folder} label="Files" />
+      <SideChip to="/bots/$botId/desktop" botId={id} on={tab === "desktop"} icon={Monitor} label="Desktop" />
+      <SideChip to="/bots/$botId/console" botId={id} on={tab === "console"} icon={SquareTerminal} label="Console" />
+      <Btn kind="ghost" size="sm" iconOnly title={power} aria-label={power} className="h-10 w-10" disabled={!bot.workerConnected && starting} icon={<Power size={15} />} onClick={bot.workerConnected ? onStop : onStart} />
+      {rule}
       {chats.map((c) => {
         const on = tab === "run" && c.id === chatId;
         return (

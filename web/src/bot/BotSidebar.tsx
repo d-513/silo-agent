@@ -1,25 +1,26 @@
-import { Brain, ChevronDown, Inbox, Library, Pencil, SquarePen, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, ChevronDown, Inbox, Library, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Btn } from "../Btn";
+import { pressClass } from "../Btn";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
 import { fullTime } from "../format";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
-import { Status } from "../Lamp";
+import { Lamp, Status, StatusWord } from "../Lamp";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { ActiveBar, SideLink } from "./SideNav";
-import type { Tab } from "./tabs";
+import { onCustomize, onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 
 // What the open chat is doing, for its lamp: waiting on you, or working.
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
 
-// The wide layout's left column: the conversation-side pages, then the chats
-// folded into date groups.
-export function ChatSidebar({
+// The wide layout's left column, on every page of a Bot: its name and state,
+// New chat, the pages beside the chat, the chats folded into date groups, and
+// Settings at the foot.
+export function BotSidebar({
   id,
   bot,
   tab,
@@ -56,18 +57,28 @@ export function ChatSidebar({
   const busy = waiting || sending || agentsBusy;
   return (
     <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
-      <nav className="space-y-0.5 px-2 pt-2" aria-label="Conversation">
+      <div className="flex h-14 shrink-0 items-center gap-3 pr-4 pl-5">
+        <h1 className="min-w-0 flex-1 truncate text-card-title leading-5">{bot.name}</h1>
+        <span className="flex shrink-0 items-center gap-2">
+          <Lamp status={bot.status} />
+          <StatusWord status={bot.status} />
+        </span>
+      </div>
+      <div className="px-2 pb-3">
+        <NewChat onClick={onNewChat} />
+      </div>
+      <nav className="space-y-0.5 px-2" aria-label="Pages">
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label="Automations" />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
         <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
         <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
+        <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
       </nav>
-      <div className="flex h-12 items-center justify-between pr-2 pl-4">
+      <div className="flex h-10 shrink-0 items-end pb-1.5 pl-5">
         <span className="text-label-caps leading-4 text-ink-3 uppercase">Chats</span>
-        <Btn kind="ghost" size="sm" iconOnly title="New chat" aria-label="New chat" icon={<SquarePen size={15} />} onClick={onNewChat} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-2 pb-3">
-        {chats.length === 0 && <p className="px-2 py-2 text-[12.5px] text-ink-3">No chats</p>}
+        {chats.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">No chats</p>}
         {groups.map((g) => (
           <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
             {g.chats.map((c) => {
@@ -87,7 +98,27 @@ export function ChatSidebar({
           </ChatGroupSection>
         ))}
       </div>
+      <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label="Bot">
+        <SideLink to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label="Settings" />
+      </nav>
     </aside>
+  );
+}
+
+// New chat is the sidebar's one lifted control: a full-width surface button
+// whose plus sits in a glyph well and turns a quarter on hover.
+function NewChat({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group/new flex h-10 w-full items-center gap-2.5 rounded-control bg-surface pr-3 pl-2 text-[13.5px] font-medium text-ink shadow-card hover:shadow-float ${pressClass}`}
+    >
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-white">
+        <Plus size={15} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
+      </span>
+      New chat
+    </button>
   );
 }
 

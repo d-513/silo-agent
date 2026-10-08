@@ -10,8 +10,8 @@ import type { ChatRename } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
 import type { SecretsState } from "./useSecrets";
 
-// What BotPage (the /bots/$botId layout) holds for the tab pages under it:
-// the live Bot row and everything that must survive moving between tabs.
+// What BotPage (the /bots/$botId layout) holds for the pages under it:
+// the live Bot row and everything that must survive moving between pages.
 export type BotPageState = {
   id: string;
   bot: Bot;
@@ -21,7 +21,7 @@ export type BotPageState = {
   agentId?: string;
   start: () => void;
   stop: () => void;
-  // The banner under the header; "" clears it.
+  // The banner across the top of the page; "" clears it.
   onError: (message: string) => void;
   reloadApprovals: () => void;
   inspectArtifact: (a: Artifact) => void;

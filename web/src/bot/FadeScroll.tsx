@@ -1,21 +1,18 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function FadeScroll({
   className = "",
   innerClass = "",
   fade = "from-canvas",
-  innerRef,
   children,
 }: {
   className?: string;
   innerClass?: string;
   fade?: "from-canvas" | "from-well";
-  innerRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
-  const own = useRef<HTMLDivElement>(null);
-  const ref = innerRef ?? own;
+  const ref = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ start: false, end: false });
   useEffect(() => {
     const el = ref.current;
@@ -34,7 +31,7 @@ export function FadeScroll({
       el.removeEventListener("scroll", tick);
       ro.disconnect();
     };
-  }, [ref]);
+  }, []);
   function nudge(dir: -1 | 1) {
     const el = ref.current;
     if (!el) return;

@@ -320,10 +320,19 @@ No bounce, and no overshoot beyond the settle curve.
 - **Blink:** on hover, the eyes squash to `scaleY(.12)` and back over 220ms (`transform-box: fill-box; transform-origin: center`). Working Bots in the rail blink by themselves about every 6s. That's the only personality animation in the product.
 - Picker: selected cell `cobalt-pale` with an inset 1px `cobalt` ring; selected color dot `0 0 0 2px surface, 0 0 0 4px cobalt`.
 
-### Tabs (Bot header)
+### Section tabs (Customize, Settings)
 
+- A Bot has no top bar. The two sections with pages of their own open with a 56px head on `canvas` with a `line` bottom edge: the section name in `card-title`, then its tabs.
 - Tabs are 32px tall, 13px/500 in `ink-3`, with a 15px icon. Hovering fills `well` and turns the text `ink`. The active tab is `ink`.
 - A single 2px `cobalt` underline **slides** to the active tab (transform + width over 280ms `ease-quiet`). It doesn't re-render per tab.
+
+### Machine rail and pane
+
+- **Rail:** 48px wide on `well` at the right edge of every Bot page. From the top: **Files**, **Desktop**, **Console** (18px icons in 36px hit areas, `control` radius, `title` tooltips only), a spacer, then the power glyph for Start Bot / Stop Bot. The open one is a `surface` well with a `line` ring and a 3px `cobalt` bar on its left edge, the side its pane opens toward.
+- **Docked pane:** pressing a rail icon beside the chat opens that pane between the page and the rail; pressing it again puts it away. The pane and the page split the row (half each by default, each kept between a quarter and three quarters, never under 320px). The edge between them is a `line` hairline that thickens to 3px `line-strong` on hover and takes the drag; a double-click evens the split. What is docked and how wide is remembered in the browser.
+- The pane adds no header of its own. Its two controls sit at the end of the header the pane already has (the hatch's bar in white at 70%, the Files crumb bar in `ink-2`): **Open as a page** (maximize) and **Close**. On a stopped Bot they float in the corner of the Start well.
+- **As a page** (`/bots/:id/files|desktop|console`): the pane takes the whole row; the sidebar steps aside, the rail stays. Its one control is **Dock beside the chat**, which returns to the chat it was opened from with the pane docked. Docking and undocking never reconnect the desktop or lose the place in Files.
+- Only the chat side takes a docked pane. Customize and Settings keep their full width; a rail icon pressed there goes back to the chat with the pane docked.
 
 ### Rail
 
@@ -339,8 +348,10 @@ No bounce, and no overshoot beyond the settle curve.
 
 ### Chats list
 
-- 248px wide on `well`, headed by a `label-caps` "Chats" and a new-chat icon button.
-- Above the head sit three `control`-radius rows, **Automations** (timer), **Memories** (brain), and **Feed** (inbox), 15px icon and 13.5/500; the open one is a flat `surface` row with the `cobalt` bar. They are peer pages to Chat, not chats. Feed carries a cobalt count pill (white mono 11px) while it has unread posts; the narrow chip shows an 8px cobalt dot instead.
+- 248px wide on `well`, on every page of a Bot. It opens with a 56px head: the Bot's name in `card-title`, and the lamp with its status word on the right.
+- **New chat** is the sidebar's one lifted control: a full-width 40px `surface` button with a `line` ring, a 24px `ink` glyph well holding a white plus, then the label in 13.5/500. Hover lifts it to `shadow-float` and turns the plus a quarter (280ms `ease-quiet`); it presses like every button.
+- Under it sit the `control`-radius rows, **Automations** (timer), **Memories** (brain), **Knowledge** (library), **Feed** (inbox) and **Customize** (blocks), 15px icon and 13.5/500; the open one is a flat `surface` row with the `cobalt` bar. They are peer pages to Chat, not chats. Feed carries a cobalt count pill (white mono 11px) while it has unread posts; the narrow chip shows an 8px cobalt dot instead. Customize opens Connectors, Skills, Drives and Channels as tabs.
+- A `label-caps` "Chats" heads the list. **Settings** (gear) is one more row pinned to the foot above a `line` hairline; it opens General, Rules, Secrets, Tunnels and Containers as tabs.
 - Chats are grouped by when they last moved: **Today**, **Yesterday**, **Previous 7 days**, **Previous 30 days**, then one group per month (the year is named only when it is not this one). No row carries a day name or date; the group is the date, and the full time is the row's tooltip. A group head is a `label` (12/500, sentence case) in `ink-3` with the count and a chevron on the right; it sticks to the top while its rows scroll under it. Clicking it folds the group (`grid-template-rows` fold, 320ms; the chevron turns −90° over 200ms). The recent groups start open and the month groups start folded; what the reader folds is remembered in the browser. Landing on a chat opens the group it sits in.
 - Rows are one line, 32px, flat: the title in 13.5/400 `ink-2` (`ink` on hover and when open), no second line. Hover fills `pressed`; the open row is `surface` with no ring or shadow, marked by a 2px `cobalt` bar on its left edge that grows in as the previous one shrinks out. A live run shows the lamp and its word (**Working** / **Needs you**) at the end of the title. Rename and delete fade in over the end of the title on a gradient of the row's own tone (160ms), and never take space when the row is at rest. The rows above (Automations, Memories, Knowledge, Feed) use the same open treatment.
 - Titles are generated from the first prompt. Rename with the pencil or a double-click.
@@ -406,19 +417,17 @@ No bounce, and no overshoot beyond the settle curve.
 ## 7. Layout
 
 - **Shell:** the rail (64px) plus main. Break at **960** (`wide:` / `max-wide:`). Below 960, the rail becomes a 48px top bar (safe-area padded) and crests scroll sideways.
-- **Bot view:**
-  - A 56px header on `canvas` with a `line` bottom edge: crest 28 + name + lamp/status, the tab strip, a spacer, then Stop Bot / Start Bot (ghost).
-  - The body is chats (248, `well`) next to the thread on `canvas`. The sidebar opens with the **Automations**, **Memories**, and **Feed** rows above the chats head; the page body is the log or list when one is open.
-  - Desktop and Console give the whole main column to the hatch. Desktop's caret opens Console.
-  - Under 1280px the header's Start/Stop shows only the power glyph.
-- **Tabs:** `Chat`, `Desktop`, `Files`, `Drives`, `Connectors`, `Channels`, `Skills`, `Secrets`, `Rules`, `Containers`, `Settings`. The strip scrolls horizontally with edge fades. Add, edit and setup flows are their own routes, so the browser Back button works.
-- **Chat sidebar:** **Automations**, **Memories**, and **Feed** are conversation-side pages, so they sit as rows above the chats list and keep the Chat tab lit. Below 960 they are icon chips (label only when active) at the start of the chats strip, before a hairline and the chat chips.
+- **Bot view:** no top bar. Three columns: the sidebar (248, `well`), the page on `canvas`, and the machine rail (48, `well`). Chat is the page a Bot opens on.
+  - The sidebar carries the name and status, New chat, the pages beside the chat, Customize, the chats, and Settings at the foot.
+  - A machine pane (Files, Desktop, Console) docks between the page and the rail, or takes the row as a page of its own with the sidebar out of the way.
+- **Sections:** **Customize** is `Connectors`, `Skills`, `Drives`, `Channels`; **Settings** is `General`, `Rules`, `Secrets`, `Tunnels`, `Containers`. Each is a head with tabs over the open page. Add, edit and setup flows are their own routes, so the browser Back button works.
+- **Chat sidebar:** **Automations**, **Memories**, **Knowledge** and **Feed** are conversation-side pages, so they sit as rows above the chats list. Below 960 they are icon chips (label only when active) in the strip.
 - **Feed:** a `silo-page` of `surface` cards, newest first: optional title (15/600), a mono time + source line (a new post has a 6px cobalt dot for the visit), then the body in the thread's `Md`. Ghost icon actions top-right: Quote (message-square-quote) opens a new chat, Delete is armed. Read-only — no composer. A quoted post opens its chat as a `well` card with a 3px cobalt leading rule and a “Quoted from the Feed · source · time” caption.
 - **Settings / admin:** one column, 760px max (forms 560px), in `card`-radius panels. The Dangerous panel comes last, with armed destructive buttons.
 - **Bots home:** padded 28. One column below 1100px, 2 up to 1440px, 3 above that. No KPI row, no footer, no centered screens except sign-in.
 - **Below 960:**
-  - Tabs become icons, with a label only on the active tab.
-  - Chats become a horizontal chip strip, opening with the **Automations**, **Memories**, and **Feed** icon chips.
+  - The sidebar and the machine rail fold into one horizontal strip on `well`: New chat (an `ink` square with a plus), every page as an icon chip with a label only on the open one (the conversation-side pages, Customize, Settings, a hairline, Files, Desktop, Console, the power glyph), a hairline, then the chats as chips.
+  - Nothing docks: Files, Desktop and Console open as their own pages.
   - Files shows either the tree or the preview, not both.
   - The approval slip becomes a bottom sheet.
   - Hit areas are 40px.
