@@ -40,22 +40,6 @@ export function ago(iso: string) {
   return day(iso);
 }
 
-// Chat-row meta: "Just now", "12 min ago", "09:12", "Yesterday", "Tue", "Mar 4".
-export function chatWhen(iso: string) {
-  const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return "";
-  const d = new Date(t);
-  const now = new Date();
-  const mins = Math.floor((now.getTime() - t) / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins} min ago`;
-  const days = daysAgo(d, now);
-  if (days === 0) return clockTime(d);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return weekdayShort(d);
-  return monthDay(d);
-}
-
 // A run's divider: "Today 09:12", "Yesterday 18:00", "Tue 07:30", "Mar 4 07:30".
 export function runWhen(iso?: string) {
   const t = iso ? Date.parse(iso) : NaN;

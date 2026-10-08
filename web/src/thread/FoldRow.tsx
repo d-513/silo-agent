@@ -2,6 +2,7 @@ import { Check, ChevronRight, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAutoExpand } from "../autoExpand";
 import { Spinner } from "../Feedback";
+import { Collapse } from "../Collapse";
 
 export type RowState = "running" | "done" | "waiting" | "stopped";
 
@@ -37,29 +38,6 @@ export function StateSlot({ state }: { state: RowState }) {
         <X size={14} className="text-ink-3" />
       </span>
     </span>
-  );
-}
-
-// grid-template-rows 0fr → 1fr fold; contents fade in 60ms behind the height.
-// Children mount on first open so closed rows cost nothing to render.
-function Fold({ open, children }: { open: boolean; children: ReactNode }) {
-  const [mounted, setMounted] = useState(open);
-  if (open && !mounted) setMounted(true);
-  return (
-    <div
-      className={`grid transition-[grid-template-rows] duration-[320ms] ease-quiet motion-reduce:transition-none ${
-        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-      }`}
-    >
-      <div
-        className={`min-h-0 overflow-hidden transition-opacity ease-quiet ${
-          open ? "opacity-100 delay-[60ms] duration-[260ms]" : "opacity-0 duration-[120ms]"
-        }`}
-        inert={!open}
-      >
-        {mounted ? children : null}
-      </div>
-    </div>
   );
 }
 
@@ -137,11 +115,11 @@ export function FoldRow({
         ) : null}
       </button>
       {has ? (
-        <Fold open={open}>
+        <Collapse open={open}>
           <div className="px-3 pb-3">
             <LiveTail live={live && open}>{children}</LiveTail>
           </div>
-        </Fold>
+        </Collapse>
       ) : null}
     </div>
   );

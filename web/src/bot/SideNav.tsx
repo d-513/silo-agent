@@ -5,16 +5,32 @@ import { Link } from "@tanstack/react-router";
 type SideTo = "/bots/$botId/automations" | "/bots/$botId/memories" | "/bots/$botId/knowledge" | "/bots/$botId/feed";
 type SideProps = { to: SideTo; botId: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number };
 
+// ActiveBar is the cobalt "you are here" mark on the left edge of the open
+// row (a page or a chat). It grows in and shrinks out, so moving between rows
+// reads as one mark handing over. The row must be `relative`.
+export function ActiveBar({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-cobalt transition-[opacity,transform] duration-200 ease-quiet motion-reduce:transition-opacity ${
+        on ? "scale-y-100 opacity-100" : "scale-y-50 opacity-0"
+      }`}
+    />
+  );
+}
+
 // SideLink is a one-line row above the chats list: the conversation-side pages.
+// Flat like a chat row: the open one is lifted by tone alone.
 export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SideProps) {
   return (
     <Link
       to={to}
       params={{ botId }}
-      className={`flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,box-shadow,color] duration-[160ms] ease-quiet ${
-        on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
+      className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+        on ? "bg-surface text-ink" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
     >
+      <ActiveBar on={on} />
       <Icon size={15} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge > 0 ? <UnreadBadge n={badge} /> : null}

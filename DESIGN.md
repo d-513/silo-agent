@@ -338,9 +338,9 @@ No bounce, and no overshoot beyond the settle curve.
 ### Chats list
 
 - 248px wide on `well`, headed by a `label-caps` "Chats" and a new-chat icon button.
-- Above the head sit three `control`-radius rows, **Automations** (timer), **Memories** (brain), and **Feed** (inbox), 15px icon and 13.5/500; the open one is a lifted `surface` row. They are peer pages to Chat, not chats. Feed carries a cobalt count pill (white mono 11px) while it has unread posts; the narrow chip shows an 8px cobalt dot instead.
-- Rows are 2 lines: title in 13.5/500 `ink`, meta in `ink-3` ("Just now", "Working…", "Waiting for you", "Yesterday"). A live run shows its lamp after the title.
-- The active row is lifted: `surface` fill with a `line` ring. Hover fills `pressed`.
+- Above the head sit three `control`-radius rows, **Automations** (timer), **Memories** (brain), and **Feed** (inbox), 15px icon and 13.5/500; the open one is a flat `surface` row with the `cobalt` bar. They are peer pages to Chat, not chats. Feed carries a cobalt count pill (white mono 11px) while it has unread posts; the narrow chip shows an 8px cobalt dot instead.
+- Chats are grouped by when they last moved: **Today**, **Yesterday**, **Previous 7 days**, **Previous 30 days**, then one group per month (the year is named only when it is not this one). No row carries a day name or date; the group is the date, and the full time is the row's tooltip. A group head is a `label` (12/500, sentence case) in `ink-3` with the count and a chevron on the right; it sticks to the top while its rows scroll under it. Clicking it folds the group (`grid-template-rows` fold, 320ms; the chevron turns −90° over 200ms). The recent groups start open and the month groups start folded; what the reader folds is remembered in the browser. Landing on a chat opens the group it sits in.
+- Rows are one line, 32px, flat: the title in 13.5/400 `ink-2` (`ink` on hover and when open), no second line. Hover fills `pressed`; the open row is `surface` with no ring or shadow, marked by a 2px `cobalt` bar on its left edge that grows in as the previous one shrinks out. A live run shows the lamp and its word (**Working** / **Needs you**) at the end of the title. Rename and delete fade in over the end of the title on a gradient of the row's own tone (160ms), and never take space when the row is at rest. The rows above (Automations, Memories, Knowledge, Feed) use the same open treatment.
 - Titles are generated from the first prompt. Rename with the pencil or a double-click.
 
 ### Automations
