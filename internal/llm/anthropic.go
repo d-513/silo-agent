@@ -122,6 +122,23 @@ func (c *anthropicClient) caps(ctx context.Context, model string) *anthropicCaps
 	return e
 }
 
+// ListModels pages through the Models API, newest first.
+func (c *anthropicClient) ListModels(ctx context.Context) ([]ModelInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	var out []ModelInfo
+	it := c.client.Models.ListAutoPaging(ctx, anthropic.ModelListParams{Limit: anthropic.Int(1000)})
+	for it.Next() {
+		m := it.Current()
+		out = append(out, ModelInfo{ID: m.ID, Name: m.DisplayName, ContextWindow: int(m.MaxInputTokens), Created: m.CreatedAt})
+	}
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
+	sortModels(out)
+	return out, nil
+}
+
 // ThinkingLevels reports the model's levels from the Models API.
 func (c *anthropicClient) ThinkingLevels(ctx context.Context, model string) ([]string, error) {
 	e := c.caps(ctx, model)

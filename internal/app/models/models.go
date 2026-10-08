@@ -71,27 +71,36 @@ func (s *Service) Client(modelID string) (llm.Client, string, string, error) {
 	if err != nil {
 		return nil, "", "", err
 	}
+	client, err := s.Provider(provider)
+	if err != nil {
+		return nil, provider, model, err
+	}
+	return client, provider, model, nil
+}
+
+// Provider builds the bare client of a provider from the operator's saved
+// settings; a missing key or base URL is an error that names the setting.
+func (s *Service) Provider(provider string) (llm.Client, error) {
+	d, ok := llm.Lookup(provider)
+	if !ok {
+		return nil, fmt.Errorf("unknown model provider %q", provider)
+	}
 	settings := s.cfg().ProviderSettings(provider)
-	d, _ := llm.Lookup(provider)
 	if settings.Get("api_key") == "" && !d.KeyOptional {
 		name := provider
 		if d.Name != "" {
 			name = d.Name
 		}
-		return nil, provider, model, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"%s API key missing in operator config (silo.yaml / %s)",
 			name, config.EnvName("providers."+provider+".api_key"))
 	}
 	if d.BaseURLRequired && settings.Get("base_url") == "" {
-		return nil, provider, model, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"%s base URL missing in operator config (silo.yaml / %s)",
 			d.Name, config.EnvName("providers."+provider+".base_url"))
 	}
-	client, err := llm.New(provider, settings)
-	if err != nil {
-		return nil, provider, model, err
-	}
-	return client, provider, model, nil
+	return llm.New(provider, settings)
 }
 
 // Probe builds a throwaway client for provider so a caller can check which

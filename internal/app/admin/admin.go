@@ -131,6 +131,48 @@ func (s *Service) SetModels(ctx context.Context, req *connect.Request[v1.SetMode
 	return connect.NewResponse(cur), nil
 }
 
+// ListProviderModels asks one provider which models its saved key can call,
+// as full provider/model ids ready for the allowlist.
+func (s *Service) ListProviderModels(ctx context.Context, req *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	provider := strings.TrimSpace(req.Msg.GetProvider())
+	d, ok := llm.Lookup(provider)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown model provider %q", provider))
+	}
+	name := d.Name
+	if name == "" {
+		name = provider
+	}
+	client, err := s.models.Provider(provider)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	lister, ok := client.(llm.ModelLister)
+	if !ok {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s cannot list its models; add them by id", name))
+	}
+	list, err := lister.ListModels(ctx)
+	if err != nil {
+		// Never Unavailable: the control plane is fine, the provider is not.
+		// An upstream error body can echo the key back, so it is masked.
+		msg := err.Error()
+		if key := s.cfg().ProviderSettings(provider).Get("api_key"); key != "" {
+			msg = strings.ReplaceAll(msg, key, "••••")
+		}
+		return nil, connect.NewError(connect.CodeUnknown, fmt.Errorf("%s did not list its models: %s", name, msg))
+	}
+	out := &v1.ListProviderModelsResponse{Models: make([]*v1.ProviderModel, 0, len(list))}
+	for _, m := range list {
+		out.Models = append(out.Models, &v1.ProviderModel{
+			Id: provider + "/" + m.ID, Name: m.Name, ContextWindow: int32(m.ContextWindow),
+		})
+	}
+	return connect.NewResponse(out), nil
+}
+
 // SetConnectorVars replaces the operator's connector variables.
 func (s *Service) SetConnectorVars(ctx context.Context, req *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {
 	if err := access.RequireAdmin(ctx); err != nil {

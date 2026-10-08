@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -76,7 +77,7 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 				opts = append(opts, option.WithHeader(k, v))
 			}
 		}
-		c := &openAICompatClient{client: openai.NewClient(opts...), sendCacheKey: sendCacheKey, openAI: defaultBase == openAIBase}
+		c := &openAICompatClient{client: openai.NewClient(opts...), base: base, key: key, sendCacheKey: sendCacheKey, openAI: defaultBase == openAIBase}
 		if routing {
 			c.windows = &modelWindows{base: base, key: key}
 			if ig := ignoredUpstreams(s); len(ig) > 0 {
@@ -88,7 +89,11 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 }
 
 type openAICompatClient struct {
-	client       openai.Client
+	client openai.Client
+	// base and key are what the client was built with, for the plain
+	// GET /models the SDK's typed list would strip the extra fields from.
+	base         string
+	key          string
 	sendCacheKey bool
 	// reqOpts ride on every chat request (after the body is serialized).
 	reqOpts []option.RequestOption
@@ -367,6 +372,30 @@ func reasoningFromRaw(raw string) string {
 
 // joinSystem renders ordered system blocks for providers with a single system
 // string.
+// ListModels lists what GET {base}/models offers. Entries the endpoint dates
+// (OpenAI, OpenRouter) come newest first.
+func (c *openAICompatClient) ListModels(ctx context.Context) ([]ModelInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	list, err := fetchModels(ctx, c.base, c.key)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ModelInfo, 0, len(list))
+	for _, m := range list {
+		if m.ID == "" {
+			continue
+		}
+		info := ModelInfo{ID: m.ID, Name: m.Name, ContextWindow: m.ContextLength}
+		if m.Created > 0 {
+			info.Created = time.Unix(m.Created, 0)
+		}
+		out = append(out, info)
+	}
+	sortModels(out)
+	return out, nil
+}
+
 func joinSystem(blocks []SystemBlock) string {
 	var b strings.Builder
 	for _, blk := range blocks {

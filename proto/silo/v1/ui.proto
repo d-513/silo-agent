@@ -94,6 +94,7 @@ service UI {
   rpc GetSettings(GetSettingsRequest) returns (Settings);
   rpc PutSettings(PutSettingsRequest) returns (Settings);
   rpc SetModels(SetModelsRequest) returns (Settings);
+  rpc ListProviderModels(ListProviderModelsRequest) returns (ListProviderModelsResponse);
   rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
 
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
@@ -989,6 +990,26 @@ message ProviderField {
 
 message SetModelsRequest {
   repeated string models = 1;
+}
+
+// ListProviderModels asks one provider which models its saved key can call
+// (admins only), so the operator can pick the allowlist instead of typing ids.
+message ListProviderModelsRequest {
+  // provider is a provider id (openrouter, openai, anthropic, local).
+  string provider = 1;
+}
+
+message ProviderModel {
+  // id is the full provider/model id, as the allowlist stores it.
+  string id = 1;
+  // name is the provider's display name; empty when it has none.
+  string name = 2;
+  // context_window is in tokens; 0 when the provider does not report one.
+  int32 context_window = 3;
+}
+
+message ListProviderModelsResponse {
+  repeated ProviderModel models = 1;
 }
 
 // ConnectorVar is one operator-defined connector variable. These are plain

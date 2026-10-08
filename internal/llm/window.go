@@ -2,11 +2,8 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -37,7 +34,7 @@ var windowCache = struct {
 	lists map[string]*windowList
 }{lists: map[string]*windowList{}}
 
-// modelWindows fetches {base}/models and reads each entry's context_length.
+// modelWindows reads each entry's context_length from {base}/models.
 type modelWindows struct {
 	base string
 	key  string
@@ -86,34 +83,13 @@ func (w *modelWindows) fetch(ctx context.Context) *windowList {
 func (w *modelWindows) get(ctx context.Context) (sizes map[string]int, reasoning, known map[string]bool, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(w.base, "/")+"/models", nil)
+	list, err := fetchModels(ctx, w.base, w.key)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if w.key != "" {
-		req.Header.Set("Authorization", "Bearer "+w.key)
-	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nil, nil, nil, fmt.Errorf("list models: http %d", res.StatusCode)
-	}
-	var body struct {
-		Data []struct {
-			ID                  string   `json:"id"`
-			ContextLength       int      `json:"context_length"`
-			SupportedParameters []string `json:"supported_parameters"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-		return nil, nil, nil, fmt.Errorf("list models: %w", err)
-	}
-	sizes = make(map[string]int, len(body.Data))
-	reasoning, known = map[string]bool{}, make(map[string]bool, len(body.Data))
-	for _, m := range body.Data {
+	sizes = make(map[string]int, len(list))
+	reasoning, known = map[string]bool{}, make(map[string]bool, len(list))
+	for _, m := range list {
 		known[m.ID] = true
 		if m.ContextLength > 0 {
 			sizes[m.ID] = m.ContextLength
