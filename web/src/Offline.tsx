@@ -12,8 +12,8 @@ export function OfflineBanner() {
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 flex justify-center px-4"
     >
-      <div className="flex items-center gap-2 rounded-control bg-ink px-3 py-2 text-[13px] font-medium text-white shadow-card">
-        <Spinner size={13} tone="white" />
+      <div className="flex items-center gap-2 rounded-control bg-ink px-3 py-2 text-[13px] font-medium text-on-ink shadow-card">
+        <Spinner size={13} tone="on-ink" />
         Can't reach Silo. Reconnecting…
       </div>
     </div>

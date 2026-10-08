@@ -5,7 +5,7 @@ export function AdapterLogo({ adapter, size = 44 }: { adapter?: ChannelAdapter; 
   if (adapter?.logo) {
     return (
       <div
-        className="flex shrink-0 items-center justify-center overflow-hidden rounded-sm bg-well"
+        className="flex shrink-0 items-center justify-center overflow-hidden rounded-sm bg-mark"
         style={{ width: size, height: size }}
       >
         <img src={adapter.logo} alt="" className="h-full w-full object-cover" />

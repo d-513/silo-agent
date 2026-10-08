@@ -9,6 +9,18 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#FAF9F7" />
     <title>Silo Agent</title>
+    <!-- The theme before the first paint; src/theme.ts takes over once loaded
+         (theme_test.ts holds the two to the same answer). -->
+    <script>
+      (function () {
+        var pick = null;
+        try {
+          pick = localStorage.getItem("silo.theme");
+        } catch (e) {}
+        if (pick !== "light" && pick !== "dark") pick = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = pick;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

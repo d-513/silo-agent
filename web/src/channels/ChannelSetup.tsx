@@ -103,7 +103,7 @@ export function ChannelSetup({
           {state?.kind === "qr" && state.qr ? (
             <Panel title="Link your device" note="Scan this code in the app. It refreshes by itself until you do.">
               <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
-                <img src={state.qr} alt="Login QR code" className="w-56 rounded-card bg-surface p-2 shadow-card" />
+                <img src={state.qr} alt="Login QR code" className="w-56 rounded-card bg-white p-2 shadow-card" />
                 <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
               </div>
             </Panel>

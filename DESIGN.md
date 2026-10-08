@@ -1,6 +1,6 @@
 ---
 name: Silo
-description: A calm console for isolated Bots. Paper canvas, ink type, one quiet cobalt for "you are here". Each Bot is its own machine with a picked crest; its desktop is a dark hatch set into a light room. Motion only ever answers something the operator did.
+description: A calm console for isolated Bots. Paper canvas, ink type, one quiet cobalt for "you are here". Each Bot is its own machine with a picked crest; its desktop is a dark hatch set into the room. Light and dark share one set of names. Motion only ever answers something the operator did.
 colors:
   canvas: "#FAF9F7"
   surface: "#FFFFFF"
@@ -108,7 +108,7 @@ motion:
 
 # Design System: Silo
 
-Desktop-first web app. Light only. A calm, precise console looking into sealed machines. It should feel like a well-made instrument: steady, quiet, and exact. It shouldn't look like an ops dashboard or a marketing site.
+Desktop-first web app, light and dark (§2, Dark). A calm, precise console looking into sealed machines. It should feel like a well-made instrument: steady, quiet, and exact. It shouldn't look like an ops dashboard or a marketing site.
 
 **What makes it feel stable:** most of the screen doesn't move and doesn't call for attention. There's one ink color, a paper ground, and accents that show up only when they mean something. **What makes it feel good to use:** every action gets a small, immediate, physical answer, and every decision leaves a trace.
 
@@ -164,7 +164,35 @@ The accents never appear as gradients, glows or large fields. Orange, amber, gol
 
 ### The hatch
 
-The live desktop and console are a dark window in a light room: `hatch` (`#141413`) frame, `matte` (`#0E0E0D`) inset 8px, status text white at 80% in Geist Mono.
+The live desktop and console are a dark window in a light room: `hatch` (`#141413`) frame, `matte` (`#0E0E0D`) inset 8px, status text white at 80% in Geist Mono. Text set on it is `on-hatch` (`#FAF9F7`), never `ink` or `canvas`, because the hatch is dark in both themes.
+
+### Dark
+
+Dark is the same system re-inked, not a second design: every component names the same tokens, and `[data-theme="dark"]` in `index.css` gives them other values. Nothing in a component may say `white`, `black` or a hex; a color that only works on paper is a bug in the dark.
+
+| Token                             | Light                 | Dark                    | Note                                                              |
+| --------------------------------- | --------------------- | ----------------------- | ----------------------------------------------------------------- |
+| `canvas`                          | `#FAF9F7`             | `#171615`               | A warm near-black, not blue-black.                                |
+| `well`                            | `#F3F2EF`             | `#1E1D1B`               |                                                                   |
+| `surface`                         | `#FFFFFF`             | `#252422`               |                                                                   |
+| `pressed`                         | `#EAE8E4`             | `#31302D`               |                                                                   |
+| `line` / `line-strong`            | ink at 9% / 16%       | paper at 10% / 18%      |                                                                   |
+| `ink` / `ink-2` / `ink-3`         | `#1A1917` … `#6B6862` | `#EDEBE6` `#B5B2AB` `#9B9891` | 15:1, 8.5:1 and 6:1 on the dark canvas.                     |
+| `ink-deep` / `on-ink`             | `#000` / `#FFF`       | `#FFF` / `#171615`      | Hover of an ink fill, and the label on it.                        |
+| `cobalt` / `-deep` / `-pale`      | `#2B4FC7` …           | `#8AA4FF` `#ADC0FF` `#283258` | Lifted until it reads as a word; hover goes lighter.        |
+| `emerald` / `lamp`                | `#0F7A55` / `#16A06F` | `#4FC38D` / `#2FB880`   |                                                                   |
+| `vermilion` / `-deep` / `-pale`   | `#C4372B` …           | `#F27565` `#F79284` `#3D2320` |                                                             |
+| `on-accent`                       | `#FFF`                | `#171615`               | The label on a cobalt, emerald or vermilion fill.                 |
+| `hatch` / `matte`                 | `#141413` / `#0E0E0D` | `#0E0E0D` / `#080808`   | Still the darkest thing in the room.                              |
+
+- **Raised is lighter.** On paper the order is `surface` over `canvas` over `well` over `pressed`. In the dark it is `canvas`, `well`, `surface`, `pressed` from deepest to lightest, so a card still lifts, a hover still answers, and a code block inside a card still sits in.
+- **Fills flip their label.** The lifted accents are too light for white text, so a primary button is a paper fill with a dark label, and Stop, an armed delete and the Feed count carry `on-accent`.
+- **Shade is black and heavier** (`--shade-*`), but the ring does the work: a dark card is seated by its `line`, not its shadow.
+- **Crests do not change.** A crest is the Bot's face: fills and eyes are the same in both themes. The ink crest takes a faint edge in the dark, as mist takes one on paper.
+- **Brand logos keep a paper tile** (`mark`, with a 2px halo in the dark): they are drawn for a light page, and a black mark must not sink into the ground.
+- A QR code stays black on white.
+- **Choosing:** the rail's sun/moon item, just above the account avatar. Until the reader picks, the app follows the system setting and keeps following it; the pick is remembered in the browser. The glyph morphs (the moon turns out as the sun turns in, 320ms `ease-settle`) and shows where a press leads; the palette itself changes in one frame, with no fade.
+- `theme_test.ts` holds both palettes to their contrast floors (4.5:1 for every word color on `canvas`, `well` and `surface`; the same for a label on its fill).
 
 ### Crest fills
 
@@ -249,7 +277,7 @@ No bounce, and no overshoot beyond the settle curve.
 
 ### Buttons
 
-- **Primary**: `ink` fill, white label, 36px tall (40px in the slip), `control` radius. Hover darkens to `#000`.
+- **Primary**: `ink` fill, `on-ink` label, 36px tall (40px in the slip), `control` radius. Hover deepens to `ink-deep`.
 - **Secondary**: `surface` with an inset `line-strong` ring and `ink` label. Hover fills `well`.
 - **Ghost**: `ink-2` label, no ring. Hover fills `well` and turns the label `ink`.
 - **Deny**: `vermilion` label, no fill. Hover fills `vermilion-pale`. It's only used on the approval slip. A destructive confirm uses the armed pattern (below).
@@ -343,7 +371,7 @@ No bounce, and no overshoot beyond the settle curve.
   - Crests, 28px each in 40px hit areas with `control` radius.
   - `+` for New Bot.
   - Spacer.
-  - Admin (wrench, admins only), then the account avatar (an `ink` circle with a white initial).
+  - Admin (wrench, admins only), the theme toggle (moon in the light, sun in the dark), then the account avatar (an `ink` circle with an `on-ink` initial).
 - The active item is a `surface` well with a `line` ring and a 3px `cobalt` bar on the left edge. Hover fills `pressed`. There are no labels, only `title` tooltips.
 
 ### Chats list

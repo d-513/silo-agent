@@ -16,7 +16,7 @@ export function DriveMark({ svg, size = 40, muted = false, className = "" }: { s
   return (
     <div
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-sm bg-well ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-sm ${src ? "bg-mark" : "bg-well"} ${className}`}
       style={{ width: size, height: size, padding: Math.round(size * 0.16) }}
     >
       {src ? (

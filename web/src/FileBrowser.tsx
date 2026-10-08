@@ -139,10 +139,10 @@ export function FileBrowser({
     void toggleDir(path);
   }
   const treeCls = hatch
-    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-canvas @max-[640px]:w-full @max-[640px]:border-r-0"
+    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-on-hatch @max-[640px]:w-full @max-[640px]:border-r-0"
     : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink @max-[640px]:w-full @max-[640px]:border-r-0";
   const headCls = hatch
-    ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-canvas"
+    ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-on-hatch"
     : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]";
 
   // Under 640px of its own width (a phone, or a pane docked beside the chat)
@@ -154,10 +154,10 @@ export function FileBrowser({
         <div className="silo-scroll-x flex min-w-0 flex-1 items-center gap-2">
           {trail.map((c, i) => (
             <span key={c.path || "root"} className="flex items-center gap-2">
-              {i > 0 && <span className={hatch ? "text-canvas/40" : "text-line"}>/</span>}
+              {i > 0 && <span className={hatch ? "text-on-hatch/40" : "text-line"}>/</span>}
               <button
                 type="button"
-                className={i === trail.length - 1 ? (hatch ? "text-canvas" : "text-ink") : hatch ? "text-canvas/60 hover:text-canvas" : "text-ink-2 hover:text-ink"}
+                className={i === trail.length - 1 ? (hatch ? "text-on-hatch" : "text-ink") : hatch ? "text-on-hatch/60 hover:text-on-hatch" : "text-ink-2 hover:text-ink"}
                 onClick={() => goCrumb(c.path, i)}
               >
                 {c.label}
@@ -168,7 +168,7 @@ export function FileBrowser({
         {file && (
           <button
             type="button"
-            className={hatch ? "text-canvas/70 hover:text-canvas" : "text-ink-2 hover:text-ink"}
+            className={hatch ? "text-on-hatch/70 hover:text-on-hatch" : "text-ink-2 hover:text-ink"}
             title="Download"
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
@@ -262,7 +262,7 @@ function Tree({
               {onDelete && (
                 <button
                   type="button"
-                  className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-canvas/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
+                  className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-on-hatch/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
                   title={pendingDel === e.path ? "Click again to delete" : "Delete"}
                   onClick={() => onDelete(e)}
                 >
@@ -314,7 +314,7 @@ export function SkillBrowserOverlay({
                   Save skill
                 </Btn>
               )}
-              <button type="button" className="text-canvas/70 hover:text-canvas" title="Close" onClick={onClose}>
+              <button type="button" className="text-on-hatch/70 hover:text-on-hatch" title="Close" onClick={onClose}>
                 <X size={16} />
               </button>
             </>

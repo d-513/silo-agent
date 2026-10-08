@@ -12,14 +12,14 @@ export function ConnectorMark({
   size?: number;
 }) {
   if (previewUrl) {
-    return <img src={previewUrl} alt="" className="shrink-0 rounded-sm object-cover" style={{ width: size, height: size }} />;
+    return <img src={previewUrl} alt="" className="silo-brand shrink-0 rounded-sm object-cover" style={{ width: size, height: size }} />;
   }
   if (hasImage && id) {
     return (
       <img
         src={`/connectors/${id}/image`}
         alt=""
-        className="shrink-0 rounded-sm object-cover"
+        className="silo-brand shrink-0 rounded-sm object-cover"
         style={{ width: size, height: size }}
       />
     );

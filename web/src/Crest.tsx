@@ -1,6 +1,9 @@
 // The order is packed into `crest` as color * 8 + shape. Never reorder, only
 // restyle. `eyes` follows DESIGN.md: ink on the two light fills, canvas on
-// the rest; mist also takes a line-strong outline.
+// the rest; mist also takes a line-strong outline. A crest is the Bot's own
+// face, so its fill and eyes are the same in both themes (the light palette's
+// ink and canvas); the ink crest gains an edge in the dark, where it would
+// otherwise sink into the ground the way mist does on paper.
 export const CREST_FILLS = [
   { name: "mist", fill: "#F3F2EF", eyes: "ink", outline: true },
   { name: "brown", fill: "#8B5A3C", eyes: "canvas" },
@@ -13,8 +16,10 @@ export const CREST_FILLS = [
   { name: "purple", fill: "#6D28D9", eyes: "canvas" },
   { name: "pink", fill: "#DB2777", eyes: "canvas" },
   { name: "graphite", fill: "#55534E", eyes: "canvas" },
-  { name: "ink", fill: "#1A1917", eyes: "canvas" },
-] as const satisfies readonly { name: string; fill: string; eyes: "ink" | "canvas"; outline?: boolean }[];
+  { name: "ink", fill: "#1A1917", eyes: "canvas", outline: "dark" },
+] as const satisfies readonly { name: string; fill: string; eyes: "ink" | "canvas"; outline?: true | "dark" }[];
+
+const EYES = { ink: "#1A1917", canvas: "#FAF9F7" } as const;
 
 export const CREST_COLORS = CREST_FILLS.map((c) => c.fill);
 
@@ -119,14 +124,14 @@ function ShapeMark({ shape, fill, eyes, stroke }: { shape: number; fill: string;
 
 export function Crest({ index, size }: { index: number; size: number }) {
   const { shape, color } = unpackCrest(index);
-  const c: { fill: string; eyes: "ink" | "canvas"; outline?: boolean } = CREST_FILLS[color];
+  const c: { fill: string; eyes: "ink" | "canvas"; outline?: true | "dark" } = CREST_FILLS[color];
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className="shrink-0 overflow-visible" aria-hidden>
       <ShapeMark
         shape={shape}
         fill={c.fill}
-        eyes={`var(--color-${c.eyes})`}
-        stroke={c.outline ? "var(--color-line-strong)" : undefined}
+        eyes={EYES[c.eyes]}
+        stroke={c.outline === "dark" ? "var(--crest-edge)" : c.outline ? "var(--color-line-strong)" : undefined}
       />
     </svg>
   );

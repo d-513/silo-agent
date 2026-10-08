@@ -85,7 +85,7 @@ export function DriveForm({
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <Btn kind="primary" type="button" disabled={!t.available || authBusy} onClick={() => void signIn()}>
-                  {authBusy ? <Spinner size={13} tone="white" /> : null}
+                  {authBusy ? <Spinner size={13} tone="on-ink" /> : null}
                   {authBusy ? "Waiting for sign-in…" : `Sign in with ${t.authLabel || t.title}`}
                 </Btn>
                 {authBusy ? <span className="text-[12.5px] text-ink-3">Finish in the window that opened.</span> : null}

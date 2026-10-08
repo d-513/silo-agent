@@ -75,7 +75,7 @@ export function Taskboard({
                   <li key={t.n} className={`flex items-start gap-2 rounded-control px-2 py-1.5 text-[13px] leading-5 ${dim ? "opacity-55" : ""}`}>
                     <span
                       aria-label={t.done ? "done" : "open"}
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${t.done ? "bg-emerald text-white" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${t.done ? "bg-emerald text-on-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
                     >
                       {t.done ? <Check size={11} strokeWidth={3} /> : null}
                     </span>
@@ -102,7 +102,7 @@ export function Taskboard({
                   type="button"
                   onClick={() => clear.fire(onClear)}
                   className={`inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-[12.5px] transition-colors duration-[160ms] ${
-                    clear.armed ? "bg-vermilion text-white" : "text-ink-2 hover:bg-well hover:text-vermilion"
+                    clear.armed ? "bg-vermilion text-on-accent" : "text-ink-2 hover:bg-well hover:text-vermilion"
                   }`}
                 >
                   <Trash2 size={12} />

@@ -114,10 +114,10 @@ export function UserBubble({
             onClick={() => del.fire(() => onDelete())}
             disabled={busy}
             title={busy ? "Stop the Bot to delete" : del.armed ? "Click again to delete" : "Delete"}
-            className={`${miniBtn} relative overflow-hidden ${del.armed ? "!bg-vermilion !text-white" : "hover:!text-vermilion"}`}
+            className={`${miniBtn} relative overflow-hidden ${del.armed ? "!bg-vermilion !text-on-accent" : "hover:!text-vermilion"}`}
           >
             <Trash2 size={13} />
-            {del.armed ? <span aria-hidden className="drain absolute inset-x-0 bottom-0 h-[2px] bg-white" /> : null}
+            {del.armed ? <span aria-hidden className="drain absolute inset-x-0 bottom-0 h-[2px] bg-on-accent" /> : null}
           </button>
         ) : null}
         {onDiverge ? (

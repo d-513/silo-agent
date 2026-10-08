@@ -40,7 +40,7 @@ export function LibraryTab({
         <button
           type="button"
           className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${ selectedCategory === "all"
-              ? "bg-ink text-white font-semibold shadow-2xs"
+              ? "bg-ink text-on-ink font-semibold shadow-2xs"
               : "bg-well text-ink-2 hover:text-ink hover:bg-pressed"
           }`}
           onClick={() => setSelectedCategory("all")}
@@ -54,7 +54,7 @@ export function LibraryTab({
             <button
               key={cat}
               type="button"
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${ active ? "bg-ink text-white font-semibold shadow-2xs"
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${ active ? "bg-ink text-on-ink font-semibold shadow-2xs"
                   : "bg-well text-ink-2 hover:text-ink hover:bg-pressed"
               }`}
               onClick={() => setSelectedCategory(cat)}

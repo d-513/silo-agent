@@ -64,7 +64,7 @@ export function TunnelAccess({
               choose(o.pub);
             }}
             className={`flex h-8 w-[104px] items-center justify-center gap-1.5 rounded-sm px-2.5 text-[12.5px] font-medium transition-[transform,background-color,color,box-shadow] duration-[200ms] ease-quiet active:scale-[.97] active:duration-[70ms] ${
-              active ? `bg-surface shadow-card ${o.tone}` : arming ? "bg-vermilion text-white" : "text-ink-3 hover:bg-pressed hover:text-ink"
+              active ? `bg-surface shadow-card ${o.tone}` : arming ? "bg-vermilion text-on-accent" : "text-ink-3 hover:bg-pressed hover:text-ink"
             } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
           >
             <Icon size={12} />

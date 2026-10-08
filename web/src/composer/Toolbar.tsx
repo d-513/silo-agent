@@ -69,7 +69,7 @@ export function Toolbar({
         >
           <Paperclip size={17} />
           {attCount > 0 && (
-            <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold text-white">
+            <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold text-on-ink">
               {attCount}
             </span>
           )}

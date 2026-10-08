@@ -4,14 +4,14 @@ export type BtnKind = "primary" | "secondary" | "deny" | "ghost";
 export type BtnSize = "md" | "sm";
 
 const kindClass: Record<BtnKind, string> = {
-  primary: "bg-ink text-white hover:bg-black",
+  primary: "bg-ink text-on-ink hover:bg-ink-deep",
   secondary: "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] hover:bg-well",
   deny: "text-vermilion hover:bg-vermilion-pale",
   ghost: "text-ink-2 hover:bg-well hover:text-ink",
 };
 
 const glyphWell: Record<BtnKind, string> = {
-  primary: "bg-white/20 text-white",
+  primary: "bg-on-ink/20 text-on-ink",
   secondary: "bg-well text-ink-2",
   deny: "bg-vermilion-pale text-vermilion",
   ghost: "bg-well text-ink-2",

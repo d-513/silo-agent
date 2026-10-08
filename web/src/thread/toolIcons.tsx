@@ -133,7 +133,7 @@ export function ToolIcon({ name, marks }: { name: string; marks?: ConnectorMarks
     const Icon = builtinCallIcons[name] ?? builtinCallIcons[slug] ?? Plug;
     inner =
       mark?.hasImage ? (
-        <img src={`/connectors/${mark.id}/image`} alt="" className="h-4 w-4 rounded-[3px] object-cover" />
+        <img src={`/connectors/${mark.id}/image`} alt="" className="silo-brand h-4 w-4 rounded-[3px] object-cover" />
       ) : (
         <Icon size={15} strokeWidth={1.75} />
       );

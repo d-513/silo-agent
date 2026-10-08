@@ -1,4 +1,4 @@
-import { Book, LayoutGrid, LogOut, Plus, Wrench } from "lucide-react";
+import { Book, LayoutGrid, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AccountPage } from "./AccountPage";
@@ -11,6 +11,7 @@ import { Lamp } from "./Lamp";
 import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
 import { SiloMark } from "./SiloMark";
+import { flipTheme, setTheme, useTheme } from "./theme";
 
 // Rail items: 40px hit areas. The active one is a lifted surface well with a
 // 3px cobalt bar on the leading edge (bottom edge in the narrow top bar).
@@ -27,6 +28,24 @@ function railBar(on: boolean) {
       aria-hidden
       className="absolute rounded-full bg-cobalt max-wide:inset-x-2.5 max-wide:-bottom-1 max-wide:h-[3px] wide:inset-y-2.5 wide:-left-3 wide:w-[3px]"
     />
+  );
+}
+
+// The theme toggle is one rail item whose glyph morphs like Send into Stop:
+// the moon turns out as the sun turns in. It shows where a press leads.
+function ThemeToggle() {
+  const theme = useTheme();
+  const dark = theme === "dark";
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  const glyph = "col-start-1 row-start-1 transition-[transform,opacity] duration-[320ms] ease-settle motion-reduce:transition-opacity";
+  const away = "scale-[.6] opacity-0";
+  return (
+    <button type="button" title={label} aria-label={label} className={railHit(false)} onClick={() => setTheme(flipTheme(theme))}>
+      <span className="grid place-items-center">
+        <Moon size={18} className={`${glyph} ${dark ? `rotate-90 ${away}` : ""}`} />
+        <Sun size={18} className={`${glyph} ${dark ? "" : `-rotate-90 ${away}`}`} />
+      </span>
+    </button>
   );
 }
 
@@ -83,9 +102,10 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
             <Wrench size={20} />
           </Link>
         )}
+        <ThemeToggle />
         <Link to="/account" title={email ? `Account · ${email}` : "Account"} className={railHit(page === "account")}>
           {railBar(page === "account")}
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-white">{initial}</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
         </Link>
         <button
           type="button"

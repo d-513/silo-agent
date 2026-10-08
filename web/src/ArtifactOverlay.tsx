@@ -70,20 +70,20 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-hatch p-0 wide:p-3">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-hatch ring-1 ring-white/10 wide:rounded-[10px]">
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 text-canvas">
-          <span className="text-canvas/70">
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 text-on-hatch">
+          <span className="text-on-hatch/70">
             <TypeIcon name={name} dir={false} size={18} />
           </span>
           <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{artifact.title || name}</span>
           <button
             type="button"
-            className="shrink-0 text-canvas/70 hover:text-canvas"
+            className="shrink-0 text-on-hatch/70 hover:text-on-hatch"
             title="Download"
             onClick={() => downloadArtifact(botId, artifact)}
           >
             <Download size={16} />
           </button>
-          <button type="button" className="shrink-0 text-canvas/70 hover:text-canvas" title="Close" onClick={onClose}>
+          <button type="button" className="shrink-0 text-on-hatch/70 hover:text-on-hatch" title="Close" onClick={onClose}>
             <X size={16} />
           </button>
         </div>

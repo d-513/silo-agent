@@ -98,7 +98,7 @@ export function MemoryCollectButton({ chatId, onCollect }: { chatId?: string; on
         {state.kind === "done" && state.fresh ? <span aria-hidden className="ping pointer-events-none absolute inset-[13px] rounded-full bg-cobalt" /> : null}
         <BrainCircuit size={16} className={running ? "breathe" : undefined} />
         {state.kind === "done" && state.fresh ? (
-          <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-cobalt px-1 text-[10px] font-semibold text-white">
+          <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-cobalt px-1 text-[10px] font-semibold text-on-accent">
             {changed > 0 ? `+${changed}` : <Check size={10} strokeWidth={3} />}
           </span>
         ) : null}

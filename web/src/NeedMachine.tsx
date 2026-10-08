@@ -19,7 +19,7 @@ export function NeedMachine({
       ) : (
         <button type="button" className={btnClass("primary", "!h-11 pl-5 pr-2 text-[15px]")} onClick={onStart}>
           Start Bot
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-white/20">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-on-ink/20">
             <Power size={15} />
           </span>
         </button>

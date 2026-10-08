@@ -57,7 +57,7 @@ export function ArmedButton({
   ms?: number;
 }) {
   const { armed, fire } = useArmed(ms);
-  const armedCls = "!bg-vermilion !text-white hover:!bg-vermilion-deep !shadow-none overflow-hidden";
+  const armedCls = "!bg-vermilion !text-on-accent hover:!bg-vermilion-deep !shadow-none overflow-hidden";
   return (
     <button
       type="button"
@@ -75,7 +75,7 @@ export function ArmedButton({
       {!iconOnly || armed ? <span>{armed ? armedLabel : children}</span> : null}
       {icon && !iconOnly && !armed ? <span className="flex shrink-0 items-center">{icon}</span> : null}
       {armed ? (
-        <span aria-hidden className="drain absolute inset-x-0 bottom-0 h-[3px] bg-white" style={{ animationDuration: `${ms}ms` }} />
+        <span aria-hidden className="drain absolute inset-x-0 bottom-0 h-[3px] bg-on-accent" style={{ animationDuration: `${ms}ms` }} />
       ) : null}
     </button>
   );
@@ -162,7 +162,7 @@ export function useSave(savedMs = 1700) {
   return { state, run };
 }
 
-export function Spinner({ size = 14, className = "", tone = "ink" }: { size?: number; className?: string; tone?: "ink" | "white" }) {
+export function Spinner({ size = 14, className = "", tone = "ink" }: { size?: number; className?: string; tone?: "ink" | "on-ink" }) {
   return (
     <span
       aria-hidden
@@ -170,8 +170,8 @@ export function Spinner({ size = 14, className = "", tone = "ink" }: { size?: nu
       style={{
         width: size,
         height: size,
-        border: `1.5px solid ${tone === "white" ? "rgb(255 255 255 / 0.3)" : "var(--color-pressed)"}`,
-        borderTopColor: tone === "white" ? "#fff" : "var(--color-ink)",
+        border: `1.5px solid ${tone === "on-ink" ? "color-mix(in srgb, var(--color-on-ink) 30%, transparent)" : "var(--color-pressed)"}`,
+        borderTopColor: tone === "on-ink" ? "var(--color-on-ink)" : "var(--color-ink)",
       }}
     />
   );
@@ -203,7 +203,7 @@ export function SaveButton({
       aria-live="polite"
       className={btnClass(kind, `${state === "saving" ? "disabled:!opacity-100" : ""} ${className}`, size)}
     >
-      {state === "saving" ? <Spinner size={13} tone={kind === "primary" ? "white" : "ink"} /> : null}
+      {state === "saving" ? <Spinner size={13} tone={kind === "primary" ? "on-ink" : "ink"} /> : null}
       {state === "saved" ? <Check key="saved" size={14} className="pop" /> : null}
       <span>{state === "saving" ? savingLabel : state === "saved" ? savedLabel : children}</span>
     </button>

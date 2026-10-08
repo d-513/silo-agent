@@ -3,13 +3,34 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { LinkSurface, retryDelay, useLinkPhase } from "./machineLink";
+import { useTheme, type Theme } from "./theme";
 import { palette } from "./tokens";
+
+// xterm paints to a canvas, so it takes hex. Only the ground follows the
+// theme: the hatch is dark in both, a shade deeper in the dark room.
+function termTheme(theme: Theme) {
+  const matte = theme === "dark" ? palette.matteDark : palette.matte;
+  return {
+    background: matte,
+    foreground: palette.canvas,
+    cursor: palette.canvas,
+    cursorAccent: matte,
+    selectionBackground: palette.cobalt,
+    selectionForeground: palette.white,
+  };
+}
 
 export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const { phase, setPhase, attempt, nextAttempt } = useLinkPhase();
+  const theme = useTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+  useEffect(() => {
+    if (termRef.current) termRef.current.options.theme = termTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!live) {
@@ -29,14 +50,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
       fontFamily: '"Geist Mono Variable", "Geist Mono", ui-monospace, monospace',
       fontSize: 13,
       lineHeight: 1.4,
-      theme: {
-        background: palette.matte,
-        foreground: palette.canvas,
-        cursor: palette.canvas,
-        cursorAccent: palette.matte,
-        selectionBackground: palette.cobalt,
-        selectionForeground: palette.white,
-      },
+      theme: termTheme(themeRef.current),
     });
     const fit = new FitAddon();
     termInst.loadAddon(fit);

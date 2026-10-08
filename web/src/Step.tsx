@@ -7,7 +7,7 @@ export function Step({ n, title, note, done, locked, children }: { n: number; ti
       <header className="mb-4 flex items-start gap-3">
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tabular-nums transition-colors duration-[240ms] ease-quiet ${
-            done ? "bg-ink text-white" : "bg-well text-ink-2"
+            done ? "bg-ink text-on-ink" : "bg-well text-ink-2"
           }`}
         >
           {done ? <Check size={13} strokeWidth={2.5} /> : n}

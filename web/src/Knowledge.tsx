@@ -89,7 +89,7 @@ function FolderPicker({
         </p>
       )}
       <div className="flex items-center gap-3 px-5 py-4">
-        <Btn kind="primary" disabled={blocked !== "" || adding} icon={adding ? <Spinner size={13} tone="white" /> : <FolderPlus size={14} />} onClick={() => onPick(cwd)}>
+        <Btn kind="primary" disabled={blocked !== "" || adding} icon={adding ? <Spinner size={13} tone="on-ink" /> : <FolderPlus size={14} />} onClick={() => onPick(cwd)}>
           Index {cwd ? <span className="font-mono">{cwd}</span> : "this folder"}
         </Btn>
         <Btn kind="ghost" onClick={onCancel}>

@@ -56,7 +56,7 @@ function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
     return <span aria-label={label} title={label} className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" />;
   }
   return (
-    <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-white">
+    <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-on-accent">
       {n > 99 ? "99+" : n}
     </span>
   );

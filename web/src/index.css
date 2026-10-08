@@ -54,6 +54,9 @@
   --color-ink: #1a1917;
   --color-ink-2: #55534e;
   --color-ink-3: #6b6862;
+  /* An ink fill (primary button, avatar): its hover and the label set on it. */
+  --color-ink-deep: #000000;
+  --color-on-ink: #ffffff;
   --color-cobalt: #2b4fc7;
   --color-cobalt-deep: #2340a8;
   --color-cobalt-pale: #e8edfb;
@@ -62,8 +65,15 @@
   --color-vermilion: #c4372b;
   --color-vermilion-deep: #a82e24;
   --color-vermilion-pale: #fbeae8;
+  /* The label on a cobalt, emerald or vermilion fill. */
+  --color-on-accent: #ffffff;
   --color-hatch: #141413;
   --color-matte: #0e0e0d;
+  /* The hatch is dark in both themes, so its text never follows `ink`. */
+  --color-on-hatch: #faf9f7;
+  --color-knob: #ffffff;
+  /* The tile behind a brand's own logo. */
+  --color-mark: #f3f2ef;
 
   /* DESIGN.md §3 type scale. `text-title` is the page-title style: size, line
      height, weight and tracking in one utility. The line height is the 7-step
@@ -89,14 +99,84 @@
   --radius-panel: 16px;
   --radius-bubble: 18px;
 
-  --shadow-card: 0 0 0 1px rgb(26 25 23 / 0.09);
-  --shadow-float: 0 0 0 1px rgb(26 25 23 / 0.09), 0 1px 2px rgb(20 18 14 / 0.04), 0 6px 20px -8px rgb(20 18 14 / 0.08);
-  --shadow-float-focus: 0 0 0 1px rgb(26 25 23 / 0.16), 0 1px 2px rgb(20 18 14 / 0.04), 0 10px 30px -10px rgb(20 18 14 / 0.16);
-  --shadow-slip: 0 0 0 1px rgb(26 25 23 / 0.09), 0 24px 60px -20px rgb(20 18 14 / 0.22), 0 2px 8px rgb(20 18 14 / 0.05);
+  /* Rings are the hairline tokens and the cast shade is `--shade-*` below, so
+     one set of shadows serves both themes. */
+  --shadow-card: 0 0 0 1px var(--color-line);
+  --shadow-float: 0 0 0 1px var(--color-line), 0 1px 2px var(--shade-hair), 0 6px 20px -8px var(--shade-soft);
+  --shadow-float-focus: 0 0 0 1px var(--color-line-strong), 0 1px 2px var(--shade-hair), 0 10px 30px -10px var(--shade-mid);
+  --shadow-slip: 0 0 0 1px var(--color-line), 0 24px 60px -20px var(--shade-deep), 0 2px 8px var(--shade-hair);
 
   --breakpoint-wide: 960px;
   --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: light;
+  --shade-hair: rgb(20 18 14 / 0.04);
+  --shade-soft: rgb(20 18 14 / 0.08);
+  --shade-mid: rgb(20 18 14 / 0.16);
+  --shade-deep: rgb(20 18 14 / 0.22);
+  --sheen: rgb(255 255 255 / 0.7);
+  --crest-edge: transparent;
+}
+
+/* ---------------------------------------------------------------- dark
+ * DESIGN.md §2. The same names, re-inked: a warm near-black room where a
+ * raised thing is a lighter one (canvas < well < surface < pressed), ink is
+ * paper, and the accents are lifted until they read as words. The attribute
+ * is on <html> (theme.ts); it also works on any subtree. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #171615;
+  --color-surface: #252422;
+  --color-well: #1e1d1b;
+  --color-pressed: #31302d;
+  --color-line: rgb(237 235 230 / 0.1);
+  --color-line-strong: rgb(237 235 230 / 0.18);
+  --color-ink: #edebe6;
+  --color-ink-2: #b5b2ab;
+  --color-ink-3: #9b9891;
+  --color-ink-deep: #ffffff;
+  --color-on-ink: #171615;
+  --color-cobalt: #8aa4ff;
+  --color-cobalt-deep: #adc0ff;
+  --color-cobalt-pale: #283258;
+  --color-emerald: #4fc38d;
+  --color-lamp: #2fb880;
+  --color-vermilion: #f27565;
+  --color-vermilion-deep: #f79284;
+  --color-vermilion-pale: #3d2320;
+  --color-on-accent: #171615;
+  --color-hatch: #0e0e0d;
+  --color-matte: #080808;
+  --color-knob: #a8a59e;
+  --color-mark: #e6e4de;
+
+  /* Shade barely shows on a dark ground: the ring carries the edge and the
+     cast only has to seat the card. */
+  --shade-hair: rgb(0 0 0 / 0.3);
+  --shade-soft: rgb(0 0 0 / 0.42);
+  --shade-mid: rgb(0 0 0 / 0.55);
+  --shade-deep: rgb(0 0 0 / 0.7);
+  --sheen: rgb(237 235 230 / 0.06);
+  --crest-edge: rgb(237 235 230 / 0.3);
+}
+
+/* Held while a theme change is computed (theme.ts). */
+.theme-switch,
+.theme-switch *,
+.theme-switch *::before,
+.theme-switch *::after {
+  transition: none !important;
+}
+
+/* A brand's logo is drawn for a light page. In the dark it keeps a paper tile
+   (a 2px halo, so nothing moves) instead of sinking into the ground. */
+[data-theme="dark"] .silo-brand {
+  background: var(--color-mark);
+  box-shadow: 0 0 0 2px var(--color-mark);
 }
 
 html,
@@ -444,7 +524,7 @@ button {
 }
 .skeleton {
   background-color: var(--color-well);
-  background-image: linear-gradient(90deg, transparent 20%, rgb(255 255 255 / 0.7) 50%, transparent 80%);
+  background-image: linear-gradient(90deg, transparent 20%, var(--sheen) 50%, transparent 80%);
   background-size: 200% 100%;
   animation: silo-skeleton 2.2s linear infinite;
 }

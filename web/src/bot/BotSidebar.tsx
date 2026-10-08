@@ -111,7 +111,7 @@ function NewChat({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className={`group/new flex h-10 w-full items-center gap-2.5 rounded-control bg-surface pr-3 pl-2 text-[13.5px] font-medium text-ink shadow-card hover:shadow-float ${pressClass}`}
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-white">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
         <Plus size={15} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
       </span>
       New chat

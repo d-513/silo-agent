@@ -30,8 +30,8 @@ export function Switch({
     >
       <span
         aria-hidden
-        className={`absolute top-[3px] h-5 w-5 rounded-full bg-white shadow-[0_0_0_1px_rgb(26_25_23/0.08),0_1px_2px_rgb(20_18_14/0.18)] transition-[left,width] duration-[260ms] ease-quiet group-enabled/switch:group-active/switch:w-[26px] ${
-          on ? "left-[21px] group-enabled/switch:group-active/switch:left-[15px]" : "left-[3px]"
+        className={`absolute top-[3px] h-5 w-5 rounded-full shadow-[0_0_0_1px_rgb(26_25_23/0.08),0_1px_2px_rgb(20_18_14/0.18)] transition-[left,width,background-color] duration-[260ms] ease-quiet group-enabled/switch:group-active/switch:w-[26px] ${
+          on ? "left-[21px] bg-on-ink group-enabled/switch:group-active/switch:left-[15px]" : "left-[3px] bg-knob"
         }`}
       />
     </button>
