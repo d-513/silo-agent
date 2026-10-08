@@ -180,12 +180,9 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
   return (
     <FoldRow
       lead={
-        <>
-          <span className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
-            <Bot size={14} strokeWidth={1.75} />
-          </span>
-        </>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+          <Bot size={14} strokeWidth={1.75} />
+        </span>
       }
       title={<span className="shrink-0 font-medium text-ink-2">{agents.length === 1 ? "Subagent finished" : "Subagents finished"}</span>}
       tail={

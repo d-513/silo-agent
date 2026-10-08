@@ -140,7 +140,7 @@ export function Thread({
         {blocks.length === 0 && !sending && !emptyState && <EmptyThread botName={botName} botCrest={botCrest} onSelectPrompt={onSelectPrompt} />}
         {rows}
         {working ? (
-          <div className={`rise flex h-8 items-center px-3 text-[13px] font-medium ${gapAfter(prevRow, true)}`}>
+          <div className={`rise flex h-8 items-center text-[13px] font-medium ${gapAfter(prevRow, true)}`}>
             <span className="shimmer-text">Working…</span>
           </div>
         ) : null}

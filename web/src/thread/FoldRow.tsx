@@ -1,7 +1,6 @@
-import { Check, ChevronRight, X } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAutoExpand } from "../autoExpand";
-import { Spinner } from "../Feedback";
 import { Collapse } from "../Collapse";
 
 export type RowState = "running" | "done" | "waiting" | "stopped";
@@ -17,28 +16,6 @@ export function rowVerb(state: RowState, outcome: string | undefined, live: stri
   if (outcome === "denied") return "Skipped";
   if (outcome === "stopped") return "Stopped";
   return state === "running" || state === "waiting" ? live : past;
-}
-
-// 16px slot that crossfades spinner → check / paused dot / ✕.
-export function StateSlot({ state }: { state: RowState }) {
-  const cell = (on: boolean) =>
-    `col-start-1 row-start-1 flex items-center justify-center transition-[opacity,transform] duration-300 ease-settle motion-reduce:transition-opacity ${
-      on ? "opacity-100" : "scale-[.6] opacity-0"
-    }`;
-  return (
-    <span className="grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
-      <span className={cell(state === "running")}>{state === "running" ? <Spinner size={13} /> : null}</span>
-      <span className={cell(state === "done")}>
-        <Check size={15} strokeWidth={2.25} className="text-emerald" />
-      </span>
-      <span className={cell(state === "waiting")}>
-        <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" />
-      </span>
-      <span className={cell(state === "stopped")}>
-        <X size={14} className="text-ink-3" />
-      </span>
-    </span>
-  );
 }
 
 // While streaming, keep the newest lines in view: the body is capped and pinned
@@ -70,6 +47,12 @@ function LiveTail({ live, children }: { live: boolean; children: ReactNode }) {
 
 // With auto-expand on, a `live` row is open while it streams and folds shut
 // when it finishes; off, rows stay shut. The reader's own toggle always wins.
+//
+// The row is flush with the reply text above and below it: its hover tone
+// bleeds 8px past the column instead of insetting the icon. Open, the body
+// hangs under the icon on a hairline, so a row reads as one line of the thread
+// that unfolds, not a card set into it. Parts of a title can key off
+// `group-hover/row` to brighten with the row.
 export function FoldRow({
   lead,
   title,
@@ -89,19 +72,13 @@ export function FoldRow({
   const open = has && (manual ?? (live && auto));
   const setOpen = (f: (v: boolean) => boolean) => setManual(f(open));
   return (
-    <div
-      className={`max-w-full rounded-card transition-[background-color,box-shadow] duration-[200ms] ease-quiet ${
-        open ? "bg-surface shadow-card" : ""
-      }`}
-    >
+    <div className="-mx-2 min-w-0">
       <button
         type="button"
         aria-expanded={has ? open : undefined}
         disabled={!has}
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-8 w-full min-w-0 items-center gap-2 rounded-card px-3 text-left text-[13px] transition-colors duration-[160ms] ease-quiet disabled:cursor-default ${
-          open ? "" : "enabled:hover:bg-well"
-        }`}
+        className="group/row flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-[13px] transition-colors duration-[160ms] ease-quiet enabled:hover:bg-well disabled:cursor-default"
       >
         {lead}
         {title}
@@ -110,13 +87,15 @@ export function FoldRow({
         {has ? (
           <ChevronRight
             size={14}
-            className={`shrink-0 text-ink-3 transition-transform duration-[320ms] ease-quiet ${open ? "rotate-90" : ""}`}
+            className={`shrink-0 text-ink-3 transition-[transform,opacity] duration-[260ms] ease-quiet motion-reduce:transition-opacity ${
+              open ? "rotate-90" : "pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:group-focus-visible/row:opacity-100"
+            }`}
           />
         ) : null}
       </button>
       {has ? (
         <Collapse open={open}>
-          <div className="px-3 pb-3">
+          <div className="mr-2 ml-[15px] border-l border-line pt-0.5 pb-2 pl-4">
             <LiveTail live={live && open}>{children}</LiveTail>
           </div>
         </Collapse>

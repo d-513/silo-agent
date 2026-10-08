@@ -3,7 +3,7 @@ import { CopyButton } from "../Feedback";
 import { Highlighted } from "../Highlighted";
 import { codeLang } from "../fileKind";
 import { resultLang } from "../highlight";
-import { FoldRow, StateSlot, type RowState } from "./FoldRow";
+import { FoldRow, type RowState } from "./FoldRow";
 import { ToolIcon, type ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, prettyJson } from "./toolInfo";
 
@@ -42,20 +42,28 @@ export function ToolRow({
   return (
     <FoldRow
       live={live}
-      lead={
-        <>
-          <StateSlot state={state} />
-          <ToolIcon name={icon} marks={marks} />
-        </>
-      }
+      lead={<ToolIcon name={icon} marks={marks} />}
       title={
-        <span className="shrink-0 font-medium text-ink">
-          {verb} {app}
-        </span>
+        state === "running" ? (
+          // One element, so the shimmer's clipped gradient reaches every word.
+          <span className="shimmer-text shrink-0 font-medium">
+            {verb} {app}
+          </span>
+        ) : (
+          <span className="shrink-0 font-medium">
+            <span className="text-ink-3">{verb}</span>{" "}
+            <span className={state === "stopped" ? "text-ink-3" : "text-ink-2 transition-colors duration-[160ms] group-hover/row:text-ink"}>{app}</span>
+          </span>
+        )
       }
       tail={
         <>
-          {state === "waiting" ? <span className="shrink-0 text-[12.5px] text-vermilion">Waiting for you</span> : null}
+          {state === "waiting" ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-vermilion">
+              <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" aria-hidden />
+              Waiting for you
+            </span>
+          ) : null}
           {action ? <span className="min-w-0 truncate font-mono text-[12.5px] text-ink-3">{action}</span> : null}
         </>
       }

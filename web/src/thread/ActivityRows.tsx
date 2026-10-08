@@ -15,7 +15,7 @@ export function Receipt({ b }: { b: ReceiptBlock }) {
   const allowed = b.decision === "allow_once" || b.decision === "always";
   const Icon = allowed ? ShieldCheck : ShieldX;
   return (
-    <div className="flex min-w-0 items-center gap-2 px-3 text-[12.5px] leading-[18px]">
+    <div className="flex min-w-0 items-center gap-2 text-[12.5px] leading-[18px]">
       <Icon size={15} className={`shrink-0 ${allowed ? "text-emerald" : "text-ink-3"}`} aria-hidden />
       <span className="shrink-0 font-medium text-ink">{receiptWord[b.decision] ?? b.decision}</span>
       <span className="min-w-0 truncate text-ink-3">
@@ -40,19 +40,15 @@ export function Thinking({ text, streaming, ms }: { text: string; streaming: boo
     <FoldRow
       live={streaming}
       lead={
-        // Empty state slot so the bulb lines up with the tool icons below it.
-        <>
-          <span className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
-            <Lightbulb size={15} strokeWidth={1.75} />
-          </span>
-        </>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+          <Lightbulb size={15} strokeWidth={1.75} />
+        </span>
       }
       title={
         streaming ? (
           <span className="shimmer-text shrink-0 font-medium">Thinking</span>
         ) : (
-          <span className="shrink-0 font-medium text-ink-2">{secs ? `Thought for ${secs}s` : "Thought"}</span>
+          <span className="shrink-0 font-medium text-ink-3">{secs ? `Thought for ${secs}s` : "Thought"}</span>
         )
       }
     >
@@ -69,14 +65,11 @@ export function Compaction({ text, reason, running }: { text: string; reason: st
     <FoldRow
       live={running}
       lead={
-        <>
-          <span className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
-            <Minimize2 size={14} strokeWidth={1.75} />
-          </span>
-        </>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2" aria-hidden>
+          <Minimize2 size={14} strokeWidth={1.75} />
+        </span>
       }
-      title={running ? <span className="shimmer-text shrink-0 font-medium">{title}</span> : <span className="shrink-0 font-medium text-ink-2">{title}</span>}
+      title={running ? <span className="shimmer-text shrink-0 font-medium">{title}</span> : <span className="shrink-0 font-medium text-ink-3">{title}</span>}
       tail={reason === "auto" && !running ? <span className="truncate text-ink-3">· the context window was nearly full</span> : null}
     >
       {text.trim() ? (
