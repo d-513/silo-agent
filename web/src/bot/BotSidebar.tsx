@@ -74,10 +74,7 @@ export function BotSidebar({
         <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
         <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
       </nav>
-      <div className="flex h-10 shrink-0 items-end pb-1.5 pl-5">
-        <span className="text-label-caps leading-4 text-ink-3 uppercase">Chats</span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto px-2 pb-3">
+      <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">
         {chats.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">No chats</p>}
         {groups.map((g) => (
           <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
@@ -122,20 +119,21 @@ function NewChat({ onClick }: { onClick: () => void }) {
   );
 }
 
-// One date group: a header that folds it, and its rows. The header sticks to
-// the top while its rows scroll under it.
+// One date group: a header that folds it, and its rows. The header is a
+// section label (small caps, not a row), so it never reads as one more chat;
+// it sticks to the top while its rows scroll under it.
 function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; open: boolean; children: ReactNode }) {
   return (
-    <section aria-label={group.label}>
+    <section aria-label={group.label} className="mt-3 first:mt-0">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setGroupOpen(group.key, !open)}
-        className="group/head sticky top-0 z-10 flex h-7 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-[12px] leading-4 font-medium text-ink-3 transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
+        className="group/head sticky top-0 z-10 flex h-7 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-label-caps leading-4 text-ink-3 uppercase transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
       >
         <span className="min-w-0 flex-1 truncate">{group.label}</span>
         <span
-          className={`tabular-nums transition-opacity duration-[160ms] ease-quiet ${open ? "opacity-0 group-hover/head:opacity-100" : "opacity-100"}`}
+          className={`tracking-normal tabular-nums transition-opacity duration-[160ms] ease-quiet ${open ? "opacity-0 group-hover/head:opacity-100" : "opacity-100"}`}
         >
           {group.chats.length}
         </span>
