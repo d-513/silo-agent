@@ -19,6 +19,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/gen/silo/v1/silov1connect"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/account"
 	"silo.agent/internal/app/admin"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
@@ -174,6 +175,7 @@ type App struct {
 	Memory      *memory.Service
 	Connectors  *connector.Service
 	Admin       *admin.Service
+	Accounts    *account.Service
 	Drives      *drive.Service
 	Automations *automation.Service
 	Channels    *channel.Service
@@ -208,7 +210,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
-	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice)
+	a.Accounts = account.New(a.DB, a.cfg, a)
+	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice, a.Accounts.OIDCRedirectURL)
 	a.recoverOrphans()
 	a.Connectors.Init()
 	a.Connectors.ReconcileStdio()
@@ -383,46 +386,52 @@ func (a *App) Mask(botID string) *masker.Masker {
 	return m
 }
 
+// publicRPCs are the UI procedures that answer with nobody signed in: signing
+// in itself, and what the sign-in and invite pages need to draw.
+var publicRPCs = map[string]bool{
+	silov1connect.UISignInProcedure:       true,
+	silov1connect.UIAuthOptionsProcedure:  true,
+	silov1connect.UIGetInviteProcedure:    true,
+	silov1connect.UIAcceptInviteProcedure: true,
+}
+
 func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		if strings.HasSuffix(req.Spec().Procedure, "SignIn") {
+		if publicRPCs[req.Spec().Procedure] {
 			return next(ctx, req)
 		}
-		r := access.Request(ctx)
-		if r == nil {
-			return nil, connect.NewError(connect.CodeUnauthenticated, nil)
-		}
-		u, err := auth.UserFromRequest(a.DB, r)
+		ctx, err := a.signedIn(ctx)
 		if err != nil {
-			return nil, sessionError(err)
+			return nil, err
 		}
-		return next(access.WithUser(ctx, u), req)
+		return next(ctx, req)
 	}
 }
 
 func (a *App) interceptUIStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		r := access.Request(ctx)
-		if r == nil {
-			return connect.NewError(connect.CodeUnauthenticated, nil)
-		}
-		u, err := auth.UserFromRequest(a.DB, r)
+		ctx, err := a.signedIn(ctx)
 		if err != nil {
-			return sessionError(err)
+			return err
 		}
-		return next(access.WithUser(ctx, u), conn)
+		return next(ctx, conn)
 	}
 }
 
-// sessionError maps a session lookup failure: ErrAuth is a sign-out, anything
-// else is the store failing, which the UI must retry rather than treat as one.
-func sessionError(err error) *connect.Error {
-	if errors.Is(err, auth.ErrAuth) {
-		return connect.NewError(connect.CodeUnauthenticated, err)
+// signedIn puts the request's user and session on ctx, or says why not.
+func (a *App) signedIn(ctx context.Context) (context.Context, error) {
+	r := access.Request(ctx)
+	if r == nil {
+		return ctx, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
-	log.Printf("session lookup: %v", err)
-	return connect.NewError(connect.CodeUnavailable, errors.New("session store unavailable"))
+	s, u, err := auth.SessionFromRequest(a.DB, r)
+	if err != nil {
+		return ctx, sessionError(err)
+	}
+	return access.WithSession(access.WithUser(ctx, u), s), nil
 }
+
+func sessionError(err error) *connect.Error { return access.SessionError(err) }
 
 func (a *App) interceptWorker(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
@@ -472,6 +481,8 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/connectors/", a.Connectors.ServeImage)
 	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
 	mux.HandleFunc("/tunnels/auth", a.Tunnels.ServeAuth)
+	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
+	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)
 	log.Printf("mounted %s %s", uiPath, wkPath)
 	// <name>.<tunnels.host> is a tunnel; every other host is the control plane.
 	return a.Tunnels.Route(access.WithHTTP(mux))

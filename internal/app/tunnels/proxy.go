@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
@@ -70,7 +71,8 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, name string) {
 		page(w, http.StatusInternalServerError, "Something went wrong", "The control plane could not look this tunnel up.")
 		return
 	}
-	if t == nil {
+	// A disabled user's tunnels are closed to everyone, public ones included.
+	if t == nil || s.ownerDisabled(t) {
 		page(w, http.StatusNotFound, "No tunnel here", "There is no tunnel with this name. It may have been deleted.")
 		return
 	}
@@ -155,8 +157,14 @@ func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tk := s.mintTicket(t.ID, u.ID, sess.ID)
-	q := url.Values{"ticket": {tk}, "rd": {safeReturn(r.URL.Query().Get("rd"))}}
+	q := url.Values{"ticket": {tk}, "rd": {access.SafeReturn(r.URL.Query().Get("rd"))}}
 	http.Redirect(w, r, s.cfg().TunnelURL(t.Name)+authPath+"?"+q.Encode(), http.StatusFound)
+}
+
+func (s *Service) ownerDisabled(t *db.Tunnel) bool {
+	var n int64
+	s.db.Model(&db.Bot{}).Joins("JOIN users ON users.id = bots.user_id").Where("bots.id = ? AND users.disabled = ?", t.BotID, true).Count(&n)
+	return n > 0
 }
 
 func (s *Service) owns(userID string, t *db.Tunnel) bool {
@@ -189,7 +197,7 @@ func (s *Service) redeem(w http.ResponseWriter, r *http.Request, t *db.Tunnel) {
 		Name: cookieName, Value: value, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		Secure: s.cfg().TunnelScheme() == "https", Expires: now.Add(grantTTL),
 	})
-	http.Redirect(w, r, safeReturn(r.URL.Query().Get("rd")), http.StatusFound)
+	http.Redirect(w, r, access.SafeReturn(r.URL.Query().Get("rd")), http.StatusFound)
 }
 
 func (s *Service) mintTicket(tunnelID, userID, sessionID string) string {
@@ -223,15 +231,6 @@ func (s *Service) takeTicket(id string) (ticket, bool) {
 		return ticket{}, false
 	}
 	return t, true
-}
-
-// safeReturn keeps the post-sign-in redirect on the tunnel's own origin: only a
-// plain absolute path survives.
-func safeReturn(rd string) string {
-	if !strings.HasPrefix(rd, "/") || strings.HasPrefix(rd, "//") || strings.ContainsAny(rd, "\\\r\n") {
-		return "/"
-	}
-	return rd
 }
 
 // touch records use, at most once a minute per tunnel.

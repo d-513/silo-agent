@@ -102,6 +102,14 @@ func (h *H) SignedInUser(email string) (silov1connect.UIClient, *http.Client) {
 	return cl, hc
 }
 
+// Browser is someone who has not signed in: a UI client and the HTTP client
+// whose cookie jar it shares.
+func (h *H) Browser() (silov1connect.UIClient, *http.Client) {
+	jar, _ := cookiejar.New(nil)
+	hc := &http.Client{Jar: jar}
+	return silov1connect.NewUIClient(hc, h.URL), hc
+}
+
 // WaitConnector blocks until the named bot connector leaves the initializing
 // state and returns the row. The name must match exactly, so "Docs" and
 // "Docs 2" do not collide.

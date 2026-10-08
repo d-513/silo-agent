@@ -39,6 +39,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")
+	_ = k.Set("auth.password", true)
 }
 
 type yamlBytes []byte
@@ -319,6 +320,9 @@ func validateYAML(raw []byte) error {
 		return fmt.Errorf("unknown search engine %q", e)
 	}
 	if err := validateTunnels(k.String("tunnels.host"), k.String("tunnels.scheme"), k.String("public_url")); err != nil {
+		return err
+	}
+	if err := validateSignIn(k); err != nil {
 		return err
 	}
 	if cv := k.Get("connector_vars"); cv != nil {

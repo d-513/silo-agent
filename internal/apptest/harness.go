@@ -64,6 +64,7 @@ type options struct {
 	beforeApp   func(*gorm.DB)
 	stdioBridge bool
 	driveGuest  bool
+	signedOut   bool
 }
 
 // Option customizes the harness.
@@ -93,6 +94,10 @@ func WithDataDir(dir string) Option { return func(o *options) { o.dataDir = dir 
 // WithBeforeApp seeds rows after migration but before the App starts, which is
 // how startup recovery (orphaned runs, connector resume) is exercised.
 func WithBeforeApp(fn func(*gorm.DB)) Option { return func(o *options) { o.beforeApp = fn } }
+
+// WithSignedOut leaves h.Client without a session, for a config where the
+// bootstrap admin's password does not sign in (password sign-in turned off).
+func WithSignedOut() Option { return func(o *options) { o.signedOut = true } }
 
 // WithStdioBridge makes the fake host run the real `silo-mcp-bridge` process
 // for each STDIO sidecar, with the same env the container would get. The
@@ -184,6 +189,9 @@ func New(t *testing.T, opts ...Option) *H {
 	if o.driveGuest && fake != nil {
 		h.Drives = &DriveGuest{Runner: drivetest.New(), Dir: t.TempDir()}
 		fake.DriveLaunch = func(spec dockerx.DriveSpec) func() { return h.startDriveGuest(spec) }
+	}
+	if o.signedOut {
+		return h
 	}
 	if _, err := h.Client.SignIn(context.Background(), connect.NewRequest(&v1.SignInRequest{
 		Email: o.email, Password: o.password,

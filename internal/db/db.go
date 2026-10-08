@@ -15,13 +15,58 @@ type User struct {
 	Email        string `gorm:"uniqueIndex"`
 	PasswordHash string
 	Admin        bool
+	// Disabled blocks sign-in and pauses the user's Bots; nothing is deleted.
+	// (The defaults below fill the rows of users from before the column.)
+	Disabled bool `gorm:"not null;default:false"`
+	// OIDCIssuer and OIDCSubject name the identity at the OIDC provider this
+	// user signs in with; both empty for a password-only account.
+	OIDCIssuer  string `gorm:"column:oidc_issuer"`
+	OIDCSubject string `gorm:"column:oidc_subject"`
+	// TOTPSecret is the base32 secret of an enrolled authenticator; TOTPPending
+	// is one being enrolled, not yet confirmed with a code. TOTPStep is the last
+	// time step a code was accepted for, so a code cannot be used twice.
+	TOTPSecret   string `gorm:"column:totp_secret"`
+	TOTPPending  string `gorm:"column:totp_pending"`
+	TOTPStep     int64  `gorm:"column:totp_step;not null;default:0"`
+	LastSignInAt *time.Time
 	CreatedAt    time.Time
 }
 
+// Session is one signed-in browser. ID is the hash of the cookie's value, so
+// the table alone signs nobody in.
 type Session struct {
 	ID        string `gorm:"primaryKey"`
 	UserID    string `gorm:"index"`
 	ExpiresAt time.Time
+	CreatedAt time.Time
+	// LastSeenAt is refreshed at most every few minutes.
+	LastSeenAt time.Time
+	UserAgent  string
+	IP         string `gorm:"column:ip"`
+	// Method is how the session was made: password, oidc, or invite.
+	Method string
+}
+
+// Invite is a single-use link an admin hands out. With no UserID it creates the
+// account for Email; with one it lets that user pick a new password. ID is the
+// hash of the link's token.
+type Invite struct {
+	ID        string `gorm:"primaryKey"`
+	Email     string `gorm:"index"`
+	Admin     bool
+	UserID    string `gorm:"index"`
+	CreatedBy string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+}
+
+// RecoveryCode is one two-factor backup code, stored as the hash of the user id
+// and the code.
+type RecoveryCode struct {
+	ID     string `gorm:"primaryKey"`
+	UserID string `gorm:"index"`
+	UsedAt *time.Time
 }
 
 type Bot struct {
@@ -443,7 +488,7 @@ type TunnelGrant struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Bot{}, &Secret{}, &Rule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
@@ -480,6 +525,9 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.AutoMigrate(Models()...); err != nil {
 		return err
 	}
+	if err := hashSessionIDs(gdb); err != nil {
+		return err
+	}
 	if !hadWatermark {
 		// Chats that predate the memory collector start at their newest event,
 		// so the first sweep reads only what is said from now on.
@@ -499,10 +547,27 @@ func Migrate(gdb *gorm.DB) error {
 		"ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED",
 		"CREATE INDEX IF NOT EXISTS knowledge_chunks_embedding_hnsw ON knowledge_chunks USING hnsw (embedding vector_cosine_ops)",
 		"CREATE INDEX IF NOT EXISTS knowledge_chunks_tsv ON knowledge_chunks USING gin (tsv)",
+		// One user per identity at the provider; password-only users have none.
+		"CREATE UNIQUE INDEX IF NOT EXISTS users_oidc_identity ON users (oidc_issuer, oidc_subject) WHERE oidc_subject <> ''",
 	} {
 		if err := gdb.Exec(stmt).Error; err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// hashSessionIDs moves sessions from before the id was a hash (they have no
+// created_at) to the hash of the cookie they were issued with, and the tunnel
+// grants made from them along, so nobody is signed out by the upgrade.
+func hashSessionIDs(gdb *gorm.DB) error {
+	const hashed = "encode(sha256(convert_to(%s, 'UTF8')), 'hex')"
+	return gdb.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("UPDATE tunnel_grants SET session_id = " + fmt.Sprintf(hashed, "tunnel_grants.session_id") +
+			" FROM sessions WHERE sessions.id = tunnel_grants.session_id AND sessions.created_at IS NULL").Error; err != nil {
+			return err
+		}
+		return tx.Exec("UPDATE sessions SET id = " + fmt.Sprintf(hashed, "id") +
+			", created_at = now(), last_seen_at = now() WHERE created_at IS NULL").Error
+	})
 }

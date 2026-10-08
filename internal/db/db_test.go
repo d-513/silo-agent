@@ -1,11 +1,13 @@
 package db_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	"silo.agent/internal/db"
 	"silo.agent/internal/db/dbtest"
+	"silo.agent/internal/ids"
 )
 
 func TestScrubsNULAndInvalidUTF8(t *testing.T) {
@@ -62,5 +64,37 @@ func TestMigrateRenamesMemoryRule(t *testing.T) {
 	gdb.First(&got, "id = ?", "r1")
 	if got.Action != "core_memory" || got.Decision != "deny" {
 		t.Fatalf("rule %+v", got)
+	}
+}
+
+// Sessions from before the id was a hash keep working: the row moves to the
+// hash of the cookie it was issued with, and so do the tunnel grants made from
+// it. A second migrate leaves them alone.
+func TestMigrateHashesOldSessionIDs(t *testing.T) {
+	gdb := dbtest.New(t)
+	exp := time.Now().Add(time.Hour)
+	gdb.Create(&db.Session{ID: "raw-cookie", UserID: "u1", ExpiresAt: exp})
+	gdb.Exec("UPDATE sessions SET created_at = NULL WHERE id = ?", "raw-cookie")
+	gdb.Create(&db.Session{ID: ids.Hash("new-cookie"), UserID: "u1", ExpiresAt: exp})
+	gdb.Create(&db.TunnelGrant{ID: "g1", TunnelID: "t", UserID: "u1", SessionID: "raw-cookie", ExpiresAt: exp})
+	gdb.Create(&db.TunnelGrant{ID: "g2", TunnelID: "t", UserID: "u1", SessionID: ids.Hash("new-cookie"), ExpiresAt: exp})
+
+	for range 2 {
+		if err := db.Migrate(gdb); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	gdb.Model(&db.Session{}).Order("id").Pluck("id", &got)
+	want := []string{ids.Hash("raw-cookie"), ids.Hash("new-cookie")}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("session ids %v, want %v", got, want)
+	}
+	var g1, g2 db.TunnelGrant
+	gdb.First(&g1, "id = ?", "g1")
+	gdb.First(&g2, "id = ?", "g2")
+	if g1.SessionID != ids.Hash("raw-cookie") || g2.SessionID != ids.Hash("new-cookie") {
+		t.Fatalf("grants point at %q and %q", g1.SessionID, g2.SessionID)
 	}
 }

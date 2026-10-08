@@ -32,6 +32,19 @@ func User(ctx context.Context) *db.User {
 	return u
 }
 
+type sessionKey struct{}
+
+// WithSession returns ctx carrying the session the request was signed in with.
+func WithSession(ctx context.Context, s *db.Session) context.Context {
+	return context.WithValue(ctx, sessionKey{}, s)
+}
+
+// Session is the session the request came on, or nil.
+func Session(ctx context.Context) *db.Session {
+	s, _ := ctx.Value(sessionKey{}).(*db.Session)
+	return s
+}
+
 // RequireAdmin is PermissionDenied unless the signed-in user is an admin.
 func RequireAdmin(ctx context.Context) error {
 	u := User(ctx)
@@ -96,7 +109,17 @@ func RowByToken[T any](gdb *gorm.DB, hashColumn, header string) (*T, string, err
 	return &row, tok, nil
 }
 
-// HTTPSessionError is sessionError for plain HTTP handlers.
+// SessionError maps a session lookup failure: ErrAuth is a sign-out, anything
+// else is the store failing, which the UI must retry rather than treat as one.
+func SessionError(err error) *connect.Error {
+	if errors.Is(err, auth.ErrAuth) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	log.Printf("session lookup: %v", err)
+	return connect.NewError(connect.CodeUnavailable, errors.New("session store unavailable"))
+}
+
+// HTTPSessionError is SessionError for plain HTTP handlers.
 func HTTPSessionError(w http.ResponseWriter, err error) {
 	if errors.Is(err, auth.ErrAuth) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -133,4 +156,43 @@ func Request(ctx context.Context) *http.Request {
 func ResponseWriter(ctx context.Context) http.ResponseWriter {
 	w, _ := ctx.Value(rwKey).(http.ResponseWriter)
 	return w
+}
+
+// PublicURL is the address the browser (and an OAuth or OIDC provider) reaches
+// the control plane at: the operator's public_url, else the origin the request
+// r came to. r may be nil.
+func PublicURL(configured string, r *http.Request) string {
+	if u := strings.TrimSpace(configured); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	if r == nil {
+		return "http://127.0.0.1:5173"
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if p := r.Header.Get("X-Forwarded-Proto"); p != "" {
+		scheme = p
+	}
+	host := r.Host
+	if h := r.Header.Get("X-Forwarded-Host"); h != "" {
+		host = h
+	}
+	return scheme + "://" + host
+}
+
+// SecureCookies reports whether cookies set on r's response should be
+// HTTPS-only: the site is served over TLS, here or at a proxy in front.
+func SecureCookies(configured string, r *http.Request) bool {
+	return strings.HasPrefix(PublicURL(configured, r), "https://")
+}
+
+// SafeReturn keeps a redirect taken after signing in on the origin it started
+// from: only a plain absolute path is followed, anything else goes to "/".
+func SafeReturn(rd string) string {
+	if !strings.HasPrefix(rd, "/") || strings.HasPrefix(rd, "//") || strings.ContainsAny(rd, "\\\r\n") {
+		return "/"
+	}
+	return rd
 }

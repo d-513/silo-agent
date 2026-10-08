@@ -14,7 +14,6 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/workspace"
-	"silo.agent/internal/auth"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -22,54 +21,6 @@ import (
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
-
-func (a *App) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error) {
-	email := req.Msg.GetEmail()
-	pass := req.Msg.GetPassword()
-	if email == "" || pass == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and password required"))
-	}
-	w := access.ResponseWriter(ctx)
-	var count int64
-	a.DB.Model(&db.User{}).Count(&count)
-	var u db.User
-	if count == 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no users; set bootstrap.email and bootstrap.password in silo.yaml"))
-	}
-	if err := a.DB.First(&u, "email = ?", email).Error; err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
-	}
-	if !auth.CheckPassword(u.PasswordHash, pass) {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
-	}
-	if err := auth.NewSession(a.DB, u.ID, w); err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&v1.SignInResponse{
-		User: protoUser(&u),
-	}), nil
-}
-
-func (a *App) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
-	// End the session on the server first: clearing the cookie alone leaves it
-	// valid for anyone who has a copy, and keeps tunnel grants alive.
-	if r := access.Request(ctx); r != nil {
-		if err := auth.EndSession(a.DB, r); err != nil {
-			return nil, sessionError(err)
-		}
-	}
-	auth.ClearSession(access.ResponseWriter(ctx))
-	return connect.NewResponse(&v1.SignOutResponse{}), nil
-}
-
-func protoUser(u *db.User) *v1.User {
-	return &v1.User{Id: u.ID, Email: u.Email, Admin: u.Admin}
-}
-
-func (a *App) Me(ctx context.Context, _ *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error) {
-	u := access.User(ctx)
-	return connect.NewResponse(&v1.MeResponse{User: protoUser(u)}), nil
-}
 
 func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 	connected := a.Hub.Connected(b.ID)
@@ -247,6 +198,13 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	if err != nil {
 		return nil, err
 	}
+	a.dropBot(ctx, b)
+	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
+}
+
+// dropBot deletes a Bot for good: its box, everything it has in the database,
+// and its files.
+func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.destroyBot(ctx, b)
 	var runs []db.Run
 	a.DB.Where("bot_id = ?", b.ID).Find(&runs)
@@ -283,7 +241,6 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 	if dir := a.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "bots", b.ID))
 	}
-	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
 
 func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {

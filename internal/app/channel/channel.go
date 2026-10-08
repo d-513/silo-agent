@@ -224,10 +224,31 @@ func (s *Service) Reconcile() {
 		return
 	}
 	var chans []db.Channel
-	s.db.Where("enabled = ?", true).Find(&chans)
+	// A disabled user's Bots do not listen; Resume starts them again.
+	paused := s.db.Model(&db.Bot{}).Select("bots.id").Joins("JOIN users ON users.id = bots.user_id").Where("users.disabled = ?", true)
+	s.db.Where("enabled = ? AND bot_id NOT IN (?)", true, paused).Find(&chans)
 	for i := range chans {
 		c := chans[i]
 		s.startChannel(&c)
+	}
+}
+
+// Suspend stops a Bot's channel workers without touching their rows, for a Bot
+// whose owner was disabled. Resume starts the enabled ones again.
+func (s *Service) Suspend(botID string) {
+	for _, c := range s.All(botID) {
+		s.stopChannel(c.ID)
+		if c.Enabled {
+			s.setChannelStatus(c.ID, "stopped", "the Bot's owner is disabled")
+		}
+	}
+}
+
+func (s *Service) Resume(botID string) {
+	for _, c := range s.All(botID) {
+		if c.Enabled {
+			s.startChannel(&c)
+		}
 	}
 }
 

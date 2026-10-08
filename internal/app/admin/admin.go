@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -31,17 +32,19 @@ type Service struct {
 	cfg    func() config.Config
 	models *models.Service
 	voice  *voice.Service
+	// oidcRedirect is the OIDC callback address, as the request's origin sees it.
+	oidcRedirect func(*http.Request) string
 }
 
-func New(gdb *gorm.DB, store *config.Store, cfg func() config.Config, m *models.Service, v *voice.Service) *Service {
-	return &Service{db: gdb, store: store, cfg: cfg, models: m, voice: v}
+func New(gdb *gorm.DB, store *config.Store, cfg func() config.Config, m *models.Service, v *voice.Service, oidcRedirect func(*http.Request) string) *Service {
+	return &Service{db: gdb, store: store, cfg: cfg, models: m, voice: v, oidcRedirect: oidcRedirect}
 }
 
 func (s *Service) GetSettings(ctx context.Context, _ *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.Settings], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	cur, err := s.settings()
+	cur, err := s.settings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +99,7 @@ func (s *Service) PutSettings(ctx context.Context, req *connect.Request[v1.PutSe
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
-	cur, err := s.settings()
+	cur, err := s.settings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +128,7 @@ func (s *Service) SetModels(ctx context.Context, req *connect.Request[v1.SetMode
 	if err := s.store.SetModels(allow); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	cur, err := s.settings()
+	cur, err := s.settings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +199,7 @@ func (s *Service) SetConnectorVars(ctx context.Context, req *connect.Request[v1.
 	if err := s.store.SetConnectorVars(vars); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	cur, err := s.settings()
+	cur, err := s.settings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -220,15 +223,18 @@ func (s *Service) SetAutoenableConnectors(ctx context.Context, req *connect.Requ
 	if err := s.store.SetAutoenableConnectors(catalog.Identifiers(req.Msg.GetIdentifiers())); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	cur, err := s.settings()
+	cur, err := s.settings(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(cur), nil
 }
 
-func (s *Service) settings() (*v1.Settings, error) {
+func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
 	out := &v1.Settings{SearchEngines: searchEngineProtos()}
+	if s.oidcRedirect != nil {
+		out.OidcRedirectUrl = s.oidcRedirect(access.Request(ctx))
+	}
 	if s.store == nil {
 		return out, nil
 	}

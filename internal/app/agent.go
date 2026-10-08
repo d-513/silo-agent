@@ -31,6 +31,9 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	if err := a.DB.First(&b, "id = ?", req.BotID).Error; err != nil {
 		return "", fmt.Errorf("unknown bot")
 	}
+	if a.ownerDisabled(&b) {
+		return "", errOwnerDisabled
+	}
 	channelID := ""
 	origin := "chat"
 	if req.Origin != nil && req.Origin.Channel != nil {

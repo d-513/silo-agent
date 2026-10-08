@@ -266,6 +266,8 @@ type Config struct {
 	Models      []string            `koanf:"models"`
 	Debug       bool                `koanf:"debug"`
 	Bootstrap   Bootstrap           `koanf:"bootstrap"`
+	Auth        Auth                `koanf:"auth"`
+	OIDC        OIDC                `koanf:"oidc"`
 	Providers   map[string]Provider `koanf:"providers"`
 	Search      Search              `koanf:"search"`
 	Drives      Drives              `koanf:"drives"`
@@ -407,6 +409,17 @@ var fieldDefs = []fieldMeta{
 	{Key: "tunnels.enabled", Type: "bool"},
 	{Key: "tunnels.host"},
 	{Key: "tunnels.scheme"},
+	{Key: "auth.password", Type: "bool"},
+	{Key: "auth.trusted_proxies"},
+	{Key: "oidc.issuer"},
+	{Key: "oidc.client_id"},
+	{Key: "oidc.client_secret", Secret: true},
+	{Key: "oidc.scopes"},
+	{Key: "oidc.label"},
+	{Key: "oidc.auto_create", Type: "bool"},
+	{Key: "oidc.allowed_domains"},
+	{Key: "oidc.groups_claim"},
+	{Key: "oidc.admin_group"},
 	{Key: "bootstrap.email", Restart: true},
 	{Key: "bootstrap.password", Secret: true, Restart: true},
 }

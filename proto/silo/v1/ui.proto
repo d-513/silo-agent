@@ -8,6 +8,29 @@ service UI {
   rpc SignIn(SignInRequest) returns (SignInResponse);
   rpc SignOut(SignOutRequest) returns (SignOutResponse);
   rpc Me(MeRequest) returns (MeResponse);
+  // AuthOptions is how this server lets people sign in. The sign-in page asks
+  // before anyone is signed in, as do GetInvite and AcceptInvite.
+  rpc AuthOptions(AuthOptionsRequest) returns (AuthOptionsResponse);
+  rpc GetInvite(GetInviteRequest) returns (InviteInfo);
+  rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
+  // The signed-in user's own account.
+  rpc ChangePassword(ChangePasswordRequest) returns (User);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (ListSessionsResponse);
+  rpc RevokeOtherSessions(RevokeOtherSessionsRequest) returns (ListSessionsResponse);
+  rpc StartTOTP(StartTOTPRequest) returns (StartTOTPResponse);
+  rpc ConfirmTOTP(ConfirmTOTPRequest) returns (RecoveryCodes);
+  rpc DisableTOTP(DisableTOTPRequest) returns (User);
+  rpc NewRecoveryCodes(NewRecoveryCodesRequest) returns (RecoveryCodes);
+  // Admin: everyone's accounts, and the invite links that make new ones.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc CreateInvite(CreateInviteRequest) returns (Invite);
+  rpc DeleteInvite(DeleteInviteRequest) returns (DeleteInviteResponse);
+  // CheckOIDC asks the configured OIDC provider for its discovery document,
+  // with the saved settings.
+  rpc CheckOIDC(CheckOIDCRequest) returns (CheckOIDCResponse);
 
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
@@ -148,11 +171,17 @@ service UI {
 message SignInRequest {
   string email = 1;
   string password = 2;
+  // code is the authenticator (or a recovery) code, sent with the email and
+  // password again after a response with needs_code.
+  string code = 3;
 }
 
 message SignInResponse {
   User user = 1;
   bool created = 2;
+  // needs_code: the password was right and the account has two-factor on.
+  // Nobody is signed in yet.
+  bool needs_code = 3;
 }
 
 message SignOutRequest {}
@@ -169,6 +198,166 @@ message User {
   string id = 1;
   string email = 2;
   bool admin = 3;
+  bool disabled = 4;
+  bool has_password = 5;
+  // totp: two-factor is on for password sign-in.
+  bool totp = 6;
+  // oidc: the account is linked to an identity at the OIDC provider.
+  bool oidc = 7;
+  string created_at = 8;
+  string last_sign_in_at = 9;
+  // bots is how many Bots the user owns; set only by ListUsers.
+  int32 bots = 10;
+}
+
+message AuthOptionsRequest {}
+
+message AuthOptionsResponse {
+  bool password = 1;
+  bool oidc = 2;
+  string oidc_label = 3;
+}
+
+message GetInviteRequest {
+  string token = 1;
+}
+
+// InviteInfo is what an invite link's page shows before a password is picked.
+message InviteInfo {
+  string email = 1;
+  // password_reset: the link sets a new password for an existing account.
+  bool password_reset = 2;
+}
+
+message AcceptInviteRequest {
+  string token = 1;
+  string password = 2;
+}
+
+message AcceptInviteResponse {
+  User user = 1;
+  // signed_in is false after a reset: the person signs in with the new
+  // password (and their second factor).
+  bool signed_in = 2;
+}
+
+message ChangePasswordRequest {
+  // current is required when the account already has a password.
+  string current = 1;
+  string password = 2;
+}
+
+message Session {
+  string id = 1;
+  string created_at = 2;
+  string last_seen_at = 3;
+  string expires_at = 4;
+  string user_agent = 5;
+  string ip = 6;
+  // method is password, oidc, or invite.
+  string method = 7;
+  // current: this is the session the request came on.
+  bool current = 8;
+}
+
+message ListSessionsRequest {}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message RevokeSessionRequest {
+  string id = 1;
+}
+
+message RevokeOtherSessionsRequest {}
+
+message StartTOTPRequest {
+  string password = 1;
+}
+
+message StartTOTPResponse {
+  string secret = 1;
+  // url is the otpauth link; qr is the same as a PNG data URL.
+  string url = 2;
+  string qr = 3;
+}
+
+message ConfirmTOTPRequest {
+  string code = 1;
+}
+
+// RecoveryCodes are shown once; only their hashes are kept.
+message RecoveryCodes {
+  repeated string codes = 1;
+  User user = 2;
+}
+
+message DisableTOTPRequest {
+  // An authenticator code or a recovery code.
+  string code = 1;
+}
+
+message NewRecoveryCodesRequest {
+  string code = 1;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  // Invite links that are still good.
+  repeated Invite invites = 2;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  optional bool admin = 2;
+  optional bool disabled = 3;
+  // password, when set, replaces the user's password and signs them out.
+  string password = 4;
+  // reset_totp turns the user's two-factor off (a lost phone).
+  bool reset_totp = 5;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {}
+
+message Invite {
+  string id = 1;
+  string email = 2;
+  bool admin = 3;
+  // user_id is set on a password-reset link.
+  string user_id = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  // url is the link itself, returned by CreateInvite only: it cannot be read
+  // back later.
+  string url = 7;
+}
+
+message CreateInviteRequest {
+  // A new account for email, or, with user_id, a link for that user to pick a
+  // new password.
+  string email = 1;
+  bool admin = 2;
+  string user_id = 3;
+}
+
+message DeleteInviteRequest {
+  string id = 1;
+}
+
+message DeleteInviteResponse {}
+
+message CheckOIDCRequest {}
+
+message CheckOIDCResponse {
+  string issuer = 1;
+  string authorization_endpoint = 2;
 }
 
 message Bot {
@@ -971,6 +1160,8 @@ message Settings {
   // when tunnels have no domain; the form shows it where the field is unset.
   string tunnels_host = 10;
   AutoenableConnectors autoenable_connectors = 11;
+  // oidc_redirect_url is the callback to register at the OIDC provider.
+  string oidc_redirect_url = 12;
 }
 
 message Provider {

@@ -39,6 +39,40 @@ const (
 	UISignOutProcedure = "/silo.v1.UI/SignOut"
 	// UIMeProcedure is the fully-qualified name of the UI's Me RPC.
 	UIMeProcedure = "/silo.v1.UI/Me"
+	// UIAuthOptionsProcedure is the fully-qualified name of the UI's AuthOptions RPC.
+	UIAuthOptionsProcedure = "/silo.v1.UI/AuthOptions"
+	// UIGetInviteProcedure is the fully-qualified name of the UI's GetInvite RPC.
+	UIGetInviteProcedure = "/silo.v1.UI/GetInvite"
+	// UIAcceptInviteProcedure is the fully-qualified name of the UI's AcceptInvite RPC.
+	UIAcceptInviteProcedure = "/silo.v1.UI/AcceptInvite"
+	// UIChangePasswordProcedure is the fully-qualified name of the UI's ChangePassword RPC.
+	UIChangePasswordProcedure = "/silo.v1.UI/ChangePassword"
+	// UIListSessionsProcedure is the fully-qualified name of the UI's ListSessions RPC.
+	UIListSessionsProcedure = "/silo.v1.UI/ListSessions"
+	// UIRevokeSessionProcedure is the fully-qualified name of the UI's RevokeSession RPC.
+	UIRevokeSessionProcedure = "/silo.v1.UI/RevokeSession"
+	// UIRevokeOtherSessionsProcedure is the fully-qualified name of the UI's RevokeOtherSessions RPC.
+	UIRevokeOtherSessionsProcedure = "/silo.v1.UI/RevokeOtherSessions"
+	// UIStartTOTPProcedure is the fully-qualified name of the UI's StartTOTP RPC.
+	UIStartTOTPProcedure = "/silo.v1.UI/StartTOTP"
+	// UIConfirmTOTPProcedure is the fully-qualified name of the UI's ConfirmTOTP RPC.
+	UIConfirmTOTPProcedure = "/silo.v1.UI/ConfirmTOTP"
+	// UIDisableTOTPProcedure is the fully-qualified name of the UI's DisableTOTP RPC.
+	UIDisableTOTPProcedure = "/silo.v1.UI/DisableTOTP"
+	// UINewRecoveryCodesProcedure is the fully-qualified name of the UI's NewRecoveryCodes RPC.
+	UINewRecoveryCodesProcedure = "/silo.v1.UI/NewRecoveryCodes"
+	// UIListUsersProcedure is the fully-qualified name of the UI's ListUsers RPC.
+	UIListUsersProcedure = "/silo.v1.UI/ListUsers"
+	// UIUpdateUserProcedure is the fully-qualified name of the UI's UpdateUser RPC.
+	UIUpdateUserProcedure = "/silo.v1.UI/UpdateUser"
+	// UIDeleteUserProcedure is the fully-qualified name of the UI's DeleteUser RPC.
+	UIDeleteUserProcedure = "/silo.v1.UI/DeleteUser"
+	// UICreateInviteProcedure is the fully-qualified name of the UI's CreateInvite RPC.
+	UICreateInviteProcedure = "/silo.v1.UI/CreateInvite"
+	// UIDeleteInviteProcedure is the fully-qualified name of the UI's DeleteInvite RPC.
+	UIDeleteInviteProcedure = "/silo.v1.UI/DeleteInvite"
+	// UICheckOIDCProcedure is the fully-qualified name of the UI's CheckOIDC RPC.
+	UICheckOIDCProcedure = "/silo.v1.UI/CheckOIDC"
 	// UIListBotsProcedure is the fully-qualified name of the UI's ListBots RPC.
 	UIListBotsProcedure = "/silo.v1.UI/ListBots"
 	// UICreateBotProcedure is the fully-qualified name of the UI's CreateBot RPC.
@@ -264,6 +298,29 @@ type UIClient interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
 	Me(context.Context, *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error)
+	// AuthOptions is how this server lets people sign in. The sign-in page asks
+	// before anyone is signed in, as do GetInvite and AcceptInvite.
+	AuthOptions(context.Context, *connect.Request[v1.AuthOptionsRequest]) (*connect.Response[v1.AuthOptionsResponse], error)
+	GetInvite(context.Context, *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error)
+	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
+	// The signed-in user's own account.
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
+	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	RevokeOtherSessions(context.Context, *connect.Request[v1.RevokeOtherSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	StartTOTP(context.Context, *connect.Request[v1.StartTOTPRequest]) (*connect.Response[v1.StartTOTPResponse], error)
+	ConfirmTOTP(context.Context, *connect.Request[v1.ConfirmTOTPRequest]) (*connect.Response[v1.RecoveryCodes], error)
+	DisableTOTP(context.Context, *connect.Request[v1.DisableTOTPRequest]) (*connect.Response[v1.User], error)
+	NewRecoveryCodes(context.Context, *connect.Request[v1.NewRecoveryCodesRequest]) (*connect.Response[v1.RecoveryCodes], error)
+	// Admin: everyone's accounts, and the invite links that make new ones.
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.User], error)
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.Invite], error)
+	DeleteInvite(context.Context, *connect.Request[v1.DeleteInviteRequest]) (*connect.Response[v1.DeleteInviteResponse], error)
+	// CheckOIDC asks the configured OIDC provider for its discovery document,
+	// with the saved settings.
+	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -412,6 +469,108 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIMeProcedure,
 			connect.WithSchema(uIMethods.ByName("Me")),
+			connect.WithClientOptions(opts...),
+		),
+		authOptions: connect.NewClient[v1.AuthOptionsRequest, v1.AuthOptionsResponse](
+			httpClient,
+			baseURL+UIAuthOptionsProcedure,
+			connect.WithSchema(uIMethods.ByName("AuthOptions")),
+			connect.WithClientOptions(opts...),
+		),
+		getInvite: connect.NewClient[v1.GetInviteRequest, v1.InviteInfo](
+			httpClient,
+			baseURL+UIGetInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("GetInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		acceptInvite: connect.NewClient[v1.AcceptInviteRequest, v1.AcceptInviteResponse](
+			httpClient,
+			baseURL+UIAcceptInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("AcceptInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.User](
+			httpClient,
+			baseURL+UIChangePasswordProcedure,
+			connect.WithSchema(uIMethods.ByName("ChangePassword")),
+			connect.WithClientOptions(opts...),
+		),
+		listSessions: connect.NewClient[v1.ListSessionsRequest, v1.ListSessionsResponse](
+			httpClient,
+			baseURL+UIListSessionsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeSession: connect.NewClient[v1.RevokeSessionRequest, v1.ListSessionsResponse](
+			httpClient,
+			baseURL+UIRevokeSessionProcedure,
+			connect.WithSchema(uIMethods.ByName("RevokeSession")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeOtherSessions: connect.NewClient[v1.RevokeOtherSessionsRequest, v1.ListSessionsResponse](
+			httpClient,
+			baseURL+UIRevokeOtherSessionsProcedure,
+			connect.WithSchema(uIMethods.ByName("RevokeOtherSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		startTOTP: connect.NewClient[v1.StartTOTPRequest, v1.StartTOTPResponse](
+			httpClient,
+			baseURL+UIStartTOTPProcedure,
+			connect.WithSchema(uIMethods.ByName("StartTOTP")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmTOTP: connect.NewClient[v1.ConfirmTOTPRequest, v1.RecoveryCodes](
+			httpClient,
+			baseURL+UIConfirmTOTPProcedure,
+			connect.WithSchema(uIMethods.ByName("ConfirmTOTP")),
+			connect.WithClientOptions(opts...),
+		),
+		disableTOTP: connect.NewClient[v1.DisableTOTPRequest, v1.User](
+			httpClient,
+			baseURL+UIDisableTOTPProcedure,
+			connect.WithSchema(uIMethods.ByName("DisableTOTP")),
+			connect.WithClientOptions(opts...),
+		),
+		newRecoveryCodes: connect.NewClient[v1.NewRecoveryCodesRequest, v1.RecoveryCodes](
+			httpClient,
+			baseURL+UINewRecoveryCodesProcedure,
+			connect.WithSchema(uIMethods.ByName("NewRecoveryCodes")),
+			connect.WithClientOptions(opts...),
+		),
+		listUsers: connect.NewClient[v1.ListUsersRequest, v1.ListUsersResponse](
+			httpClient,
+			baseURL+UIListUsersProcedure,
+			connect.WithSchema(uIMethods.ByName("ListUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		updateUser: connect.NewClient[v1.UpdateUserRequest, v1.User](
+			httpClient,
+			baseURL+UIUpdateUserProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateUser")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
+			httpClient,
+			baseURL+UIDeleteUserProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteUser")),
+			connect.WithClientOptions(opts...),
+		),
+		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.Invite](
+			httpClient,
+			baseURL+UICreateInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteInvite: connect.NewClient[v1.DeleteInviteRequest, v1.DeleteInviteResponse](
+			httpClient,
+			baseURL+UIDeleteInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		checkOIDC: connect.NewClient[v1.CheckOIDCRequest, v1.CheckOIDCResponse](
+			httpClient,
+			baseURL+UICheckOIDCProcedure,
+			connect.WithSchema(uIMethods.ByName("CheckOIDC")),
 			connect.WithClientOptions(opts...),
 		),
 		listBots: connect.NewClient[v1.ListBotsRequest, v1.ListBotsResponse](
@@ -1070,6 +1229,23 @@ type uIClient struct {
 	signIn                  *connect.Client[v1.SignInRequest, v1.SignInResponse]
 	signOut                 *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
 	me                      *connect.Client[v1.MeRequest, v1.MeResponse]
+	authOptions             *connect.Client[v1.AuthOptionsRequest, v1.AuthOptionsResponse]
+	getInvite               *connect.Client[v1.GetInviteRequest, v1.InviteInfo]
+	acceptInvite            *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	changePassword          *connect.Client[v1.ChangePasswordRequest, v1.User]
+	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	revokeSession           *connect.Client[v1.RevokeSessionRequest, v1.ListSessionsResponse]
+	revokeOtherSessions     *connect.Client[v1.RevokeOtherSessionsRequest, v1.ListSessionsResponse]
+	startTOTP               *connect.Client[v1.StartTOTPRequest, v1.StartTOTPResponse]
+	confirmTOTP             *connect.Client[v1.ConfirmTOTPRequest, v1.RecoveryCodes]
+	disableTOTP             *connect.Client[v1.DisableTOTPRequest, v1.User]
+	newRecoveryCodes        *connect.Client[v1.NewRecoveryCodesRequest, v1.RecoveryCodes]
+	listUsers               *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	updateUser              *connect.Client[v1.UpdateUserRequest, v1.User]
+	deleteUser              *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	createInvite            *connect.Client[v1.CreateInviteRequest, v1.Invite]
+	deleteInvite            *connect.Client[v1.DeleteInviteRequest, v1.DeleteInviteResponse]
+	checkOIDC               *connect.Client[v1.CheckOIDCRequest, v1.CheckOIDCResponse]
 	listBots                *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBot               *connect.Client[v1.CreateBotRequest, v1.Bot]
 	updateBot               *connect.Client[v1.UpdateBotRequest, v1.Bot]
@@ -1193,6 +1369,91 @@ func (c *uIClient) SignOut(ctx context.Context, req *connect.Request[v1.SignOutR
 // Me calls silo.v1.UI.Me.
 func (c *uIClient) Me(ctx context.Context, req *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error) {
 	return c.me.CallUnary(ctx, req)
+}
+
+// AuthOptions calls silo.v1.UI.AuthOptions.
+func (c *uIClient) AuthOptions(ctx context.Context, req *connect.Request[v1.AuthOptionsRequest]) (*connect.Response[v1.AuthOptionsResponse], error) {
+	return c.authOptions.CallUnary(ctx, req)
+}
+
+// GetInvite calls silo.v1.UI.GetInvite.
+func (c *uIClient) GetInvite(ctx context.Context, req *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error) {
+	return c.getInvite.CallUnary(ctx, req)
+}
+
+// AcceptInvite calls silo.v1.UI.AcceptInvite.
+func (c *uIClient) AcceptInvite(ctx context.Context, req *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
+	return c.acceptInvite.CallUnary(ctx, req)
+}
+
+// ChangePassword calls silo.v1.UI.ChangePassword.
+func (c *uIClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error) {
+	return c.changePassword.CallUnary(ctx, req)
+}
+
+// ListSessions calls silo.v1.UI.ListSessions.
+func (c *uIClient) ListSessions(ctx context.Context, req *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return c.listSessions.CallUnary(ctx, req)
+}
+
+// RevokeSession calls silo.v1.UI.RevokeSession.
+func (c *uIClient) RevokeSession(ctx context.Context, req *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return c.revokeSession.CallUnary(ctx, req)
+}
+
+// RevokeOtherSessions calls silo.v1.UI.RevokeOtherSessions.
+func (c *uIClient) RevokeOtherSessions(ctx context.Context, req *connect.Request[v1.RevokeOtherSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return c.revokeOtherSessions.CallUnary(ctx, req)
+}
+
+// StartTOTP calls silo.v1.UI.StartTOTP.
+func (c *uIClient) StartTOTP(ctx context.Context, req *connect.Request[v1.StartTOTPRequest]) (*connect.Response[v1.StartTOTPResponse], error) {
+	return c.startTOTP.CallUnary(ctx, req)
+}
+
+// ConfirmTOTP calls silo.v1.UI.ConfirmTOTP.
+func (c *uIClient) ConfirmTOTP(ctx context.Context, req *connect.Request[v1.ConfirmTOTPRequest]) (*connect.Response[v1.RecoveryCodes], error) {
+	return c.confirmTOTP.CallUnary(ctx, req)
+}
+
+// DisableTOTP calls silo.v1.UI.DisableTOTP.
+func (c *uIClient) DisableTOTP(ctx context.Context, req *connect.Request[v1.DisableTOTPRequest]) (*connect.Response[v1.User], error) {
+	return c.disableTOTP.CallUnary(ctx, req)
+}
+
+// NewRecoveryCodes calls silo.v1.UI.NewRecoveryCodes.
+func (c *uIClient) NewRecoveryCodes(ctx context.Context, req *connect.Request[v1.NewRecoveryCodesRequest]) (*connect.Response[v1.RecoveryCodes], error) {
+	return c.newRecoveryCodes.CallUnary(ctx, req)
+}
+
+// ListUsers calls silo.v1.UI.ListUsers.
+func (c *uIClient) ListUsers(ctx context.Context, req *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return c.listUsers.CallUnary(ctx, req)
+}
+
+// UpdateUser calls silo.v1.UI.UpdateUser.
+func (c *uIClient) UpdateUser(ctx context.Context, req *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.User], error) {
+	return c.updateUser.CallUnary(ctx, req)
+}
+
+// DeleteUser calls silo.v1.UI.DeleteUser.
+func (c *uIClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return c.deleteUser.CallUnary(ctx, req)
+}
+
+// CreateInvite calls silo.v1.UI.CreateInvite.
+func (c *uIClient) CreateInvite(ctx context.Context, req *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.Invite], error) {
+	return c.createInvite.CallUnary(ctx, req)
+}
+
+// DeleteInvite calls silo.v1.UI.DeleteInvite.
+func (c *uIClient) DeleteInvite(ctx context.Context, req *connect.Request[v1.DeleteInviteRequest]) (*connect.Response[v1.DeleteInviteResponse], error) {
+	return c.deleteInvite.CallUnary(ctx, req)
+}
+
+// CheckOIDC calls silo.v1.UI.CheckOIDC.
+func (c *uIClient) CheckOIDC(ctx context.Context, req *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
+	return c.checkOIDC.CallUnary(ctx, req)
 }
 
 // ListBots calls silo.v1.UI.ListBots.
@@ -1740,6 +2001,29 @@ type UIHandler interface {
 	SignIn(context.Context, *connect.Request[v1.SignInRequest]) (*connect.Response[v1.SignInResponse], error)
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
 	Me(context.Context, *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error)
+	// AuthOptions is how this server lets people sign in. The sign-in page asks
+	// before anyone is signed in, as do GetInvite and AcceptInvite.
+	AuthOptions(context.Context, *connect.Request[v1.AuthOptionsRequest]) (*connect.Response[v1.AuthOptionsResponse], error)
+	GetInvite(context.Context, *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error)
+	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
+	// The signed-in user's own account.
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
+	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	RevokeOtherSessions(context.Context, *connect.Request[v1.RevokeOtherSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
+	StartTOTP(context.Context, *connect.Request[v1.StartTOTPRequest]) (*connect.Response[v1.StartTOTPResponse], error)
+	ConfirmTOTP(context.Context, *connect.Request[v1.ConfirmTOTPRequest]) (*connect.Response[v1.RecoveryCodes], error)
+	DisableTOTP(context.Context, *connect.Request[v1.DisableTOTPRequest]) (*connect.Response[v1.User], error)
+	NewRecoveryCodes(context.Context, *connect.Request[v1.NewRecoveryCodesRequest]) (*connect.Response[v1.RecoveryCodes], error)
+	// Admin: everyone's accounts, and the invite links that make new ones.
+	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.User], error)
+	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.Invite], error)
+	DeleteInvite(context.Context, *connect.Request[v1.DeleteInviteRequest]) (*connect.Response[v1.DeleteInviteResponse], error)
+	// CheckOIDC asks the configured OIDC provider for its discovery document,
+	// with the saved settings.
+	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -1884,6 +2168,108 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIMeProcedure,
 		svc.Me,
 		connect.WithSchema(uIMethods.ByName("Me")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAuthOptionsHandler := connect.NewUnaryHandler(
+		UIAuthOptionsProcedure,
+		svc.AuthOptions,
+		connect.WithSchema(uIMethods.ByName("AuthOptions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetInviteHandler := connect.NewUnaryHandler(
+		UIGetInviteProcedure,
+		svc.GetInvite,
+		connect.WithSchema(uIMethods.ByName("GetInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAcceptInviteHandler := connect.NewUnaryHandler(
+		UIAcceptInviteProcedure,
+		svc.AcceptInvite,
+		connect.WithSchema(uIMethods.ByName("AcceptInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIChangePasswordHandler := connect.NewUnaryHandler(
+		UIChangePasswordProcedure,
+		svc.ChangePassword,
+		connect.WithSchema(uIMethods.ByName("ChangePassword")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSessionsHandler := connect.NewUnaryHandler(
+		UIListSessionsProcedure,
+		svc.ListSessions,
+		connect.WithSchema(uIMethods.ByName("ListSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRevokeSessionHandler := connect.NewUnaryHandler(
+		UIRevokeSessionProcedure,
+		svc.RevokeSession,
+		connect.WithSchema(uIMethods.ByName("RevokeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRevokeOtherSessionsHandler := connect.NewUnaryHandler(
+		UIRevokeOtherSessionsProcedure,
+		svc.RevokeOtherSessions,
+		connect.WithSchema(uIMethods.ByName("RevokeOtherSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStartTOTPHandler := connect.NewUnaryHandler(
+		UIStartTOTPProcedure,
+		svc.StartTOTP,
+		connect.WithSchema(uIMethods.ByName("StartTOTP")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIConfirmTOTPHandler := connect.NewUnaryHandler(
+		UIConfirmTOTPProcedure,
+		svc.ConfirmTOTP,
+		connect.WithSchema(uIMethods.ByName("ConfirmTOTP")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDisableTOTPHandler := connect.NewUnaryHandler(
+		UIDisableTOTPProcedure,
+		svc.DisableTOTP,
+		connect.WithSchema(uIMethods.ByName("DisableTOTP")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uINewRecoveryCodesHandler := connect.NewUnaryHandler(
+		UINewRecoveryCodesProcedure,
+		svc.NewRecoveryCodes,
+		connect.WithSchema(uIMethods.ByName("NewRecoveryCodes")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListUsersHandler := connect.NewUnaryHandler(
+		UIListUsersProcedure,
+		svc.ListUsers,
+		connect.WithSchema(uIMethods.ByName("ListUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateUserHandler := connect.NewUnaryHandler(
+		UIUpdateUserProcedure,
+		svc.UpdateUser,
+		connect.WithSchema(uIMethods.ByName("UpdateUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteUserHandler := connect.NewUnaryHandler(
+		UIDeleteUserProcedure,
+		svc.DeleteUser,
+		connect.WithSchema(uIMethods.ByName("DeleteUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateInviteHandler := connect.NewUnaryHandler(
+		UICreateInviteProcedure,
+		svc.CreateInvite,
+		connect.WithSchema(uIMethods.ByName("CreateInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteInviteHandler := connect.NewUnaryHandler(
+		UIDeleteInviteProcedure,
+		svc.DeleteInvite,
+		connect.WithSchema(uIMethods.ByName("DeleteInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICheckOIDCHandler := connect.NewUnaryHandler(
+		UICheckOIDCProcedure,
+		svc.CheckOIDC,
+		connect.WithSchema(uIMethods.ByName("CheckOIDC")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListBotsHandler := connect.NewUnaryHandler(
@@ -2542,6 +2928,40 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISignOutHandler.ServeHTTP(w, r)
 		case UIMeProcedure:
 			uIMeHandler.ServeHTTP(w, r)
+		case UIAuthOptionsProcedure:
+			uIAuthOptionsHandler.ServeHTTP(w, r)
+		case UIGetInviteProcedure:
+			uIGetInviteHandler.ServeHTTP(w, r)
+		case UIAcceptInviteProcedure:
+			uIAcceptInviteHandler.ServeHTTP(w, r)
+		case UIChangePasswordProcedure:
+			uIChangePasswordHandler.ServeHTTP(w, r)
+		case UIListSessionsProcedure:
+			uIListSessionsHandler.ServeHTTP(w, r)
+		case UIRevokeSessionProcedure:
+			uIRevokeSessionHandler.ServeHTTP(w, r)
+		case UIRevokeOtherSessionsProcedure:
+			uIRevokeOtherSessionsHandler.ServeHTTP(w, r)
+		case UIStartTOTPProcedure:
+			uIStartTOTPHandler.ServeHTTP(w, r)
+		case UIConfirmTOTPProcedure:
+			uIConfirmTOTPHandler.ServeHTTP(w, r)
+		case UIDisableTOTPProcedure:
+			uIDisableTOTPHandler.ServeHTTP(w, r)
+		case UINewRecoveryCodesProcedure:
+			uINewRecoveryCodesHandler.ServeHTTP(w, r)
+		case UIListUsersProcedure:
+			uIListUsersHandler.ServeHTTP(w, r)
+		case UIUpdateUserProcedure:
+			uIUpdateUserHandler.ServeHTTP(w, r)
+		case UIDeleteUserProcedure:
+			uIDeleteUserHandler.ServeHTTP(w, r)
+		case UICreateInviteProcedure:
+			uICreateInviteHandler.ServeHTTP(w, r)
+		case UIDeleteInviteProcedure:
+			uIDeleteInviteHandler.ServeHTTP(w, r)
+		case UICheckOIDCProcedure:
+			uICheckOIDCHandler.ServeHTTP(w, r)
 		case UIListBotsProcedure:
 			uIListBotsHandler.ServeHTTP(w, r)
 		case UICreateBotProcedure:
@@ -2777,6 +3197,74 @@ func (UnimplementedUIHandler) SignOut(context.Context, *connect.Request[v1.SignO
 
 func (UnimplementedUIHandler) Me(context.Context, *connect.Request[v1.MeRequest]) (*connect.Response[v1.MeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Me is not implemented"))
+}
+
+func (UnimplementedUIHandler) AuthOptions(context.Context, *connect.Request[v1.AuthOptionsRequest]) (*connect.Response[v1.AuthOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AuthOptions is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetInvite(context.Context, *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AcceptInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ChangePassword is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSessions is not implemented"))
+}
+
+func (UnimplementedUIHandler) RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RevokeSession is not implemented"))
+}
+
+func (UnimplementedUIHandler) RevokeOtherSessions(context.Context, *connect.Request[v1.RevokeOtherSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RevokeOtherSessions is not implemented"))
+}
+
+func (UnimplementedUIHandler) StartTOTP(context.Context, *connect.Request[v1.StartTOTPRequest]) (*connect.Response[v1.StartTOTPResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StartTOTP is not implemented"))
+}
+
+func (UnimplementedUIHandler) ConfirmTOTP(context.Context, *connect.Request[v1.ConfirmTOTPRequest]) (*connect.Response[v1.RecoveryCodes], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ConfirmTOTP is not implemented"))
+}
+
+func (UnimplementedUIHandler) DisableTOTP(context.Context, *connect.Request[v1.DisableTOTPRequest]) (*connect.Response[v1.User], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DisableTOTP is not implemented"))
+}
+
+func (UnimplementedUIHandler) NewRecoveryCodes(context.Context, *connect.Request[v1.NewRecoveryCodesRequest]) (*connect.Response[v1.RecoveryCodes], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.NewRecoveryCodes is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListUsers is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.User], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateUser is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteUser is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.Invite], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteInvite(context.Context, *connect.Request[v1.DeleteInviteRequest]) (*connect.Response[v1.DeleteInviteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CheckOIDC is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {

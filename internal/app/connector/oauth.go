@@ -185,25 +185,7 @@ func (s *Service) saveToken(id string, tok *oauth2.Token) {
 // PublicURL is the address the browser (and an OAuth provider) reaches the
 // control plane at.
 func (s *Service) PublicURL(ctx context.Context) string {
-	if u := strings.TrimSpace(s.cfg().PublicURL); u != "" {
-		return strings.TrimRight(u, "/")
-	}
-	r := access.Request(ctx)
-	if r == nil {
-		return "http://127.0.0.1:5173"
-	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	if p := r.Header.Get("X-Forwarded-Proto"); p != "" {
-		scheme = p
-	}
-	host := r.Host
-	if h := r.Header.Get("X-Forwarded-Host"); h != "" {
-		host = h
-	}
-	return scheme + "://" + host
+	return access.PublicURL(s.cfg().PublicURL, access.Request(ctx))
 }
 
 func (s *Service) redirectURL() string {
