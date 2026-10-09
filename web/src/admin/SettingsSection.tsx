@@ -10,7 +10,8 @@ import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
 import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
-import { BOOTSTRAP_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MEMORY_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { OidcSettings } from "./OidcSettings";
+import { AUTH_NOTE, BOOTSTRAP_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MEMORY_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 
@@ -42,11 +43,17 @@ const pages: Record<SectionId, () => React.ReactNode> = {
   ),
   connectors: () => <ConnectorOptions />,
   tunnels: () => <Tunnels />,
+  signin: () => (
+    <>
+      <Group title="Password sign-in" note={AUTH_NOTE} id="auth" />
+      <OidcSettings />
+      <Group title="Bootstrap" note={BOOTSTRAP_NOTE} id="bootstrap" />
+    </>
+  ),
   server: () => (
     <>
       <Group title="Server" id="server" />
       <Group title="Containers" note={CONTAINERS_NOTE} id="containers" />
-      <Group title="Bootstrap" note={BOOTSTRAP_NOTE} id="bootstrap" />
     </>
   ),
   yaml: () => <Yaml />,

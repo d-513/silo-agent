@@ -1,4 +1,4 @@
-import { Braces, Cpu, Database, History, Plug, Search, Server, Timer, Variable, Waypoints, type LucideIcon } from "lucide-react";
+import { Braces, Cpu, Database, History, KeyRound, Plug, Search, Server, Timer, Variable, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { ActiveBar } from "../bot/SideNav";
@@ -15,6 +15,7 @@ const ICONS: Record<SectionId, LucideIcon> = {
   runs: Timer,
   connectors: Variable,
   tunnels: Waypoints,
+  signin: KeyRound,
   server: Server,
   yaml: Braces,
   audit: History,

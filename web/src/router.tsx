@@ -35,6 +35,7 @@ import { CustomizeLayout, SettingsLayout } from "./bot/SectionTabs";
 import type { Tab } from "./bot/tabs";
 import { BotsPage } from "./BotsPage";
 import { Snag } from "./ErrorBoundary";
+import { InvitePage } from "./InvitePage";
 import { NewBotPage } from "./NewBotPage";
 import { PaneFallback } from "./PaneFallback";
 import { AccountRoute, Shell } from "./Shell";
@@ -45,10 +46,12 @@ import { SignIn } from "./SignIn";
 // navigate() is checked against this file by the compiler.
 //
 //   /signin
+//   /invite/$token                 an admin's invite or password-reset link (signed out)
 //   _authed                        the rail; signed out goes to /signin
 //     /  /new  /skills  /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
+//       users[/invite|/$userId]
 //       connectors[/new|/$id]  skills  drives  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
@@ -84,16 +87,22 @@ const signin = createRoute({
   getParentRoute: () => root,
   path: "signin",
   // `from` is where to return after signing in; `next` is a private tunnel's
-  // handoff (signinNext.ts), read by the page itself.
-  validateSearch: (s: Record<string, unknown>): { from?: string; next?: string } => ({
+  // handoff (signinNext.ts), read by the page itself; `error` is why an OIDC
+  // round trip came back empty-handed (signinFlow.ts).
+  validateSearch: (s: Record<string, unknown>): { from?: string; next?: string; error?: string } => ({
     ...(typeof s.from === "string" ? { from: s.from } : {}),
     ...(typeof s.next === "string" ? { next: s.next } : {}),
+    ...(typeof s.error === "string" ? { error: s.error } : {}),
   }),
   beforeLoad: ({ search }) => {
     if (getSession()) throw redirect(backTo(search.from));
   },
   component: SignIn,
 });
+
+// Open to anyone holding the link, signed in or not: accepting it signs in as
+// the invited account.
+const invite = createRoute({ getParentRoute: () => root, path: "invite/$token", component: InvitePage });
 
 const authed = createRoute({
   getParentRoute: () => root,
@@ -110,7 +119,9 @@ const skills = createRoute({ getParentRoute: () => authed, path: "skills", compo
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
-const adminPage = (name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm") =>
+const adminPage = (
+  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
+) =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
 const admin = createRoute({
@@ -142,6 +153,9 @@ const adminSettingsSection = createRoute({
   },
   component: adminPage("SettingsSection"),
 });
+const adminUsers = createRoute({ getParentRoute: () => admin, path: "users", component: adminPage("UsersList") });
+const adminUserInvite = createRoute({ getParentRoute: () => admin, path: "users/invite", component: adminPage("InviteUser") });
+const adminUser = createRoute({ getParentRoute: () => admin, path: "users/$userId", component: adminPage("UserPage") });
 const adminConnectors = createRoute({ getParentRoute: () => admin, path: "connectors", component: adminPage("CatalogList") });
 const adminConnectorNew = createRoute({ getParentRoute: () => admin, path: "connectors/new", component: adminPage("LibraryForm") });
 const adminConnector = createRoute({ getParentRoute: () => admin, path: "connectors/$connectorId", component: adminPage("LibraryForm") });
@@ -229,12 +243,13 @@ const elsewhere = createRoute({
 
 const routeTree = root.addChildren([
   signin,
+  invite,
   authed.addChildren([
     home,
     newBot,
     skills,
     account,
-    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),

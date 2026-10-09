@@ -30,7 +30,7 @@ import (
 //	/auth/oidc/callback  takes the code it comes back with and signs in
 //
 // A failure returns to /signin?error=<code>. The page words the code itself
-// (web/src/signinError.ts), so nothing in a link can put text on it.
+// (web/src/signinFlow.ts), so nothing in a link can put text on it.
 const (
 	OIDCStartPath    = "/auth/oidc/start"
 	OIDCCallbackPath = "/auth/oidc/callback"

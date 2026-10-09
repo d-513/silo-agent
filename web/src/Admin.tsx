@@ -18,7 +18,7 @@ function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }
 
 // AdminLayout is the frame of every admin page: the title and one tab per
 // page. What silo.yaml holds is Settings (with categories of its own); the
-// libraries live in the database and stay tabs.
+// users and the libraries live in the database and are tabs.
 export function AdminLayout() {
   const debug = useQuery(UI.method.getSettings, {}).data?.fields.some((f) => f.key === "debug" && f.value === "true") ?? false;
   return (
@@ -26,6 +26,7 @@ export function AdminLayout() {
       <h1 className="text-title">Admin</h1>
       <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 shadow-[inset_0_-1px_0_var(--color-line)]">
         <AdminTab to="/admin/settings">Settings</AdminTab>
+        <AdminTab to="/admin/users">Users</AdminTab>
         <AdminTab to="/admin/connectors">Connectors Library</AdminTab>
         <AdminTab to="/admin/skills">Skills Library</AdminTab>
         <AdminTab to="/admin/drives">Drives</AdminTab>

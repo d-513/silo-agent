@@ -267,22 +267,49 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   await expect(field).toHaveValue(saved);
   await expect(page.getByText("1 unsaved change")).toHaveCount(0);
   // Every category is a page of its own, and an unknown one falls back to the first.
-  for (const s of ["search", "memory", "runs", "connectors", "tunnels", "yaml", "audit"]) {
+  for (const s of ["search", "memory", "runs", "connectors", "tunnels", "signin", "yaml", "audit"]) {
     await page.goto(`/admin/settings/${s}`);
     await expect(page).toHaveURL(new RegExp(`/admin/settings/${s}$`));
     await expect(categories.locator("[data-tab-on]")).toHaveCount(1);
     await expect(page.getByText("This page hit a snag")).toHaveCount(0);
   }
+  // Sign-in shows the address the OIDC provider has to be told.
+  await page.goto("/admin/settings/signin");
+  await expect(page.getByText(/\/auth\/oidc\/callback$/)).toBeVisible();
   await page.goto("/admin/settings/nope");
   await expect(page).toHaveURL(/\/admin\/settings\/models$/);
   // Search & Extract was a tab; its old address lands on the category.
   await page.goto("/admin/search-extract");
   await expect(page).toHaveURL(/\/admin\/settings\/search$/);
   // The other admin pages load their lists.
-  for (const p of ["connectors", "skills", "drives"]) {
+  for (const p of ["users", "users/invite", "connectors", "skills", "drives"]) {
     await page.goto(`/admin/${p}`);
     await expect(page).toHaveURL(new RegExp(`/admin/${p}$`));
     await expect(page.locator(".skeleton")).toHaveCount(0);
     await expect(page.getByText("This page hit a snag")).toHaveCount(0);
   }
+});
+
+// The pages nobody is signed in for: an invite link that is not one says so,
+// and a failed single sign-on comes back to Sign in with its reason in words.
+test("signed-out pages", async ({ page }) => {
+  await page.goto("/invite/not-a-real-link");
+  await expect(page.getByRole("heading", { name: "This link has expired" })).toBeVisible();
+  await page.getByRole("link", { name: "Go to sign in" }).click();
+  await expect(page).toHaveURL(/\/signin$/);
+
+  await page.goto("/signin?error=oidc_no_account");
+  await expect(page.getByRole("alert")).toHaveText(/no Silo account for you yet/);
+  // Only the server's codes are worded; a link cannot put its own text here.
+  await page.goto("/signin?error=Call%20555-0100");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("account page shows the session in use", async ({ page }) => {
+  await page.goto("/account");
+  await signIn(page);
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
+  await expect(page.getByText("This device")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two-factor" })).toBeVisible();
 });

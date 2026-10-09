@@ -32,6 +32,17 @@ export const LABELS: Record<string, string> = {
   "drives.image": "Drive sidecar image",
   "drives.mount_root": "Drive mount root",
   "drives.cache_max_size": "Drive cache limit",
+  "auth.password": "Password sign-in",
+  "auth.trusted_proxies": "Trusted proxies",
+  "oidc.issuer": "Issuer",
+  "oidc.client_id": "Client ID",
+  "oidc.client_secret": "Client secret",
+  "oidc.scopes": "Scopes",
+  "oidc.label": "Button label",
+  "oidc.auto_create": "Create accounts on sign-in",
+  "oidc.allowed_domains": "Allowed email domains",
+  "oidc.groups_claim": "Groups claim",
+  "oidc.admin_group": "Admin group",
   "bootstrap.email": "Email",
   "bootstrap.password": "Password",
 };
@@ -47,6 +58,16 @@ export const HINTS: Record<string, string> = {
   "tunnels.scheme": "http or https. Leave empty to follow the Public URL; set it when TLS ends at a proxy and the Public URL is an internal address.",
   "drives.mount_root": "Where drive mounts live, as a path the container engine sees.",
   "drives.cache_max_size": "The most one drive may cache on disk, such as 10G.",
+  "auth.password": "Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out.",
+  "auth.trusted_proxies":
+    "IPs or CIDRs of the reverse proxies in front of Silo, comma-separated (127.0.0.1, 10.0.0.0/8). X-Forwarded-For is believed only from them. Behind a proxy with this unset, every visitor looks like the proxy and shares one sign-in limit.",
+  "oidc.issuer": "The provider's issuer URL, the one that serves /.well-known/openid-configuration.",
+  "oidc.scopes": "Space-separated. openid is always asked for; add the scope that carries groups if the admin group is used.",
+  "oidc.label": "The text of the button on the sign-in page.",
+  "oidc.auto_create": "Makes an account the first time someone signs in. Off, only people who already have an account with the same verified email get in.",
+  "oidc.allowed_domains": "Comma-separated. Limits creating accounts on sign-in to these email domains. Empty allows any.",
+  "oidc.groups_claim": "The ID token claim that lists a person's groups.",
+  "oidc.admin_group": "Members of this group are admins, checked at each sign-in. Empty leaves roles to Admin → Users.",
   transcribe_model: "Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice.",
 };
 
@@ -55,6 +76,11 @@ export const PLACEHOLDERS: Record<string, string> = {
   transcribe_model: "openrouter/openai/whisper-1",
   "tunnels.host": "tunnels.example.com",
   "tunnels.scheme": "follows Public URL",
+  "oidc.issuer": "https://id.example.com",
+  "oidc.scopes": "openid email profile",
+  "oidc.label": "Single sign-on",
+  "oidc.groups_claim": "groups",
+  "oidc.allowed_domains": "example.com",
 };
 
 export const CONTEXT_NOTE = "When a conversation nears the model's context window, it is summarized into one turn. The thread keeps everything; the model sees the summary.";
@@ -72,6 +98,12 @@ export const KNOWLEDGE_NOTE =
 export const TUNNELS_NOTE =
   "Tunnels give the owner addresses for services running on a Bot's machine, served by this control plane at <name>.<domain suffix>. Changing the suffix moves every existing tunnel at once; private tunnels ask their owner to sign in again.";
 
+export const AUTH_NOTE =
+  "Wrong passwords, two-factor codes and invite links are limited per account and address: five tries, then a wait that doubles from 30 seconds to 15 minutes.";
+
+export const OIDC_NOTE =
+  "One OpenID Connect provider (Authentik, Keycloak, Google, Entra and the like). On when the issuer and client ID are set. An account is matched by the email the provider has verified.";
+
 export const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 export function groupOf(key: string) {
@@ -85,6 +117,8 @@ export function groupOf(key: string) {
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
+  if (key.startsWith("auth.")) return "auth";
+  if (key.startsWith("oidc.")) return "oidc";
   return "server";
 }
 

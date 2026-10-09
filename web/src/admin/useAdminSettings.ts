@@ -168,6 +168,8 @@ export function useAdminSettings() {
     audit: auditQ.data?.rows ?? noAudit,
     // The effective tunnels.host (explicit or derived), shown where it is unset.
     tunnelsHost: server?.tunnelsHost ?? "",
+    // The callback address to register at the OIDC provider.
+    oidcRedirectUrl: server?.oidcRedirectUrl ?? "",
     formSaver,
     yamlSaver,
     err: actErr || (failed ? fail(failed) : ""),

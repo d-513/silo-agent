@@ -1,7 +1,7 @@
 import { Book, LayoutGrid, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { AccountPage } from "./AccountPage";
+import { AccountPage } from "./account/AccountPage";
 import { ui } from "./api";
 import { useAuth } from "./auth";
 import { useBots } from "./bots";
@@ -148,5 +148,5 @@ export function Shell() {
 }
 
 export function AccountRoute() {
-  return <AccountPage email={useAuth().email} />;
+  return <AccountPage />;
 }

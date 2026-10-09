@@ -30,6 +30,8 @@ export default defineConfig({
       "/console": { target: "http://127.0.0.1:8080", ws: true },
       "/healthz": { target: "http://127.0.0.1:8080" },
       "/oauth": { target: "http://127.0.0.1:8080" },
+      // Signing in with the OIDC provider starts and ends on the control plane.
+      "/auth": { target: "http://127.0.0.1:8080" },
       "/connectors": { target: "http://127.0.0.1:8080" },
       "/artifacts": { target: "http://127.0.0.1:8080" },
       // The private-tunnel sign-in handoff starts at public_url (the Vite origin).
