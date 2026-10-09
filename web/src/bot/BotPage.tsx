@@ -50,6 +50,7 @@ const paneTo = {
   files: "/bots/$botId/files",
   desktop: "/bots/$botId/desktop",
   console: "/bots/$botId/console",
+  mail: "/bots/$botId/mail",
 } as const;
 
 // BotPage is the /bots/$botId layout: the sidebar on the left, the open page
@@ -259,6 +260,7 @@ export function BotPage() {
             onMax={() => pane && void navigate({ to: paneTo[pane], params: { botId: id } })}
             onDock={() => dockPane(pane)}
             onClose={() => setDocked("")}
+            onError={setActErr}
           />
           <MachineRail bot={bot} open={pane} onPick={pickPane} onStart={start} onStop={stop} />
           <BotSlip bot={bot} pending={pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />

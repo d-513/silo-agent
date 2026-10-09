@@ -8,12 +8,12 @@ type SideTo =
   | "/bots/$botId/memories"
   | "/bots/$botId/knowledge"
   | "/bots/$botId/feed"
-  | "/bots/$botId/mail"
   | "/bots/$botId/connectors"
   | "/bots/$botId/settings"
   | "/bots/$botId/files"
   | "/bots/$botId/desktop"
-  | "/bots/$botId/console";
+  | "/bots/$botId/console"
+  | "/bots/$botId/mail";
 type SideProps = { to: SideTo; botId: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number };
 
 // ActiveBar is the cobalt "you are here" mark on the left edge of the open

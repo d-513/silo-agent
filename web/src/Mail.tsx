@@ -1,6 +1,6 @@
 import { ChevronRight, Download, Mail as MailIcon, MessageCircle, Paperclip, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ui } from "./api";
 import { useAuth } from "./auth";
@@ -15,13 +15,13 @@ import { mailNotice, rawMailHref, senderName, wakeListError } from "./mailbox";
 import { patch, reloadBot } from "./query";
 import { ToggleRow } from "./Switch";
 
-// MailPane is the Bot's receive-only mailbox: its address, what arrived, and
-// whether mail from chosen senders starts a chat. The Bot reads the same
-// messages with list_mail and read_mail; nothing can be sent from here.
-export function MailPane({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
+// MailPane is the right-rail pane: the Bot's address to copy and what arrived.
+// The Bot reads the same messages with list_mail and read_mail; nothing can be
+// sent from here. Whether mail starts a chat is a setting, on the Settings page.
+export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: string) => void; actions?: ReactNode }) {
   const { admin } = useAuth();
   const botId = bot.id;
-  // Mail arrives on its own, so the list looks again while the page is open.
+  // Mail arrives on its own, so the list looks again while the pane is open.
   const q = useQuery(UI.method.listMail, { botId }, { refetchInterval: 10000 });
   const box = q.data?.mailbox ?? null;
   const rows = q.data?.messages ?? [];
@@ -31,18 +31,6 @@ export function MailPane({ bot, onError }: { bot: Bot; onError: (s: string) => v
     if (q.error) onError(fail(q.error));
   }, [q.error]);
   useEffect(() => setOpen(""), [botId]);
-
-  const setBox = (m: Mailbox) => patch(UI.method.listMail, { botId }, (d) => ({ ...d, mailbox: m }));
-
-  async function rotate() {
-    onError("");
-    try {
-      setBox(await ui.rotateMailbox({ botId }));
-      reloadBot(botId);
-    } catch (e) {
-      onError(fail(e));
-    }
-  }
 
   async function remove(id: string) {
     onError("");
@@ -58,13 +46,94 @@ export function MailPane({ bot, onError }: { bot: Bot; onError: (s: string) => v
   const notice = box ? mailNotice(box.state, admin) : null;
 
   return (
-    <div className="silo-page pb-12">
-      <h2 className="text-title">Mail</h2>
-      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">
-        This Bot's own address. It only receives: give it to a sign-up, a newsletter or a report, and the Bot reads what arrives. Nothing can be sent from it.
-      </p>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]">
+        <MailIcon size={15} className="shrink-0 text-ink-2" />
+        <span className="shrink-0 font-medium">Mail</span>
+        {box?.address ? (
+          <span className="flex min-w-0 items-center gap-0.5">
+            <span className="truncate font-mono text-[12px] text-ink-3">{box.address}</span>
+            <CopyButton text={box.address} title="Copy address" size={13} className="shrink-0" />
+          </span>
+        ) : null}
+        {actions ? (
+          <>
+            <span aria-hidden className="ml-auto h-4 w-px shrink-0 bg-line-strong" />
+            <span className="-mx-1 flex shrink-0 items-center gap-0.5">{actions}</span>
+          </>
+        ) : null}
+      </header>
+      <div className="min-h-0 flex-1 overflow-auto p-3">
+        {notice ? (
+          <div className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+            {notice.text}{" "}
+            {notice.admin ? (
+              <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
+                Open settings
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+        {box?.problem ? <ErrorWell className="mb-3">The mail listener is not running: {box.problem}</ErrorWell> : null}
+        {box === null ? (
+          <SkeletonRows rows={3} height={64} />
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+            <MailIcon size={20} className="text-ink-3" />
+            <p className="text-ink-2">No mail yet.</p>
+            {box.address ? <p className="max-w-sm text-[12.5px] text-ink-3">Anything sent to the address above lands here, usually within a minute.</p> : null}
+          </div>
+        ) : (
+          <section>
+            <ul className="overflow-hidden rounded-card bg-surface shadow-card">
+              {rows.map((m, i) => (
+                <MailRow key={m.id} botId={botId} mail={m} first={i === 0} open={open === m.id} onToggle={() => setOpen(open === m.id ? "" : m.id)} onDelete={() => void remove(m.id)} />
+              ))}
+            </ul>
+            <p className="mt-2 px-1 text-[12.5px] text-ink-3">
+              The newest {box.keep} messages are kept. A dot marks one the Bot has not read yet.
+            </p>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// MailSettings is the per-Bot Mail panel on the Settings page: the address (to
+// copy or rotate) and whether mail from chosen senders starts a chat.
+export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
+  const { admin } = useAuth();
+  const botId = bot.id;
+  const q = useQuery(UI.method.listMail, { botId });
+  const box = q.data?.mailbox ?? null;
+
+  useEffect(() => {
+    if (q.error) onError(fail(q.error));
+  }, [q.error]);
+
+  const setBox = (m: Mailbox) => patch(UI.method.listMail, { botId }, (d) => ({ ...d, mailbox: m }));
+
+  async function rotate() {
+    onError("");
+    try {
+      setBox(await ui.rotateMailbox({ botId }));
+      reloadBot(botId);
+    } catch (e) {
+      onError(fail(e));
+    }
+  }
+
+  const notice = box ? mailNotice(box.state, admin) : null;
+
+  return (
+    <Panel
+      title="Mail"
+      note="This Bot's own address. It only receives: give it to a sign-up, a newsletter or a report, and the Bot reads what arrives. Nothing can be sent from it."
+      className="mt-8"
+    >
       {notice ? (
-        <div className="mb-5 rounded-card bg-well px-5 py-4 text-[13.5px] leading-[21px] text-ink-2">
+        <div className="mb-4 rounded-card bg-well px-4 py-3 text-[13px] leading-[20px] text-ink-2">
           {notice.text}{" "}
           {notice.admin ? (
             <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
@@ -73,41 +142,22 @@ export function MailPane({ bot, onError }: { bot: Bot; onError: (s: string) => v
           ) : null}
         </div>
       ) : null}
-      {box?.problem ? <ErrorWell className="mb-5">The mail listener is not running: {box.problem}</ErrorWell> : null}
-
+      {box?.problem ? <ErrorWell className="mb-4">The mail listener is not running: {box.problem}</ErrorWell> : null}
       {box === null ? (
-        <SkeletonRows rows={3} height={72} />
-      ) : (
+        <SkeletonRows rows={2} height={64} />
+      ) : box.address ? (
         <div className="grid gap-5">
-          {box.address ? <AddressCard address={box.address} onRotate={() => void rotate()} /> : null}
-          {box.address ? <WakePanel botId={botId} box={box} onSaved={setBox} /> : null}
-          {rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
-              <MailIcon size={20} className="text-ink-3" />
-              <p className="text-ink-2">No mail yet.</p>
-              {box.address ? <p className="max-w-sm text-[12.5px] text-ink-3">Anything sent to the address above lands here, usually within a minute.</p> : null}
-            </div>
-          ) : (
-            <section>
-              <ul className="overflow-hidden rounded-card bg-surface shadow-card">
-                {rows.map((m, i) => (
-                  <MailRow key={m.id} botId={botId} mail={m} first={i === 0} open={open === m.id} onToggle={() => setOpen(open === m.id ? "" : m.id)} onDelete={() => void remove(m.id)} />
-                ))}
-              </ul>
-              <p className="mt-2 px-1 text-[12.5px] text-ink-3">
-                The newest {box.keep} messages are kept. A dot marks one the Bot has not read yet.
-              </p>
-            </section>
-          )}
+          <AddressRow address={box.address} onRotate={() => void rotate()} />
+          <WakeFields botId={botId} box={box} onSaved={setBox} />
         </div>
-      )}
-    </div>
+      ) : null}
+    </Panel>
   );
 }
 
-function AddressCard({ address, onRotate }: { address: string; onRotate: () => void }) {
+function AddressRow({ address, onRotate }: { address: string; onRotate: () => void }) {
   return (
-    <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card bg-surface p-4 shadow-card">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">
         <MailIcon size={18} />
       </div>
@@ -116,17 +166,17 @@ function AddressCard({ address, onRotate }: { address: string; onRotate: () => v
         <p className="mt-0.5 text-[12.5px] text-ink-2">Anyone who knows it can write to it. Adding +anything before the @ reaches the same mailbox.</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <CopyButton text={address} title="Copy address" />
+        <CopyButton text={address} label title="Copy address" />
         <ArmedButton kind="ghost" size="sm" iconOnly title="New address" armedLabel="Click again: the old address stops working" icon={<RefreshCw size={13} />} onConfirm={onRotate}>
           New address
         </ArmedButton>
       </div>
-    </section>
+    </div>
   );
 }
 
-// WakePanel keeps only what the owner changed on top of the saved mailbox.
-function WakePanel({ botId, box, onSaved }: { botId: string; box: Mailbox; onSaved: (m: Mailbox) => void }) {
+// WakeFields keeps only what the owner changed on top of the saved mailbox.
+function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSaved: (m: Mailbox) => void }) {
   const [edits, setEdits] = useState<{ wake?: boolean; wakeFrom?: string }>({});
   const [err, setErr] = useState("");
   const saver = useSave();
@@ -156,7 +206,7 @@ function WakePanel({ botId, box, onSaved }: { botId: string; box: Mailbox; onSav
   }
 
   return (
-    <Panel>
+    <div className="border-t border-line pt-4">
       <ToggleRow
         label="Start a chat when mail arrives from someone I trust"
         hint="Off, mail waits in the inbox until the Bot is asked to look. On, a message from a sender below opens a new chat and the Bot acts on it."
@@ -201,7 +251,7 @@ function WakePanel({ botId, box, onSaved }: { botId: string; box: Mailbox; onSav
           </button>
         </div>
       ) : null}
-    </Panel>
+    </div>
   );
 }
 

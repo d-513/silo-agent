@@ -10,15 +10,14 @@ import { patchChats } from "./useChatList";
 
 // The pages under /bots/$botId (router.tsx). Each is a thin adapter: it takes
 // what its pane needs from BotPage and renders the pane. Everything but the
-// chat is loaded the first time its page opens. Files, Desktop and Console have
-// no adapter: BotPage renders them itself, docked or as the page.
+// chat is loaded the first time its page opens. Files, Desktop, Console and
+// Mail have no adapter: BotPage renders them itself, docked or as the page.
 const AutomationsList = lazyNamed(() => import("../Automations"), "AutomationsList");
 const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew");
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
-const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
 const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
@@ -165,15 +164,6 @@ export function FeedRoute() {
           void navigate(chatLink(p.id, c.id));
         }}
       />
-    </ScrollPane>
-  );
-}
-
-export function MailRoute() {
-  const p = useBotPage();
-  return (
-    <ScrollPane>
-      <MailPane bot={p.bot} onError={p.onError} />
     </ScrollPane>
   );
 }

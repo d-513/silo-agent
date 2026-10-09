@@ -10,6 +10,7 @@ import { UI, type Bot, type ModelOption } from "./gen/silo/v1/ui_pb";
 import { reload, setBot } from "./query";
 import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
+import { MailSettings } from "./Mail";
 
 export function PromptWell({
   label,
@@ -163,6 +164,9 @@ export function SettingsPane({
           </SaveButton>
         </div>
       </form>
+
+      {/* A Bot has a mailbox only while the operator has mail set up. */}
+      {bot.mailAddress ? <MailSettings bot={bot} onError={onError} /> : null}
 
       <Panel
         title="Dangerous"

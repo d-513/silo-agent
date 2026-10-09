@@ -8,6 +8,7 @@ import type { PaneKind } from "./tabs";
 
 const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
 const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
+const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
 
 // What the docked pane's share is a share of: the row without the sidebar
 // (248) and the machine rail (48).
@@ -18,6 +19,7 @@ const captions: Record<PaneKind, string> = {
   desktop: "Same browser the Bot uses. You can type and click.",
   console: "A shell on this Bot, started in /workspace.",
   files: "",
+  mail: "What arrives at the Bot's address. It only receives.",
 };
 
 function Act({ dark, label, icon: Icon, onClick }: { dark: boolean; label: string; icon: LucideIcon; onClick: () => void }) {
@@ -103,6 +105,7 @@ export function SidePane({
   onMax,
   onDock,
   onClose,
+  onError,
 }: {
   bot: Bot;
   // The pane showing now; "" shows none.
@@ -117,6 +120,7 @@ export function SidePane({
   onMax: () => void;
   onDock: () => void;
   onClose: () => void;
+  onError: (s: string) => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const [kept, setKept] = useState<ReadonlySet<PaneKind>>(new Set());
@@ -147,7 +151,7 @@ export function SidePane({
   return (
     <aside
       ref={ref}
-      aria-label={kind ? "Machine pane" : undefined}
+      aria-label={kind ? "Side pane" : undefined}
       className={`relative min-h-0 min-w-0 flex-col ${kind ? "flex" : "hidden"} ${max ? "flex-1" : "max-w-[calc(100%-656px)] min-w-[320px] shrink-0"}`}
       style={max ? undefined : { width: widthOf(share) }}
     >
@@ -160,9 +164,16 @@ export function SidePane({
             <FilesPane bot={bot} onStart={onStart} openAt={openAt} actions={actions(false)} />
           </div>
         ) : null}
+        {/* Mail needs no machine: it shows whether the Bot is up or not. */}
+        {has("mail") ? (
+          <div className={`min-h-0 flex-1 flex-col ${kind === "mail" ? "flex" : "hidden"}`}>
+            <MailPane bot={bot} onError={onError} actions={actions(false)} />
+            {max ? <p className="mt-2 px-3 pb-3 text-[12.5px] text-ink-2">{captions.mail}</p> : null}
+          </div>
+        ) : null}
       </Suspense>
-      {/* A stopped Bot has no pane header to carry these. */}
-      {kind && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
+      {/* A stopped Bot has no pane header to carry these. Mail has its own. */}
+      {kind && kind !== "mail" && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
     </aside>
   );
 }

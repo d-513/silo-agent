@@ -21,7 +21,6 @@ import {
   DriveRoute,
   DrivesRoute,
   FeedRoute,
-  MailRoute,
   KnowledgeRoute,
   MemoriesRoute,
   RulesRoute,
@@ -56,12 +55,12 @@ import { SignIn } from "./SignIn";
 //       connectors[/new|/$id]  skills  drives  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
-//         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed  mail
+//         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
 //         settings  rules  secrets  tunnels  container
-//       files desktop console      a machine pane as a page of its own
+//       files desktop console mail a right-rail pane as a page of its own
 //
 // `staticData.tab` is the page a route lights (a sub-page lights its parent's).
 
@@ -198,13 +197,14 @@ const automation = createRoute({ getParentRoute: () => automations, path: "$auto
 const memories = createRoute({ getParentRoute: () => chat, path: "memories", staticData: { tab: "memories" }, component: MemoriesRoute });
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
-const mail = createRoute({ getParentRoute: () => chat, path: "mail", staticData: { tab: "mail" }, component: MailRoute });
 
-// The machine panes render nothing here: BotPage shows the same pane docked
-// beside the chat or, on these routes, as the page, and keeps it mounted
-// (hidden) once opened, so its connection survives a trip elsewhere.
+// The panes render nothing here: BotPage shows the same pane docked beside the
+// chat or, on these routes, as the page, and keeps it mounted (hidden) once
+// opened, so its connection survives a trip elsewhere. Mail is one of them: it
+// has no worker socket, but the address and the messages still live here.
 const desktop = createRoute({ getParentRoute: () => bot, path: "desktop", staticData: { tab: "desktop" } });
 const consoleTab = createRoute({ getParentRoute: () => bot, path: "console", staticData: { tab: "console" } });
+const mail = createRoute({ getParentRoute: () => bot, path: "mail", staticData: { tab: "mail" } });
 const files = createRoute({
   getParentRoute: () => bot,
   path: "files",
@@ -254,7 +254,7 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed, mail]),
+      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
       customize.addChildren([
         connectors,
         botSkills,
@@ -265,6 +265,7 @@ const routeTree = root.addChildren([
       files,
       desktop,
       consoleTab,
+      mail,
       botElse,
     ]),
   ]),
