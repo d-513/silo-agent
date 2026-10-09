@@ -21,6 +21,9 @@ final class AppModel {
     }
     var email = ""
     var password = ""
+    /// The two-factor code, asked for once the password was accepted.
+    var code = ""
+    private(set) var needsCode = false
     private(set) var signingIn = false
     var signInError: String?
 
@@ -148,13 +151,30 @@ final class AppModel {
         let host = normalizedServerURL()
         if host != serverURL { serverURL = host }
         do {
-            user = try await client.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            let outcome = try await client.signIn(
+                email: email.trimmingCharacters(in: .whitespaces), password: password,
+                code: needsCode ? code.trimmingCharacters(in: .whitespaces) : "")
+            guard case .signedIn(let signedIn) = outcome else {
+                needsCode = true
+                return
+            }
+            user = signedIn
             password = ""
+            code = ""
+            needsCode = false
             await refreshBots()
             startPolling()
         } catch {
             signInError = describe(error)
         }
+    }
+
+    /// Back from the code step to email and password.
+    func cancelCode() {
+        needsCode = false
+        code = ""
+        password = ""
+        signInError = nil
     }
 
     func signOut() async {

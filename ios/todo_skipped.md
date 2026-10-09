@@ -10,6 +10,7 @@ The iOS client aims for parity with the web client (see the plan in the repo his
 | **Connector OAuth + custom MCP form** | OAuth callback is `{public_url}/oauth/callback` and the custom form is large. iOS lists, refreshes, attaches library presets and detaches; a connector that needs auth shows "Authorize on web". |
 | **Admin** (`/admin/*`) | Operator settings, Connectors/Skills libraries, Drives system vars, search/extract, audit and LLM logs. Out of scope for now. |
 
+| **Single sign-on, invites, account settings** | OIDC sign-in is a browser round trip to `{public_url}/auth/oidc/callback`; invite links, password changes, two-factor setup and the sessions list are web pages. iOS signs in with a password and asks for the two-factor code when the account has one. A session started on iOS shows in the web Account page and can be signed out there. |
 | **Knowledge** (`/bots/:id/knowledge`) | The folder picker, per-folder sync state and the try-a-search panel. Web only for now; the Swift client already has the RPCs. |
 | **Tunnels** (`/bots/:id/tunnels`) | Add/flip/delete a tunnel and open its address. Web only for now; the Swift client already has the RPCs. |
 

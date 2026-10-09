@@ -2,6 +2,13 @@ import Connect
 import Foundation
 import SwiftProtobuf
 
+/// What a sign-in attempt came to.
+public enum SignInOutcome: Sendable {
+    case signedIn(Silo_V1_User)
+    /// The password was right; the account also wants its second factor.
+    case needsCode
+}
+
 /// User-facing error surfaced by the Silo client.
 public enum SiloError: LocalizedError, Sendable, Equatable {
     case unauthenticated
@@ -69,12 +76,16 @@ public final class SiloClient: Sendable {
 
     // MARK: - Session
 
-    public func signIn(email: String, password: String) async throws -> Silo_V1_User {
+    /// Signs in. An account with two-factor on answers `.needsCode` to the
+    /// password alone: nobody is signed in yet, and the same email and password
+    /// are sent again with the authenticator (or a recovery) code.
+    public func signIn(email: String, password: String, code: String = "") async throws -> SignInOutcome {
         var request = Silo_V1_SignInRequest()
         request.email = email
         request.password = password
-        let response = await ui.signIn(request: request, headers: [:])
-        return try unwrap(response).user
+        request.code = code
+        let response = try unwrap(await ui.signIn(request: request, headers: [:]))
+        return response.needsCode ? .needsCode : .signedIn(response.user)
     }
 
     public func signOut() async throws {

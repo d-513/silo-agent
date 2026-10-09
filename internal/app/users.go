@@ -24,7 +24,7 @@ func (a *App) SuspendUser(ctx context.Context, userID string) {
 	for _, b := range a.botsOf(userID) {
 		a.Channels.Suspend(b.ID)
 		a.haltBot(ctx, &b)
-		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("status", "idle")
+		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("status", "stopped")
 	}
 }
 

@@ -76,6 +76,10 @@ public nonisolated struct Silo_V1_SignInRequest: Sendable {
 
   public var password: String = String()
 
+  /// code is the authenticator (or a recovery) code, sent with the email and
+  /// password again after a response with needs_code.
+  public var code: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -96,6 +100,10 @@ public nonisolated struct Silo_V1_SignInResponse: Sendable {
   public mutating func clearUser() {self._user = nil}
 
   public var created: Bool = false
+
+  /// needs_code: the password was right and the account has two-factor on.
+  /// Nobody is signed in yet.
+  public var needsCode: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -165,6 +173,470 @@ public nonisolated struct Silo_V1_User: Sendable {
   public var email: String = String()
 
   public var admin: Bool = false
+
+  public var disabled: Bool = false
+
+  public var hasPassword_p: Bool = false
+
+  /// totp: two-factor is on for password sign-in.
+  public var totp: Bool = false
+
+  /// oidc: the account is linked to an identity at the OIDC provider.
+  public var oidc: Bool = false
+
+  public var createdAt: String = String()
+
+  public var lastSignInAt: String = String()
+
+  /// bots is how many Bots the user owns; set only by ListUsers.
+  public var bots: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_AuthOptionsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_AuthOptionsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var password: Bool = false
+
+  public var oidc: Bool = false
+
+  public var oidcLabel: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_GetInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var token: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// InviteInfo is what an invite link's page shows before a password is picked.
+public nonisolated struct Silo_V1_InviteInfo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var email: String = String()
+
+  /// password_reset: the link sets a new password for an existing account.
+  public var passwordReset: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_AcceptInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var token: String = String()
+
+  public var password: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_AcceptInviteResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var user: Silo_V1_User {
+    get {_user ?? Silo_V1_User()}
+    set {_user = newValue}
+  }
+  /// Returns true if `user` has been explicitly set.
+  public var hasUser: Bool {self._user != nil}
+  /// Clears the value of `user`. Subsequent reads from it will return its default value.
+  public mutating func clearUser() {self._user = nil}
+
+  /// signed_in is false after a reset: the person signs in with the new
+  /// password (and their second factor).
+  public var signedIn: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _user: Silo_V1_User? = nil
+}
+
+public nonisolated struct Silo_V1_ChangePasswordRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// current is required when the account already has a password.
+  public var current: String = String()
+
+  public var password: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_Session: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var createdAt: String = String()
+
+  public var lastSeenAt: String = String()
+
+  public var expiresAt: String = String()
+
+  public var userAgent: String = String()
+
+  public var ip: String = String()
+
+  /// method is password, oidc, or invite.
+  public var method: String = String()
+
+  /// current: this is the session the request came on.
+  public var current: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListSessionsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListSessionsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessions: [Silo_V1_Session] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_RevokeSessionRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_RevokeOtherSessionsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_StartTOTPRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var password: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_StartTOTPResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var secret: String = String()
+
+  /// url is the otpauth link; qr is the same as a PNG data URL.
+  public var url: String = String()
+
+  public var qr: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ConfirmTOTPRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var code: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// RecoveryCodes are shown once; only their hashes are kept.
+public nonisolated struct Silo_V1_RecoveryCodes: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var codes: [String] = []
+
+  public var user: Silo_V1_User {
+    get {_user ?? Silo_V1_User()}
+    set {_user = newValue}
+  }
+  /// Returns true if `user` has been explicitly set.
+  public var hasUser: Bool {self._user != nil}
+  /// Clears the value of `user`. Subsequent reads from it will return its default value.
+  public mutating func clearUser() {self._user = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _user: Silo_V1_User? = nil
+}
+
+public nonisolated struct Silo_V1_DisableTOTPRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// An authenticator code or a recovery code.
+  public var code: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_NewRecoveryCodesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var code: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListUsersRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListUsersResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var users: [Silo_V1_User] = []
+
+  /// Invite links that are still good.
+  public var invites: [Silo_V1_Invite] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_UpdateUserRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var admin: Bool {
+    get {_admin ?? false}
+    set {_admin = newValue}
+  }
+  /// Returns true if `admin` has been explicitly set.
+  public var hasAdmin: Bool {self._admin != nil}
+  /// Clears the value of `admin`. Subsequent reads from it will return its default value.
+  public mutating func clearAdmin() {self._admin = nil}
+
+  public var disabled: Bool {
+    get {_disabled ?? false}
+    set {_disabled = newValue}
+  }
+  /// Returns true if `disabled` has been explicitly set.
+  public var hasDisabled: Bool {self._disabled != nil}
+  /// Clears the value of `disabled`. Subsequent reads from it will return its default value.
+  public mutating func clearDisabled() {self._disabled = nil}
+
+  /// password, when set, replaces the user's password and signs them out.
+  public var password: String = String()
+
+  /// reset_totp turns the user's two-factor off (a lost phone).
+  public var resetTotp: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _admin: Bool? = nil
+  fileprivate var _disabled: Bool? = nil
+}
+
+public nonisolated struct Silo_V1_DeleteUserRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_DeleteUserResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_Invite: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var email: String = String()
+
+  public var admin: Bool = false
+
+  /// user_id is set on a password-reset link.
+  public var userID: String = String()
+
+  public var createdAt: String = String()
+
+  public var expiresAt: String = String()
+
+  /// url is the link itself, returned by CreateInvite only: it cannot be read
+  /// back later.
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_CreateInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// A new account for email, or, with user_id, a link for that user to pick a
+  /// new password.
+  public var email: String = String()
+
+  public var admin: Bool = false
+
+  public var userID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_DeleteInviteRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_DeleteInviteResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_CheckOIDCRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_CheckOIDCResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var issuer: String = String()
+
+  public var authorizationEndpoint: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2197,6 +2669,9 @@ public nonisolated struct Silo_V1_Settings: Sendable {
   public var hasAutoenableConnectors: Bool {self._autoenableConnectors != nil}
   /// Clears the value of `autoenableConnectors`. Subsequent reads from it will return its default value.
   public mutating func clearAutoenableConnectors() {self._autoenableConnectors = nil}
+
+  /// oidc_redirect_url is the callback to register at the OIDC provider.
+  public var oidcRedirectURL: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4361,7 +4836,7 @@ nonisolated extension Silo_V1_ConfigSource: SwiftProtobuf._ProtoNameProviding {
 
 nonisolated extension Silo_V1_SignInRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SignInRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}email\0\u{1}password\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}email\0\u{1}password\0\u{1}code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4371,6 +4846,7 @@ nonisolated extension Silo_V1_SignInRequest: SwiftProtobuf.Message, SwiftProtobu
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.email) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.code) }()
       default: break
       }
     }
@@ -4383,12 +4859,16 @@ nonisolated extension Silo_V1_SignInRequest: SwiftProtobuf.Message, SwiftProtobu
     if !self.password.isEmpty {
       try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
     }
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_SignInRequest, rhs: Silo_V1_SignInRequest) -> Bool {
     if lhs.email != rhs.email {return false}
     if lhs.password != rhs.password {return false}
+    if lhs.code != rhs.code {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4396,7 +4876,7 @@ nonisolated extension Silo_V1_SignInRequest: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SignInResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}user\0\u{1}created\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}user\0\u{1}created\0\u{3}needs_code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4406,6 +4886,7 @@ nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtob
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularMessageField(value: &self._user) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.created) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.needsCode) }()
       default: break
       }
     }
@@ -4422,12 +4903,16 @@ nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtob
     if self.created != false {
       try visitor.visitSingularBoolField(value: self.created, fieldNumber: 2)
     }
+    if self.needsCode != false {
+      try visitor.visitSingularBoolField(value: self.needsCode, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_SignInResponse, rhs: Silo_V1_SignInResponse) -> Bool {
     if lhs._user != rhs._user {return false}
     if lhs.created != rhs.created {return false}
+    if lhs.needsCode != rhs.needsCode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4526,7 +5011,7 @@ nonisolated extension Silo_V1_MeResponse: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension Silo_V1_User: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".User"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}email\0\u{1}admin\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}email\0\u{1}admin\0\u{1}disabled\0\u{3}has_password\0\u{1}totp\0\u{1}oidc\0\u{3}created_at\0\u{3}last_sign_in_at\0\u{1}bots\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4537,6 +5022,13 @@ nonisolated extension Silo_V1_User: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.email) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.admin) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.disabled) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.hasPassword_p) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.totp) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.oidc) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.lastSignInAt) }()
+      case 10: try { try decoder.decodeSingularInt32Field(value: &self.bots) }()
       default: break
       }
     }
@@ -4552,6 +5044,27 @@ nonisolated extension Silo_V1_User: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.admin != false {
       try visitor.visitSingularBoolField(value: self.admin, fieldNumber: 3)
     }
+    if self.disabled != false {
+      try visitor.visitSingularBoolField(value: self.disabled, fieldNumber: 4)
+    }
+    if self.hasPassword_p != false {
+      try visitor.visitSingularBoolField(value: self.hasPassword_p, fieldNumber: 5)
+    }
+    if self.totp != false {
+      try visitor.visitSingularBoolField(value: self.totp, fieldNumber: 6)
+    }
+    if self.oidc != false {
+      try visitor.visitSingularBoolField(value: self.oidc, fieldNumber: 7)
+    }
+    if !self.createdAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.createdAt, fieldNumber: 8)
+    }
+    if !self.lastSignInAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.lastSignInAt, fieldNumber: 9)
+    }
+    if self.bots != 0 {
+      try visitor.visitSingularInt32Field(value: self.bots, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4559,6 +5072,968 @@ nonisolated extension Silo_V1_User: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.id != rhs.id {return false}
     if lhs.email != rhs.email {return false}
     if lhs.admin != rhs.admin {return false}
+    if lhs.disabled != rhs.disabled {return false}
+    if lhs.hasPassword_p != rhs.hasPassword_p {return false}
+    if lhs.totp != rhs.totp {return false}
+    if lhs.oidc != rhs.oidc {return false}
+    if lhs.createdAt != rhs.createdAt {return false}
+    if lhs.lastSignInAt != rhs.lastSignInAt {return false}
+    if lhs.bots != rhs.bots {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_AuthOptionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AuthOptionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_AuthOptionsRequest, rhs: Silo_V1_AuthOptionsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_AuthOptionsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AuthOptionsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}password\0\u{1}oidc\0\u{3}oidc_label\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.password) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.oidc) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.oidcLabel) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.password != false {
+      try visitor.visitSingularBoolField(value: self.password, fieldNumber: 1)
+    }
+    if self.oidc != false {
+      try visitor.visitSingularBoolField(value: self.oidc, fieldNumber: 2)
+    }
+    if !self.oidcLabel.isEmpty {
+      try visitor.visitSingularStringField(value: self.oidcLabel, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_AuthOptionsResponse, rhs: Silo_V1_AuthOptionsResponse) -> Bool {
+    if lhs.password != rhs.password {return false}
+    if lhs.oidc != rhs.oidc {return false}
+    if lhs.oidcLabel != rhs.oidcLabel {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_GetInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_GetInviteRequest, rhs: Silo_V1_GetInviteRequest) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_InviteInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".InviteInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}email\0\u{3}password_reset\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.passwordReset) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 1)
+    }
+    if self.passwordReset != false {
+      try visitor.visitSingularBoolField(value: self.passwordReset, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_InviteInfo, rhs: Silo_V1_InviteInfo) -> Bool {
+    if lhs.email != rhs.email {return false}
+    if lhs.passwordReset != rhs.passwordReset {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_AcceptInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{1}password\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_AcceptInviteRequest, rhs: Silo_V1_AcceptInviteRequest) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.password != rhs.password {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_AcceptInviteResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AcceptInviteResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}user\0\u{3}signed_in\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._user) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.signedIn) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._user {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if self.signedIn != false {
+      try visitor.visitSingularBoolField(value: self.signedIn, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_AcceptInviteResponse, rhs: Silo_V1_AcceptInviteResponse) -> Bool {
+    if lhs._user != rhs._user {return false}
+    if lhs.signedIn != rhs.signedIn {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ChangePasswordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ChangePasswordRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}current\0\u{1}password\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.current) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.current.isEmpty {
+      try visitor.visitSingularStringField(value: self.current, fieldNumber: 1)
+    }
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ChangePasswordRequest, rhs: Silo_V1_ChangePasswordRequest) -> Bool {
+    if lhs.current != rhs.current {return false}
+    if lhs.password != rhs.password {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_Session: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Session"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}created_at\0\u{3}last_seen_at\0\u{3}expires_at\0\u{3}user_agent\0\u{1}ip\0\u{1}method\0\u{1}current\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.lastSeenAt) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.expiresAt) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.userAgent) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.ip) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.method) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.current) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.createdAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.createdAt, fieldNumber: 2)
+    }
+    if !self.lastSeenAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.lastSeenAt, fieldNumber: 3)
+    }
+    if !self.expiresAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.expiresAt, fieldNumber: 4)
+    }
+    if !self.userAgent.isEmpty {
+      try visitor.visitSingularStringField(value: self.userAgent, fieldNumber: 5)
+    }
+    if !self.ip.isEmpty {
+      try visitor.visitSingularStringField(value: self.ip, fieldNumber: 6)
+    }
+    if !self.method.isEmpty {
+      try visitor.visitSingularStringField(value: self.method, fieldNumber: 7)
+    }
+    if self.current != false {
+      try visitor.visitSingularBoolField(value: self.current, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_Session, rhs: Silo_V1_Session) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.createdAt != rhs.createdAt {return false}
+    if lhs.lastSeenAt != rhs.lastSeenAt {return false}
+    if lhs.expiresAt != rhs.expiresAt {return false}
+    if lhs.userAgent != rhs.userAgent {return false}
+    if lhs.ip != rhs.ip {return false}
+    if lhs.method != rhs.method {return false}
+    if lhs.current != rhs.current {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListSessionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListSessionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListSessionsRequest, rhs: Silo_V1_ListSessionsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListSessionsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListSessionsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}sessions\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.sessions) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sessions, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListSessionsResponse, rhs: Silo_V1_ListSessionsResponse) -> Bool {
+    if lhs.sessions != rhs.sessions {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RevokeSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RevokeSessionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RevokeSessionRequest, rhs: Silo_V1_RevokeSessionRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RevokeOtherSessionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RevokeOtherSessionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RevokeOtherSessionsRequest, rhs: Silo_V1_RevokeOtherSessionsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_StartTOTPRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StartTOTPRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}password\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_StartTOTPRequest, rhs: Silo_V1_StartTOTPRequest) -> Bool {
+    if lhs.password != rhs.password {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_StartTOTPResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StartTOTPResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}secret\0\u{1}url\0\u{1}qr\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.secret) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.qr) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.secret.isEmpty {
+      try visitor.visitSingularStringField(value: self.secret, fieldNumber: 1)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 2)
+    }
+    if !self.qr.isEmpty {
+      try visitor.visitSingularStringField(value: self.qr, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_StartTOTPResponse, rhs: Silo_V1_StartTOTPResponse) -> Bool {
+    if lhs.secret != rhs.secret {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.qr != rhs.qr {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ConfirmTOTPRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ConfirmTOTPRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ConfirmTOTPRequest, rhs: Silo_V1_ConfirmTOTPRequest) -> Bool {
+    if lhs.code != rhs.code {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RecoveryCodes: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RecoveryCodes"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}codes\0\u{1}user\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.codes) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._user) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.codes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.codes, fieldNumber: 1)
+    }
+    try { if let v = self._user {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RecoveryCodes, rhs: Silo_V1_RecoveryCodes) -> Bool {
+    if lhs.codes != rhs.codes {return false}
+    if lhs._user != rhs._user {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DisableTOTPRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DisableTOTPRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DisableTOTPRequest, rhs: Silo_V1_DisableTOTPRequest) -> Bool {
+    if lhs.code != rhs.code {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_NewRecoveryCodesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".NewRecoveryCodesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_NewRecoveryCodesRequest, rhs: Silo_V1_NewRecoveryCodesRequest) -> Bool {
+    if lhs.code != rhs.code {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListUsersRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListUsersRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListUsersRequest, rhs: Silo_V1_ListUsersRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListUsersResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListUsersResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}users\0\u{1}invites\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.users) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.invites) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.users.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.users, fieldNumber: 1)
+    }
+    if !self.invites.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.invites, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListUsersResponse, rhs: Silo_V1_ListUsersResponse) -> Bool {
+    if lhs.users != rhs.users {return false}
+    if lhs.invites != rhs.invites {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_UpdateUserRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateUserRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}admin\0\u{1}disabled\0\u{1}password\0\u{3}reset_totp\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self._admin) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self._disabled) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.password) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.resetTotp) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try { if let v = self._admin {
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._disabled {
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 3)
+    } }()
+    if !self.password.isEmpty {
+      try visitor.visitSingularStringField(value: self.password, fieldNumber: 4)
+    }
+    if self.resetTotp != false {
+      try visitor.visitSingularBoolField(value: self.resetTotp, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_UpdateUserRequest, rhs: Silo_V1_UpdateUserRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs._admin != rhs._admin {return false}
+    if lhs._disabled != rhs._disabled {return false}
+    if lhs.password != rhs.password {return false}
+    if lhs.resetTotp != rhs.resetTotp {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DeleteUserRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteUserRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DeleteUserRequest, rhs: Silo_V1_DeleteUserRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DeleteUserResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteUserResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DeleteUserResponse, rhs: Silo_V1_DeleteUserResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_Invite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Invite"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}email\0\u{1}admin\0\u{3}user_id\0\u{3}created_at\0\u{3}expires_at\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.admin) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.userID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.expiresAt) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 2)
+    }
+    if self.admin != false {
+      try visitor.visitSingularBoolField(value: self.admin, fieldNumber: 3)
+    }
+    if !self.userID.isEmpty {
+      try visitor.visitSingularStringField(value: self.userID, fieldNumber: 4)
+    }
+    if !self.createdAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.createdAt, fieldNumber: 5)
+    }
+    if !self.expiresAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.expiresAt, fieldNumber: 6)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_Invite, rhs: Silo_V1_Invite) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.email != rhs.email {return false}
+    if lhs.admin != rhs.admin {return false}
+    if lhs.userID != rhs.userID {return false}
+    if lhs.createdAt != rhs.createdAt {return false}
+    if lhs.expiresAt != rhs.expiresAt {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_CreateInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}email\0\u{1}admin\0\u{3}user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.admin) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.userID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 1)
+    }
+    if self.admin != false {
+      try visitor.visitSingularBoolField(value: self.admin, fieldNumber: 2)
+    }
+    if !self.userID.isEmpty {
+      try visitor.visitSingularStringField(value: self.userID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_CreateInviteRequest, rhs: Silo_V1_CreateInviteRequest) -> Bool {
+    if lhs.email != rhs.email {return false}
+    if lhs.admin != rhs.admin {return false}
+    if lhs.userID != rhs.userID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DeleteInviteRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteInviteRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DeleteInviteRequest, rhs: Silo_V1_DeleteInviteRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DeleteInviteResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteInviteResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DeleteInviteResponse, rhs: Silo_V1_DeleteInviteResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_CheckOIDCRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckOIDCRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_CheckOIDCRequest, rhs: Silo_V1_CheckOIDCRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_CheckOIDCResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckOIDCResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}issuer\0\u{3}authorization_endpoint\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.issuer) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.authorizationEndpoint) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.issuer.isEmpty {
+      try visitor.visitSingularStringField(value: self.issuer, fieldNumber: 1)
+    }
+    if !self.authorizationEndpoint.isEmpty {
+      try visitor.visitSingularStringField(value: self.authorizationEndpoint, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_CheckOIDCResponse, rhs: Silo_V1_CheckOIDCResponse) -> Bool {
+    if lhs.issuer != rhs.issuer {return false}
+    if lhs.authorizationEndpoint != rhs.authorizationEndpoint {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -9190,7 +10665,7 @@ nonisolated extension Silo_V1_ConfigField: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Settings"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}tunnels_host\0\u{3}autoenable_connectors\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}tunnels_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -9209,6 +10684,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 9: try { try decoder.decodeRepeatedMessageField(value: &self.connectorVars) }()
       case 10: try { try decoder.decodeSingularStringField(value: &self.tunnelsHost) }()
       case 11: try { try decoder.decodeSingularMessageField(value: &self._autoenableConnectors) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.oidcRedirectURL) }()
       default: break
       }
     }
@@ -9252,6 +10728,9 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     try { if let v = self._autoenableConnectors {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
     } }()
+    if !self.oidcRedirectURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.oidcRedirectURL, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -9267,6 +10746,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.connectorVars != rhs.connectorVars {return false}
     if lhs.tunnelsHost != rhs.tunnelsHost {return false}
     if lhs._autoenableConnectors != rhs._autoenableConnectors {return false}
+    if lhs.oidcRedirectURL != rhs.oidcRedirectURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -20,6 +20,63 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `me`(request: Silo_V1_MeRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_MeResponse>
 
+    /// AuthOptions is how this server lets people sign in. The sign-in page asks
+    /// before anyone is signed in, as do GetInvite and AcceptInvite.
+    @available(iOS 13, *)
+    func `authOptions`(request: Silo_V1_AuthOptionsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AuthOptionsResponse>
+
+    @available(iOS 13, *)
+    func `getInvite`(request: Silo_V1_GetInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_InviteInfo>
+
+    @available(iOS 13, *)
+    func `acceptInvite`(request: Silo_V1_AcceptInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AcceptInviteResponse>
+
+    /// The signed-in user's own account.
+    @available(iOS 13, *)
+    func `changePassword`(request: Silo_V1_ChangePasswordRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_User>
+
+    @available(iOS 13, *)
+    func `listSessions`(request: Silo_V1_ListSessionsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSessionsResponse>
+
+    @available(iOS 13, *)
+    func `revokeSession`(request: Silo_V1_RevokeSessionRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSessionsResponse>
+
+    @available(iOS 13, *)
+    func `revokeOtherSessions`(request: Silo_V1_RevokeOtherSessionsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSessionsResponse>
+
+    @available(iOS 13, *)
+    func `startTotp`(request: Silo_V1_StartTOTPRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_StartTOTPResponse>
+
+    @available(iOS 13, *)
+    func `confirmTotp`(request: Silo_V1_ConfirmTOTPRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RecoveryCodes>
+
+    @available(iOS 13, *)
+    func `disableTotp`(request: Silo_V1_DisableTOTPRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_User>
+
+    @available(iOS 13, *)
+    func `newRecoveryCodes`(request: Silo_V1_NewRecoveryCodesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RecoveryCodes>
+
+    /// Admin: everyone's accounts, and the invite links that make new ones.
+    @available(iOS 13, *)
+    func `listUsers`(request: Silo_V1_ListUsersRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListUsersResponse>
+
+    @available(iOS 13, *)
+    func `updateUser`(request: Silo_V1_UpdateUserRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_User>
+
+    @available(iOS 13, *)
+    func `deleteUser`(request: Silo_V1_DeleteUserRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteUserResponse>
+
+    @available(iOS 13, *)
+    func `createInvite`(request: Silo_V1_CreateInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Invite>
+
+    @available(iOS 13, *)
+    func `deleteInvite`(request: Silo_V1_DeleteInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteInviteResponse>
+
+    /// CheckOIDC asks the configured OIDC provider for its discovery document,
+    /// with the saved settings.
+    @available(iOS 13, *)
+    func `checkOidc`(request: Silo_V1_CheckOIDCRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CheckOIDCResponse>
+
     @available(iOS 13, *)
     func `listBots`(request: Silo_V1_ListBotsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListBotsResponse>
 
@@ -377,6 +434,91 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `me`(request: Silo_V1_MeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_MeResponse> {
         return await self.client.unary(path: "/silo.v1.UI/Me", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `authOptions`(request: Silo_V1_AuthOptionsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AuthOptionsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AuthOptions", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getInvite`(request: Silo_V1_GetInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_InviteInfo> {
+        return await self.client.unary(path: "/silo.v1.UI/GetInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `acceptInvite`(request: Silo_V1_AcceptInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AcceptInviteResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AcceptInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `changePassword`(request: Silo_V1_ChangePasswordRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_User> {
+        return await self.client.unary(path: "/silo.v1.UI/ChangePassword", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listSessions`(request: Silo_V1_ListSessionsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSessionsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSessions", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `revokeSession`(request: Silo_V1_RevokeSessionRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSessionsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RevokeSession", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `revokeOtherSessions`(request: Silo_V1_RevokeOtherSessionsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSessionsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RevokeOtherSessions", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `startTotp`(request: Silo_V1_StartTOTPRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_StartTOTPResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/StartTOTP", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `confirmTotp`(request: Silo_V1_ConfirmTOTPRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RecoveryCodes> {
+        return await self.client.unary(path: "/silo.v1.UI/ConfirmTOTP", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `disableTotp`(request: Silo_V1_DisableTOTPRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_User> {
+        return await self.client.unary(path: "/silo.v1.UI/DisableTOTP", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `newRecoveryCodes`(request: Silo_V1_NewRecoveryCodesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RecoveryCodes> {
+        return await self.client.unary(path: "/silo.v1.UI/NewRecoveryCodes", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listUsers`(request: Silo_V1_ListUsersRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListUsersResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListUsers", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateUser`(request: Silo_V1_UpdateUserRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_User> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateUser", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteUser`(request: Silo_V1_DeleteUserRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteUserResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteUser", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `createInvite`(request: Silo_V1_CreateInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Invite> {
+        return await self.client.unary(path: "/silo.v1.UI/CreateInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteInvite`(request: Silo_V1_DeleteInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteInviteResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `checkOidc`(request: Silo_V1_CheckOIDCRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_CheckOIDCResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/CheckOIDC", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -924,6 +1066,23 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let signIn = Connect.MethodSpec(name: "SignIn", service: "silo.v1.UI", type: .unary)
             public static let signOut = Connect.MethodSpec(name: "SignOut", service: "silo.v1.UI", type: .unary)
             public static let me = Connect.MethodSpec(name: "Me", service: "silo.v1.UI", type: .unary)
+            public static let authOptions = Connect.MethodSpec(name: "AuthOptions", service: "silo.v1.UI", type: .unary)
+            public static let getInvite = Connect.MethodSpec(name: "GetInvite", service: "silo.v1.UI", type: .unary)
+            public static let acceptInvite = Connect.MethodSpec(name: "AcceptInvite", service: "silo.v1.UI", type: .unary)
+            public static let changePassword = Connect.MethodSpec(name: "ChangePassword", service: "silo.v1.UI", type: .unary)
+            public static let listSessions = Connect.MethodSpec(name: "ListSessions", service: "silo.v1.UI", type: .unary)
+            public static let revokeSession = Connect.MethodSpec(name: "RevokeSession", service: "silo.v1.UI", type: .unary)
+            public static let revokeOtherSessions = Connect.MethodSpec(name: "RevokeOtherSessions", service: "silo.v1.UI", type: .unary)
+            public static let startTotp = Connect.MethodSpec(name: "StartTOTP", service: "silo.v1.UI", type: .unary)
+            public static let confirmTotp = Connect.MethodSpec(name: "ConfirmTOTP", service: "silo.v1.UI", type: .unary)
+            public static let disableTotp = Connect.MethodSpec(name: "DisableTOTP", service: "silo.v1.UI", type: .unary)
+            public static let newRecoveryCodes = Connect.MethodSpec(name: "NewRecoveryCodes", service: "silo.v1.UI", type: .unary)
+            public static let listUsers = Connect.MethodSpec(name: "ListUsers", service: "silo.v1.UI", type: .unary)
+            public static let updateUser = Connect.MethodSpec(name: "UpdateUser", service: "silo.v1.UI", type: .unary)
+            public static let deleteUser = Connect.MethodSpec(name: "DeleteUser", service: "silo.v1.UI", type: .unary)
+            public static let createInvite = Connect.MethodSpec(name: "CreateInvite", service: "silo.v1.UI", type: .unary)
+            public static let deleteInvite = Connect.MethodSpec(name: "DeleteInvite", service: "silo.v1.UI", type: .unary)
+            public static let checkOidc = Connect.MethodSpec(name: "CheckOIDC", service: "silo.v1.UI", type: .unary)
             public static let listBots = Connect.MethodSpec(name: "ListBots", service: "silo.v1.UI", type: .unary)
             public static let createBot = Connect.MethodSpec(name: "CreateBot", service: "silo.v1.UI", type: .unary)
             public static let updateBot = Connect.MethodSpec(name: "UpdateBot", service: "silo.v1.UI", type: .unary)
