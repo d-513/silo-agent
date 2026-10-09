@@ -289,6 +289,18 @@ public nonisolated struct Silo_V1_AcceptInviteResponse: Sendable {
   fileprivate var _user: Silo_V1_User? = nil
 }
 
+public nonisolated struct Silo_V1_ChangeEmailRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var email: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Silo_V1_ChangePasswordRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -521,6 +533,10 @@ public nonisolated struct Silo_V1_UpdateUserRequest: Sendable {
 
   /// reset_totp turns the user's two-factor off (a lost phone).
   public var resetTotp: Bool = false
+
+  /// email, when set, replaces the address the user signs in with. An address
+  /// an admin sets is one single sign-on may match an account by.
+  public var email: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5282,6 +5298,36 @@ nonisolated extension Silo_V1_AcceptInviteResponse: SwiftProtobuf.Message, Swift
   }
 }
 
+nonisolated extension Silo_V1_ChangeEmailRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ChangeEmailRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}email\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.email) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ChangeEmailRequest, rhs: Silo_V1_ChangeEmailRequest) -> Bool {
+    if lhs.email != rhs.email {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension Silo_V1_ChangePasswordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ChangePasswordRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}current\0\u{1}password\0")
@@ -5735,7 +5781,7 @@ nonisolated extension Silo_V1_ListUsersResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_UpdateUserRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateUserRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}admin\0\u{1}disabled\0\u{1}password\0\u{3}reset_totp\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}admin\0\u{1}disabled\0\u{1}password\0\u{3}reset_totp\0\u{1}email\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5748,6 +5794,7 @@ nonisolated extension Silo_V1_UpdateUserRequest: SwiftProtobuf.Message, SwiftPro
       case 3: try { try decoder.decodeSingularBoolField(value: &self._disabled) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.password) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.resetTotp) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.email) }()
       default: break
       }
     }
@@ -5773,6 +5820,9 @@ nonisolated extension Silo_V1_UpdateUserRequest: SwiftProtobuf.Message, SwiftPro
     if self.resetTotp != false {
       try visitor.visitSingularBoolField(value: self.resetTotp, fieldNumber: 5)
     }
+    if !self.email.isEmpty {
+      try visitor.visitSingularStringField(value: self.email, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5782,6 +5832,7 @@ nonisolated extension Silo_V1_UpdateUserRequest: SwiftProtobuf.Message, SwiftPro
     if lhs._disabled != rhs._disabled {return false}
     if lhs.password != rhs.password {return false}
     if lhs.resetTotp != rhs.resetTotp {return false}
+    if lhs.email != rhs.email {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

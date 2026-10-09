@@ -348,3 +348,52 @@ func TestCheckPasswordWithoutAHash(t *testing.T) {
 		t.Fatal("an empty hash accepted a password")
 	}
 }
+
+// bootstrap.* is for when nobody can administer Silo. With an admin around it
+// does nothing: not a second admin for a changed bootstrap email, and above
+// all not a promotion for whoever holds the bootstrap address now.
+func TestEnsureBootstrapOnlyWhenNoAdminCanSignIn(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	// The first admin moves to another address; someone else takes the old one.
+	gdb.Model(&db.User{}).Where("email = ?", "admin@local").Update("email", "boss@corp.example")
+	gdb.Create(&db.User{ID: "u2", Email: "admin@local"})
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	var squatter db.User
+	gdb.First(&squatter, "id = ?", "u2")
+	if squatter.Admin {
+		t.Fatal("the user who took the bootstrap address was made an admin")
+	}
+	gdb.Delete(&db.User{}, "id = ?", "u2")
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	gdb.Model(&db.User{}).Count(&n)
+	if n != 1 {
+		t.Fatalf("%d users: the bootstrap account was made again beside the admin", n)
+	}
+
+	// Locked out (the only admin is disabled): bootstrap is the way back in.
+	gdb.Model(&db.User{}).Where("email = ?", "boss@corp.example").Update("disabled", true)
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := FindUser(gdb, "admin@local")
+	if u == nil || !u.Admin || !CheckPassword(u.PasswordHash, "password") {
+		t.Fatalf("no bootstrap admin after a lock-out: %+v", u)
+	}
+	// And a disabled holder of the bootstrap address is let back in as admin.
+	gdb.Model(&db.User{}).Where("id = ?", u.ID).Updates(map[string]any{"disabled": true, "admin": false})
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	u, _ = FindUser(gdb, "admin@local")
+	if !u.Admin || u.Disabled {
+		t.Fatalf("bootstrap user after a second lock-out: %+v", u)
+	}
+}

@@ -312,4 +312,6 @@ test("account page shows the session in use", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
   await expect(page.getByText("This device")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Two-factor" })).toBeVisible();
+  // The email field shows the account's address and saves only a change.
+  await expect(page.getByRole("button", { name: "Change email" })).toBeDisabled();
 });

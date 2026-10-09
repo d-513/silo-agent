@@ -405,3 +405,46 @@ func TestPasswordSignInCanBeTurnedOffOnceOIDCWorks(t *testing.T) {
 		t.Fatalf("OIDC sign-in: %v", err)
 	}
 }
+
+// Nobody confirms an email a user types in for themselves, so single sign-on
+// does not match an account by one. Otherwise a user could take a colleague's
+// address, wait for the colleague to sign in, and share their identity; with
+// an admin group, their admin role too.
+func TestOIDCDoesNotMatchAnEmailTheUserSetThemselves(t *testing.T) {
+	h, idp := oidcHarness(t, "  admin_group: silo-admins\n")
+	mallory, u := join(t, h, "mallory@test.local", "mallorys-password")
+	if _, err := mallory.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: "boss@corp.example"})); err != nil {
+		t.Fatal(err)
+	}
+	boss := oidctest.Identity{Subject: "sub-boss", Email: "boss@corp.example", Verified: oidctest.Yes, Groups: []string{"silo-admins"}}
+	idp.SignInAs(boss)
+	got, c := oidcSignIn(t, h, "")
+	if got != "/signin?error=oidc_conflict" {
+		t.Fatalf("landed at %q", got)
+	}
+	if _, err := whoAmI(c); code(err) != connect.CodeUnauthenticated {
+		t.Fatalf("signed in to the squatted account: %v", err)
+	}
+	if me, err := whoAmI(mallory); err != nil || me.GetAdmin() || me.GetOidc() {
+		t.Fatalf("the squatter after the boss tried to sign in: %+v %v", me, err)
+	}
+
+	// An address an admin sets is vouched for, and is matched again.
+	if _, err := h.Client.UpdateUser(h.Ctx(), rq(&v1.UpdateUserRequest{Id: u.GetId(), Email: "boss@corp.example"})); err != nil {
+		t.Fatal(err)
+	}
+	got, c = oidcSignIn(t, h, "")
+	if me, err := whoAmI(c); got != "/" || err != nil || me.GetId() != u.GetId() || !me.GetOidc() {
+		t.Fatalf("after the admin set the email: landed at %q as %+v (%v)", got, me, err)
+	}
+
+	// Someone already linked can call themselves what they like: it is the
+	// identity that signs them in.
+	if _, err := c.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: "the.boss@corp.example"})); err != nil {
+		t.Fatal(err)
+	}
+	_, c = oidcSignIn(t, h, "")
+	if me, err := whoAmI(c); err != nil || me.GetId() != u.GetId() || me.GetEmail() != "the.boss@corp.example" {
+		t.Fatalf("a linked user after changing their email: %+v %v", me, err)
+	}
+}

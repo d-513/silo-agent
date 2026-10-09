@@ -51,7 +51,7 @@ func (s *Service) ListUsers(ctx context.Context, _ *connect.Request[v1.ListUsers
 	return connect.NewResponse(out), nil
 }
 
-// UpdateUser changes another account's role, access, password or two-factor.
+// UpdateUser changes an account's email, role, access, password or two-factor.
 // An admin cannot take their own role or access away, which also means there
 // is always one admin left.
 func (s *Service) UpdateUser(ctx context.Context, req *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.User], error) {
@@ -70,6 +70,11 @@ func (s *Service) UpdateUser(ctx context.Context, req *connect.Request[v1.Update
 	}
 	if self && m.Disabled != nil && m.GetDisabled() {
 		return nil, invalid("you cannot disable your own account")
+	}
+	if m.GetEmail() != "" {
+		if err := s.setEmail(u, m.GetEmail(), false); err != nil {
+			return nil, err
+		}
 	}
 	if m.GetPassword() != "" {
 		keep := ""

@@ -237,7 +237,8 @@ type identity struct {
 
 // resolve finds the Silo user for an identity, in this order: the user already
 // linked to it; the user with its email, when the provider vouches for the
-// email and that user has no other identity (they are linked now); a new user,
+// email, the user did not pick the address themselves and has no other
+// identity (they are linked now); a new user,
 // when the operator lets sign-ins make accounts. A failure is a code for the
 // sign-in page and, when there is something to log, an error.
 func (s *Service) resolve(who identity, o config.OIDC) (*db.User, string, error) {
@@ -261,6 +262,10 @@ func (s *Service) resolve(who identity, o config.OIDC) (*db.User, string, error)
 		switch {
 		case found != nil && found.OIDCSubject != "":
 			return nil, oidcErrConflict, fmt.Errorf("%s is linked to another identity", who.email)
+		case found != nil && found.EmailSelfSet:
+			// The account's owner typed that address in; it proves nothing
+			// about whose account it is. An admin setting it vouches for it.
+			return nil, oidcErrConflict, fmt.Errorf("%s was set by the account's user and is not matched", who.email)
 		case found != nil:
 			u = *found
 			u.OIDCIssuer, u.OIDCSubject = who.issuer, who.subject

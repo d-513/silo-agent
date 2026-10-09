@@ -45,6 +45,8 @@ const (
 	UIGetInviteProcedure = "/silo.v1.UI/GetInvite"
 	// UIAcceptInviteProcedure is the fully-qualified name of the UI's AcceptInvite RPC.
 	UIAcceptInviteProcedure = "/silo.v1.UI/AcceptInvite"
+	// UIChangeEmailProcedure is the fully-qualified name of the UI's ChangeEmail RPC.
+	UIChangeEmailProcedure = "/silo.v1.UI/ChangeEmail"
 	// UIChangePasswordProcedure is the fully-qualified name of the UI's ChangePassword RPC.
 	UIChangePasswordProcedure = "/silo.v1.UI/ChangePassword"
 	// UIListSessionsProcedure is the fully-qualified name of the UI's ListSessions RPC.
@@ -304,6 +306,9 @@ type UIClient interface {
 	GetInvite(context.Context, *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	// The signed-in user's own account.
+	// ChangeEmail sets the address the signed-in user signs in with. Nothing is
+	// sent to it: Silo has no mail.
+	ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -487,6 +492,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIAcceptInviteProcedure,
 			connect.WithSchema(uIMethods.ByName("AcceptInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		changeEmail: connect.NewClient[v1.ChangeEmailRequest, v1.User](
+			httpClient,
+			baseURL+UIChangeEmailProcedure,
+			connect.WithSchema(uIMethods.ByName("ChangeEmail")),
 			connect.WithClientOptions(opts...),
 		),
 		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.User](
@@ -1232,6 +1243,7 @@ type uIClient struct {
 	authOptions             *connect.Client[v1.AuthOptionsRequest, v1.AuthOptionsResponse]
 	getInvite               *connect.Client[v1.GetInviteRequest, v1.InviteInfo]
 	acceptInvite            *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	changeEmail             *connect.Client[v1.ChangeEmailRequest, v1.User]
 	changePassword          *connect.Client[v1.ChangePasswordRequest, v1.User]
 	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	revokeSession           *connect.Client[v1.RevokeSessionRequest, v1.ListSessionsResponse]
@@ -1384,6 +1396,11 @@ func (c *uIClient) GetInvite(ctx context.Context, req *connect.Request[v1.GetInv
 // AcceptInvite calls silo.v1.UI.AcceptInvite.
 func (c *uIClient) AcceptInvite(ctx context.Context, req *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
 	return c.acceptInvite.CallUnary(ctx, req)
+}
+
+// ChangeEmail calls silo.v1.UI.ChangeEmail.
+func (c *uIClient) ChangeEmail(ctx context.Context, req *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error) {
+	return c.changeEmail.CallUnary(ctx, req)
 }
 
 // ChangePassword calls silo.v1.UI.ChangePassword.
@@ -2007,6 +2024,9 @@ type UIHandler interface {
 	GetInvite(context.Context, *connect.Request[v1.GetInviteRequest]) (*connect.Response[v1.InviteInfo], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	// The signed-in user's own account.
+	// ChangeEmail sets the address the signed-in user signs in with. Nothing is
+	// sent to it: Silo has no mail.
+	ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -2186,6 +2206,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIAcceptInviteProcedure,
 		svc.AcceptInvite,
 		connect.WithSchema(uIMethods.ByName("AcceptInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIChangeEmailHandler := connect.NewUnaryHandler(
+		UIChangeEmailProcedure,
+		svc.ChangeEmail,
+		connect.WithSchema(uIMethods.ByName("ChangeEmail")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIChangePasswordHandler := connect.NewUnaryHandler(
@@ -2934,6 +2960,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIGetInviteHandler.ServeHTTP(w, r)
 		case UIAcceptInviteProcedure:
 			uIAcceptInviteHandler.ServeHTTP(w, r)
+		case UIChangeEmailProcedure:
+			uIChangeEmailHandler.ServeHTTP(w, r)
 		case UIChangePasswordProcedure:
 			uIChangePasswordHandler.ServeHTTP(w, r)
 		case UIListSessionsProcedure:
@@ -3209,6 +3237,10 @@ func (UnimplementedUIHandler) GetInvite(context.Context, *connect.Request[v1.Get
 
 func (UnimplementedUIHandler) AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AcceptInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ChangeEmail is not implemented"))
 }
 
 func (UnimplementedUIHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error) {

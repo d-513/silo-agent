@@ -11,8 +11,12 @@ import (
 )
 
 type User struct {
-	ID           string `gorm:"primaryKey"`
-	Email        string `gorm:"uniqueIndex"`
+	ID    string `gorm:"primaryKey"`
+	Email string `gorm:"uniqueIndex"`
+	// EmailSelfSet marks an email the user typed in themselves and nobody
+	// checked. Single sign-on never matches an account by such an address:
+	// anyone could claim a colleague's and wait for them to sign in.
+	EmailSelfSet bool `gorm:"not null;default:false"`
 	PasswordHash string
 	Admin        bool
 	// Disabled blocks sign-in and pauses the user's Bots; nothing is deleted.

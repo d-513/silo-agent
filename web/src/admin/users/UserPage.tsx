@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ui } from "../../api";
-import { useAuth } from "../../auth";
+import { setSession, useAuth } from "../../auth";
 import { Btn } from "../../Btn";
 import { fail } from "../../errors";
 import { ArmedButton, SaveButton, useSave } from "../../Feedback";
@@ -22,13 +22,17 @@ export function UserPage() {
   const { loaded, users, err } = useUsers();
   const { email } = useAuth();
   const user = users.find((u) => u.id === userId);
+  const self = user?.email === email;
   const [actErr, setErr] = useState("");
 
   // Every change answers with the user as they now are.
-  async function change(req: { admin?: boolean; disabled?: boolean; password?: string; resetTotp?: boolean }) {
+  async function change(req: { admin?: boolean; disabled?: boolean; password?: string; resetTotp?: boolean; email?: string }) {
     setErr("");
     try {
-      setUser(await ui.updateUser({ id: userId, ...req }));
+      const u = await ui.updateUser({ id: userId, ...req });
+      setUser(u);
+      // An admin's own row: the session is known by its email.
+      if (self) setSession({ email: u.email, admin: u.admin });
       return true;
     } catch (e) {
       setErr(fail(e));
@@ -54,12 +58,12 @@ export function UserPage() {
       </div>
     );
   }
-  const self = user.email === email;
   return (
     <div className="max-w-xl">
       <PageHead title={user.email} subtitle={`Joined ${day(user.createdAt)} · ${user.lastSignInAt ? `signed in ${ago(user.lastSignInAt)}` : "never signed in"}`} onBack={back} />
       <div className="grid gap-5">
         {actErr ? <ErrorWell>{actErr}</ErrorWell> : null}
+        <EmailForm user={user} onEmail={(email) => change({ email })} />
         <Panel title="Access" note={self ? "This is your account. Another admin has to change your role or access." : undefined} padded={false}>
           <div className="divide-y divide-line-strong">
             <ToggleRow
@@ -166,6 +170,40 @@ function BackIn({ user, onPassword, onError }: { user: User; onPassword: (passwo
           </Field>
         </form>
       </div>
+    </Panel>
+  );
+}
+
+// EmailForm is the address a user signs in with, as an admin sets it. Unlike
+// one the user picks for themselves, single sign-on may match an account by it.
+function EmailForm({ user, onEmail }: { user: User; onEmail: (email: string) => Promise<boolean> }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const saver = useSave();
+  const email = draft ?? user.email;
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await saver.run(async () => {
+        if (!(await onEmail(email))) throw new Error("not saved");
+      });
+      setDraft(null);
+    } catch {
+      /* the page shows why */
+    }
+  }
+  return (
+    <Panel title="Email">
+      <form onSubmit={onSubmit}>
+        <Field hint="What they sign in with. They can change it themselves; single sign-on only matches an account by an address set here or by an invite.">
+          <div className="flex items-center gap-2">
+            <input className={inputClass} type="email" autoComplete="off" spellCheck={false} value={email} onChange={(e) => setDraft(e.target.value)} required />
+            <SaveButton kind="secondary" state={saver.state} type="submit" savedLabel="Set">
+              Set
+            </SaveButton>
+          </div>
+        </Field>
+      </form>
     </Panel>
   );
 }

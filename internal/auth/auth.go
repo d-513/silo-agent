@@ -158,8 +158,21 @@ func FindUser(gdb *gorm.DB, email string) (*db.User, error) {
 	return &u, nil
 }
 
+// EnsureBootstrap makes sure someone can administer Silo, from bootstrap.* in
+// silo.yaml: with no admin who can sign in, the user with that email becomes
+// one, and is created with that password when there is none. Once an admin
+// exists it does nothing. It must not: people can change their email, and
+// whoever took the bootstrap address after the first admin left it would
+// otherwise be promoted at the next start.
 func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 	if email == "" || pass == "" {
+		return nil
+	}
+	var admins int64
+	if err := gdb.Model(&db.User{}).Where("admin = ? AND disabled = ?", true, false).Count(&admins).Error; err != nil {
+		return err
+	}
+	if admins > 0 {
 		return nil
 	}
 	email = NormalizeEmail(email)
@@ -168,10 +181,7 @@ func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 		return err
 	}
 	if u != nil {
-		if !u.Admin {
-			return gdb.Model(u).Update("admin", true).Error
-		}
-		return nil
+		return gdb.Model(u).Updates(map[string]any{"admin": true, "disabled": false}).Error
 	}
 	hash, err := HashPassword(pass)
 	if err != nil {

@@ -63,8 +63,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `providers.<id>.cache_ttl` | `5m` | `SILO_PROVIDERS__<ID>__CACHE_TTL` | Anthropic cache lifetime (`5m`/`1h`) |
 | `providers.anthropic.max_tokens` | `8192` | `SILO_PROVIDERS__ANTHROPIC__MAX_TOKENS` | Anthropic per-response output cap |
 | `providers.openrouter.ignore` | `DeepInfra` | `SILO_PROVIDERS__OPENROUTER__IGNORE` | Comma list of upstream hosts OpenRouter must not route to (`provider.ignore`). DeepInfra sends a tool call's arguments in one chunk at the end, so Python/terminal/write input cannot stream into the thread. `none` routes anywhere |
-| `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | First admin only. Ignored after a user exists |
-| `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
+| `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | The first admin. Used at start only while no admin can sign in (see Sign-in) |
+| `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Their password, when the account has to be created |
 | `auth.password` | `true` | `SILO_AUTH__PASSWORD` | Password sign-in. `false` leaves only OIDC, and only counts while OIDC is configured (see Sign-in) |
 | `auth.trusted_proxies` | (none) | `SILO_AUTH__TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxies in front of the control plane. `X-Forwarded-For` is believed only from them |
 | `oidc.issuer` | (none) | `SILO_OIDC__ISSUER` | The OIDC provider's issuer URL. OIDC sign-in is on when this and `oidc.client_id` are set |
@@ -82,9 +82,10 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 
 ## Sign-in
 
-Accounts live in Postgres; **Admin → Users** manages them. `bootstrap.*` makes the first admin and nothing else.
+Accounts live in Postgres; **Admin → Users** manages them. `bootstrap.*` is read at start and only matters while no admin can sign in (a new install, or the only admin was disabled): the user with `bootstrap.email` becomes an admin, and is created with `bootstrap.password` if there is none. Once an admin exists it does nothing, so changing the admin's email or password in Silo is not undone by a restart.
 
 - **New people get an invite link.** An admin makes one for an email address (optionally as an admin); the person opens it and chooses their own password. A link works once and lasts 7 days. Silo sends no mail: the admin passes the link on. A password is at least 8 characters.
+- **Email** is what a person signs in with, and they can change it on their Account page. Nothing is sent to the new address and nothing confirms it. Because of that, OIDC never matches an account by an address its user typed in themselves (below); an address an admin sets on the user's page in Admin → Users is matched again.
 - **A forgotten password** is a reset link from the user's page in Admin → Users (once, 24 hours), or a password the admin sets there. Either one signs the user out everywhere.
 - **Disable** blocks a user's sign-in and stops their Bots (runs, automations, channels, tunnels and the boxes) without deleting anything. **Delete** removes the user with their Bots, the Bots' files and their personal skills. An admin cannot disable, delete or demote themselves, so one admin always remains.
 - **Two-factor** is each user's choice on their Account page: an authenticator app (TOTP) plus ten single-use recovery codes, asked for after the password. An admin can turn a user's two-factor off if they lose both. It applies to password sign-in; a sign-in through OIDC is the provider's to protect.
@@ -122,7 +123,7 @@ oidc:
 Who a sign-in becomes:
 
 1. The user already linked to that identity (issuer + subject).
-2. Otherwise the user whose email matches, **only if the provider says the email is verified** (`email_verified: true`) and that user is not linked to another identity. They are linked from then on, and their password keeps working.
+2. Otherwise the user whose email matches, **only if the provider says the email is verified** (`email_verified: true`), that user is not linked to another identity, and the address is one an admin or an invite gave them, not one they changed to themselves. They are linked from then on, and their password keeps working.
 3. Otherwise, with `auto_create` on (and the domain allowed), a new user with no password. They can set one on their Account page.
 4. Otherwise nobody: the sign-in page says to ask an admin for an invite.
 

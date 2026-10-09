@@ -32,6 +32,11 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     func `acceptInvite`(request: Silo_V1_AcceptInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AcceptInviteResponse>
 
     /// The signed-in user's own account.
+    /// ChangeEmail sets the address the signed-in user signs in with. Nothing is
+    /// sent to it: Silo has no mail.
+    @available(iOS 13, *)
+    func `changeEmail`(request: Silo_V1_ChangeEmailRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_User>
+
     @available(iOS 13, *)
     func `changePassword`(request: Silo_V1_ChangePasswordRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_User>
 
@@ -449,6 +454,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `acceptInvite`(request: Silo_V1_AcceptInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AcceptInviteResponse> {
         return await self.client.unary(path: "/silo.v1.UI/AcceptInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `changeEmail`(request: Silo_V1_ChangeEmailRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_User> {
+        return await self.client.unary(path: "/silo.v1.UI/ChangeEmail", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1069,6 +1079,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let authOptions = Connect.MethodSpec(name: "AuthOptions", service: "silo.v1.UI", type: .unary)
             public static let getInvite = Connect.MethodSpec(name: "GetInvite", service: "silo.v1.UI", type: .unary)
             public static let acceptInvite = Connect.MethodSpec(name: "AcceptInvite", service: "silo.v1.UI", type: .unary)
+            public static let changeEmail = Connect.MethodSpec(name: "ChangeEmail", service: "silo.v1.UI", type: .unary)
             public static let changePassword = Connect.MethodSpec(name: "ChangePassword", service: "silo.v1.UI", type: .unary)
             public static let listSessions = Connect.MethodSpec(name: "ListSessions", service: "silo.v1.UI", type: .unary)
             public static let revokeSession = Connect.MethodSpec(name: "RevokeSession", service: "silo.v1.UI", type: .unary)

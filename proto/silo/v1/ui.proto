@@ -14,6 +14,9 @@ service UI {
   rpc GetInvite(GetInviteRequest) returns (InviteInfo);
   rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
   // The signed-in user's own account.
+  // ChangeEmail sets the address the signed-in user signs in with. Nothing is
+  // sent to it: Silo has no mail.
+  rpc ChangeEmail(ChangeEmailRequest) returns (User);
   rpc ChangePassword(ChangePasswordRequest) returns (User);
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc RevokeSession(RevokeSessionRequest) returns (ListSessionsResponse);
@@ -241,6 +244,10 @@ message AcceptInviteResponse {
   bool signed_in = 2;
 }
 
+message ChangeEmailRequest {
+  string email = 1;
+}
+
 message ChangePasswordRequest {
   // current is required when the account already has a password.
   string current = 1;
@@ -318,6 +325,9 @@ message UpdateUserRequest {
   string password = 4;
   // reset_totp turns the user's two-factor off (a lost phone).
   bool reset_totp = 5;
+  // email, when set, replaces the address the user signs in with. An address
+  // an admin sets is one single sign-on may match an account by.
+  string email = 6;
 }
 
 message DeleteUserRequest {

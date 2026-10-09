@@ -254,3 +254,69 @@ func TestThrottleBelievesForwardedForOnlyFromATrustedProxy(t *testing.T) {
 		t.Fatalf("a made-up address got around the limit: %v", err)
 	}
 }
+
+func TestChangeEmail(t *testing.T) {
+	h := apptest.New(t)
+	ann, u := join(t, h, "ann@test.local", "first-password")
+	join(t, h, "bob@test.local", "bobs-password")
+
+	for _, bad := range []string{"", "not-an-email", "a@b"} {
+		if _, err := ann.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: bad})); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("email %q: %v", bad, err)
+		}
+	}
+	// Someone else's address, however it is written.
+	if _, err := ann.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: " Bob@Test.Local "})); code(err) != connect.CodeAlreadyExists {
+		t.Fatalf("a taken email: %v", err)
+	}
+	// Their own address again changes nothing.
+	same, err := ann.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: "ANN@test.local"}))
+	if err != nil || same.Msg.GetEmail() != "ann@test.local" {
+		t.Fatalf("the same email: %+v %v", same, err)
+	}
+
+	// A reset link that is out for them keeps working under the new name.
+	link, err := h.Client.CreateInvite(h.Ctx(), rq(&v1.CreateInviteRequest{UserId: u.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ann.ChangeEmail(h.Ctx(), rq(&v1.ChangeEmailRequest{Email: " Ann.Lee@Test.Local "}))
+	if err != nil || res.Msg.GetEmail() != "ann.lee@test.local" || res.Msg.GetId() != u.GetId() {
+		t.Fatalf("ChangeEmail: %+v %v", res, err)
+	}
+	// Still signed in, and it is the new address that signs in from now on.
+	if me, err := whoAmI(ann); err != nil || me.GetEmail() != "ann.lee@test.local" {
+		t.Fatalf("Me after the change: %+v %v", me, err)
+	}
+	if _, _, err := signInAs(h, "ann@test.local", "first-password", ""); code(err) != connect.CodeUnauthenticated {
+		t.Fatalf("the old email: %v", err)
+	}
+	if _, _, err := signInAs(h, "ann.lee@test.local", "first-password", ""); err != nil {
+		t.Fatalf("the new email: %v", err)
+	}
+	guest, _ := h.Browser()
+	info, err := guest.GetInvite(h.Ctx(), rq(&v1.GetInviteRequest{Token: linkToken(t, h, link.Msg.GetUrl())}))
+	if err != nil || info.Msg.GetEmail() != "ann.lee@test.local" {
+		t.Fatalf("the reset link after the change: %+v %v", info, err)
+	}
+	// The old address is free for someone else.
+	inviteLink(t, h, "ann@test.local", false)
+}
+
+func TestAdminChangesAUsersEmail(t *testing.T) {
+	h := apptest.New(t)
+	_, u := join(t, h, "ann@test.local", "first-password")
+	if _, err := h.Client.UpdateUser(h.Ctx(), rq(&v1.UpdateUserRequest{Id: u.GetId(), Email: "nope"})); code(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a bad email: %v", err)
+	}
+	if _, err := h.Client.UpdateUser(h.Ctx(), rq(&v1.UpdateUserRequest{Id: u.GetId(), Email: h.Email})); code(err) != connect.CodeAlreadyExists {
+		t.Fatalf("a taken email: %v", err)
+	}
+	res, err := h.Client.UpdateUser(h.Ctx(), rq(&v1.UpdateUserRequest{Id: u.GetId(), Email: "Ann.Lee@test.local"}))
+	if err != nil || res.Msg.GetEmail() != "ann.lee@test.local" {
+		t.Fatalf("UpdateUser email: %+v %v", res, err)
+	}
+	if _, _, err := signInAs(h, "ann.lee@test.local", "first-password", ""); err != nil {
+		t.Fatalf("the email the admin set: %v", err)
+	}
+}
