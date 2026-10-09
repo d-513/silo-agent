@@ -3,7 +3,7 @@ import { onChatSide, onCustomize, onSettings, paneOf } from "./tabs.ts";
 import { eq } from "../testing.ts";
 
 // Every page belongs to exactly one place.
-eq([onChatSide("run"), onChatSide("feed"), onChatSide("rules"), onChatSide("files")], [true, true, false, false], "chat side");
+eq([onChatSide("run"), onChatSide("feed"), onChatSide("mail"), onChatSide("rules"), onChatSide("files")], [true, true, true, false, false], "chat side");
 eq([onCustomize("connectors"), onCustomize("channels"), onCustomize("secrets"), onCustomize("run")], [true, true, false, false], "customize");
 eq([onSettings("settings"), onSettings("container"), onSettings("tunnels"), onSettings("drives")], [true, true, true, false], "settings");
 

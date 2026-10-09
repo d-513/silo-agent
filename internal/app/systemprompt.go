@@ -71,6 +71,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.driveSections,
 		a.knowledgeSections,
 		a.tunnelSections,
+		a.mailSections,
 		a.automationSections,
 		a.subagentSections,
 		a.recallSections,
@@ -98,6 +99,13 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 // the cached prefix.
 func (a *App) tunnelSections(promptContext) []promptSection {
 	return []promptSection{{title: "Tunnels", body: a.Tunnels.Prompt(prompts.Tunnels)}}
+}
+
+// mailSections gives the Bot its own address and the mail tools, only while
+// the operator has mail on and a domain for it. The address changes only when
+// the owner rotates it, so the section sits in the session tier.
+func (a *App) mailSections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Mailbox", body: a.Mail.Prompt(prompts.Mail, pc.bot.ID)}}
 }
 
 // driveSections lists the Bot's drives for the session tier.

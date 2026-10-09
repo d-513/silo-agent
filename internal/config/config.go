@@ -272,6 +272,7 @@ type Config struct {
 	Search      Search              `koanf:"search"`
 	Drives      Drives              `koanf:"drives"`
 	Tunnels     Tunnels             `koanf:"tunnels"`
+	Mail        Mail                `koanf:"mail"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -409,6 +410,12 @@ var fieldDefs = []fieldMeta{
 	{Key: "tunnels.enabled", Type: "bool"},
 	{Key: "tunnels.host"},
 	{Key: "tunnels.scheme"},
+	{Key: "mail.enabled", Type: "bool"},
+	{Key: "mail.domain"},
+	{Key: "mail.addr"},
+	{Key: "mail.max_size_mb"},
+	{Key: "mail.tls_cert"},
+	{Key: "mail.tls_key"},
 	{Key: "auth.password", Type: "bool"},
 	{Key: "auth.trusted_proxies"},
 	{Key: "oidc.issuer"},

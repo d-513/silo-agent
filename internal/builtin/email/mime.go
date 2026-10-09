@@ -10,9 +10,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/PuerkitoBio/goquery"
 	_ "github.com/emersion/go-message/charset" // decode non-UTF-8 charsets
 	"github.com/emersion/go-message/mail"
+
+	"silo.agent/internal/htmltext"
 )
 
 type attachmentMeta struct {
@@ -147,41 +148,8 @@ func addrStrings(xs []*mail.Address) []string {
 	return out
 }
 
-// htmlText flattens an HTML body into readable text: scripts and styles
-// dropped, block elements on their own lines, links kept as "text (url)".
-func htmlText(src string) string {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(src))
-	if err != nil {
-		return src
-	}
-	doc.Find("script, style, head, noscript").Remove()
-	doc.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
-		href, _ := s.Attr("href")
-		t := strings.TrimSpace(s.Text())
-		if strings.HasPrefix(href, "http") && t != "" && t != href {
-			s.SetText(t + " (" + href + ")")
-		}
-	})
-	doc.Find("br").ReplaceWithHtml("\n")
-	doc.Find("p, div, tr, li, h1, h2, h3, h4, h5, h6, blockquote, table").Each(func(_ int, s *goquery.Selection) {
-		s.AppendHtml("\n")
-	})
-	var lines []string
-	blank := false
-	for _, l := range strings.Split(doc.Text(), "\n") {
-		l = strings.Join(strings.Fields(l), " ")
-		if l == "" {
-			if !blank && len(lines) > 0 {
-				lines = append(lines, "")
-			}
-			blank = true
-			continue
-		}
-		lines = append(lines, l)
-		blank = false
-	}
-	return strings.TrimSpace(strings.Join(lines, "\n"))
-}
+// htmlText flattens an HTML body into readable text.
+func htmlText(src string) string { return htmltext.Flatten(src) }
 
 // clean makes a header or body string valid UTF-8 without NULs.
 func clean(s string) string {

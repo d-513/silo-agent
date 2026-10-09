@@ -8,6 +8,7 @@ export const SECTIONS = [
   { id: "runs", label: "Context & runs" },
   { id: "connectors", label: "Connector options" },
   { id: "tunnels", label: "Tunnels" },
+  { id: "mail", label: "Mail" },
   { id: "signin", label: "Sign-in" },
   { id: "server", label: "Server" },
   // The two below are not the form: the file itself, and the decision log.

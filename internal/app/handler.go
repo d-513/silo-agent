@@ -10,6 +10,7 @@ import (
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
+	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/run"
@@ -36,6 +37,7 @@ type (
 	skillRPC  = skill.Service
 	artRPC    = artifact.Service
 	tunRPC    = tunnels.Service
+	mailRPC   = mailbox.Service
 	acctRPC   = account.Service
 )
 
@@ -57,11 +59,12 @@ type uiHandler struct {
 	*skillRPC
 	*artRPC
 	*tunRPC
+	*mailRPC
 	*acctRPC
 }
 
 func (a *App) uiHandler() *uiHandler {
-	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, acctRPC: a.Accounts}
+	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, mailRPC: a.Mail, acctRPC: a.Accounts}
 }
 
 // The App is the engine the satellite domains drive.

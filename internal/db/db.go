@@ -489,6 +489,57 @@ type TunnelGrant struct {
 	ExpiresAt time.Time `gorm:"index"`
 }
 
+// Mailbox is a Bot's receive-only address: Name is the part before the @ of
+// mail.domain, so a change of the domain moves every address at once. One per
+// Bot, made the first time it is needed.
+type Mailbox struct {
+	BotID string `gorm:"primaryKey"`
+	Name  string `gorm:"uniqueIndex"`
+	// Wake starts a chat when a verified message from a WakeFrom sender
+	// arrives. WakeFrom is one address or @domain per line.
+	Wake      bool   `gorm:"not null;default:false"`
+	WakeFrom  string `gorm:"not null;default:''"`
+	CreatedAt time.Time
+}
+
+// MailMessage is one message a Bot's mailbox received. Text is the body as a
+// person or the model reads it; the bytes as they arrived are its MailBody.
+// Hash (of those bytes) makes a sender's retry the same row, not a second one.
+type MailMessage struct {
+	ID    string `gorm:"primaryKey"`
+	BotID string `gorm:"index:idx_mail_bot_created,priority:1;uniqueIndex:idx_mail_bot_hash,priority:1"`
+	Hash  string `gorm:"uniqueIndex:idx_mail_bot_hash,priority:2"`
+	// Sender is the From header as written; SenderAddr its one address, empty
+	// when the header names none or several. EnvelopeFrom is SMTP's MAIL FROM.
+	Sender       string
+	SenderAddr   string
+	EnvelopeFrom string
+	Recipients   string
+	Subject      string
+	Text         string
+	Size         int
+	// Attachments is a JSON list of {index, name, type, size}.
+	Attachments string
+	// Verified: the sender's domain vouched for the message (aligned DKIM or
+	// SPF). AuthDetail is the evidence.
+	Verified   bool
+	AuthDetail string
+	SentAt     *time.Time
+	// ReadAt is when the Bot first read it with read_mail.
+	ReadAt *time.Time
+	// ChatID is the chat this message started, when it woke the Bot.
+	ChatID    string
+	CreatedAt time.Time `gorm:"index:idx_mail_bot_created,priority:2"`
+}
+
+// MailBody holds a MailMessage's raw bytes, in a table of its own so that
+// listing mail never loads them.
+type MailBody struct {
+	ID    string `gorm:"primaryKey"`
+	BotID string `gorm:"index"`
+	Data  []byte
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
@@ -499,6 +550,7 @@ func Models() []any {
 		&Drive{}, &DriveHost{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
+		&Mailbox{}, &MailMessage{}, &MailBody{},
 	}
 }
 

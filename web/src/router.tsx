@@ -21,6 +21,7 @@ import {
   DriveRoute,
   DrivesRoute,
   FeedRoute,
+  MailRoute,
   KnowledgeRoute,
   MemoriesRoute,
   RulesRoute,
@@ -55,7 +56,7 @@ import { SignIn } from "./SignIn";
 //       connectors[/new|/$id]  skills  drives  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
-//         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
+//         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed  mail
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
@@ -197,6 +198,7 @@ const automation = createRoute({ getParentRoute: () => automations, path: "$auto
 const memories = createRoute({ getParentRoute: () => chat, path: "memories", staticData: { tab: "memories" }, component: MemoriesRoute });
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
+const mail = createRoute({ getParentRoute: () => chat, path: "mail", staticData: { tab: "mail" }, component: MailRoute });
 
 // The machine panes render nothing here: BotPage shows the same pane docked
 // beside the chat or, on these routes, as the page, and keeps it mounted
@@ -252,7 +254,7 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
+      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed, mail]),
       customize.addChildren([
         connectors,
         botSkills,

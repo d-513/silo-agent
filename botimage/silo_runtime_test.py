@@ -104,10 +104,34 @@ def test_tunnel_calls():
         raise SystemExit(f"calls {args}")
 
 
+def test_mail_calls():
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"result": {"ok": True}}
+
+    silo_runtime._post = post
+    silo_runtime.list_mail()
+    silo_runtime.list_mail(unread=True, limit=5)
+    silo_runtime.read_mail("9f2c41aa")
+    silo_runtime.read_mail("9f2c41aa", save_attachments=True, offset=30000)
+    args = [(b["connector"], b["action"], b["args"]) for _, b in seen]
+    want = [
+        ("mailbox", "list", {}),
+        ("mailbox", "list", {"unread": True, "limit": 5}),
+        ("mailbox", "read", {"id": "9f2c41aa"}),
+        ("mailbox", "read", {"id": "9f2c41aa", "save_attachments": True, "offset": 30000}),
+    ]
+    if args != want:
+        raise SystemExit(f"calls {args}")
+
+
 if __name__ == "__main__":
     test_chrome_page_ensures()
     test_web_search_call()
     test_transcribe_call()
     test_taskboard_calls()
     test_tunnel_calls()
+    test_mail_calls()
     print("ok")

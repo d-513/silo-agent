@@ -18,6 +18,7 @@ const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog")
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
+const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
 const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
@@ -164,6 +165,15 @@ export function FeedRoute() {
           void navigate(chatLink(p.id, c.id));
         }}
       />
+    </ScrollPane>
+  );
+}
+
+export function MailRoute() {
+  const p = useBotPage();
+  return (
+    <ScrollPane>
+      <MailPane bot={p.bot} onError={p.onError} />
     </ScrollPane>
   );
 }

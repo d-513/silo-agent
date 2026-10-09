@@ -1,4 +1,4 @@
-import { Blocks, Brain, ChevronDown, Inbox, Library, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, ChevronDown, Inbox, Library, Mail, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { pressClass } from "../Btn";
@@ -72,6 +72,8 @@ export function BotSidebar({
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
         <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
         <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
+        {/* A Bot has a mailbox only while the operator has mail set up. */}
+        {bot.mailAddress || tab === "mail" ? <SideLink to="/bots/$botId/mail" botId={id} on={tab === "mail"} icon={Mail} label="Mail" /> : null}
         <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
       </nav>
       <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">

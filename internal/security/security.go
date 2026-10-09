@@ -46,6 +46,9 @@ const (
 	// Tunnels give the owner addresses for services on the Bot's localhost.
 	// Opening one is private to the owner; making one public asks.
 	Tunnels = "tunnels"
+	// Mailbox is the Bot's receive-only address: listing and reading the mail
+	// that arrived for it. There is no send action; nothing leaves.
+	Mailbox = "mailbox"
 )
 
 type Field struct {
@@ -75,7 +78,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true, Tunnels: true,
+	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true, Tunnels: true, Mailbox: true,
 	// Drives are mounted folders, not a connector; keep the name free of MCP slugs.
 	"drives": true,
 }
@@ -115,6 +118,8 @@ var catalog = map[string]spec{
 	"tunnels.list":       {title: "List tunnels", mode: Allow, summary: want("list its tunnels")},
 	"tunnels.close":      {title: "Close tunnel", mode: Allow, summary: want("close a tunnel")},
 	"tunnels.public":     {title: "Make tunnel public", mode: Ask, summary: tunnelPublicSummary, fields: tunnelFields},
+	"mailbox.list":       {title: "List mail", mode: Allow, summary: want("list the mail in its mailbox")},
+	"mailbox.read":       {title: "Read mail", mode: Allow, summary: want("read a message from its mailbox")},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
@@ -272,6 +277,8 @@ func BuiltinRows() []Row {
 		{Tunnels, "list", "List tunnels"},
 		{Tunnels, "close", "Close tunnel"},
 		{Tunnels, "public", "Make tunnel public"},
+		{Mailbox, "list", "List mail"},
+		{Mailbox, "read", "Read mail"},
 	}
 }
 

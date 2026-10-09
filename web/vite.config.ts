@@ -36,6 +36,8 @@ export default defineConfig({
       "/artifacts": { target: "http://127.0.0.1:8080" },
       // The private-tunnel sign-in handoff starts at public_url (the Vite origin).
       "/tunnels": { target: "http://127.0.0.1:8080" },
+      // A received message's original bytes (.eml download).
+      "/mail/raw": { target: "http://127.0.0.1:8080" },
     },
   },
 });

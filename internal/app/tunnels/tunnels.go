@@ -20,6 +20,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/names"
 	"silo.agent/internal/tunnel"
 )
 
@@ -99,7 +100,7 @@ func (s *Service) Declare(botID string, port int, public bool, createdBy string)
 		if n >= MaxPerBot {
 			return nil, false, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("a Bot can have at most %d tunnels; delete one first", MaxPerBot))
 		}
-		row := db.Tunnel{ID: ids.New(), BotID: botID, Port: port, Name: NewName(), Public: public, CreatedBy: createdBy, CreatedAt: time.Now()}
+		row := db.Tunnel{ID: ids.New(), BotID: botID, Port: port, Name: names.New(), Public: public, CreatedBy: createdBy, CreatedAt: time.Now()}
 		// A name taken meanwhile (or the port, by a concurrent call) fails the
 		// unique index; the next pass picks a new name or finds the port's row.
 		if err := s.db.Create(&row).Error; err == nil {

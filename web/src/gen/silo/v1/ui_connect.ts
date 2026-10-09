@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AcceptInviteRequest, AcceptInviteResponse, AddKnowledgeFolderRequest, AddSecretRequest, Approval, AttachConnectorRequest, AuthOptionsRequest, AuthOptionsResponse, Automation, BeginDriveAuthRequest, BeginDriveAuthResponse, Bot, BotConnector, BotContainers, BotSkill, BrowseDriveRequest, BrowseDriveResponse, ChangeEmailRequest, ChangePasswordRequest, Channel, ChannelActionRequest, ChannelActionResponse, Chat, CheckOIDCRequest, CheckOIDCResponse, ClearTaskboardRequest, CollectMemoriesRequest, CollectMemoriesResponse, CompactChatRequest, CompactChatResponse, ConfirmTOTPRequest, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, CreateInviteRequest, CreateTunnelRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteDriveRequest, DeleteDriveResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteInviteRequest, DeleteInviteResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DeleteTunnelRequest, DeleteTunnelResponse, DeleteUserRequest, DeleteUserResponse, DetachConnectorRequest, DetachConnectorResponse, DisableTOTPRequest, DivergeChatRequest, DivergeChatResponse, Drive, DriveSettings, EditMessageRequest, FileOpResponse, GetBotRequest, GetDriveSettingsRequest, GetInviteRequest, GetSettingsRequest, GetSubagentRequest, GetTaskboardRequest, InstallSkillRequest, InstallSkillResponse, Invite, InviteInfo, KnowledgeFolder, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListDrivesRequest, ListDrivesResponse, ListDriveTemplatesRequest, ListDriveTemplatesResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListKnowledgeRequest, ListKnowledgeResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListProviderModelsRequest, ListProviderModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSessionsRequest, ListSessionsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSubagentsRequest, ListSubagentsResponse, ListTunnelsRequest, ListTunnelsResponse, ListUsersRequest, ListUsersResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, NewRecoveryCodesRequest, PickDriveOptionsRequest, PickDriveOptionsResponse, PutDriveSettingsRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RecoveryCodes, RefreshBotConnectorRequest, RemoveFileRequest, RemoveKnowledgeFolderRequest, RemoveKnowledgeFolderResponse, RenameChatRequest, RevokeOtherSessionsRequest, RevokeSessionRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveDriveRequest, SaveSkillRequest, SaveSkillResponse, SearchKnowledgeRequest, SearchKnowledgeResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetAutoenableConnectorsRequest, SetBotSkillRequest, SetChatModelRequest, SetChatThinkingRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StartTOTPRequest, StartTOTPResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, SyncKnowledgeRequest, Taskboard, TranscribeRequest, TranscribeResponse, Tunnel, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest, UpdateTunnelRequest, UpdateUserRequest, User } from "./ui_pb.js";
+import { AcceptInviteRequest, AcceptInviteResponse, AddKnowledgeFolderRequest, AddSecretRequest, Approval, AttachConnectorRequest, AuthOptionsRequest, AuthOptionsResponse, Automation, BeginDriveAuthRequest, BeginDriveAuthResponse, Bot, BotConnector, BotContainers, BotSkill, BrowseDriveRequest, BrowseDriveResponse, ChangeEmailRequest, ChangePasswordRequest, Channel, ChannelActionRequest, ChannelActionResponse, Chat, CheckOIDCRequest, CheckOIDCResponse, ClearTaskboardRequest, CollectMemoriesRequest, CollectMemoriesResponse, CompactChatRequest, CompactChatResponse, ConfirmTOTPRequest, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, CreateInviteRequest, CreateTunnelRequest, DecideApprovalRequest, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteDriveRequest, DeleteDriveResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteInviteRequest, DeleteInviteResponse, DeleteMailRequest, DeleteMailResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DeleteTunnelRequest, DeleteTunnelResponse, DeleteUserRequest, DeleteUserResponse, DetachConnectorRequest, DetachConnectorResponse, DisableTOTPRequest, DivergeChatRequest, DivergeChatResponse, Drive, DriveSettings, EditMessageRequest, FileOpResponse, GetBotRequest, GetDriveSettingsRequest, GetInviteRequest, GetMailRequest, GetSettingsRequest, GetSubagentRequest, GetTaskboardRequest, InstallSkillRequest, InstallSkillResponse, Invite, InviteInfo, KnowledgeFolder, ListApprovalsRequest, ListApprovalsResponse, ListAuditRequest, ListAuditResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatsRequest, ListChatsResponse, ListConnectorsRequest, ListConnectorsResponse, ListDrivesRequest, ListDrivesResponse, ListDriveTemplatesRequest, ListDriveTemplatesResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListKnowledgeRequest, ListKnowledgeResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMailRequest, ListMailResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListProviderModelsRequest, ListProviderModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSessionsRequest, ListSessionsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSubagentsRequest, ListSubagentsResponse, ListTunnelsRequest, ListTunnelsResponse, ListUsersRequest, ListUsersResponse, Mail, Mailbox, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, NewRecoveryCodesRequest, PickDriveOptionsRequest, PickDriveOptionsResponse, PutDriveSettingsRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RecoveryCodes, RefreshBotConnectorRequest, RemoveFileRequest, RemoveKnowledgeFolderRequest, RemoveKnowledgeFolderResponse, RenameChatRequest, RevokeOtherSessionsRequest, RevokeSessionRequest, RotateMailboxRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, SaveDriveRequest, SaveSkillRequest, SaveSkillResponse, SearchKnowledgeRequest, SearchKnowledgeResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetAutoenableConnectorsRequest, SetBotSkillRequest, SetChatModelRequest, SetChatThinkingRequest, SetConnectorVarsRequest, SetModelsRequest, SetRuleRequest, Settings, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, StartConnectorAuthRequest, StartConnectorAuthResponse, StartTOTPRequest, StartTOTPResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, SyncKnowledgeRequest, Taskboard, TranscribeRequest, TranscribeResponse, Tunnel, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest, UpdateMailboxRequest, UpdateTunnelRequest, UpdateUserRequest, User } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -467,6 +467,53 @@ export const UI = {
       name: "DeleteTunnel",
       I: DeleteTunnelRequest,
       O: DeleteTunnelResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Mail: each Bot's receive-only mailbox, fed by the CP's SMTP listener.
+     *
+     * @generated from rpc silo.v1.UI.ListMail
+     */
+    listMail: {
+      name: "ListMail",
+      I: ListMailRequest,
+      O: ListMailResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.GetMail
+     */
+    getMail: {
+      name: "GetMail",
+      I: GetMailRequest,
+      O: Mail,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteMail
+     */
+    deleteMail: {
+      name: "DeleteMail",
+      I: DeleteMailRequest,
+      O: DeleteMailResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.UpdateMailbox
+     */
+    updateMailbox: {
+      name: "UpdateMailbox",
+      I: UpdateMailboxRequest,
+      O: Mailbox,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RotateMailbox
+     */
+    rotateMailbox: {
+      name: "RotateMailbox",
+      I: RotateMailboxRequest,
+      O: Mailbox,
       kind: MethodKind.Unary,
     },
     /**

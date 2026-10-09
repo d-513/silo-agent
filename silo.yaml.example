@@ -64,6 +64,18 @@ providers:
 #   enabled: true
 #   scheme: https           # default: follows public_url
 
+# Mail: every Bot gets a receive-only address <name>@<domain>, served by an
+# SMTP listener in this control plane. Point the domain's MX record here and
+# get port 25 to `addr`. Nothing is ever sent. In development any domain works
+# (nothing is looked up to receive): try it with
+#   swaks --server localhost:2525 --to <name>@silo.localhost
+# Env: SILO_MAIL__DOMAIN, SILO_MAIL__ADDR, SILO_MAIL__ENABLED, SILO_MAIL__MAX_SIZE_MB
+# mail:
+#   domain: bots.example.com
+#   addr: ":2525"
+#   enabled: true
+#   max_size_mb: 10
+
 # Web search engine. Env: SILO_SEARCH__ENGINE
 search:
   engine: duckduckgo_scraper

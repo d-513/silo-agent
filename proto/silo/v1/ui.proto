@@ -70,6 +70,12 @@ service UI {
   rpc CreateTunnel(CreateTunnelRequest) returns (Tunnel);
   rpc UpdateTunnel(UpdateTunnelRequest) returns (Tunnel);
   rpc DeleteTunnel(DeleteTunnelRequest) returns (DeleteTunnelResponse);
+  // Mail: each Bot's receive-only mailbox, fed by the CP's SMTP listener.
+  rpc ListMail(ListMailRequest) returns (ListMailResponse);
+  rpc GetMail(GetMailRequest) returns (Mail);
+  rpc DeleteMail(DeleteMailRequest) returns (DeleteMailResponse);
+  rpc UpdateMailbox(UpdateMailboxRequest) returns (Mailbox);
+  rpc RotateMailbox(RotateMailboxRequest) returns (Mailbox);
   rpc ListAutomations(ListAutomationsRequest) returns (ListAutomationsResponse);
   rpc CreateAutomation(CreateAutomationRequest) returns (Automation);
   rpc UpdateAutomation(UpdateAutomationRequest) returns (Automation);
@@ -388,6 +394,9 @@ message Bot {
   string model = 11;
   // FeedUnread counts Feed posts the owner has not seen yet.
   int32 feed_unread = 12;
+  // MailAddress is this Bot's receive-only address; empty while the operator
+  // has mail off or no mail.domain.
+  string mail_address = 13;
 }
 
 message ListBotsRequest {}
@@ -660,6 +669,87 @@ message DeleteTunnelRequest {
 }
 
 message DeleteTunnelResponse {}
+
+// Mailbox is a Bot's receive-only address and what it does with new mail.
+message Mailbox {
+  // state is "ok", "off" (mail.enabled is false) or "no_domain" (no
+  // mail.domain to receive for).
+  string state = 1;
+  // address is <name>@<mail.domain>; empty unless state is "ok".
+  string address = 2;
+  // wake starts a chat when a verified message from a wake_from sender
+  // arrives. wake_from is one address or @domain per line.
+  bool wake = 3;
+  string wake_from = 4;
+  // keep is how many messages a mailbox holds; older ones fall off.
+  int32 keep = 5;
+  // problem is why the listener is not running although mail is on (a port
+  // that cannot be bound, a certificate that does not load). Admins only.
+  string problem = 6;
+}
+
+message MailAttachment {
+  int32 index = 1;
+  string name = 2;
+  string type = 3;
+  int32 size = 4;
+}
+
+// Mail is one received message. ListMail leaves text empty and fills preview.
+message Mail {
+  string id = 1;
+  // from is the From header as written; from_address its one address.
+  string from = 2;
+  string from_address = 3;
+  string to = 4;
+  string subject = 5;
+  string received_at = 6;
+  string sent_at = 7; // the Date header; empty when it has none
+  int32 size = 8;
+  // verified: the sender's domain vouched for the message (DKIM or SPF,
+  // aligned with the From address). auth_detail is the evidence.
+  bool verified = 9;
+  string auth_detail = 10;
+  // read: the Bot has read it with read_mail.
+  bool read = 11;
+  repeated MailAttachment attachments = 12;
+  // chat_id is the chat this message started, when it woke the Bot.
+  string chat_id = 13;
+  string text = 14;
+  string preview = 15;
+}
+
+message ListMailRequest {
+  string bot_id = 1;
+}
+
+message ListMailResponse {
+  Mailbox mailbox = 1;
+  repeated Mail messages = 2; // newest first
+}
+
+message GetMailRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteMailRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteMailResponse {}
+
+message UpdateMailboxRequest {
+  string bot_id = 1;
+  bool wake = 2;
+  string wake_from = 3;
+}
+
+// RotateMailbox gives the Bot a new address; mail to the old one is refused.
+message RotateMailboxRequest {
+  string bot_id = 1;
+}
 
 // Automation is a scheduled background prompt. Each one owns a hidden Chat
 // (chat_id) whose runs are its log; every firing starts with a fresh context.

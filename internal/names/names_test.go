@@ -1,4 +1,4 @@
-package tunnels
+package names
 
 import (
 	"regexp"
@@ -8,10 +8,10 @@ import (
 // A name is a subdomain, so it must be a DNS label.
 var label = regexp.MustCompile(`^[a-z]+-[a-z]+-[a-z]+$`)
 
-func TestNewNameIsADNSLabel(t *testing.T) {
+func TestNewIsADNSLabel(t *testing.T) {
 	seen := map[string]bool{}
 	for range 2000 {
-		n := NewName()
+		n := New()
 		if !label.MatchString(n) || len(n) > 63 {
 			t.Fatalf("bad name %q", n)
 		}

@@ -44,6 +44,12 @@ var Memory string
 //go:embed SUBAGENT.md
 var Subagent string
 
+// Mail is the system-prompt section for a Bot that has a mailbox; {address}
+// is its address.
+//
+//go:embed MAIL.md
+var Mail string
+
 // Tunnels is the system-prompt section for a Bot that has the tunnel tools.
 //
 //go:embed TUNNELS.md

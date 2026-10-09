@@ -37,6 +37,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		AutoApprove:     b.AutoApprove,
 		Model:           b.Model,
 		FeedUnread:      a.Feed.Unread(b.ID),
+		MailAddress:     a.Mail.Address(b.ID),
 	}
 }
 
@@ -219,6 +220,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
 	a.Tunnels.Drop(b.ID)
+	a.Mail.Drop(b.ID)
 	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Subagent{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})

@@ -2,7 +2,7 @@
 // fall into four places: the chat and the conversation-side pages above the
 // chats list, the two sections the sidebar opens (Customize, Settings), and the
 // machine panes the right rail docks beside the chat.
-export const sideTabs = ["automations", "memories", "knowledge", "feed"] as const;
+export const sideTabs = ["automations", "memories", "knowledge", "feed", "mail"] as const;
 export type SideTab = (typeof sideTabs)[number];
 export const customizeTabs = ["connectors", "skills", "drives", "channels"] as const;
 export type CustomizeTab = (typeof customizeTabs)[number];

@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/tunnels"
 	"silo.agent/internal/app/voice"
@@ -23,6 +24,7 @@ func newToolApp() *App {
 	a.Models = models.New(nil, a.cfg)
 	a.Voice = voice.New(nil, a.cfg, a.Models, nil)
 	a.Tunnels = tunnels.New(nil, nil, a.cfg, nil)
+	a.Mail = mailbox.New(nil, a.cfg, nil, nil, nil)
 	return a
 }
 
@@ -61,6 +63,33 @@ func TestRunToolsOffersTunnelToolsOnlyWithADomain(t *testing.T) {
 			if !offered(a, n) {
 				t.Errorf("%s: %s not offered", name, n)
 			}
+		}
+	}
+}
+
+func TestRunToolsOffersMailToolsOnlyWithADomain(t *testing.T) {
+	tools := []string{"list_mail", "read_mail"}
+	for name, yaml := range map[string]string{
+		"no config":  "",
+		"disabled":   "mail:\n  enabled: false\n  domain: bots.example.com\n",
+		"no domain":  "public_url: http://localhost:5173\n",
+		"bad domain": "mail:\n  domain: \"bots.example.com:25\"\n",
+	} {
+		a := newToolApp()
+		if yaml != "" {
+			a.Store, _ = config.FromYAML([]byte(yaml))
+		}
+		for _, n := range tools {
+			if offered(a, n) {
+				t.Errorf("%s: %s offered", name, n)
+			}
+		}
+	}
+	a := newToolApp()
+	a.Store, _ = config.FromYAML([]byte("mail:\n  domain: bots.example.com\n"))
+	for _, n := range tools {
+		if !offered(a, n) {
+			t.Errorf("%s not offered with a mail domain", n)
 		}
 	}
 }

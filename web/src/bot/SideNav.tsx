@@ -8,6 +8,7 @@ type SideTo =
   | "/bots/$botId/memories"
   | "/bots/$botId/knowledge"
   | "/bots/$botId/feed"
+  | "/bots/$botId/mail"
   | "/bots/$botId/connectors"
   | "/bots/$botId/settings"
   | "/bots/$botId/files"

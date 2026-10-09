@@ -171,6 +171,22 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `deleteTunnel`(request: Silo_V1_DeleteTunnelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteTunnelResponse>
 
+    /// Mail: each Bot's receive-only mailbox, fed by the CP's SMTP listener.
+    @available(iOS 13, *)
+    func `listMail`(request: Silo_V1_ListMailRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListMailResponse>
+
+    @available(iOS 13, *)
+    func `getMail`(request: Silo_V1_GetMailRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Mail>
+
+    @available(iOS 13, *)
+    func `deleteMail`(request: Silo_V1_DeleteMailRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteMailResponse>
+
+    @available(iOS 13, *)
+    func `updateMailbox`(request: Silo_V1_UpdateMailboxRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Mailbox>
+
+    @available(iOS 13, *)
+    func `rotateMailbox`(request: Silo_V1_RotateMailboxRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Mailbox>
+
     @available(iOS 13, *)
     func `listAutomations`(request: Silo_V1_ListAutomationsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListAutomationsResponse>
 
@@ -667,6 +683,31 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listMail`(request: Silo_V1_ListMailRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListMailResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListMail", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getMail`(request: Silo_V1_GetMailRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Mail> {
+        return await self.client.unary(path: "/silo.v1.UI/GetMail", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteMail`(request: Silo_V1_DeleteMailRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteMailResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteMail", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateMailbox`(request: Silo_V1_UpdateMailboxRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Mailbox> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateMailbox", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `rotateMailbox`(request: Silo_V1_RotateMailboxRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Mailbox> {
+        return await self.client.unary(path: "/silo.v1.UI/RotateMailbox", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listAutomations`(request: Silo_V1_ListAutomationsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListAutomationsResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListAutomations", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1121,6 +1162,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let createTunnel = Connect.MethodSpec(name: "CreateTunnel", service: "silo.v1.UI", type: .unary)
             public static let updateTunnel = Connect.MethodSpec(name: "UpdateTunnel", service: "silo.v1.UI", type: .unary)
             public static let deleteTunnel = Connect.MethodSpec(name: "DeleteTunnel", service: "silo.v1.UI", type: .unary)
+            public static let listMail = Connect.MethodSpec(name: "ListMail", service: "silo.v1.UI", type: .unary)
+            public static let getMail = Connect.MethodSpec(name: "GetMail", service: "silo.v1.UI", type: .unary)
+            public static let deleteMail = Connect.MethodSpec(name: "DeleteMail", service: "silo.v1.UI", type: .unary)
+            public static let updateMailbox = Connect.MethodSpec(name: "UpdateMailbox", service: "silo.v1.UI", type: .unary)
+            public static let rotateMailbox = Connect.MethodSpec(name: "RotateMailbox", service: "silo.v1.UI", type: .unary)
             public static let listAutomations = Connect.MethodSpec(name: "ListAutomations", service: "silo.v1.UI", type: .unary)
             public static let createAutomation = Connect.MethodSpec(name: "CreateAutomation", service: "silo.v1.UI", type: .unary)
             public static let updateAutomation = Connect.MethodSpec(name: "UpdateAutomation", service: "silo.v1.UI", type: .unary)

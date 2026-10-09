@@ -1,13 +1,15 @@
-package tunnels
+// Package names makes the readable generated names Silo hands out: a tunnel's
+// subdomain, a Bot's mailbox.
+package names
 
 import (
 	"fmt"
 	"math/rand/v2"
 )
 
-// A tunnel's name is its subdomain: three plain lowercase words, adjective
-// colour animal, like quiet-amber-heron. Short enough to read out, large enough
-// (~290k) that a collision is a retry, never a limit.
+// A name is three plain lowercase words, adjective colour animal, like
+// quiet-amber-heron: a DNS label and a mailbox local part. Short enough to read
+// out, large enough (~290k) that a collision is a retry, never a limit.
 var (
 	adjectives = []string{
 		"agile", "ancient", "bold", "brave", "breezy", "bright", "brisk", "calm",
@@ -40,8 +42,8 @@ var (
 	}
 )
 
-// NewName returns a fresh adjective-colour-animal name.
-func NewName() string {
+// New returns a fresh adjective-colour-animal name.
+func New() string {
 	return fmt.Sprintf("%s-%s-%s",
 		adjectives[rand.IntN(len(adjectives))],
 		colors[rand.IntN(len(colors))],

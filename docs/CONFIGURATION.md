@@ -40,6 +40,11 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `tunnels.enabled` | `true` | `SILO_TUNNELS__ENABLED` | Master switch for tunnels. Off: the proxy, the Bot's tunnel tools and the Tunnels tab's add form are gone (existing rows are kept) |
 | `tunnels.host` | derived (see Tunnels) | `SILO_TUNNELS__HOST` | Domain suffix tunnels are served under, `host[:port]`: a tunnel is `<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
 | `tunnels.scheme` | follows `public_url` | `SILO_TUNNELS__SCHEME` | `http` or `https`, for the links tunnels are shown with. Set it when TLS ends at a proxy and `public_url` is an internal address |
+| `mail.enabled` | `true` | `SILO_MAIL__ENABLED` | Master switch for Bot mailboxes. Off: the SMTP listener, the Bot's mail tools and the Mail page's address are gone (received mail is kept) |
+| `mail.domain` | (none) | `SILO_MAIL__DOMAIN` | What follows the `@` of every Bot's address (`<name>@<domain>`). A bare domain; its MX record must point here. Unset, there is no mail (see Mail) |
+| `mail.addr` | `:2525` | `SILO_MAIL__ADDR` | Where the SMTP listener binds, `host:port` or `:port`. The world delivers to port 25: publish or forward 25 to it |
+| `mail.max_size_mb` | `10` | `SILO_MAIL__MAX_SIZE_MB` | Largest message accepted, attachments included (1 to 50). Bigger ones are refused with 552 |
+| `mail.tls_cert` / `mail.tls_key` | self-signed | `SILO_MAIL__TLS_CERT` / `SILO_MAIL__TLS_KEY` | PEM files for STARTTLS. Unset, a self-signed certificate is made at start |
 | `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
@@ -149,6 +154,30 @@ tunnels:
 - **Changing `host`** takes effect on the next request and re-points every existing tunnel (rows store only the name). Private tunnels' sign-in cookies belong to the old host, so owners sign in again.
 - **Private means signed in to Silo.** A private tunnel's access is tied to the owner's Silo session: signing out (or the session expiring) ends it immediately, and the next visit asks them to sign in again. An already-open WebSocket is not cut off until it closes.
 - Ports `5900` (the desktop) and `9222` (Chromium's debugging port) are never tunnelled; a Bot has at most 20 tunnels. A tunnel request never starts a stopped Bot.
+
+## Mail
+
+Every Bot has its own **receive-only** email address, `<name>@<mail.domain>` (the name is generated, like `quiet-amber-heron`). The control plane runs a small SMTP listener of its own; what arrives for a Bot is filed in its inbox, where the Bot reads it with `list_mail` / `read_mail` and the owner on the Bot's **Mail** page. Nothing is ever sent: there is no relay, no outbound queue and no bounce, so there is no sender reputation, SPF/DKIM signing or reverse DNS to look after. It is separate from the **Email connector**, which signs in to somebody's existing IMAP/SMTP account.
+
+```yaml
+mail:
+  domain: bots.example.com   # required: without it there is no mail
+  # addr: ":2525"            # where the listener binds
+  # enabled: true
+  # max_size_mb: 10
+  # tls_cert: /etc/silo/mail.crt   # optional; self-signed otherwise
+  # tls_key: /etc/silo/mail.key
+```
+
+- **DNS**: one MX record, `bots.example.com. MX 10 silo.example.com.`, where the target is a name whose A/AAAA record is this machine. Nothing else is needed to receive. A subdomain used only for Bots keeps it apart from your own mail.
+- **Port 25**: other mail servers deliver to port 25 and nowhere else. The listener binds `:2525` so the control plane needs no privileges; publish or forward 25 to it (`-p 25:2525`, a firewall redirect), or set `addr: ":25"` if it may bind that. An HTTP reverse proxy, Cloudflare's proxy or a tunnel does **not** carry SMTP: the MX target must reach this machine directly. Many home connections block inbound 25; a VPS normally does not.
+- **TLS**: STARTTLS is always offered. Mail servers encrypt opportunistically and do not check who signed the certificate, so the self-signed one is enough; set `tls_cert` and `tls_key` if you publish MTA-STS or DANE.
+- **Applies live**: the listener follows these settings within a few seconds (Admin → Settings → Mail), no restart. If the port cannot be bound, admins see why on a Bot's Mail page and it is tried again.
+- **Changing `domain`** moves every address at once (a mailbox stores only its name); the old domain is refused from then on. The owner can also give one Bot a **new address** on its Mail page.
+- **What is refused, inside the SMTP session** (so no bounce is ever written): a recipient that is not a Bot's address (550), a message over `max_size_mb` (552), more than 10 recipients, and a client that keeps naming addresses that do not exist or sends more than 60 messages a minute (451). A message that could not be stored is answered 451 and the sender retries, so a restart loses nothing.
+- **Sender check**: each message is marked *verified* when the From address's domain vouched for it: it signed the message (DKIM), or it lists the sending server and is the envelope sender too (SPF), aligned on the organisational domain as DMARC does. Unverified mail is still delivered and shown as such, to the owner and to the Bot.
+- **Waking the Bot** is off by default: mail waits until the Bot is asked to look. On a Bot's Mail page the owner can list senders (addresses or `@domains`) whose **verified** mail opens a new chat with the message, at most 10 an hour. A forged From address wakes nobody.
+- A mailbox keeps its newest 200 messages. `name+anything@domain` reaches `name`'s mailbox.
 
 ## Drive providers
 

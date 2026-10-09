@@ -28,6 +28,7 @@ import (
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/knowledge"
+	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/skill"
@@ -168,6 +169,7 @@ type App struct {
 	// Bot's tools. uiHandler promotes their RPCs.
 	Feed        *feed.Service
 	Tunnels     *tunnels.Service
+	Mail        *mailbox.Service
 	Models      *models.Service
 	Workspace   *workspace.Service
 	Voice       *voice.Service
@@ -210,6 +212,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Feed = feed.New(a.DB, a)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
+	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)
 	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice, a.Accounts.OIDCRedirectURL)
 	a.recoverOrphans()
@@ -225,6 +228,9 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
+		// The SMTP listener follows mail.* without a restart.
+		a.Mail.Sync()
+		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
 	}
 	return a
 }
@@ -322,6 +328,7 @@ func (a *App) ensureTerminalEvent(run db.Run, status string) {
 func (a *App) Shutdown() {
 	a.stopOnce.Do(func() { close(a.stopAutomations) })
 	a.Channels.StopAll()
+	a.Mail.Close()
 	a.Hub.CloseAll()
 	a.mu.Lock()
 	for _, lr := range a.runs {
@@ -481,6 +488,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/connectors/", a.Connectors.ServeImage)
 	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
 	mux.HandleFunc("/tunnels/auth", a.Tunnels.ServeAuth)
+	mux.HandleFunc(mailbox.RawPath, a.Mail.ServeRaw)
 	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
 	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)
 	log.Printf("mounted %s %s", uiPath, wkPath)

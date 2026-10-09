@@ -16,6 +16,12 @@ export const LABELS: Record<string, string> = {
   "tunnels.enabled": "Tunnels",
   "tunnels.host": "Domain suffix",
   "tunnels.scheme": "Link scheme",
+  "mail.enabled": "Mail",
+  "mail.domain": "Mail domain",
+  "mail.addr": "SMTP listen address",
+  "mail.max_size_mb": "Largest message (MB)",
+  "mail.tls_cert": "TLS certificate file",
+  "mail.tls_key": "TLS key file",
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
@@ -56,6 +62,13 @@ export const HINTS: Record<string, string> = {
   "knowledge.ocr": "Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those.",
   "tunnels.host": "A tunnel is served at <name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port.",
   "tunnels.scheme": "http or https. Leave empty to follow the Public URL; set it when TLS ends at a proxy and the Public URL is an internal address.",
+  "mail.domain":
+    "Every Bot's address is <name>@<this domain>. Point the domain's MX record at this server; until one does, nothing arrives. Changing it moves every address at once.",
+  "mail.addr":
+    "Where the control plane listens for SMTP, as host:port or :port. Other mail servers deliver to port 25, so publish or forward 25 to this port (or set :25 if the control plane may bind it). A reverse proxy for the web UI does not carry mail.",
+  "mail.max_size_mb": "A message over this, attachments included, is refused. 1 to 50.",
+  "mail.tls_cert": "A PEM certificate for STARTTLS, with the key below. Empty, a self-signed one is made at start, which is all that mail servers ask for.",
+  "mail.tls_key": "The PEM private key that goes with the certificate.",
   "drives.mount_root": "Where drive mounts live, as a path the container engine sees.",
   "drives.cache_max_size": "The most one drive may cache on disk, such as 10G.",
   "auth.password": "Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out.",
@@ -76,6 +89,10 @@ export const PLACEHOLDERS: Record<string, string> = {
   transcribe_model: "openrouter/openai/whisper-1",
   "tunnels.host": "tunnels.example.com",
   "tunnels.scheme": "follows Public URL",
+  "mail.domain": "bots.example.com",
+  "mail.addr": ":2525",
+  "mail.tls_cert": "self-signed",
+  "mail.tls_key": "self-signed",
   "oidc.issuer": "https://id.example.com",
   "oidc.scopes": "openid email profile",
   "oidc.label": "Single sign-on",
@@ -98,6 +115,9 @@ export const KNOWLEDGE_NOTE =
 export const TUNNELS_NOTE =
   "Tunnels give the owner addresses for services running on a Bot's machine, served by this control plane at <name>.<domain suffix>. Changing the suffix moves every existing tunnel at once; private tunnels ask their owner to sign in again.";
 
+export const MAIL_NOTE =
+  "Gives every Bot a receive-only address. The control plane runs its own small SMTP listener and files what arrives in the Bot's inbox, where the Bot reads it with list_mail and read_mail. Nothing is ever sent, so there is no relay or sender reputation to look after. On as soon as a domain is set; changes here apply within a few seconds, without a restart.";
+
 export const AUTH_NOTE =
   "Wrong passwords, two-factor codes and invite links are limited per account and address: five tries, then a wait that doubles from 30 seconds to 15 minutes.";
 
@@ -111,6 +131,7 @@ export function groupOf(key: string) {
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("tunnels.")) return "tunnels";
+  if (key.startsWith("mail.")) return "mail";
   if (key.startsWith("context.")) return "context";
   if (key.startsWith("runs.")) return "runs";
   if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";

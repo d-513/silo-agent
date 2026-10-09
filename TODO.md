@@ -53,6 +53,8 @@ Competitor facts come from their public docs and press as of this date (links at
 10. **Run logs are first-class.** Automations and subagents each get a hidden log that renders through the same `Thread` as chat. The subagent tray and per-agent pages are the same pattern.
 11. **A test suite that runs the real thing without spending tokens.** A scripted `DummyLLM`, the real worker as a subprocess, the real STDIO bridge, a per-test Postgres schema, plus a real-Podman tier that boots the actual Bot image. TESTING.md documents it.
 
+12. **A mailbox per Bot.** Every Bot has its own receive-only address, served by an SMTP listener in the control plane: it can sign up for things, collect confirmation codes and take reports, with no mail account to rent and nothing it can send. The sender of each message is checked (DKIM/SPF), and only verified mail from senders the owner listed can wake the Bot.
+
 ## 4. Where we matched them
 
 | Area | Silo |

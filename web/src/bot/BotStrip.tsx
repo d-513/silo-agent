@@ -1,4 +1,4 @@
-import { Blocks, Brain, Folder, Inbox, Library, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, Folder, Inbox, Library, Mail, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
@@ -50,6 +50,7 @@ export function BotStrip({
       <SideChip to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
       <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
       <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={bot.feedUnread} />
+      {bot.mailAddress || tab === "mail" ? <SideChip to="/bots/$botId/mail" botId={id} on={tab === "mail"} icon={Mail} label="Mail" /> : null}
       <SideChip to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
       <SideChip to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label="Settings" />
       {rule}

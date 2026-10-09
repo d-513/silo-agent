@@ -107,6 +107,18 @@ Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id
 
 With `public_url` on `localhost`/`127.0.0.1` (the example config), tunnels need no setup: a Bot's tunnel is `http://<name>.localhost:8080`, served by the control plane directly (browsers send `*.localhost` to loopback; Vite is not involved, since it would answer with the SPA). The private-tunnel sign-in starts at `public_url`, which Vite proxies (`/tunnels`) to the control plane. Tunnels need the worker that understands `OpenTunnel`, so after pulling this change run `make bot-image` and recreate the Bot's container. To try one: ask the Bot to run `python -m http.server 8000` in the background and open a tunnel, or add port 8000 on the Bot's **Tunnels** tab.
 
+## Mail in development
+
+Mail is off until `mail.domain` is set, and receiving needs no DNS, so any name works locally: put `mail: {domain: silo.localhost}` in `silo.yaml` (or set it in Admin → Settings → Mail; it applies in a few seconds). The control plane then listens for SMTP on `:2525` and every Bot shows its address on its **Mail** page. Deliver one by hand:
+
+```sh
+swaks --server localhost:2525 --from you@example.com --to <name>@silo.localhost --header 'Subject: hello' --body 'Your code is 482913.'
+# or, with nothing installed:
+printf 'EHLO me\r\nMAIL FROM:<you@example.com>\r\nRCPT TO:<<name>@silo.localhost>\r\nDATA\r\nSubject: hello\r\n\r\nYour code is 482913.\r\n.\r\nQUIT\r\n' | nc localhost 2525
+```
+
+Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), so it never wakes a Bot; the wake path is covered by `TestMailWake*`, which sign a message and fake the DNS. The Bot's `silo_runtime.list_mail` / `read_mail` need a Bot image built after this change (`make bot-image`); the chat tools do not.
+
 ## After you change…
 
 | What                         | Then                                                                                  |

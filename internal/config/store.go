@@ -27,6 +27,9 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("drives.image", DefaultDriveImage)
 	_ = k.Set("drives.cache_max_size", "10G")
 	_ = k.Set("tunnels.enabled", true)
+	_ = k.Set("mail.enabled", true)
+	_ = k.Set("mail.addr", DefaultMailAddr)
+	_ = k.Set("mail.max_size_mb", DefaultMailSizeMB)
 	_ = k.Set("search.engine", search.DefaultEngine)
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
@@ -320,6 +323,9 @@ func validateYAML(raw []byte) error {
 		return fmt.Errorf("unknown search engine %q", e)
 	}
 	if err := validateTunnels(k.String("tunnels.host"), k.String("tunnels.scheme"), k.String("public_url")); err != nil {
+		return err
+	}
+	if err := validateMail(k); err != nil {
 		return err
 	}
 	if err := validateSignIn(k); err != nil {

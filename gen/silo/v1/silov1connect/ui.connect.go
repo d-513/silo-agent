@@ -130,6 +130,16 @@ const (
 	UIUpdateTunnelProcedure = "/silo.v1.UI/UpdateTunnel"
 	// UIDeleteTunnelProcedure is the fully-qualified name of the UI's DeleteTunnel RPC.
 	UIDeleteTunnelProcedure = "/silo.v1.UI/DeleteTunnel"
+	// UIListMailProcedure is the fully-qualified name of the UI's ListMail RPC.
+	UIListMailProcedure = "/silo.v1.UI/ListMail"
+	// UIGetMailProcedure is the fully-qualified name of the UI's GetMail RPC.
+	UIGetMailProcedure = "/silo.v1.UI/GetMail"
+	// UIDeleteMailProcedure is the fully-qualified name of the UI's DeleteMail RPC.
+	UIDeleteMailProcedure = "/silo.v1.UI/DeleteMail"
+	// UIUpdateMailboxProcedure is the fully-qualified name of the UI's UpdateMailbox RPC.
+	UIUpdateMailboxProcedure = "/silo.v1.UI/UpdateMailbox"
+	// UIRotateMailboxProcedure is the fully-qualified name of the UI's RotateMailbox RPC.
+	UIRotateMailboxProcedure = "/silo.v1.UI/RotateMailbox"
 	// UIListAutomationsProcedure is the fully-qualified name of the UI's ListAutomations RPC.
 	UIListAutomationsProcedure = "/silo.v1.UI/ListAutomations"
 	// UICreateAutomationProcedure is the fully-qualified name of the UI's CreateAutomation RPC.
@@ -361,6 +371,12 @@ type UIClient interface {
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
 	UpdateTunnel(context.Context, *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
 	DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error)
+	// Mail: each Bot's receive-only mailbox, fed by the CP's SMTP listener.
+	ListMail(context.Context, *connect.Request[v1.ListMailRequest]) (*connect.Response[v1.ListMailResponse], error)
+	GetMail(context.Context, *connect.Request[v1.GetMailRequest]) (*connect.Response[v1.Mail], error)
+	DeleteMail(context.Context, *connect.Request[v1.DeleteMailRequest]) (*connect.Response[v1.DeleteMailResponse], error)
+	UpdateMailbox(context.Context, *connect.Request[v1.UpdateMailboxRequest]) (*connect.Response[v1.Mailbox], error)
+	RotateMailbox(context.Context, *connect.Request[v1.RotateMailboxRequest]) (*connect.Response[v1.Mailbox], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -744,6 +760,36 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDeleteTunnelProcedure,
 			connect.WithSchema(uIMethods.ByName("DeleteTunnel")),
+			connect.WithClientOptions(opts...),
+		),
+		listMail: connect.NewClient[v1.ListMailRequest, v1.ListMailResponse](
+			httpClient,
+			baseURL+UIListMailProcedure,
+			connect.WithSchema(uIMethods.ByName("ListMail")),
+			connect.WithClientOptions(opts...),
+		),
+		getMail: connect.NewClient[v1.GetMailRequest, v1.Mail](
+			httpClient,
+			baseURL+UIGetMailProcedure,
+			connect.WithSchema(uIMethods.ByName("GetMail")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteMail: connect.NewClient[v1.DeleteMailRequest, v1.DeleteMailResponse](
+			httpClient,
+			baseURL+UIDeleteMailProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteMail")),
+			connect.WithClientOptions(opts...),
+		),
+		updateMailbox: connect.NewClient[v1.UpdateMailboxRequest, v1.Mailbox](
+			httpClient,
+			baseURL+UIUpdateMailboxProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateMailbox")),
+			connect.WithClientOptions(opts...),
+		),
+		rotateMailbox: connect.NewClient[v1.RotateMailboxRequest, v1.Mailbox](
+			httpClient,
+			baseURL+UIRotateMailboxProcedure,
+			connect.WithSchema(uIMethods.ByName("RotateMailbox")),
 			connect.WithClientOptions(opts...),
 		),
 		listAutomations: connect.NewClient[v1.ListAutomationsRequest, v1.ListAutomationsResponse](
@@ -1285,6 +1331,11 @@ type uIClient struct {
 	createTunnel            *connect.Client[v1.CreateTunnelRequest, v1.Tunnel]
 	updateTunnel            *connect.Client[v1.UpdateTunnelRequest, v1.Tunnel]
 	deleteTunnel            *connect.Client[v1.DeleteTunnelRequest, v1.DeleteTunnelResponse]
+	listMail                *connect.Client[v1.ListMailRequest, v1.ListMailResponse]
+	getMail                 *connect.Client[v1.GetMailRequest, v1.Mail]
+	deleteMail              *connect.Client[v1.DeleteMailRequest, v1.DeleteMailResponse]
+	updateMailbox           *connect.Client[v1.UpdateMailboxRequest, v1.Mailbox]
+	rotateMailbox           *connect.Client[v1.RotateMailboxRequest, v1.Mailbox]
 	listAutomations         *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
 	createAutomation        *connect.Client[v1.CreateAutomationRequest, v1.Automation]
 	updateAutomation        *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
@@ -1606,6 +1657,31 @@ func (c *uIClient) UpdateTunnel(ctx context.Context, req *connect.Request[v1.Upd
 // DeleteTunnel calls silo.v1.UI.DeleteTunnel.
 func (c *uIClient) DeleteTunnel(ctx context.Context, req *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error) {
 	return c.deleteTunnel.CallUnary(ctx, req)
+}
+
+// ListMail calls silo.v1.UI.ListMail.
+func (c *uIClient) ListMail(ctx context.Context, req *connect.Request[v1.ListMailRequest]) (*connect.Response[v1.ListMailResponse], error) {
+	return c.listMail.CallUnary(ctx, req)
+}
+
+// GetMail calls silo.v1.UI.GetMail.
+func (c *uIClient) GetMail(ctx context.Context, req *connect.Request[v1.GetMailRequest]) (*connect.Response[v1.Mail], error) {
+	return c.getMail.CallUnary(ctx, req)
+}
+
+// DeleteMail calls silo.v1.UI.DeleteMail.
+func (c *uIClient) DeleteMail(ctx context.Context, req *connect.Request[v1.DeleteMailRequest]) (*connect.Response[v1.DeleteMailResponse], error) {
+	return c.deleteMail.CallUnary(ctx, req)
+}
+
+// UpdateMailbox calls silo.v1.UI.UpdateMailbox.
+func (c *uIClient) UpdateMailbox(ctx context.Context, req *connect.Request[v1.UpdateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
+	return c.updateMailbox.CallUnary(ctx, req)
+}
+
+// RotateMailbox calls silo.v1.UI.RotateMailbox.
+func (c *uIClient) RotateMailbox(ctx context.Context, req *connect.Request[v1.RotateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
+	return c.rotateMailbox.CallUnary(ctx, req)
 }
 
 // ListAutomations calls silo.v1.UI.ListAutomations.
@@ -2079,6 +2155,12 @@ type UIHandler interface {
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
 	UpdateTunnel(context.Context, *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
 	DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error)
+	// Mail: each Bot's receive-only mailbox, fed by the CP's SMTP listener.
+	ListMail(context.Context, *connect.Request[v1.ListMailRequest]) (*connect.Response[v1.ListMailResponse], error)
+	GetMail(context.Context, *connect.Request[v1.GetMailRequest]) (*connect.Response[v1.Mail], error)
+	DeleteMail(context.Context, *connect.Request[v1.DeleteMailRequest]) (*connect.Response[v1.DeleteMailResponse], error)
+	UpdateMailbox(context.Context, *connect.Request[v1.UpdateMailboxRequest]) (*connect.Response[v1.Mailbox], error)
+	RotateMailbox(context.Context, *connect.Request[v1.RotateMailboxRequest]) (*connect.Response[v1.Mailbox], error)
 	ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error)
 	CreateAutomation(context.Context, *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error)
 	UpdateAutomation(context.Context, *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error)
@@ -2458,6 +2540,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteTunnelProcedure,
 		svc.DeleteTunnel,
 		connect.WithSchema(uIMethods.ByName("DeleteTunnel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListMailHandler := connect.NewUnaryHandler(
+		UIListMailProcedure,
+		svc.ListMail,
+		connect.WithSchema(uIMethods.ByName("ListMail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetMailHandler := connect.NewUnaryHandler(
+		UIGetMailProcedure,
+		svc.GetMail,
+		connect.WithSchema(uIMethods.ByName("GetMail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteMailHandler := connect.NewUnaryHandler(
+		UIDeleteMailProcedure,
+		svc.DeleteMail,
+		connect.WithSchema(uIMethods.ByName("DeleteMail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateMailboxHandler := connect.NewUnaryHandler(
+		UIUpdateMailboxProcedure,
+		svc.UpdateMailbox,
+		connect.WithSchema(uIMethods.ByName("UpdateMailbox")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRotateMailboxHandler := connect.NewUnaryHandler(
+		UIRotateMailboxProcedure,
+		svc.RotateMailbox,
+		connect.WithSchema(uIMethods.ByName("RotateMailbox")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListAutomationsHandler := connect.NewUnaryHandler(
@@ -3044,6 +3156,16 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIUpdateTunnelHandler.ServeHTTP(w, r)
 		case UIDeleteTunnelProcedure:
 			uIDeleteTunnelHandler.ServeHTTP(w, r)
+		case UIListMailProcedure:
+			uIListMailHandler.ServeHTTP(w, r)
+		case UIGetMailProcedure:
+			uIGetMailHandler.ServeHTTP(w, r)
+		case UIDeleteMailProcedure:
+			uIDeleteMailHandler.ServeHTTP(w, r)
+		case UIUpdateMailboxProcedure:
+			uIUpdateMailboxHandler.ServeHTTP(w, r)
+		case UIRotateMailboxProcedure:
+			uIRotateMailboxHandler.ServeHTTP(w, r)
 		case UIListAutomationsProcedure:
 			uIListAutomationsHandler.ServeHTTP(w, r)
 		case UICreateAutomationProcedure:
@@ -3405,6 +3527,26 @@ func (UnimplementedUIHandler) UpdateTunnel(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) DeleteTunnel(context.Context, *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteTunnel is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListMail(context.Context, *connect.Request[v1.ListMailRequest]) (*connect.Response[v1.ListMailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListMail is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetMail(context.Context, *connect.Request[v1.GetMailRequest]) (*connect.Response[v1.Mail], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetMail is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteMail(context.Context, *connect.Request[v1.DeleteMailRequest]) (*connect.Response[v1.DeleteMailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteMail is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateMailbox(context.Context, *connect.Request[v1.UpdateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateMailbox is not implemented"))
+}
+
+func (UnimplementedUIHandler) RotateMailbox(context.Context, *connect.Request[v1.RotateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RotateMailbox is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListAutomations(context.Context, *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {

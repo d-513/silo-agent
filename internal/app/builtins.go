@@ -35,6 +35,8 @@ var sharedTools = map[string][2]string{
 	"open_tunnel":       {security.Tunnels, "open"},
 	"list_tunnels":      {security.Tunnels, "list"},
 	"close_tunnel":      {security.Tunnels, "close"},
+	"list_mail":         {security.Mailbox, "list"},
+	"read_mail":         {security.Mailbox, "read"},
 }
 
 // sharedToolName is the chat tool behind connector.action, if it is shared.
@@ -71,6 +73,9 @@ func (a *App) runShared(ctx context.Context, bot *db.Bot, runID, name string, ar
 	case security.Tunnels:
 		// tunnels.Tool gates itself: opening is one rule, going public another.
 		return a.Tunnels.Tool(ctx, bot, runID, name, args, structured)
+	case security.Mailbox:
+		// mailbox.Tool gates itself: listing and reading are separate rules.
+		return a.Mail.Tool(ctx, bot, runID, name, args, structured)
 	case security.Bot:
 		if name == "feed" {
 			return a.Feed.Tool(ctx, bot, runID, args)
