@@ -20,6 +20,9 @@ const highlight = HighlightStyle.define([
 
 // Every color is a token, so one spec serves both themes; the flag only tells
 // CodeMirror which of its own defaults (selection match, tooltips) to use.
+// It goes in the wrapper's `theme` prop, not `extensions`: left unset, the
+// wrapper adds its own light theme (a #fff ground) ahead of the extensions,
+// where it wins and puts dark-mode ink on white.
 const themeFor = (dark: boolean) =>
   EditorView.theme(
     {
@@ -57,7 +60,8 @@ export function YamlEditor({ value, onChange }: { value: string; onChange: (v: s
       <CodeMirror
         value={value}
         height="20rem"
-        extensions={[yaml(), syntaxHighlighting(highlight), theme, EditorView.lineWrapping]}
+        theme={theme}
+        extensions={[yaml(), syntaxHighlighting(highlight), EditorView.lineWrapping]}
         onChange={onChange}
         basicSetup={{ foldGutter: false }}
       />
