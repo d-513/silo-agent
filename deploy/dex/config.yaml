@@ -1,0 +1,40 @@
+# Dex for local development: an OIDC provider to try "Single sign-on" against.
+# Not for production: the client secret and the one user's password are here.
+#
+# In Admin → Settings → Sign-in (or silo.yaml):
+#   oidc.issuer         http://localhost:5556/dex
+#   oidc.client_id      silo
+#   oidc.client_secret  silo-dev-secret
+# Then sign in as admin@local / password. Dex vouches for that email, so it
+# links to the bootstrap admin of silo.yaml.example.
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: silo
+    name: Silo (dev)
+    secret: silo-dev-secret
+    redirectURIs:
+      - http://localhost:5173/auth/oidc/callback
+      - http://localhost:8080/auth/oidc/callback
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: admin@local
+    # bcrypt of "password"
+    hash: "$2y$10$uzmqEbpktitouPdRwIV3wOx9MeGKv2NOG8S2.ev.PSDQ1KVN.IswG"
+    username: admin
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5466
+  - email: guest@local
+    hash: "$2y$10$uzmqEbpktitouPdRwIV3wOx9MeGKv2NOG8S2.ev.PSDQ1KVN.IswG"
+    username: guest
+    userID: 41331323-6f44-45e6-b3b9-2c4b60c02be5

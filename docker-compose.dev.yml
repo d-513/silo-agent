@@ -72,6 +72,20 @@ services:
       - "127.0.0.1:5232:5232"
     restart: unless-stopped
 
+  # OIDC provider for trying single sign-on (Dex). Issuer
+  # http://localhost:5556/dex, client silo / silo-dev-secret, users
+  # admin@local and guest@local with the password "password"
+  # (deploy/dex/config.yaml). Nothing is stored: a restart forgets sessions.
+  dex:
+    image: ghcr.io/dexidp/dex:latest
+    container_name: silodb-dex
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes:
+      - ./deploy/dex:/etc/dex:ro
+    ports:
+      - "127.0.0.1:5556:5556"
+    restart: unless-stopped
+
 volumes:
   silodb-radicale:
   silodb-pg:

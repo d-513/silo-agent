@@ -65,9 +65,70 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `providers.openrouter.ignore` | `DeepInfra` | `SILO_PROVIDERS__OPENROUTER__IGNORE` | Comma list of upstream hosts OpenRouter must not route to (`provider.ignore`). DeepInfra sends a tool call's arguments in one chunk at the end, so Python/terminal/write input cannot stream into the thread. `none` routes anywhere |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | First admin only. Ignored after a user exists |
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Same. Wipe `data/` to re-seed |
+| `auth.password` | `true` | `SILO_AUTH__PASSWORD` | Password sign-in. `false` leaves only OIDC, and only counts while OIDC is configured (see Sign-in) |
+| `auth.trusted_proxies` | (none) | `SILO_AUTH__TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxies in front of the control plane. `X-Forwarded-For` is believed only from them |
+| `oidc.issuer` | (none) | `SILO_OIDC__ISSUER` | The OIDC provider's issuer URL. OIDC sign-in is on when this and `oidc.client_id` are set |
+| `oidc.client_id` | (none) | `SILO_OIDC__CLIENT_ID` | OAuth client ID registered at the provider |
+| `oidc.client_secret` | (none) | `SILO_OIDC__CLIENT_SECRET` | Its secret |
+| `oidc.scopes` | `openid email profile` | `SILO_OIDC__SCOPES` | Space-separated scopes. `openid` is always requested |
+| `oidc.label` | `Single sign-on` | `SILO_OIDC__LABEL` | Text of the button on the sign-in page |
+| `oidc.auto_create` | `false` | `SILO_OIDC__AUTO_CREATE` | Make an account the first time someone signs in |
+| `oidc.allowed_domains` | (none) | `SILO_OIDC__ALLOWED_DOMAINS` | Comma-separated email domains `auto_create` is limited to |
+| `oidc.groups_claim` | `groups` | `SILO_OIDC__GROUPS_CLAIM` | ID token claim that lists a person's groups |
+| `oidc.admin_group` | (none) | `SILO_OIDC__ADMIN_GROUP` | Members of this group are admins, checked at every OIDC sign-in |
 | `search.engine` | `duckduckgo_scraper` | `SILO_SEARCH__ENGINE` | Web search engine. Future engines may add keys under `search.<engine_id>` |
 | `connector_vars.<name>` | (none) | `SILO_CONNECTOR_VARS__<NAME>` | Connector variable. Referenced as `${NAME}` in connector settings. **Plain text, not a secret** |
 | `autoenable_connectors` | (none) | `SILO_AUTOENABLE_CONNECTORS` | List of library connector identifiers every new Bot gets. The env form is comma-separated (`lightpanda,fal_ai`) |
+
+## Sign-in
+
+Accounts live in Postgres; **Admin → Users** manages them. `bootstrap.*` makes the first admin and nothing else.
+
+- **New people get an invite link.** An admin makes one for an email address (optionally as an admin); the person opens it and chooses their own password. A link works once and lasts 7 days. Silo sends no mail: the admin passes the link on. A password is at least 8 characters.
+- **A forgotten password** is a reset link from the user's page in Admin → Users (once, 24 hours), or a password the admin sets there. Either one signs the user out everywhere.
+- **Disable** blocks a user's sign-in and stops their Bots (runs, automations, channels, tunnels and the boxes) without deleting anything. **Delete** removes the user with their Bots, the Bots' files and their personal skills. An admin cannot disable, delete or demote themselves, so one admin always remains.
+- **Two-factor** is each user's choice on their Account page: an authenticator app (TOTP) plus ten single-use recovery codes, asked for after the password. An admin can turn a user's two-factor off if they lose both. It applies to password sign-in; a sign-in through OIDC is the provider's to protect.
+- **Sessions** last 30 days. The Account page lists them and signs any of them out; changing the password signs out all the others. The table holds only a hash of each session cookie. The cookie is `Secure` when `public_url` is `https://`.
+- **Guessing is limited.** Wrong passwords, two-factor codes and invite links count per account and address: five tries, then a wait that doubles from 30 seconds to 15 minutes; an address is also held after 20 failures in 15 minutes and an account after 50 in an hour. Counts are in memory and clear on restart.
+
+### Behind a reverse proxy
+
+The limiter and the session list need the visitor's address. By default that is the address of the TCP connection, and `X-Forwarded-For` is ignored, because anyone can send that header. Behind a proxy that makes every visitor look like the proxy: they share one limit, so a few wrong passwords from anyone can make everyone wait. Name the proxy and its header is believed:
+
+```yaml
+auth:
+  trusted_proxies: 127.0.0.1, 10.0.0.0/8   # the proxy's address as the control plane sees it
+```
+
+The client is then the right-most `X-Forwarded-For` entry that is not itself a trusted proxy, so a visitor cannot forge it by sending their own header. The proxy must append to (or set) `X-Forwarded-For`.
+
+### OIDC
+
+One OpenID Connect provider (Authentik, Keycloak, Dex, Google, Entra, …) can sign people in beside, or instead of, passwords. Register a client at the provider with the redirect URI `{public_url}/auth/oidc/callback` (Admin → Settings → Sign-in shows it), then:
+
+```yaml
+oidc:
+  issuer: https://id.example.com/application/o/silo/
+  client_id: silo
+  client_secret: "…"
+  # label: Company login          # the button's text
+  # auto_create: true             # make accounts on first sign-in
+  # allowed_domains: example.com  # ...but only for these email domains
+  # admin_group: silo-admins      # members are admins (needs a groups claim)
+```
+
+**Check** in Admin → Settings → Sign-in asks the provider for its discovery document with the saved settings. A trailing slash on the issuer is tolerated either way.
+
+Who a sign-in becomes:
+
+1. The user already linked to that identity (issuer + subject).
+2. Otherwise the user whose email matches, **only if the provider says the email is verified** (`email_verified: true`) and that user is not linked to another identity. They are linked from then on, and their password keeps working.
+3. Otherwise, with `auto_create` on (and the domain allowed), a new user with no password. They can set one on their Account page.
+4. Otherwise nobody: the sign-in page says to ask an admin for an invite.
+
+A provider that does not send `email_verified` (some Entra setups) can therefore only sign in people who are already linked; the email is read from the userinfo endpoint when the ID token has none. With `admin_group` set, the provider decides who is an admin at every sign-in, except that it never demotes the last one. With it unset, roles are only what Admin → Users says.
+
+`auth.password: false` hides the password form and refuses password sign-in. It is ignored while OIDC is not configured, so removing the OIDC settings brings passwords back.
 
 ## Tunnels
 
@@ -168,6 +229,9 @@ bootstrap:
   email: admin@local
   password: change-me
 
+auth:
+  trusted_proxies: 127.0.0.1   # only when a reverse proxy is in front
+
 providers:
   openrouter:
     api_key: "sk-or-…"
@@ -200,5 +264,5 @@ runs:
 - Connector / skill libraries: Postgres + `data/skills/`
 - Bot tokens, container IDs, chats, secrets: Postgres (`database_url`)
 - A chat's model (override): Postgres `chats.model`
-- Session cookie: issued at sign-in. A missing session row is a stale cookie, not a server fault
-- Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz` to `http_addr`
+- Users, sessions, invite links and two-factor secrets: Postgres. A missing session row is a stale cookie, not a server fault
+- Frontend: Vite `web/` proxies `/silo.v1.UI`, `/silo.v1.BotWorker`, `/vnc`, `/console`, `/healthz`, `/auth` to `http_addr`

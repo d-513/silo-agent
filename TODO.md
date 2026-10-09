@@ -132,7 +132,7 @@ A demo order that plays to the advantages, and what to say is unfinished.
 
 Honest caveats to say out loud:
 
-- Auth is session cookies; OIDC is not in yet.
+- Auth is session cookies with invite links, TOTP two-factor and one OIDC provider. No passkeys, no email-based reset (Silo sends no mail), no SCIM.
 - The Docker host can be remote at the protocol level, but there is no multi-host UI.
 - Telegram bot accounts and WhatsApp linked devices cannot read history, so `chats` falls back to the local log.
 - WhatsApp runs on the unofficial linked-device protocol: use a spare number, and expect WhatsApp to be free to restrict automated accounts. Inbound media arrives as a placeholder, not a file.

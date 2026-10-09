@@ -28,6 +28,17 @@ bootstrap:
   email: admin@local
   password: change-me
 
+# Sign-in (docs/CONFIGURATION.md § Sign-in). More people get an account from
+# an invite link in Admin → Users.
+# auth:
+#   trusted_proxies: 127.0.0.1   # reverse proxies whose X-Forwarded-For is believed
+#   password: false              # OIDC only; ignored unless oidc is configured
+# oidc:
+#   issuer: https://id.example.com
+#   client_id: silo
+#   client_secret: ""
+#   auto_create: false           # make accounts on first sign-in
+
 # Model providers. Env wins: SILO_PROVIDERS__OPENROUTER__API_KEY,
 # SILO_PROVIDERS__OPENAI__API_KEY, SILO_PROVIDERS__ANTHROPIC__API_KEY.
 providers:
