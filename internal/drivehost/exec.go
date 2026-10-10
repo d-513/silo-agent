@@ -33,11 +33,13 @@ type proc struct {
 	err  error
 }
 
-func (e Exec) Start(args, env []string) (Proc, error) {
+func (e Exec) Start(args, env []string, log func(LogEntry)) (Proc, error) {
 	cmd := exec.Command(e.bin(), args...)
 	cmd.Env = env
 	r := &ring{max: 8 << 10}
-	cmd.Stderr = r
+	// The mount logs at DEBUG for the journal; only notices and errors reach
+	// the tail and the container's own log.
+	cmd.Stderr = &logSink{out: r, onEntry: log}
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
 		return nil, err

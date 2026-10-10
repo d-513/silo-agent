@@ -292,6 +292,26 @@ type Drive struct {
 	UpdatedAt   time.Time
 }
 
+// DriveChange is one line of a Bot's drive journal: something written, deleted
+// or renamed on a mounted drive, as its sidecar read it off rclone's log. It
+// holds what happened, never content. Drive is the drive's name at the time,
+// so a line still reads after its drive is removed; Sources is the JSON list
+// of runs at work then (empty: outside a run).
+type DriveChange struct {
+	ID      string `gorm:"primaryKey"`
+	BotID   string `gorm:"not null;default:'';index:drive_change_bot_seq,priority:1"`
+	DriveID string `gorm:"not null;default:''"`
+	Drive   string `gorm:"not null;default:''"`
+	Op      string `gorm:"not null;default:''"`
+	Path    string `gorm:"not null;default:''"`
+	OldPath string `gorm:"not null;default:''"`
+	Size    int64  `gorm:"not null;default:0"`
+	Sources string `gorm:"not null;default:''"`
+	// Seq orders the journal: lines of one batch share a timestamp.
+	Seq int64     `gorm:"not null;autoIncrement;index:drive_change_bot_seq,priority:2"`
+	At  time.Time `gorm:"not null"`
+}
+
 // DriveHost is a Bot's drive sidecar: the last container and the hash of the
 // token it dials the CP with.
 type DriveHost struct {
@@ -547,7 +567,7 @@ func Models() []any {
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
-		&Drive{}, &DriveHost{},
+		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},

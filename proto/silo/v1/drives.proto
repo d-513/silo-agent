@@ -61,6 +61,7 @@ message DriveUp {
     DriveStatus status = 2;
     DriveToken token = 3;
     DriveListResult list = 4;
+    DriveChanges changes = 5;
   }
 }
 
@@ -75,6 +76,28 @@ message DriveStatus {
   // mounting | mounted | error | stopped
   string state = 2;
   string detail = 3;
+}
+
+// DriveChange is one thing done to a mounted drive through its mount: read off
+// rclone's own log, so it covers whatever wrote there (a tool, a script, the
+// owner in the Console). Only what happened is reported, never content.
+message DriveChange {
+  // added | modified (an upload reached the remote) | deleted | renamed
+  string op = 1;
+  // Path inside the mount.
+  string path = 2;
+  // Where it was before a rename.
+  string old_path = 3;
+  // Bytes uploaded, for added and modified.
+  int64 size = 4;
+  // Unix milliseconds, from the log line.
+  int64 at = 5;
+}
+
+// DriveChanges is a batch of one drive's changes, oldest first.
+message DriveChanges {
+  string id = 1;
+  repeated DriveChange changes = 2;
 }
 
 message DriveToken {

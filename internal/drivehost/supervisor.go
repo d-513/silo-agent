@@ -46,7 +46,9 @@ type Proc interface {
 // Runner is the OS boundary: processes and mount points. The real one execs
 // rclone and reads /proc/self/mountinfo; tests use a fake.
 type Runner interface {
-	Start(args, env []string) (Proc, error)
+	// Start runs `rclone mount`. log receives the log lines the drive journal
+	// reads (journal.go); it may be called from another goroutine.
+	Start(args, env []string, log func(LogEntry)) (Proc, error)
 	Output(ctx context.Context, args, env []string) ([]byte, error)
 	Mounted(path string) bool
 	Unmount(path string) error
@@ -66,6 +68,9 @@ type Config struct {
 	BackoffMin, BackoffMax time.Duration
 	// ListTimeout bounds a one-shot listing.
 	ListTimeout time.Duration
+	// JournalFlush is how long drive changes gather before they are sent as
+	// one batch.
+	JournalFlush time.Duration
 }
 
 func (c *Config) defaults() {
@@ -90,6 +95,9 @@ func (c *Config) defaults() {
 	if c.ListTimeout == 0 {
 		c.ListTimeout = 45 * time.Second
 	}
+	if c.JournalFlush == 0 {
+		c.JournalFlush = 300 * time.Millisecond
+	}
 }
 
 // Supervisor owns the running mounts. It outlives any one CP session: a CP
@@ -102,6 +110,11 @@ type Supervisor struct {
 	mu       sync.Mutex
 	mounts   map[string]*mount
 	cacheMax string
+
+	// The drive journal: changes waiting to go out, per drive, oldest first.
+	jmu     sync.Mutex
+	changes map[string][]*v1.DriveChange
+	flush   *time.Timer
 }
 
 type mount struct {
@@ -120,7 +133,44 @@ type mount struct {
 // snapshot on reconnect).
 func New(cfg Config, run Runner, emit func(*v1.DriveUp)) *Supervisor {
 	cfg.defaults()
-	return &Supervisor{cfg: cfg, run: run, emit: emit, mounts: map[string]*mount{}}
+	return &Supervisor{cfg: cfg, run: run, emit: emit, mounts: map[string]*mount{}, changes: map[string][]*v1.DriveChange{}}
+}
+
+const (
+	// journalBatch is the most changes one frame carries; journalBacklog the
+	// most one drive holds between flushes (an `rm -r` of a big tree is a
+	// burst: past this the oldest are dropped rather than held in memory).
+	journalBatch   = 200
+	journalBacklog = 5000
+)
+
+// journaled queues one change of a drive; a timer sends what gathered.
+func (s *Supervisor) journaled(id string, c *v1.DriveChange) {
+	s.jmu.Lock()
+	defer s.jmu.Unlock()
+	q := append(s.changes[id], c)
+	if len(q) > journalBacklog {
+		q = q[len(q)-journalBacklog:]
+	}
+	s.changes[id] = q
+	if s.flush == nil {
+		s.flush = time.AfterFunc(s.cfg.JournalFlush, s.flushJournal)
+	}
+}
+
+func (s *Supervisor) flushJournal() {
+	s.jmu.Lock()
+	out := s.changes
+	s.changes = map[string][]*v1.DriveChange{}
+	s.flush = nil
+	s.jmu.Unlock()
+	for id, q := range out {
+		for len(q) > 0 {
+			n := min(len(q), journalBatch)
+			s.emit(&v1.DriveUp{Body: &v1.DriveUp_Changes{Changes: &v1.DriveChanges{Id: id, Changes: q[:n]}}})
+			q = q[n:]
+		}
+	}
 }
 
 var idRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -133,6 +183,8 @@ var flagRe = regexp.MustCompile(`^--[a-z0-9][a-z0-9-]*(=.*)?$`)
 var reserved = []string{
 	"--config", "--rc", "--rc-addr", "--daemon", "--allow-root", "--cache-dir",
 	"--uid", "--gid", "--allow-other", "--log-file", "--password-command",
+	// The drive journal reads the log: its level and shape are not a spec's.
+	"--log-level", "--use-json-log", "--log-format", "--verbose", "--quiet",
 }
 
 // Validate rejects a spec the supervisor must not run. The CP renders specs
@@ -312,7 +364,9 @@ func MountArgs(spec *v1.DriveSpec, cfg Config, conf, cacheMax string) []string {
 		"--vfs-cache-mode", "writes",
 		"--cache-dir", filepath.Join(cfg.CacheRoot, spec.GetId()),
 		"--dir-cache-time", "30s",
-		"--log-level", "NOTICE",
+		// The drive journal is read off this log (journal.go): a delete only
+		// shows at DEBUG. The lines stay in the sidecar.
+		"--log-level", "DEBUG", "--use-json-log",
 	}
 	if cacheMax != "" {
 		args = append(args, "--vfs-cache-max-size", cacheMax)
@@ -409,7 +463,12 @@ func (s *Supervisor) loop(ctx context.Context, m *mount, cacheMax string) {
 			continue
 		}
 		s.setStatus(m, StateMounting, "")
-		p, err := s.run.Start(MountArgs(m.spec, s.cfg, conf, cacheMax), childEnv(m.spec))
+		jr := newJournal()
+		p, err := s.run.Start(MountArgs(m.spec, s.cfg, conf, cacheMax), childEnv(m.spec), func(e LogEntry) {
+			if c := jr.feed(e); c != nil {
+				s.journaled(id, c)
+			}
+		})
 		if err != nil {
 			s.setStatus(m, StateError, err.Error())
 			if !sleep(ctx, wait) {

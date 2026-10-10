@@ -213,6 +213,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
+	a.Drives.OnChange = a.Changes.RecordDrive
 	a.Feed = feed.New(a.DB, a)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)

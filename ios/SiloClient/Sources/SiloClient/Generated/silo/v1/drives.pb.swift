@@ -171,6 +171,14 @@ public nonisolated struct Silo_V1_DriveUp: Sendable {
     set {body = .list(newValue)}
   }
 
+  public var changes: Silo_V1_DriveChanges {
+    get {
+      if case .changes(let v)? = body {return v}
+      return Silo_V1_DriveChanges()
+    }
+    set {body = .changes(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -178,6 +186,7 @@ public nonisolated struct Silo_V1_DriveUp: Sendable {
     case status(Silo_V1_DriveStatus)
     case token(Silo_V1_DriveToken)
     case list(Silo_V1_DriveListResult)
+    case changes(Silo_V1_DriveChanges)
 
   }
 
@@ -209,6 +218,49 @@ public nonisolated struct Silo_V1_DriveStatus: Sendable {
   public var state: String = String()
 
   public var detail: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// DriveChange is one thing done to a mounted drive through its mount: read off
+/// rclone's own log, so it covers whatever wrote there (a tool, a script, the
+/// owner in the Console). Only what happened is reported, never content.
+public nonisolated struct Silo_V1_DriveChange: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// added | modified (an upload reached the remote) | deleted | renamed
+  public var op: String = String()
+
+  /// Path inside the mount.
+  public var path: String = String()
+
+  /// Where it was before a rename.
+  public var oldPath: String = String()
+
+  /// Bytes uploaded, for added and modified.
+  public var size: Int64 = 0
+
+  /// Unix milliseconds, from the log line.
+  public var at: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// DriveChanges is a batch of one drive's changes, oldest first.
+public nonisolated struct Silo_V1_DriveChanges: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var changes: [Silo_V1_DriveChange] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -479,7 +531,7 @@ nonisolated extension Silo_V1_DriveList: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Silo_V1_DriveUp: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DriveUp"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hello\0\u{1}status\0\u{1}token\0\u{1}list\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hello\0\u{1}status\0\u{1}token\0\u{1}list\0\u{1}changes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -539,6 +591,19 @@ nonisolated extension Silo_V1_DriveUp: SwiftProtobuf.Message, SwiftProtobuf._Mes
           self.body = .list(v)
         }
       }()
+      case 5: try {
+        var v: Silo_V1_DriveChanges?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .changes(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .changes(v)
+        }
+      }()
       default: break
       }
     }
@@ -565,6 +630,10 @@ nonisolated extension Silo_V1_DriveUp: SwiftProtobuf.Message, SwiftProtobuf._Mes
     case .list?: try {
       guard case .list(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    }()
+    case .changes?: try {
+      guard case .changes(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
     }()
     case nil: break
     }
@@ -643,6 +712,91 @@ nonisolated extension Silo_V1_DriveStatus: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.id != rhs.id {return false}
     if lhs.state != rhs.state {return false}
     if lhs.detail != rhs.detail {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DriveChange: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DriveChange"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}op\0\u{1}path\0\u{3}old_path\0\u{1}size\0\u{1}at\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.op) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.oldPath) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.size) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.at) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.op.isEmpty {
+      try visitor.visitSingularStringField(value: self.op, fieldNumber: 1)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 2)
+    }
+    if !self.oldPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.oldPath, fieldNumber: 3)
+    }
+    if self.size != 0 {
+      try visitor.visitSingularInt64Field(value: self.size, fieldNumber: 4)
+    }
+    if self.at != 0 {
+      try visitor.visitSingularInt64Field(value: self.at, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DriveChange, rhs: Silo_V1_DriveChange) -> Bool {
+    if lhs.op != rhs.op {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.oldPath != rhs.oldPath {return false}
+    if lhs.size != rhs.size {return false}
+    if lhs.at != rhs.at {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_DriveChanges: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DriveChanges"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}changes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.changes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.changes.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.changes, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_DriveChanges, rhs: Silo_V1_DriveChanges) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.changes != rhs.changes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -336,6 +336,7 @@ type DriveUp struct {
 	//	*DriveUp_Status
 	//	*DriveUp_Token
 	//	*DriveUp_List
+	//	*DriveUp_Changes
 	Body          isDriveUp_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -414,6 +415,15 @@ func (x *DriveUp) GetList() *DriveListResult {
 	return nil
 }
 
+func (x *DriveUp) GetChanges() *DriveChanges {
+	if x != nil {
+		if x, ok := x.Body.(*DriveUp_Changes); ok {
+			return x.Changes
+		}
+	}
+	return nil
+}
+
 type isDriveUp_Body interface {
 	isDriveUp_Body()
 }
@@ -434,6 +444,10 @@ type DriveUp_List struct {
 	List *DriveListResult `protobuf:"bytes,4,opt,name=list,proto3,oneof"`
 }
 
+type DriveUp_Changes struct {
+	Changes *DriveChanges `protobuf:"bytes,5,opt,name=changes,proto3,oneof"`
+}
+
 func (*DriveUp_Hello) isDriveUp_Body() {}
 
 func (*DriveUp_Status) isDriveUp_Body() {}
@@ -441,6 +455,8 @@ func (*DriveUp_Status) isDriveUp_Body() {}
 func (*DriveUp_Token) isDriveUp_Body() {}
 
 func (*DriveUp_List) isDriveUp_Body() {}
+
+func (*DriveUp_Changes) isDriveUp_Body() {}
 
 // DriveHello is sent first, at once: ConnectRPC holds the stream's headers
 // until the first message.
@@ -549,6 +565,143 @@ func (x *DriveStatus) GetDetail() string {
 	return ""
 }
 
+// DriveChange is one thing done to a mounted drive through its mount: read off
+// rclone's own log, so it covers whatever wrote there (a tool, a script, the
+// owner in the Console). Only what happened is reported, never content.
+type DriveChange struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// added | modified (an upload reached the remote) | deleted | renamed
+	Op string `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	// Path inside the mount.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Where it was before a rename.
+	OldPath string `protobuf:"bytes,3,opt,name=old_path,json=oldPath,proto3" json:"old_path,omitempty"`
+	// Bytes uploaded, for added and modified.
+	Size int64 `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
+	// Unix milliseconds, from the log line.
+	At            int64 `protobuf:"varint,5,opt,name=at,proto3" json:"at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DriveChange) Reset() {
+	*x = DriveChange{}
+	mi := &file_silo_v1_drives_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriveChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriveChange) ProtoMessage() {}
+
+func (x *DriveChange) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_drives_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriveChange.ProtoReflect.Descriptor instead.
+func (*DriveChange) Descriptor() ([]byte, []int) {
+	return file_silo_v1_drives_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DriveChange) GetOp() string {
+	if x != nil {
+		return x.Op
+	}
+	return ""
+}
+
+func (x *DriveChange) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *DriveChange) GetOldPath() string {
+	if x != nil {
+		return x.OldPath
+	}
+	return ""
+}
+
+func (x *DriveChange) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *DriveChange) GetAt() int64 {
+	if x != nil {
+		return x.At
+	}
+	return 0
+}
+
+// DriveChanges is a batch of one drive's changes, oldest first.
+type DriveChanges struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Changes       []*DriveChange         `protobuf:"bytes,2,rep,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DriveChanges) Reset() {
+	*x = DriveChanges{}
+	mi := &file_silo_v1_drives_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriveChanges) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriveChanges) ProtoMessage() {}
+
+func (x *DriveChanges) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_drives_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriveChanges.ProtoReflect.Descriptor instead.
+func (*DriveChanges) Descriptor() ([]byte, []int) {
+	return file_silo_v1_drives_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DriveChanges) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DriveChanges) GetChanges() []*DriveChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
 type DriveToken struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -559,7 +712,7 @@ type DriveToken struct {
 
 func (x *DriveToken) Reset() {
 	*x = DriveToken{}
-	mi := &file_silo_v1_drives_proto_msgTypes[7]
+	mi := &file_silo_v1_drives_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -571,7 +724,7 @@ func (x *DriveToken) String() string {
 func (*DriveToken) ProtoMessage() {}
 
 func (x *DriveToken) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_drives_proto_msgTypes[7]
+	mi := &file_silo_v1_drives_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -584,7 +737,7 @@ func (x *DriveToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveToken.ProtoReflect.Descriptor instead.
 func (*DriveToken) Descriptor() ([]byte, []int) {
-	return file_silo_v1_drives_proto_rawDescGZIP(), []int{7}
+	return file_silo_v1_drives_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DriveToken) GetId() string {
@@ -614,7 +767,7 @@ type DriveListResult struct {
 
 func (x *DriveListResult) Reset() {
 	*x = DriveListResult{}
-	mi := &file_silo_v1_drives_proto_msgTypes[8]
+	mi := &file_silo_v1_drives_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -626,7 +779,7 @@ func (x *DriveListResult) String() string {
 func (*DriveListResult) ProtoMessage() {}
 
 func (x *DriveListResult) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_drives_proto_msgTypes[8]
+	mi := &file_silo_v1_drives_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -639,7 +792,7 @@ func (x *DriveListResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveListResult.ProtoReflect.Descriptor instead.
 func (*DriveListResult) Descriptor() ([]byte, []int) {
-	return file_silo_v1_drives_proto_rawDescGZIP(), []int{8}
+	return file_silo_v1_drives_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DriveListResult) GetRequestId() string {
@@ -680,7 +833,7 @@ type DriveDir struct {
 
 func (x *DriveDir) Reset() {
 	*x = DriveDir{}
-	mi := &file_silo_v1_drives_proto_msgTypes[9]
+	mi := &file_silo_v1_drives_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -692,7 +845,7 @@ func (x *DriveDir) String() string {
 func (*DriveDir) ProtoMessage() {}
 
 func (x *DriveDir) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_drives_proto_msgTypes[9]
+	mi := &file_silo_v1_drives_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -705,7 +858,7 @@ func (x *DriveDir) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveDir.ProtoReflect.Descriptor instead.
 func (*DriveDir) Descriptor() ([]byte, []int) {
-	return file_silo_v1_drives_proto_rawDescGZIP(), []int{9}
+	return file_silo_v1_drives_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DriveDir) GetName() string {
@@ -751,12 +904,13 @@ const file_silo_v1_drives_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12&\n" +
 	"\x04spec\x18\x02 \x01(\v2\x12.silo.v1.DriveSpecR\x04spec\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\"\xcb\x01\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\"\xfe\x01\n" +
 	"\aDriveUp\x12+\n" +
 	"\x05hello\x18\x01 \x01(\v2\x13.silo.v1.DriveHelloH\x00R\x05hello\x12.\n" +
 	"\x06status\x18\x02 \x01(\v2\x14.silo.v1.DriveStatusH\x00R\x06status\x12+\n" +
 	"\x05token\x18\x03 \x01(\v2\x13.silo.v1.DriveTokenH\x00R\x05token\x12.\n" +
-	"\x04list\x18\x04 \x01(\v2\x18.silo.v1.DriveListResultH\x00R\x04listB\x06\n" +
+	"\x04list\x18\x04 \x01(\v2\x18.silo.v1.DriveListResultH\x00R\x04list\x121\n" +
+	"\achanges\x18\x05 \x01(\v2\x15.silo.v1.DriveChangesH\x00R\achangesB\x06\n" +
 	"\x04body\"&\n" +
 	"\n" +
 	"DriveHello\x12\x18\n" +
@@ -764,7 +918,16 @@ const file_silo_v1_drives_proto_rawDesc = "" +
 	"\vDriveStatus\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x16\n" +
-	"\x06detail\x18\x03 \x01(\tR\x06detail\"2\n" +
+	"\x06detail\x18\x03 \x01(\tR\x06detail\"p\n" +
+	"\vDriveChange\x12\x0e\n" +
+	"\x02op\x18\x01 \x01(\tR\x02op\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x19\n" +
+	"\bold_path\x18\x03 \x01(\tR\aoldPath\x12\x12\n" +
+	"\x04size\x18\x04 \x01(\x03R\x04size\x12\x0e\n" +
+	"\x02at\x18\x05 \x01(\x03R\x02at\"N\n" +
+	"\fDriveChanges\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
+	"\achanges\x18\x02 \x03(\v2\x14.silo.v1.DriveChangeR\achanges\"2\n" +
 	"\n" +
 	"DriveToken\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
@@ -793,7 +956,7 @@ func file_silo_v1_drives_proto_rawDescGZIP() []byte {
 	return file_silo_v1_drives_proto_rawDescData
 }
 
-var file_silo_v1_drives_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_silo_v1_drives_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_silo_v1_drives_proto_goTypes = []any{
 	(*DriveSpec)(nil),       // 0: silo.v1.DriveSpec
 	(*DriveDown)(nil),       // 1: silo.v1.DriveDown
@@ -802,29 +965,33 @@ var file_silo_v1_drives_proto_goTypes = []any{
 	(*DriveUp)(nil),         // 4: silo.v1.DriveUp
 	(*DriveHello)(nil),      // 5: silo.v1.DriveHello
 	(*DriveStatus)(nil),     // 6: silo.v1.DriveStatus
-	(*DriveToken)(nil),      // 7: silo.v1.DriveToken
-	(*DriveListResult)(nil), // 8: silo.v1.DriveListResult
-	(*DriveDir)(nil),        // 9: silo.v1.DriveDir
-	nil,                     // 10: silo.v1.DriveSpec.EnvEntry
+	(*DriveChange)(nil),     // 7: silo.v1.DriveChange
+	(*DriveChanges)(nil),    // 8: silo.v1.DriveChanges
+	(*DriveToken)(nil),      // 9: silo.v1.DriveToken
+	(*DriveListResult)(nil), // 10: silo.v1.DriveListResult
+	(*DriveDir)(nil),        // 11: silo.v1.DriveDir
+	nil,                     // 12: silo.v1.DriveSpec.EnvEntry
 }
 var file_silo_v1_drives_proto_depIdxs = []int32{
-	10, // 0: silo.v1.DriveSpec.env:type_name -> silo.v1.DriveSpec.EnvEntry
+	12, // 0: silo.v1.DriveSpec.env:type_name -> silo.v1.DriveSpec.EnvEntry
 	2,  // 1: silo.v1.DriveDown.apply:type_name -> silo.v1.DriveApply
 	3,  // 2: silo.v1.DriveDown.list:type_name -> silo.v1.DriveList
 	0,  // 3: silo.v1.DriveApply.drives:type_name -> silo.v1.DriveSpec
 	0,  // 4: silo.v1.DriveList.spec:type_name -> silo.v1.DriveSpec
 	5,  // 5: silo.v1.DriveUp.hello:type_name -> silo.v1.DriveHello
 	6,  // 6: silo.v1.DriveUp.status:type_name -> silo.v1.DriveStatus
-	7,  // 7: silo.v1.DriveUp.token:type_name -> silo.v1.DriveToken
-	8,  // 8: silo.v1.DriveUp.list:type_name -> silo.v1.DriveListResult
-	9,  // 9: silo.v1.DriveListResult.dirs:type_name -> silo.v1.DriveDir
-	4,  // 10: silo.v1.DriveHost.Session:input_type -> silo.v1.DriveUp
-	1,  // 11: silo.v1.DriveHost.Session:output_type -> silo.v1.DriveDown
-	11, // [11:12] is the sub-list for method output_type
-	10, // [10:11] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	9,  // 7: silo.v1.DriveUp.token:type_name -> silo.v1.DriveToken
+	10, // 8: silo.v1.DriveUp.list:type_name -> silo.v1.DriveListResult
+	8,  // 9: silo.v1.DriveUp.changes:type_name -> silo.v1.DriveChanges
+	7,  // 10: silo.v1.DriveChanges.changes:type_name -> silo.v1.DriveChange
+	11, // 11: silo.v1.DriveListResult.dirs:type_name -> silo.v1.DriveDir
+	4,  // 12: silo.v1.DriveHost.Session:input_type -> silo.v1.DriveUp
+	1,  // 13: silo.v1.DriveHost.Session:output_type -> silo.v1.DriveDown
+	13, // [13:14] is the sub-list for method output_type
+	12, // [12:13] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_drives_proto_init() }
@@ -841,6 +1008,7 @@ func file_silo_v1_drives_proto_init() {
 		(*DriveUp_Status)(nil),
 		(*DriveUp_Token)(nil),
 		(*DriveUp_List)(nil),
+		(*DriveUp_Changes)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -848,7 +1016,7 @@ func file_silo_v1_drives_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_drives_proto_rawDesc), len(file_silo_v1_drives_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

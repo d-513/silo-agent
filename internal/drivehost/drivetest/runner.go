@@ -41,6 +41,7 @@ type proc struct {
 	done chan struct{}
 	once sync.Once
 	tail string
+	log  func(drivehost.LogEntry)
 }
 
 func (p *proc) Wait() error  { <-p.done; return nil }
@@ -57,11 +58,11 @@ func (p *proc) exit(stderr string) {
 	})
 }
 
-func (r *Runner) Start(args, env []string) (drivehost.Proc, error) {
+func (r *Runner) Start(args, env []string, log func(drivehost.LogEntry)) (drivehost.Proc, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	mp := args[2]
-	p := &proc{r: r, mp: mp, done: make(chan struct{})}
+	p := &proc{r: r, mp: mp, done: make(chan struct{}), log: log}
 	r.starts = append(r.starts, Start{Args: slices.Clone(args), Env: slices.Clone(env)})
 	r.procs[mp] = p
 	r.mounted[mp] = true
@@ -119,6 +120,26 @@ func (r *Runner) MountedDirs() []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// Log makes the mount at the dir log entries, as rclone does when something
+// writes to the drive. It reports whether that mount is running.
+func (r *Runner) Log(dir string, entries ...drivehost.LogEntry) bool {
+	r.mu.Lock()
+	var p *proc
+	for mp, pr := range r.procs {
+		if strings.HasSuffix(mp, "/"+dir) && r.mounted[mp] {
+			p = pr
+		}
+	}
+	r.mu.Unlock()
+	if p == nil || p.log == nil {
+		return false
+	}
+	for _, e := range entries {
+		p.log(e)
+	}
+	return true
 }
 
 // Crash ends the mount at the dir as rclone would on a fatal error.

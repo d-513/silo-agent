@@ -1,4 +1,4 @@
-import { changesNotice, changesPollMs, fileCount, fileNote, parsePatch, sizeChange, sourceHint, sourceTitle } from "./changeset.ts";
+import { changesNotice, changesPollMs, driveLine, driveOpWord, drivePath, fileCount, fileNote, parsePatch, sizeChange, sourceHint, sourceTitle } from "./changeset.ts";
 import { eq } from "./testing.ts";
 
 // A patch becomes numbered lines: additions and context carry the new number,
@@ -41,3 +41,9 @@ eq(fileNote({ ...f, status: "repo", large: true }, 8 << 20).includes("repository
 
 eq([changesNotice("ok"), changesNotice("off")?.reset, changesNotice("outdated")?.reset], [null, false, true], "notices");
 eq([changesPollMs(true, true), changesPollMs(false, true), changesPollMs(true, false)], [8000, false, false], "poll only while watched");
+
+eq([driveOpWord("added"), driveOpWord("modified"), driveOpWord("deleted"), driveOpWord("renamed"), driveOpWord("?")], ["Added", "Changed", "Deleted", "Renamed", "Changed"], "drive op words");
+eq([drivePath("files", "a/b.txt"), drivePath("files", "")], ["files/a/b.txt", "files"], "drive paths");
+eq(driveLine({ op: "added", oldPath: "", size: 2048n, sources: [{ kind: "chat", name: "Tidy up" }] }), "Added · 2.0 KB · Chat “Tidy up”", "an upload");
+eq(driveLine({ op: "renamed", oldPath: "a.txt", size: 0, sources: [] }), "Renamed from a.txt · Outside a run", "a rename");
+eq(driveLine({ op: "deleted", oldPath: "", size: 0, sources: [] }), "Deleted · Outside a run", "a delete");

@@ -167,8 +167,10 @@ export function SidePane({
             <FilesPane bot={bot} onStart={onStart} openAt={openAt} actions={actions(false)} />
           </div>
         ) : null}
+        {/* Changes keeps its header when the Bot is stopped: the drive journal
+            reads without the machine. */}
         {has("changes") ? (
-          <div className={`min-h-0 flex-1 flex-col ${online ? "" : "p-3"} ${kind === "changes" ? "flex" : "hidden"}`}>
+          <div className={`min-h-0 flex-1 flex-col ${kind === "changes" ? "flex" : "hidden"}`}>
             <ChangesPane bot={bot} visible={kind === "changes"} onStart={onStart} onError={onError} actions={actions(false)} />
           </div>
         ) : null}
@@ -180,8 +182,8 @@ export function SidePane({
           </div>
         ) : null}
       </Suspense>
-      {/* A stopped Bot has no pane header to carry these. Mail has its own. */}
-      {kind && kind !== "mail" && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
+      {/* A stopped Bot has no pane header to carry these. Mail and Changes have their own. */}
+      {kind && kind !== "mail" && kind !== "changes" && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
     </aside>
   );
 }

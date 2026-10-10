@@ -212,6 +212,8 @@ const (
 	UIListChangeFilesProcedure = "/silo.v1.UI/ListChangeFiles"
 	// UIGetChangePatchProcedure is the fully-qualified name of the UI's GetChangePatch RPC.
 	UIGetChangePatchProcedure = "/silo.v1.UI/GetChangePatch"
+	// UIListDriveChangesProcedure is the fully-qualified name of the UI's ListDriveChanges RPC.
+	UIListDriveChangesProcedure = "/silo.v1.UI/ListDriveChanges"
 	// UIListFilesProcedure is the fully-qualified name of the UI's ListFiles RPC.
 	UIListFilesProcedure = "/silo.v1.UI/ListFiles"
 	// UIReadFileProcedure is the fully-qualified name of the UI's ReadFile RPC.
@@ -422,6 +424,9 @@ type UIClient interface {
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
 	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
 	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
+	// What was written, deleted or renamed on the Bot's drives: a journal kept by
+	// the drive sidecar, with no content and no diffs.
+	ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
@@ -1019,6 +1024,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("GetChangePatch")),
 			connect.WithClientOptions(opts...),
 		),
+		listDriveChanges: connect.NewClient[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse](
+			httpClient,
+			baseURL+UIListDriveChangesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListDriveChanges")),
+			connect.WithClientOptions(opts...),
+		),
 		listFiles: connect.NewClient[v1.ListFilesRequest, v1.ListFilesResponse](
 			httpClient,
 			baseURL+UIListFilesProcedure,
@@ -1401,6 +1412,7 @@ type uIClient struct {
 	listChanges             *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
 	listChangeFiles         *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
 	getChangePatch          *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
+	listDriveChanges        *connect.Client[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse]
 	listFiles               *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
 	readFile                *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
 	mkdir                   *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
@@ -1896,6 +1908,11 @@ func (c *uIClient) GetChangePatch(ctx context.Context, req *connect.Request[v1.G
 	return c.getChangePatch.CallUnary(ctx, req)
 }
 
+// ListDriveChanges calls silo.v1.UI.ListDriveChanges.
+func (c *uIClient) ListDriveChanges(ctx context.Context, req *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error) {
+	return c.listDriveChanges.CallUnary(ctx, req)
+}
+
 // ListFiles calls silo.v1.UI.ListFiles.
 func (c *uIClient) ListFiles(ctx context.Context, req *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
 	return c.listFiles.CallUnary(ctx, req)
@@ -2247,6 +2264,9 @@ type UIHandler interface {
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
 	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
 	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
+	// What was written, deleted or renamed on the Bot's drives: a journal kept by
+	// the drive sidecar, with no content and no diffs.
+	ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
@@ -2840,6 +2860,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("GetChangePatch")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListDriveChangesHandler := connect.NewUnaryHandler(
+		UIListDriveChangesProcedure,
+		svc.ListDriveChanges,
+		connect.WithSchema(uIMethods.ByName("ListDriveChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListFilesHandler := connect.NewUnaryHandler(
 		UIListFilesProcedure,
 		svc.ListFiles,
@@ -3308,6 +3334,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListChangeFilesHandler.ServeHTTP(w, r)
 		case UIGetChangePatchProcedure:
 			uIGetChangePatchHandler.ServeHTTP(w, r)
+		case UIListDriveChangesProcedure:
+			uIListDriveChangesHandler.ServeHTTP(w, r)
 		case UIListFilesProcedure:
 			uIListFilesHandler.ServeHTTP(w, r)
 		case UIReadFileProcedure:
@@ -3767,6 +3795,10 @@ func (UnimplementedUIHandler) ListChangeFiles(context.Context, *connect.Request[
 
 func (UnimplementedUIHandler) GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetChangePatch is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListDriveChanges is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {

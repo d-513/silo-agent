@@ -32,7 +32,8 @@ import (
 
 type fakeCP struct {
 	silov1connect.UnimplementedDriveHostHandler
-	status chan *v1.DriveStatus
+	status  chan *v1.DriveStatus
+	changes chan *v1.DriveChange
 }
 
 func (f *fakeCP) Session(ctx context.Context, s *connect.BidiStream[v1.DriveUp, v1.DriveDown]) error {
@@ -52,6 +53,9 @@ func (f *fakeCP) Session(ctx context.Context, s *connect.BidiStream[v1.DriveUp, 
 		if st := up.GetStatus(); st != nil {
 			f.status <- st
 		}
+		for _, c := range up.GetChanges().GetChanges() {
+			f.changes <- c
+		}
 	}
 }
 
@@ -67,7 +71,7 @@ func TestDriveEngine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cp := &fakeCP{status: make(chan *v1.DriveStatus, 32)}
+	cp := &fakeCP{status: make(chan *v1.DriveStatus, 32), changes: make(chan *v1.DriveChange, 64)}
 	mux := http.NewServeMux()
 	mux.Handle(silov1connect.NewDriveHostHandler(cp))
 	srv := &http.Server{Handler: h2c.NewHandler(mux, &http2.Server{})}
@@ -143,6 +147,50 @@ func TestDriveEngine(t *testing.T) {
 		t.Fatalf("bot view of the drive: %q", out)
 	}
 
+	// The drive journal, read off the real rclone's log. First the upload of
+	// what the Bot wrote: rclone sends a file a few seconds after it is closed.
+	var seen []string
+	expect := func(want ...string) {
+		t.Helper()
+		for len(want) > 0 {
+			select {
+			case c := <-cp.changes:
+				line := c.GetOp() + " " + c.GetPath()
+				if c.GetOldPath() != "" {
+					line += " <- " + c.GetOldPath()
+				}
+				seen = append(seen, line)
+				if c.GetAt() == 0 {
+					t.Fatalf("%s has no time", line)
+				}
+				for i, w := range want {
+					if w == line {
+						want = append(want[:i], want[i+1:]...)
+						break
+					}
+				}
+			case <-time.After(30 * time.Second):
+				t.Fatalf("journal is missing %v (saw %v)", want, seen)
+			}
+		}
+	}
+	expect("added hello.txt")
+	// Then a rename and deletes done by a plain shell: no tool of ours is
+	// involved, which is the point.
+	out = execAs(t, e, botC.ID, "1000", "cd /workspace/drives/mem && mkdir -p sub && mv hello.txt 'sub/hi there.txt' && rm 'sub/hi there.txt' && rm nope.txt; rmdir sub")
+	t.Logf("shell on the drive: %q", out)
+	expect("renamed sub/hi there.txt <- hello.txt", "deleted sub/hi there.txt", "deleted sub")
+	for _, line := range seen {
+		if strings.Contains(line, "nope.txt") {
+			t.Fatalf("a failed delete was journaled: %v", seen)
+		}
+	}
+	// The DEBUG lines the journal is read from stay in the sidecar: its own
+	// log is as quiet as before.
+	if logs := containerLogs(t, e, cid); strings.Contains(logs, `"level":"debug"`) || strings.Contains(logs, "Remove: name=") {
+		t.Fatalf("rclone's debug log leaked into the container log:\n%s", logs)
+	}
+
 	// Stopping the sidecar unmounts cleanly: the Bot sees an empty folder, not a
 	// hung FUSE mount.
 	if err := e.Stop(ctx, cid); err != nil {
@@ -158,6 +206,18 @@ func TestDriveEngine(t *testing.T) {
 	if err := e.RemoveDriveDir(ctx, store.Config().DriveImage(), root, bot); err != nil {
 		t.Fatalf("RemoveDriveDir: %v", err)
 	}
+}
+
+func containerLogs(t *testing.T, e *Engine, id string) string {
+	t.Helper()
+	r, err := e.cli.ContainerLogs(context.Background(), id, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	var so, se bytes.Buffer
+	_, _ = stdcopy.StdCopy(&so, &se, r)
+	return so.String() + se.String()
 }
 
 func execAs(t *testing.T, e *Engine, id, user, cmd string) string {

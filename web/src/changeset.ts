@@ -88,3 +88,23 @@ export function changesNotice(state: string): { text: string; reset: boolean } |
 export function changesPollMs(visible: boolean, connected: boolean): number | false {
   return visible && connected ? 8000 : false;
 }
+
+const opWords: Record<string, string> = { added: "Added", modified: "Changed", deleted: "Deleted", renamed: "Renamed" };
+
+// What a drive journal line did, as a word.
+export function driveOpWord(op: string): string {
+  return opWords[op] ?? "Changed";
+}
+
+// A journal line's path as the Bot sees it under /workspace/drives.
+export function drivePath(drive: string, path: string): string {
+  return path ? `${drive}/${path}` : drive;
+}
+
+// The line under a journal row: what happened, how big, and whose run it was.
+export function driveLine(e: { op: string; oldPath: string; size: bigint | number; sources: { kind: string; name: string }[] }): string {
+  const parts = [e.op === "renamed" && e.oldPath ? `Renamed from ${e.oldPath}` : driveOpWord(e.op)];
+  if (Number(e.size) > 0) parts.push(fmtBytes(e.size));
+  parts.push(sourceTitle(e.sources));
+  return parts.join(" · ");
+}

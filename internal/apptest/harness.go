@@ -466,7 +466,7 @@ func (h *H) startDriveGuest(spec dockerx.DriveSpec) func() {
 	out, emit := drivehost.Outbox()
 	sup := drivehost.New(drivehost.Config{
 		MountRoot: h.Drives.Dir + "/mnt", CacheRoot: h.Drives.Dir + "/cache", RunDir: h.Drives.Dir + "/run",
-		Poll: 10 * time.Millisecond,
+		Poll: 10 * time.Millisecond, JournalFlush: 10 * time.Millisecond,
 	}, h.Drives.Runner, emit)
 	sup.Cleanup()
 	ctx, cancel := context.WithCancel(context.Background())

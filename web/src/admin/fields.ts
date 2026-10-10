@@ -110,7 +110,7 @@ export const CONTEXT_NOTE = "When a conversation nears the model's context windo
 export const RUNS_NOTE = "A run is one reply: every model call and tool call from a message to the answer.";
 
 export const CHANGES_NOTE =
-  "Each Bot's machine snapshots /workspace before and after every run, and the Changes pane shows the difference as diffs. The history stays on the Bot's own disk, beside the workspace. Drives, tmp/, bot/ and dependency folders are never read, and a Bot keeps at most 300 snapshots and 1 GB. Turning this off stops new snapshots; what was recorded stays.";
+  "Each Bot's machine snapshots /workspace before and after every run, and the Changes pane shows the difference as diffs. The history stays on the Bot's own disk, beside the workspace. Drives, tmp/, bot/ and dependency folders are never read, and a Bot keeps at most 300 snapshots and 1 GB. Drives get a journal instead: what was written, deleted or renamed on them, without any content. Turning this off stops both; what was recorded stays.";
 
 export const CONTAINERS_NOTE = "The container engine and the images a Bot's machine and its sidecars start from. A running Bot keeps its old image until its container is reset.";
 

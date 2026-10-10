@@ -20,6 +20,7 @@ type fakeProc struct {
 	done chan struct{}
 	once sync.Once
 	tail string
+	log  func(LogEntry)
 }
 
 func (p *fakeProc) Wait() error { <-p.done; return nil }
@@ -55,11 +56,11 @@ type fakeRun struct {
 
 func newFake() *fakeRun { return &fakeRun{mounted: map[string]bool{}} }
 
-func (f *fakeRun) Start(args, env []string) (Proc, error) {
+func (f *fakeRun) Start(args, env []string, log func(LogEntry)) (Proc, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	mp := args[2]
-	p := &fakeProc{f: f, mp: mp, done: make(chan struct{})}
+	p := &fakeProc{f: f, mp: mp, done: make(chan struct{}), log: log}
 	f.starts = append(f.starts, args)
 	f.envs = append(f.envs, env)
 	f.procs = append(f.procs, p)
@@ -131,6 +132,18 @@ func (r *recorder) last(id string) *v1.DriveStatus {
 		}
 	}
 	return nil
+}
+
+func (r *recorder) changes(id string) []*v1.DriveChange {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []*v1.DriveChange
+	for _, f := range r.frames {
+		if c := f.GetChanges(); c != nil && c.GetId() == id {
+			out = append(out, c.GetChanges()...)
+		}
+	}
+	return out
 }
 
 func (r *recorder) tokens() []string {

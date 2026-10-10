@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file silo/v1/drives.proto.
  */
 export const file_silo_v1_drives: GenFile = /*@__PURE__*/
-  fileDesc("ChRzaWxvL3YxL2RyaXZlcy5wcm90bxIHc2lsby52MSLJAQoJRHJpdmVTcGVjEgoKAmlkGAEgASgJEg4KBnJlbW90ZRgCIAEoCRIoCgNlbnYYAyADKAsyGy5zaWxvLnYxLkRyaXZlU3BlYy5FbnZFbnRyeRIMCgRwYXRoGAQgASgJEg0KBWZsYWdzGAUgAygJEhEKCXJlYWRfb25seRgGIAEoCBINCgV0b2tlbhgHIAEoCRILCgNkaXIYCCABKAkaKgoIRW52RW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJdCglEcml2ZURvd24SJAoFYXBwbHkYASABKAsyEy5zaWxvLnYxLkRyaXZlQXBwbHlIABIiCgRsaXN0GAIgASgLMhIuc2lsby52MS5Ecml2ZUxpc3RIAEIGCgRib2R5IkgKCkRyaXZlQXBwbHkSIgoGZHJpdmVzGAEgAygLMhIuc2lsby52MS5Ecml2ZVNwZWMSFgoOY2FjaGVfbWF4X3NpemUYAiABKAkiTwoJRHJpdmVMaXN0EhIKCnJlcXVlc3RfaWQYASABKAkSIAoEc3BlYxgCIAEoCzISLnNpbG8udjEuRHJpdmVTcGVjEgwKBHBhdGgYAyABKAkirwEKB0RyaXZlVXASJAoFaGVsbG8YASABKAsyEy5zaWxvLnYxLkRyaXZlSGVsbG9IABImCgZzdGF0dXMYAiABKAsyFC5zaWxvLnYxLkRyaXZlU3RhdHVzSAASJAoFdG9rZW4YAyABKAsyEy5zaWxvLnYxLkRyaXZlVG9rZW5IABIoCgRsaXN0GAQgASgLMhguc2lsby52MS5Ecml2ZUxpc3RSZXN1bHRIAEIGCgRib2R5Ih0KCkRyaXZlSGVsbG8SDwoHdmVyc2lvbhgBIAEoCSI4CgtEcml2ZVN0YXR1cxIKCgJpZBgBIAEoCRINCgVzdGF0ZRgCIAEoCRIOCgZkZXRhaWwYAyABKAkiJwoKRHJpdmVUb2tlbhIKCgJpZBgBIAEoCRINCgV0b2tlbhgCIAEoCSJkCg9Ecml2ZUxpc3RSZXN1bHQSEgoKcmVxdWVzdF9pZBgBIAEoCRIfCgRkaXJzGAIgAygLMhEuc2lsby52MS5Ecml2ZURpchINCgVlcnJvchgDIAEoCRINCgV0b2tlbhgEIAEoCSImCghEcml2ZURpchIMCgRuYW1lGAEgASgJEgwKBHBhdGgYAiABKAkyQAoJRHJpdmVIb3N0EjMKB1Nlc3Npb24SEC5zaWxvLnYxLkRyaXZlVXAaEi5zaWxvLnYxLkRyaXZlRG93bigBMAFCH1odc2lsby5hZ2VudC9nZW4vc2lsby92MTtzaWxvdjFiBnByb3RvMw");
+  fileDesc("ChRzaWxvL3YxL2RyaXZlcy5wcm90bxIHc2lsby52MSLJAQoJRHJpdmVTcGVjEgoKAmlkGAEgASgJEg4KBnJlbW90ZRgCIAEoCRIoCgNlbnYYAyADKAsyGy5zaWxvLnYxLkRyaXZlU3BlYy5FbnZFbnRyeRIMCgRwYXRoGAQgASgJEg0KBWZsYWdzGAUgAygJEhEKCXJlYWRfb25seRgGIAEoCBINCgV0b2tlbhgHIAEoCRILCgNkaXIYCCABKAkaKgoIRW52RW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJdCglEcml2ZURvd24SJAoFYXBwbHkYASABKAsyEy5zaWxvLnYxLkRyaXZlQXBwbHlIABIiCgRsaXN0GAIgASgLMhIuc2lsby52MS5Ecml2ZUxpc3RIAEIGCgRib2R5IkgKCkRyaXZlQXBwbHkSIgoGZHJpdmVzGAEgAygLMhIuc2lsby52MS5Ecml2ZVNwZWMSFgoOY2FjaGVfbWF4X3NpemUYAiABKAkiTwoJRHJpdmVMaXN0EhIKCnJlcXVlc3RfaWQYASABKAkSIAoEc3BlYxgCIAEoCzISLnNpbG8udjEuRHJpdmVTcGVjEgwKBHBhdGgYAyABKAki2QEKB0RyaXZlVXASJAoFaGVsbG8YASABKAsyEy5zaWxvLnYxLkRyaXZlSGVsbG9IABImCgZzdGF0dXMYAiABKAsyFC5zaWxvLnYxLkRyaXZlU3RhdHVzSAASJAoFdG9rZW4YAyABKAsyEy5zaWxvLnYxLkRyaXZlVG9rZW5IABIoCgRsaXN0GAQgASgLMhguc2lsby52MS5Ecml2ZUxpc3RSZXN1bHRIABIoCgdjaGFuZ2VzGAUgASgLMhUuc2lsby52MS5Ecml2ZUNoYW5nZXNIAEIGCgRib2R5Ih0KCkRyaXZlSGVsbG8SDwoHdmVyc2lvbhgBIAEoCSI4CgtEcml2ZVN0YXR1cxIKCgJpZBgBIAEoCRINCgVzdGF0ZRgCIAEoCRIOCgZkZXRhaWwYAyABKAkiUwoLRHJpdmVDaGFuZ2USCgoCb3AYASABKAkSDAoEcGF0aBgCIAEoCRIQCghvbGRfcGF0aBgDIAEoCRIMCgRzaXplGAQgASgDEgoKAmF0GAUgASgDIkEKDERyaXZlQ2hhbmdlcxIKCgJpZBgBIAEoCRIlCgdjaGFuZ2VzGAIgAygLMhQuc2lsby52MS5Ecml2ZUNoYW5nZSInCgpEcml2ZVRva2VuEgoKAmlkGAEgASgJEg0KBXRva2VuGAIgASgJImQKD0RyaXZlTGlzdFJlc3VsdBISCgpyZXF1ZXN0X2lkGAEgASgJEh8KBGRpcnMYAiADKAsyES5zaWxvLnYxLkRyaXZlRGlyEg0KBWVycm9yGAMgASgJEg0KBXRva2VuGAQgASgJIiYKCERyaXZlRGlyEgwKBG5hbWUYASABKAkSDAoEcGF0aBgCIAEoCTJACglEcml2ZUhvc3QSMwoHU2Vzc2lvbhIQLnNpbG8udjEuRHJpdmVVcBoSLnNpbG8udjEuRHJpdmVEb3duKAEwAUIfWh1zaWxvLmFnZW50L2dlbi9zaWxvL3YxO3NpbG92MWIGcHJvdG8z");
 
 /**
  * DriveSpec is one rclone remote, fully rendered.
@@ -196,6 +196,12 @@ export type DriveUp = Message<"silo.v1.DriveUp"> & {
      */
     value: DriveListResult;
     case: "list";
+  } | {
+    /**
+     * @generated from field: silo.v1.DriveChanges changes = 5;
+     */
+    value: DriveChanges;
+    case: "changes";
   } | { case: undefined; value?: undefined };
 };
 
@@ -256,6 +262,81 @@ export const DriveStatusSchema: GenMessage<DriveStatus> = /*@__PURE__*/
   messageDesc(file_silo_v1_drives, 6);
 
 /**
+ * DriveChange is one thing done to a mounted drive through its mount: read off
+ * rclone's own log, so it covers whatever wrote there (a tool, a script, the
+ * owner in the Console). Only what happened is reported, never content.
+ *
+ * @generated from message silo.v1.DriveChange
+ */
+export type DriveChange = Message<"silo.v1.DriveChange"> & {
+  /**
+   * added | modified (an upload reached the remote) | deleted | renamed
+   *
+   * @generated from field: string op = 1;
+   */
+  op: string;
+
+  /**
+   * Path inside the mount.
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * Where it was before a rename.
+   *
+   * @generated from field: string old_path = 3;
+   */
+  oldPath: string;
+
+  /**
+   * Bytes uploaded, for added and modified.
+   *
+   * @generated from field: int64 size = 4;
+   */
+  size: bigint;
+
+  /**
+   * Unix milliseconds, from the log line.
+   *
+   * @generated from field: int64 at = 5;
+   */
+  at: bigint;
+};
+
+/**
+ * Describes the message silo.v1.DriveChange.
+ * Use `create(DriveChangeSchema)` to create a new message.
+ */
+export const DriveChangeSchema: GenMessage<DriveChange> = /*@__PURE__*/
+  messageDesc(file_silo_v1_drives, 7);
+
+/**
+ * DriveChanges is a batch of one drive's changes, oldest first.
+ *
+ * @generated from message silo.v1.DriveChanges
+ */
+export type DriveChanges = Message<"silo.v1.DriveChanges"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: repeated silo.v1.DriveChange changes = 2;
+   */
+  changes: DriveChange[];
+};
+
+/**
+ * Describes the message silo.v1.DriveChanges.
+ * Use `create(DriveChangesSchema)` to create a new message.
+ */
+export const DriveChangesSchema: GenMessage<DriveChanges> = /*@__PURE__*/
+  messageDesc(file_silo_v1_drives, 8);
+
+/**
  * @generated from message silo.v1.DriveToken
  */
 export type DriveToken = Message<"silo.v1.DriveToken"> & {
@@ -275,7 +356,7 @@ export type DriveToken = Message<"silo.v1.DriveToken"> & {
  * Use `create(DriveTokenSchema)` to create a new message.
  */
 export const DriveTokenSchema: GenMessage<DriveToken> = /*@__PURE__*/
-  messageDesc(file_silo_v1_drives, 7);
+  messageDesc(file_silo_v1_drives, 9);
 
 /**
  * @generated from message silo.v1.DriveListResult
@@ -309,7 +390,7 @@ export type DriveListResult = Message<"silo.v1.DriveListResult"> & {
  * Use `create(DriveListResultSchema)` to create a new message.
  */
 export const DriveListResultSchema: GenMessage<DriveListResult> = /*@__PURE__*/
-  messageDesc(file_silo_v1_drives, 8);
+  messageDesc(file_silo_v1_drives, 10);
 
 /**
  * @generated from message silo.v1.DriveDir
@@ -331,7 +412,7 @@ export type DriveDir = Message<"silo.v1.DriveDir"> & {
  * Use `create(DriveDirSchema)` to create a new message.
  */
 export const DriveDirSchema: GenMessage<DriveDir> = /*@__PURE__*/
-  messageDesc(file_silo_v1_drives, 9);
+  messageDesc(file_silo_v1_drives, 11);
 
 /**
  * DriveHost is the reverse channel for a Bot's drive sidecar (silo-drive). The

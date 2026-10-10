@@ -1,21 +1,24 @@
-import { ChevronRight, GitCompareArrows, MessageCircle } from "lucide-react";
+import { ChevronRight, GitCompareArrows, HardDrive, MessageCircle } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { changesNotice, changesPollMs, fileCount, fileNote, parsePatch, sizeChange, sourceHint, sourceTitle, type DiffLine } from "./changeset";
+import { changesNotice, changesPollMs, driveLine, drivePath, fileCount, fileNote, parsePatch, sizeChange, sourceHint, sourceTitle, type DiffLine } from "./changeset";
 import { Collapse } from "./Collapse";
 import { fail, isGone } from "./errors";
 import { ErrorWell, SkeletonRows } from "./Field";
 import { day, feedStamp, fmtBytes } from "./format";
-import { UI, type Bot, type Change, type ChangeFile } from "./gen/silo/v1/ui_pb";
+import { UI, type Bot, type Change, type ChangeFile, type DriveChangeEntry, type ListChangesResponse } from "./gen/silo/v1/ui_pb";
 import { chatLink } from "./links";
 import { NeedMachine } from "./NeedMachine";
+import { TabPill, TabPills } from "./TabPills";
 
-// ChangesPane is the right-rail pane for what changed in the Bot's workspace:
-// one row per stretch between two snapshots, newest first, each opening into
-// its files and each file into its diff. The history lives on the Bot's
-// machine, so it reads only while the machine is up, and it asks only while
-// `visible`: every look snapshots the workspace.
+// ChangesPane is the right-rail pane for what changed. Workspace is one row per
+// stretch between two snapshots, newest first, each opening into its files and
+// each file into its diff; that history lives on the Bot's machine, so it reads
+// only while the machine is up, and it asks only while `visible`: every look
+// snapshots the workspace. Drives is the journal of what was written, deleted
+// or renamed on the Bot's drives, kept by the control plane, so it reads either
+// way; it is offered once the Bot has a drive.
 export function ChangesPane({
   bot,
   visible,
@@ -32,28 +35,23 @@ export function ChangesPane({
   const botId = bot.id;
   const online = bot.workerConnected;
   const q = useQuery(UI.method.listChanges, { botId }, { enabled: visible && online, refetchInterval: changesPollMs(visible, online) });
-  const [open, setOpen] = useState("");
+  const dq = useQuery(UI.method.listDriveChanges, { botId }, { enabled: visible, refetchInterval: changesPollMs(visible, true) });
+  const [view, setView] = useState<"workspace" | "drives">("workspace");
+  const hasDrives = !!dq.data && (dq.data.hasDrives || dq.data.changes.length > 0);
+  const drives = hasDrives && view === "drives";
 
   useEffect(() => {
-    if (q.error) onError(fail(q.error));
-  }, [q.error]);
-  useEffect(() => setOpen(""), [botId]);
-
-  if (!online) {
-    return <NeedMachine copy="Start the Bot to see what changed in /workspace." starting={bot.status === "starting"} onStart={onStart} />;
-  }
-
-  const data = q.data ?? null;
-  const notice = data ? changesNotice(data.state) : null;
-  const rows = data ? [...(data.pending ? [data.pending] : []), ...data.changes] : [];
-  const cap = data?.maxFileBytes ?? 0n;
+    const e = q.error ?? dq.error;
+    if (e) onError(fail(e));
+  }, [q.error, dq.error]);
+  useEffect(() => setView("workspace"), [botId]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]">
         <GitCompareArrows size={15} className="shrink-0 text-ink-2" />
         <span className="shrink-0 font-medium">Changes</span>
-        <span className="truncate font-mono text-[12px] text-ink-3">/workspace</span>
+        <span className="truncate font-mono text-[12px] text-ink-3">{drives ? "/workspace/drives" : "/workspace"}</span>
         {actions ? (
           <>
             <span aria-hidden className="ml-auto h-4 w-px shrink-0 bg-line-strong" />
@@ -61,47 +59,112 @@ export function ChangesPane({
           </>
         ) : null}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto p-3">
-        {notice ? (
-          <div className="rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
-            {notice.text}{" "}
-            {notice.reset ? (
-              <Link to="/bots/$botId/container" params={{ botId }} className="font-medium text-cobalt hover:underline">
-                Open Containers
-              </Link>
-            ) : null}
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-3">
+        {hasDrives ? (
+          <div className="mb-3 flex shrink-0">
+            <TabPills>
+              <TabPill on={!drives} onClick={() => setView("workspace")}>
+                Workspace
+              </TabPill>
+              <TabPill on={drives} onClick={() => setView("drives")}>
+                Drives
+              </TabPill>
+            </TabPills>
           </div>
-        ) : data === null ? (
-          <SkeletonRows rows={3} height={56} />
+        ) : null}
+        {drives ? (
+          <DriveJournal entries={dq.data?.changes ?? []} keep={dq.data?.keep ?? 0} off={dq.data?.state === "off"} />
+        ) : online ? (
+          <WorkspaceChanges botId={botId} data={q.data ?? null} />
         ) : (
-          <>
-            {data.indexing ? (
-              <p className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
-                Still reading this workspace for the first time. Changes show once that is done.
-              </p>
-            ) : null}
-            {rows.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
-                <GitCompareArrows size={20} className="text-ink-3" />
-                <p className="text-ink-2">Nothing has changed yet.</p>
-                <p className="max-w-sm text-[12.5px] text-ink-3">When the Bot, a script it runs, or you change a file in /workspace, the difference shows here.</p>
-              </div>
-            ) : (
-              <ul className="overflow-hidden rounded-card bg-surface shadow-card">
-                {rows.map((c, i) => {
-                  const key = c.pending ? "pending" : c.id;
-                  return <ChangeRow key={key} botId={botId} change={c} cap={cap} first={i === 0} open={open === key} onToggle={() => setOpen(open === key ? "" : key)} />;
-                })}
-              </ul>
-            )}
-            <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
-              The workspace is compared before and after each run{data.since ? `, since ${day(data.since)}` : ""}. Drives, <span className="font-mono text-[12px]">tmp/</span>,{" "}
-              <span className="font-mono text-[12px]">bot/</span> and dependency folders are left out, and a file over {fmtBytes(cap)} is recorded by its size only.
-            </p>
-          </>
+          <NeedMachine copy="Start the Bot to see what changed in /workspace." starting={bot.status === "starting"} onStart={onStart} />
         )}
       </div>
     </div>
+  );
+}
+
+function WorkspaceChanges({ botId, data }: { botId: string; data: ListChangesResponse | null }) {
+  const [open, setOpen] = useState("");
+  useEffect(() => setOpen(""), [botId]);
+  const notice = data ? changesNotice(data.state) : null;
+  if (notice) {
+    return (
+      <div className="rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+        {notice.text}{" "}
+        {notice.reset ? (
+          <Link to="/bots/$botId/container" params={{ botId }} className="font-medium text-cobalt hover:underline">
+            Open Containers
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+  if (data === null) return <SkeletonRows rows={3} height={56} />;
+  const rows = [...(data.pending ? [data.pending] : []), ...data.changes];
+  const cap = data.maxFileBytes;
+  return (
+    <>
+      {data.indexing ? (
+        <p className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">Still reading this workspace for the first time. Changes show once that is done.</p>
+      ) : null}
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+          <GitCompareArrows size={20} className="text-ink-3" />
+          <p className="text-ink-2">Nothing has changed yet.</p>
+          <p className="max-w-sm text-[12.5px] text-ink-3">When the Bot, a script it runs, or you change a file in /workspace, the difference shows here.</p>
+        </div>
+      ) : (
+        <ul className="overflow-hidden rounded-card bg-surface shadow-card">
+          {rows.map((c, i) => {
+            const key = c.pending ? "pending" : c.id;
+            return <ChangeRow key={key} botId={botId} change={c} cap={cap} first={i === 0} open={open === key} onToggle={() => setOpen(open === key ? "" : key)} />;
+          })}
+        </ul>
+      )}
+      <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
+        The workspace is compared before and after each run{data.since ? `, since ${day(data.since)}` : ""}. Drives, <span className="font-mono text-[12px]">tmp/</span>,{" "}
+        <span className="font-mono text-[12px]">bot/</span> and dependency folders are left out, and a file over {fmtBytes(cap)} is recorded by its size only.
+      </p>
+    </>
+  );
+}
+
+// DriveJournal is what happened on the Bot's drives, newest first: a line per
+// file written, deleted or renamed. There is nothing to open: no copy of a
+// drive's files is kept, so there is no diff.
+function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; keep: number; off: boolean }) {
+  if (off) {
+    return <div className="rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">{changesNotice("off")?.text}</div>;
+  }
+  return (
+    <>
+      {entries.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+          <HardDrive size={20} className="text-ink-3" />
+          <p className="text-ink-2">Nothing has been changed on a drive yet.</p>
+          <p className="max-w-sm text-[12.5px] text-ink-3">A file written, deleted or renamed under /workspace/drives is noted here, whatever did it.</p>
+        </div>
+      ) : (
+        <ul className="overflow-hidden rounded-card bg-surface shadow-card">
+          {entries.map((e, i) => (
+            <li key={e.id} className={`px-4 py-2.5 ${i === 0 ? "" : "shadow-[inset_0_1px_0_var(--color-line)]"}`}>
+              <div className="flex min-w-0 items-center gap-2">
+                <span title={drivePath(e.drive, e.path)} className="min-w-0 truncate font-mono text-[12.5px] text-ink [direction:rtl] [text-align:left]">
+                  <bdi>{drivePath(e.drive, e.path)}</bdi>
+                </span>
+                <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{feedStamp(e.at)}</span>
+              </div>
+              <p className={`mt-0.5 truncate text-[12.5px] ${e.op === "deleted" ? "text-ink-2" : "text-ink-3"}`}>{driveLine(e)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
+        A record of what was written, deleted or renamed on a drive, not a copy of it: to get a file back, use the provider's own version history or trash. An upload is noted when it reaches the
+        provider, a few seconds after the file is saved.{keep ? ` The newest ${keep} lines are kept.` : ""}
+      </p>
+    </>
   );
 }
 

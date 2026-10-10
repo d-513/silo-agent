@@ -112,6 +112,10 @@ type Service struct {
 	hub *driveHub
 	// locks serializes sidecar start and removal per Bot.
 	locks sync.Map
+
+	// OnChange hears what a drive's sidecar saw happen on the mount (the drive
+	// journal). The App points it at change tracking.
+	OnChange func(d *db.Drive, changes []*v1.DriveChange)
 }
 
 func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Config, h Host, httpClient func() *http.Client) *Service {
@@ -335,6 +339,14 @@ func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 			return
 		}
 		s.setDriveState(d.ID, st.GetState(), st.GetDetail())
+	case *v1.DriveUp_Changes:
+		var d db.Drive
+		if s.db.Where("id = ? AND bot_id = ?", b.Changes.GetId(), sess.botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
+			return
+		}
+		if s.OnChange != nil && len(b.Changes.GetChanges()) > 0 {
+			s.OnChange(&d, b.Changes.GetChanges())
+		}
 	case *v1.DriveUp_Token:
 		s.saveDriveToken(sess.botID, b.Token.GetId(), b.Token.GetToken())
 	case *v1.DriveUp_List:

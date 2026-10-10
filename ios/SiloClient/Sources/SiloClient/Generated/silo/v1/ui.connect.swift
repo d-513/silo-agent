@@ -298,6 +298,11 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `getChangePatch`(request: Silo_V1_GetChangePatchRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_GetChangePatchResponse>
 
+    /// What was written, deleted or renamed on the Bot's drives: a journal kept by
+    /// the drive sidecar, with no content and no diffs.
+    @available(iOS 13, *)
+    func `listDriveChanges`(request: Silo_V1_ListDriveChangesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListDriveChangesResponse>
+
     @available(iOS 13, *)
     func `listFiles`(request: Silo_V1_ListFilesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListFilesResponse>
 
@@ -899,6 +904,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listDriveChanges`(request: Silo_V1_ListDriveChangesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListDriveChangesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListDriveChanges", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listFiles`(request: Silo_V1_ListFilesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListFilesResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListFiles", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1229,6 +1239,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listChanges = Connect.MethodSpec(name: "ListChanges", service: "silo.v1.UI", type: .unary)
             public static let listChangeFiles = Connect.MethodSpec(name: "ListChangeFiles", service: "silo.v1.UI", type: .unary)
             public static let getChangePatch = Connect.MethodSpec(name: "GetChangePatch", service: "silo.v1.UI", type: .unary)
+            public static let listDriveChanges = Connect.MethodSpec(name: "ListDriveChanges", service: "silo.v1.UI", type: .unary)
             public static let listFiles = Connect.MethodSpec(name: "ListFiles", service: "silo.v1.UI", type: .unary)
             public static let readFile = Connect.MethodSpec(name: "ReadFile", service: "silo.v1.UI", type: .unary)
             public static let mkdir = Connect.MethodSpec(name: "Mkdir", service: "silo.v1.UI", type: .unary)

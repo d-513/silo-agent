@@ -60,6 +60,16 @@ type Service struct {
 
 	mu   sync.Mutex
 	bots map[string]*botState
+	// ended is each Bot's runs that stopped changing things a moment ago: a
+	// drive change can land just after its run (drives.go). driveSeen counts
+	// journal lines since the last trim.
+	ended     map[string][]endedRun
+	driveSeen map[string]int
+}
+
+type endedRun struct {
+	source Source
+	at     time.Time
 }
 
 // botState is one Bot's runs that have begun changing things. A run's channel
@@ -72,7 +82,7 @@ type botState struct {
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, ws *workspace.Service, h Host, mask func(botID string) *masker.Masker) *Service {
-	return &Service{db: gdb, cfg: cfg, ws: ws, host: h, mask: mask, bots: map[string]*botState{}}
+	return &Service{db: gdb, cfg: cfg, ws: ws, host: h, mask: mask, bots: map[string]*botState{}, ended: map[string][]endedRun{}, driveSeen: map[string]int{}}
 }
 
 func (s *Service) enabled() bool { return s.cfg().Changes.Enabled }
@@ -149,11 +159,65 @@ func (s *Service) End(botID, runID string) {
 		cancel()
 	}
 	s.mu.Lock()
+	if src, ok := s.source(runID); ok {
+		s.ended[botID] = append(s.recent(botID), endedRun{source: src, at: time.Now()})
+	}
 	delete(st.live, runID)
 	if len(st.live) == 0 {
 		delete(s.bots, botID)
 	}
 	s.mu.Unlock()
+}
+
+// recent is the Bot's runs that ended within driveGrace. s.mu is held.
+func (s *Service) recent(botID string) []endedRun {
+	var out []endedRun
+	for _, e := range s.ended[botID] {
+		if time.Since(e.at) < driveGrace {
+			out = append(out, e)
+		}
+	}
+	if len(out) == 0 {
+		delete(s.ended, botID)
+	} else {
+		s.ended[botID] = out
+	}
+	return out
+}
+
+// recentlyWorking names the runs changing things on the Bot now, and the ones
+// that stopped within driveGrace.
+func (s *Service) recentlyWorking(botID string) []Source {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []Source
+	seen := map[string]bool{}
+	if st := s.bots[botID]; st != nil {
+		for _, src := range s.sources(st, "") {
+			seen[src.ChatID] = true
+			out = append(out, src)
+		}
+	}
+	for _, e := range s.recent(botID) {
+		if !seen[e.source.ChatID] {
+			seen[e.source.ChatID] = true
+			out = append(out, e.source)
+		}
+	}
+	return out
+}
+
+// source names one run by the conversation it belongs to.
+func (s *Service) source(runID string) (Source, bool) {
+	chatID := s.host.ChatOfRun(runID)
+	if chatID == "" {
+		return Source{}, false
+	}
+	kind, name := chats.Source(s.db, chatID)
+	if kind == "" {
+		return Source{}, false
+	}
+	return Source{Kind: kind, Name: name, ChatID: chatID}, true
 }
 
 // Source is one run that was at work, as stored with a snapshot.
@@ -177,16 +241,12 @@ func (s *Service) sources(st *botState, skip string) []Source {
 		if runID == skip {
 			continue
 		}
-		chatID := s.host.ChatOfRun(runID)
-		if chatID == "" || seen[chatID] {
+		src, ok := s.source(runID)
+		if !ok || seen[src.ChatID] {
 			continue
 		}
-		seen[chatID] = true
-		kind, name := chats.Source(s.db, chatID)
-		if kind == "" {
-			continue
-		}
-		out = append(out, Source{Kind: kind, Name: name, ChatID: chatID})
+		seen[src.ChatID] = true
+		out = append(out, src)
 	}
 	return out
 }
@@ -208,7 +268,7 @@ func (s *Service) checkpoint(ctx context.Context, botID, kind string, sources []
 		return err
 	}
 	_, err = s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_Checkpoint{Checkpoint: &v1.CheckpointCmd{Note: string(raw), Limits: s.limits()}}})
-	if errors.Is(err, hub.ErrNoWorker) || connect.CodeOf(err) == connect.CodeFailedPrecondition {
+	if errors.Is(err, hub.ErrNoWorker) || errors.Is(err, hub.ErrClosed) || connect.CodeOf(err) == connect.CodeFailedPrecondition {
 		return nil // the machine is off: there is nothing to snapshot
 	}
 	return err

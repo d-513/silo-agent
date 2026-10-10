@@ -122,6 +122,9 @@ service UI {
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
   rpc ListChangeFiles(ListChangeFilesRequest) returns (ListChangeFilesResponse);
   rpc GetChangePatch(GetChangePatchRequest) returns (GetChangePatchResponse);
+  // What was written, deleted or renamed on the Bot's drives: a journal kept by
+  // the drive sidecar, with no content and no diffs.
+  rpc ListDriveChanges(ListDriveChangesRequest) returns (ListDriveChangesResponse);
 
   rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
@@ -640,6 +643,36 @@ message ListChangesResponse {
   int64 max_file_bytes = 5;
   // indexing: the first snapshots of a big workspace are still being taken.
   bool indexing = 6;
+}
+
+// DriveChangeEntry is one journal line: something done to a file on a drive.
+message DriveChangeEntry {
+  string id = 1;
+  // The drive's name, as in /workspace/drives/<drive>.
+  string drive = 2;
+  // "added", "modified", "deleted" or "renamed".
+  string op = 3;
+  // Paths inside the drive.
+  string path = 4;
+  string old_path = 5;
+  int64 size = 6;
+  string at = 7;
+  // The runs at work when it happened; none means outside a run.
+  repeated ChangeSource sources = 8;
+}
+
+message ListDriveChangesRequest {
+  string bot_id = 1;
+}
+
+message ListDriveChangesResponse {
+  // "ok", or "off" when the operator turned change tracking off.
+  string state = 1;
+  repeated DriveChangeEntry changes = 2;
+  // has_drives: the Bot has a drive, so the journal is worth showing empty.
+  bool has_drives = 3;
+  // keep is how many entries a Bot's journal holds.
+  int32 keep = 4;
 }
 
 message ListChangeFilesRequest {
