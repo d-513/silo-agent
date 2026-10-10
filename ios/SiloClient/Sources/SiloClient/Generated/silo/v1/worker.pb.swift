@@ -252,6 +252,14 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     set {body = .changePatch(newValue)}
   }
 
+  public var restore: Silo_V1_RestoreCmd {
+    get {
+      if case .restore(let v)? = body {return v}
+      return Silo_V1_RestoreCmd()
+    }
+    set {body = .restore(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -282,6 +290,7 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     case changes(Silo_V1_ChangesCmd)
     case changeFiles(Silo_V1_ChangeFilesCmd)
     case changePatch(Silo_V1_ChangePatchCmd)
+    case restore(Silo_V1_RestoreCmd)
 
   }
 
@@ -635,6 +644,46 @@ public nonisolated struct Silo_V1_ChangePatchCmd: Sendable {
   public init() {}
 }
 
+/// RestoreCmd puts workspace files back as they were at a history object. What
+/// is there now is checkpointed first (note_before), so a restore can itself be
+/// undone, and what the restore did is checkpointed after (note). Only files the
+/// history holds are touched: a path it never tracked is left alone, and so is a
+/// file over the size cap or a nested repository on either side, because their
+/// content was never kept. It answers JSON: how many files were put back and
+/// which were skipped, with the reason.
+public nonisolated struct Silo_V1_RestoreCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// to is the state to bring back (a base from ChangesCmd).
+  public var to: String = String()
+
+  /// from: with no paths, every path that differs between to and from.
+  public var from: String = String()
+
+  public var paths: [String] = []
+
+  public var limits: Silo_V1_HistoryLimits {
+    get {_limits ?? Silo_V1_HistoryLimits()}
+    set {_limits = newValue}
+  }
+  /// Returns true if `limits` has been explicitly set.
+  public var hasLimits: Bool {self._limits != nil}
+  /// Clears the value of `limits`. Subsequent reads from it will return its default value.
+  public mutating func clearLimits() {self._limits = nil}
+
+  public var noteBefore: String = String()
+
+  public var note: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _limits: Silo_V1_HistoryLimits? = nil
+}
+
 /// OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open
 /// a Tunnel stream for it, named conn_id. It gets no CmdDone: the stream is the
 /// answer.
@@ -977,7 +1026,7 @@ fileprivate nonisolated let _protobuf_package = "silo.v1"
 
 nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Cmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0\u{1}restore\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1338,6 +1387,19 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
           self.body = .changePatch(v)
         }
       }()
+      case 30: try {
+        var v: Silo_V1_RestoreCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .restore(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .restore(v)
+        }
+      }()
       default: break
       }
     }
@@ -1465,6 +1527,10 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
     case .changePatch?: try {
       guard case .changePatch(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
+    }()
+    case .restore?: try {
+      guard case .restore(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
     }()
     default: break
     }
@@ -2233,6 +2299,65 @@ nonisolated extension Silo_V1_ChangePatchCmd: SwiftProtobuf.Message, SwiftProtob
     if lhs.path != rhs.path {return false}
     if lhs.oldPath != rhs.oldPath {return false}
     if lhs.maxBytes != rhs.maxBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RestoreCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RestoreCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}to\0\u{1}from\0\u{1}paths\0\u{1}limits\0\u{3}note_before\0\u{1}note\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.to) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.from) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.paths) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._limits) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.noteBefore) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.note) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.to.isEmpty {
+      try visitor.visitSingularStringField(value: self.to, fieldNumber: 1)
+    }
+    if !self.from.isEmpty {
+      try visitor.visitSingularStringField(value: self.from, fieldNumber: 2)
+    }
+    if !self.paths.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.paths, fieldNumber: 3)
+    }
+    try { if let v = self._limits {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    if !self.noteBefore.isEmpty {
+      try visitor.visitSingularStringField(value: self.noteBefore, fieldNumber: 5)
+    }
+    if !self.note.isEmpty {
+      try visitor.visitSingularStringField(value: self.note, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RestoreCmd, rhs: Silo_V1_RestoreCmd) -> Bool {
+    if lhs.to != rhs.to {return false}
+    if lhs.from != rhs.from {return false}
+    if lhs.paths != rhs.paths {return false}
+    if lhs._limits != rhs._limits {return false}
+    if lhs.noteBefore != rhs.noteBefore {return false}
+    if lhs.note != rhs.note {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

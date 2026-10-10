@@ -212,6 +212,8 @@ const (
 	UIListChangeFilesProcedure = "/silo.v1.UI/ListChangeFiles"
 	// UIGetChangePatchProcedure is the fully-qualified name of the UI's GetChangePatch RPC.
 	UIGetChangePatchProcedure = "/silo.v1.UI/GetChangePatch"
+	// UIRestoreChangeProcedure is the fully-qualified name of the UI's RestoreChange RPC.
+	UIRestoreChangeProcedure = "/silo.v1.UI/RestoreChange"
 	// UIListDriveChangesProcedure is the fully-qualified name of the UI's ListDriveChanges RPC.
 	UIListDriveChangesProcedure = "/silo.v1.UI/ListDriveChanges"
 	// UIListFilesProcedure is the fully-qualified name of the UI's ListFiles RPC.
@@ -424,6 +426,10 @@ type UIClient interface {
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
 	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
 	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
+	// RestoreChange puts files back as they were before a change: one file, or
+	// with no path every file of the change. The state it replaces is snapshotted
+	// first, so the restore shows as a change of its own and can be undone.
+	RestoreChange(context.Context, *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error)
 	// What was written, deleted or renamed on the Bot's drives: a journal kept by
 	// the drive sidecar, with no content and no diffs.
 	ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error)
@@ -1024,6 +1030,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("GetChangePatch")),
 			connect.WithClientOptions(opts...),
 		),
+		restoreChange: connect.NewClient[v1.RestoreChangeRequest, v1.RestoreChangeResponse](
+			httpClient,
+			baseURL+UIRestoreChangeProcedure,
+			connect.WithSchema(uIMethods.ByName("RestoreChange")),
+			connect.WithClientOptions(opts...),
+		),
 		listDriveChanges: connect.NewClient[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse](
 			httpClient,
 			baseURL+UIListDriveChangesProcedure,
@@ -1412,6 +1424,7 @@ type uIClient struct {
 	listChanges             *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
 	listChangeFiles         *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
 	getChangePatch          *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
+	restoreChange           *connect.Client[v1.RestoreChangeRequest, v1.RestoreChangeResponse]
 	listDriveChanges        *connect.Client[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse]
 	listFiles               *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
 	readFile                *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
@@ -1908,6 +1921,11 @@ func (c *uIClient) GetChangePatch(ctx context.Context, req *connect.Request[v1.G
 	return c.getChangePatch.CallUnary(ctx, req)
 }
 
+// RestoreChange calls silo.v1.UI.RestoreChange.
+func (c *uIClient) RestoreChange(ctx context.Context, req *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error) {
+	return c.restoreChange.CallUnary(ctx, req)
+}
+
 // ListDriveChanges calls silo.v1.UI.ListDriveChanges.
 func (c *uIClient) ListDriveChanges(ctx context.Context, req *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error) {
 	return c.listDriveChanges.CallUnary(ctx, req)
@@ -2264,6 +2282,10 @@ type UIHandler interface {
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
 	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
 	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
+	// RestoreChange puts files back as they were before a change: one file, or
+	// with no path every file of the change. The state it replaces is snapshotted
+	// first, so the restore shows as a change of its own and can be undone.
+	RestoreChange(context.Context, *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error)
 	// What was written, deleted or renamed on the Bot's drives: a journal kept by
 	// the drive sidecar, with no content and no diffs.
 	ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error)
@@ -2860,6 +2882,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("GetChangePatch")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIRestoreChangeHandler := connect.NewUnaryHandler(
+		UIRestoreChangeProcedure,
+		svc.RestoreChange,
+		connect.WithSchema(uIMethods.ByName("RestoreChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListDriveChangesHandler := connect.NewUnaryHandler(
 		UIListDriveChangesProcedure,
 		svc.ListDriveChanges,
@@ -3334,6 +3362,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListChangeFilesHandler.ServeHTTP(w, r)
 		case UIGetChangePatchProcedure:
 			uIGetChangePatchHandler.ServeHTTP(w, r)
+		case UIRestoreChangeProcedure:
+			uIRestoreChangeHandler.ServeHTTP(w, r)
 		case UIListDriveChangesProcedure:
 			uIListDriveChangesHandler.ServeHTTP(w, r)
 		case UIListFilesProcedure:
@@ -3795,6 +3825,10 @@ func (UnimplementedUIHandler) ListChangeFiles(context.Context, *connect.Request[
 
 func (UnimplementedUIHandler) GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetChangePatch is not implemented"))
+}
+
+func (UnimplementedUIHandler) RestoreChange(context.Context, *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RestoreChange is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListDriveChanges(context.Context, *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error) {

@@ -46,6 +46,7 @@ message Cmd {
     ChangesCmd changes = 27;
     ChangeFilesCmd change_files = 28;
     ChangePatchCmd change_patch = 29;
+    RestoreCmd restore = 30;
   }
 }
 
@@ -186,6 +187,24 @@ message ChangePatchCmd {
   string old_path = 4;
   // Cap on the returned patch (0 = worker default).
   int64 max_bytes = 5;
+}
+
+// RestoreCmd puts workspace files back as they were at a history object. What
+// is there now is checkpointed first (note_before), so a restore can itself be
+// undone, and what the restore did is checkpointed after (note). Only files the
+// history holds are touched: a path it never tracked is left alone, and so is a
+// file over the size cap or a nested repository on either side, because their
+// content was never kept. It answers JSON: how many files were put back and
+// which were skipped, with the reason.
+message RestoreCmd {
+  // to is the state to bring back (a base from ChangesCmd).
+  string to = 1;
+  // from: with no paths, every path that differs between to and from.
+  string from = 2;
+  repeated string paths = 3;
+  HistoryLimits limits = 4;
+  string note_before = 5;
+  string note = 6;
 }
 
 // OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open

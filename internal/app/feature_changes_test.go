@@ -12,6 +12,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
+	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
 )
@@ -336,11 +337,150 @@ func TestContainerChanges(t *testing.T) {
 		t.Fatal("the history store leaked into the workspace")
 	}
 
+	// Undoing the run with the image's git: its file and the folder it made
+	// are gone, and the restore is a change of its own.
+	if res := f.restore(t, c, ""); res.GetRestored() != 1 || res.GetSkippedTotal() != 0 {
+		t.Fatalf("restore in the box = %+v", res)
+	}
+	if _, err := os.Stat(filepath.Join(h.DataDir, "bots", id, "workspace", "site")); err == nil {
+		t.Fatal("the run's folder is still there after the restore")
+	}
+
 	if _, err := h.Client.ResetContainer(h.Ctx(), botReq(id)); err != nil {
 		t.Fatalf("ResetContainer: %v", err)
 	}
 	h.StartSeededBot(id)
-	if after := f.list(t); len(after.GetChanges()) != 1 || after.GetChanges()[0].GetId() != c.GetId() {
-		t.Fatalf("history after a reset = %+v", after.GetChanges())
+	after := f.list(t).GetChanges()
+	if len(after) != 2 || !after[0].GetRestore() || after[1].GetId() != c.GetId() {
+		t.Fatalf("history after a reset = %+v", after)
+	}
+}
+
+func (f *changesFixture) restore(t *testing.T, c *v1.Change, path string) *v1.RestoreChangeResponse {
+	t.Helper()
+	res, err := f.h.Client.RestoreChange(f.h.Ctx(), connect.NewRequest(&v1.RestoreChangeRequest{BotId: f.botID, Base: c.GetBase(), Head: c.GetHead(), Path: path}))
+	if err != nil {
+		t.Fatalf("RestoreChange %q: %v", path, err)
+	}
+	return res.Msg
+}
+
+func (f *changesFixture) read(t *testing.T, rel string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(f.w.Workspace, rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestChangesRestorePutsARunsWorkBack(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_changes_restore",
+		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "terminal", Arguments: `{"command":"printf 'one\\n2\\nthree\\n' > notes.md && echo made > out.txt && rm keep.txt"}`}}},
+		dummy.Turn{Text: "edited"},
+	)
+	f := newChanges(t)
+	f.write(t, "notes.md", "one\ntwo\nthree\n")
+	f.write(t, "keep.txt", "keep me\n")
+	f.list(t)
+	chat := f.h.FirstChat(f.botID)
+	runID, _ := f.h.Send(f.botID, chat, "Test_changes_restore")
+	f.h.WaitRun(runID)
+	run := f.waitChanges(t, 1).GetChanges()[0]
+	if run.GetRestore() {
+		t.Fatalf("a run's change reads as a restore: %+v", run)
+	}
+
+	// One file first: the rest of the run's work stays.
+	if res := f.restore(t, run, "notes.md"); res.GetRestored() != 1 || res.GetSkippedTotal() != 0 {
+		t.Fatalf("restore of one file = %+v", res)
+	}
+	if f.read(t, "notes.md") != "one\ntwo\nthree\n" || f.read(t, "out.txt") != "made\n" {
+		t.Fatal("want notes.md back and out.txt left alone")
+	}
+	got := f.list(t)
+	if len(got.GetChanges()) != 2 || got.GetPending() != nil {
+		t.Fatalf("after a restore = %+v pending %+v", got.GetChanges(), got.GetPending())
+	}
+	back := got.GetChanges()[0]
+	if !back.GetRestore() || back.GetFiles() != 1 || len(back.GetSources()) != 0 {
+		t.Fatalf("the restore's change = %+v, want it marked as a restore by nobody's run", back)
+	}
+
+	// Then the whole change.
+	if res := f.restore(t, run, ""); res.GetRestored() != 2 {
+		t.Fatalf("restore of the change = %+v", res)
+	}
+	if f.read(t, "keep.txt") != "keep me\n" {
+		t.Fatal("keep.txt is not back")
+	}
+	if _, err := os.Stat(filepath.Join(f.w.Workspace, "out.txt")); err == nil {
+		t.Fatal("out.txt is still there")
+	}
+
+	// A restore is a change like any other: undoing it brings the file back.
+	undo := f.list(t).GetChanges()[0]
+	if !undo.GetRestore() {
+		t.Fatalf("newest change = %+v", undo)
+	}
+	f.restore(t, undo, "")
+	if f.read(t, "out.txt") != "made\n" {
+		t.Fatal("undoing the restore did not bring out.txt back")
+	}
+}
+
+func TestChangesRestoreMarksKnowledgeDirty(t *testing.T) {
+	f := newChanges(t)
+	f.write(t, "docs/a.md", "first\n")
+	f.list(t)
+	f.write(t, "docs/a.md", "second\n")
+	pending := f.list(t).GetPending()
+	if pending == nil {
+		t.Fatal("no pending change")
+	}
+	folder := db.KnowledgeFolder{ID: "kf-restore", BotID: f.botID, Path: "docs"}
+	if err := f.h.DB.Create(&folder).Error; err != nil {
+		t.Fatal(err)
+	}
+	f.restore(t, pending, "docs/a.md")
+	var after db.KnowledgeFolder
+	f.h.DB.First(&after, "id = ?", folder.ID)
+	if after.DirtyAt == nil {
+		t.Fatal("a restore under a knowledge folder should mark it dirty")
+	}
+}
+
+func TestChangesRestoreBelongsToTheOwnerAndNeedsTracking(t *testing.T) {
+	f := newChanges(t)
+	f.write(t, "a.txt", "a\n")
+	f.list(t)
+	f.write(t, "a.txt", "a2\n")
+	mine := f.list(t).GetPending()
+	if mine == nil {
+		t.Fatal("no pending change")
+	}
+	req := &v1.RestoreChangeRequest{BotId: f.botID, Base: mine.GetBase(), Head: mine.GetHead()}
+	stranger, _ := f.h.SignedInUser("eve@test.local")
+	if _, err := stranger.RestoreChange(f.h.Ctx(), connect.NewRequest(req)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("stranger RestoreChange = %v", err)
+	}
+	// Ids the pane never listed are refused, and nothing is touched.
+	gone := strings.Repeat("ab", 20)
+	for _, pair := range [][2]string{{gone, gone}, {"HEAD", "--help"}, {"", ""}} {
+		_, err := f.h.Client.RestoreChange(f.h.Ctx(), connect.NewRequest(&v1.RestoreChangeRequest{BotId: f.botID, Base: pair[0], Head: pair[1]}))
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("RestoreChange %v = %v, want NotFound", pair, err)
+		}
+	}
+	if f.read(t, "a.txt") != "a2\n" {
+		t.Fatal("a refused restore changed the workspace")
+	}
+
+	dir := t.TempDir()
+	off := newChanges(t, apptest.WithYAML(apptest.DefaultYAML(dir)+"changes:\n  enabled: false\n"))
+	_, err := off.h.Client.RestoreChange(off.h.Ctx(), connect.NewRequest(&v1.RestoreChangeRequest{BotId: off.botID, Base: gone, Head: gone}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("RestoreChange with tracking off = %v", err)
 	}
 }

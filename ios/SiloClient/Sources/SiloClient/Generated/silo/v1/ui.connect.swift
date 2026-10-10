@@ -298,6 +298,12 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `getChangePatch`(request: Silo_V1_GetChangePatchRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_GetChangePatchResponse>
 
+    /// RestoreChange puts files back as they were before a change: one file, or
+    /// with no path every file of the change. The state it replaces is snapshotted
+    /// first, so the restore shows as a change of its own and can be undone.
+    @available(iOS 13, *)
+    func `restoreChange`(request: Silo_V1_RestoreChangeRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RestoreChangeResponse>
+
     /// What was written, deleted or renamed on the Bot's drives: a journal kept by
     /// the drive sidecar, with no content and no diffs.
     @available(iOS 13, *)
@@ -904,6 +910,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `restoreChange`(request: Silo_V1_RestoreChangeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RestoreChangeResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RestoreChange", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listDriveChanges`(request: Silo_V1_ListDriveChangesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListDriveChangesResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListDriveChanges", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1239,6 +1250,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listChanges = Connect.MethodSpec(name: "ListChanges", service: "silo.v1.UI", type: .unary)
             public static let listChangeFiles = Connect.MethodSpec(name: "ListChangeFiles", service: "silo.v1.UI", type: .unary)
             public static let getChangePatch = Connect.MethodSpec(name: "GetChangePatch", service: "silo.v1.UI", type: .unary)
+            public static let restoreChange = Connect.MethodSpec(name: "RestoreChange", service: "silo.v1.UI", type: .unary)
             public static let listDriveChanges = Connect.MethodSpec(name: "ListDriveChanges", service: "silo.v1.UI", type: .unary)
             public static let listFiles = Connect.MethodSpec(name: "ListFiles", service: "silo.v1.UI", type: .unary)
             public static let readFile = Connect.MethodSpec(name: "ReadFile", service: "silo.v1.UI", type: .unary)

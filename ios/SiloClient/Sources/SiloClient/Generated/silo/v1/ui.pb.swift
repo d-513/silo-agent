@@ -1143,7 +1143,6 @@ public nonisolated struct Silo_V1_SearchKnowledgeResponse: Sendable {
   public init() {}
 }
 
-/// FeedPost is one read-only message a Bot posted to its Feed with `feed`.
 /// ChangeSource is one run that was working while a change was made.
 public nonisolated struct Silo_V1_ChangeSource: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -1190,6 +1189,9 @@ public nonisolated struct Silo_V1_Change: Sendable {
   public var deleted: Int32 = 0
 
   public var pending: Bool = false
+
+  /// restore: this change is the owner putting files back from the pane.
+  public var restore: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1408,6 +1410,63 @@ public nonisolated struct Silo_V1_GetChangePatchResponse: Sendable {
   public init() {}
 }
 
+public nonisolated struct Silo_V1_RestoreChangeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  /// base and head of the change, as listed.
+  public var base: String = String()
+
+  public var head: String = String()
+
+  /// One file of the change; "" restores every file of it.
+  public var path: String = String()
+
+  public var oldPath: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// RestoreSkip is a file a restore left as it is.
+public nonisolated struct Silo_V1_RestoreSkip: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var path: String = String()
+
+  /// "large" (over the size cap: its content was never kept), "repo" (a nested
+  /// repository) or "blocked" (something else is in the way).
+  public var reason: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_RestoreChangeResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var restored: Int32 = 0
+
+  /// The first few skipped files; skipped_total counts them all.
+  public var skipped: [Silo_V1_RestoreSkip] = []
+
+  public var skippedTotal: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// FeedPost is one read-only message a Bot posted to its Feed with `feed`.
 public nonisolated struct Silo_V1_FeedPost: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -7705,7 +7764,7 @@ nonisolated extension Silo_V1_ChangeSource: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension Silo_V1_Change: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Change"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}at\0\u{1}sources\0\u{1}base\0\u{1}head\0\u{1}files\0\u{1}added\0\u{1}deleted\0\u{1}pending\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}at\0\u{1}sources\0\u{1}base\0\u{1}head\0\u{1}files\0\u{1}added\0\u{1}deleted\0\u{1}pending\0\u{1}restore\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7722,6 +7781,7 @@ nonisolated extension Silo_V1_Change: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 7: try { try decoder.decodeSingularInt32Field(value: &self.added) }()
       case 8: try { try decoder.decodeSingularInt32Field(value: &self.deleted) }()
       case 9: try { try decoder.decodeSingularBoolField(value: &self.pending) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.restore) }()
       default: break
       }
     }
@@ -7755,6 +7815,9 @@ nonisolated extension Silo_V1_Change: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.pending != false {
       try visitor.visitSingularBoolField(value: self.pending, fieldNumber: 9)
     }
+    if self.restore != false {
+      try visitor.visitSingularBoolField(value: self.restore, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7768,6 +7831,7 @@ nonisolated extension Silo_V1_Change: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.added != rhs.added {return false}
     if lhs.deleted != rhs.deleted {return false}
     if lhs.pending != rhs.pending {return false}
+    if lhs.restore != rhs.restore {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8232,6 +8296,131 @@ nonisolated extension Silo_V1_GetChangePatchResponse: SwiftProtobuf.Message, Swi
     if lhs.patch != rhs.patch {return false}
     if lhs.truncated != rhs.truncated {return false}
     if lhs.binary != rhs.binary {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RestoreChangeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RestoreChangeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}base\0\u{1}head\0\u{1}path\0\u{3}old_path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.base) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.head) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.oldPath) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.base.isEmpty {
+      try visitor.visitSingularStringField(value: self.base, fieldNumber: 2)
+    }
+    if !self.head.isEmpty {
+      try visitor.visitSingularStringField(value: self.head, fieldNumber: 3)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 4)
+    }
+    if !self.oldPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.oldPath, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RestoreChangeRequest, rhs: Silo_V1_RestoreChangeRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.base != rhs.base {return false}
+    if lhs.head != rhs.head {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.oldPath != rhs.oldPath {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RestoreSkip: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RestoreSkip"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}reason\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RestoreSkip, rhs: Silo_V1_RestoreSkip) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.reason != rhs.reason {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RestoreChangeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RestoreChangeResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}restored\0\u{1}skipped\0\u{3}skipped_total\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.restored) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.skipped) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.skippedTotal) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.restored != 0 {
+      try visitor.visitSingularInt32Field(value: self.restored, fieldNumber: 1)
+    }
+    if !self.skipped.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.skipped, fieldNumber: 2)
+    }
+    if self.skippedTotal != 0 {
+      try visitor.visitSingularInt32Field(value: self.skippedTotal, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RestoreChangeResponse, rhs: Silo_V1_RestoreChangeResponse) -> Bool {
+    if lhs.restored != rhs.restored {return false}
+    if lhs.skipped != rhs.skipped {return false}
+    if lhs.skippedTotal != rhs.skippedTotal {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

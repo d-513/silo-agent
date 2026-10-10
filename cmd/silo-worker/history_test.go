@@ -467,3 +467,314 @@ func TestHistoryBinaryFileHasNoPatch(t *testing.T) {
 		t.Fatalf("patch %q binary %v", patch, binary)
 	}
 }
+
+type testRestore struct {
+	Restored int `json:"restored"`
+	Skipped  []struct {
+		Path   string `json:"path"`
+		Reason string `json:"reason"`
+	} `json:"skipped"`
+	SkippedTotal int      `json:"skipped_total"`
+	Paths        []string `json:"paths"`
+}
+
+func (r testRestore) why(path string) string {
+	for _, s := range r.Skipped {
+		if s.Path == path {
+			return s.Reason
+		}
+	}
+	return ""
+}
+
+func restoreTo(t *testing.T, w *worker, cmd *v1.RestoreCmd) testRestore {
+	t.Helper()
+	raw, err := w.restore(context.Background(), cmd)
+	return decode[testRestore](t, raw, err)
+}
+
+func readFile(t *testing.T, w *worker, rel string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(w.workspace, rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func exists(w *worker, rel string) bool {
+	_, err := os.Lstat(filepath.Join(w.workspace, rel))
+	return err == nil
+}
+
+func shell(t *testing.T, w *worker, script string) {
+	t.Helper()
+	sh := exec.Command("/bin/sh", "-c", script)
+	sh.Dir = w.workspace
+	if out, err := sh.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+}
+
+func TestHistoryRestoreUndoesAChangeAndCanBeUndone(t *testing.T) {
+	w := historyWorker(t)
+	body := strings.Repeat("a line that stays\n", 20)
+	writeTree(t, w.workspace, map[string]string{
+		"notes.md":   "one\ntwo\nthree\n",
+		"old.txt":    "going away\n",
+		"report.txt": body,
+		"run.sh":     "#!/bin/sh\necho hi\n",
+	})
+	shell(t, w, "chmod 755 run.sh && ln -s notes.md link")
+	listChanges(t, w, nil)
+
+	// A script makes every kind of change: an edit, a delete, a rename, a new
+	// file in a new folder, a lost exec bit and a symlink turned into a file.
+	shell(t, w, "printf 'one\\n2\\n' > notes.md && rm old.txt && mv report.txt final.txt && mkdir -p out/deep && echo hi > out/deep/new.txt && chmod 644 run.sh && rm link && echo plain > link")
+	takeCheckpoint(t, w, `{"kind":"run_end"}`, nil)
+	run := listChanges(t, w, nil).Changes[0]
+
+	// The owner's own edit after the run is not part of that change.
+	writeTree(t, w.workspace, map[string]string{"mine.txt": "by hand\n"})
+
+	res := restoreTo(t, w, &v1.RestoreCmd{To: run.Base, From: run.Head, NoteBefore: `{"kind":"before_restore"}`, Note: `{"kind":"restore"}`})
+	if res.Restored != 7 || res.SkippedTotal != 0 {
+		t.Fatalf("restore = %+v, want 7 files put back", res)
+	}
+	if readFile(t, w, "notes.md") != "one\ntwo\nthree\n" || readFile(t, w, "old.txt") != "going away\n" || readFile(t, w, "report.txt") != body {
+		t.Fatal("the files are not as they were before the run")
+	}
+	if exists(w, "final.txt") || exists(w, "out") {
+		t.Fatal("what the run added is still there")
+	}
+	if st, err := os.Lstat(filepath.Join(w.workspace, "link")); err != nil || st.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("link is not a symlink again: %v", err)
+	}
+	if st, err := os.Stat(filepath.Join(w.workspace, "run.sh")); err != nil || st.Mode()&0o100 == 0 {
+		t.Fatalf("run.sh lost its exec bit: %v", err)
+	}
+	if readFile(t, w, "mine.txt") != "by hand\n" {
+		t.Fatal("a file outside the change was touched")
+	}
+
+	// What was there is its own change, then the restore; nothing is pending.
+	got := listChanges(t, w, nil)
+	if len(got.Changes) != 3 || got.Pending != nil {
+		t.Fatalf("after the restore = %+v", got)
+	}
+	back, before := got.Changes[0], got.Changes[1]
+	// Six as the pane counts them: the rename is one file there.
+	if !strings.Contains(string(back.Note), `"restore"`) || back.Files != 6 {
+		t.Fatalf("the restore's change = %+v note %s", back, back.Note)
+	}
+	if !strings.Contains(string(before.Note), "before_restore") || before.Files != 1 {
+		t.Fatalf("the change before the restore = %+v note %s", before, before.Note)
+	}
+
+	// Undoing the restore brings the run's work back.
+	res = restoreTo(t, w, &v1.RestoreCmd{To: back.Base, From: back.Head})
+	if res.Restored != 7 {
+		t.Fatalf("undoing the restore = %+v", res)
+	}
+	if readFile(t, w, "notes.md") != "one\n2\n" || readFile(t, w, "final.txt") != body || readFile(t, w, "out/deep/new.txt") != "hi\n" || readFile(t, w, "link") != "plain\n" || exists(w, "old.txt") || exists(w, "report.txt") {
+		t.Fatal("the run's work is not back")
+	}
+	if st, _ := os.Lstat(filepath.Join(w.workspace, "link")); st.Mode()&os.ModeSymlink != 0 {
+		t.Fatal("link is still a symlink")
+	}
+}
+
+func TestHistoryRestoreOneFile(t *testing.T) {
+	w := historyWorker(t)
+	writeTree(t, w.workspace, map[string]string{"a.txt": "a\n", "b.txt": "b\n"})
+	listChanges(t, w, nil)
+	writeTree(t, w.workspace, map[string]string{"a.txt": "a changed\n", "b.txt": "b changed\n"})
+	// Not snapshotted yet: the pending change is restorable like any other.
+	p := listChanges(t, w, nil).Pending
+	if p == nil {
+		t.Fatal("no pending change")
+	}
+	res := restoreTo(t, w, &v1.RestoreCmd{To: p.Base, From: p.Head, Paths: []string{"/a.txt"}})
+	if res.Restored != 1 || len(res.Paths) != 1 || res.Paths[0] != "a.txt" {
+		t.Fatalf("restore = %+v", res)
+	}
+	if readFile(t, w, "a.txt") != "a\n" || readFile(t, w, "b.txt") != "b changed\n" {
+		t.Fatal("want only a.txt put back")
+	}
+	// A file already as it was is nothing to do.
+	if res := restoreTo(t, w, &v1.RestoreCmd{To: p.Base, From: p.Head, Paths: []string{"a.txt"}}); res.Restored != 0 || res.SkippedTotal != 0 {
+		t.Fatalf("second restore = %+v", res)
+	}
+}
+
+func TestHistoryRestoreLeavesAloneWhatItCannotBringBack(t *testing.T) {
+	w := historyWorker(t)
+	lim := &v1.HistoryLimits{MaxFileBytes: 1000}
+	big := func(n int) string { return strings.Repeat("x", n) }
+	writeTree(t, w.workspace, map[string]string{"video.bin": big(5000), "grows.txt": "tiny\n", "small.txt": "s\n"})
+	listChanges(t, w, lim)
+	writeTree(t, w.workspace, map[string]string{"video.bin": big(7000), "grows.txt": big(3000), "new.bin": big(2000), "small.txt": "s2\n"})
+	takeCheckpoint(t, w, "", lim)
+	c := listChanges(t, w, lim).Changes[0]
+
+	res := restoreTo(t, w, &v1.RestoreCmd{To: c.Base, From: c.Head, Limits: lim})
+	if res.Restored != 1 || res.SkippedTotal != 3 {
+		t.Fatalf("restore = %+v, want small.txt back and three skipped", res)
+	}
+	for _, p := range []string{"video.bin", "grows.txt", "new.bin"} {
+		if res.why(p) != "large" {
+			t.Fatalf("%s skipped as %q, want large (%+v)", p, res.why(p), res)
+		}
+	}
+	// Their content was never kept, so overwriting or removing them could not
+	// be undone: they stay exactly as they are.
+	if len(readFile(t, w, "video.bin")) != 7000 || len(readFile(t, w, "grows.txt")) != 3000 || len(readFile(t, w, "new.bin")) != 2000 {
+		t.Fatal("a file over the cap was touched")
+	}
+	if readFile(t, w, "small.txt") != "s\n" {
+		t.Fatal("small.txt was not put back")
+	}
+}
+
+func TestHistoryRestoreNeverTouchesWhatItDoesNotTrack(t *testing.T) {
+	w := historyWorker(t)
+	outside := filepath.Join(t.TempDir(), "outside.txt")
+	if err := os.WriteFile(outside, []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeTree(t, w.workspace, map[string]string{"a.txt": "a\n"})
+	listChanges(t, w, nil)
+	writeTree(t, w.workspace, map[string]string{
+		"a.txt":                "a2\n",
+		"drives/gdrive/doc.md": "the owner's other data\n",
+		"bot/scratch.txt":      "scratch\n",
+		"tmp/upload.bin":       "upload\n",
+		"node_modules/x/i.js":  "x\n",
+	})
+	p := listChanges(t, w, nil).Pending
+	rel, _ := filepath.Rel(w.workspace, outside)
+	// None of these is in the snapshot being restored: a restore that removed
+	// "what was not there then" would delete them.
+	res := restoreTo(t, w, &v1.RestoreCmd{To: p.Base, From: p.Head, Paths: []string{"drives/gdrive/doc.md", "bot/scratch.txt", "tmp/upload.bin", "node_modules/x/i.js", rel, outside, "drives"}})
+	if res.Restored != 0 {
+		t.Fatalf("restore = %+v, want nothing done", res)
+	}
+	for _, f := range []string{"drives/gdrive/doc.md", "bot/scratch.txt", "tmp/upload.bin", "node_modules/x/i.js"} {
+		if !exists(w, f) {
+			t.Fatalf("%s was removed", f)
+		}
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatal("a file outside the workspace was removed")
+	}
+	if readFile(t, w, "a.txt") != "a2\n" {
+		t.Fatal("a.txt was not asked for")
+	}
+}
+
+func TestHistoryRestoreDoesNotWriteThroughASymlink(t *testing.T) {
+	w := historyWorker(t)
+	elsewhere := t.TempDir()
+	writeTree(t, w.workspace, map[string]string{"docs/a.txt": "a\n", "keep.txt": "k\n"})
+	listChanges(t, w, nil)
+	// docs/ is replaced by a link that points out of the workspace.
+	shell(t, w, "rm -r docs && ln -s '"+elsewhere+"' docs")
+	p := listChanges(t, w, nil).Pending
+	if p == nil {
+		t.Fatal("no pending change")
+	}
+
+	res := restoreTo(t, w, &v1.RestoreCmd{To: p.Base, From: p.Head, Paths: []string{"docs/a.txt"}})
+	if res.Restored != 0 || res.why("docs/a.txt") != "blocked" {
+		t.Fatalf("restore through a link = %+v, want it blocked", res)
+	}
+	if entries, _ := os.ReadDir(elsewhere); len(entries) != 0 {
+		t.Fatalf("a file was written outside the workspace: %v", entries)
+	}
+
+	// The attempt snapshotted what was pending, so it is a change now.
+	// Restoring all of it removes the link first, so the file fits.
+	c := listChanges(t, w, nil).Changes[0]
+	res = restoreTo(t, w, &v1.RestoreCmd{To: c.Base, From: c.Head})
+	if res.Restored != 2 || res.SkippedTotal != 0 || readFile(t, w, "docs/a.txt") != "a\n" {
+		t.Fatalf("restore of the whole change = %+v", res)
+	}
+	if entries, _ := os.ReadDir(elsewhere); len(entries) != 0 {
+		t.Fatalf("a file was written outside the workspace: %v", entries)
+	}
+}
+
+func TestHistoryRestoreKeepsAFolderThatIsInTheWay(t *testing.T) {
+	w := historyWorker(t)
+	writeTree(t, w.workspace, map[string]string{"data": "a file\n"})
+	listChanges(t, w, nil)
+	// The file became a folder whose content the history does not hold.
+	shell(t, w, "rm data && mkdir -p data/node_modules && echo dep > data/node_modules/dep.js")
+	p := listChanges(t, w, nil).Pending
+	res := restoreTo(t, w, &v1.RestoreCmd{To: p.Base, From: p.Head})
+	if res.Restored != 0 || res.why("data") != "blocked" {
+		t.Fatalf("restore = %+v, want data blocked", res)
+	}
+	if readFile(t, w, "data/node_modules/dep.js") != "dep\n" {
+		t.Fatal("an untracked folder was removed to make room")
+	}
+}
+
+func TestHistoryRestoreRefusesWhatItCannotTrust(t *testing.T) {
+	w := historyWorker(t)
+	writeTree(t, w.workspace, map[string]string{"a.txt": "a\n"})
+	listChanges(t, w, nil)
+	gone := strings.Repeat("ab", 20)
+	for _, cmd := range []*v1.RestoreCmd{
+		{To: "--help", From: gone},
+		{To: gone, From: "HEAD"},
+		{To: gone},             // neither paths nor a change to take them from
+		{To: gone, From: gone}, // not in the store
+	} {
+		if _, err := w.restore(context.Background(), cmd); err == nil {
+			t.Fatalf("restore %+v was accepted", cmd)
+		}
+	}
+	if readFile(t, w, "a.txt") != "a\n" {
+		t.Fatal("a refused restore changed the workspace")
+	}
+
+	// A workspace that is still being indexed has no full picture to restore
+	// against.
+	old := checkpointMaxFiles
+	checkpointMaxFiles = 2
+	t.Cleanup(func() { checkpointMaxFiles = old })
+	w2 := historyWorker(t)
+	writeTree(t, w2.workspace, map[string]string{"a.txt": "a\n", "b.txt": "b\n", "c.txt": "c\n", "d.txt": "d\n", "e.txt": "e\n"})
+	first := listChanges(t, w2, nil)
+	if !first.Indexing {
+		t.Fatal("want the workspace still indexing")
+	}
+	refs, _ := w2.checkpoints(context.Background())
+	if _, err := w2.restore(context.Background(), &v1.RestoreCmd{To: refs[0].Commit, Paths: []string{"a.txt"}}); err == nil || !strings.Contains(err.Error(), "still reading") {
+		t.Fatalf("restore while indexing = %v", err)
+	}
+}
+
+func TestHistoryFolderReplacedByALinkStillCheckpoints(t *testing.T) {
+	w := historyWorker(t)
+	elsewhere := t.TempDir()
+	// The link's target holds a file of the same name: it is not the workspace's.
+	writeTree(t, elsewhere, map[string]string{"a.txt": "somebody else's\n"})
+	writeTree(t, w.workspace, map[string]string{"docs/a.txt": "a\n", "docs/b.txt": "b\n", "keep.txt": "k\n"})
+	listChanges(t, w, nil)
+	shell(t, w, "rm -r docs && ln -s '"+elsewhere+"' docs && echo k2 > keep.txt")
+
+	cp := takeCheckpoint(t, w, "", nil)
+	if !cp.Changed || cp.Warn != "" {
+		t.Fatalf("checkpoint = %+v, want a clean one", cp)
+	}
+	files := filesOf(t, w, listChanges(t, w, nil).Changes[0])
+	if files["docs/a.txt"].Status != "deleted" || files["docs/b.txt"].Status != "deleted" || files["docs"].Status != "added" || files["keep.txt"].Status != "modified" || len(files) != 4 {
+		t.Fatalf("files = %+v", files)
+	}
+	// Nothing moved since: the link is not read through on the next look.
+	if got := listChanges(t, w, nil); got.Pending != nil {
+		t.Fatalf("pending = %+v", got.Pending)
+	}
+}

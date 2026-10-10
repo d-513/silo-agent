@@ -249,6 +249,8 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.changeFiles(ctx, b.ChangeFiles)
 	case *v1.Cmd_ChangePatch:
 		return w.changePatch(ctx, b.ChangePatch)
+	case *v1.Cmd_Restore:
+		return w.restore(ctx, b.Restore)
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:

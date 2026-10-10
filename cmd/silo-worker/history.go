@@ -299,8 +299,11 @@ func (w *worker) stage(ctx context.Context, lim historyLimits, s *snapshot, larg
 		seen = p
 		st, err := os.Lstat(filepath.Join(w.workspace, p))
 		switch {
-		case err != nil:
-			add = append(add, p) // gone: add -A stages the removal
+		case err != nil || !w.realParents(p):
+			// Gone, or under a folder that is now a link or a file: whatever the
+			// link leads to is not the workspace's, and git add refuses the path
+			// outright, which would cost the whole checkpoint.
+			drop = append(drop, p)
 		case st.Mode().IsRegular() && st.Size() > lim.maxFile:
 			// May be tracked from when it was small.
 			drop = append(drop, p)
@@ -659,15 +662,49 @@ func (w *worker) changeFiles(ctx context.Context, cmd *v1.ChangeFilesCmd) (strin
 	if max <= 0 || max > changeFilesMax {
 		max = changeFilesMax
 	}
-	raw, err := w.git(ctx, nil, nil, "diff-tree", "-r", "-M", "--raw", "-z", "--no-abbrev", "--no-commit-id", cmd.GetBase(), cmd.GetHead())
+	all, err := w.diffRaw(ctx, cmd.GetBase(), cmd.GetHead(), true)
 	if err != nil {
-		return "", errors.New("this change is no longer in the history")
+		return "", err
 	}
 	res := struct {
 		Files     []*changeFile `json:"files"`
 		Truncated bool          `json:"truncated,omitempty"`
-	}{Files: []*changeFile{}}
+	}{Files: all}
+	if len(all) > max {
+		res.Files, res.Truncated = all[:max], true
+	}
 	byPath := map[string]*changeFile{}
+	for _, f := range res.Files {
+		byPath[f.Path] = f
+	}
+	num, err := w.git(ctx, nil, nil, "diff-tree", "-r", "-M", "--numstat", "-z", "--no-commit-id", cmd.GetBase(), cmd.GetHead())
+	if err != nil {
+		return "", err
+	}
+	for _, n := range parseNumstat(num) {
+		if f := byPath[n.path]; f != nil {
+			f.Added, f.Deleted, f.Binary = n.added, n.deleted, n.binary
+		}
+	}
+	if err := w.fillSizes(ctx, res.Files); err != nil {
+		return "", err
+	}
+	return marshalJSON(res)
+}
+
+// diffRaw lists the paths that differ between two history objects, with the
+// blob on each side. With renames off a moved file is its old path deleted and
+// its new path added.
+func (w *worker) diffRaw(ctx context.Context, base, head string, renames bool) ([]*changeFile, error) {
+	mode := "--no-renames"
+	if renames {
+		mode = "-M"
+	}
+	raw, err := w.git(ctx, nil, nil, "diff-tree", "-r", mode, "--raw", "-z", "--no-abbrev", "--no-commit-id", base, head)
+	if err != nil {
+		return nil, errors.New("this change is no longer in the history")
+	}
+	files := []*changeFile{}
 	// ":oldmode newmode oldsha newsha status\0path\0[newpath\0]"
 	parts := bytes.Split(raw, []byte{0})
 	for i := 0; i+1 < len(parts); i++ {
@@ -694,26 +731,9 @@ func (w *worker) changeFiles(ctx context.Context, cmd *v1.ChangeFilesCmd) (strin
 		if head[0] == "160000" || head[1] == "160000" {
 			f.Status = "repo"
 		}
-		if len(res.Files) >= max {
-			res.Truncated = true
-			continue
-		}
-		res.Files = append(res.Files, f)
-		byPath[f.Path] = f
+		files = append(files, f)
 	}
-	num, err := w.git(ctx, nil, nil, "diff-tree", "-r", "-M", "--numstat", "-z", "--no-commit-id", cmd.GetBase(), cmd.GetHead())
-	if err != nil {
-		return "", err
-	}
-	for _, n := range parseNumstat(num) {
-		if f := byPath[n.path]; f != nil {
-			f.Added, f.Deleted, f.Binary = n.added, n.deleted, n.binary
-		}
-	}
-	if err := w.fillSizes(ctx, res.Files); err != nil {
-		return "", err
-	}
-	return marshalJSON(res)
+	return files, nil
 }
 
 // fillSizes sets each file's sizes from its blobs, and reads the ones small
@@ -855,6 +875,207 @@ func (w *worker) changePatch(ctx context.Context, cmd *v1.ChangePatchCmd) (strin
 	}
 	res.Patch = string(out)
 	return marshalJSON(res)
+}
+
+const (
+	restoreSkipList = 20
+	restorePathList = 500
+)
+
+type restoreSkip struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
+// restore puts files back as they were at a history object. It works from the
+// difference between that object and a checkpoint of the workspace taken just
+// now, which is what makes it safe: what is about to be replaced is in the
+// history first, so a restore can itself be undone, and only paths the history
+// holds are acted on, so a name it was handed that it never tracked (a drive,
+// bot/, an ignored folder) is left alone. For the same reason a file over the
+// size cap or a nested repository on either side is skipped: its content was
+// never kept, so replacing or removing it could not be taken back.
+func (w *worker) restore(ctx context.Context, cmd *v1.RestoreCmd) (string, error) {
+	to, from := cmd.GetTo(), cmd.GetFrom()
+	if !historyObject.MatchString(to) || (from != "" && !historyObject.MatchString(from)) {
+		return "", errors.New("unknown change")
+	}
+	want := map[string]bool{}
+	for _, p := range cmd.GetPaths() {
+		if p = strings.TrimPrefix(filepath.ToSlash(filepath.Clean("/"+p)), "/"); p != "" {
+			want[p] = true
+		}
+	}
+	if len(want) == 0 && from == "" {
+		return "", errors.New("unknown change")
+	}
+	w.histMu.Lock()
+	defer w.histMu.Unlock()
+	lim := limitsOf(cmd.GetLimits())
+	s, err := w.snap(ctx, lim)
+	if err != nil {
+		return "", err
+	}
+	if s.partial {
+		return "", errors.New("still reading this workspace for the first time; try again in a moment")
+	}
+	refs, err := w.checkpoints(ctx)
+	if err != nil {
+		return "", err
+	}
+	if _, refs, err = w.take(ctx, lim, s, refs, cmd.GetNoteBefore()); err != nil {
+		return "", err
+	}
+	now := refs[0].Commit
+	if len(want) == 0 {
+		out, err := w.git(ctx, nil, nil, "diff-tree", "-r", "--no-renames", "--name-only", "-z", "--no-commit-id", to, from)
+		if err != nil {
+			return "", errors.New("this change is no longer in the history")
+		}
+		for _, p := range splitNul(out) {
+			want[p] = true
+		}
+	}
+	all, err := w.diffRaw(ctx, to, now, false)
+	if err != nil {
+		return "", err
+	}
+	var files []*changeFile
+	for _, f := range all {
+		if want[f.Path] {
+			files = append(files, f)
+		}
+	}
+	if err := w.fillSizes(ctx, files); err != nil {
+		return "", err
+	}
+
+	res := struct {
+		Restored     int           `json:"restored"`
+		Skipped      []restoreSkip `json:"skipped"`
+		SkippedTotal int           `json:"skipped_total"`
+		// Paths are the files that were put back (the first restorePathList).
+		Paths []string `json:"paths"`
+	}{Skipped: []restoreSkip{}, Paths: []string{}}
+	skip := func(path, reason string) {
+		res.SkippedTotal++
+		if len(res.Skipped) < restoreSkipList {
+			res.Skipped = append(res.Skipped, restoreSkip{path, reason})
+		}
+	}
+	done := func(path string) {
+		res.Restored++
+		if len(res.Paths) < restorePathList {
+			res.Paths = append(res.Paths, path)
+		}
+	}
+	// A path that was not there then is removed first, so a folder that became
+	// a file (or a link) is out of the way before its files are written.
+	var write []string
+	for _, f := range files {
+		switch {
+		case f.Status == "repo":
+			skip(f.Path, "repo")
+		case f.Large:
+			skip(f.Path, "large")
+		case f.oldSha != zeroSha:
+			write = append(write, f.Path)
+		case !w.restoreRemove(f.Path):
+			skip(f.Path, "blocked")
+		default:
+			done(f.Path)
+		}
+	}
+	var clear []string
+	for _, p := range write {
+		if w.restoreBlocked(p) {
+			skip(p, "blocked")
+			continue
+		}
+		clear = append(clear, p)
+	}
+	if len(clear) > 0 {
+		// Written by git from a throwaway index of the old tree: it knows the
+		// exec bit and symlinks, and replaces a file instead of writing into it.
+		tmp, err := os.MkdirTemp(w.history, "restore-")
+		if err != nil {
+			return "", err
+		}
+		defer os.RemoveAll(tmp)
+		idx := []string{"GIT_INDEX_FILE=" + filepath.Join(tmp, "index")}
+		if _, err := w.git(ctx, nil, idx, "read-tree", to); err != nil {
+			return "", errors.New("this change is no longer in the history")
+		}
+		if _, err := w.git(ctx, joinNul(clear), idx, "checkout-index", "-f", "-z", "--stdin"); err != nil {
+			return "", err
+		}
+		for _, p := range clear {
+			done(p)
+		}
+	}
+	if res.Restored > 0 {
+		if s, err = w.snap(ctx, lim); err != nil {
+			return "", err
+		}
+		if _, _, err = w.take(ctx, lim, s, refs, cmd.GetNote()); err != nil {
+			return "", err
+		}
+	}
+	return marshalJSON(res)
+}
+
+// realParents reports whether every folder above rel is a real directory or
+// not there yet. A link there could lead out of the workspace, and a file there
+// is somebody's content.
+func (w *worker) realParents(rel string) bool {
+	dir := w.workspace
+	parts := strings.Split(rel, "/")
+	for _, part := range parts[:len(parts)-1] {
+		dir = filepath.Join(dir, part)
+		st, err := os.Lstat(dir)
+		if errors.Is(err, os.ErrNotExist) {
+			return true
+		}
+		if err != nil || !st.IsDir() {
+			return false
+		}
+	}
+	return true
+}
+
+// restoreBlocked reports that rel cannot be written: something that is not the
+// history's to replace is in the way. An empty folder at the path is removed.
+func (w *worker) restoreBlocked(rel string) bool {
+	if !w.realParents(rel) {
+		return true
+	}
+	abs := filepath.Join(w.workspace, filepath.FromSlash(rel))
+	if st, err := os.Lstat(abs); err == nil && st.IsDir() {
+		return os.Remove(abs) != nil
+	}
+	return false
+}
+
+// restoreRemove removes a file that was not there at the restored state, and
+// the folders it leaves empty (git keeps no empty folders, so they came with
+// it). It reports false when the file had to stay.
+func (w *worker) restoreRemove(rel string) bool {
+	if !w.realParents(rel) {
+		return false
+	}
+	abs := filepath.Join(w.workspace, filepath.FromSlash(rel))
+	if st, err := os.Lstat(abs); err == nil && st.IsDir() {
+		return false
+	}
+	if err := os.Remove(abs); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	for dir := filepath.Dir(abs); dir != w.workspace && strings.HasPrefix(dir, w.workspace); dir = filepath.Dir(dir) {
+		if os.Remove(dir) != nil {
+			break
+		}
+	}
+	return true
 }
 
 func marshalJSON(v any) (string, error) {

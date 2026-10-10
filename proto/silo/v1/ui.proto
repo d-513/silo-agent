@@ -122,6 +122,10 @@ service UI {
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
   rpc ListChangeFiles(ListChangeFilesRequest) returns (ListChangeFilesResponse);
   rpc GetChangePatch(GetChangePatchRequest) returns (GetChangePatchResponse);
+  // RestoreChange puts files back as they were before a change: one file, or
+  // with no path every file of the change. The state it replaces is snapshotted
+  // first, so the restore shows as a change of its own and can be undone.
+  rpc RestoreChange(RestoreChangeRequest) returns (RestoreChangeResponse);
   // What was written, deleted or renamed on the Bot's drives: a journal kept by
   // the drive sidecar, with no content and no diffs.
   rpc ListDriveChanges(ListDriveChangesRequest) returns (ListDriveChangesResponse);
@@ -583,7 +587,6 @@ message SearchKnowledgeResponse {
   repeated KnowledgeHit hits = 1;
 }
 
-// FeedPost is one read-only message a Bot posted to its Feed with `feed`.
 // ChangeSource is one run that was working while a change was made.
 message ChangeSource {
   // "chat", "automation", "channel" or "subagent".
@@ -608,6 +611,8 @@ message Change {
   int32 added = 7;
   int32 deleted = 8;
   bool pending = 9;
+  // restore: this change is the owner putting files back from the pane.
+  bool restore = 10;
 }
 
 message ChangeFile {
@@ -701,6 +706,32 @@ message GetChangePatchResponse {
   bool binary = 3;
 }
 
+message RestoreChangeRequest {
+  string bot_id = 1;
+  // base and head of the change, as listed.
+  string base = 2;
+  string head = 3;
+  // One file of the change; "" restores every file of it.
+  string path = 4;
+  string old_path = 5;
+}
+
+// RestoreSkip is a file a restore left as it is.
+message RestoreSkip {
+  string path = 1;
+  // "large" (over the size cap: its content was never kept), "repo" (a nested
+  // repository) or "blocked" (something else is in the way).
+  string reason = 2;
+}
+
+message RestoreChangeResponse {
+  int32 restored = 1;
+  // The first few skipped files; skipped_total counts them all.
+  repeated RestoreSkip skipped = 2;
+  int32 skipped_total = 3;
+}
+
+// FeedPost is one read-only message a Bot posted to its Feed with `feed`.
 message FeedPost {
   string id = 1;
   string body = 2; // markdown

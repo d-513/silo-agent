@@ -38,6 +38,8 @@ const (
 	beginWait = 90 * time.Second
 	endWait   = 3 * time.Minute
 	listWait  = 2 * time.Minute
+	// A restore takes two snapshots around the files it writes.
+	restoreWait = 5 * time.Minute
 
 	// keep is how many snapshots a Bot keeps, and storeMax its store's size
 	// budget; the worker forgets the oldest past either.
@@ -227,6 +229,9 @@ type Source struct {
 	ChatID string `json:"chat_id,omitempty"`
 }
 
+// noteRestore is the kind of a snapshot taken after the owner put files back.
+const noteRestore = "restore"
+
 type note struct {
 	Kind    string   `json:"kind"`
 	Sources []Source `json:"sources,omitempty"`
@@ -303,7 +308,10 @@ func stamp(nanos int64) string {
 }
 
 func (r row) proto(sources []Source, pending bool) *v1.Change {
-	c := &v1.Change{Id: r.ID, At: stamp(r.At), Base: r.Base, Head: r.Head, Files: r.Files, Added: r.Added, Deleted: r.Deleted, Pending: pending}
+	c := &v1.Change{
+		Id: r.ID, At: stamp(r.At), Base: r.Base, Head: r.Head, Files: r.Files, Added: r.Added, Deleted: r.Deleted,
+		Pending: pending, Restore: r.Note.Kind == noteRestore,
+	}
 	for _, src := range sources {
 		c.Sources = append(c.Sources, &v1.ChangeSource{Kind: src.Kind, Name: src.Name, ChatId: src.ChatID})
 	}
@@ -414,6 +422,71 @@ func (s *Service) GetChangePatch(ctx context.Context, req *connect.Request[v1.Ge
 	return connect.NewResponse(&v1.GetChangePatchResponse{
 		Patch: s.mask(b.ID).Apply(res.Patch), Truncated: res.Truncated, Binary: res.Binary,
 	}), nil
+}
+
+// RestoreChange puts files back as they were before a change: the one named,
+// or every file of it. The worker snapshots what is there first, so nothing a
+// restore replaces is lost and the restore is a change of its own that can be
+// undone the same way. A file whose content the history never kept (over the
+// size cap, a nested repository) is left as it is and reported.
+func (s *Service) RestoreChange(ctx context.Context, req *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	if !s.enabled() {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("change tracking is turned off"))
+	}
+	var paths []string
+	if p := workspace.Rel(req.Msg.GetPath()); p != "" {
+		paths = append(paths, p)
+		if old := workspace.Rel(req.Msg.GetOldPath()); old != "" && old != p {
+			paths = append(paths, old)
+		}
+	}
+	// A run at work now may be changing files around the restore: both
+	// snapshots name it, as any other would.
+	working := s.working(b.ID)
+	before, err := json.Marshal(note{Kind: "before_restore", Sources: working})
+	if err != nil {
+		return nil, err
+	}
+	after, err := json.Marshal(note{Kind: noteRestore, Sources: working})
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, restoreWait)
+	defer cancel()
+	raw, err := s.ws.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_Restore{Restore: &v1.RestoreCmd{
+		To: req.Msg.GetBase(), From: req.Msg.GetHead(), Paths: paths, Limits: s.limits(),
+		NoteBefore: string(before), Note: string(after),
+	}}})
+	if outdated(err) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this Bot's machine was made before restore; reset its container first"))
+	}
+	if err != nil {
+		return nil, gone(err)
+	}
+	var res struct {
+		Restored int32 `json:"restored"`
+		Skipped  []struct {
+			Path   string `json:"path"`
+			Reason string `json:"reason"`
+		} `json:"skipped"`
+		SkippedTotal int32    `json:"skipped_total"`
+		Paths        []string `json:"paths"`
+	}
+	if err := json.Unmarshal([]byte(raw), &res); err != nil {
+		return nil, err
+	}
+	for _, p := range res.Paths {
+		s.ws.Changed(b.ID, p)
+	}
+	out := &v1.RestoreChangeResponse{Restored: res.Restored, SkippedTotal: res.SkippedTotal}
+	for _, sk := range res.Skipped {
+		out.Skipped = append(out.Skipped, &v1.RestoreSkip{Path: sk.Path, Reason: sk.Reason})
+	}
+	return connect.NewResponse(out), nil
 }
 
 // gone turns the worker's "that snapshot is no longer kept" into NotFound, so

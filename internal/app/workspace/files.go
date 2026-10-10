@@ -21,8 +21,9 @@ type Service struct {
 	db   *gorm.DB
 	hub  *hub.Hub
 	mask func(botID string) *masker.Masker
-	// onChange hears about every write or removal the human makes through the
-	// Files tab, so the knowledge index can mark the folder dirty.
+	// onChange hears about every write or removal the human makes (the Files
+	// tab, a restore from Changes), so the knowledge index can mark the folder
+	// dirty.
 	onChange func(botID, path string)
 }
 
@@ -30,7 +31,8 @@ func New(gdb *gorm.DB, h *hub.Hub, mask func(botID string) *masker.Masker, onCha
 	return &Service{db: gdb, hub: h, mask: mask, onChange: onChange}
 }
 
-func (s *Service) changed(botID, path string) {
+// Changed says the human changed path in the Bot's workspace.
+func (s *Service) Changed(botID, path string) {
 	if s.onChange != nil {
 		s.onChange(botID, path)
 	}
@@ -163,7 +165,7 @@ func (s *Service) RemoveFile(ctx context.Context, req *connect.Request[v1.Remove
 	if _, err := s.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_Remove{Remove: &v1.RemoveCmd{Path: path}}}); err != nil {
 		return nil, err
 	}
-	s.changed(b.ID, path)
+	s.Changed(b.ID, path)
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }
 
@@ -186,6 +188,6 @@ func (s *Service) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRe
 	if _, err := s.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
 		return nil, err
 	}
-	s.changed(b.ID, path)
+	s.Changed(b.ID, path)
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
 }

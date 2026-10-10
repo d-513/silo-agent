@@ -1,22 +1,26 @@
-import { ChevronRight, GitCompareArrows, HardDrive, MessageCircle } from "lucide-react";
+import { ChevronRight, GitCompareArrows, HardDrive, MessageCircle, Undo2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { changesNotice, changesPollMs, driveLine, drivePath, fileCount, fileNote, parsePatch, sizeChange, sourceHint, sourceTitle, type DiffLine } from "./changeset";
+import { ui } from "./api";
+import { canRestore, changesNotice, changesPollMs, driveLine, drivePath, fileCount, fileNote, parsePatch, restoreLabel, restoreNotice, sizeChange, sourceHint, sourceTitle, type DiffLine } from "./changeset";
 import { Collapse } from "./Collapse";
 import { fail, isGone } from "./errors";
+import { ArmedButton } from "./Feedback";
 import { ErrorWell, SkeletonRows } from "./Field";
 import { day, feedStamp, fmtBytes } from "./format";
 import { UI, type Bot, type Change, type ChangeFile, type DriveChangeEntry, type ListChangesResponse } from "./gen/silo/v1/ui_pb";
 import { chatLink } from "./links";
 import { NeedMachine } from "./NeedMachine";
+import { reload } from "./query";
 import { TabPill, TabPills } from "./TabPills";
 
 // ChangesPane is the right-rail pane for what changed. Workspace is one row per
 // stretch between two snapshots, newest first, each opening into its files and
-// each file into its diff; that history lives on the Bot's machine, so it reads
-// only while the machine is up, and it asks only while `visible`: every look
-// snapshots the workspace. Drives is the journal of what was written, deleted
+// each file into its diff, and either can be put back as it was before that
+// change; that history lives on the Bot's machine, so it reads only while the
+// machine is up, and it asks only while `visible`: every look snapshots the
+// workspace. Drives is the journal of what was written, deleted
 // or renamed on the Bot's drives, kept by the control plane, so it reads either
 // way; it is offered once the Bot has a drive.
 export function ChangesPane({
@@ -75,7 +79,7 @@ export function ChangesPane({
         {drives ? (
           <DriveJournal entries={dq.data?.changes ?? []} keep={dq.data?.keep ?? 0} off={dq.data?.state === "off"} />
         ) : online ? (
-          <WorkspaceChanges botId={botId} data={q.data ?? null} />
+          <WorkspaceChanges botId={botId} data={q.data ?? null} onError={onError} />
         ) : (
           <NeedMachine copy="Start the Bot to see what changed in /workspace." starting={bot.status === "starting"} onStart={onStart} />
         )}
@@ -84,9 +88,31 @@ export function ChangesPane({
   );
 }
 
-function WorkspaceChanges({ botId, data }: { botId: string; data: ListChangesResponse | null }) {
+// What a row or a file asks for: put one file back ("" for the whole change).
+type Restore = (path: string, oldPath: string) => void;
+
+function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListChangesResponse | null; onError: (s: string) => void }) {
   const [open, setOpen] = useState("");
-  useEffect(() => setOpen(""), [botId]);
+  const [busy, setBusy] = useState(false);
+  // What the last restore did, until the reader moves on.
+  const [done, setDone] = useState("");
+  useEffect(() => {
+    setOpen("");
+    setDone("");
+  }, [botId]);
+  const restore = async (c: Change, path: string, oldPath: string) => {
+    setBusy(true);
+    setDone("");
+    try {
+      const res = await ui.restoreChange({ botId, base: c.base, head: c.head, path, oldPath });
+      setDone(restoreNotice(res, path));
+      await reload(UI.method.listChanges, { botId });
+    } catch (e) {
+      onError(isGone(e) ? "This change is no longer in the history." : fail(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const notice = data ? changesNotice(data.state) : null;
   if (notice) {
     return (
@@ -108,6 +134,11 @@ function WorkspaceChanges({ botId, data }: { botId: string; data: ListChangesRes
       {data.indexing ? (
         <p className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">Still reading this workspace for the first time. Changes show once that is done.</p>
       ) : null}
+      {done ? (
+        <p role="status" className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+          {done}
+        </p>
+      ) : null}
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <GitCompareArrows size={20} className="text-ink-3" />
@@ -118,13 +149,29 @@ function WorkspaceChanges({ botId, data }: { botId: string; data: ListChangesRes
         <ul className="overflow-hidden rounded-card bg-surface shadow-card">
           {rows.map((c, i) => {
             const key = c.pending ? "pending" : c.id;
-            return <ChangeRow key={key} botId={botId} change={c} cap={cap} first={i === 0} open={open === key} onToggle={() => setOpen(open === key ? "" : key)} />;
+            return (
+              <ChangeRow
+                key={key}
+                botId={botId}
+                change={c}
+                cap={cap}
+                first={i === 0}
+                open={open === key}
+                busy={busy}
+                onToggle={() => {
+                  setOpen(open === key ? "" : key);
+                  setDone("");
+                }}
+                onRestore={(path, oldPath) => void restore(c, path, oldPath)}
+              />
+            );
           })}
         </ul>
       )}
       <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
         The workspace is compared before and after each run{data.since ? `, since ${day(data.since)}` : ""}. Drives, <span className="font-mono text-[12px]">tmp/</span>,{" "}
-        <span className="font-mono text-[12px]">bot/</span> and dependency folders are left out, and a file over {fmtBytes(cap)} is recorded by its size only.
+        <span className="font-mono text-[12px]">bot/</span> and dependency folders are left out, and a file over {fmtBytes(cap)} is recorded by its size only, so it cannot be put back. Undoing a
+        change keeps what it replaces: the restore is listed as a change of its own.
       </p>
     </>
   );
@@ -168,8 +215,27 @@ function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; kee
   );
 }
 
-function ChangeRow({ botId, change: c, cap, first, open, onToggle }: { botId: string; change: Change; cap: bigint; first: boolean; open: boolean; onToggle: () => void }) {
-  const hint = sourceHint(c.sources);
+function ChangeRow({
+  botId,
+  change: c,
+  cap,
+  first,
+  open,
+  busy,
+  onToggle,
+  onRestore,
+}: {
+  botId: string;
+  change: Change;
+  cap: bigint;
+  first: boolean;
+  open: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onRestore: Restore;
+}) {
+  const hint = sourceHint(c.sources, c.restore);
+  const chats = c.sources.filter((s) => s.kind === "chat");
   return (
     <li className={first ? "" : "shadow-[inset_0_1px_0_var(--color-line)]"}>
       <button
@@ -181,7 +247,7 @@ function ChangeRow({ botId, change: c, cap, first, open, onToggle }: { botId: st
         <ChevronRight size={14} className={`mt-[3px] shrink-0 text-ink-3 transition-transform duration-200 ease-quiet ${open ? "rotate-90" : ""}`} />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-[13.5px] font-medium text-ink">{sourceTitle(c.sources)}</span>
+            <span className="truncate text-[13.5px] font-medium text-ink">{sourceTitle(c.sources, c.restore)}</span>
             <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{c.pending ? "Now" : feedStamp(c.at)}</span>
           </span>
           <span className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink-3">
@@ -193,19 +259,26 @@ function ChangeRow({ botId, change: c, cap, first, open, onToggle }: { botId: st
       <Collapse open={open}>
         <div className="px-4 pb-4 pl-[42px]">
           {hint ? <p className="mb-2 text-[12.5px] leading-[18px] text-ink-2">{hint}</p> : null}
-          <ChangeFiles botId={botId} change={c} cap={cap} />
-          {c.sources.some((s) => s.kind === "chat") ? (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-              {c.sources
-                .filter((s) => s.kind === "chat")
-                .map((s) => (
-                  <Link key={s.chatId} {...chatLink(botId, s.chatId)} className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-cobalt hover:underline">
-                    <MessageCircle size={13} className="shrink-0" />
-                    <span className="truncate">Open “{s.name}”</span>
-                  </Link>
-                ))}
-            </div>
-          ) : null}
+          <ChangeFiles botId={botId} change={c} cap={cap} busy={busy} onRestore={onRestore} />
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <ArmedButton
+              kind="secondary"
+              size="sm"
+              disabled={busy}
+              title="Put every file of this change back as it was before it"
+              armedLabel={`Click again to put ${fileCount(c.files)} back`}
+              icon={<Undo2 size={13} />}
+              onConfirm={() => onRestore("", "")}
+            >
+              Undo this change
+            </ArmedButton>
+            {chats.map((s) => (
+              <Link key={s.chatId} {...chatLink(botId, s.chatId)} className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-cobalt hover:underline">
+                <MessageCircle size={13} className="shrink-0" />
+                <span className="truncate">Open “{s.name}”</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </Collapse>
     </li>
@@ -224,7 +297,7 @@ function Counts({ added, deleted }: { added: number; deleted: number }) {
   );
 }
 
-function ChangeFiles({ botId, change: c, cap }: { botId: string; change: Change; cap: bigint }) {
+function ChangeFiles({ botId, change: c, cap, busy, onRestore }: { botId: string; change: Change; cap: bigint; busy: boolean; onRestore: Restore }) {
   // A pending change is a new pair on every look; keep showing the last list
   // while the next one loads.
   const q = useQuery(UI.method.listChangeFiles, { botId, base: c.base, head: c.head }, { placeholderData: (prev) => prev, staleTime: c.pending ? 0 : Infinity });
@@ -237,7 +310,17 @@ function ChangeFiles({ botId, change: c, cap }: { botId: string; change: Change;
     <>
       <ul className="-mx-2">
         {q.data.files.map((f) => (
-          <FileRow key={f.path} botId={botId} change={c} file={f} cap={cap} open={open === f.path} onToggle={() => setOpen(open === f.path ? "" : f.path)} />
+          <FileRow
+            key={f.path}
+            botId={botId}
+            change={c}
+            file={f}
+            cap={cap}
+            open={open === f.path}
+            busy={busy}
+            onToggle={() => setOpen(open === f.path ? "" : f.path)}
+            onRestore={onRestore}
+          />
         ))}
       </ul>
       {q.data.truncated ? <p className="mt-2 text-[12.5px] text-ink-3">Only the first {q.data.files.length} files are listed.</p> : null}
@@ -247,8 +330,27 @@ function ChangeFiles({ botId, change: c, cap }: { botId: string; change: Change;
 
 const statusWords: Record<string, string> = { added: "Added", deleted: "Deleted", renamed: "Renamed", repo: "Repository" };
 
-function FileRow({ botId, change: c, file: f, cap, open, onToggle }: { botId: string; change: Change; file: ChangeFile; cap: bigint; open: boolean; onToggle: () => void }) {
+function FileRow({
+  botId,
+  change: c,
+  file: f,
+  cap,
+  open,
+  busy,
+  onToggle,
+  onRestore,
+}: {
+  botId: string;
+  change: Change;
+  file: ChangeFile;
+  cap: bigint;
+  open: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onRestore: Restore;
+}) {
   const note = fileNote(f, cap);
+  const [label, armedLabel] = restoreLabel(f.status);
   const sizes = f.status === "repo" ? "" : sizeChange(f.oldSize, f.newSize);
   return (
     <li>
@@ -275,6 +377,14 @@ function FileRow({ botId, change: c, file: f, cap, open, onToggle }: { botId: st
             </p>
           ) : null}
           {note ? <p className="rounded-sm bg-well px-3 py-2.5 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : <FilePatch botId={botId} change={c} file={f} />}
+          {canRestore(f) ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <ArmedButton kind="ghost" size="sm" disabled={busy} armedLabel={armedLabel} icon={<Undo2 size={13} />} onConfirm={() => onRestore(f.path, f.oldPath)}>
+                {label}
+              </ArmedButton>
+              <span className="text-[12.5px] text-ink-3">As it was before this change.</span>
+            </div>
+          ) : null}
         </div>
       </Collapse>
     </li>
