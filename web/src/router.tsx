@@ -60,7 +60,7 @@ import { SignIn } from "./SignIn";
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
 //         settings  rules  secrets  tunnels  container
-//       files desktop console mail a right-rail pane as a page of its own
+//       files desktop console changes mail   a right-rail pane as a page of its own
 //
 // `staticData.tab` is the page a route lights (a sub-page lights its parent's).
 
@@ -204,6 +204,7 @@ const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData:
 // has no worker socket, but the address and the messages still live here.
 const desktop = createRoute({ getParentRoute: () => bot, path: "desktop", staticData: { tab: "desktop" } });
 const consoleTab = createRoute({ getParentRoute: () => bot, path: "console", staticData: { tab: "console" } });
+const changes = createRoute({ getParentRoute: () => bot, path: "changes", staticData: { tab: "changes" } });
 const mail = createRoute({ getParentRoute: () => bot, path: "mail", staticData: { tab: "mail" } });
 const files = createRoute({
   getParentRoute: () => bot,
@@ -265,6 +266,7 @@ const routeTree = root.addChildren([
       files,
       desktop,
       consoleTab,
+      changes,
       mail,
       botElse,
     ]),

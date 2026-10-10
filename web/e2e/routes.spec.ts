@@ -32,6 +32,7 @@ const pages: [path: string, lit: string[]][] = [
   ["desktop", ["Desktop"]],
   ["console", ["Console"]],
   ["files", ["Files"]],
+  ["changes", ["Changes"]],
   // Customize and Settings light their sidebar row and the open tab.
   ["connectors", ["Customize", "Connectors"]],
   ["skills", ["Customize", "Skills"]],

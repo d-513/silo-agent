@@ -50,6 +50,7 @@ const paneTo = {
   files: "/bots/$botId/files",
   desktop: "/bots/$botId/desktop",
   console: "/bots/$botId/console",
+  changes: "/bots/$botId/changes",
   mail: "/bots/$botId/mail",
 } as const;
 

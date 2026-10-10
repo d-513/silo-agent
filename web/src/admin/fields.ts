@@ -25,6 +25,9 @@ export const LABELS: Record<string, string> = {
   "context.window": "Fallback context window",
   "context.compact_at": "Compact at",
   "runs.max_duration": "Max run duration",
+  "changes.enabled": "Track workspace changes",
+  "changes.max_file_mb": "Largest file kept (MB)",
+  "changes.keep_days": "Keep history for (days)",
   debug: "Debug logging",
   "search.engine": "Engine",
   http_addr: "Listen address",
@@ -56,6 +59,8 @@ export const LABELS: Record<string, string> = {
 export const HINTS: Record<string, string> = {
   "context.window": "Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows.",
   "context.compact_at": "Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call.",
+  "changes.max_file_mb": "A bigger file is recorded by its size only, never its content. 1 to 100.",
+  "changes.keep_days": "Older snapshots are forgotten. 1 to 365.",
   "runs.max_duration": "How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this.",
   embedding_model: "For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync).",
   "knowledge.sync_interval": "A Go duration such as 15m or 1h (minimum 1m).",
@@ -104,6 +109,9 @@ export const CONTEXT_NOTE = "When a conversation nears the model's context windo
 
 export const RUNS_NOTE = "A run is one reply: every model call and tool call from a message to the answer.";
 
+export const CHANGES_NOTE =
+  "Each Bot's machine snapshots /workspace before and after every run, and the Changes pane shows the difference as diffs. The history stays on the Bot's own disk, beside the workspace. Drives, tmp/, bot/ and dependency folders are never read, and a Bot keeps at most 300 snapshots and 1 GB. Turning this off stops new snapshots; what was recorded stays.";
+
 export const CONTAINERS_NOTE = "The container engine and the images a Bot's machine and its sidecars start from. A running Bot keeps its old image until its container is reset.";
 
 export const MEMORY_NOTE =
@@ -134,6 +142,7 @@ export function groupOf(key: string) {
   if (key.startsWith("mail.")) return "mail";
   if (key.startsWith("context.")) return "context";
   if (key.startsWith("runs.")) return "runs";
+  if (key.startsWith("changes.")) return "changes";
   if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";

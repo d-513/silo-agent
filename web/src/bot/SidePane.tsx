@@ -9,6 +9,7 @@ import type { PaneKind } from "./tabs";
 const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
 const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
+const ChangesPane = lazyNamed(() => import("../Changes"), "ChangesPane");
 
 // What the docked pane's share is a share of: the row without the sidebar
 // (248) and the machine rail (48).
@@ -19,6 +20,7 @@ const captions: Record<PaneKind, string> = {
   desktop: "Same browser the Bot uses. You can type and click.",
   console: "A shell on this Bot, started in /workspace.",
   files: "",
+  changes: "What changed in /workspace, compared before and after each run.",
   mail: "What arrives at the Bot's address. It only receives.",
 };
 
@@ -89,7 +91,8 @@ function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
   );
 }
 
-// SidePane is the Bot's machine in the page: Files, the Desktop or the Console.
+// SidePane is the Bot's machine in the page: Files, the Desktop, the Console or
+// what changed in the workspace (and Mail, which needs no machine).
 // Docked, it shares the row with the chat and its left edge drags; as its own
 // page (`max`) it takes the row. Either way it is this one element, so going
 // between the two keeps the desktop's connection and the files' place, and a
@@ -162,6 +165,11 @@ export function SidePane({
         {has("files") ? (
           <div className={`min-h-0 flex-1 flex-col ${online ? "" : "p-3"} ${kind === "files" ? "flex" : "hidden"}`}>
             <FilesPane bot={bot} onStart={onStart} openAt={openAt} actions={actions(false)} />
+          </div>
+        ) : null}
+        {has("changes") ? (
+          <div className={`min-h-0 flex-1 flex-col ${online ? "" : "p-3"} ${kind === "changes" ? "flex" : "hidden"}`}>
+            <ChangesPane bot={bot} visible={kind === "changes"} onStart={onStart} onError={onError} actions={actions(false)} />
           </div>
         ) : null}
         {/* Mail needs no machine: it shows whether the Bot is up or not. */}

@@ -23,6 +23,7 @@ import (
 	"silo.agent/internal/app/admin"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
+	"silo.agent/internal/app/changes"
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/drive"
@@ -174,6 +175,7 @@ type App struct {
 	Workspace   *workspace.Service
 	Voice       *voice.Service
 	Knowledge   *knowledge.Service
+	Changes     *changes.Service
 	Memory      *memory.Service
 	Connectors  *connector.Service
 	Admin       *admin.Service
@@ -203,6 +205,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
+	a.Changes = changes.New(a.DB, a.cfg, a.Workspace, a, a.Mask)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Automations = automation.New(a.DB, a, a)
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)

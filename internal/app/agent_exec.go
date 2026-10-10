@@ -170,6 +170,9 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 	if !a.Hub.WaitConnected(ctx, botID, 90*time.Second) {
 		return "", "", fmt.Errorf("the Bot machine is not running yet")
 	}
+	if changesWorkspace(name) {
+		a.Changes.Begin(ctx, botID, runID)
+	}
 	a.mu.Lock()
 	a.cmdRun[id] = runID
 	a.mu.Unlock()
@@ -204,6 +207,18 @@ func (a *App) execTool(ctx context.Context, botID, chatID, runID, name, argsJSON
 		// reports the fresh screenshot as a data: URL on the done event.
 		return out.Out, out.Image, nil
 	}
+}
+
+// changesWorkspace reports a tool that can change files in the workspace: the
+// file writers, anything that runs code, and the desktop's input (a click can
+// press Save). The run's first one takes the snapshot its changes are diffed
+// against.
+func changesWorkspace(name string) bool {
+	switch name {
+	case "terminal", "exec_python", "write", "patch", "delete", "click", "type", "key":
+		return true
+	}
+	return false
 }
 
 func chatTool(name string) (conn, action string, ok bool) {

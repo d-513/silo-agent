@@ -117,6 +117,12 @@ service UI {
   rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
   rpc SetRule(SetRuleRequest) returns (Rule);
 
+  // Changes: what changed in the Bot's workspace, as diffs between snapshots
+  // its worker takes around every run.
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+  rpc ListChangeFiles(ListChangeFilesRequest) returns (ListChangeFilesResponse);
+  rpc GetChangePatch(GetChangePatchRequest) returns (GetChangePatchResponse);
+
   rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
   rpc Mkdir(MkdirRequest) returns (FileOpResponse);
@@ -575,6 +581,93 @@ message SearchKnowledgeResponse {
 }
 
 // FeedPost is one read-only message a Bot posted to its Feed with `feed`.
+// ChangeSource is one run that was working while a change was made.
+message ChangeSource {
+  // "chat", "automation", "channel" or "subagent".
+  string kind = 1;
+  // The chat title, automation name, channel name or subagent name.
+  string name = 2;
+  string chat_id = 3;
+}
+
+// Change is what differs between two consecutive snapshots of the workspace.
+message Change {
+  // id is the newer snapshot; "" for the pending change (not snapshotted yet).
+  string id = 1;
+  string at = 2;
+  // The runs live while it was made; none means it happened outside a run
+  // (the owner in Files or the Console, or a background process).
+  repeated ChangeSource sources = 3;
+  // base and head name the two snapshots for ListChangeFiles/GetChangePatch.
+  string base = 4;
+  string head = 5;
+  int32 files = 6;
+  int32 added = 7;
+  int32 deleted = 8;
+  bool pending = 9;
+}
+
+message ChangeFile {
+  string path = 1;
+  // old_path is where it was before a rename; "" otherwise.
+  string old_path = 2;
+  // "added", "modified", "deleted", "renamed", or "repo" (a nested git
+  // repository, recorded by its commit only).
+  string status = 3;
+  int32 added = 4;
+  int32 deleted = 5;
+  bool binary = 6;
+  // large: over the size cap, so only its size was recorded, not its content.
+  bool large = 7;
+  // Sizes in bytes; -1 on the side where the file does not exist.
+  int64 old_size = 8;
+  int64 new_size = 9;
+}
+
+message ListChangesRequest {
+  string bot_id = 1;
+}
+
+message ListChangesResponse {
+  // "ok", or "off" when the operator turned change tracking off.
+  string state = 1;
+  // pending is what changed since the last snapshot; unset when nothing did.
+  Change pending = 2;
+  repeated Change changes = 3;
+  // since is when the history starts (the oldest snapshot kept).
+  string since = 4;
+  // What tracking leaves out, for the pane's footnote.
+  int64 max_file_bytes = 5;
+  // indexing: the first snapshots of a big workspace are still being taken.
+  bool indexing = 6;
+}
+
+message ListChangeFilesRequest {
+  string bot_id = 1;
+  string base = 2;
+  string head = 3;
+}
+
+message ListChangeFilesResponse {
+  repeated ChangeFile files = 1;
+  bool truncated = 2;
+}
+
+message GetChangePatchRequest {
+  string bot_id = 1;
+  string base = 2;
+  string head = 3;
+  string path = 4;
+  string old_path = 5;
+}
+
+message GetChangePatchResponse {
+  // patch is a unified diff (hunks only, no file header).
+  string patch = 1;
+  bool truncated = 2;
+  bool binary = 3;
+}
+
 message FeedPost {
   string id = 1;
   string body = 2; // markdown

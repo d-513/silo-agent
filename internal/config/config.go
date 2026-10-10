@@ -260,6 +260,7 @@ type Config struct {
 	Transcribe  string              `koanf:"transcribe_model"`
 	Memory      Memory              `koanf:"memory"`
 	Knowledge   Knowledge           `koanf:"knowledge"`
+	Changes     Changes             `koanf:"changes"`
 	Context     Context             `koanf:"context"`
 	Thinking    Thinking            `koanf:"thinking"`
 	Runs        Runs                `koanf:"runs"`
@@ -391,6 +392,9 @@ var fieldDefs = []fieldMeta{
 	{Key: "knowledge.enabled", Type: "bool"},
 	{Key: "knowledge.sync_interval"},
 	{Key: "knowledge.ocr", Type: "bool"},
+	{Key: "changes.enabled", Type: "bool"},
+	{Key: "changes.max_file_mb"},
+	{Key: "changes.keep_days"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},

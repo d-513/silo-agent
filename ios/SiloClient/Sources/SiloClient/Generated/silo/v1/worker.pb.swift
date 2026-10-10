@@ -220,6 +220,38 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     set {body = .openTunnel(newValue)}
   }
 
+  public var checkpoint: Silo_V1_CheckpointCmd {
+    get {
+      if case .checkpoint(let v)? = body {return v}
+      return Silo_V1_CheckpointCmd()
+    }
+    set {body = .checkpoint(newValue)}
+  }
+
+  public var changes: Silo_V1_ChangesCmd {
+    get {
+      if case .changes(let v)? = body {return v}
+      return Silo_V1_ChangesCmd()
+    }
+    set {body = .changes(newValue)}
+  }
+
+  public var changeFiles: Silo_V1_ChangeFilesCmd {
+    get {
+      if case .changeFiles(let v)? = body {return v}
+      return Silo_V1_ChangeFilesCmd()
+    }
+    set {body = .changeFiles(newValue)}
+  }
+
+  public var changePatch: Silo_V1_ChangePatchCmd {
+    get {
+      if case .changePatch(let v)? = body {return v}
+      return Silo_V1_ChangePatchCmd()
+    }
+    set {body = .changePatch(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -246,6 +278,10 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     case walk(Silo_V1_WalkCmd)
     case extract(Silo_V1_ExtractCmd)
     case openTunnel(Silo_V1_OpenTunnelCmd)
+    case checkpoint(Silo_V1_CheckpointCmd)
+    case changes(Silo_V1_ChangesCmd)
+    case changeFiles(Silo_V1_ChangeFilesCmd)
+    case changePatch(Silo_V1_ChangePatchCmd)
 
   }
 
@@ -473,6 +509,126 @@ public nonisolated struct Silo_V1_ExtractCmd: Sendable {
   /// Read scanned PDF pages and image files with tesseract. Off, a scan is
   /// reported (detail says OCR is off) instead of read.
   public var ocr: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// HistoryLimits bound what the workspace history keeps. Zero fields take the
+/// worker's defaults.
+public nonisolated struct Silo_V1_HistoryLimits: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// A file over this many bytes is recorded by size and mtime only.
+  public var maxFileBytes: Int64 = 0
+
+  /// Checkpoints kept, newest first, and for how many days.
+  public var keep: Int32 = 0
+
+  public var keepDays: Int32 = 0
+
+  /// The store's size budget; over it the oldest half of the history goes.
+  public var maxStoreBytes: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// CheckpointCmd snapshots the workspace into the Bot's history store (a shadow
+/// git repository outside /workspace; drives/, tmp/, bot/ and heavy trees are
+/// never read). It answers JSON: the checkpoint id and whether anything changed
+/// since the last one — an unchanged tree makes no checkpoint.
+public nonisolated struct Silo_V1_CheckpointCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// note is stored with the checkpoint and handed back by ChangesCmd as is:
+  /// the control plane's own JSON (who was running).
+  public var note: String = String()
+
+  public var limits: Silo_V1_HistoryLimits {
+    get {_limits ?? Silo_V1_HistoryLimits()}
+    set {_limits = newValue}
+  }
+  /// Returns true if `limits` has been explicitly set.
+  public var hasLimits: Bool {self._limits != nil}
+  /// Clears the value of `limits`. Subsequent reads from it will return its default value.
+  public mutating func clearLimits() {self._limits = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _limits: Silo_V1_HistoryLimits? = nil
+}
+
+/// ChangesCmd lists the change sets between consecutive checkpoints, newest
+/// first, plus what changed since the last one (pending). With no history yet it
+/// takes the first checkpoint.
+public nonisolated struct Silo_V1_ChangesCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var limit: Int32 = 0
+
+  public var limits: Silo_V1_HistoryLimits {
+    get {_limits ?? Silo_V1_HistoryLimits()}
+    set {_limits = newValue}
+  }
+  /// Returns true if `limits` has been explicitly set.
+  public var hasLimits: Bool {self._limits != nil}
+  /// Clears the value of `limits`. Subsequent reads from it will return its default value.
+  public mutating func clearLimits() {self._limits = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _limits: Silo_V1_HistoryLimits? = nil
+}
+
+/// ChangeFilesCmd lists the files that differ between two history objects
+/// (ids from ChangesCmd: base and head).
+public nonisolated struct Silo_V1_ChangeFilesCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: String = String()
+
+  public var head: String = String()
+
+  /// Stop after this many files and report truncated (0 = worker default).
+  public var maxFiles: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ChangePatchCmd returns one file's unified diff between two history objects.
+public nonisolated struct Silo_V1_ChangePatchCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: String = String()
+
+  public var head: String = String()
+
+  public var path: String = String()
+
+  /// The path before a rename ("" when it did not move).
+  public var oldPath: String = String()
+
+  /// Cap on the returned patch (0 = worker default).
+  public var maxBytes: Int64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -821,7 +977,7 @@ fileprivate nonisolated let _protobuf_package = "silo.v1"
 
 nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Cmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1130,6 +1286,58 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
           self.body = .openTunnel(v)
         }
       }()
+      case 26: try {
+        var v: Silo_V1_CheckpointCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .checkpoint(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .checkpoint(v)
+        }
+      }()
+      case 27: try {
+        var v: Silo_V1_ChangesCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .changes(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .changes(v)
+        }
+      }()
+      case 28: try {
+        var v: Silo_V1_ChangeFilesCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .changeFiles(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .changeFiles(v)
+        }
+      }()
+      case 29: try {
+        var v: Silo_V1_ChangePatchCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .changePatch(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .changePatch(v)
+        }
+      }()
       default: break
       }
     }
@@ -1241,6 +1449,22 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
     case .openTunnel?: try {
       guard case .openTunnel(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+    }()
+    case .checkpoint?: try {
+      guard case .checkpoint(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+    }()
+    case .changes?: try {
+      guard case .changes(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+    }()
+    case .changeFiles?: try {
+      guard case .changeFiles(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 28)
+    }()
+    case .changePatch?: try {
+      guard case .changePatch(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
     }()
     default: break
     }
@@ -1796,6 +2020,219 @@ nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.path != rhs.path {return false}
     if lhs.maxBytes != rhs.maxBytes {return false}
     if lhs.ocr != rhs.ocr {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_HistoryLimits: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HistoryLimits"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}max_file_bytes\0\u{1}keep\0\u{3}keep_days\0\u{3}max_store_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.maxFileBytes) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.keep) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.keepDays) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.maxStoreBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.maxFileBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxFileBytes, fieldNumber: 1)
+    }
+    if self.keep != 0 {
+      try visitor.visitSingularInt32Field(value: self.keep, fieldNumber: 2)
+    }
+    if self.keepDays != 0 {
+      try visitor.visitSingularInt32Field(value: self.keepDays, fieldNumber: 3)
+    }
+    if self.maxStoreBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxStoreBytes, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_HistoryLimits, rhs: Silo_V1_HistoryLimits) -> Bool {
+    if lhs.maxFileBytes != rhs.maxFileBytes {return false}
+    if lhs.keep != rhs.keep {return false}
+    if lhs.keepDays != rhs.keepDays {return false}
+    if lhs.maxStoreBytes != rhs.maxStoreBytes {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_CheckpointCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckpointCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}note\0\u{1}limits\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.note) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._limits) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.note.isEmpty {
+      try visitor.visitSingularStringField(value: self.note, fieldNumber: 1)
+    }
+    try { if let v = self._limits {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_CheckpointCmd, rhs: Silo_V1_CheckpointCmd) -> Bool {
+    if lhs.note != rhs.note {return false}
+    if lhs._limits != rhs._limits {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ChangesCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ChangesCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}limits\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.limit) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._limits) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.limit != 0 {
+      try visitor.visitSingularInt32Field(value: self.limit, fieldNumber: 1)
+    }
+    try { if let v = self._limits {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ChangesCmd, rhs: Silo_V1_ChangesCmd) -> Bool {
+    if lhs.limit != rhs.limit {return false}
+    if lhs._limits != rhs._limits {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ChangeFilesCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ChangeFilesCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}head\0\u{3}max_files\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.head) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.maxFiles) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.base.isEmpty {
+      try visitor.visitSingularStringField(value: self.base, fieldNumber: 1)
+    }
+    if !self.head.isEmpty {
+      try visitor.visitSingularStringField(value: self.head, fieldNumber: 2)
+    }
+    if self.maxFiles != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxFiles, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ChangeFilesCmd, rhs: Silo_V1_ChangeFilesCmd) -> Bool {
+    if lhs.base != rhs.base {return false}
+    if lhs.head != rhs.head {return false}
+    if lhs.maxFiles != rhs.maxFiles {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ChangePatchCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ChangePatchCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}head\0\u{1}path\0\u{3}old_path\0\u{3}max_bytes\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.head) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.oldPath) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.maxBytes) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.base.isEmpty {
+      try visitor.visitSingularStringField(value: self.base, fieldNumber: 1)
+    }
+    if !self.head.isEmpty {
+      try visitor.visitSingularStringField(value: self.head, fieldNumber: 2)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
+    }
+    if !self.oldPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.oldPath, fieldNumber: 4)
+    }
+    if self.maxBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxBytes, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ChangePatchCmd, rhs: Silo_V1_ChangePatchCmd) -> Bool {
+    if lhs.base != rhs.base {return false}
+    if lhs.head != rhs.head {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.oldPath != rhs.oldPath {return false}
+    if lhs.maxBytes != rhs.maxBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

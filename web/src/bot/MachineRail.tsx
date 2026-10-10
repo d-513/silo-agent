@@ -1,4 +1,4 @@
-import { Folder, Mail, Monitor, Power, SquareTerminal, type LucideIcon } from "lucide-react";
+import { Folder, GitCompareArrows, Mail, Monitor, Power, SquareTerminal, type LucideIcon } from "lucide-react";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import type { PaneKind } from "./tabs";
 
@@ -6,6 +6,7 @@ export const paneMeta: Record<PaneKind, { label: string; icon: LucideIcon }> = {
   files: { label: "Files", icon: Folder },
   desktop: { label: "Desktop", icon: Monitor },
   console: { label: "Console", icon: SquareTerminal },
+  changes: { label: "Changes", icon: GitCompareArrows },
   mail: { label: "Mail", icon: Mail },
 };
 
@@ -15,8 +16,8 @@ function hit(on: boolean) {
   }`;
 }
 
-// The wide layout's right edge: the Bot's machine. Files, Desktop and Console
-// open as a pane beside the chat (the open one carries the cobalt bar on the
+// The wide layout's right edge: the Bot's machine. Files, Desktop, Console and
+// Changes open as a pane beside the chat (the open one carries the cobalt bar on the
 // side it opens toward), and Start/Stop sits at the foot.
 export function MachineRail({
   bot,

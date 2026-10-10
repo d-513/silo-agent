@@ -39,6 +39,9 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("knowledge.enabled", true)
 	_ = k.Set("knowledge.sync_interval", "15m")
 	_ = k.Set("knowledge.ocr", true)
+	_ = k.Set("changes.enabled", true)
+	_ = k.Set("changes.max_file_mb", DefaultChangesFileMB)
+	_ = k.Set("changes.keep_days", DefaultChangesKeepDays)
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")
@@ -323,6 +326,9 @@ func validateYAML(raw []byte) error {
 		return fmt.Errorf("unknown search engine %q", e)
 	}
 	if err := validateTunnels(k.String("tunnels.host"), k.String("tunnels.scheme"), k.String("public_url")); err != nil {
+		return err
+	}
+	if err := validateChanges(k); err != nil {
 		return err
 	}
 	if err := validateMail(k); err != nil {

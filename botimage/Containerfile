@@ -25,6 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # does not rebuild the big one above.
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-pol \
     && rm -rf /var/lib/apt/lists/*
+# git: the worker keeps the workspace history (change tracking) in a shadow
+# repository, and the Bot gets it for its own projects. Its own layer, for the
+# same reason.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
 # Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
 # bump does not rebuild the big apt layer above.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
@@ -58,10 +63,10 @@ RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
     && test -f /opt/silo/ubol/manifest.json
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/silo-chromium \
     && mkdir -p /workspace /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
-        /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools \
+        /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools /var/lib/silo/history \
     && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
-    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol /opt/silo/stealth
+    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol /opt/silo/stealth /var/lib/silo/history
 ENV DISPLAY=:1 \
     SILO_WORKSPACE=/workspace \
     SILO_WORKER_SOCK=/var/run/silo/worker.sock \

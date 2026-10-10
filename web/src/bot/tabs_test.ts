@@ -8,7 +8,7 @@ eq([onCustomize("connectors"), onCustomize("channels"), onCustomize("secrets"), 
 eq([onSettings("settings"), onSettings("container"), onSettings("tunnels"), onSettings("drives")], [true, true, true, false], "settings");
 
 // The right-rail panes have a page that is the pane itself.
-eq([paneOf("files"), paneOf("desktop"), paneOf("console"), paneOf("mail"), paneOf("run"), paneOf("settings")], ["files", "desktop", "console", "mail", "", ""], "pane of a tab");
+eq([paneOf("files"), paneOf("desktop"), paneOf("console"), paneOf("changes"), paneOf("mail"), paneOf("run"), paneOf("settings")], ["files", "desktop", "console", "changes", "mail", "", ""], "pane of a tab");
 
 // The docked pane never squeezes the chat, or itself, out of the row.
 eq([clampShare(0.5), clampShare(0), clampShare(2), clampShare(Number.NaN)], [0.5, 0.25, 0.75, 0.5], "share");

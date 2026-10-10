@@ -206,6 +206,12 @@ const (
 	UIListRulesProcedure = "/silo.v1.UI/ListRules"
 	// UISetRuleProcedure is the fully-qualified name of the UI's SetRule RPC.
 	UISetRuleProcedure = "/silo.v1.UI/SetRule"
+	// UIListChangesProcedure is the fully-qualified name of the UI's ListChanges RPC.
+	UIListChangesProcedure = "/silo.v1.UI/ListChanges"
+	// UIListChangeFilesProcedure is the fully-qualified name of the UI's ListChangeFiles RPC.
+	UIListChangeFilesProcedure = "/silo.v1.UI/ListChangeFiles"
+	// UIGetChangePatchProcedure is the fully-qualified name of the UI's GetChangePatch RPC.
+	UIGetChangePatchProcedure = "/silo.v1.UI/GetChangePatch"
 	// UIListFilesProcedure is the fully-qualified name of the UI's ListFiles RPC.
 	UIListFilesProcedure = "/silo.v1.UI/ListFiles"
 	// UIReadFileProcedure is the fully-qualified name of the UI's ReadFile RPC.
@@ -411,6 +417,11 @@ type UIClient interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
 	ListRules(context.Context, *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error)
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
+	// Changes: what changed in the Bot's workspace, as diffs between snapshots
+	// its worker takes around every run.
+	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
+	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
+	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
@@ -990,6 +1001,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SetRule")),
 			connect.WithClientOptions(opts...),
 		),
+		listChanges: connect.NewClient[v1.ListChangesRequest, v1.ListChangesResponse](
+			httpClient,
+			baseURL+UIListChangesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListChanges")),
+			connect.WithClientOptions(opts...),
+		),
+		listChangeFiles: connect.NewClient[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse](
+			httpClient,
+			baseURL+UIListChangeFilesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListChangeFiles")),
+			connect.WithClientOptions(opts...),
+		),
+		getChangePatch: connect.NewClient[v1.GetChangePatchRequest, v1.GetChangePatchResponse](
+			httpClient,
+			baseURL+UIGetChangePatchProcedure,
+			connect.WithSchema(uIMethods.ByName("GetChangePatch")),
+			connect.WithClientOptions(opts...),
+		),
 		listFiles: connect.NewClient[v1.ListFilesRequest, v1.ListFilesResponse](
 			httpClient,
 			baseURL+UIListFilesProcedure,
@@ -1369,6 +1398,9 @@ type uIClient struct {
 	decideApproval          *connect.Client[v1.DecideApprovalRequest, v1.Approval]
 	listRules               *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
 	setRule                 *connect.Client[v1.SetRuleRequest, v1.Rule]
+	listChanges             *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
+	listChangeFiles         *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
+	getChangePatch          *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
 	listFiles               *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
 	readFile                *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
 	mkdir                   *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
@@ -1849,6 +1881,21 @@ func (c *uIClient) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleR
 	return c.setRule.CallUnary(ctx, req)
 }
 
+// ListChanges calls silo.v1.UI.ListChanges.
+func (c *uIClient) ListChanges(ctx context.Context, req *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {
+	return c.listChanges.CallUnary(ctx, req)
+}
+
+// ListChangeFiles calls silo.v1.UI.ListChangeFiles.
+func (c *uIClient) ListChangeFiles(ctx context.Context, req *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error) {
+	return c.listChangeFiles.CallUnary(ctx, req)
+}
+
+// GetChangePatch calls silo.v1.UI.GetChangePatch.
+func (c *uIClient) GetChangePatch(ctx context.Context, req *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error) {
+	return c.getChangePatch.CallUnary(ctx, req)
+}
+
 // ListFiles calls silo.v1.UI.ListFiles.
 func (c *uIClient) ListFiles(ctx context.Context, req *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
 	return c.listFiles.CallUnary(ctx, req)
@@ -2195,6 +2242,11 @@ type UIHandler interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
 	ListRules(context.Context, *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error)
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
+	// Changes: what changed in the Bot's workspace, as diffs between snapshots
+	// its worker takes around every run.
+	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
+	ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error)
+	GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error)
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	Mkdir(context.Context, *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error)
@@ -2770,6 +2822,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SetRule")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListChangesHandler := connect.NewUnaryHandler(
+		UIListChangesProcedure,
+		svc.ListChanges,
+		connect.WithSchema(uIMethods.ByName("ListChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListChangeFilesHandler := connect.NewUnaryHandler(
+		UIListChangeFilesProcedure,
+		svc.ListChangeFiles,
+		connect.WithSchema(uIMethods.ByName("ListChangeFiles")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetChangePatchHandler := connect.NewUnaryHandler(
+		UIGetChangePatchProcedure,
+		svc.GetChangePatch,
+		connect.WithSchema(uIMethods.ByName("GetChangePatch")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListFilesHandler := connect.NewUnaryHandler(
 		UIListFilesProcedure,
 		svc.ListFiles,
@@ -3232,6 +3302,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListRulesHandler.ServeHTTP(w, r)
 		case UISetRuleProcedure:
 			uISetRuleHandler.ServeHTTP(w, r)
+		case UIListChangesProcedure:
+			uIListChangesHandler.ServeHTTP(w, r)
+		case UIListChangeFilesProcedure:
+			uIListChangeFilesHandler.ServeHTTP(w, r)
+		case UIGetChangePatchProcedure:
+			uIGetChangePatchHandler.ServeHTTP(w, r)
 		case UIListFilesProcedure:
 			uIListFilesHandler.ServeHTTP(w, r)
 		case UIReadFileProcedure:
@@ -3679,6 +3755,18 @@ func (UnimplementedUIHandler) ListRules(context.Context, *connect.Request[v1.Lis
 
 func (UnimplementedUIHandler) SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetRule is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListChanges is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListChangeFiles(context.Context, *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListChangeFiles is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetChangePatch(context.Context, *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetChangePatch is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {

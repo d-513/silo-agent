@@ -525,6 +525,8 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.untrackRun(runID)
 	a.recomputeStatus(botID)
 	a.Emit(botID, chatID, runID, "done", st, "")
+	// The closing snapshot is a worker round trip; nothing waits for it.
+	go a.Changes.End(botID, runID)
 	a.afterRun(botID, chatID, runID, st)
 }
 

@@ -13,6 +13,7 @@ type SideTo =
   | "/bots/$botId/files"
   | "/bots/$botId/desktop"
   | "/bots/$botId/console"
+  | "/bots/$botId/changes"
   | "/bots/$botId/mail";
 type SideProps = { to: SideTo; botId: string; on: boolean; icon: typeof MessageCircle; label: string; badge?: number };
 

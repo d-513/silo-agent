@@ -69,6 +69,10 @@ type worker struct {
 	// terminal `look`) reports the fresh screen back on CmdDone.image so the
 	// CP can attach pixels without a second round trip.
 	shotSeq atomic.Int64
+	// history is the workspace history store (history.go); histMu makes its
+	// commands take turns, since they share one git index.
+	history string
+	histMu  sync.Mutex
 }
 
 // screenDataURL reads the latest model-facing screenshot as a data: URL.
@@ -237,6 +241,14 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.walk(b.Walk.GetPath(), int(b.Walk.GetMaxFiles()))
 	case *v1.Cmd_Extract:
 		return w.extract(ctx, b.Extract.GetPath(), b.Extract.GetMaxBytes(), b.Extract.GetOcr())
+	case *v1.Cmd_Checkpoint:
+		return w.checkpoint(ctx, b.Checkpoint)
+	case *v1.Cmd_Changes:
+		return w.changes(ctx, b.Changes)
+	case *v1.Cmd_ChangeFiles:
+		return w.changeFiles(ctx, b.ChangeFiles)
+	case *v1.Cmd_ChangePatch:
+		return w.changePatch(ctx, b.ChangePatch)
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:

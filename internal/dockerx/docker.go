@@ -189,16 +189,21 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	bot := filepath.Join(ws, "bot")
 	tmp := filepath.Join(ws, "tmp")
 	chrome := filepath.Join(cfg.DataDir, "bots", botID, "chrome-profile")
-	for _, d := range []string{ws, bot, tmp, chrome} {
+	// The workspace history (change tracking) sits beside the workspace, not
+	// in it: Files, grep and Knowledge never see it, and it outlives a reset.
+	history := filepath.Join(cfg.DataDir, "bots", botID, "history")
+	for _, d := range []string{ws, bot, tmp, chrome, history} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return "", err
 		}
 	}
 	absWS, _ := filepath.Abs(ws)
 	absChrome, _ := filepath.Abs(chrome)
+	absHistory, _ := filepath.Abs(history)
 	binds := []string{
 		absWS + ":/workspace",
 		absChrome + ":/home/silo/chrome-profile",
+		absHistory + ":/var/lib/silo/history",
 	}
 	if b := e.botDriveBind(ctx, botID); b != "" {
 		binds = append(binds, b)

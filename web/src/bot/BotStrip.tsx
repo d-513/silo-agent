@@ -1,4 +1,4 @@
-import { Blocks, Brain, Folder, Inbox, Library, Mail, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, Folder, GitCompareArrows, Inbox, Library, Mail, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
@@ -56,6 +56,7 @@ export function BotStrip({
       <SideChip to="/bots/$botId/files" botId={id} on={tab === "files"} icon={Folder} label="Files" />
       <SideChip to="/bots/$botId/desktop" botId={id} on={tab === "desktop"} icon={Monitor} label="Desktop" />
       <SideChip to="/bots/$botId/console" botId={id} on={tab === "console"} icon={SquareTerminal} label="Console" />
+      <SideChip to="/bots/$botId/changes" botId={id} on={tab === "changes"} icon={GitCompareArrows} label="Changes" />
       {bot.mailAddress || tab === "mail" ? <SideChip to="/bots/$botId/mail" botId={id} on={tab === "mail"} icon={Mail} label="Mail" /> : null}
       <Btn kind="ghost" size="sm" iconOnly title={power} aria-label={power} className="h-10 w-10" disabled={!bot.workerConnected && starting} icon={<Power size={15} />} onClick={bot.workerConnected ? onStop : onStart} />
       {rule}

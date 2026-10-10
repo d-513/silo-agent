@@ -80,8 +80,10 @@ func repoRoot() (string, error) {
 // Worker is a running silo-worker subprocess connected to the harness CP.
 type Worker struct {
 	Workspace string
-	Token     string
-	cmd       *exec.Cmd
+	// History is the worker's workspace history store (change tracking).
+	History string
+	Token   string
+	cmd     *exec.Cmd
 }
 
 // StartWorker launches the real worker binary against the harness CP and waits
@@ -109,6 +111,7 @@ func (h *H) StartWorker(botID string) *Worker {
 		"SILO_WORKER_SOCK=" + sock,
 		"SILO_TOOLS_DIR=" + filepath.Join(scratch, "tools"),
 		"SILO_SKILLS_DIR=" + filepath.Join(scratch, "skills"),
+		"SILO_HISTORY_DIR=" + filepath.Join(scratch, "history"),
 	}...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var log strings.Builder
@@ -117,7 +120,7 @@ func (h *H) StartWorker(botID string) *Worker {
 	if err := cmd.Start(); err != nil {
 		h.T.Fatalf("start worker: %v", err)
 	}
-	w := &Worker{Workspace: ws, Token: token, cmd: cmd}
+	w := &Worker{Workspace: ws, History: filepath.Join(scratch, "history"), Token: token, cmd: cmd}
 	h.T.Cleanup(func() {
 		if cmd.Process != nil {
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)

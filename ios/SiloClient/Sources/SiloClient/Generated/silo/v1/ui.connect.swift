@@ -287,6 +287,17 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `setRule`(request: Silo_V1_SetRuleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Rule>
 
+    /// Changes: what changed in the Bot's workspace, as diffs between snapshots
+    /// its worker takes around every run.
+    @available(iOS 13, *)
+    func `listChanges`(request: Silo_V1_ListChangesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListChangesResponse>
+
+    @available(iOS 13, *)
+    func `listChangeFiles`(request: Silo_V1_ListChangeFilesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListChangeFilesResponse>
+
+    @available(iOS 13, *)
+    func `getChangePatch`(request: Silo_V1_GetChangePatchRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_GetChangePatchResponse>
+
     @available(iOS 13, *)
     func `listFiles`(request: Silo_V1_ListFilesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListFilesResponse>
 
@@ -873,6 +884,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listChanges`(request: Silo_V1_ListChangesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListChangesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListChanges", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listChangeFiles`(request: Silo_V1_ListChangeFilesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListChangeFilesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListChangeFiles", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getChangePatch`(request: Silo_V1_GetChangePatchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_GetChangePatchResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/GetChangePatch", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listFiles`(request: Silo_V1_ListFilesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListFilesResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListFiles", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1200,6 +1226,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let decideApproval = Connect.MethodSpec(name: "DecideApproval", service: "silo.v1.UI", type: .unary)
             public static let listRules = Connect.MethodSpec(name: "ListRules", service: "silo.v1.UI", type: .unary)
             public static let setRule = Connect.MethodSpec(name: "SetRule", service: "silo.v1.UI", type: .unary)
+            public static let listChanges = Connect.MethodSpec(name: "ListChanges", service: "silo.v1.UI", type: .unary)
+            public static let listChangeFiles = Connect.MethodSpec(name: "ListChangeFiles", service: "silo.v1.UI", type: .unary)
+            public static let getChangePatch = Connect.MethodSpec(name: "GetChangePatch", service: "silo.v1.UI", type: .unary)
             public static let listFiles = Connect.MethodSpec(name: "ListFiles", service: "silo.v1.UI", type: .unary)
             public static let readFile = Connect.MethodSpec(name: "ReadFile", service: "silo.v1.UI", type: .unary)
             public static let mkdir = Connect.MethodSpec(name: "Mkdir", service: "silo.v1.UI", type: .unary)
