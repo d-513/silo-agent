@@ -13,7 +13,7 @@ import { fail } from "./errors";
 import { MailSettings } from "./Mail";
 import { TimeZoneSettings } from "./TimeZone";
 import { locale, t } from "./i18n.ts";
-import { botLanguageOptions, mixed } from "./languages.ts";
+import { botLanguageOptions, flagOf, mixed } from "./languages.ts";
 
 export function PromptWell({
   label,
@@ -163,7 +163,7 @@ export function SettingsPane({
 
         <Panel title={t("Language")} note={t("What this Bot writes to people in: its replies, chat titles, Feed posts and channel messages. It started as your display language.")}>
           <Field label={t("Bot language")} hint={language === mixed ? t("Mixed: the Bot answers in whatever language it is written to in.") : t("The Bot writes in this language unless you ask it for another. It applies from the next reply.")}>
-            <Select className="max-w-[320px]" value={language} onChange={setLanguage} options={[{ value: mixed, label: t("Mixed", { context: "language" }) }, ...botLanguageOptions(locale())]} />
+            <Select className="max-w-[320px]" value={language} onChange={setLanguage} options={[{ value: mixed, label: `${flagOf(mixed)} ${t("Mixed", { context: "language" })}` }, ...botLanguageOptions(locale())]} />
           </Field>
         </Panel>
 

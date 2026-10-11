@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { i18n, storedLanguage, t } from "./i18n.ts";
-import { botLanguages, languageName, nativeName, uiLanguages } from "./languages.ts";
+import { botLanguages, flagOf, languageName, nativeName, uiLanguages } from "./languages.ts";
 import de from "./locales/de.ts";
 import en from "./locales/en.ts";
 import pl from "./locales/pl.ts";
@@ -214,5 +214,8 @@ eq([languageName("de", "en"), languageName("de", "pl"), languageName("pl", "de")
 for (const code of botLanguages) {
   if (languageName(code, "en") === code) throw new Error(`no name for Bot language ${code}`);
 }
+
+eq([flagOf("pl"), flagOf("pt-BR"), flagOf("mixed")], ["🇵🇱", "🇧🇷", "🌐"], "flags");
+for (const code of botLanguages) if (flagOf(code) === flagOf("mixed")) throw new Error(`no flag for ${code}`);
 
 console.log(`i18n ok: ${first.size} messages, pl ${Object.keys(pl).length}, de ${Object.keys(de).length}`);
