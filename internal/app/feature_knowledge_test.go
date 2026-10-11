@@ -81,7 +81,7 @@ func (f *knowledgeFixture) chunkIDs(path string) string {
 func newKnowledge(t *testing.T, folder string, files map[string]string) *knowledgeFixture {
 	t.Helper()
 	dummy.Reset()
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Librarian")
 	w := h.StartWorker(bot.GetId())
 	f := &knowledgeFixture{h: h, botID: bot.GetId(), ws: w.Workspace}
@@ -418,7 +418,7 @@ func TestKnowledgeToolAndRule(t *testing.T) {
 
 func TestKnowledgeToolOnlyOfferedWithAFolder(t *testing.T) {
 	dummy.Reset()
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Bare")
 	dummy.Script("Test_KN2", dummy.Turn{Text: "hi"})
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_KN2_Input")

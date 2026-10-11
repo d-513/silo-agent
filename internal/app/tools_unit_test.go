@@ -68,10 +68,10 @@ func TestBuiltinToolExposure(t *testing.T) {
 		sort.Strings(l)
 	}
 	want := map[string]string{
-		"chat":   "agent_status delete exec_python grep message_agent patch present read skill sleep soul core_memory spawn_agent stop_agent switch_model terminal write",
-		"python": "",
-		"both": "artifact channel chats click close_tunnel create_automation delete_automation feed forget key list_automations list_mail list_models list_tunnels look " +
-			"open_tunnel read_mail recall remember scroll search_docs task_add task_done task_list task_reset transcribe type update_automation web_search",
+		"chat": "agent_status delete exec_python grep message_agent patch present read skill sleep soul core_memory spawn_agent stop_agent switch_model terminal write",
+		"python": "channel chats close_tunnel delete_automation feed forget list_automations list_mail list_models list_tunnels read_mail search_docs " +
+			"task_add task_done task_list task_reset transcribe web_search",
+		"both": "artifact click create_automation key look open_tunnel recall remember scroll type update_automation",
 	}
 	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both} {
 		w := strings.Fields(want[name])

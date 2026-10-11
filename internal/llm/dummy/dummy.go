@@ -51,6 +51,13 @@ type Turn struct {
 // Complete whose system prompt carries it answers with a summary.
 const CompactMarker = "CONTEXT COMPACTION"
 
+// DigestMarker is the heading of the memory digest prompt; a Complete whose
+// system prompt carries it answers with DigestText.
+const (
+	DigestMarker = "MEMORY DIGEST"
+	DigestText   = "Dummy Digest"
+)
+
 var (
 	mu        sync.Mutex
 	scenarios = map[string][]Turn{}
@@ -177,6 +184,11 @@ func summaryFrom(req llm.Request) (string, bool) {
 func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, error) {
 	if res, ok, err := collectFrom(req); ok {
 		return res, err
+	}
+	for _, blk := range req.System {
+		if strings.Contains(blk.Text, DigestMarker) {
+			return llm.Response{Text: DigestText, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 2}}, nil
+		}
 	}
 	if sum, ok := summaryFrom(req); ok {
 		return llm.Response{Text: sum, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 4}}, nil

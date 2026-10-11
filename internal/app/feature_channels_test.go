@@ -146,7 +146,7 @@ func TestChatsToolReadsChannelHistoryFromAdapterThenLocalLog(t *testing.T) {
 	slug := apptest.UniqueSlug("histchan")
 	adapter := apptest.NewFakeAdapter(slug)
 	channels.Register(adapter)
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("History")
 	ch := newInboundChannel(t, h, bot.GetId(), adapter, slug, "chat-7")
 	host := adapter.WaitHost(t)

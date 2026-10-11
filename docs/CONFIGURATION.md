@@ -20,7 +20,7 @@ A model id is **`provider/model`**, split on the first `/` (so `openrouter/opena
 - `model` is the default model (used when a chat has no override). It should be one of `models`.
 - `model_title` names new chats; leave it empty to use `model`.
 
-Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per provider** with `cache: true`; Anthropic also takes `cache_ttl` (`5m` or `1h`).
+Each provider's key lives under `providers.<id>`. Prompt caching is **on by default** for `openrouter`, `openai` and `anthropic` (`cache: false` turns it off); `anthropic` and `openrouter` also take `cache_ttl` (`5m` or `1h`) for Claude.
 
 ## Keys
 
@@ -51,7 +51,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `model_memory` | (none) | `SILO_MODEL_MEMORY` | Memory save model: the memory collector reads chats with it (must be in `models`). Empty = the title model. A cheap model is enough |
 | `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds long-term memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models; a provider that cannot embed (Anthropic) is rejected |
 | `transcribe_model` | `openrouter/openai/whisper-1` | `SILO_TRANSCRIBE_MODEL` | Speech-to-text for composer dictation (the mic, `Transcribe` RPC) and the Bot's `transcribe` tool / `silo_runtime.transcribe`. Any OpenAI-compatible `/audio/transcriptions` model: OpenRouter (`openai/whisper-1`, `openai/whisper-large-v3`, …), OpenAI (`whisper-1`, `gpt-4o-transcribe`), or `local/<model>` for LocalAI / Speaches / vLLM / whisper.cpp (`--inference-path /v1/audio/transcriptions`). 25 MB per recording. `off` disables voice (the mic hides and the tool is not offered). A provider that cannot transcribe (Anthropic) is rejected |
-| `memory.auto_recall` | `true` | `SILO_MEMORY__AUTO_RECALL` | Inject up to 3 close long-term memories into each run's volatile prompt tail |
+| `memory.in_prompt` | `true` | `SILO_MEMORY__IN_PROMPT` | Put long-term memory in the system prompt: every memory while they total under 6,000 characters, then a summary a background sweep writes with `model_memory` and rewrites (at most every 30 minutes) when the memories changed. Nothing is embedded when a message arrives; the Bot searches with `recall`. Off keeps long-term memory out of the prompt |
+| `tools.expose_completion` | (none) | `SILO_TOOLS__EXPOSE_COMPLETION` | Built-in tools to also offer the model as chat tools (YAML list, or comma-separated in the environment; `all` for every one). Most built-ins ship reachable from Python only (`silo_runtime.web_search`, `feed`, the taskboard, …) to keep each request small; name the ones a model handles badly that way |
 | `memory.collect` | `true` | `SILO_MEMORY__COLLECT` | Sweep web and channel chats that have been quiet for 10 minutes with new messages, and save the facts and lessons the Bot missed (one `model_memory` call per chat, each message read once). The composer's memory button works either way |
 | `knowledge.enabled` | `true` | `SILO_KNOWLEDGE__ENABLED` | The folder index behind `search_docs`: the background sweep, adding folders on a Bot's Knowledge page, and the tool. Off hides the tool and stops syncing; what is already indexed stays in Postgres |
 | `knowledge.sync_interval` | `15m` | `SILO_KNOWLEDGE__SYNC_INTERVAL` | How often an indexed folder is re-checked (Go duration, minimum `1m`). Drive folders are checked four times less often; a folder written to (by the Bot or the Files tab) is re-read about 15 s after it goes quiet. Embeds with `embedding_model` |
@@ -67,8 +68,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **opt-in per
 | `models` | (none) | — | Allowlist of selectable models (YAML list). Admin → Settings → Models edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used (optional for `local`) |
 | `providers.<id>.base_url` | (provider default) | `SILO_PROVIDERS__<ID>__BASE_URL` | Override the API base URL |
-| `providers.<id>.cache` | `false` | `SILO_PROVIDERS__<ID>__CACHE` | Enable prompt caching (`openai` sends `prompt_cache_key`; `anthropic` adds breakpoints) |
-| `providers.<id>.cache_ttl` | `5m` | `SILO_PROVIDERS__<ID>__CACHE_TTL` | Anthropic cache lifetime (`5m`/`1h`) |
+| `providers.<id>.cache` | `true` | `SILO_PROVIDERS__<ID>__CACHE` | Prompt caching. `anthropic` adds `cache_control` breakpoints; `openai` sends `prompt_cache_key`; `openrouter` sends `prompt_cache_key` (it keeps a conversation on the upstream that holds its cache) and marks Claude prompts with `cache_control`, without which OpenRouter does not cache Claude at all. Other OpenRouter upstreams (OpenAI, DeepSeek, Grok, Gemini 2.5) cache a stable prefix on their own |
+| `providers.<id>.cache_ttl` | `5m` | `SILO_PROVIDERS__<ID>__CACHE_TTL` | Claude cache lifetime (`5m`/`1h`), on `anthropic` and `openrouter`. `1h` costs more to write and survives the pause between a human's messages |
 | `providers.anthropic.max_tokens` | `8192` | `SILO_PROVIDERS__ANTHROPIC__MAX_TOKENS` | Anthropic per-response output cap |
 | `providers.openrouter.ignore` | `DeepInfra` | `SILO_PROVIDERS__OPENROUTER__IGNORE` | Comma list of upstream hosts OpenRouter must not route to (`provider.ignore`). DeepInfra sends a tool call's arguments in one chunk at the end, so Python/terminal/write input cannot stream into the thread. `none` routes anywhere |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | The first admin. Used at start only while no admin can sign in (see Sign-in) |

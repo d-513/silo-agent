@@ -35,10 +35,6 @@ const (
 	// dedupeDistance is the cosine distance under which a new memory replaces
 	// its nearest neighbour instead of adding a near-copy.
 	dedupeDistance = 0.05
-	// autoRecallK and autoRecallMaxDistance bound what a run gets for free:
-	// only close matches, so an unrelated message injects nothing.
-	autoRecallK           = 3
-	autoRecallMaxDistance = 0.65
 )
 
 // Service stores and ranks a Bot's memories.
@@ -228,23 +224,6 @@ func (s *Service) RecallTool(ctx context.Context, botID, query string, k int) (s
 		return "No memories match.", nil
 	}
 	return formatRecalled(rows), nil
-}
-
-// AutoRecall is the per-run note of memories close to the opening message. It
-// is best-effort: an embedding failure only costs the note.
-func (s *Service) AutoRecall(ctx context.Context, botID, userText string) string {
-	if !s.cfg().Memory.AutoRecall || strings.TrimSpace(userText) == "" {
-		return ""
-	}
-	var n int64
-	if s.db.Model(&db.Memory{}).Where("bot_id = ?", botID).Count(&n); n == 0 {
-		return ""
-	}
-	rows, err := s.Recall(ctx, botID, userText, autoRecallK, autoRecallMaxDistance)
-	if err != nil || len(rows) == 0 {
-		return ""
-	}
-	return "Long-term memories close to this message (use `recall` for more, `forget` for wrong ones):\n" + formatRecalled(rows)
 }
 
 func (s *Service) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error) {

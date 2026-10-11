@@ -17,8 +17,8 @@ import (
 )
 
 // promptSection is one ordered block of the system prompt. An empty body is
-// dropped when the builder renders it. A trailing section is placed after SOUL
-// and MEMORY so per-run content never invalidates the cached prefix.
+// dropped when the builder renders it. A trailing section is placed after the
+// last cache breakpoint: it belongs to one conversation, or changes on its own.
 type promptSection struct {
 	title    string
 	body     string
@@ -48,8 +48,9 @@ type promptContext struct {
 	channels []db.Channel
 	// automation is set when a scheduled automation started this run.
 	automation *db.Automation
-	// recall is this run's auto-recalled memories (volatile, trailing).
-	recall string
+	// memories is the Bot's long-term memory section (all of them, or their
+	// digest); it changes whenever one is saved, so it trails the cached tiers.
+	memories string
 	// subagent is set when this run is a subagent's.
 	subagent *db.Subagent
 	// drives are the Bot's saved drives (mounted under /workspace/drives).
@@ -65,6 +66,7 @@ type promptProvider func(promptContext) []promptSection
 // main SYSTEM.md always leads; append a provider here to extend the engine.
 func (a *App) promptProviders() []promptProvider {
 	return []promptProvider{
+		a.memorySections,
 		a.connectorSections,
 		a.skillSections,
 		a.channelSections,
@@ -74,14 +76,13 @@ func (a *App) promptProviders() []promptProvider {
 		a.mailSections,
 		a.automationSections,
 		a.subagentSections,
-		a.recallSections,
 	}
 }
 
-// recallSections places this run's auto-recalled memories after the cache
-// breakpoints: they change with every message.
-func (a *App) recallSections(pc promptContext) []promptSection {
-	return []promptSection{{title: "Recalled memories", body: pc.recall, trailing: true}}
+// memorySections is the Bot's long-term memory, first among the trailing
+// sections: the ones after it belong to a single conversation.
+func (a *App) memorySections(pc promptContext) []promptSection {
+	return []promptSection{{title: "Long-term memories", body: pc.memories, trailing: true}}
 }
 
 // channelSections tells the model what channels exist and, when the run came
@@ -113,10 +114,17 @@ func (a *App) driveSections(pc promptContext) []promptSection {
 	return []promptSection{{title: "Drives", body: a.Drives.Prompt(pc.drives)}}
 }
 
-// systemPromptBuilder assembles the system prompt as ordered cache tiers:
-// (1) base + identity, (2) session config (connectors, skills, channels),
-// (3) SOUL, (4) MEMORY, (5) per-run trailing sections. Stable content leads so
-// prompt caches keep the longest prefix.
+// systemPromptBuilder assembles the system prompt as ordered cache tiers, the
+// longest-lived first, each ending in a cache breakpoint:
+//
+//  1. the base prompt — the same bytes for every Bot, so with the tool list
+//     it is one cache entry shared by all of them;
+//  2. this Bot's session: its name, connectors, skills, channels, drives;
+//  3. SOUL and CORE MEMORY, which the Bot edits now and then.
+//
+// What follows has no breakpoint of its own (a provider allows four, and the
+// last belongs to the conversation): long-term memories, then the notes of
+// this one conversation. A run builds the prompt once and never rebuilds it.
 type systemPromptBuilder struct {
 	base     string
 	bot      *db.Bot
@@ -135,15 +143,13 @@ func (b *systemPromptBuilder) add(s promptSection) {
 // a provider cache breakpoint. Empty blocks are dropped and their breakpoint
 // carries back to the previous block.
 func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
-	var stable strings.Builder
-	stable.WriteString(b.base)
-	if b.bot.Name != "" {
-		fmt.Fprintf(&stable, "\n\nThis Bot's name is %s.", b.bot.Name)
-	}
-	if d := strings.TrimSpace(b.bot.Description); d != "" {
-		fmt.Fprintf(&stable, " Description: %s.", d)
-	}
 	var session strings.Builder
+	if b.bot.Name != "" {
+		fmt.Fprintf(&session, "\n\nThis Bot's name is %s.", b.bot.Name)
+		if d := strings.TrimSpace(b.bot.Description); d != "" {
+			fmt.Fprintf(&session, " Description: %s.", d)
+		}
+	}
 	for _, sec := range b.sections {
 		session.WriteString(sec.render())
 	}
@@ -152,6 +158,7 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 		trailing.WriteString(sec.render())
 	}
 
+	// mem continues the SOUL tier.
 	var soul strings.Builder
 	soul.WriteString("\n\n## SOUL\n")
 	if t := strings.TrimSpace(b.bot.Soul); t != "" {
@@ -159,7 +166,7 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 	} else {
 		soul.WriteString("(empty — write it with the soul tool.)")
 	}
-	var mem strings.Builder
+	mem := &soul
 	mem.WriteString("\n\n## CORE MEMORY\n")
 	if t := strings.TrimSpace(b.bot.Memory); t != "" {
 		mem.WriteString(t)
@@ -167,14 +174,13 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 		mem.WriteString("(empty)")
 	}
 	if len(b.bot.Memory) > coreMemoryMax {
-		fmt.Fprintf(&mem, "\n\nCORE MEMORY is over the %d-character cap (now %d). Compact it with `core_memory` (replace redundant facts with a shorter summary) before adding more.", coreMemoryMax, len(b.bot.Memory))
+		fmt.Fprintf(mem, "\n\nCORE MEMORY is over the %d-character cap (now %d). Compact it with `core_memory` (replace redundant facts with a shorter summary) before adding more.", coreMemoryMax, len(b.bot.Memory))
 	}
 
 	raw := []llm.SystemBlock{
-		{Text: stable.String(), CacheAfter: true},
+		{Text: b.base, CacheAfter: true},
 		{Text: session.String(), CacheAfter: true},
 		{Text: soul.String(), CacheAfter: true},
-		{Text: mem.String()},
 		{Text: trailing.String()},
 	}
 	out := make([]llm.SystemBlock, 0, len(raw))
@@ -228,9 +234,9 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promp
 	pc.channels = a.Channels.Enabled(botID)
 	pc.drives = a.Drives.BotDrives(botID)
 	pc.knowledge = a.Knowledge.Folders(botID)
+	pc.memories = a.Memory.Prompt(botID)
 	if origin != nil {
 		pc.channel = origin.Channel
-		pc.recall = origin.Recall
 		pc.automation = origin.Automation
 		pc.subagent = origin.Subagent
 	}

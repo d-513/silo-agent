@@ -9,24 +9,6 @@ import (
 	"silo.agent/internal/llm"
 )
 
-func TestWithTurnNoteOnlyTouchesTheCopy(t *testing.T) {
-	msgs := []llm.Message{{Role: llm.RoleUser, Text: "hi"}, {Role: llm.RoleAssistant, Text: "ok"}, {Role: llm.RoleTool, Text: "result"}}
-	out := withTurnNote(msgs, "NOTE")
-	if out[2].Text != "result\n\nNOTE" {
-		t.Fatalf("note not appended: %q", out[2].Text)
-	}
-	if msgs[2].Text != "result" {
-		t.Fatal("withTurnNote mutated history")
-	}
-	if got := withTurnNote(msgs, ""); &got[0] != &msgs[0] {
-		t.Fatal("an empty note should not copy")
-	}
-	asst := []llm.Message{{Role: llm.RoleAssistant, Text: "x"}}
-	if withTurnNote(asst, "NOTE")[0].Text != "x" {
-		t.Fatal("never append to an assistant turn")
-	}
-}
-
 func TestRunContextUnlimited(t *testing.T) {
 	ctx, cancel := runContext(0)
 	defer cancel()

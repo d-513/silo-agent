@@ -2,35 +2,20 @@ package app
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
-	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 ) // --- per-turn note ---
 
-// withTurnNote returns msgs with note appended to the last message, for one
-// request only. msgs itself is never changed.
-func withTurnNote(msgs []llm.Message, note string) []llm.Message {
-	if note == "" || len(msgs) == 0 {
-		return msgs
-	}
-	last := msgs[len(msgs)-1]
-	if last.Role != llm.RoleUser && last.Role != llm.RoleTool {
-		return msgs
-	}
-	out := slices.Clone(msgs)
-	last.Text += "\n\n" + note
-	out[len(out)-1] = last
-	return out
-}
-
-// turnNote is the live taskboard (and, for a lead, its subagents) as of this
-// turn. Empty when there is nothing to show.
+// turnNote is the taskboard (and, for a lead, the state of its subagents) as
+// the model should now know it. Empty when there is nothing to show. The run
+// tells it only when it differs from the last one told, and it then stays in
+// the history, so it must not change with the clock: no durations, no "latest
+// step" — a lead that wants those calls agent_status.
 func (a *App) turnNote(chatID string, origin *run.Origin) string {
 	if a.DB == nil || chatID == "" {
 		return ""
@@ -49,7 +34,7 @@ func (a *App) turnNote(chatID string, origin *run.Origin) string {
 			var b strings.Builder
 			b.WriteString("<subagents>\n")
 			for i := range rows {
-				b.WriteString(a.subagentLine(&rows[i]) + "\n")
+				b.WriteString(a.subagentState(&rows[i]) + "\n")
 			}
 			b.WriteString("</subagents>")
 			parts = append(parts, b.String())
@@ -58,7 +43,20 @@ func (a *App) turnNote(chatID string, origin *run.Origin) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return "[Live status, refreshed every turn — not from the human]\n" + strings.Join(parts, "\n")
+	return "[Status update — not from the human]\n" + strings.Join(parts, "\n")
+}
+
+// subagentState is one subagent's state for the status note: only what
+// changes when something happened to it.
+func (a *App) subagentState(sa *db.Subagent) string {
+	if a.subagentLive(sa) {
+		return "- " + sa.Name + ": running"
+	}
+	line := "- " + sa.Name + ": " + sa.Status
+	if !sa.Reported {
+		line += " — result unread (agent_status " + sa.Name + ")"
+	}
+	return line
 }
 
 func shortDur(d time.Duration) string {

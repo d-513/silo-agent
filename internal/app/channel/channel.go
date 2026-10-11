@@ -700,7 +700,7 @@ func ListPrompt(all []db.Channel, current *db.Channel) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("This Bot is reachable through these channels. Use the `channel` tool to send a message to one (it defaults to the current conversation) and the `chats` tool to read chat history.\n")
+	b.WriteString("This Bot is reachable through these channels. From Python, `silo_runtime.send_channel(channel, text)` sends a message to one and `silo_runtime.read_chats(chat=None, limit=20)` reads chat history (no chat lists them).\n")
 	for i := range all {
 		c := &all[i]
 		line := fmt.Sprintf("- %s (adapter: %s)", c.Name, c.Adapter)

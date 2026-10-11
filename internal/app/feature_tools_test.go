@@ -197,7 +197,7 @@ func TestWebSearchTool(t *testing.T) {
 		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "web_search", Arguments: `{"query":"golang"}`}}},
 		dummy.Turn{Text: "searched"},
 	)
-	h := apptest.New(t, apptest.WithYAML(yaml))
+	h := apptest.New(t, apptest.WithYAML(yaml), apptest.WithChatTools())
 	bot := h.CreateBot("Search")
 	chat := h.FirstChat(bot.GetId())
 	runID, _ := h.Send(bot.GetId(), chat, "Test_33_Input")
@@ -242,7 +242,7 @@ func TestChannelsCRUDAndSend(t *testing.T) {
 	adapter := apptest.NewFakeAdapter(slug)
 	channels.Register(adapter)
 
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Channels")
 	created, err := h.Client.CreateChannel(h.Ctx(), connect.NewRequest(&v1.CreateChannelRequest{
 		BotId: bot.GetId(), Adapter: slug, Name: "Support", Enabled: true, Inbound: true,

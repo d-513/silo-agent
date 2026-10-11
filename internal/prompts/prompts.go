@@ -38,6 +38,12 @@ var Compact string
 //go:embed MEMORY.md
 var Memory string
 
+// MemoryDigest is the system prompt for summarizing a Bot's long-term
+// memories into the briefing its prompt carries; {max} is the size cap.
+//
+//go:embed MEMORY_DIGEST.md
+var MemoryDigest string
+
 // Subagent is the per-run note for a subagent's run. {{NAME}} is replaced with
 // its name.
 //

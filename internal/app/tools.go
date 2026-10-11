@@ -25,6 +25,7 @@ import (
 // call (execTool) and Python through the worker (CallTool) — run through it.
 func (a *App) newTools() *tool.Engine {
 	e := tool.New(a)
+	e.Expose = func() []string { return a.cfg().Tools.ExposeCompletion }
 	e.Register(a.toolDefs()...)
 	if a.Connectors != nil {
 		e.AddSource(a.Connectors)
@@ -124,6 +125,17 @@ func (a *App) withChrome(next tool.Handler) tool.Handler {
 		}
 		return next(ctx, c)
 	}
+}
+
+// pySession is the persistent Python interpreter a run's exec_python calls
+// share; empty (a throwaway interpreter) for a call no live run made.
+func (a *App) pySession(runID string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if lr := a.runs[runID]; lr != nil {
+		return lr.pySession
+	}
+	return ""
 }
 
 // fileChanged tells Knowledge a workspace file was written or removed.

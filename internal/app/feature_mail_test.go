@@ -56,7 +56,7 @@ func mailHarness(t *testing.T, extraYAML string) *apptest.H {
 	dummy.Reset()
 	dir := t.TempDir()
 	h := apptest.New(t, apptest.WithDataDir(dir),
-		apptest.WithYAML(apptest.DefaultYAML(dir)+"mail:\n  domain: "+mailTestDomain+"\n  addr: 127.0.0.1:0\n"+extraYAML))
+		apptest.WithYAML(apptest.DefaultYAML(dir)+"mail:\n  domain: "+mailTestDomain+"\n  addr: 127.0.0.1:0\n"+extraYAML), apptest.WithChatTools())
 	h.App.Mail.DNS = mailDNS{}
 	return h
 }

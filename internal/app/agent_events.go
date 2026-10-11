@@ -39,6 +39,22 @@ func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
 }
 
+// record persists an event only replay reads (internalKinds): it is part of
+// the model's context, not of the thread, so nothing is published.
+func (a *App) record(runID, kind, body, tool, meta string) {
+	if runID == "" {
+		return
+	}
+	a.DB.Create(&db.RunEvent{ID: ids.New(), RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
+}
+
+// kept is s as the run log stores it: secrets masked, valid UTF-8, no NUL.
+// What a run keeps in its own history goes through it, so the history a later
+// run replays from the log is the same text.
+func (a *App) kept(botID, s string) string {
+	return db.CleanText(textx.ValidUTF8(a.Mask(botID).Apply(s)))
+}
+
 type eventAttachment struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
@@ -51,7 +67,13 @@ type eventAttachment struct {
 // from names a non-human sender ("lead" for a subagent's brief and the lead's
 // messages); it rides on Tool so the thread can label the bubble.
 func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment, from string) {
-	body = textx.ValidUTF8(a.Mask(botID).Apply(body))
+	a.emitUserAt(botID, chatID, runID, ids.New(), time.Now(), body, atts, from)
+}
+
+// emitUserAt is emitUser for a caller that needs the event's id and time: a
+// message injected into a live run is stamped with them when the run reads it.
+func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, body string, atts []*v1.Attachment, from string) {
+	body = a.kept(botID, body)
 	meta := ""
 	if len(atts) > 0 {
 		flat := make([]eventAttachment, 0, len(atts))
@@ -62,8 +84,6 @@ func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment,
 			meta = string(b)
 		}
 	}
-	id := ids.New()
-	now := time.Now()
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: meta, CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
 }

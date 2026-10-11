@@ -69,8 +69,8 @@ type SystemBlock struct {
 	CacheAfter bool
 }
 
-// CachePolicy describes how a request should be cached. It is off by default;
-// the operator enables it per provider.
+// CachePolicy describes how a request should be cached. The operator can turn
+// it off per provider.
 type CachePolicy struct {
 	// Enabled turns on provider cache markers (Anthropic cache_control) and the
 	// routing key (OpenAI/OpenRouter prompt_cache_key).
@@ -282,18 +282,21 @@ var builtinProviders = []registered{
 		desc: Descriptor{
 			ID:            OpenRouter,
 			Name:          "OpenRouter",
-			Description:   "OpenAI-compatible gateway to many models. Upstream providers cache the stable prefix automatically; no setting needed.",
-			SupportsCache: false,
+			Description:   "OpenAI-compatible gateway to many models. Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
+			SupportsCache: true,
+			CacheTTLs:     []string{"5m", "1h"},
 			Settings: []SettingDef{
 				{Key: "api_key", Label: "API key", Description: "OpenRouter API key.", Secret: true},
 				{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
 				{Key: "ignore", Label: "Skip upstreams", Description: "Comma list of upstream hosts OpenRouter must not route to. Default DeepInfra (it buffers tool arguments, so code does not stream); none routes anywhere."},
+				{Key: "cache", Label: "Prompt caching", Type: "bool", Description: "Mark Claude prompts with cache_control and send prompt_cache_key so a conversation stays on the upstream that holds its cache."},
+				{Key: "cache_ttl", Label: "Cache TTL", Type: "select", Description: "Claude cache lifetime. Default 5m; 1h costs more to write and survives a pause between messages."},
 			},
 		},
 		new: newOpenAICompat(openRouterBase, map[string]string{
 			"HTTP-Referer": "https://silo.agent",
 			"X-Title":      "Silo Agent",
-		}, false, true),
+		}, true, true),
 	},
 	{
 		desc: Descriptor{

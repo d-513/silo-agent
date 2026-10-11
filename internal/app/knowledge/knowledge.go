@@ -93,7 +93,7 @@ func Prompt(folders []db.KnowledgeFolder) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("The owner indexed these folders so you can search them. For a question about what their files say, call `search_docs` first: it matches meaning and exact words and cites the file plus page or line. Then `read` the cited path before relying on a snippet — the index can lag recent edits. Searching does not replace `grep` for code or for a file you already know.\n")
+	b.WriteString("The owner indexed these folders so you can search them. For a question about what their files say, call `silo_runtime.search_docs(query, limit=6, path=None)` from Python first: it matches meaning and exact words and returns snippets citing the file plus page or line. Then `read` the cited path before relying on a snippet — the index can lag recent edits. Searching does not replace `grep` for code or for a file you already know.\n")
 	for _, f := range folders {
 		b.WriteString("- " + f.Path + "\n")
 	}

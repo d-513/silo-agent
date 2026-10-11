@@ -126,7 +126,7 @@ func (s *Service) Probe(modelID string) (llm.Client, string, error) {
 }
 
 // CachePolicy turns a provider's settings into a request cache policy. Caching
-// is off unless the operator enabled it.
+// is on by default (config defaults) and off where the operator disabled it.
 func CachePolicy(s llm.Settings, botID string) llm.CachePolicy {
 	enabled, ttl := llm.CacheSettings(s)
 	if !enabled {
@@ -218,7 +218,7 @@ func (s *Service) SwitchTool(chatID, modelID string) (string, error) {
 		return "", fmt.Errorf("model required")
 	}
 	if !llm.Allowed(modelID, s.cfg().Models) {
-		return "", fmt.Errorf("model %q is not in the allowed list; call list_models", modelID)
+		return "", fmt.Errorf("model %q is not in the allowed list; allowed: %s", modelID, strings.Join(s.cfg().Models, ", "))
 	}
 	if _, _, err := llm.Parse(modelID); err != nil {
 		return "", err

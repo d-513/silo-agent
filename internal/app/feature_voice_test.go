@@ -110,7 +110,7 @@ func TestTranscribeToolSharedPath(t *testing.T) {
 		memCall("transcribe", `{"path":"notes.txt"}`),
 		dummy.Turn{Text: "done"},
 	)
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Listener")
 	id := bot.GetId()
 	w := h.StartWorker(id)

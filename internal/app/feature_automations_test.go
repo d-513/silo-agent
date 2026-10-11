@@ -176,7 +176,7 @@ func TestAutomationToolsCreateListUpdateDelete(t *testing.T) {
 		call("delete_automation", `{"automation":"Heartbeat"}`),
 		dummy.Turn{Text: "done"},
 	)
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Scheduler")
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_82_Input")
 	// create and update ask by default: they keep running unattended.

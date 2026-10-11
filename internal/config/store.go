@@ -34,7 +34,12 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
-	_ = k.Set("memory.auto_recall", true)
+	// Prompt caching is on unless the operator turns it off: an agent loop
+	// re-sends its whole prefix every turn.
+	for _, id := range []string{llm.OpenRouter, llm.OpenAI, llm.Anthropic} {
+		_ = k.Set("providers."+id+".cache", true)
+	}
+	_ = k.Set("memory.in_prompt", true)
 	_ = k.Set("memory.collect", true)
 	_ = k.Set("knowledge.enabled", true)
 	_ = k.Set("knowledge.sync_interval", "15m")

@@ -37,7 +37,7 @@ func TestFeedPostReadDelete(t *testing.T) {
 		memCall("feed", `{"text":"   "}`),
 		dummy.Turn{Text: "done"},
 	)
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Poster")
 	chat := h.FirstChat(bot.GetId())
 	run, _ := h.Send(bot.GetId(), chat, "Test_90_Input")
@@ -93,7 +93,7 @@ func TestFeedPostFromAutomation(t *testing.T) {
 		memCall("feed", `{"text":"Nightly check found nothing."}`),
 		dummy.Turn{Text: "done"},
 	)
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Nightly")
 	au := createAutomation(t, h, bot.GetId(), "Nightly check", "Test_91_Input", "")
 	res, err := h.Client.RunAutomation(h.Ctx(), connect.NewRequest(&v1.RunAutomationRequest{BotId: bot.GetId(), Id: au.GetId()}))
@@ -115,7 +115,7 @@ func TestFeedQuoteStartsChatWithPostInContext(t *testing.T) {
 	)
 	// The quoted chat's first user turn carries the post, so its token drives the reply.
 	dummy.Script("Test_93", dummy.Turn{Text: "I see the quoted post"})
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Quoter")
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_92_Input")
 	h.WaitRun(run)

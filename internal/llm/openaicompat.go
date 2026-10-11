@@ -155,14 +155,71 @@ func wireEffort(level string) string {
 	return level
 }
 
-// opts are the per-request options: the client's own plus OpenRouter's
-// reasoning object (not a field the SDK knows).
+// opts are the per-request options: the client's own plus what the SDK has no
+// field for — OpenRouter's reasoning object and the cache markers Claude needs.
 func (c *openAICompatClient) opts(req Request) []option.RequestOption {
-	if req.Thinking == "" || c.windows == nil {
-		return c.reqOpts
-	}
 	out := append([]option.RequestOption{}, c.reqOpts...)
-	return append(out, option.WithJSONSet("reasoning", map[string]any{"effort": wireEffort(req.Thinking)}))
+	if req.Thinking != "" && c.windows != nil {
+		out = append(out, option.WithJSONSet("reasoning", map[string]any{"effort": wireEffort(req.Thinking)}))
+	}
+	if c.explicitCache(req) {
+		ctrl := map[string]any{"type": "ephemeral"}
+		if strings.TrimSpace(req.Cache.TTL) == "1h" {
+			ctrl["ttl"] = "1h"
+		}
+		if parts := cachedSystem(req.System, ctrl); len(parts) > 0 {
+			out = append(out, option.WithJSONSet("messages.0.content", parts))
+		}
+		if req.Cache.Messages {
+			// Automatic mode: the gateway keeps one breakpoint on the last
+			// cacheable block, moving it forward as the conversation grows.
+			out = append(out, option.WithJSONSet("cache_control", ctrl))
+		}
+	}
+	return out
+}
+
+// explicitCache reports whether the request must carry cache_control to be
+// cached at all. Through a gateway, OpenAI, DeepSeek, Grok and Gemini cache a
+// stable prefix on their own; Claude caches only what is marked.
+func (c *openAICompatClient) explicitCache(req Request) bool {
+	return c.windows != nil && req.Cache.Enabled && strings.HasPrefix(req.Model, "anthropic/")
+}
+
+// maxSystemMarks leaves one of Anthropic's four breakpoints for the
+// conversation.
+const maxSystemMarks = 3
+
+// cachedSystem renders the system blocks as content parts, with a breakpoint
+// after each CacheAfter block. Nil when there is no system prompt.
+func cachedSystem(blocks []SystemBlock, ctrl map[string]any) []map[string]any {
+	var parts []map[string]any
+	marks := 0
+	for _, blk := range blocks {
+		if blk.Text == "" {
+			continue
+		}
+		part := map[string]any{"type": "text", "text": blk.Text}
+		if blk.CacheAfter && marks < maxSystemMarks {
+			part["cache_control"] = ctrl
+			marks++
+		}
+		parts = append(parts, part)
+	}
+	return parts
+}
+
+// cacheWriteTokens reads what a gateway reports as written to the cache; the
+// SDK's usage type only knows the tokens read from it.
+func cacheWriteTokens(rawDetails string) int {
+	if rawDetails == "" {
+		return 0
+	}
+	var d struct {
+		CacheWriteTokens int `json:"cache_write_tokens"`
+	}
+	_ = json.Unmarshal([]byte(rawDetails), &d)
+	return d.CacheWriteTokens
 }
 
 // ContextWindow reports the model's context length from the gateway's model
@@ -263,9 +320,10 @@ func (c *openAICompatClient) Complete(ctx context.Context, req Request) (Respons
 	out := Response{}
 	if res.JSON.Usage.Valid() {
 		out.Usage = Usage{
-			InputTokens:     int(res.Usage.PromptTokens),
-			OutputTokens:    int(res.Usage.CompletionTokens),
-			CacheReadTokens: int(res.Usage.PromptTokensDetails.CachedTokens),
+			InputTokens:      int(res.Usage.PromptTokens),
+			OutputTokens:     int(res.Usage.CompletionTokens),
+			CacheReadTokens:  int(res.Usage.PromptTokensDetails.CachedTokens),
+			CacheWriteTokens: cacheWriteTokens(res.Usage.PromptTokensDetails.RawJSON()),
 		}
 	}
 	if len(res.Choices) == 0 {
@@ -323,9 +381,10 @@ func (s *openAIStream) Close() error { return s.stream.Close() }
 func (s *openAIStream) enqueue(chunk openai.ChatCompletionChunk) {
 	if chunk.JSON.Usage.Valid() {
 		s.queue = append(s.queue, Event{Kind: EventUsage, Usage: Usage{
-			InputTokens:     int(chunk.Usage.PromptTokens),
-			OutputTokens:    int(chunk.Usage.CompletionTokens),
-			CacheReadTokens: int(chunk.Usage.PromptTokensDetails.CachedTokens),
+			InputTokens:      int(chunk.Usage.PromptTokens),
+			OutputTokens:     int(chunk.Usage.CompletionTokens),
+			CacheReadTokens:  int(chunk.Usage.PromptTokensDetails.CachedTokens),
+			CacheWriteTokens: cacheWriteTokens(chunk.Usage.PromptTokensDetails.RawJSON()),
 		}})
 	}
 	if len(chunk.Choices) == 0 {

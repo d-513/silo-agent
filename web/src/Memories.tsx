@@ -137,7 +137,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
   return (
     <div className="silo-page pb-12">
       <h2 className="text-title">Memories</h2>
-      <p className="mb-6 text-ink-2">Core memory rides in every prompt. Long-term memories are unlimited and recalled by meaning.</p>
+      <p className="mb-6 text-ink-2">Core memory rides in every prompt. Long-term memories are unlimited: the Bot sees all of them while they are few, a summary once they are many, and searches them by meaning.</p>
       <CorePanel bot={bot} onError={onError} />
       <LongTermPanel botId={bot.id} onError={onError} />
     </div>

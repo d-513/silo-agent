@@ -215,6 +215,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Run{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.LLMLog{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Memory{})
+	a.Memory.DropDigest(b.ID)
 	a.Knowledge.Drop(b.ID)
 	a.Changes.Drop(b.ID)
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
@@ -336,7 +337,8 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 		runQ = runQ.Where("chat_id = ?", chatID)
 	}
 	var rows []db.RunEvent
-	if err := a.DB.Where("run_id IN (?)", runQ).Order("seq").Find(&rows).Error; err != nil {
+	// Replay-only events are the model's context, not the thread.
+	if err := a.DB.Where("run_id IN (?) AND kind NOT IN ?", runQ, internalKinds).Order("seq").Find(&rows).Error; err != nil {
 		return err
 	}
 	seen := map[string]struct{}{}

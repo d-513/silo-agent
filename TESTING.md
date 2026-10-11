@@ -137,3 +137,4 @@ real box and found through `SearchKnowledge`.
 | `SILO_CP_URL` | Control plane URL for integration tests |
 | `SILO_BOOTSTRAP_EMAIL` / `SILO_BOOTSTRAP_PASSWORD` | Integration sign-in |
 | `SILO_E2E_URL` | Playwright base URL |
+| `SILO_LIVE_OPENROUTER_KEY` | With `-tags live`, runs `TestLiveOpenRouterCachesClaude` (`internal/llm`): three real requests that must hit Claude's prompt cache through OpenRouter. Run it after changing how requests are built or marked; `SILO_LIVE_MODEL` picks the model |

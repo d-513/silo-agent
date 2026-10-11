@@ -115,8 +115,15 @@ type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
 	chatID string
-	// inbox carries user messages injected while the run is live.
-	inbox chan inboxMsg
+	// inbox carries user messages injected while the run is live. injecting
+	// is held while one is queued and recorded, and while the run takes them,
+	// so the run never reads a message whose event is not written yet.
+	inbox     chan inboxMsg
+	injecting sync.Mutex
+	// pySession names the persistent Python interpreter the run's
+	// exec_python calls share: the conversation, so a later message finds
+	// what an earlier one loaded. An automation's firings each get their own.
+	pySession string
 	// done closes when the run's goroutine exits, so callers can wait for a
 	// stopped run to finish writing before truncating history.
 	done chan struct{}
@@ -235,6 +242,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		a.Automations.Reschedule()
 		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
+		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.SweepDigests(context.Background(), now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
 		// The SMTP listener follows mail.* without a restart.
@@ -505,10 +513,12 @@ func (a *App) Handler() http.Handler {
 	return a.Tunnels.Route(access.WithHTTP(mux))
 }
 
-func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) {
+func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) *liveRun {
+	lr := &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done, wake: make(chan string, 8)}
 	a.mu.Lock()
-	a.runs[runID] = &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done, wake: make(chan string, 8)}
+	a.runs[runID] = lr
 	a.mu.Unlock()
+	return lr
 }
 
 // liveRunFor returns the active run for a conversation, if any.

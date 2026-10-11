@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -111,6 +112,45 @@ func TestContainerWorkerFileTool(t *testing.T) {
 	}
 	if !strings.Contains(h.RunBody(runID), "Test_40_Output") {
 		t.Fatalf("body %q", h.RunBody(runID))
+	}
+}
+
+// TestContainerPythonSessionPersists runs exec_python in the real image: what
+// one call defines the next call has, across turns and across messages of the
+// same conversation, and silo_runtime is importable in the session.
+func TestContainerPythonSessionPersists(t *testing.T) {
+	if !apptest.ContainersEnabled(t) {
+		return
+	}
+	py := func(code string) dummy.Turn {
+		args, _ := json.Marshal(map[string]string{"code": code})
+		return dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "exec_python", Arguments: string(args)}}}
+	}
+	dummy.Reset()
+	dummy.Script("Test_PY1",
+		py("rows = [1, 2, 3]\nprint('loaded', len(rows))"),
+		py("import silo_runtime\nprint(sum(rows), callable(silo_runtime.web_search))"),
+		dummy.Turn{Text: "first message done"},
+		py("print('still', rows)"),
+		dummy.Turn{Text: "second message done"},
+	)
+	h := newContainerHarness(t)
+	id := h.SeedBot("Pythonist")
+	h.StartSeededBot(id)
+	chat := h.FirstChat(id)
+
+	r1, _ := h.Send(id, chat, "Test_PY1_Input")
+	got := memResults(h.WaitRun(r1))
+	if len(got) != 2 || !strings.HasPrefix(got[0], "[fresh Python session]") || !strings.Contains(got[0], "loaded 3") {
+		t.Fatalf("first call %q", got)
+	}
+	if strings.TrimSpace(got[1]) != "6 True" {
+		t.Fatalf("the second call did not see the first one's state: %q", got[1])
+	}
+	r2, _ := h.Send(id, chat, "and again")
+	got = memResults(h.WaitRun(r2))
+	if len(got) != 1 || strings.TrimSpace(got[0]) != "still [1, 2, 3]" {
+		t.Fatalf("a later message lost the session: %q", got)
 	}
 }
 

@@ -5,10 +5,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/memory"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -77,7 +79,7 @@ func TestMemoriesRememberRecallScoped(t *testing.T) {
 
 func TestMemoriesForget(t *testing.T) {
 	dummy.Reset()
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Forgetful")
 	dummy.Script("Test_68", memCall("remember", `{"content":"Temporary fact"}`), dummy.Turn{Text: "ok"})
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_68_Input")
@@ -109,15 +111,30 @@ func TestMemoriesForget(t *testing.T) {
 	}
 }
 
-func TestMemoriesAutoRecallInPrompt(t *testing.T) {
+// systemOf is the system prompt of the newest streamed request.
+func systemOf(t *testing.T) string {
+	t.Helper()
+	reqs := dummy.Streamed()
+	if len(reqs) == 0 {
+		t.Fatal("no model request")
+	}
+	var b strings.Builder
+	for _, blk := range reqs[len(reqs)-1].System {
+		b.WriteString(blk.Text)
+	}
+	return b.String()
+}
+
+// While a Bot has few memories they are all in the prompt: nothing is embedded
+// or searched before the model is called.
+func TestFewMemoriesAreAllInThePrompt(t *testing.T) {
 	dummy.Reset()
 	dummy.Script("Test_71",
 		memCall("remember", `{"content":"The user's cat is named Miso"}`),
 		memCall("remember", `{"content":"Deploys happen on Fridays"}`),
 		dummy.Turn{Text: "saved"},
 	)
-	dir := t.TempDir()
-	h := apptest.New(t, apptest.WithYAML(strings.Replace(apptest.DefaultYAML(dir), "search:", "debug: true\nsearch:", 1)))
+	h := apptest.New(t)
 	bot := h.CreateBot("Recaller")
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_71_Input")
 	h.WaitRun(run)
@@ -126,27 +143,85 @@ func TestMemoriesAutoRecallInPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run2, _ := h.Send(bot.GetId(), chat.Msg.GetId(), "what is the cat called Test_72_Input")
+	run2, _ := h.Send(bot.GetId(), chat.Msg.GetId(), "an unrelated question Test_72_Input")
 	h.WaitRun(run2)
+	sys := systemOf(t)
+	if !strings.Contains(sys, "## Long-term memories") || !strings.Contains(sys, "Miso") || !strings.Contains(sys, "Fridays") {
+		t.Fatalf("the memories are not in the prompt:\n%s", sys[max(0, len(sys)-1500):])
+	}
+	// The memories sit after the last cache breakpoint: saving one must not
+	// re-bill the tiers before it.
+	blocks := dummy.Streamed()[len(dummy.Streamed())-1].System
+	for _, blk := range blocks {
+		if blk.CacheAfter && strings.Contains(blk.Text, "Miso") {
+			t.Fatal("memories are inside a cached tier")
+		}
+	}
+}
 
-	logs, err := h.Client.ListLLMLogs(h.Ctx(), connect.NewRequest(&v1.ListLLMLogsRequest{BotId: bot.GetId()}))
-	if err != nil {
+// Once the memories outgrow the prompt, a summary written in the background
+// stands in for them; the exact facts are a recall away.
+func TestManyMemoriesBecomeADigest(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	id := h.CreateBot("Hoarder").GetId()
+	ctx := h.Ctx()
+	for i := 0; i < 12; i++ {
+		word := fmt.Sprintf("topic%dalpha topic%dbeta topic%dgamma ", i, i, i)
+		if _, err := h.App.Memory.Save(ctx, memory.Entry{BotID: id, Content: fmt.Sprintf("Fact %d: ", i) + strings.Repeat(word, 20)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now()
+
+	// Before the first digest: the newest memories that fit, and a pointer to recall.
+	run, _ := h.Send(id, h.FirstChat(id), "Test_73_Input")
+	h.WaitRun(run)
+	sys := systemOf(t)
+	if !strings.Contains(sys, "Fact 11:") || strings.Contains(sys, "Fact 0:") || !strings.Contains(sys, "recall") {
+		t.Fatalf("no bounded memory section before the digest:\n%s", sys[max(0, len(sys)-800):])
+	}
+
+	if n := h.App.Memory.SweepDigests(ctx, now); n != 1 {
+		t.Fatalf("digests written: %d, want 1", n)
+	}
+	chat := newChat(t, h, id)
+	run, _ = h.Send(id, chat, "Test_74_Input")
+	h.WaitRun(run)
+	sys = systemOf(t)
+	if !strings.Contains(sys, "Dummy Digest") || strings.Contains(sys, "Fact 11:") {
+		t.Fatalf("the digest did not replace the list:\n%s", sys[max(0, len(sys)-800):])
+	}
+
+	// Unchanged memories are not summarized again; a change is, but not at once.
+	if n := h.App.Memory.SweepDigests(ctx, now.Add(2*time.Hour)); n != 0 {
+		t.Fatalf("an unchanged store was digested again (%d)", n)
+	}
+	if _, err := h.App.Memory.Save(ctx, memory.Entry{BotID: id, Content: "A brand new unrelated fact about zebras"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, l := range logs.Msg.GetLogs() {
-		if l.GetLabel() != "chat" || !strings.Contains(l.GetRequest(), "Test_72_Input") {
-			continue
-		}
-		req := l.GetRequest()
-		if !strings.Contains(req, "Recalled memories") || !strings.Contains(req, "Miso") {
-			t.Fatalf("auto-recall missing from the prompt:\n%s", req)
-		}
-		if strings.Contains(req, "Fridays") {
-			t.Fatalf("an unrelated memory was injected:\n%s", req)
-		}
-		return
+	if n := h.App.Memory.SweepDigests(ctx, now.Add(time.Minute)); n != 0 {
+		t.Fatalf("the digest was rewritten within its quiet period (%d)", n)
 	}
-	t.Fatal("no chat log for the second run")
+	if n := h.App.Memory.SweepDigests(ctx, now.Add(2*time.Hour)); n != 1 {
+		t.Fatalf("a changed store was not digested (%d)", n)
+	}
+}
+
+// memory.in_prompt off keeps long-term memory out of the prompt entirely.
+func TestMemoriesOutOfThePromptWhenOff(t *testing.T) {
+	dummy.Reset()
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(dir)+"memory:\n  in_prompt: false\n"))
+	id := h.CreateBot("Quiet").GetId()
+	if _, err := h.App.Memory.Save(h.Ctx(), memory.Entry{BotID: id, Content: "The user's cat is named Miso"}); err != nil {
+		t.Fatal(err)
+	}
+	run, _ := h.Send(id, h.FirstChat(id), "Test_75_Input")
+	h.WaitRun(run)
+	if sys := systemOf(t); strings.Contains(sys, "Miso") {
+		t.Fatal("a memory reached the prompt with memory.in_prompt off")
+	}
 }
 
 func TestMemoriesListAndDeleteRPC(t *testing.T) {

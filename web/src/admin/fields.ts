@@ -8,7 +8,7 @@ export const LABELS: Record<string, string> = {
   model_memory: "Memory save model",
   embedding_model: "Embedding model",
   transcribe_model: "Speech-to-text model",
-  "memory.auto_recall": "Auto-recall",
+  "memory.in_prompt": "Memories in the prompt",
   "memory.collect": "Collect from idle chats",
   "knowledge.enabled": "Document search",
   "knowledge.sync_interval": "Re-check folders every",
@@ -115,7 +115,7 @@ export const CHANGES_NOTE =
 export const CONTAINERS_NOTE = "The container engine and the images a Bot's machine and its sidecars start from. A running Bot keeps its old image until its container is reset.";
 
 export const MEMORY_NOTE =
-  "Auto-recall puts up to 3 long-term memories close to the opening message into each run. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.";
+  "Memories in the prompt shows the Bot every long-term memory while they are few, and a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.";
 
 export const KNOWLEDGE_NOTE =
   "Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.";

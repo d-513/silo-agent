@@ -44,15 +44,17 @@ bootstrap:
 providers:
   openrouter:
     api_key: ""
-    # base_url: ""          # optional; OpenRouter caches upstream automatically
+    # base_url: ""          # optional
+    # cache: false          # prompt caching is on; Claude is marked with cache_control
+    # cache_ttl: 5m         # Claude cache lifetime: 5m or 1h
   openai:
     api_key: ""
     # base_url: ""          # optional proxy/self-hosted override
-    # cache: true           # send prompt_cache_key for routing
+    # cache: false          # on by default: sends prompt_cache_key for routing
   anthropic:
     api_key: ""
-    # cache: true
-    # cache_ttl: 5m         # 5m or 1h; requires cache: true
+    # cache: false          # on by default: cache_control breakpoints
+    # cache_ttl: 5m         # 5m or 1h
 
 # Tunnels: addresses for services a Bot runs on its own localhost, served by
 # this control plane at <name>.<host>. Needs wildcard DNS + TLS for *.<host>,

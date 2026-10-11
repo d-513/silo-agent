@@ -17,6 +17,15 @@ import (
 // order the model sees, and a prompt cache's prefix, so add new tools at the
 // end of their group rather than reordering.
 //
+// Exposure is Python-first: every schema offered to the model is re-sent with
+// each request and weighed on each turn, while a silo_runtime helper costs a
+// line of the prompt and can be looped, batched and filtered in one cell. A
+// tool is a completion tool only when it is the loop itself (files, shell,
+// Python, the desktop, memory), is chat-only by nature (soul, the agent
+// tools, sleep, switch_model), or asks the human by default: an approval can
+// take longer than the machine's command timeout, which a Python call sits
+// under.
+//
 // A tool with ExposePython needs a silo_runtime helper of the same name (or
 // PyName) in botimage/silo_runtime.py; TestPythonToolsHaveHelpers checks it.
 func (a *App) toolDefs() []tool.Def {
@@ -55,14 +64,14 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "exec_python",
-			Description: "Run Python in the Bot. Secrets: silo_runtime.get_secret. Web: silo_runtime.web_search. Deliverables: silo_runtime.artifact(path) shows a skill dir or a file as a card — not the same as present. Programmatic GUI: silo_runtime.look/click/type_text/key/scroll (type a secret this way, not with chat type). Scratch in /workspace/bot. User-facing files in /workspace. Live clicks: look/click/type/key/scroll chat tools. chrome_page() is page screenshots, mutating displayed HTML, and automated scripts — not live clicking. Connectors are import tools.<slug>. Persist user-facing results to /workspace here, then present — do not hand them to write.",
+			Description: "Run Python in this conversation's persistent session: variables, imports and data from earlier calls are still there (output starting with `[fresh Python session]` means they are not). silo_runtime holds the Bot's own functions and `import tools` its connectors; the system prompt lists them. Do independent steps in one call and print only what you need — nothing is echoed. Scratch in /workspace/bot; save user-facing results to /workspace here, then present. Type a secret with silo_runtime.type_text, never chat type.",
 			Params: tool.Object(map[string]any{
 				"code": map[string]any{"type": "string"},
 			}, "code"),
 			Connector: security.Python, Action: "run",
 			ExposeCompletion: true, Writes: true,
 			Run: a.withChrome(a.onWorker(func(c *tool.Call) *v1.Cmd {
-				return &v1.Cmd{Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: c.Str("code")}}}
+				return &v1.Cmd{Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: c.Str("code"), Session: a.pySession(c.RunID)}}}
 			}, nil)),
 		},
 		{
@@ -194,8 +203,8 @@ func (a *App) toolDefs() []tool.Def {
 				"path":  map[string]any{"type": "string", "description": "only files under this workspace path"},
 			}, "query"),
 			Connector: security.Bot, Action: "search_docs",
-			ExposeCompletion: true, ExposePython: true,
-			Enabled: a.Knowledge.Active,
+			ExposePython: true,
+			Enabled:      a.Knowledge.Active,
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Knowledge.Tool(ctx, c.Bot.ID, c.Str("query"), c.Str("path"), c.Int("limit"), c.Structured())
 			}),
@@ -207,7 +216,7 @@ func (a *App) toolDefs() []tool.Def {
 				"id": map[string]any{"type": "string"},
 			}, "id"),
 			Connector: security.Bot, Action: "forget",
-			ExposeCompletion: true, ExposePython: true,
+			ExposePython: true,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
 				return a.Memory.Forget(c.Bot.ID, c.Str("id"))
 			}),
@@ -217,16 +226,16 @@ func (a *App) toolDefs() []tool.Def {
 			Description: "List the models this Bot may switch to, with the current chat model and the operator default. Use this before switch_model.",
 			Params:      tool.Object(nil),
 			Connector:   security.Model, Action: "list",
-			ExposeCompletion: true, ExposePython: true,
+			ExposePython: true,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
 				return a.Models.ListTool(c.Bot.ID, c.ChatID)
 			}),
 		},
 		{
 			Name:        "switch_model",
-			Description: "Switch this conversation to another allowed model. model must be one of the ids from list_models. Takes effect from the next model call.",
+			Description: "Switch this conversation to another allowed model: an id from silo_runtime.list_models() (an id that is not allowed answers with the list). Takes effect from the next model call.",
 			Params: tool.Object(map[string]any{
-				"model": map[string]any{"type": "string", "description": "provider/model id from list_models"},
+				"model": map[string]any{"type": "string", "description": "provider/model id, as silo_runtime.list_models() gives them"},
 			}, "model"),
 			Connector: security.Model, Action: "switch",
 			ExposeCompletion: true, LeadOnly: true,
@@ -353,8 +362,8 @@ func (a *App) toolDefs() []tool.Def {
 				"max_results": map[string]any{"type": "integer", "description": "how many hits to return (default 8, max 20)"},
 			}, "query"),
 			Connector: security.Web, Action: "search",
-			ExposeCompletion: true, ExposePython: true,
-			Check: tool.Need("query"),
+			ExposePython: true,
+			Check:        tool.Need("query"),
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.runWebSearch(ctx, c.ArgsJSON)
 			}),
@@ -367,7 +376,7 @@ func (a *App) toolDefs() []tool.Def {
 				"text":  map[string]any{"type": "string", "description": "the post, markdown"},
 			}, "text"),
 			Connector: security.Bot, Action: "feed",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Feed.Tool(ctx, c.Bot, c.RunID, c.Args)
 			}),
@@ -380,8 +389,8 @@ func (a *App) toolDefs() []tool.Def {
 				"language": map[string]any{"type": "string", "description": "optional ISO-639-1 hint such as en or pl"},
 			}, "path"),
 			Connector: security.Bot, Action: "transcribe",
-			ExposeCompletion: true, ExposePython: true,
-			Enabled: func(string) bool { return a.Voice.Enabled() },
+			ExposePython: true,
+			Enabled:      func(string) bool { return a.Voice.Enabled() },
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Voice.Tool(ctx, c.Bot.ID, c.Str("path"), c.Str("language"), c.Structured())
 			}),
@@ -403,7 +412,7 @@ func (a *App) toolDefs() []tool.Def {
 			Description: "List this Bot's tunnels: address, port, and who can open each.",
 			Params:      tool.Object(nil),
 			Connector:   security.Tunnels, Action: "list",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Enabled: tunnelsOn,
 			Run:     tunnel,
 		},
@@ -415,7 +424,7 @@ func (a *App) toolDefs() []tool.Def {
 				"port": map[string]any{"type": "integer"},
 			}),
 			Connector: security.Tunnels, Action: "close",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Enabled: tunnelsOn,
 			Run:     tunnel,
 		},
@@ -427,7 +436,7 @@ func (a *App) toolDefs() []tool.Def {
 				"limit":  map[string]any{"type": "integer", "description": "how many to list (default 20, max 50)"},
 			}),
 			Connector: security.Mailbox, Action: "list",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Enabled: mailOn,
 			Run:     mail,
 		},
@@ -440,7 +449,7 @@ func (a *App) toolDefs() []tool.Def {
 				"offset":           map[string]any{"type": "integer", "description": "continue a long body from this character (the result says when there is more)"},
 			}, "id"),
 			Connector: security.Mailbox, Action: "read",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Enabled: mailOn,
 			Run:     mail,
 		},
@@ -452,7 +461,7 @@ func (a *App) toolDefs() []tool.Def {
 				"text":    map[string]any{"type": "string"},
 			}, "text"),
 			Connector: security.Channels, Action: "send",
-			ExposeCompletion: true, ExposePython: true, PyName: "send_channel", SelfGated: true, LeadOnly: true,
+			ExposePython: true, PyName: "send_channel", SelfGated: true, LeadOnly: true,
 			Check: tool.Need("text"), Title: channelTitle,
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Channels.SendTool(ctx, c.Bot.ID, c.RunID, c.Args)
@@ -463,7 +472,7 @@ func (a *App) toolDefs() []tool.Def {
 			Description: "List this Bot's automations (scheduled background prompts), including the pinned Heartbeat, with ids, schedules, next and last runs.",
 			Params:      tool.Object(nil),
 			Connector:   security.Automations, Action: "list",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: automation,
 		},
 		{
@@ -500,7 +509,7 @@ func (a *App) toolDefs() []tool.Def {
 				"automation": map[string]any{"type": "string", "description": "id or name"},
 			}, "automation"),
 			Connector: security.Automations, Action: "delete",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: automation,
 		},
 		{
@@ -510,7 +519,7 @@ func (a *App) toolDefs() []tool.Def {
 				"name":    map[string]any{"type": "string", "description": "short unique name, letters/digits/-/_ (e.g. scout, writer-2)"},
 				"goal":    map[string]any{"type": "string", "description": "what it must achieve and what its final report should contain"},
 				"context": map[string]any{"type": "string", "description": "everything it needs to know: files, facts, decisions, which files are its own"},
-				"model":   map[string]any{"type": "string", "description": "provider/model id from list_models; omit for the operator's subagent default (a cheaper model when one is set)"},
+				"model":   map[string]any{"type": "string", "description": "provider/model id (silo_runtime.list_models()); omit for the operator's subagent default (a cheaper model when one is set)"},
 			}, "name", "goal"),
 			Connector: security.Agents, Action: "spawn",
 			ExposeCompletion: true, SelfGated: true, LeadOnly: true,
@@ -566,7 +575,7 @@ func (a *App) toolDefs() []tool.Def {
 				"tasks": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			}, "tasks"),
 			Connector: security.Tasks, Action: "add",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Run: task,
 		},
 		{
@@ -574,7 +583,7 @@ func (a *App) toolDefs() []tool.Def {
 			Description: "Show the taskboard.",
 			Params:      tool.Object(nil),
 			Connector:   security.Tasks, Action: "read",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Run: task,
 		},
 		{
@@ -585,7 +594,7 @@ func (a *App) toolDefs() []tool.Def {
 				"note": map[string]any{"type": "string"},
 			}, "ids"),
 			Connector: security.Tasks, Action: "done",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Run: task,
 		},
 		{
@@ -593,7 +602,7 @@ func (a *App) toolDefs() []tool.Def {
 			Description: "Clear the whole taskboard (lead only). Use it when starting an unrelated piece of work.",
 			Params:      tool.Object(nil),
 			Connector:   security.Tasks, Action: "reset",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: task,
 		},
 		{
@@ -604,7 +613,7 @@ func (a *App) toolDefs() []tool.Def {
 				"limit": map[string]any{"type": "integer", "description": "max messages (default 20, max 50)"},
 			}),
 			Connector: security.Chats, Action: "read",
-			ExposeCompletion: true, ExposePython: true, PyName: "read_chats", SelfGated: true,
+			ExposePython: true, PyName: "read_chats", SelfGated: true,
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Channels.ChatsTool(ctx, c.Bot.ID, c.RunID, c.Args)
 			}),

@@ -357,6 +357,18 @@ type Memory struct {
 	LastUsedAt *time.Time
 }
 
+// MemoryDigest is the summary that stands in for a Bot's long-term memories in
+// the system prompt once they are too many to list. Key is a hash of the
+// memories it was written from, so an unchanged store is not summarized again.
+// It is a table of its own: the bots row is saved whole in places, and a
+// digest written by the sweep must not be overwritten by a stale copy.
+type MemoryDigest struct {
+	BotID     string `gorm:"primaryKey"`
+	Key       string `gorm:"not null;default:''"`
+	Text      string `gorm:"not null;default:''"`
+	UpdatedAt time.Time
+}
+
 // KnowledgeFolder is a workspace folder (drives included) the owner chose to
 // index for `search_docs`. Files stay on the box; the CP keeps the sync state
 // and the searchable chunks. Status is idle | syncing | error. DirtyAt is set
@@ -569,7 +581,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

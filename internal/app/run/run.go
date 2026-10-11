@@ -21,8 +21,6 @@ type Origin struct {
 	// Automation is set when a scheduled automation started the run. Its runs
 	// start from a fresh context and are not delivered anywhere.
 	Automation *db.Automation
-	// Recall is the auto-recalled memory note, computed once per run.
-	Recall string
 	// Subagent is set when the run is a subagent's work in its own log chat.
 	// Its runs are not delivered anywhere and get the subagent tool set.
 	Subagent *db.Subagent

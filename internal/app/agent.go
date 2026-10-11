@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -19,9 +20,14 @@ import (
 	"silo.agent/internal/textx"
 )
 
+// inboxMsg is a user message injected into a live run. id and at are its
+// persisted event: the run moves the event to where it reads the message, and
+// stamps the message with the time replay will stamp it with.
 type inboxMsg struct {
 	text string
 	atts []*v1.Attachment
+	id   string
+	at   time.Time
 }
 
 // StartRun records a run and launches the agent loop. Callers with a live run
@@ -112,9 +118,12 @@ func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment, f
 	if lr == nil || lr.botID != botID || lr.chatID != chatID {
 		return false
 	}
+	lr.injecting.Lock()
+	defer lr.injecting.Unlock()
+	id, at := ids.New(), time.Now()
 	select {
-	case lr.inbox <- inboxMsg{text: text, atts: atts}:
-		a.emitUser(botID, chatID, runID, text, atts, from)
+	case lr.inbox <- inboxMsg{text: text, atts: atts, id: id, at: at}:
+		a.emitUserAt(botID, chatID, runID, id, at, text, atts, from)
 		a.dbSaveBotWorking(botID, text)
 		lr.signal("message")
 		return true
@@ -127,18 +136,27 @@ func (a *App) dbSaveBotWorking(botID, text string) {
 	a.DB.Model(&db.Bot{}).Where("id = ?", botID).Updates(map[string]any{"last_task": text, "status": "working"})
 }
 
-func drainInbox(msgs []llm.Message, inbox chan inboxMsg) []llm.Message {
-	if inbox == nil {
-		return msgs
-	}
-	for {
+// drainInbox appends the messages injected since the last turn. Each one's
+// event moves to this point of the run log, so the log's order is the order
+// the model read things in and a later run replays the message right here.
+func (a *App) drainInbox(lr *liveRun, msgs []llm.Message) []llm.Message {
+	lr.injecting.Lock()
+	var got []inboxMsg
+	for more := true; more; {
 		select {
-		case m := <-inbox:
-			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(userTextWithAttachments(m.text, m.atts), time.Now())})
+		case m := <-lr.inbox:
+			got = append(got, m)
 		default:
-			return msgs
+			more = false
 		}
 	}
+	lr.injecting.Unlock()
+	for _, m := range got {
+		a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
+		text := userTextWithAttachments(a.kept(lr.botID, m.text), m.atts)
+		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, m.at)})
+	}
+	return msgs
 }
 
 // turnResult is one streamed assistant turn: the assembled message plus any
@@ -255,7 +273,11 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Atts, req.Origin
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
 	defer cancel()
-	a.trackRun(botID, chatID, runID, cancel, inbox, done)
+	lr := a.trackRun(botID, chatID, runID, cancel, inbox, done)
+	lr.pySession = chatID
+	if origin != nil && origin.Automation != nil {
+		lr.pySession = runID
+	}
 	defer close(done)
 	defer a.untrackRun(runID)
 
@@ -286,13 +308,22 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		}
 	}
 
-	var msgs []llm.Message
+	var past replayed
 	if origin != nil && origin.Automation != nil {
 		// Each firing is independent: only this run is the model's history.
-		msgs = a.historyFromRuns([]db.Run{{ID: runID}})
+		past = a.contextFromRuns([]db.Run{{ID: runID}})
 	} else {
-		msgs = a.historyFromDB(chatID)
+		past = a.contextFromDB(chatID)
 	}
+	// From here the history only grows: what a turn adds is recorded so that
+	// replaying the log gives these same messages (replayEvents), and nothing
+	// already sent is edited. A provider's prompt cache holds for exactly as
+	// long as that is true. The two deliberate exceptions, clearing stale tool
+	// results and compaction, rewrite it once and record that they did.
+	msgs := past.msgs
+	// lastNote is the status note the model was last told, cleared is how
+	// many old tool results are blanked in msgs.
+	lastNote, cleared := past.note, past.cleared
 	if req.Compact {
 		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window)
 		if err != nil {
@@ -305,18 +336,13 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		}
 		// A message sent while the summary was written continues as a normal
 		// turn; otherwise the run is just the compaction.
-		msgs = drainInbox(out, inbox)
+		msgs = a.drainInbox(lr, out)
+		lastNote, cleared = "", 0
 		if len(msgs) == len(out) {
 			a.finish(botID, chatID, runID, "done")
 			return
 		}
 		userText = msgs[len(msgs)-1].Text
-	}
-	if note := a.Memory.AutoRecall(ctx, botID, userText); note != "" {
-		if origin == nil {
-			origin = &run.Origin{}
-		}
-		origin.Recall = note
 	}
 	var lastLook string
 	// seen counts identical read/grep calls this run so a stuck loop does not
@@ -327,8 +353,12 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 	// that plus an estimate of what was appended since. Zero means no turn yet.
 	lastTotal, lastLen := 0, 0
 
+	// The system prompt is built once: a run that edits its own SOUL or
+	// memory is told so by the tool's result, and the next run reads the new
+	// prompt. Rebuilding it per turn would re-bill the whole conversation.
+	system := a.buildSystemBlocks(botID, origin)
 	for {
-		msgs = drainInbox(msgs, inbox)
+		msgs = a.drainInbox(lr, msgs)
 		if a.stopped(ctx, botID, chatID, runID) {
 			return
 		}
@@ -341,10 +371,13 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 				window = a.contextWindow(ctx, modelID)
 			}
 		}
-		system := a.buildSystemBlocks(botID, origin)
 		base := estimateBase(system, tools)
 		used := base + estimateMessages(msgs)
+		// scale is how the provider's count of the last turn compares with
+		// the estimate of the same content (1 before the first turn).
+		scale := 1.0
 		if lastTotal > 0 && lastLen <= len(msgs) {
+			scale = float64(lastTotal) / float64(max(base+estimateMessages(msgs[:lastLen]), 1))
 			used = lastTotal + estimateMessages(msgs[lastLen:])
 		}
 		// compactNow replaces the history with a summary; mid-task it tells
@@ -357,27 +390,37 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 				}
 				return false
 			}
-			if n := len(msgs); n > 0 && msgs[n-1].Role != llm.RoleUser {
-				out[0].Text += compactionContinue
-			}
 			msgs = out
 			lastTotal, lastLen = 0, 0
+			// The summary starts a new context: the status is told again.
+			lastNote, cleared = "", 0
 			return true
 		}
 		if needsCompaction(used, base, window, a.cfg().Context.Threshold()) {
-			compactNow()
+			// Clearing old tool output is tried first: it costs no model call
+			// and keeps the conversation itself.
+			var freed int
+			if msgs, cleared, freed = a.clearStale(runID, msgs, cleared, used, base, window, scale); freed > 0 {
+				lastTotal = max(lastTotal-freed, 0)
+			} else {
+				compactNow()
+			}
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
 		}
-		// The taskboard and subagent status ride on the request's last message
-		// only: the model always sees the latest version, history never keeps
-		// the stale ones, and every cache breakpoint stays in front of it.
-		note := a.turnNote(chatID, origin)
+		// The taskboard and subagent status are told when they change, as a
+		// turn of their own that stays in the history: the model reads the
+		// newest one, and nothing before it is rewritten.
+		if note := a.turnNote(chatID, origin); note != "" && note != lastNote {
+			a.record(runID, noteKind, note, "", "")
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: note})
+			lastNote = note
+		}
 		turnReq := llm.Request{
 			Model:    model,
 			System:   system,
-			Messages: withTurnNote(msgs, note),
+			Messages: msgs,
 			Tools:    tools,
 			Cache:    models.CachePolicy(settings, botID),
 			// Read each turn, like the model, so a change in the composer
@@ -389,7 +432,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		// long gets one compaction and one retry.
 		if err != nil && isContextOverflow(err) && len(msgs) > 1 && ctx.Err() == nil {
 			if compactNow() {
-				turnReq.Messages = withTurnNote(msgs, note)
+				turnReq.Messages = msgs
 				res, err = a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
 			}
 		}
@@ -424,7 +467,20 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		for _, sec := range res.sections {
 			a.emitDelivered(botID, chatID, runID, "section_live", sec, origin)
 		}
-		msgs = append(msgs, res.assistant)
+		// The turn is kept as the log stores it (secrets masked), so the next
+		// run replays these very bytes; the calls run with what the model wrote.
+		turn := res.assistant
+		turn.Text = a.kept(botID, turn.Text)
+		turn.ToolCalls = make([]llm.ToolCall, len(res.assistant.ToolCalls))
+		meta := turnMeta{}
+		for i, tc := range res.assistant.ToolCalls {
+			tc.Arguments = a.kept(botID, tc.Arguments)
+			turn.ToolCalls[i] = tc
+			meta.Calls = append(meta.Calls, turnCall{ID: tc.ID, Name: tc.Name, Args: tc.Arguments})
+		}
+		rawMeta, _ := json.Marshal(meta)
+		a.record(runID, turnKind, turn.Text, "", string(rawMeta))
+		msgs = append(msgs, turn)
 		lastLen = len(msgs)
 		for _, tc := range res.assistant.ToolCalls {
 			def := a.toolDef(botID, tc.Name)
@@ -448,21 +504,26 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			if err != nil {
 				out = "error: " + err.Error()
 			}
-			out = a.Mask(botID).Apply(out)
-			out = textx.Cap(out, 12000)
+			out = a.kept(botID, textx.Cap(a.Mask(botID).Apply(out), 12000))
+			sameLook := img != "" && img == lastLook && isLookTool(tc.Name)
+			if sameLook {
+				out += " (screen unchanged since the last look)"
+			}
 			a.Emit(botID, chatID, runID, "tool_result", out, tc.Name)
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Text: out})
-			if img != "" {
-				if img == lastLook && isLookTool(tc.Name) {
-					msgs[len(msgs)-1].Text += " (screen unchanged since the last look)"
-				} else {
-					itype, vimg := visionImage(tc.Name, img)
-					if isLookTool(tc.Name) {
-						pruneLookImages(msgs)
-						lastLook = img
-					}
-					msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
+			if img != "" && !sameLook {
+				itype, vimg := visionImage(tc.Name, img)
+				// later is what this turn reads as once its pixels are no
+				// longer sent: a look is dropped by the next one, a presented
+				// image by the end of the run.
+				later := itype
+				if isLookTool(tc.Name) {
+					pruneLookImages(msgs)
+					lastLook = img
+					later = lookOmitted
 				}
+				a.record(runID, seenKind, later, tc.Name, "")
+				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
 			}
 			if origin != nil && origin.Channel != nil && err == nil {
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)

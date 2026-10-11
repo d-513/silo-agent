@@ -44,6 +44,9 @@ const (
 
 type compactionMeta struct {
 	After string `json:"after,omitempty"`
+	// MidTask is set when the summary was written in the middle of a task, so
+	// replay ends it with the same continue note the run did.
+	MidTask bool `json:"mid_task,omitempty"`
 }
 
 func runeTokens(s string) int {
@@ -247,7 +250,7 @@ func trimTranscript(entries []string, keepFirst bool, budget int) string {
 
 // compact summarizes msgs with the conversation's model and records the
 // compaction. It returns the replacement history: one user turn holding the
-// summary. The caller appends a continue note when a task is mid-flight.
+// summary, ending in a continue note when a task is mid-flight.
 func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID string, msgs []llm.Message, window int) ([]llm.Message, error) {
 	if len(msgs) == 0 {
 		return nil, errors.New("nothing to compact")
@@ -274,24 +277,37 @@ func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID
 	if summary == "" {
 		return nil, errors.New("compaction failed: the model returned an empty summary")
 	}
-	meta, _ := json.Marshal(compactionMeta{After: after})
+	// A history that does not end on the human's turn is a task in flight.
+	midTask := reason == compactAuto && msgs[len(msgs)-1].Role != llm.RoleUser
+	meta, _ := json.Marshal(compactionMeta{After: after, MidTask: midTask})
 	a.emitMeta(botID, chatID, runID, compactionKind, summary, reason, string(meta))
 	out := []llm.Message{{Role: llm.RoleUser, Text: compactionText(summary)}}
+	if midTask {
+		out[0].Text += compactionContinue
+	}
 	a.emitUsage(botID, chatID, runID, llm.Usage{InputTokens: estimateMessages(out)}, window)
 	return out, nil
+}
+
+// compactionCut is where replay starts after a compaction and what it opens
+// with.
+type compactionCut struct {
+	start   int
+	summary string
+	midTask bool
 }
 
 // cutAtCompaction returns where replay starts and the summary to open with.
 // The last compaction wins; replay resumes after its anchor, so a message
 // injected while the summary was being written is not lost.
-func cutAtCompaction(evs []db.RunEvent) (start int, summary string, ok bool) {
+func cutAtCompaction(evs []db.RunEvent) (compactionCut, bool) {
 	for i := len(evs) - 1; i >= 0; i-- {
 		if evs[i].Kind != compactionKind {
 			continue
 		}
 		var meta compactionMeta
 		_ = json.Unmarshal([]byte(evs[i].Meta), &meta)
-		start = i + 1
+		start := i + 1
 		if meta.After != "" {
 			for j := 0; j < i; j++ {
 				if evs[j].ID == meta.After {
@@ -300,7 +316,7 @@ func cutAtCompaction(evs []db.RunEvent) (start int, summary string, ok bool) {
 				}
 			}
 		}
-		return start, evs[i].Body, true
+		return compactionCut{start: start, summary: evs[i].Body, midTask: meta.MidTask}, true
 	}
-	return 0, "", false
+	return compactionCut{}, false
 }

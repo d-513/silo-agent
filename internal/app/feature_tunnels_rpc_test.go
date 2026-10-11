@@ -24,7 +24,7 @@ func tunnelHarness(t *testing.T, extraYAML string) *apptest.H {
 	dummy.Reset()
 	dir := t.TempDir()
 	return apptest.New(t, apptest.WithDataDir(dir),
-		apptest.WithYAML(apptest.DefaultYAML(dir)+"tunnels:\n  host: "+tunnelTestHost+"\n"+extraYAML))
+		apptest.WithYAML(apptest.DefaultYAML(dir)+"tunnels:\n  host: "+tunnelTestHost+"\n"+extraYAML), apptest.WithChatTools())
 }
 
 var nameRe = regexp.MustCompile(`^[a-z]+-[a-z]+-[a-z]+$`)

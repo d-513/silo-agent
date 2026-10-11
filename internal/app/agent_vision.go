@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	// lookOmitted is what an earlier screenshot's turn reads as.
+	lookOmitted  = "Earlier screenshot omitted — act on the current one."
 	lookPath     = "bot/screen.jpg"
 	lookCoordLaw = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
@@ -28,7 +30,7 @@ func pruneLookImages(msgs []llm.Message) {
 	for i := range msgs {
 		if isLookImage(msgs[i]) {
 			msgs[i].Images = nil
-			msgs[i].Text = "Earlier screenshot omitted — act on the current one."
+			msgs[i].Text = lookOmitted
 		}
 	}
 }

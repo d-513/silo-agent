@@ -20,7 +20,7 @@ import (
 func subagentHarness(t *testing.T) *apptest.H {
 	dir := t.TempDir()
 	path := dir + "/silo.yaml"
-	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)+"debug: true\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)+"debug: true\n"+apptest.ChatTools), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return apptest.New(t, apptest.WithConfigPath(path))

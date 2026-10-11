@@ -65,6 +65,7 @@ type options struct {
 	stdioBridge bool
 	driveGuest  bool
 	signedOut   bool
+	chatTools   bool
 }
 
 // Option customizes the harness.
@@ -126,6 +127,9 @@ func New(t *testing.T, opts ...Option) *H {
 	} else {
 		if o.yaml == "" {
 			o.yaml = DefaultYAML(o.dataDir)
+		}
+		if o.chatTools {
+			o.yaml += ChatTools
 		}
 		store, err = config.FromYAML([]byte(o.yaml))
 	}
@@ -200,6 +204,14 @@ func New(t *testing.T, opts ...Option) *H {
 	}
 	return h
 }
+
+// ChatTools is the config that offers every built-in tool to the model, for
+// tests that script a Python-only tool as a chat call. Append it to a YAML.
+const ChatTools = "tools:\n  expose_completion: [all]\n"
+
+// WithChatTools runs the harness with every built-in tool offered to the
+// model (see ChatTools).
+func WithChatTools() Option { return func(o *options) { o.chatTools = true } }
 
 // DefaultYAML is the deterministic test config: the dummy provider, a temp
 // data dir, and no network.

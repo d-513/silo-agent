@@ -66,11 +66,21 @@ func (p Provider) Settings() llm.Settings {
 	return out
 }
 
+// Tools configures how the Bot's built-in tools are offered.
+type Tools struct {
+	// ExposeCompletion names built-in tools that are also offered to the
+	// model as chat tools. Most ship reachable from Python only
+	// (silo_runtime), which keeps the request small; a model that handles
+	// that badly can get some, or "all", back.
+	ExposeCompletion []string `koanf:"expose_completion"`
+}
+
 // Memory configures long-term (pgvector) memories.
 type Memory struct {
-	// AutoRecall injects the closest memories to the user's message into
-	// each run's volatile prompt tail.
-	AutoRecall bool `koanf:"auto_recall"`
+	// InPrompt puts long-term memory in the system prompt: every memory
+	// while they are few, a summary written in the background once they are
+	// many. Nothing is embedded when a message arrives; `recall` searches.
+	InPrompt bool `koanf:"in_prompt"`
 	// Collect runs the memory collector over chats that went idle with new
 	// messages. The manual composer button works either way.
 	Collect bool `koanf:"collect"`
@@ -274,6 +284,7 @@ type Config struct {
 	Drives      Drives              `koanf:"drives"`
 	Tunnels     Tunnels             `koanf:"tunnels"`
 	Mail        Mail                `koanf:"mail"`
+	Tools       Tools               `koanf:"tools"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -387,7 +398,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_memory"},
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
-	{Key: "memory.auto_recall", Type: "bool"},
+	{Key: "memory.in_prompt", Type: "bool"},
 	{Key: "memory.collect", Type: "bool"},
 	{Key: "knowledge.enabled", Type: "bool"},
 	{Key: "knowledge.sync_interval"},
@@ -461,7 +472,7 @@ func envKey(s string) string {
 
 // envLists are the settings that hold a list; the environment gives each as
 // one comma-separated string.
-var envLists = map[string]bool{"autoenable_connectors": true}
+var envLists = map[string]bool{"autoenable_connectors": true, "tools.expose_completion": true}
 
 // envValue maps one SILO_ variable to its key and value.
 func envValue(name, value string) (string, any) {

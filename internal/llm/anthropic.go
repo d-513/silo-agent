@@ -319,12 +319,9 @@ func (c *anthropicClient) Complete(ctx context.Context, req Request) (Response, 
 	if err != nil {
 		return Response{}, err
 	}
-	out := Response{Usage: Usage{
-		InputTokens:      int(res.Usage.InputTokens),
-		OutputTokens:     int(res.Usage.OutputTokens),
-		CacheReadTokens:  int(res.Usage.CacheReadInputTokens),
-		CacheWriteTokens: int(res.Usage.CacheCreationInputTokens),
-	}}
+	var in anthropicUsage
+	in.set(int(res.Usage.InputTokens), int(res.Usage.CacheReadInputTokens), int(res.Usage.CacheCreationInputTokens))
+	out := Response{Usage: in.usage(int(res.Usage.OutputTokens))}
 	for _, blk := range res.Content {
 		switch blk.Type {
 		case "text":
@@ -340,12 +337,34 @@ func (c *anthropicClient) Complete(ctx context.Context, req Request) (Response, 
 	return out, nil
 }
 
+// anthropicUsage holds the API's three input counts. Anthropic's input_tokens
+// is only the part of the prompt that was neither read from nor written to the
+// cache; the engine's InputTokens is the whole prompt, as every other provider
+// reports it, so context tracking does not shrink when caching is on.
+type anthropicUsage struct {
+	uncached, read, write int
+}
+
+func (u *anthropicUsage) set(uncached, read, write int) {
+	u.uncached, u.read, u.write = uncached, read, write
+}
+
+func (u anthropicUsage) usage(output int) Usage {
+	return Usage{
+		InputTokens:      u.uncached + u.read + u.write,
+		OutputTokens:     output,
+		CacheReadTokens:  u.read,
+		CacheWriteTokens: u.write,
+	}
+}
+
 type anthropicStream struct {
 	stream    *ssestream.Stream[anthropic.MessageStreamEventUnion]
 	queue     []Event
 	done      bool
 	err       error
-	usage     Usage
+	in        anthropicUsage
+	out       int
 	usageSeen bool
 	// block is the thinking block being streamed, handed on at its stop.
 	block *ThinkingBlock
@@ -361,7 +380,7 @@ func (s *anthropicStream) Next() bool {
 			s.done = true
 			if s.err == nil {
 				if s.usageSeen {
-					s.queue = append(s.queue, Event{Kind: EventUsage, Usage: s.usage})
+					s.queue = append(s.queue, Event{Kind: EventUsage, Usage: s.in.usage(s.out)})
 				}
 				s.queue = append(s.queue, Event{Kind: EventDone})
 			}
@@ -388,9 +407,7 @@ func (s *anthropicStream) enqueue(ev anthropic.MessageStreamEventUnion) {
 	switch ev.Type {
 	case "message_start":
 		u := ev.Message.Usage
-		s.usage.InputTokens = int(u.InputTokens)
-		s.usage.CacheReadTokens = int(u.CacheReadInputTokens)
-		s.usage.CacheWriteTokens = int(u.CacheCreationInputTokens)
+		s.in.set(int(u.InputTokens), int(u.CacheReadInputTokens), int(u.CacheCreationInputTokens))
 		s.usageSeen = true
 	case "content_block_start":
 		switch ev.ContentBlock.Type {
@@ -433,16 +450,16 @@ func (s *anthropicStream) enqueue(ev anthropic.MessageStreamEventUnion) {
 		}
 	case "message_delta":
 		if ev.Usage.JSON.OutputTokens.Valid() {
-			s.usage.OutputTokens = int(ev.Usage.OutputTokens)
+			s.out = int(ev.Usage.OutputTokens)
 		}
 		if ev.Usage.JSON.InputTokens.Valid() {
-			s.usage.InputTokens = int(ev.Usage.InputTokens)
+			s.in.uncached = int(ev.Usage.InputTokens)
 		}
 		if ev.Usage.JSON.CacheReadInputTokens.Valid() {
-			s.usage.CacheReadTokens = int(ev.Usage.CacheReadInputTokens)
+			s.in.read = int(ev.Usage.CacheReadInputTokens)
 		}
 		if ev.Usage.JSON.CacheCreationInputTokens.Valid() {
-			s.usage.CacheWriteTokens = int(ev.Usage.CacheCreationInputTokens)
+			s.in.write = int(ev.Usage.CacheCreationInputTokens)
 		}
 		s.usageSeen = true
 	}

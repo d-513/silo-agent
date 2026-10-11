@@ -98,11 +98,31 @@ func (d Def) PyHelper() string {
 // Key is the tool's connector.action address.
 func (d Def) Key() string { return d.Connector + "." + d.Action }
 
-func (d Def) exposed(s Surface) bool {
+// AllTools in the operator's list offers every built-in to the model.
+const AllTools = "all"
+
+// offered reports whether d is a completion tool: its own exposure, or the
+// operator's wish for a built-in that ships Python-only.
+func (e *Engine) offered(d *Def) bool {
+	if d.ExposeCompletion {
+		return true
+	}
+	if e.Expose == nil || !d.ExposePython {
+		return false
+	}
+	for _, name := range e.Expose() {
+		if name == d.Name || name == AllTools {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Engine) exposed(d *Def, s Surface) bool {
 	if s == Python {
 		return d.ExposePython
 	}
-	return d.ExposeCompletion
+	return e.offered(d)
 }
 
 // Call is one invocation of a tool.
@@ -155,6 +175,9 @@ type Source interface {
 
 // Engine holds the definitions and runs calls against them.
 type Engine struct {
+	// Expose, when set, names built-in tools the operator also wants offered
+	// to the model (tools.expose_completion); it is read on every use.
+	Expose  func() []string
 	auth    host.Authorizer
 	defs    []Def
 	byName  map[string]int
@@ -218,7 +241,7 @@ func (e *Engine) Offered(botID string, subagent bool) []Def {
 	seen := map[string]bool{}
 	for _, d := range e.defs {
 		seen[d.Name] = true
-		if !d.ExposeCompletion || (subagent && d.LeadOnly) || (d.Enabled != nil && !d.Enabled(botID)) {
+		if !e.offered(&d) || (subagent && d.LeadOnly) || (d.Enabled != nil && !d.Enabled(botID)) {
 			continue
 		}
 		out = append(out, d)
@@ -238,10 +261,10 @@ func (e *Engine) Offered(botID string, subagent bool) []Def {
 // ByName resolves a completion tool call.
 func (e *Engine) ByName(botID, name string) (*Def, bool) {
 	if i, ok := e.byName[name]; ok {
-		if !e.defs[i].ExposeCompletion {
+		d := e.defs[i]
+		if !e.offered(&d) {
 			return nil, false
 		}
-		d := e.defs[i]
 		return &d, true
 	}
 	for _, s := range e.sources {
@@ -287,7 +310,7 @@ func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 	if d == nil || d.Run == nil {
 		return Result{}, errors.New("unknown tool")
 	}
-	if !d.exposed(c.Surface) {
+	if !e.exposed(d, c.Surface) {
 		return Result{}, fmt.Errorf("%s is not available here", d.Name)
 	}
 	if c.Args == nil {
