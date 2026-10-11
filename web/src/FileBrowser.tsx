@@ -69,6 +69,10 @@ export function FileBrowser({
     loadDir("")
       .then(async () => {
         if (dead) return;
+        // A refresh keeps the tree as it is: reload every open folder too.
+        for (const d of open) if (d !== "") await loadDir(d).catch(() => {});
+        if (dead) return;
+        if (kids[""]) return;
         if (initialDir) {
           const next = new Set([""]);
           let acc = "";

@@ -164,7 +164,7 @@ export function SidePane({
         {machine("console")}
         {has("files") ? (
           <div className={`min-h-0 flex-1 flex-col ${online ? "" : "p-3"} ${kind === "files" ? "flex" : "hidden"}`}>
-            <FilesPane bot={bot} onStart={onStart} openAt={openAt} actions={actions(false)} />
+            <FilesPane bot={bot} visible={kind === "files"} onStart={onStart} openAt={openAt} actions={actions(false)} />
           </div>
         ) : null}
         {/* Changes keeps its header when the Bot is stopped: the drive journal
