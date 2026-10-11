@@ -88,7 +88,7 @@ Status: **Done** / **Partial** / **Missing** / **Skip** (chosen not to do).
 | 11 | Native nodes and personal data | **Missing** | The iOS app is a client of the Control Plane, not a device node (no camera, location, contacts) |
 | 12 | Notifications | **Partial** | In-app Feed badge, and the Bot can message you on Telegram, WhatsApp or Discord. No APNs or web push; iOS polls |
 | 13 | Media generation, interactive artifacts | **Partial** | The fal.ai connector preset and the images/pdf/word/spreadsheets/presentations skills cover a lot; Tunnels let a Bot serve a live app. No native image, video or music tool |
-| 14 | Web extract and browser backends | **Partial** | Lightpanda (auto-attached markdown reader), Exa / Tavily / Firecrawl / Perplexity presets, real Chromium with Playwright. One native search engine (DuckDuckGo scraper); native page extract still "later" |
+| 14 | Web extract and browser backends | **Partial** | Lightpanda (auto-attached markdown reader), Exa / Tavily / Firecrawl / Perplexity presets, real Chromium with Playwright. One native search engine (the Built-in Scraper, a keyless metasearch); native page extract still "later" |
 | 15 | Hooks, plugins, webhooks | **Missing** | Extensibility today is MCP, skills and in-tree Go connectors |
 | 16 | Provider routing and fallback | **Partial** | Shipped: four provider kinds including `local`, per-Bot and per-chat model, subagent/title/memory models, OpenRouter `ignore`. Left: fallback on failure, key pools, routing policy, an OpenAI-compatible API endpoint, IDE integration |
 | 17 | Checkpoints and rollback | **Missing** | Workspace is a durable bind mount, but nothing snapshots before `write` / `patch` / `delete` |

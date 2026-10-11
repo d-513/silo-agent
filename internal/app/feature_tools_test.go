@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
+	"silo.agent/internal/search"
 )
 
 // toolResults maps tool name to the last result body for a run.
@@ -191,7 +193,7 @@ func TestWebSearchTool(t *testing.T) {
 	eng := &apptest.FakeSearch{}
 	apptest.RegisterFakeSearch("fake", eng)
 	yaml := strings.Replace(apptest.DefaultYAML(t.TempDir()),
-		"engine: duckduckgo_scraper", "engine: fake", 1)
+		"engine: builtin", "engine: fake", 1)
 	dummy.Reset()
 	dummy.Script("Test_33",
 		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "web_search", Arguments: `{"query":"golang"}`}}},
@@ -209,6 +211,86 @@ func TestWebSearchTool(t *testing.T) {
 	}
 	if len(eng.Calls) != 1 || eng.Calls[0] != "golang" {
 		t.Fatalf("engine calls %v", eng.Calls)
+	}
+}
+
+// blockableSearch answers like the fake, except for the query "blocked":
+// then every source refused.
+type blockableSearch struct{ *apptest.FakeSearch }
+
+func (b blockableSearch) Search(ctx context.Context, q search.Query) (search.Result, error) {
+	if q.Text == "blocked" {
+		return search.Result{Blocked: []string{"brave"}, Note: "No search engine could answer."}, nil
+	}
+	return b.FakeSearch.Search(ctx, q)
+}
+
+// TestWebSearchFromPython is silo_runtime.web_search and web_search_many: the
+// language reaches the engine, a batch is one call answered in order, and a
+// blocked search says so instead of looking like nothing was found.
+func TestWebSearchFromPython(t *testing.T) {
+	eng := &apptest.FakeSearch{}
+	search.Register(search.Descriptor{ID: "fake-py", Name: "Fake"}, func(search.Settings) search.Engine { return blockableSearch{eng} })
+	t.Cleanup(func() { search.Unregister("fake-py") })
+	dummy.Reset()
+	h := apptest.New(t, apptest.WithYAML(strings.Replace(apptest.DefaultYAML(t.TempDir()), "engine: builtin", "engine: fake-py", 1)))
+	bot := h.CreateBot("Searcher")
+	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "hello")
+	h.WaitRun(run)
+	h.LiveRun(run)
+
+	wc := h.WorkerClient(bot.GetId())
+	call := func(args string) *v1.ToolRes {
+		t.Helper()
+		res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{Connector: "web", Action: "search", ArgsJson: args, RunId: run}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+
+	res := call(`{"query":"pierogi","language":"pl","country":"pl","max_results":3}`)
+	var one search.Result
+	if err := json.Unmarshal([]byte(res.GetResultJson()), &one); err != nil || res.GetError() != "" || len(one.Results) != 1 {
+		t.Fatalf("one query: %+v", res)
+	}
+	if want := (search.Query{Text: "pierogi", Language: "pl", Country: "pl", Max: 3}); len(eng.Queries) != 1 || eng.Queries[0] != want {
+		t.Fatalf("engine was asked %+v", eng.Queries)
+	}
+
+	res = call(`{"queries":["alpha"," ","beta","gamma"],"language":"de"}`)
+	var many struct {
+		Searches []struct {
+			Query   string       `json:"query"`
+			Results []search.Hit `json:"results"`
+		} `json:"searches"`
+	}
+	if err := json.Unmarshal([]byte(res.GetResultJson()), &many); err != nil || res.GetError() != "" {
+		t.Fatalf("batch: %+v", res)
+	}
+	var got []string
+	for _, s := range many.Searches {
+		got = append(got, s.Query+"="+s.Results[0].URL)
+	}
+	if want := "alpha=https://example.test/alpha beta=https://example.test/beta gamma=https://example.test/gamma"; strings.Join(got, " ") != want {
+		t.Fatalf("batch order %v", got)
+	}
+
+	for args, want := range map[string]string{
+		`{}`:                            "query required",
+		`{"queries":[]}`:                "query required",
+		`{"query":"a","queries":["b"]}`: "give query or queries, not both",
+		`{"queries":["1","2","3","4","5","6","7","8","9","10","11"]}`: "at most 10 queries in one call",
+	} {
+		if res := call(args); res.GetError() != want {
+			t.Fatalf("%s: error %q want %q", args, res.GetError(), want)
+		}
+	}
+
+	// Blocked engines are told to the model, with an empty list, not an error.
+	res = call(`{"query":"blocked"}`)
+	if res.GetError() != "" || !strings.Contains(res.GetResultJson(), `"results":[]`) || !strings.Contains(res.GetResultJson(), `"note":"No search engine could answer."`) {
+		t.Fatalf("blocked search: %+v", res)
 	}
 }
 

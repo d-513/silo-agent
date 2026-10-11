@@ -54,6 +54,14 @@ export function asStr(v: unknown): string {
   return typeof v === "string" ? v : v == null ? "" : String(v);
 }
 
+// searches is the summary of a batch of web searches: the one query, or the
+// first and how many more.
+function searches(v: unknown): string {
+  const list = Array.isArray(v) ? v.map(asStr).filter(Boolean) : [];
+  if (list.length < 2) return list[0] ?? "";
+  return `${list[0]} +${list.length - 1} more`;
+}
+
 export function prettyJson(raw: string) {
   try {
     return JSON.stringify(JSON.parse(raw), null, 2);
@@ -158,7 +166,7 @@ export function toolAction(name: string, raw: string): string {
     case "key":
       return `key ${asStr(a.name)}`.trim();
     case "web_search":
-      return asStr(a.query);
+      return asStr(a.query) || searches(a.queries);
     case "skill":
       return asStr(a.name) || path;
     case "channel":

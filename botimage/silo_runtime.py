@@ -110,12 +110,55 @@ def artifact(path: str, title: str | None = None, kind: str | None = None) -> di
     return call("artifact", "emit", args)
 
 
-def web_search(query: str, max_results: int | None = None) -> dict:
-    """Search the public web. Returns {results: [{title, url, snippet}, ...]}."""
-    args: dict = {"query": query}
+def _search_args(max_results, language, country) -> dict:
+    args: dict = {}
     if max_results is not None:
         args["max_results"] = max_results
-    return call("web", "search", args)
+    if language is not None:
+        args["language"] = language
+    if country is not None:
+        args["country"] = country
+    return args
+
+
+def web_search(
+    query: str,
+    max_results: int | None = None,
+    language: str | None = None,
+    country: str | None = None,
+) -> dict:
+    """Search the public web.
+
+    Returns {results: [{title, url, snippet, engines}, ...]}; `engines` is how
+    many search engines returned that page. `language` is the ISO 639-1 code
+    of the results you want ("pl", "de"): search in the language of the topic.
+    `country` (two letters) is optional and follows the language.
+
+    When search engines were blocked or rate-limited the result also has
+    `blocked` (which ones) and, if nothing came back at all, a `note`: that is
+    a failed search, not proof that nothing exists. Do not retry at once: the
+    engines allow only so many searches a minute.
+    """
+    return call("web", "search", {"query": query, **_search_args(max_results, language, country)})
+
+
+def web_search_many(
+    queries: list[str],
+    max_results: int | None = None,
+    language: str | None = None,
+    country: str | None = None,
+) -> dict:
+    """Run several web searches at once (at most 10) and return {query: result}.
+
+    Each result is what `web_search` returns for that query. Use this instead
+    of a thread pool or a loop: it is one call, and the searches run side by
+    side on the server.
+    """
+    queries = [q for q in queries if q and q.strip()]
+    if not queries:
+        return {}
+    out = call("web", "search", {"queries": queries, **_search_args(max_results, language, country)})
+    return {s.pop("query"): s for s in out.get("searches", [])}
 
 
 def transcribe(path: str, language: str | None = None) -> dict:

@@ -79,8 +79,12 @@ providers:
 #   max_size_mb: 10
 
 # Web search engine. Env: SILO_SEARCH__ENGINE
+# builtin is the Built-in Scraper: a keyless metasearch over DuckDuckGo, Mojeek,
+# Brave, Startpage, Wikipedia and Marginalia. `sources` narrows that list.
 search:
-  engine: duckduckgo_scraper
+  engine: builtin
+  # builtin:
+  #   sources: duckduckgo,brave,wikipedia
 
 # Operator-defined connector variables. Connectors reference these as ${NAME}
 # in their URL, headers, OAuth fields, STDIO command/args/image, env values,

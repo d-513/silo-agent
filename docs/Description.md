@@ -25,7 +25,7 @@ Control Plane owns policy, the agent loop, LLM calls, and secrets. The Bot is a 
 | Desktop | X11 (Xvfb + Openbox + Thunar + mousepad) | not Wayland |
 | Remote desktop | x11vnc + noVNC, **tunneled on the Worker session** | no published VNC port, no CP dial-back |
 | Process supervisor in Bot | fail-fast `start.sh` | any of Xvfb/Openbox/tint2/x11vnc/worker dying exits the container; Docker `unless-stopped` recreates the stack |
-| Web search | CP engine registry (`internal/search`) | keys stay off the Bot; DuckDuckGo Scraper is the default; extract later |
+| Web search | CP engine registry (`internal/search`) | keys stay off the Bot; the keyless Built-in Scraper (a metasearch) is the default |
 
 Python is not a ConnectRPC citizen. Generated `tools` never see `SILO_CP_URL` or `SILO_BOT_TOKEN`.
 
@@ -148,7 +148,7 @@ Catalog skills are `go:embed`’d under `internal/catalog/skills` and seeded int
 
 ### Web search
 
-CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is DuckDuckGo Scraper (`duckduckgo_scraper`) from Koanf `search.engine`. Admin → Settings → Search & extract (`/admin/settings/search`) writes that key in `silo.yaml`. Provider keys never enter the Bot. Chat tool `web_search` and `silo_runtime.web_search` both run `web.search` after `authorizeAction`. Page extract is not in yet.
+CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is the Built-in Scraper (`builtin`) from Koanf `search.engine`: a keyless metasearch that asks DuckDuckGo, Mojeek, Brave, Startpage, Wikipedia and Marginalia at once, returns as soon as a few have answered, and fuses their lists. Admin → Settings → Search (`/admin/settings/search`) writes that key in `silo.yaml`. Provider keys never enter the Bot. `silo_runtime.web_search` / `web_search_many` run `web.search` after `authorizeAction`; the model picks the language per query.
 
 ### Web / connectors
 

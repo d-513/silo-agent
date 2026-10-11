@@ -7,7 +7,7 @@ import (
 
 type stubEngine struct{ hits []Hit }
 
-func (s stubEngine) Search(context.Context, string, int) (Result, error) {
+func (s stubEngine) Search(context.Context, Query) (Result, error) {
 	return Result{Results: s.hits}, nil
 }
 
@@ -24,8 +24,12 @@ func TestClampMax(t *testing.T) {
 }
 
 func TestDefaultAndLookup(t *testing.T) {
-	if !Known(DuckDuckGoScraper) {
-		t.Fatal("duckduckgo should be known")
+	if !Known(Builtin) || DefaultEngine != Builtin {
+		t.Fatal("the built-in scraper should be known and the default")
+	}
+	// A silo.yaml from before the built-in still names the old engine.
+	if !Known("duckduckgo_scraper") || ID(" duckduckgo_scraper ") != Builtin {
+		t.Fatal("the old engine id should read as the built-in")
 	}
 	if _, err := New("", nil); err != nil {
 		t.Fatalf("empty id should use default: %v", err)
@@ -33,8 +37,8 @@ func TestDefaultAndLookup(t *testing.T) {
 	if _, err := New("nope", nil); err == nil {
 		t.Fatal("unknown engine should fail")
 	}
-	d, ok := Lookup(DuckDuckGoScraper)
-	if !ok || d.ID != DuckDuckGoScraper {
+	d, ok := Lookup(Builtin)
+	if !ok || d.ID != Builtin || d.Name != "Built-in Scraper" {
 		t.Fatalf("lookup %+v %v", d, ok)
 	}
 }
@@ -50,7 +54,7 @@ func TestRegisterAndUnregister(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := eng.Search(context.Background(), "q", 1)
+	res, err := eng.Search(context.Background(), Query{Text: "q", Max: 1})
 	if err != nil || len(res.Results) != 1 || res.Results[0].Title != "one" {
 		t.Fatalf("stub search: %v %+v", err, res)
 	}

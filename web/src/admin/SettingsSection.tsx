@@ -85,17 +85,12 @@ function SearchSettings() {
   const engine = values["search.engine"] || engines[0]?.id || "";
   const rows = fields.filter((f) => f.key === "search.engine" || f.key.startsWith(`search.${engine}.`));
   return (
-    <>
-      <FieldGroup
-        title="Search"
-        note="The engine behind the Bot's web_search tool."
-        rows={rows}
-        hints={{ "search.engine": engines.find((e) => e.id === engine)?.description || undefined }}
-      />
-      <Panel title="Extract" note="Turning a page into text for the Bot.">
-        <p className="text-[13px] text-ink-2">Page extract is not available yet.</p>
-      </Panel>
-    </>
+    <FieldGroup
+      title="Search"
+      note="The engine behind the Bot's web search (silo_runtime.web_search)."
+      rows={rows}
+      hints={{ "search.engine": engines.find((e) => e.id === engine)?.description || undefined }}
+    />
   );
 }
 

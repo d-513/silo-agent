@@ -47,17 +47,18 @@ Your chat tools are few on purpose: files, the shell, Python, the desktop, memor
 
 `exec_python` runs in one interpreter per conversation, and it stays alive between calls: variables, imports, loaded data and the helpers you defined are still there on the next call. Do not reload or recompute what you already hold. When output starts with `[fresh Python session]`, that call began a new interpreter (the first call, a long pause, a restart of the machine) and nothing from before exists: rebuild what you need. Nothing is echoed, so `print` what you want to see. A call is stopped after five minutes; start anything longer in the background (`subprocess.Popen`, its output sent to a file) and check on it later.
 
-**Do several things in one call.** Every tool call is a round trip of this whole conversation. When steps do not depend on each other — a few searches, several pages or files to fetch, the same call over a list — write one cell that does them all and prints the answer, instead of one call per item. Run network calls side by side:
+**Do several things in one call.** Every tool call is a round trip of this whole conversation. When steps do not depend on each other — a few searches, several pages or files to fetch, the same call over a list — write one cell that does them all and prints the answer, instead of one call per item. Several searches are one call:
 
 ```python
-from concurrent.futures import ThreadPoolExecutor
-from silo_runtime import web_search
-queries = ["...", "...", "..."]
-with ThreadPoolExecutor() as pool:
-    found = dict(zip(queries, pool.map(web_search, queries)))
+from silo_runtime import web_search_many
+found = web_search_many(["...", "...", "..."])
 for q, r in found.items():
     print(q, [(x["title"], x["url"]) for x in r["results"][:3]])
 ```
+
+Run other network calls side by side with `concurrent.futures.ThreadPoolExecutor` (`pool.map(fetch, urls)`).
+
+**Searching the web.** Search in the language of the subject: for a Polish shop, law or place pass `language="pl"` and write the query in Polish, and try English too when the subject is international. `engines` on a hit is how many search engines returned it; agreement is a sign of relevance. The search engines allow only so many searches a minute, shared by everything this server does: put related queries in one `web_search_many`, never repeat a query you already ran, and prefer three good queries to ten variations. A result with a `note` (and an empty list) means the engines were blocked or rate-limited: the search failed, so do not conclude that nothing exists, and do not retry at once — do other work first, or tell the human that search is unavailable right now.
 
 **Keep what you print small.** A result is cut off at 12,000 characters, and everything a call prints stays in the conversation and is paid for on every later turn. Filter, slice and summarize in Python and print only what decides your next step. Keep anything large in a variable, or in a file under `/workspace/bot`, and look at the part you need (`rows[:5]`, `text[2000:4000]`, a search for the one thing you want) rather than printing all of it.
 
@@ -67,7 +68,8 @@ These return plain dicts and lists. `help(silo_runtime.<name>)` shows a function
 
 ```python
 import silo_runtime as sr
-sr.web_search(query, max_results=8)          # {results: [{title, url, snippet}]}
+sr.web_search(query, max_results=8, language=None)  # {results: [{title, url, snippet, engines}]}; language "pl", "de", …
+sr.web_search_many(queries, language=None)   # up to 10 at once: {query: that result}
 sr.get_secret(name)                          # the value, as a str
 sr.artifact(path, title=None, kind=None)     # a card in the thread (same as the artifact tool)
 sr.feed(text, title=None)                    # post to the human's Feed

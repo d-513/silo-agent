@@ -61,7 +61,7 @@ providers:
   dummy:
     api_key: test
 search:
-  engine: duckduckgo_scraper
+  engine: builtin
 `, port, dataDir, dockerHost, port, apptest.BotImage())
 }
 

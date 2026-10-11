@@ -75,7 +75,7 @@ providers:
   dummy:
     api_key: test
 search:
-  engine: duckduckgo_scraper
+  engine: builtin
 debug: true
 `, dir)
 	h := apptest.New(t, apptest.WithYAML(yaml))

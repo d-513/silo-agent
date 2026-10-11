@@ -65,7 +65,7 @@ func TestLoadSearchEngineDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := s.Config()
-	if c.Search.Engine != "duckduckgo_scraper" {
+	if c.Search.Engine != "builtin" {
 		t.Fatalf("search.engine %q", c.Search.Engine)
 	}
 	if c.MCPStdioImage != DefaultMCPStdioImage {
@@ -128,6 +128,13 @@ func TestWriteYAMLRejectsUnknownEngine(t *testing.T) {
 	}
 	if err := s.WriteYAML([]byte("search:\n  engine: duckduckgo_scraper\nmodel: openai/gpt-test\n")); err != nil {
 		t.Fatal(err)
+	}
+	// The engine from before the Built-in Scraper reads as the built-in.
+	if got := s.Config().Search.Engine; got != "builtin" || s.Get("search.engine") != "builtin" {
+		t.Fatalf("old engine id read as %q", got)
+	}
+	if !KnownKey("search.builtin.sources") {
+		t.Fatal("the built-in engine's setting should be a known key")
 	}
 	if s.Config().Model != "openai/gpt-test" {
 		t.Fatalf("model %q", s.Config().Model)

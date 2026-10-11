@@ -53,6 +53,15 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("auth.password", true)
 }
 
+// renameSearchEngine reads an engine id from before the Built-in Scraper
+// (duckduckgo_scraper) as the engine that replaced it, so an old silo.yaml
+// still loads and the admin picker shows what is in use.
+func renameSearchEngine(k *koanf.Koanf) {
+	if id := k.String("search.engine"); id != search.ID(id) {
+		_ = k.Set("search.engine", search.ID(id))
+	}
+}
+
 type yamlBytes []byte
 
 func (y yamlBytes) ReadBytes() ([]byte, error) { return []byte(y), nil }
@@ -96,6 +105,7 @@ func FromYAML(raw []byte) (*Store, error) {
 	if err := m.Merge(y); err != nil {
 		return nil, err
 	}
+	renameSearchEngine(m)
 	var c Config
 	if err := m.Unmarshal("", &c); err != nil {
 		return nil, err
@@ -131,6 +141,7 @@ func (s *Store) reloadLocked() error {
 	if err := m.Merge(e); err != nil {
 		return err
 	}
+	renameSearchEngine(m)
 	var c Config
 	if err := m.Unmarshal("", &c); err != nil {
 		return err

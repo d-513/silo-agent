@@ -35,6 +35,34 @@ def test_web_search_call():
     silo_runtime.web_search("beta")
     if seen[0][1]["args"] != {"query": "beta"}:
         raise SystemExit(f"omit max {seen}")
+    seen.clear()
+    silo_runtime.web_search("pierogi", language="pl", country="pl")
+    if seen[0][1]["args"] != {"query": "pierogi", "language": "pl", "country": "pl"}:
+        raise SystemExit(f"language {seen}")
+
+
+def test_web_search_many_call():
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"result": {"searches": [
+            {"query": "alpha", "results": [{"title": "A", "url": "https://a.test", "snippet": ""}]},
+            {"query": "beta", "results": [], "blocked": ["brave"], "note": "blocked"},
+        ]}}
+
+    silo_runtime._post = post
+    out = silo_runtime.web_search_many(["alpha", " ", "beta"], max_results=2, language="de")
+    want_args = {"queries": ["alpha", "beta"], "max_results": 2, "language": "de"}
+    if seen != [("/v1/tools/call", {"connector": "web", "action": "search", "args": want_args})]:
+        raise SystemExit(f"one call for the batch: {seen}")
+    if list(out) != ["alpha", "beta"] or out["alpha"]["results"][0]["url"] != "https://a.test":
+        raise SystemExit(f"result {out}")
+    if out["beta"] != {"results": [], "blocked": ["brave"], "note": "blocked"}:
+        raise SystemExit(f"blocked result {out['beta']}")
+    seen.clear()
+    if silo_runtime.web_search_many([]) != {} or seen:
+        raise SystemExit("an empty batch makes no call")
 
 
 def test_transcribe_call():
@@ -130,6 +158,7 @@ def test_mail_calls():
 if __name__ == "__main__":
     test_chrome_page_ensures()
     test_web_search_call()
+    test_web_search_many_call()
     test_transcribe_call()
     test_taskboard_calls()
     test_tunnel_calls()

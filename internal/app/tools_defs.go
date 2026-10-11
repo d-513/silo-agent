@@ -368,14 +368,16 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "web_search",
-			Description: "Search the public web. Returns titles, URLs, and snippets. Prefer this over typing a search URL on the desktop.",
+			Description: "Search the public web. Returns titles, URLs, and snippets; `engines` on a hit is how many search engines agreed on it. Search in the language of the topic. A `note` on a result means the engines were blocked, not that nothing exists. Prefer this over typing a search URL on the desktop.",
 			Params: tool.Object(map[string]any{
 				"query":       map[string]any{"type": "string"},
-				"max_results": map[string]any{"type": "integer", "description": "how many hits to return (default 8, max 20)"},
-			}, "query"),
+				"queries":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "several searches in one call instead of `query` (max 10); answers {searches: [{query, results}]}"},
+				"max_results": map[string]any{"type": "integer", "description": "how many hits to return per query (default 8, max 20)"},
+				"language":    map[string]any{"type": "string", "description": "ISO 639-1 language of the results wanted, e.g. \"pl\""},
+				"country":     map[string]any{"type": "string", "description": "ISO 3166 two-letter country to search from, e.g. \"pl\" (optional; follows the language)"},
+			}),
 			Connector: security.Web, Action: "search",
 			ExposePython: true,
-			Check:        tool.Need("query"),
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.runWebSearch(ctx, c.ArgsJSON)
 			}),

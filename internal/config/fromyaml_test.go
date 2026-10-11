@@ -20,7 +20,7 @@ func TestFromYAMLDefaultsAndOverrides(t *testing.T) {
 	if c.Model == "openrouter/from-env" {
 		t.Fatal("FromYAML read SILO_* environment")
 	}
-	if c.Search.Engine != "duckduckgo_scraper" {
+	if c.Search.Engine != "builtin" {
 		t.Fatalf("default search engine %q", c.Search.Engine)
 	}
 	if c.DataDir != "./data" {

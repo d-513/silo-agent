@@ -3,7 +3,7 @@
 export const SECTIONS = [
   { id: "models", label: "Models" },
   { id: "providers", label: "Providers" },
-  { id: "search", label: "Search & extract" },
+  { id: "search", label: "Search" },
   { id: "memory", label: "Memory & knowledge" },
   { id: "runs", label: "Context & runs" },
   { id: "connectors", label: "Connector options" },

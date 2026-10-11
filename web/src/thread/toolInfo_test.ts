@@ -9,4 +9,9 @@ eq([connectorTool("task_add"), connectorTool("__x"), connectorTool("x__")], [und
 eq(toolMeta("github__create_issue").app, "github", "the app is the connector");
 eq(toolAction("github__create_issue", "{}"), "create issue", "the action reads as words");
 eq([toolMeta("web_search").app, toolAction("web_search", '{"query":"go"}')], ["Web search", "go"], "built-ins are unchanged");
+eq(
+  [toolAction("web_search", '{"queries":["go","rust","zig"]}'), toolAction("web_search", '{"queries":["go"]}'), toolAction("web_search", "{}")],
+  ["go +2 more", "go", ""],
+  "a batch of searches names the first and counts the rest",
+);
 eq(toolMeta("mystery").app, "mystery", "an unknown name is shown as it is");

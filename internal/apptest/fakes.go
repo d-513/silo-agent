@@ -102,18 +102,21 @@ type FakeSearch struct {
 	mu    sync.Mutex
 	Hits  []search.Hit
 	Calls []string
+	// Queries is every search as it was asked, language and country included.
+	Queries []search.Query
 }
 
-func (f *FakeSearch) Search(_ context.Context, query string, maxResults int) (search.Result, error) {
+func (f *FakeSearch) Search(_ context.Context, q search.Query) (search.Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.Calls = append(f.Calls, query)
+	f.Calls = append(f.Calls, q.Text)
+	f.Queries = append(f.Queries, q)
 	hits := f.Hits
 	if len(hits) == 0 {
-		hits = []search.Hit{{Title: "Result for " + query, URL: "https://example.test/" + query, Snippet: "snippet"}}
+		hits = []search.Hit{{Title: "Result for " + q.Text, URL: "https://example.test/" + q.Text, Snippet: "snippet"}}
 	}
-	if maxResults > 0 && len(hits) > maxResults {
-		hits = hits[:maxResults]
+	if q.Max > 0 && len(hits) > q.Max {
+		hits = hits[:q.Max]
 	}
 	return search.Result{Results: hits}, nil
 }
