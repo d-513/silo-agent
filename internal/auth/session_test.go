@@ -69,7 +69,7 @@ func TestSessionRoundTrip(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(cookies[0])
-	got, err := UserFromRequest(gdb, req)
+	got, err := UserFromRequest(gdb, req, false)
 	if err != nil || got.ID != u.ID {
 		t.Fatalf("UserFromRequest: %v %+v", err, got)
 	}
@@ -81,16 +81,16 @@ func TestUserFromRequestExpiredAndMissing(t *testing.T) {
 	gdb.Create(&db.Session{ID: ids.Hash("old"), UserID: "u1", ExpiresAt: time.Now().Add(-time.Hour)})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if _, err := UserFromRequest(gdb, req); err == nil {
+	if _, err := UserFromRequest(gdb, req, false); err == nil {
 		t.Fatal("missing cookie should fail")
 	}
 	req.AddCookie(&http.Cookie{Name: "silo_session", Value: "old"})
-	if _, err := UserFromRequest(gdb, req); err == nil {
+	if _, err := UserFromRequest(gdb, req, false); err == nil {
 		t.Fatal("expired session should fail")
 	}
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	req2.AddCookie(&http.Cookie{Name: "silo_session", Value: "ghost"})
-	if _, err := UserFromRequest(gdb, req2); err == nil {
+	if _, err := UserFromRequest(gdb, req2, false); err == nil {
 		t.Fatal("unknown session should fail")
 	}
 }
@@ -106,14 +106,14 @@ func TestUserFromRequestStoreErrorIsNotAuth(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := UserFromRequest(gdb.WithContext(ctx), req)
+	_, err := UserFromRequest(gdb.WithContext(ctx), req, false)
 	if err == nil || errors.Is(err, ErrAuth) {
 		t.Fatalf("store error should not be ErrAuth: %v", err)
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	req2.AddCookie(&http.Cookie{Name: "silo_session", Value: "ghost"})
-	if _, err := UserFromRequest(gdb, req2); !errors.Is(err, ErrAuth) {
+	if _, err := UserFromRequest(gdb, req2, false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("unknown session should be ErrAuth: %v", err)
 	}
 }
@@ -122,7 +122,8 @@ func TestClearSessionExpiresCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ClearSession(rec)
 	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].MaxAge != -1 {
+	// Both names go, whichever the setting uses today.
+	if len(cookies) != 2 || cookies[0].MaxAge != -1 || cookies[1].MaxAge != -1 {
 		t.Fatalf("cookies %+v", cookies)
 	}
 }
@@ -153,11 +154,11 @@ func TestSessionFromRequestNamesTheSession(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(rec.Result().Cookies()[0])
-	s, u, err := SessionFromRequest(gdb, req)
+	s, u, err := SessionFromRequest(gdb, req, false)
 	if err != nil || s.ID != ids.Hash(rec.Result().Cookies()[0].Value) || u.ID != "u1" {
 		t.Fatalf("SessionFromRequest = %+v %+v %v", s, u, err)
 	}
-	if _, _, err := SessionFromRequest(gdb, httptest.NewRequest(http.MethodGet, "/", nil)); !errors.Is(err, ErrAuth) {
+	if _, _, err := SessionFromRequest(gdb, httptest.NewRequest(http.MethodGet, "/", nil), false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("no cookie: %v", err)
 	}
 }
@@ -179,10 +180,10 @@ func TestEndSessionDeletesTheSessionAndItsTunnelGrants(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.AddCookie(cookie)
-	if err := EndSession(gdb, req); err != nil {
+	if err := EndSession(gdb, req, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UserFromRequest(gdb, req); !errors.Is(err, ErrAuth) {
+	if _, err := UserFromRequest(gdb, req, false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("the old cookie still works: %v", err)
 	}
 	var grants []db.TunnelGrant
@@ -192,10 +193,10 @@ func TestEndSessionDeletesTheSessionAndItsTunnelGrants(t *testing.T) {
 	}
 
 	// Nothing to end is not an error (signing out twice, or never signed in).
-	if err := EndSession(gdb, httptest.NewRequest(http.MethodPost, "/", nil)); err != nil {
+	if err := EndSession(gdb, httptest.NewRequest(http.MethodPost, "/", nil), false); err != nil {
 		t.Fatalf("no cookie: %v", err)
 	}
-	if err := EndSession(gdb, req); err != nil {
+	if err := EndSession(gdb, req, false); err != nil {
 		t.Fatalf("second sign-out: %v", err)
 	}
 }
@@ -229,11 +230,11 @@ func TestDisabledUserIsSignedOut(t *testing.T) {
 	gdb := dbtest.New(t)
 	gdb.Create(&db.User{ID: "u1", Email: "a@b.c"})
 	_, req := signIn(t, gdb, "u1")
-	if _, err := UserFromRequest(gdb, req); err != nil {
+	if _, err := UserFromRequest(gdb, req, false); err != nil {
 		t.Fatal(err)
 	}
 	gdb.Model(&db.User{}).Where("id = ?", "u1").Update("disabled", true)
-	if _, err := UserFromRequest(gdb, req); !errors.Is(err, ErrAuth) {
+	if _, err := UserFromRequest(gdb, req, false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("a disabled user's session: %v", err)
 	}
 }
@@ -248,7 +249,7 @@ func TestLastSeenIsTouchedSparingly(t *testing.T) {
 		return row.LastSeenAt
 	}
 	first := seen()
-	if _, err := UserFromRequest(gdb, req); err != nil {
+	if _, err := UserFromRequest(gdb, req, false); err != nil {
 		t.Fatal(err)
 	}
 	if !seen().Equal(first) {
@@ -256,7 +257,7 @@ func TestLastSeenIsTouchedSparingly(t *testing.T) {
 	}
 	old := time.Now().Add(-time.Hour)
 	gdb.Model(&db.Session{}).Where("id = ?", s.ID).Update("last_seen_at", old)
-	if _, err := UserFromRequest(gdb, req); err != nil {
+	if _, err := UserFromRequest(gdb, req, false); err != nil {
 		t.Fatal(err)
 	}
 	if got := seen(); time.Since(got) > time.Minute {
@@ -278,13 +279,13 @@ func TestEndUserSessionsKeepsOne(t *testing.T) {
 	if err := EndUserSessions(gdb, "u1", keep.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UserFromRequest(gdb, keepReq); err != nil {
+	if _, err := UserFromRequest(gdb, keepReq, false); err != nil {
 		t.Fatalf("the kept session: %v", err)
 	}
-	if _, err := UserFromRequest(gdb, goneReq); !errors.Is(err, ErrAuth) {
+	if _, err := UserFromRequest(gdb, goneReq, false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("the other session: %v", err)
 	}
-	if _, err := UserFromRequest(gdb, otherReq); err != nil {
+	if _, err := UserFromRequest(gdb, otherReq, false); err != nil {
 		t.Fatalf("another user's session: %v", err)
 	}
 	var grants []string
@@ -300,7 +301,7 @@ func TestEndUserSessionsKeepsOne(t *testing.T) {
 	if ok, err := EndSessionByID(gdb, "u1", keep.ID); !ok || err != nil {
 		t.Fatalf("EndSessionByID: %v %v", ok, err)
 	}
-	if _, err := UserFromRequest(gdb, keepReq); !errors.Is(err, ErrAuth) {
+	if _, err := UserFromRequest(gdb, keepReq, false); !errors.Is(err, ErrAuth) {
 		t.Fatalf("after EndSessionByID: %v", err)
 	}
 	if err := EndUserSessions(gdb, "u1", ""); err != nil {
@@ -395,5 +396,78 @@ func TestEnsureBootstrapOnlyWhenNoAdminCanSignIn(t *testing.T) {
 	u, _ = FindUser(gdb, "admin@local")
 	if !u.Admin || u.Disabled {
 		t.Fatalf("bootstrap user after a second lock-out: %+v", u)
+	}
+}
+
+// With the __Host- cookie on, the plain name is not a session at all: a
+// sibling subdomain can plant a cookie called silo_session for the parent
+// domain, but no subdomain can set one that carries the prefix.
+func TestHostCookieIsTheOnlySessionWhenOn(t *testing.T) {
+	gdb := dbtest.New(t)
+	gdb.Create(&db.User{ID: "victim", Email: "v@example.com"})
+	gdb.Create(&db.User{ID: "mallory", Email: "m@example.com"})
+
+	rec := httptest.NewRecorder()
+	if _, err := NewSession(gdb, "victim", rec, SessionMeta{Method: "password", HostOnly: true}); err != nil {
+		t.Fatal(err)
+	}
+	set := rec.Result().Cookies()
+	if len(set) != 1 {
+		t.Fatalf("cookies set: %v", set)
+	}
+	c := set[0]
+	// What a browser demands of the prefix, or it drops the cookie.
+	if c.Name != "__Host-silo_session" || !c.Secure || c.Path != "/" || c.Domain != "" || !c.HttpOnly {
+		t.Fatalf("cookie %+v", c)
+	}
+
+	// Mallory's own, perfectly valid session, tossed under the plain name.
+	plain := httptest.NewRecorder()
+	if _, err := NewSession(gdb, "mallory", plain, SessionMeta{Method: "password"}); err != nil {
+		t.Fatal(err)
+	}
+	tossed := plain.Result().Cookies()[0]
+	if tossed.Name != "silo_session" {
+		t.Fatalf("plain cookie is named %q", tossed.Name)
+	}
+
+	signedOut := httptest.NewRequest(http.MethodGet, "/", nil)
+	signedOut.AddCookie(tossed)
+	if _, err := UserFromRequest(gdb, signedOut, true); !errors.Is(err, ErrAuth) {
+		t.Fatalf("a tossed plain cookie signed somebody in: %v", err)
+	}
+	both := httptest.NewRequest(http.MethodGet, "/", nil)
+	both.AddCookie(tossed)
+	both.AddCookie(c)
+	u, err := UserFromRequest(gdb, both, true)
+	if err != nil || u.ID != "victim" {
+		t.Fatalf("with both cookies: %v %+v", err, u)
+	}
+	// Off, the prefixed cookie is not read either: one name at a time.
+	if _, err := UserFromRequest(gdb, both, false); err != nil {
+		t.Fatalf("plain session with the setting off: %v", err)
+	} else if u, _ := UserFromRequest(gdb, both, false); u.ID != "mallory" {
+		t.Fatalf("setting off read %q", u.ID)
+	}
+
+	// Signing out ends the session the prefixed cookie names, and clears both.
+	if err := EndSession(gdb, both, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := UserFromRequest(gdb, both, true); !errors.Is(err, ErrAuth) {
+		t.Fatalf("ended session still signs in: %v", err)
+	}
+	out := httptest.NewRecorder()
+	ClearSession(out)
+	cleared := map[string]*http.Cookie{}
+	for _, k := range out.Result().Cookies() {
+		cleared[k.Name] = k
+	}
+	if len(cleared) != 2 || cleared["silo_session"] == nil || cleared["__Host-silo_session"] == nil {
+		t.Fatalf("cleared %v", cleared)
+	}
+	// A browser only lets a prefixed cookie be replaced by one that obeys the prefix.
+	if h := cleared["__Host-silo_session"]; !h.Secure || h.Path != "/" || h.MaxAge >= 0 {
+		t.Fatalf("clearing cookie %+v", h)
 	}
 }

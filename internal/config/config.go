@@ -478,6 +478,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "mail.tls_key"},
 	{Key: "auth.password", Type: "bool"},
 	{Key: "auth.trusted_proxies"},
+	{Key: "auth.host_cookie", Type: "bool"},
 	{Key: "oidc.issuer"},
 	{Key: "oidc.client_id"},
 	{Key: "oidc.client_secret", Secret: true},

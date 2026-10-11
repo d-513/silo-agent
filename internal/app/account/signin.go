@@ -86,7 +86,7 @@ func (s *Service) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequ
 	// End the session on the server first: clearing the cookie alone leaves it
 	// valid for anyone who has a copy, and keeps tunnel grants alive.
 	if r := access.Request(ctx); r != nil {
-		if err := auth.EndSession(s.db, r); err != nil {
+		if err := auth.EndSession(s.db, r, s.cfg().HostCookies()); err != nil {
 			return nil, access.SessionError(err)
 		}
 	}

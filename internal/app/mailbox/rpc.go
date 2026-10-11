@@ -138,7 +138,7 @@ const RawPath = "/mail/raw"
 // ServeRaw downloads one message's original bytes, attachments and all, for
 // the Bot's owner (cookie auth).
 func (s *Service) ServeRaw(w http.ResponseWriter, r *http.Request) {
-	u, err := siloauth.UserFromRequest(s.db, r)
+	u, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies())
 	if err != nil {
 		access.HTTPSessionError(w, err)
 		return

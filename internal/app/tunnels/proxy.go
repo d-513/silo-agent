@@ -138,7 +138,7 @@ func (s *Service) askToSignIn(w http.ResponseWriter, r *http.Request, t *db.Tunn
 // owner of the tunnel's Bot is redirected to the tunnel's origin with a
 // single-use ticket. The CP session cookie never leaves the CP's origin.
 func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
-	sess, u, err := auth.SessionFromRequest(s.db, r)
+	sess, u, err := auth.SessionFromRequest(s.db, r, s.cfg().HostCookies())
 	if err != nil {
 		if errors.Is(err, auth.ErrAuth) {
 			// Sign in, then come straight back here: the UI honors `next` for this

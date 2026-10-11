@@ -18,6 +18,9 @@ type Auth struct {
 	// as comma-separated IPs or CIDRs. X-Forwarded-For is believed only from
 	// them; unset, the address of the connection is the client.
 	TrustedProxies string `koanf:"trusted_proxies"`
+	// HostCookie names the session cookie __Host-silo_session, which a
+	// sibling subdomain (a tunnelled app) cannot plant; see Config.HostCookies.
+	HostCookie bool `koanf:"host_cookie"`
 }
 
 // OIDC configures the one OpenID Connect provider people may sign in with.
@@ -100,6 +103,14 @@ func (c Config) PasswordSignIn() bool {
 	return c.Auth.Password || !c.OIDC.On()
 }
 
+// HostCookies reports whether the sign-in cookies carry the __Host- prefix.
+// A browser drops such a cookie unless it arrives over HTTPS, so the setting
+// only counts while public_url is https: turned on for a plain-http site it
+// would leave nobody able to sign in.
+func (c Config) HostCookies() bool {
+	return c.Auth.HostCookie && strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.PublicURL)), "https://")
+}
+
 // TrustedProxies is auth.trusted_proxies as prefixes; a bad entry (possible
 // only from the environment, which is not validated) trusts nothing.
 func (c Config) TrustedProxies() []netip.Prefix {
@@ -150,7 +161,7 @@ func contains(list []string, s string) bool {
 }
 
 var signInKeys = map[string]bool{
-	"auth.password": true, "auth.trusted_proxies": true,
+	"auth.password": true, "auth.trusted_proxies": true, "auth.host_cookie": true,
 	"oidc.issuer": true, "oidc.client_id": true, "oidc.client_secret": true, "oidc.scopes": true, "oidc.label": true,
 	"oidc.auto_create": true, "oidc.allowed_domains": true, "oidc.groups_claim": true, "oidc.admin_group": true,
 }
@@ -162,7 +173,7 @@ func validateSignIn(k *koanf.Koanf) error {
 			return fmt.Errorf("unknown setting %q", key)
 		}
 	}
-	for _, key := range []string{"auth.password", "oidc.auto_create"} {
+	for _, key := range []string{"auth.password", "auth.host_cookie", "oidc.auto_create"} {
 		switch v := k.Get(key).(type) {
 		case nil, bool:
 		case string:

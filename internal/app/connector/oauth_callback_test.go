@@ -9,6 +9,7 @@ import (
 	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 
 	"silo.agent/internal/auth"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/db/dbtest"
 	"silo.agent/internal/ids"
@@ -19,7 +20,7 @@ import (
 // the link: the callback finishes only in that user's own browser.
 func TestOAuthCallbackOnlyForWhoStartedIt(t *testing.T) {
 	gdb := dbtest.New(t)
-	s := &Service{db: gdb, oauth: map[string]*oauthWait{}}
+	s := &Service{db: gdb, oauth: map[string]*oauthWait{}, cfg: func() config.Config { return config.Config{} }}
 	signIn := func(email string) (string, *http.Cookie) {
 		t.Helper()
 		u := db.User{ID: ids.New(), Email: email, CreatedAt: time.Now()}

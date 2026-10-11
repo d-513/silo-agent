@@ -328,3 +328,59 @@ func TestStdioSidecarCacheIsPerBot(t *testing.T) {
 		t.Fatalf("sidecars are not told whose they are: %q for %s, %q for %s", specA, a, specB, b)
 	}
 }
+
+// With auth.host_cookie on, signing in hands out the __Host- cookie and the
+// plain name stops being a session everywhere, so a cookie planted by a
+// tunnelled app on a sibling subdomain signs nobody in.
+func TestHostCookieSetting(t *testing.T) {
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithSignedOut(), apptest.WithDataDir(dir), apptest.WithYAML(apptest.DefaultYAML(dir)+
+		"public_url: https://silo.example.com\nauth:\n  host_cookie: true\n"))
+	// Read the Set-Cookie by hand: a jar would not send a Secure cookie back
+	// to the harness's plain-http listener.
+	body := strings.NewReader(`{"email":"` + h.Email + `","password":"` + h.Password + `"}`)
+	req, _ := http.NewRequest(http.MethodPost, h.URL+"/silo.v1.UI/SignIn", body)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK || len(res.Cookies()) != 1 {
+		t.Fatalf("sign in: status %d cookies %v", res.StatusCode, res.Cookies())
+	}
+	session := res.Cookies()[0]
+	if session.Name != "__Host-silo_session" || !session.Secure || session.Path != "/" || session.Domain != "" {
+		t.Fatalf("session cookie %+v", session)
+	}
+	me := func(c *http.Cookie) int {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, h.URL+"/silo.v1.UI/Me", strings.NewReader("{}"))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(c)
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	if got := me(session); got != http.StatusOK {
+		t.Fatalf("the prefixed cookie: status %d", got)
+	}
+	// The very same token under the plain name is what a sibling could plant.
+	if got := me(&http.Cookie{Name: "silo_session", Value: session.Value}); got != http.StatusUnauthorized {
+		t.Fatalf("the plain name is still a session: status %d", got)
+	}
+	// And the plain routes agree with the RPCs.
+	raw, _ := http.NewRequest(http.MethodGet, h.URL+"/artifacts/file?bot_id=x&path=y", nil)
+	raw.AddCookie(&http.Cookie{Name: "silo_session", Value: session.Value})
+	res, err = http.DefaultClient.Do(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("/artifacts/file took the plain name: status %d", res.StatusCode)
+	}
+}

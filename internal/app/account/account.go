@@ -88,7 +88,7 @@ func (s *Service) signIn(w http.ResponseWriter, r *http.Request, u *db.User, met
 	}
 	_, err := auth.NewSession(s.db, u.ID, w, auth.SessionMeta{
 		UserAgent: r.UserAgent(), IP: s.clientIP(r), Method: method,
-		Secure: access.SecureCookies(s.cfg().PublicURL, r),
+		Secure: access.SecureCookies(s.cfg().PublicURL, r), HostOnly: s.cfg().HostCookies(),
 	})
 	return err
 }

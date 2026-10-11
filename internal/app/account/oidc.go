@@ -138,11 +138,27 @@ func (s *Service) ServeOIDCStart(w http.ResponseWriter, r *http.Request) {
 	s.oidc.mu.Unlock()
 	// The cookie ties the round trip to this browser: a callback link made in
 	// someone else's browser signs nobody in here.
-	http.SetCookie(w, &http.Cookie{
-		Name: oidcCookie, Value: state, Path: "/auth/oidc", HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		Secure: access.SecureCookies(s.cfg().PublicURL, r), MaxAge: int(oidcPending / time.Second),
-	})
+	c := s.oidcCookie(r)
+	c.Value, c.MaxAge = state, int(oidcPending/time.Second)
+	http.SetCookie(w, c)
 	http.Redirect(w, r, s.oauthConfig(p, o, r).AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), http.StatusFound)
+}
+
+// oidcCookie is the round trip's cookie, without a value. It is what ties a
+// callback to the browser that started it, so with auth.host_cookie on it
+// takes the __Host- prefix like the session cookie does: a sibling subdomain
+// that could plant it could pair its own sign-in with someone else's browser.
+// The prefix demands Path=/.
+func (s *Service) oidcCookie(r *http.Request) *http.Cookie {
+	cfg := s.cfg()
+	c := &http.Cookie{
+		Name: oidcCookie, Path: "/auth/oidc", HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		Secure: access.SecureCookies(cfg.PublicURL, r),
+	}
+	if cfg.HostCookies() {
+		c.Name, c.Path, c.Secure = "__Host-"+oidcCookie, "/", true
+	}
+	return c
 }
 
 // ServeOIDCCallback finishes the round trip: it trades the code for an ID
@@ -159,8 +175,10 @@ func (s *Service) ServeOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	flow, ok := s.oidc.flows[state]
 	delete(s.oidc.flows, state)
 	s.oidc.mu.Unlock()
-	c, _ := r.Cookie(oidcCookie)
-	http.SetCookie(w, &http.Cookie{Name: oidcCookie, Value: "", Path: "/auth/oidc", MaxAge: -1, HttpOnly: true})
+	gone := s.oidcCookie(r)
+	c, _ := r.Cookie(gone.Name)
+	gone.MaxAge = -1
+	http.SetCookie(w, gone)
 	if !ok || state == "" || time.Now().After(flow.exp) || c == nil || c.Value != state {
 		s.oidcFail(w, r, oidcErrExpired, nil)
 		return

@@ -528,7 +528,7 @@ func (s *Service) RefreshBotConnector(ctx context.Context, req *connect.Request[
 }
 
 func (s *Service) ServeImage(w http.ResponseWriter, r *http.Request) {
-	if _, err := siloauth.UserFromRequest(s.db, r); err != nil {
+	if _, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies()); err != nil {
 		access.HTTPSessionError(w, err)
 		return
 	}

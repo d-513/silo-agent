@@ -44,7 +44,7 @@ func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*w
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return nil, nil, "", false
 	}
-	u, err := auth.UserFromRequest(a.DB, r)
+	u, err := auth.UserFromRequest(a.DB, r, a.cfg().HostCookies())
 	if err != nil {
 		access.HTTPSessionError(w, err)
 		return nil, nil, "", false

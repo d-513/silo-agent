@@ -32,6 +32,7 @@ bootstrap:
 # an invite link in Admin → Users.
 # auth:
 #   trusted_proxies: 127.0.0.1   # reverse proxies whose X-Forwarded-For is believed
+#   host_cookie: true            # __Host- session cookie; for tunnels under the same domain as Silo (needs https public_url)
 #   password: false              # OIDC only; ignored unless oidc is configured
 # oidc:
 #   issuer: https://id.example.com

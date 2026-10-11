@@ -142,3 +142,24 @@ func TestSignInKeysAreSettings(t *testing.T) {
 		}
 	}
 }
+
+// The prefix needs HTTPS: a browser drops a __Host- cookie set over http, and
+// then nobody could sign in. So the setting only counts while public_url is https.
+func TestHostCookiesNeedHTTPS(t *testing.T) {
+	for _, c := range []struct {
+		url  string
+		on   bool
+		want bool
+	}{
+		{"https://silo.example.com", true, true},
+		{"https://silo.example.com", false, false},
+		{"http://localhost:5173", true, false},
+		{"", true, false},
+		{" HTTPS://silo.example.com/ ", true, true},
+	} {
+		cfg := Config{PublicURL: c.url, Auth: Auth{HostCookie: c.on}}
+		if got := cfg.HostCookies(); got != c.want {
+			t.Errorf("public_url %q host_cookie %v: got %v, want %v", c.url, c.on, got, c.want)
+		}
+	}
+}

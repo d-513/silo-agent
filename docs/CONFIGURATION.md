@@ -94,6 +94,7 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Their password, when the account has to be created |
 | `auth.password` | `true` | `SILO_AUTH__PASSWORD` | Password sign-in. `false` leaves only OIDC, and only counts while OIDC is configured (see Sign-in) |
 | `auth.trusted_proxies` | (none) | `SILO_AUTH__TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxies in front of the control plane. `X-Forwarded-For` is believed only from them |
+| `auth.host_cookie` | `false` | `SILO_AUTH__HOST_COOKIE` | Name the session cookie `__Host-silo_session`, which only the exact host can set. Counts only while `public_url` is https (see Sign-in) |
 | `oidc.issuer` | (none) | `SILO_OIDC__ISSUER` | The OIDC provider's issuer URL. OIDC sign-in is on when this and `oidc.client_id` are set |
 | `oidc.client_id` | (none) | `SILO_OIDC__CLIENT_ID` | OAuth client ID registered at the provider |
 | `oidc.client_secret` | (none) | `SILO_OIDC__CLIENT_SECRET` | Its secret |
@@ -158,6 +159,8 @@ Who a sign-in becomes:
 A provider that does not send `email_verified` (some Entra setups) can therefore only sign in people who are already linked; the email is read from the userinfo endpoint when the ID token has none. With `admin_group` set, the provider decides who is an admin at every sign-in, except that it never demotes the last one. With it unset, roles are only what Admin → Users says.
 
 `auth.password: false` hides the password form and refuses password sign-in. It is ignored while OIDC is not configured, so removing the OIDC settings brings passwords back.
+
+`auth.host_cookie: true` is for a deployment where tunnels (or anything else that serves content you do not write) live under the same registrable domain as Silo, such as `silo.example.com` with `*.tunnels.example.com`. A page on any host under `example.com` may set a cookie for `example.com`, and the browser sends it to Silo too; a tunnelled app could plant a `silo_session` of its own choosing and sign a visitor into another account without their noticing. A cookie whose name starts with `__Host-` is only accepted from the host itself, so with the setting on the session cookie is `__Host-silo_session` (and the OIDC round trip's `__Host-silo_oidc`), and the plain names are never read. Browsers only take such a cookie over HTTPS, so the setting is ignored unless `public_url` starts with `https://`. Turning it on or off signs everyone out once. Tunnels on a different registrable domain (`*.example-tunnels.com`) need none of this.
 
 ## Tunnels
 

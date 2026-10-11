@@ -44,6 +44,7 @@ export const LABELS: Record<string, string> = {
   "drives.cache_max_size": "Drive cache limit",
   "auth.password": "Password sign-in",
   "auth.trusted_proxies": "Trusted proxies",
+  "auth.host_cookie": "Host-only session cookie",
   "oidc.issuer": "Issuer",
   "oidc.client_id": "Client ID",
   "oidc.client_secret": "Client secret",
@@ -80,6 +81,8 @@ export const HINTS: Record<string, string> = {
   "auth.password": "Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out.",
   "auth.trusted_proxies":
     "IPs or CIDRs of the reverse proxies in front of Silo, comma-separated (127.0.0.1, 10.0.0.0/8). X-Forwarded-For is believed only from them. Behind a proxy with this unset, every visitor looks like the proxy and shares one sign-in limit.",
+  "auth.host_cookie":
+    "Names the session cookie __Host-silo_session, which only this exact host can set. Turn it on when tunnels live under the same domain as Silo (silo.example.com and *.tunnels.example.com): otherwise a tunnelled app can plant a session cookie and sign a visitor into another account. It needs an https Public URL and is ignored without one. Changing it signs everyone out once.",
   "oidc.issuer": "The provider's issuer URL, the one that serves /.well-known/openid-configuration.",
   "oidc.scopes": "Space-separated. openid is always asked for; add the scope that carries groups if the admin group is used.",
   "oidc.label": "The text of the button on the sign-in page.",

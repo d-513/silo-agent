@@ -18,7 +18,28 @@ import (
 	"silo.agent/internal/ids"
 )
 
-const cookieName = "silo_session"
+// The session cookie has two names and exactly one is in use at a time.
+//
+// A cookie called silo_session can be set for the control plane by any host
+// under the same registrable domain: a tunnelled app on app.tunnels.example.com
+// may write one for example.com, and the browser then sends it to
+// silo.example.com as if the control plane had. Whoever does that signs the
+// visitor into an account of their choosing. Browsers refuse that for a name
+// that starts with __Host-: such a cookie is only taken from the host itself,
+// over HTTPS, with Path=/ and no Domain. So with auth.host_cookie on (hostOnly
+// below) the prefixed name is the session and the plain one is never read.
+const (
+	cookieName     = "silo_session"
+	hostCookieName = "__Host-" + cookieName
+)
+
+// CookieName is the name the session cookie goes by.
+func CookieName(hostOnly bool) string {
+	if hostOnly {
+		return hostCookieName
+	}
+	return cookieName
+}
 
 var ErrAuth = errors.New("unauthorized")
 
@@ -97,6 +118,9 @@ type SessionMeta struct {
 	Method string
 	// Secure marks the cookie HTTPS-only.
 	Secure bool
+	// HostOnly gives the cookie its __Host- name (see CookieName), which a
+	// browser accepts only when it is also Secure.
+	HostOnly bool
 }
 
 // NewSession signs userID in on w. The cookie carries a random token; the row
@@ -119,11 +143,11 @@ func NewSession(gdb *gorm.DB, userID string, w http.ResponseWriter, m SessionMet
 	gdb.Where("user_id = ? AND expires_at < ?", userID, now).Delete(&db.Session{})
 	gdb.Model(&db.User{}).Where("id = ?", userID).Update("last_sign_in_at", now)
 	http.SetCookie(w, &http.Cookie{
-		Name:     cookieName,
+		Name:     CookieName(m.HostOnly),
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   m.Secure,
+		Secure:   m.Secure || m.HostOnly,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  s.ExpiresAt,
 	})
@@ -138,8 +162,11 @@ func clip(s string, n int) string {
 	return string(r)
 }
 
+// ClearSession removes the session cookie under both of its names, so a
+// browser holds neither whichever one the setting says today.
 func ClearSession(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true})
+	http.SetCookie(w, &http.Cookie{Name: hostCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true})
 }
 
 // NormalizeEmail is the form an email is stored and looked up in.
@@ -212,8 +239,8 @@ func EnsureAdmin(gdb *gorm.DB) error {
 // Only a missing, unknown, or expired session, or one of a disabled user, is
 // ErrAuth; a store failure is returned as-is so callers do not report a
 // sign-out when Postgres is briefly unreachable.
-func SessionFromRequest(gdb *gorm.DB, r *http.Request) (*db.Session, *db.User, error) {
-	c, err := r.Cookie(cookieName)
+func SessionFromRequest(gdb *gorm.DB, r *http.Request, hostOnly bool) (*db.Session, *db.User, error) {
+	c, err := r.Cookie(CookieName(hostOnly))
 	if err != nil || c.Value == "" {
 		return nil, nil, ErrAuth
 	}
@@ -242,16 +269,16 @@ func SessionFromRequest(gdb *gorm.DB, r *http.Request) (*db.Session, *db.User, e
 }
 
 // UserFromRequest is the signed-in user of a request, or ErrAuth.
-func UserFromRequest(gdb *gorm.DB, r *http.Request) (*db.User, error) {
-	_, u, err := SessionFromRequest(gdb, r)
+func UserFromRequest(gdb *gorm.DB, r *http.Request, hostOnly bool) (*db.User, error) {
+	_, u, err := SessionFromRequest(gdb, r, hostOnly)
 	return u, err
 }
 
 // EndSession signs the request's session out on the server: the row goes, so a
 // copied cookie is worthless, and so does everything granted from it (a private
 // tunnel's access). A request with no session has nothing to end.
-func EndSession(gdb *gorm.DB, r *http.Request) error {
-	c, err := r.Cookie(cookieName)
+func EndSession(gdb *gorm.DB, r *http.Request, hostOnly bool) error {
+	c, err := r.Cookie(CookieName(hostOnly))
 	if err != nil || c.Value == "" {
 		return nil
 	}

@@ -451,7 +451,7 @@ func (a *App) signedIn(ctx context.Context) (context.Context, error) {
 	if r == nil {
 		return ctx, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
-	s, u, err := auth.SessionFromRequest(a.DB, r)
+	s, u, err := auth.SessionFromRequest(a.DB, r, a.cfg().HostCookies())
 	if err != nil {
 		return ctx, sessionError(err)
 	}

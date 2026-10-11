@@ -178,7 +178,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, argsJSON string)
 // --- download endpoints -----------------------------------------------------
 
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	u, err := siloauth.UserFromRequest(s.db, r)
+	u, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies())
 	if err != nil {
 		access.HTTPSessionError(w, err)
 		return

@@ -121,7 +121,7 @@ func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	// have that person's consent land their account's token on the Bot. The
 	// state is left in place, so the real owner can still finish.
 	if wait.user != "" {
-		u, err := siloauth.UserFromRequest(s.db, r)
+		u, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies())
 		if err != nil || u.ID != wait.user {
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = io.WriteString(w, "<p>This sign-in was started by someone else, or you are not signed in to Silo in this browser. Nothing was connected. You can close this window.</p>")
