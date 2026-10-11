@@ -8,6 +8,7 @@ import (
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/security"
 )
 
@@ -24,7 +25,8 @@ import (
 // Python, the desktop, memory), is chat-only by nature (soul, the agent
 // tools, sleep, switch_model), or asks the human by default: an approval can
 // take longer than the machine's command timeout, which a Python call sits
-// under.
+// under. decide is both by choice: one judgment mid-turn should not cost a
+// cell, and it is in the list only while a decision model is allowed.
 //
 // A tool with ExposePython needs a silo_runtime helper of the same name (or
 // PyName) in botimage/silo_runtime.py; TestPythonToolsHaveHelpers checks it.
@@ -241,6 +243,36 @@ func (a *App) toolDefs() []tool.Def {
 			ExposePython: true,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
 				return a.Models.ListTool(c.Bot.ID, c.ChatID)
+			}),
+		},
+		{
+			Name:        "decide",
+			Description: "Ask a decision model typed questions about a state and get typed answers with probabilities instead of text: noul is yes or no, choice picks one of the options you describe, score rates against ordered levels. Fast and cheap, for classifying, routing, filtering and scoring; it judges only what is in state. Answers {model, answers: {name: {type, noul | choice | score, probabilities, confidence}}, usage}. For many items, loop in Python: silo_runtime.decide(state, questions).",
+			Params: tool.Object(map[string]any{
+				"state": map[string]any{
+					"type":        "object",
+					"description": `what to judge, as named fields the instructions can refer to in backticks, e.g. {"ticket": "My checkout page is blank", "tier": "enterprise"}`,
+				},
+				"questions": map[string]any{
+					"type":        "object",
+					"description": `the questions, each under a name you choose; the answers come back under the same names. e.g. {"is_bug": {"type": "noul", "instructions": "Is ` + "`ticket`" + ` reporting a defect?"}}`,
+					"additionalProperties": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"type":         map[string]any{"type": "string", "enum": []string{llm.QuestionNoul, llm.QuestionChoice, llm.QuestionScore}, "description": "noul: yes or no. choice: pick one option. score: rate on an ordered scale."},
+							"instructions": map[string]any{"type": "string", "description": "the question, in plain words"},
+							"criteria":     map[string]any{"description": `choice: {"option": "what it means", ...}, 2 or more. score: ["lowest level", ..., "highest level"], 2 to 10. noul: leave out, or {"true": "...", "false": "..."} to say what each answer means.`},
+						},
+						"required": []string{"type", "instructions"},
+					},
+				},
+				"model": map[string]any{"type": "string", "description": "another allowed decision model, as silo_runtime.list_models() gives them; leave out for the operator's default"},
+			}, "state", "questions"),
+			Connector: security.Model, Action: "decide",
+			ExposeCompletion: true, ExposePython: true,
+			Enabled: func(string) bool { return a.Models.CanDecide() },
+			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
+				return a.Models.DecideTool(ctx, c.Bot.ID, c.Args)
 			}),
 		},
 		{

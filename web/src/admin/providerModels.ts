@@ -26,6 +26,30 @@ export function filterModels<T extends { id: string; name: string }>(list: T[], 
   });
 }
 
+/** The two kinds of model. A text model writes; a decision model answers typed questions. */
+export type ModelKind = "text" | "decision";
+
+export const KINDS: { id: ModelKind; label: string }[] = [
+  { id: "text", label: "Text" },
+  { id: "decision", label: "Decision" },
+];
+
+/** A listed model's kind; anything a provider does not mark as a decision model is text. */
+export function kindOf(m: { kind?: string }): ModelKind {
+  return m.kind === "decision" ? "decision" : "text";
+}
+
+/** The kinds a list holds, text first. */
+export function kindsIn(list: { kind?: string }[]): ModelKind[] {
+  return KINDS.map((k) => k.id).filter((k) => list.some((m) => kindOf(m) === k));
+}
+
+/** A role's picker rows when it takes either kind: decision models first, each saying what it is. */
+export function eitherKind<T extends { id: string; label: string }>(text: T[], decision: T[]): { value: string; label: string; hint: string }[] {
+  const rows = (list: T[], hint: string) => list.map((m) => ({ value: m.id, label: m.label || m.id, hint }));
+  return [...rows(decision, "Decision model"), ...rows(text, "Text model")];
+}
+
 /** The allowlist with `id` added at the end, or taken out; unchanged if there is nothing to do. */
 export function withModel(allowed: string[], id: string, on: boolean): string[] {
   const has = allowed.includes(id);

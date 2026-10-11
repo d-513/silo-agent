@@ -1006,6 +1006,9 @@ message ModelOption {
   // first (off, minimal, low, medium, high, xhigh, max). Empty means the
   // model has no selectable thinking.
   repeated string thinking_levels = 4;
+  // kind is "text" (a model that writes: chats and the text roles) or
+  // "decision" (a model that answers typed questions with probabilities).
+  string kind = 5;
 }
 
 message ListModelsRequest {
@@ -1434,6 +1437,9 @@ message Settings {
   AutoenableConnectors autoenable_connectors = 11;
   // oidc_redirect_url is the callback to register at the OIDC provider.
   string oidc_redirect_url = 12;
+  // decision_models is the allowlist of decision models; models (above) is
+  // the allowlist of text models. An id is in one list only.
+  repeated ModelOption decision_models = 13;
 }
 
 message Provider {
@@ -1443,6 +1449,8 @@ message Provider {
   repeated ProviderField fields = 4;
   bool supports_cache = 5;
   repeated string cache_ttls = 6;
+  // kinds are the kinds of model the provider serves: "text", "decision".
+  repeated string kinds = 7;
 }
 
 message ProviderField {
@@ -1455,6 +1463,9 @@ message ProviderField {
 
 message SetModelsRequest {
   repeated string models = 1;
+  // kind picks the allowlist to replace: "text" (the default when empty) or
+  // "decision".
+  string kind = 2;
 }
 
 // ListProviderModels asks one provider which models its saved key can call
@@ -1471,6 +1482,8 @@ message ProviderModel {
   string name = 2;
   // context_window is in tokens; 0 when the provider does not report one.
   int32 context_window = 3;
+  // kind is "text" or "decision": the allowlist the model belongs in.
+  string kind = 4;
 }
 
 message ListProviderModelsResponse {

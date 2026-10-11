@@ -21,6 +21,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/account"
 	"silo.agent/internal/app/admin"
+	"silo.agent/internal/app/approval"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/changes"
@@ -180,6 +181,7 @@ type App struct {
 	Tunnels    *tunnels.Service
 	Mail       *mailbox.Service
 	Models     *models.Service
+	Approval   *approval.Service
 	Workspace  *workspace.Service
 	Voice      *voice.Service
 	Knowledge  *knowledge.Service
@@ -213,6 +215,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		stopAutomations: make(chan struct{}),
 	}
 	a.Models = models.New(a.DB, a.cfg)
+	a.Approval = approval.New(a.DB, a.cfg, a.Models)
 	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)

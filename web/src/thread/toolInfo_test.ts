@@ -15,3 +15,12 @@ eq(
   "a batch of searches names the first and counts the rest",
 );
 eq(toolMeta("mystery").app, "mystery", "an unknown name is shown as it is");
+
+// A decision is named by what was asked: the questions' own names.
+const asked = (names: string[]) => JSON.stringify({ state: { mail: "hi" }, questions: Object.fromEntries(names.map((n) => [n, { type: "noul", instructions: "?" }])) });
+eq(toolMeta("decide").app, "Decision", "decide has its own app name");
+eq(toolAction("decide", asked(["is_spam"])), "is_spam", "one question");
+eq(toolAction("decide", asked(["is_spam", "team", "urgency"])), "is_spam, team, urgency", "a few questions are all named");
+eq(toolAction("decide", asked(["a", "b", "c", "d", "e"])), "a, b, c +2 more", "many are counted");
+eq(toolAction("decide", '{"state":"x","questions":"{\\"q\\": {\\"type\\": \\"noul\\"}}"}'), "q", "questions written as a JSON string are read too");
+eq(toolAction("decide", '{"state":{"mail":"hi"},"questions":{"is_sp'), "", "nothing to name while the arguments still stream");

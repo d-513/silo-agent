@@ -5,7 +5,7 @@ import { fail } from "../errors";
 import { useSave } from "../Feedback";
 import { ConfigSource, UI, type AuditRow, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
 import { peek, put, reload } from "../query";
-import { withModel } from "./providerModels";
+import { withModel, type ModelKind } from "./providerModels";
 
 const noFields: ConfigField[] = [];
 const noEngines: SearchEngine[] = [];
@@ -18,8 +18,8 @@ const noAudit: AuditRow[] = [];
 // cached getSettings answer; the form keeps only what the human changed on top
 // of it (`edits`, and a silo.yaml draft), so the patch to save is exactly the
 // edits that differ. There are five ways to save: the form, silo.yaml, the
-// model allowlist, connector variables, and the connectors every new Bot
-// gets. The settings layout calls it once and
+// two model allowlists (text and decision), connector variables, and the
+// connectors every new Bot gets. The settings layout calls it once and
 // every section reads it through useSettingsForm, so an edit made in one
 // section is still there after a look at another.
 export function useAdminSettings() {
@@ -107,16 +107,18 @@ export function useAdminSettings() {
   };
 
   // Allowlist changes run one after another, each on top of what the server
-  // last answered, so two quick presses cannot drop each other's model.
+  // last answered, so two quick presses cannot drop each other's model. kind
+  // names the allowlist: a model is a text model or a decision model.
   const modelQueue = useRef<Promise<void>>(Promise.resolve());
-  function setModel(id: string, on: boolean) {
+  function setModel(id: string, on: boolean, kind: ModelKind = "text") {
     setErr("");
     setBusy((prev) => new Set(prev).add(id));
     modelQueue.current = modelQueue.current.then(async () => {
       try {
-        const cur = (peek(UI.method.getSettings, {})?.models ?? []).map((m) => m.id);
+        const saved = peek(UI.method.getSettings, {});
+        const cur = ((kind === "decision" ? saved?.decisionModels : saved?.models) ?? []).map((m) => m.id);
         const next = withModel(cur, id, on);
-        if (next !== cur) applyAside(await ui.setModels({ models: next }));
+        if (next !== cur) applyAside(await ui.setModels({ models: next, kind }));
       } catch (ex) {
         setErr(fail(ex));
       } finally {
@@ -159,7 +161,9 @@ export function useAdminSettings() {
     setValue,
     engines: server?.searchEngines ?? noEngines,
     providers: server?.providers ?? noProviders,
+    // The two allowlists: text models, and decision models.
     models: server?.models ?? noModels,
+    decisionModels: server?.decisionModels ?? noModels,
     connVars: server?.connectorVars ?? noVars,
     autoenable: server?.autoenableConnectors,
     yamlText: yamlDraft ?? server?.yaml ?? "",

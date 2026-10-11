@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -83,6 +82,11 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 			if ig := ignoredUpstreams(s); len(ig) > 0 {
 				c.reqOpts = append(c.reqOpts, option.WithJSONSet("provider.ignore", ig))
 			}
+			decisions := decisionEndpoint{url: openRouterDecisions(base), key: key}
+			if s.Get("base_url") == "" {
+				decisions.headers = defaultHeaders
+			}
+			return &openRouterClient{openAICompatClient: c, decisions: decisions}, nil
 		}
 		return c, nil
 	}
@@ -440,17 +444,7 @@ func (c *openAICompatClient) ListModels(ctx context.Context) ([]ModelInfo, error
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ModelInfo, 0, len(list))
-	for _, m := range list {
-		if m.ID == "" {
-			continue
-		}
-		info := ModelInfo{ID: m.ID, Name: m.Name, ContextWindow: m.ContextLength}
-		if m.Created > 0 {
-			info.Created = time.Unix(m.Created, 0)
-		}
-		out = append(out, info)
-	}
+	out := modelInfos(list, KindText)
 	sortModels(out)
 	return out, nil
 }

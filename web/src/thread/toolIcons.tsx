@@ -22,6 +22,7 @@ import {
   MousePointerClick,
   Package,
   Plug,
+  Scale,
   Send,
   SquareTerminal,
   Timer,
@@ -68,6 +69,7 @@ const toolIcons: Record<string, LucideIcon> = {
   chats: MessagesSquare,
   list_models: Cpu,
   switch_model: Cpu,
+  decide: Scale,
   spawn_agent: Bot,
   agent_status: Bot,
   message_agent: Bot,
@@ -92,6 +94,7 @@ const builtinCallIcons: Record<string, LucideIcon> = {
   "bot.feed": Inbox,
   automations: Timer,
   model: Cpu,
+  "model.decide": Scale,
   tasks: ListChecks,
 };
 

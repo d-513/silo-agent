@@ -79,6 +79,8 @@ func Reset() {
 	collects = map[string]string{}
 	collectCalls = nil
 	streamed = nil
+	decided = nil
+	completed = nil
 }
 
 // streamed records every streamed request so tests can see what the agent
@@ -117,6 +119,7 @@ func init() {
 		ID:            Provider,
 		Name:          "Dummy",
 		Description:   "Deterministic scripted provider for tests. Not for production.",
+		Kinds:         []string{llm.KindText, llm.KindDecision},
 		SupportsCache: false,
 		Settings: []llm.SettingDef{
 			{Key: "api_key", Label: "API key", Description: "Ignored; kept for shape compatibility."},
@@ -182,6 +185,9 @@ func summaryFrom(req llm.Request) (string, bool) {
 }
 
 func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, error) {
+	mu.Lock()
+	completed = append(completed, req)
+	mu.Unlock()
 	if res, ok, err := collectFrom(req); ok {
 		return res, err
 	}

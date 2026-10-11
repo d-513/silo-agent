@@ -249,6 +249,22 @@ type Descriptor struct {
 	// self-hosted server). BaseURLRequired marks one with no default URL.
 	KeyOptional     bool
 	BaseURLRequired bool
+	// Kinds are the kinds of model the provider serves; empty means text
+	// only. A provider that lists KindDecision is a Decider.
+	Kinds []string
+}
+
+// Serves reports whether the provider has models of a kind.
+func (d Descriptor) Serves(kind string) bool {
+	if len(d.Kinds) == 0 {
+		return kind == KindText
+	}
+	for _, k := range d.Kinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
 }
 
 // Settings is provider config keyed by SettingDef.Key.
@@ -274,6 +290,7 @@ const (
 	OpenAI     = "openai"
 	Anthropic  = "anthropic"
 	Local      = "local"
+	TypeSafe   = "typesafe"
 )
 
 // builtinProviders are the providers every control plane starts with.
@@ -282,7 +299,8 @@ var builtinProviders = []registered{
 		desc: Descriptor{
 			ID:            OpenRouter,
 			Name:          "OpenRouter",
-			Description:   "OpenAI-compatible gateway to many models. Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
+			Description:   "OpenAI-compatible gateway to many models, decision models included (Jev, Clef and others through its Decisions API). Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
+			Kinds:         []string{KindText, KindDecision},
 			SupportsCache: true,
 			CacheTTLs:     []string{"5m", "1h"},
 			Settings: []SettingDef{
@@ -342,6 +360,19 @@ var builtinProviders = []registered{
 			},
 		},
 		new: newOpenAICompat("", nil, false, false),
+	},
+	{
+		desc: Descriptor{
+			ID:          TypeSafe,
+			Name:        "TypeSafe",
+			Description: "TypeSafe's System One API: Jev, a decision model. It answers typed questions (yes or no, a choice, a score) with probabilities in well under a second and writes no text, so it has no chat models.",
+			Kinds:       []string{KindDecision},
+			Settings: []SettingDef{
+				{Key: "api_key", Label: "API key", Description: "TypeSafe API key.", Secret: true},
+				{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
+			},
+		},
+		new: newTypeSafe,
 	},
 }
 

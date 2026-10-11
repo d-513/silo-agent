@@ -14,11 +14,26 @@ Libraries (Connectors, Skills) are not YAML.
 
 ## Models and providers
 
-A model id is **`provider/model`**, split on the first `/` (so `openrouter/openai/gpt-5.6-luna` is provider `openrouter`, model `openai/gpt-5.6-luna`). Providers are a modular registry (`internal/llm`): `openrouter`, `openai`, `anthropic`, and `local` today. `openrouter`/`openai`/`local` speak the OpenAI-compatible API; `anthropic` uses the native Messages API. `local` is any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp): `providers.local.base_url` is required and `api_key` is optional. Silo never runs models itself; it only connects to them.
+A model id is **`provider/model`**, split on the first `/` (so `openrouter/openai/gpt-5.6-luna` is provider `openrouter`, model `openai/gpt-5.6-luna`). Providers are a modular registry (`internal/llm`): `openrouter`, `openai`, `anthropic`, `local`, and `typesafe` today. `openrouter`/`openai`/`local` speak the OpenAI-compatible API; `anthropic` uses the native Messages API; `typesafe` is TypeSafe's System One API and has decision models only (see below). `local` is any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp): `providers.local.base_url` is required and `api_key` is optional. Silo never runs models itself; it only connects to them.
 
-- `models` is the operator **allowlist**. Only these ids appear in the chat model picker, and the bot's `switch_model` tool can only choose from it.
+- `models` is the operator **allowlist of text models**. Only these ids appear in the chat model picker, and the bot's `switch_model` tool can only choose from it.
 - `model` is the default model (used when a chat has no override). It should be one of `models`.
 - `model_title` names new chats; leave it empty to use `model`.
+
+### Decision models
+
+A model is one of two kinds. A **text model** writes: prose and tool calls, in a chat. A **decision model** (TypeSafe's Jev, Cloudflare's Clef, and the others of that family) writes nothing: it is shown a state and asked typed questions — `noul` (yes or no), `choice` (one of the options you describe), `score` (a place on an ordered scale) — and answers each with calibrated probabilities, in well under a second and for a fraction of the price. Code branches on those numbers.
+
+- `decision_models` is the **allowlist of decision models**, separate from `models`: an id is in one list or the other, and a decision model is never a chat model.
+- `model_decision` is the default decision model. Unset, it is the first of `decision_models`.
+- Two providers serve them. `openrouter` reaches every decision model on its Decisions API with the OpenRouter key you already have (`openrouter/typesafe/jev-1.13`, `openrouter/cloudflare/clef-flash`, …); `typesafe` is TypeSafe's own API (`typesafe/jev-latest`) with a TypeSafe key. Under Admin → Settings → Providers, **List models** shows a provider's text and decision models apart, and each is one press from its allowlist.
+
+They are used in two places:
+
+- **The Bot's `decide` tool** (rule `model.decide`, Allow) asks the default decision model, or another allowed one by name, and gets the typed answers back as JSON. The model can call it directly as a chat tool, for a judgment or two in the middle of a task, or from Python (`silo_runtime.decide(state, questions, model=None)`) to judge many items in a loop. It is offered only while a decision model is allowed.
+- **Auto-approval.** `model_approval` may be a model of either kind. A decision model is asked two yes-or-no questions (does the policy clearly allow this action; does it clearly forbid it) and the gate acts only on a sure answer: it approves at 0.9 or more allowed with 0.1 or less forbidden, denies at 0.9 or more forbidden, and asks a human for everything between. A text model is asked for one word, as before.
+
+Whichever kind judges, the gate is shown the same three things: the Bot's auto-approve policy, the action the Bot is asking for (arguments redacted as on the approval slip), and the human's latest message in the conversation the action came from. An automation has no such message and neither has a background process or other code running outside a conversation; the gate is then told the action comes from Automations, or that its origin is unknown, and nothing is put in the message's place.
 
 Each provider's key lives under `providers.<id>`. Prompt caching is **on by default** for `openrouter`, `openai` and `anthropic` (`cache: false` turns it off); `anthropic` and `openrouter` also take `cache_ttl` (`5m` or `1h`) for Claude.
 
@@ -47,6 +62,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `mail.tls_cert` / `mail.tls_key` | self-signed | `SILO_MAIL__TLS_CERT` / `SILO_MAIL__TLS_KEY` | PEM files for STARTTLS. Unset, a self-signed certificate is made at start |
 | `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
+| `model_approval` | (none) | `SILO_MODEL_APPROVAL` | Auto-approval model: judges actions whose rule is Auto against the Bot's policy. A text model (in `models`) or a decision model (in `decision_models`). Empty = the title model |
+| `model_decision` | (none) | `SILO_MODEL_DECISION` | Default decision model, for the Bot's `decide` tool (must be in `decision_models`). Empty = the first of `decision_models` |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
 | `model_memory` | (none) | `SILO_MODEL_MEMORY` | Memory save model: the memory collector reads chats with it (must be in `models`). Empty = the title model. A cheap model is enough |
 | `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds long-term memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models; a provider that cannot embed (Anthropic) is rejected |
@@ -65,7 +82,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `runs.max_duration` | `120m` | `SILO_RUNS__MAX_DURATION` | Cap on one agent run (a Go duration such as `120m`/`2h`, or bare minutes). `-1` means unlimited. Subagent runs and a lead sleeping while its subagents work count toward it |
 | `context.windows` | (none) | — | Per-model window overrides (YAML list of `{model, window}`; a list because model ids contain dots). Wins over the provider's report |
 | `thinking.levels` | (none) | — | Per-model thinking-level overrides for the composer's Thinking picker (YAML list of `{model, levels}`; levels from `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`; `[]` hides the picker). Wins over the provider's report: OpenRouter `/models` `supported_parameters`, the Anthropic Models API `capabilities`, OpenAI's reasoning families (`o*`, `gpt-5*` → low/medium/high). `local` models have no levels unless listed here (sent as `reasoning_effort`) |
-| `models` | (none) | — | Allowlist of selectable models (YAML list). Admin → Settings → Models edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
+| `models` | (none) | — | Allowlist of text models (YAML list). Admin → Settings → Models edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
+| `decision_models` | (none) | — | Allowlist of decision models (YAML list), edited in the same two places. Only `openrouter` and `typesafe` ids are accepted, and an id cannot be in `models` too. Empty: no `decide` tool |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used (optional for `local`) |
 | `providers.<id>.base_url` | (provider default) | `SILO_PROVIDERS__<ID>__BASE_URL` | Override the API base URL |
 | `providers.<id>.cache` | `true` | `SILO_PROVIDERS__<ID>__CACHE` | Prompt caching. `anthropic` adds `cache_control` breakpoints; `openai` sends `prompt_cache_key`; `openrouter` sends `prompt_cache_key` (it keeps a conversation on the upstream that holds its cache) and marks Claude prompts with `cache_control`, without which OpenRouter does not cache Claude at all. Other OpenRouter upstreams (OpenAI, DeepSeek, Grok, Gemini 2.5) cache a stable prefix on their own |
@@ -259,6 +277,12 @@ model: openrouter/openai/gpt-5.6-luna
 models:
   - openrouter/openai/gpt-5.6-luna
   - anthropic/claude-opus-5
+
+# Optional: decision models, for the Bot's decide tool and auto-approval.
+decision_models:
+  - openrouter/typesafe/jev-1.13
+model_decision: openrouter/typesafe/jev-1.13
+model_approval: openrouter/typesafe/jev-1.13
 
 bootstrap:
   email: admin@local

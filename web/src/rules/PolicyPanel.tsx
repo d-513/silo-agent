@@ -18,7 +18,7 @@ export function PolicyPanel({
   return (
     <Panel
       title="Auto-approve policy"
-      note="Read by the approval model when a rule is set to Auto. Write the actions this Bot may run without a human. Empty means every Auto rule asks."
+      note="Read by the auto-approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Write the actions this Bot may run without a human. Empty means every Auto rule asks."
       className="mb-5"
     >
       <textarea

@@ -2,6 +2,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { Check, Plus, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { Btn } from "../Btn";
+import { Segmented } from "../connectors/form/atoms";
 import { fail } from "../errors";
 import { Spinner } from "../Feedback";
 import { ErrorWell, SkeletonRows } from "../Field";
@@ -9,7 +10,7 @@ import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo
 import { SearchBox } from "../SearchBox";
 import { Tip } from "../Tip";
 import { FieldGroup } from "./FieldGroup";
-import { bareModel, filterModels, fmtContext } from "./providerModels";
+import { bareModel, filterModels, fmtContext, kindOf, KINDS, kindsIn, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 
 export function ProviderSettings() {
@@ -24,7 +25,8 @@ export function ProviderSettings() {
 }
 
 // One provider: its settings (saved with the form), and on request the models
-// its saved key can call, each one press from the allowlist.
+// its saved key can call, sorted into text and decision models, each one press
+// from the allowlist of its kind.
 function ProviderPanel({ provider }: { provider: Provider }) {
   const { fields, values } = useSettingsForm();
   const rows = fields.filter((f) => f.key.startsWith(`providers.${provider.id}.`));
@@ -77,9 +79,15 @@ function ProviderPanel({ provider }: { provider: Provider }) {
 }
 
 function ModelList({ provider, models, refreshing, onRefresh }: { provider: Provider; models: ProviderModel[]; refreshing: boolean; onRefresh: () => void }) {
-  const { models: allowed, setModel, busyModels } = useSettingsForm();
+  const { models: allowedText, decisionModels, setModel, busyModels } = useSettingsForm();
   const [query, setQuery] = useState("");
-  const shown = filterModels(models, query);
+  // A provider with both kinds shows one at a time; text is what most are after.
+  const kinds = kindsIn(models);
+  const [picked, setKind] = useState<ModelKind>("text");
+  const kind = kinds.includes(picked) ? picked : (kinds[0] ?? "text");
+  const ofKind = models.filter((m) => kindOf(m) === kind);
+  const shown = filterModels(ofKind, query);
+  const allowed = kind === "decision" ? decisionModels : allowedText;
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
 
   if (models.length === 0) {
@@ -88,8 +96,13 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   return (
     <>
       <div className="mb-3 flex items-center gap-2">
+        {kinds.length > 1 ? (
+          <div className="w-[176px] shrink-0 text-[13px]">
+            <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={KINDS} />
+          </div>
+        ) : null}
         <div className="min-w-0 flex-1">
-          <SearchBox value={query} onChange={setQuery} placeholder={`Filter ${models.length} models`} searching={false} />
+          <SearchBox value={query} onChange={setQuery} placeholder={`Filter ${ofKind.length} ${kind} models`} searching={false} />
         </div>
         <Btn kind="ghost" size="sm" iconOnly title="Ask again" aria-label="Ask again" disabled={refreshing} onClick={onRefresh}>
           {refreshing ? <Spinner size={13} /> : <RefreshCw size={14} />}
@@ -124,12 +137,12 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
                         <Check size={14} />
                         Allowed
                       </span>
-                      <Btn kind="ghost" size="sm" iconOnly title="Remove from the allowed models" aria-label={`Remove ${m.id}`} onClick={() => void setModel(m.id, false)}>
+                      <Btn kind="ghost" size="sm" iconOnly title={`Remove from the allowed ${kind} models`} aria-label={`Remove ${m.id}`} onClick={() => void setModel(m.id, false, kind)}>
                         <X size={14} />
                       </Btn>
                     </>
                   ) : (
-                    <Btn size="sm" aria-label={`Add ${m.id}`} onClick={() => void setModel(m.id, true)}>
+                    <Btn size="sm" aria-label={`Add ${m.id}`} onClick={() => void setModel(m.id, true, kind)}>
                       <Plus size={14} /> Add
                     </Btn>
                   )}

@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -13,12 +11,9 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/connector"
-	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
-	"silo.agent/internal/llm"
-	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
 )
@@ -85,7 +80,7 @@ func pythonResult(s string) string {
 func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
 	decision := security.Rule(a.ruleDecision(bot.ID, conn, action, fallback))
 	if decision == security.Auto {
-		switch a.autoDecision(ctx, bot, conn, action, argsJSON) {
+		switch a.Approval.Judge(ctx, bot, a.ChatOfRun(runID), conn, action, argsJSON) {
 		case security.Allow:
 			a.audit(bot, "auto", conn+"."+action, "auto_allow")
 			return "", nil
@@ -129,68 +124,5 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 			return ap.ID, errors.New("denied")
 		}
 		return ap.ID, nil
-	}
-}
-
-// autoDecision asks the approval model whether an action covered by an "auto"
-// rule may run. It sends only a small prompt — Silo's base gate instructions
-// plus the Bot's own policy and a redacted action summary. Anything other than
-// a clear approve/deny falls back to a human (ask).
-func (a *App) autoDecision(ctx context.Context, bot *db.Bot, conn, action, argsJSON string) string {
-	policy := strings.TrimSpace(bot.AutoApprove)
-	if policy == "" {
-		return security.Ask
-	}
-	cfg := a.cfg()
-	client, provider, model, err := a.Models.Observed(cfg.ApprovalModel(), bot.ID, "approval")
-	if err != nil {
-		log.Printf("auto-approval model: %v", err)
-		return security.Ask
-	}
-	p := security.Describe(conn, action, security.Redact(conn, action, argsJSON))
-	var b strings.Builder
-	fmt.Fprintf(&b, "Action: %s\n", p.Title)
-	fmt.Fprintf(&b, "%s\n", p.Summary)
-	for _, f := range p.Fields {
-		fmt.Fprintf(&b, "%s: %s\n", f.Label, f.Value)
-	}
-	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	res, err := client.Complete(cctx, llm.Request{
-		Model: model,
-		System: []llm.SystemBlock{
-			{Text: prompts.Approval},
-			{Text: "The operator's auto-approval policy:\n" + policy},
-		},
-		Messages:  []llm.Message{{Role: llm.RoleUser, Text: b.String()}},
-		Cache:     models.CachePolicy(cfg.ProviderSettings(provider), bot.ID),
-		MaxTokens: 8,
-	})
-	if err != nil {
-		log.Printf("auto-approval model: %v", err)
-		return security.Ask
-	}
-	return parseVerdict(res.Text)
-}
-
-// parseVerdict reads the model's one-word decision from the first word of the
-// reply. Anything else is "ask" — an unrecognized or negated answer must never
-// auto-allow.
-func parseVerdict(s string) string {
-	words := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(s)), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z')
-	})
-	if len(words) == 0 {
-		return security.Ask
-	}
-	switch words[0] {
-	case "approve", "approved", "allow", "allowed", "yes":
-		return security.Allow
-	case "deny", "denied", "no", "forbid", "forbidden", "block":
-		return security.Deny
-	case "ask", "human", "review", "unsure", "maybe":
-		return security.Ask
-	default:
-		return security.Ask
 	}
 }

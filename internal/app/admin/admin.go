@@ -68,7 +68,6 @@ func (s *Service) PutSettings(ctx context.Context, req *connect.Request[v1.PutSe
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	} else if len(fields) > 0 {
-		allowed := s.store.AllowedModels()
 		for k, v := range fields {
 			if !config.KnownKey(k) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown setting %q", k))
@@ -86,13 +85,8 @@ func (s *Service) PutSettings(ctx context.Context, req *connect.Request[v1.PutSe
 					return nil, connect.NewError(connect.CodeInvalidArgument, err)
 				}
 			}
-			if (k == "model" || k == "model_title" || k == "model_approval" || k == "model_subagent" || k == "model_memory") && v != "" {
-				if _, _, err := llm.Parse(v); err != nil {
-					return nil, connect.NewError(connect.CodeInvalidArgument, err)
-				}
-				if len(allowed) > 0 && !llm.Allowed(v, allowed) {
-					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("model %q is not in the allowed list", v))
-				}
+			if err := s.checkRole(k, strings.TrimSpace(v)); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 		}
 		if err := s.store.Patch(fields); err != nil {
@@ -106,7 +100,55 @@ func (s *Service) PutSettings(ctx context.Context, req *connect.Request[v1.PutSe
 	return connect.NewResponse(cur), nil
 }
 
-// SetModels replaces the operator's model allowlist.
+// modelRoles are the settings that pick a model for a job, and the kinds of
+// model each may be given. Only the auto-approval model takes either: a
+// decision model answers it a typed verdict, a text model one word.
+var modelRoles = map[string][]string{
+	"model":          {llm.KindText},
+	"model_title":    {llm.KindText},
+	"model_subagent": {llm.KindText},
+	"model_memory":   {llm.KindText},
+	"model_approval": {llm.KindText, llm.KindDecision},
+	"model_decision": {llm.KindDecision},
+}
+
+// checkRole refuses a role given a model that is not allowed, or is of a kind
+// the role cannot use. An empty value (follow another role) is always fine.
+func (s *Service) checkRole(key, modelID string) error {
+	kinds, ok := modelRoles[key]
+	if !ok || modelID == "" {
+		return nil
+	}
+	if _, _, err := llm.Parse(modelID); err != nil {
+		return err
+	}
+	cfg := s.cfg()
+	kind := cfg.ModelKind(modelID)
+	takes := false
+	for _, k := range kinds {
+		takes = takes || k == kind
+	}
+	if !takes {
+		if kind == llm.KindDecision {
+			return fmt.Errorf("%q is a decision model: it answers typed questions and writes no text", modelID)
+		}
+		return fmt.Errorf("%q is not an allowed decision model", modelID)
+	}
+	allowed := cfg.Models
+	if kind == llm.KindDecision {
+		allowed = cfg.DecisionModels
+	} else if len(allowed) == 0 {
+		// No text allowlist yet: any text model may be the default.
+		return nil
+	}
+	if !llm.Allowed(modelID, allowed) {
+		return fmt.Errorf("model %q is not in the allowed list", modelID)
+	}
+	return nil
+}
+
+// SetModels replaces one of the operator's two model allowlists: the text
+// models, or (kind "decision") the decision models.
 func (s *Service) SetModels(ctx context.Context, req *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
@@ -114,18 +156,33 @@ func (s *Service) SetModels(ctx context.Context, req *connect.Request[v1.SetMode
 	if s.store == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("config store missing"))
 	}
+	kind := strings.TrimSpace(req.Msg.GetKind())
+	if kind == "" {
+		kind = llm.KindText
+	}
+	if kind != llm.KindText && kind != llm.KindDecision {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown model kind %q", kind))
+	}
 	allow := make([]string, 0, len(req.Msg.GetModels()))
 	for _, m := range req.Msg.GetModels() {
 		m = strings.TrimSpace(m)
 		if m == "" {
 			continue
 		}
-		if _, _, err := llm.Parse(m); err != nil {
+		provider, _, err := llm.Parse(m)
+		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if d, _ := llm.Lookup(provider); !d.Serves(kind) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s has no %s models, so %q cannot be allowed as one", d.Name, kind, m))
 		}
 		allow = append(allow, m)
 	}
-	if err := s.store.SetModels(allow); err != nil {
+	set := s.store.SetModels
+	if kind == llm.KindDecision {
+		set = s.store.SetDecisionModels
+	}
+	if err := set(allow); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	cur, err := s.settings(ctx)
@@ -136,7 +193,8 @@ func (s *Service) SetModels(ctx context.Context, req *connect.Request[v1.SetMode
 }
 
 // ListProviderModels asks one provider which models its saved key can call,
-// as full provider/model ids ready for the allowlist.
+// as full provider/model ids ready for an allowlist, each with the kind that
+// says which one.
 func (s *Service) ListProviderModels(ctx context.Context, req *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
@@ -170,8 +228,12 @@ func (s *Service) ListProviderModels(ctx context.Context, req *connect.Request[v
 	}
 	out := &v1.ListProviderModelsResponse{Models: make([]*v1.ProviderModel, 0, len(list))}
 	for _, m := range list {
+		kind := m.Kind
+		if kind == "" {
+			kind = llm.KindText
+		}
 		out.Models = append(out.Models, &v1.ProviderModel{
-			Id: provider + "/" + m.ID, Name: m.Name, ContextWindow: int32(m.ContextWindow),
+			Id: provider + "/" + m.ID, Name: m.Name, ContextWindow: int32(m.ContextWindow), Kind: kind,
 		})
 	}
 	return connect.NewResponse(out), nil
@@ -255,6 +317,7 @@ func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
 	}
 	out.Providers = providerProtos()
 	out.Models = models.Protos(s.models.Allowed())
+	out.DecisionModels = models.Protos(s.models.Deciders())
 	for _, v := range s.store.ConnectorVars() {
 		out.ConnectorVars = append(out.ConnectorVars, &v1.ConnectorVar{
 			Name:    v.Name,
@@ -283,6 +346,11 @@ func providerProtos() []*v1.Provider {
 		p := &v1.Provider{
 			Id: d.ID, Name: d.Name, Description: d.Description,
 			SupportsCache: d.SupportsCache, CacheTtls: d.CacheTTLs,
+		}
+		for _, kind := range []string{llm.KindText, llm.KindDecision} {
+			if d.Serves(kind) {
+				p.Kinds = append(p.Kinds, kind)
+			}
 		}
 		for _, f := range d.Settings {
 			p.Fields = append(p.Fields, &v1.ProviderField{

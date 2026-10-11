@@ -339,8 +339,43 @@ def delete_automation(automation: str) -> dict:
 
 
 def list_models() -> dict:
-    """The models this Bot may use: {current, default, models: [...]}."""
+    """The models this Bot may use: {current, default, models: [...]}.
+
+    When the operator has decision models, also {decision_models: [...],
+    default_decision}: what `decide` may be given as `model`.
+    """
     return call("model", "list", {})
+
+
+def decide(state, questions: dict, model: str | None = None) -> dict:
+    """Ask a decision model typed questions about `state`.
+
+    A decision model answers with probabilities instead of text, fast and
+    cheaply: use it to classify, route, filter or score in code. `state` is
+    what to judge (a str, dict or list). `questions` maps a name of your
+    choosing to one question:
+
+        {"type": "noul", "instructions": "Is `mail` spam?"}
+        {"type": "choice", "instructions": "Which team?",
+         "criteria": {"payments": "checkout, billing", "frontend": "layout"}}
+        {"type": "score", "instructions": "How urgent?",
+         "criteria": ["can wait", "this week", "blocking now"]}
+
+    noul is yes or no (criteria optional: {"true": ..., "false": ...}), choice
+    picks one of 2+ options, score rates against 2 to 10 ordered levels. Up
+    to 200 questions a call, all about the same state.
+
+    Returns {model, answers: {name: answer}, usage}. An answer is
+    {type, noul} (the probability of yes), {type, choice, probabilities,
+    confidence}, or {type, score, probabilities, legend, confidence} (score
+    is the position on the scale, from 0). Act on 0.9 and above; the middle
+    means the model is not sure. `model` picks another decision model from
+    list_models()["decision_models"]; the default is the operator's.
+    """
+    args: dict = {"state": state, "questions": questions}
+    if model is not None:
+        args["model"] = model
+    return call("model", "decide", args)
 
 
 def task_list() -> dict:

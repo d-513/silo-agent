@@ -265,26 +265,35 @@ type Config struct {
 	// means the lead's own model. spawn_agent may still name another.
 	ModelSubagent string `koanf:"model_subagent"`
 	// ModelMemory is the memory collector's model; empty means the title model.
-	ModelMemory string              `koanf:"model_memory"`
-	EmbedModel  string              `koanf:"embedding_model"`
-	Transcribe  string              `koanf:"transcribe_model"`
-	Memory      Memory              `koanf:"memory"`
-	Knowledge   Knowledge           `koanf:"knowledge"`
-	Changes     Changes             `koanf:"changes"`
-	Context     Context             `koanf:"context"`
-	Thinking    Thinking            `koanf:"thinking"`
-	Runs        Runs                `koanf:"runs"`
-	Models      []string            `koanf:"models"`
-	Debug       bool                `koanf:"debug"`
-	Bootstrap   Bootstrap           `koanf:"bootstrap"`
-	Auth        Auth                `koanf:"auth"`
-	OIDC        OIDC                `koanf:"oidc"`
-	Providers   map[string]Provider `koanf:"providers"`
-	Search      Search              `koanf:"search"`
-	Drives      Drives              `koanf:"drives"`
-	Tunnels     Tunnels             `koanf:"tunnels"`
-	Mail        Mail                `koanf:"mail"`
-	Tools       Tools               `koanf:"tools"`
+	ModelMemory string `koanf:"model_memory"`
+	// ModelDecision is the default decision model: what the Bot's decide tool
+	// uses when it names none. Empty means the first of DecisionModels.
+	ModelDecision string    `koanf:"model_decision"`
+	EmbedModel    string    `koanf:"embedding_model"`
+	Transcribe    string    `koanf:"transcribe_model"`
+	Memory        Memory    `koanf:"memory"`
+	Knowledge     Knowledge `koanf:"knowledge"`
+	Changes       Changes   `koanf:"changes"`
+	Context       Context   `koanf:"context"`
+	Thinking      Thinking  `koanf:"thinking"`
+	Runs          Runs      `koanf:"runs"`
+	// Models is the allowlist of text models: the ones a chat, a Bot and the
+	// text roles above may use.
+	Models []string `koanf:"models"`
+	// DecisionModels is the allowlist of decision models. They answer typed
+	// questions with probabilities and write no text, so they are never a
+	// chat model; an id is in one list or the other.
+	DecisionModels []string            `koanf:"decision_models"`
+	Debug          bool                `koanf:"debug"`
+	Bootstrap      Bootstrap           `koanf:"bootstrap"`
+	Auth           Auth                `koanf:"auth"`
+	OIDC           OIDC                `koanf:"oidc"`
+	Providers      map[string]Provider `koanf:"providers"`
+	Search         Search              `koanf:"search"`
+	Drives         Drives              `koanf:"drives"`
+	Tunnels        Tunnels             `koanf:"tunnels"`
+	Mail           Mail                `koanf:"mail"`
+	Tools          Tools               `koanf:"tools"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -366,12 +375,47 @@ func (c Config) TranscribeModel() string {
 }
 
 // ApprovalModel returns the model used to decide auto-approval rules, falling
-// back to the title model and then the main default model.
+// back to the title model and then the main default model. It may be of
+// either kind (ModelKind): a decision model answers a typed verdict, a text
+// model is asked for one word.
 func (c Config) ApprovalModel() string {
 	if m := strings.TrimSpace(c.ModelApproval); m != "" {
 		return m
 	}
 	return c.TitleModel()
+}
+
+// DecisionModel returns the default decision model: model_decision while it
+// is still allowed, else the first allowed decision model, else "" (the
+// operator has allowed none, so there is nothing to decide with).
+func (c Config) DecisionModel() string {
+	if m := strings.TrimSpace(c.ModelDecision); m != "" && llm.Allowed(m, c.DecisionModels) {
+		return m
+	}
+	for _, m := range c.DecisionModels {
+		if m = strings.TrimSpace(m); m != "" {
+			return m
+		}
+	}
+	return ""
+}
+
+// ModelKind is the kind of a provider/model id: a decision model when the
+// operator allowed it as one, or when its provider has no other kind.
+func (c Config) ModelKind(modelID string) string {
+	return modelKind(modelID, c.DecisionModels)
+}
+
+func modelKind(modelID string, decisionModels []string) string {
+	if llm.Allowed(modelID, decisionModels) {
+		return llm.KindDecision
+	}
+	if provider, _, ok := llm.Split(modelID); ok {
+		if d, known := llm.Lookup(provider); known && !d.Serves(llm.KindText) {
+			return llm.KindDecision
+		}
+	}
+	return llm.KindText
 }
 
 // MemoryModel returns the model the memory collector reads chats with,
@@ -396,6 +440,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_approval"},
 	{Key: "model_subagent"},
 	{Key: "model_memory"},
+	{Key: "model_decision"},
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
 	{Key: "memory.in_prompt", Type: "bool"},

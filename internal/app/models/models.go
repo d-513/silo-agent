@@ -135,19 +135,26 @@ func CachePolicy(s llm.Settings, botID string) llm.CachePolicy {
 	return llm.CachePolicy{Enabled: true, TTL: ttl, Key: "silo-bot-" + botID, Messages: true}
 }
 
-// Option is the model allowlist paired with provider metadata for the UI.
+// Option is one allowed model paired with provider metadata for the UI.
 type Option struct {
 	ID       string
 	Provider string
 	Label    string
+	// Kind is llm.KindText or llm.KindDecision.
+	Kind string
 	// Thinking is filled only where the UI needs levels (ListModels).
 	Thinking []string
 }
 
+// Allowed is the allowlist of text models: what a chat, a Bot and the text
+// roles may use. Decision models are a list of their own (Deciders).
 func (s *Service) Allowed() []Option {
-	cfg := s.cfg()
-	out := make([]Option, 0, len(cfg.Models))
-	for _, id := range cfg.Models {
+	return options(s.cfg().Models, llm.KindText)
+}
+
+func options(ids []string, kind string) []Option {
+	out := make([]Option, 0, len(ids))
+	for _, id := range ids {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
@@ -160,7 +167,7 @@ func (s *Service) Allowed() []Option {
 		if d, ok := llm.Lookup(provider); ok {
 			label = d.Name + " · " + model
 		}
-		out = append(out, Option{ID: id, Provider: provider, Label: label})
+		out = append(out, Option{ID: id, Provider: provider, Label: label, Kind: kind})
 	}
 	return out
 }
@@ -169,7 +176,7 @@ func (s *Service) Allowed() []Option {
 func Protos(opts []Option) []*v1.ModelOption {
 	out := make([]*v1.ModelOption, 0, len(opts))
 	for _, o := range opts {
-		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking})
+		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking, Kind: o.Kind})
 	}
 	return out
 }
@@ -181,11 +188,20 @@ func (s *Service) ListTool(botID, chatID string) (string, error) {
 	for _, o := range s.Allowed() {
 		models = append(models, o.ID)
 	}
-	body, err := json.Marshal(map[string]any{
+	list := map[string]any{
 		"current": s.Resolve(botID, chatID),
 		"default": s.BotDefault(botID),
 		"models":  models,
-	})
+	}
+	// Decision models are not chat models: they are what decide() may name.
+	if def := cfg.DecisionModel(); def != "" {
+		deciders := make([]string, 0, len(cfg.DecisionModels))
+		for _, o := range s.Deciders() {
+			deciders = append(deciders, o.ID)
+		}
+		list["decision_models"], list["default_decision"] = deciders, def
+	}
+	body, err := json.Marshal(list)
 	if err != nil {
 		return "", err
 	}

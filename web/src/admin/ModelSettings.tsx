@@ -9,16 +9,25 @@ import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { modelOptions } from "../modelOptions";
 import { SourceChips } from "./FieldRow";
 import { HINTS, LABELS, PLACEHOLDERS } from "./fields";
+import { eitherKind, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 
-// The roles a chat model can be given. All but the default may be left to
-// follow another one.
-const ROLES: { key: string; unset?: string; hint?: string }[] = [
+// The jobs a model can be given, and the kind of model each takes: a text
+// model writes, a decision model answers typed questions with probabilities.
+// Only auto-approval takes either. All but the two defaults may be left to
+// follow another role.
+const ROLES: { key: string; takes?: ModelKind | "either"; unset?: string; hint?: string }[] = [
   { key: "model" },
   { key: "model_title", unset: "Same as default" },
-  { key: "model_approval", unset: "Same as title model", hint: "Decides rules set to Auto." },
+  {
+    key: "model_approval",
+    takes: "either",
+    unset: "Same as title model",
+    hint: "Decides rules set to Auto. A decision model answers in a fraction of a second and only a sure yes approves; a text model is asked for one word.",
+  },
   { key: "model_subagent", unset: "Same as the lead", hint: "Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another." },
   { key: "model_memory", unset: "Same as title model", hint: "Reads chats once they go quiet and saves the facts and lessons the Bot missed. A cheap model is enough." },
+  { key: "model_decision", takes: "decision", hint: "What the Bot's decide tool asks unless it names another allowed decision model." },
 ];
 
 // Embedding and speech models are not chat models, so they are free text, not
@@ -26,33 +35,42 @@ const ROLES: { key: string; unset?: string; hint?: string }[] = [
 const FREE = ["embedding_model", "transcribe_model"];
 
 export function ModelSettings() {
-  const { fields, values, setValue, models } = useSettingsForm();
+  const { fields, values, setValue, models, decisionModels } = useSettingsForm();
   const field = (key: string) => fields.find((f) => f.key === key);
-  const picks = models.map((m) => ({ value: m.id, label: m.label || m.id }));
+
+  // A role's picker offers the allowed models of the kind it takes.
+  function picker(r: (typeof ROLES)[number]) {
+    if (r.takes === "decision") {
+      const none = "No decision models allowed yet";
+      // Left unset, the first allowed decision model is the default.
+      return { options: modelOptions(decisionModels), placeholder: decisionModels.length ? `First allowed (${decisionModels[0].id})` : none, emptyLabel: none };
+    }
+    const none = "No text models allowed yet";
+    const rows = r.takes === "either" ? eitherKind(models, decisionModels) : modelOptions(models);
+    if (r.unset) return { options: [{ value: "", label: r.unset }, ...rows], placeholder: r.unset, emptyLabel: none };
+    return { options: rows, placeholder: models.length ? "Select…" : none, emptyLabel: none };
+  }
 
   return (
     <>
-      <Panel title="Default models" note="Which allowed model does which job. A Bot or a chat can pick another for itself.">
+      <Panel
+        title="Default models"
+        note="Which allowed model does which job. A Bot or a chat can pick another text model for itself; the decision model is what the Bot's decide tool uses."
+      >
         <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
           {ROLES.map((r) => {
             const f = field(r.key);
             return (
               <Field key={r.key} label={LABELS[r.key]} hint={r.hint} headerRight={f ? <SourceChips field={f} /> : undefined}>
-                <Select
-                  value={values[r.key] ?? ""}
-                  onChange={(v) => setValue(r.key, v)}
-                  disabled={f?.source === ConfigSource.ENV}
-                  placeholder={r.unset ?? (models.length ? "Select…" : "No models allowed yet")}
-                  emptyLabel={r.unset ?? "No models allowed yet"}
-                  options={r.unset ? [{ value: "", label: r.unset }, ...picks] : modelOptions(models)}
-                />
+                <Select value={values[r.key] ?? ""} onChange={(v) => setValue(r.key, v)} disabled={f?.source === ConfigSource.ENV} {...picker(r)} />
               </Field>
             );
           })}
         </div>
       </Panel>
 
-      <AllowedModels />
+      <AllowedModels kind="text" />
+      <AllowedModels kind="decision" />
 
       <Panel title="Embedding and speech" note="Not chat models: type the id. Any OpenAI-compatible provider works.">
         <div className="grid gap-5">
@@ -78,10 +96,31 @@ export function ModelSettings() {
   );
 }
 
-// The allowlist: what the pickers above and every chat's model menu offer. A
-// change here saves at once, on its own.
-function AllowedModels() {
-  const { models, providers, setModel, busyModels } = useSettingsForm();
+// What the two allowlists are for, in the panel's own words.
+const ALLOWLISTS: Record<ModelKind, { title: string; note: string; none: string; example: string }> = {
+  text: {
+    title: "Allowed text models",
+    note: "Models that write: the ones a chat, a Bot and the pickers above can use. A change here is saved at once.",
+    none: "No text models allowed yet.",
+    example: "model name, e.g. gpt-5.6-luna",
+  },
+  decision: {
+    title: "Allowed decision models",
+    note: "Models that answer typed questions (yes or no, a choice, a score) with probabilities instead of text, in a fraction of a second. The Bot's decide tool and auto-approval can use them; a chat cannot. Saved at once.",
+    none: "No decision models allowed yet. Without one the Bot has no decide tool.",
+    example: "model name, e.g. jev-latest",
+  },
+};
+
+// One allowlist: the text models every chat's model menu offers, or the
+// decision models. A change here saves at once, on its own.
+function AllowedModels({ kind }: { kind: ModelKind }) {
+  const form = useSettingsForm();
+  const { setModel, busyModels } = form;
+  const models = kind === "decision" ? form.decisionModels : form.models;
+  // Only the providers that have models of this kind can be typed in.
+  const providers = form.providers.filter((p) => p.kinds.includes(kind));
+  const copy = ALLOWLISTS[kind];
   const [provider, setProvider] = useState("");
   const [name, setName] = useState("");
   const pick = provider || providers[0]?.id || "";
@@ -91,17 +130,13 @@ function AllowedModels() {
   function add() {
     if (!pick || !name.trim() || known) return;
     setName("");
-    void setModel(id, true);
+    void setModel(id, true, kind);
   }
 
   return (
-    <Panel
-      title="Allowed models"
-      note="The models a chat, a Bot and the pickers above can use. A change here is saved at once."
-      padded={false}
-    >
+    <Panel title={copy.title} note={copy.note} padded={false}>
       {models.length === 0 ? (
-        <p className="px-5 py-4 text-[13px] text-ink-2">No models allowed yet.</p>
+        <p className="px-5 py-4 text-[13px] text-ink-2">{copy.none}</p>
       ) : (
         <ul className="divide-y divide-line">
           {models.map((m) => (
@@ -112,7 +147,7 @@ function AllowedModels() {
                   <Spinner size={13} />
                 </span>
               ) : (
-                <Btn kind="ghost" size="sm" iconOnly title={`Remove ${m.id}`} aria-label={`Remove ${m.id}`} className="hover:text-vermilion" onClick={() => void setModel(m.id, false)}>
+                <Btn kind="ghost" size="sm" iconOnly title={`Remove ${m.id}`} aria-label={`Remove ${m.id}`} className="hover:text-vermilion" onClick={() => void setModel(m.id, false, kind)}>
                   <Trash2 size={14} />
                 </Btn>
               )}
@@ -135,7 +170,7 @@ function AllowedModels() {
           <span className="text-ink-3">/</span>
           <input
             className={`${inputClass} min-w-[180px] flex-1 font-mono text-[13px]`}
-            placeholder="model name, e.g. gpt-5.6-luna"
+            placeholder={copy.example}
             aria-label="Model name"
             autoComplete="off"
             spellCheck={false}

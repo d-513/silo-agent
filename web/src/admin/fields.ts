@@ -6,6 +6,7 @@ export const LABELS: Record<string, string> = {
   model_approval: "Auto-approval model",
   model_subagent: "Subagent model",
   model_memory: "Memory save model",
+  model_decision: "Default decision model",
   embedding_model: "Embedding model",
   transcribe_model: "Speech-to-text model",
   "memory.in_prompt": "Memories in the prompt",
@@ -135,7 +136,7 @@ export const OIDC_NOTE =
 export const BOOTSTRAP_NOTE = "First admin only. Ignored after a user exists. Restart required.";
 
 export function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "embedding_model" || key === "transcribe_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("tunnels.")) return "tunnels";

@@ -56,6 +56,13 @@ var Subagent string
 //go:embed MAIL.md
 var Mail string
 
+// Decide is the system-prompt section for the decide tool, there while the
+// operator has allowed a decision model; {default} is the default one and
+// {models} the allowed ones.
+//
+//go:embed DECIDE.md
+var Decide string
+
 // Tunnels is the system-prompt section for a Bot that has the tunnel tools.
 //
 //go:embed TUNNELS.md

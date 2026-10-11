@@ -7110,8 +7110,11 @@ type ModelOption struct {
 	// first (off, minimal, low, medium, high, xhigh, max). Empty means the
 	// model has no selectable thinking.
 	ThinkingLevels []string `protobuf:"bytes,4,rep,name=thinking_levels,json=thinkingLevels,proto3" json:"thinking_levels,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// kind is "text" (a model that writes: chats and the text roles) or
+	// "decision" (a model that answers typed questions with probabilities).
+	Kind          string `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ModelOption) Reset() {
@@ -7170,6 +7173,13 @@ func (x *ModelOption) GetThinkingLevels() []string {
 		return x.ThinkingLevels
 	}
 	return nil
+}
+
+func (x *ModelOption) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
 }
 
 type ListModelsRequest struct {
@@ -10984,8 +10994,11 @@ type Settings struct {
 	AutoenableConnectors *AutoenableConnectors `protobuf:"bytes,11,opt,name=autoenable_connectors,json=autoenableConnectors,proto3" json:"autoenable_connectors,omitempty"`
 	// oidc_redirect_url is the callback to register at the OIDC provider.
 	OidcRedirectUrl string `protobuf:"bytes,12,opt,name=oidc_redirect_url,json=oidcRedirectUrl,proto3" json:"oidc_redirect_url,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// decision_models is the allowlist of decision models; models (above) is
+	// the allowlist of text models. An id is in one list only.
+	DecisionModels []*ModelOption `protobuf:"bytes,13,rep,name=decision_models,json=decisionModels,proto3" json:"decision_models,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Settings) Reset() {
@@ -11102,6 +11115,13 @@ func (x *Settings) GetOidcRedirectUrl() string {
 	return ""
 }
 
+func (x *Settings) GetDecisionModels() []*ModelOption {
+	if x != nil {
+		return x.DecisionModels
+	}
+	return nil
+}
+
 type Provider struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -11110,6 +11130,8 @@ type Provider struct {
 	Fields        []*ProviderField       `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
 	SupportsCache bool                   `protobuf:"varint,5,opt,name=supports_cache,json=supportsCache,proto3" json:"supports_cache,omitempty"`
 	CacheTtls     []string               `protobuf:"bytes,6,rep,name=cache_ttls,json=cacheTtls,proto3" json:"cache_ttls,omitempty"`
+	// kinds are the kinds of model the provider serves: "text", "decision".
+	Kinds         []string `protobuf:"bytes,7,rep,name=kinds,proto3" json:"kinds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11182,6 +11204,13 @@ func (x *Provider) GetSupportsCache() bool {
 func (x *Provider) GetCacheTtls() []string {
 	if x != nil {
 		return x.CacheTtls
+	}
+	return nil
+}
+
+func (x *Provider) GetKinds() []string {
+	if x != nil {
+		return x.Kinds
 	}
 	return nil
 }
@@ -11263,8 +11292,11 @@ func (x *ProviderField) GetSecret() bool {
 }
 
 type SetModelsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Models        []string               `protobuf:"bytes,1,rep,name=models,proto3" json:"models,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Models []string               `protobuf:"bytes,1,rep,name=models,proto3" json:"models,omitempty"`
+	// kind picks the allowlist to replace: "text" (the default when empty) or
+	// "decision".
+	Kind          string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11304,6 +11336,13 @@ func (x *SetModelsRequest) GetModels() []string {
 		return x.Models
 	}
 	return nil
+}
+
+func (x *SetModelsRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
 }
 
 // ListProviderModels asks one provider which models its saved key can call
@@ -11361,6 +11400,8 @@ type ProviderModel struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// context_window is in tokens; 0 when the provider does not report one.
 	ContextWindow int32 `protobuf:"varint,3,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
+	// kind is "text" or "decision": the allowlist the model belongs in.
+	Kind          string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11414,6 +11455,13 @@ func (x *ProviderModel) GetContextWindow() int32 {
 		return x.ContextWindow
 	}
 	return 0
+}
+
+func (x *ProviderModel) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
 }
 
 type ListProviderModelsResponse struct {
@@ -18267,12 +18315,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\tR\tupdatedAt\x12\x14\n" +
 	"\x05model\x18\x05 \x01(\tR\x05model\x12\x1a\n" +
-	"\bthinking\x18\x06 \x01(\tR\bthinking\"x\n" +
+	"\bthinking\x18\x06 \x01(\tR\bthinking\"\x8c\x01\n" +
 	"\vModelOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
 	"\x05label\x18\x03 \x01(\tR\x05label\x12'\n" +
-	"\x0fthinking_levels\x18\x04 \x03(\tR\x0ethinkingLevels\"*\n" +
+	"\x0fthinking_levels\x18\x04 \x03(\tR\x0ethinkingLevels\x12\x12\n" +
+	"\x04kind\x18\x05 \x01(\tR\x04kind\"*\n" +
 	"\x11ListModelsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\xad\x01\n" +
 	"\x12ListModelsResponse\x12,\n" +
@@ -18530,7 +18579,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\benv_name\x18\x04 \x01(\tR\aenvName\x12\x16\n" +
 	"\x06secret\x18\x05 \x01(\bR\x06secret\x12)\n" +
 	"\x10restart_required\x18\x06 \x01(\bR\x0frestartRequired\x12\x12\n" +
-	"\x04type\x18\a \x01(\tR\x04type\"\xad\x04\n" +
+	"\x04type\x18\a \x01(\tR\x04type\"\xec\x04\n" +
 	"\bSettings\x12,\n" +
 	"\x06fields\x18\x01 \x03(\v2\x14.silo.v1.ConfigFieldR\x06fields\x12\x12\n" +
 	"\x04yaml\x18\x02 \x01(\tR\x04yaml\x12\x1b\n" +
@@ -18545,7 +18594,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\ftunnels_host\x18\n" +
 	" \x01(\tR\vtunnelsHost\x12R\n" +
 	"\x15autoenable_connectors\x18\v \x01(\v2\x1d.silo.v1.AutoenableConnectorsR\x14autoenableConnectors\x12*\n" +
-	"\x11oidc_redirect_url\x18\f \x01(\tR\x0foidcRedirectUrl\"\xc6\x01\n" +
+	"\x11oidc_redirect_url\x18\f \x01(\tR\x0foidcRedirectUrl\x12=\n" +
+	"\x0fdecision_models\x18\r \x03(\v2\x14.silo.v1.ModelOptionR\x0edecisionModels\"\xdc\x01\n" +
 	"\bProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -18553,21 +18603,24 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06fields\x18\x04 \x03(\v2\x16.silo.v1.ProviderFieldR\x06fields\x12%\n" +
 	"\x0esupports_cache\x18\x05 \x01(\bR\rsupportsCache\x12\x1d\n" +
 	"\n" +
-	"cache_ttls\x18\x06 \x03(\tR\tcacheTtls\"\x85\x01\n" +
+	"cache_ttls\x18\x06 \x03(\tR\tcacheTtls\x12\x14\n" +
+	"\x05kinds\x18\a \x03(\tR\x05kinds\"\x85\x01\n" +
 	"\rProviderField\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\tR\x04type\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06secret\x18\x05 \x01(\bR\x06secret\"*\n" +
+	"\x06secret\x18\x05 \x01(\bR\x06secret\">\n" +
 	"\x10SetModelsRequest\x12\x16\n" +
-	"\x06models\x18\x01 \x03(\tR\x06models\"7\n" +
+	"\x06models\x18\x01 \x03(\tR\x06models\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\"7\n" +
 	"\x19ListProviderModelsRequest\x12\x1a\n" +
-	"\bprovider\x18\x01 \x01(\tR\bprovider\"Z\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\"n\n" +
 	"\rProviderModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
-	"\x0econtext_window\x18\x03 \x01(\x05R\rcontextWindow\"L\n" +
+	"\x0econtext_window\x18\x03 \x01(\x05R\rcontextWindow\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\"L\n" +
 	"\x1aListProviderModelsResponse\x12.\n" +
 	"\x06models\x18\x01 \x03(\v2\x16.silo.v1.ProviderModelR\x06models\"\x82\x01\n" +
 	"\fConnectorVar\x12\x12\n" +
@@ -19651,343 +19704,344 @@ var file_silo_v1_ui_proto_depIdxs = []int32{
 	117, // 48: silo.v1.Settings.models:type_name -> silo.v1.ModelOption
 	189, // 49: silo.v1.Settings.connector_vars:type_name -> silo.v1.ConnectorVar
 	191, // 50: silo.v1.Settings.autoenable_connectors:type_name -> silo.v1.AutoenableConnectors
-	184, // 51: silo.v1.Provider.fields:type_name -> silo.v1.ProviderField
-	187, // 52: silo.v1.ListProviderModelsResponse.models:type_name -> silo.v1.ProviderModel
-	0,   // 53: silo.v1.ConnectorVar.source:type_name -> silo.v1.ConfigSource
-	189, // 54: silo.v1.SetConnectorVarsRequest.connector_vars:type_name -> silo.v1.ConnectorVar
-	0,   // 55: silo.v1.AutoenableConnectors.source:type_name -> silo.v1.ConfigSource
-	194, // 56: silo.v1.SearchEngine.fields:type_name -> silo.v1.SearchEngineField
-	282, // 57: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
-	197, // 58: silo.v1.ListAuditResponse.rows:type_name -> silo.v1.AuditRow
-	200, // 59: silo.v1.ListLLMLogsResponse.logs:type_name -> silo.v1.LLMLog
-	203, // 60: silo.v1.Connector.header_keys:type_name -> silo.v1.HeaderKey
-	204, // 61: silo.v1.Connector.env_keys:type_name -> silo.v1.EnvKey
-	244, // 62: silo.v1.Connector.fields:type_name -> silo.v1.ChannelField
-	283, // 63: silo.v1.Connector.config:type_name -> silo.v1.Connector.ConfigEntry
-	206, // 64: silo.v1.ListConnectorsResponse.connectors:type_name -> silo.v1.Connector
-	209, // 65: silo.v1.CreateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	205, // 66: silo.v1.CreateConnectorRequest.env:type_name -> silo.v1.EnvInput
-	209, // 67: silo.v1.UpdateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	205, // 68: silo.v1.UpdateConnectorRequest.env:type_name -> silo.v1.EnvInput
-	284, // 69: silo.v1.UpdateConnectorRequest.config:type_name -> silo.v1.UpdateConnectorRequest.ConfigEntry
-	206, // 70: silo.v1.BotConnector.connector:type_name -> silo.v1.Connector
-	214, // 71: silo.v1.ListBotConnectorsResponse.connectors:type_name -> silo.v1.BotConnector
-	209, // 72: silo.v1.CreateBotConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	205, // 73: silo.v1.CreateBotConnectorRequest.env:type_name -> silo.v1.EnvInput
-	285, // 74: silo.v1.CreateBotConnectorRequest.config:type_name -> silo.v1.CreateBotConnectorRequest.ConfigEntry
-	228, // 75: silo.v1.ListSkillsResponse.skills:type_name -> silo.v1.Skill
-	235, // 76: silo.v1.ListBotSkillsResponse.skills:type_name -> silo.v1.BotSkill
-	243, // 77: silo.v1.ChannelField.options:type_name -> silo.v1.ChannelFieldOption
-	244, // 78: silo.v1.ChannelAdapter.fields:type_name -> silo.v1.ChannelField
-	245, // 79: silo.v1.ChannelAdapter.actions:type_name -> silo.v1.ChannelAdapterAction
-	243, // 80: silo.v1.ChannelState.options:type_name -> silo.v1.ChannelFieldOption
-	286, // 81: silo.v1.ChannelState.values:type_name -> silo.v1.ChannelState.ValuesEntry
-	287, // 82: silo.v1.Channel.config:type_name -> silo.v1.Channel.ConfigEntry
-	247, // 83: silo.v1.Channel.state:type_name -> silo.v1.ChannelState
-	246, // 84: silo.v1.ListChannelAdaptersResponse.adapters:type_name -> silo.v1.ChannelAdapter
-	248, // 85: silo.v1.ListBotChannelsResponse.channels:type_name -> silo.v1.Channel
-	288, // 86: silo.v1.CreateChannelRequest.config:type_name -> silo.v1.CreateChannelRequest.ConfigEntry
-	289, // 87: silo.v1.CreateChannelRequest.secrets:type_name -> silo.v1.CreateChannelRequest.SecretsEntry
-	290, // 88: silo.v1.UpdateChannelRequest.config:type_name -> silo.v1.UpdateChannelRequest.ConfigEntry
-	291, // 89: silo.v1.UpdateChannelRequest.secrets:type_name -> silo.v1.UpdateChannelRequest.SecretsEntry
-	292, // 90: silo.v1.ChannelActionRequest.payload:type_name -> silo.v1.ChannelActionRequest.PayloadEntry
-	247, // 91: silo.v1.ChannelActionResponse.state:type_name -> silo.v1.ChannelState
-	293, // 92: silo.v1.DriveOption.extra:type_name -> silo.v1.DriveOption.ExtraEntry
-	259, // 93: silo.v1.DriveVar.options:type_name -> silo.v1.DriveOption
-	294, // 94: silo.v1.DriveVar.visible_if:type_name -> silo.v1.DriveVar.VisibleIfEntry
-	260, // 95: silo.v1.DriveTemplate.vars:type_name -> silo.v1.DriveVar
-	295, // 96: silo.v1.Drive.options:type_name -> silo.v1.Drive.OptionsEntry
-	261, // 97: silo.v1.ListDriveTemplatesResponse.templates:type_name -> silo.v1.DriveTemplate
-	262, // 98: silo.v1.ListDrivesResponse.drives:type_name -> silo.v1.Drive
-	296, // 99: silo.v1.SaveDriveRequest.options:type_name -> silo.v1.SaveDriveRequest.OptionsEntry
-	259, // 100: silo.v1.PickDriveOptionsResponse.options:type_name -> silo.v1.DriveOption
-	275, // 101: silo.v1.BrowseDriveResponse.dirs:type_name -> silo.v1.BrowseDriveDir
-	277, // 102: silo.v1.DriveProviderSettings.fields:type_name -> silo.v1.DriveSystemField
-	278, // 103: silo.v1.DriveSettings.providers:type_name -> silo.v1.DriveProviderSettings
-	297, // 104: silo.v1.PutDriveSettingsRequest.values:type_name -> silo.v1.PutDriveSettingsRequest.ValuesEntry
-	1,   // 105: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
-	3,   // 106: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
-	5,   // 107: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
-	8,   // 108: silo.v1.UI.AuthOptions:input_type -> silo.v1.AuthOptionsRequest
-	10,  // 109: silo.v1.UI.GetInvite:input_type -> silo.v1.GetInviteRequest
-	12,  // 110: silo.v1.UI.AcceptInvite:input_type -> silo.v1.AcceptInviteRequest
-	14,  // 111: silo.v1.UI.ChangeEmail:input_type -> silo.v1.ChangeEmailRequest
-	15,  // 112: silo.v1.UI.ChangePassword:input_type -> silo.v1.ChangePasswordRequest
-	17,  // 113: silo.v1.UI.ListSessions:input_type -> silo.v1.ListSessionsRequest
-	19,  // 114: silo.v1.UI.RevokeSession:input_type -> silo.v1.RevokeSessionRequest
-	20,  // 115: silo.v1.UI.RevokeOtherSessions:input_type -> silo.v1.RevokeOtherSessionsRequest
-	21,  // 116: silo.v1.UI.StartTOTP:input_type -> silo.v1.StartTOTPRequest
-	23,  // 117: silo.v1.UI.ConfirmTOTP:input_type -> silo.v1.ConfirmTOTPRequest
-	25,  // 118: silo.v1.UI.DisableTOTP:input_type -> silo.v1.DisableTOTPRequest
-	26,  // 119: silo.v1.UI.NewRecoveryCodes:input_type -> silo.v1.NewRecoveryCodesRequest
-	27,  // 120: silo.v1.UI.ListUsers:input_type -> silo.v1.ListUsersRequest
-	29,  // 121: silo.v1.UI.UpdateUser:input_type -> silo.v1.UpdateUserRequest
-	30,  // 122: silo.v1.UI.DeleteUser:input_type -> silo.v1.DeleteUserRequest
-	33,  // 123: silo.v1.UI.CreateInvite:input_type -> silo.v1.CreateInviteRequest
-	34,  // 124: silo.v1.UI.DeleteInvite:input_type -> silo.v1.DeleteInviteRequest
-	36,  // 125: silo.v1.UI.CheckOIDC:input_type -> silo.v1.CheckOIDCRequest
-	39,  // 126: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
-	41,  // 127: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
-	42,  // 128: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
-	43,  // 129: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
-	43,  // 130: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
-	43,  // 131: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
-	43,  // 132: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
-	43,  // 133: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
-	43,  // 134: silo.v1.UI.ListBotContainers:input_type -> silo.v1.GetBotRequest
-	43,  // 135: silo.v1.UI.RemoveBotContainers:input_type -> silo.v1.GetBotRequest
-	43,  // 136: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
-	49,  // 137: silo.v1.UI.ListMemories:input_type -> silo.v1.ListMemoriesRequest
-	51,  // 138: silo.v1.UI.SearchMemories:input_type -> silo.v1.SearchMemoriesRequest
-	53,  // 139: silo.v1.UI.DeleteMemory:input_type -> silo.v1.DeleteMemoryRequest
-	57,  // 140: silo.v1.UI.ListKnowledge:input_type -> silo.v1.ListKnowledgeRequest
-	59,  // 141: silo.v1.UI.AddKnowledgeFolder:input_type -> silo.v1.AddKnowledgeFolderRequest
-	60,  // 142: silo.v1.UI.RemoveKnowledgeFolder:input_type -> silo.v1.RemoveKnowledgeFolderRequest
-	62,  // 143: silo.v1.UI.SyncKnowledge:input_type -> silo.v1.SyncKnowledgeRequest
-	64,  // 144: silo.v1.UI.SearchKnowledge:input_type -> silo.v1.SearchKnowledgeRequest
-	82,  // 145: silo.v1.UI.ListFeed:input_type -> silo.v1.ListFeedRequest
-	84,  // 146: silo.v1.UI.MarkFeedRead:input_type -> silo.v1.MarkFeedReadRequest
-	86,  // 147: silo.v1.UI.DeleteFeedPost:input_type -> silo.v1.DeleteFeedPostRequest
-	88,  // 148: silo.v1.UI.QuoteFeedPost:input_type -> silo.v1.QuoteFeedPostRequest
-	91,  // 149: silo.v1.UI.ListTunnels:input_type -> silo.v1.ListTunnelsRequest
-	93,  // 150: silo.v1.UI.CreateTunnel:input_type -> silo.v1.CreateTunnelRequest
-	94,  // 151: silo.v1.UI.UpdateTunnel:input_type -> silo.v1.UpdateTunnelRequest
-	95,  // 152: silo.v1.UI.DeleteTunnel:input_type -> silo.v1.DeleteTunnelRequest
-	100, // 153: silo.v1.UI.ListMail:input_type -> silo.v1.ListMailRequest
-	102, // 154: silo.v1.UI.GetMail:input_type -> silo.v1.GetMailRequest
-	103, // 155: silo.v1.UI.DeleteMail:input_type -> silo.v1.DeleteMailRequest
-	105, // 156: silo.v1.UI.UpdateMailbox:input_type -> silo.v1.UpdateMailboxRequest
-	106, // 157: silo.v1.UI.RotateMailbox:input_type -> silo.v1.RotateMailboxRequest
-	108, // 158: silo.v1.UI.ListAutomations:input_type -> silo.v1.ListAutomationsRequest
-	110, // 159: silo.v1.UI.CreateAutomation:input_type -> silo.v1.CreateAutomationRequest
-	111, // 160: silo.v1.UI.UpdateAutomation:input_type -> silo.v1.UpdateAutomationRequest
-	112, // 161: silo.v1.UI.DeleteAutomation:input_type -> silo.v1.DeleteAutomationRequest
-	114, // 162: silo.v1.UI.RunAutomation:input_type -> silo.v1.RunAutomationRequest
-	124, // 163: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
-	126, // 164: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
-	127, // 165: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
-	128, // 166: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
-	122, // 167: silo.v1.UI.SetChatModel:input_type -> silo.v1.SetChatModelRequest
-	123, // 168: silo.v1.UI.SetChatThinking:input_type -> silo.v1.SetChatThinkingRequest
-	118, // 169: silo.v1.UI.ListModels:input_type -> silo.v1.ListModelsRequest
-	120, // 170: silo.v1.UI.Transcribe:input_type -> silo.v1.TranscribeRequest
-	131, // 171: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
-	133, // 172: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
-	135, // 173: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
-	137, // 174: silo.v1.UI.EditMessage:input_type -> silo.v1.EditMessageRequest
-	138, // 175: silo.v1.UI.DeleteMessage:input_type -> silo.v1.DeleteMessageRequest
-	140, // 176: silo.v1.UI.DivergeChat:input_type -> silo.v1.DivergeChatRequest
-	142, // 177: silo.v1.UI.CompactChat:input_type -> silo.v1.CompactChatRequest
-	144, // 178: silo.v1.UI.CollectMemories:input_type -> silo.v1.CollectMemoriesRequest
-	147, // 179: silo.v1.UI.ListSubagents:input_type -> silo.v1.ListSubagentsRequest
-	149, // 180: silo.v1.UI.GetSubagent:input_type -> silo.v1.GetSubagentRequest
-	150, // 181: silo.v1.UI.StopSubagent:input_type -> silo.v1.StopSubagentRequest
-	154, // 182: silo.v1.UI.GetTaskboard:input_type -> silo.v1.GetTaskboardRequest
-	155, // 183: silo.v1.UI.ClearTaskboard:input_type -> silo.v1.ClearTaskboardRequest
-	157, // 184: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
-	159, // 185: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
-	160, // 186: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
-	164, // 187: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
-	166, // 188: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
-	169, // 189: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
-	171, // 190: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
-	69,  // 191: silo.v1.UI.ListChanges:input_type -> silo.v1.ListChangesRequest
-	74,  // 192: silo.v1.UI.ListChangeFiles:input_type -> silo.v1.ListChangeFilesRequest
-	76,  // 193: silo.v1.UI.GetChangePatch:input_type -> silo.v1.GetChangePatchRequest
-	78,  // 194: silo.v1.UI.RestoreChange:input_type -> silo.v1.RestoreChangeRequest
-	72,  // 195: silo.v1.UI.ListDriveChanges:input_type -> silo.v1.ListDriveChangesRequest
-	173, // 196: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
-	175, // 197: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
-	177, // 198: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
-	178, // 199: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
-	179, // 200: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
-	195, // 201: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
-	196, // 202: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
-	185, // 203: silo.v1.UI.SetModels:input_type -> silo.v1.SetModelsRequest
-	186, // 204: silo.v1.UI.ListProviderModels:input_type -> silo.v1.ListProviderModelsRequest
-	190, // 205: silo.v1.UI.SetConnectorVars:input_type -> silo.v1.SetConnectorVarsRequest
-	192, // 206: silo.v1.UI.SetAutoenableConnectors:input_type -> silo.v1.SetAutoenableConnectorsRequest
-	198, // 207: silo.v1.UI.ListAudit:input_type -> silo.v1.ListAuditRequest
-	201, // 208: silo.v1.UI.ListLLMLogs:input_type -> silo.v1.ListLLMLogsRequest
-	207, // 209: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
-	210, // 210: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
-	211, // 211: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
-	212, // 212: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
-	215, // 213: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
-	217, // 214: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
-	218, // 215: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
-	219, // 216: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
-	221, // 217: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
-	222, // 218: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
-	224, // 219: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
-	226, // 220: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
-	229, // 221: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
-	231, // 222: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
-	233, // 223: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
-	236, // 224: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
-	238, // 225: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
-	239, // 226: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
-	240, // 227: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
-	241, // 228: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
-	249, // 229: silo.v1.UI.ListChannelAdapters:input_type -> silo.v1.ListChannelAdaptersRequest
-	251, // 230: silo.v1.UI.ListBotChannels:input_type -> silo.v1.ListBotChannelsRequest
-	253, // 231: silo.v1.UI.CreateChannel:input_type -> silo.v1.CreateChannelRequest
-	254, // 232: silo.v1.UI.UpdateChannel:input_type -> silo.v1.UpdateChannelRequest
-	255, // 233: silo.v1.UI.DeleteChannel:input_type -> silo.v1.DeleteChannelRequest
-	257, // 234: silo.v1.UI.ChannelAction:input_type -> silo.v1.ChannelActionRequest
-	263, // 235: silo.v1.UI.ListDriveTemplates:input_type -> silo.v1.ListDriveTemplatesRequest
-	265, // 236: silo.v1.UI.ListDrives:input_type -> silo.v1.ListDrivesRequest
-	267, // 237: silo.v1.UI.SaveDrive:input_type -> silo.v1.SaveDriveRequest
-	268, // 238: silo.v1.UI.DeleteDrive:input_type -> silo.v1.DeleteDriveRequest
-	270, // 239: silo.v1.UI.BeginDriveAuth:input_type -> silo.v1.BeginDriveAuthRequest
-	272, // 240: silo.v1.UI.PickDriveOptions:input_type -> silo.v1.PickDriveOptionsRequest
-	274, // 241: silo.v1.UI.BrowseDrive:input_type -> silo.v1.BrowseDriveRequest
-	280, // 242: silo.v1.UI.GetDriveSettings:input_type -> silo.v1.GetDriveSettingsRequest
-	281, // 243: silo.v1.UI.PutDriveSettings:input_type -> silo.v1.PutDriveSettingsRequest
-	2,   // 244: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
-	4,   // 245: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
-	6,   // 246: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
-	9,   // 247: silo.v1.UI.AuthOptions:output_type -> silo.v1.AuthOptionsResponse
-	11,  // 248: silo.v1.UI.GetInvite:output_type -> silo.v1.InviteInfo
-	13,  // 249: silo.v1.UI.AcceptInvite:output_type -> silo.v1.AcceptInviteResponse
-	7,   // 250: silo.v1.UI.ChangeEmail:output_type -> silo.v1.User
-	7,   // 251: silo.v1.UI.ChangePassword:output_type -> silo.v1.User
-	18,  // 252: silo.v1.UI.ListSessions:output_type -> silo.v1.ListSessionsResponse
-	18,  // 253: silo.v1.UI.RevokeSession:output_type -> silo.v1.ListSessionsResponse
-	18,  // 254: silo.v1.UI.RevokeOtherSessions:output_type -> silo.v1.ListSessionsResponse
-	22,  // 255: silo.v1.UI.StartTOTP:output_type -> silo.v1.StartTOTPResponse
-	24,  // 256: silo.v1.UI.ConfirmTOTP:output_type -> silo.v1.RecoveryCodes
-	7,   // 257: silo.v1.UI.DisableTOTP:output_type -> silo.v1.User
-	24,  // 258: silo.v1.UI.NewRecoveryCodes:output_type -> silo.v1.RecoveryCodes
-	28,  // 259: silo.v1.UI.ListUsers:output_type -> silo.v1.ListUsersResponse
-	7,   // 260: silo.v1.UI.UpdateUser:output_type -> silo.v1.User
-	31,  // 261: silo.v1.UI.DeleteUser:output_type -> silo.v1.DeleteUserResponse
-	32,  // 262: silo.v1.UI.CreateInvite:output_type -> silo.v1.Invite
-	35,  // 263: silo.v1.UI.DeleteInvite:output_type -> silo.v1.DeleteInviteResponse
-	37,  // 264: silo.v1.UI.CheckOIDC:output_type -> silo.v1.CheckOIDCResponse
-	40,  // 265: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
-	38,  // 266: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
-	38,  // 267: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
-	38,  // 268: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
-	44,  // 269: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
-	38,  // 270: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
-	38,  // 271: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
-	38,  // 272: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
-	46,  // 273: silo.v1.UI.ListBotContainers:output_type -> silo.v1.BotContainers
-	38,  // 274: silo.v1.UI.RemoveBotContainers:output_type -> silo.v1.Bot
-	47,  // 275: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
-	50,  // 276: silo.v1.UI.ListMemories:output_type -> silo.v1.ListMemoriesResponse
-	52,  // 277: silo.v1.UI.SearchMemories:output_type -> silo.v1.SearchMemoriesResponse
-	54,  // 278: silo.v1.UI.DeleteMemory:output_type -> silo.v1.DeleteMemoryResponse
-	58,  // 279: silo.v1.UI.ListKnowledge:output_type -> silo.v1.ListKnowledgeResponse
-	55,  // 280: silo.v1.UI.AddKnowledgeFolder:output_type -> silo.v1.KnowledgeFolder
-	61,  // 281: silo.v1.UI.RemoveKnowledgeFolder:output_type -> silo.v1.RemoveKnowledgeFolderResponse
-	55,  // 282: silo.v1.UI.SyncKnowledge:output_type -> silo.v1.KnowledgeFolder
-	65,  // 283: silo.v1.UI.SearchKnowledge:output_type -> silo.v1.SearchKnowledgeResponse
-	83,  // 284: silo.v1.UI.ListFeed:output_type -> silo.v1.ListFeedResponse
-	85,  // 285: silo.v1.UI.MarkFeedRead:output_type -> silo.v1.MarkFeedReadResponse
-	87,  // 286: silo.v1.UI.DeleteFeedPost:output_type -> silo.v1.DeleteFeedPostResponse
-	89,  // 287: silo.v1.UI.QuoteFeedPost:output_type -> silo.v1.QuoteFeedPostResponse
-	92,  // 288: silo.v1.UI.ListTunnels:output_type -> silo.v1.ListTunnelsResponse
-	90,  // 289: silo.v1.UI.CreateTunnel:output_type -> silo.v1.Tunnel
-	90,  // 290: silo.v1.UI.UpdateTunnel:output_type -> silo.v1.Tunnel
-	96,  // 291: silo.v1.UI.DeleteTunnel:output_type -> silo.v1.DeleteTunnelResponse
-	101, // 292: silo.v1.UI.ListMail:output_type -> silo.v1.ListMailResponse
-	99,  // 293: silo.v1.UI.GetMail:output_type -> silo.v1.Mail
-	104, // 294: silo.v1.UI.DeleteMail:output_type -> silo.v1.DeleteMailResponse
-	97,  // 295: silo.v1.UI.UpdateMailbox:output_type -> silo.v1.Mailbox
-	97,  // 296: silo.v1.UI.RotateMailbox:output_type -> silo.v1.Mailbox
-	109, // 297: silo.v1.UI.ListAutomations:output_type -> silo.v1.ListAutomationsResponse
-	107, // 298: silo.v1.UI.CreateAutomation:output_type -> silo.v1.Automation
-	107, // 299: silo.v1.UI.UpdateAutomation:output_type -> silo.v1.Automation
-	113, // 300: silo.v1.UI.DeleteAutomation:output_type -> silo.v1.DeleteAutomationResponse
-	115, // 301: silo.v1.UI.RunAutomation:output_type -> silo.v1.RunAutomationResponse
-	125, // 302: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
-	116, // 303: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
-	116, // 304: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
-	129, // 305: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
-	116, // 306: silo.v1.UI.SetChatModel:output_type -> silo.v1.Chat
-	116, // 307: silo.v1.UI.SetChatThinking:output_type -> silo.v1.Chat
-	119, // 308: silo.v1.UI.ListModels:output_type -> silo.v1.ListModelsResponse
-	121, // 309: silo.v1.UI.Transcribe:output_type -> silo.v1.TranscribeResponse
-	132, // 310: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
-	134, // 311: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
-	136, // 312: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
-	132, // 313: silo.v1.UI.EditMessage:output_type -> silo.v1.SendResponse
-	139, // 314: silo.v1.UI.DeleteMessage:output_type -> silo.v1.DeleteMessageResponse
-	141, // 315: silo.v1.UI.DivergeChat:output_type -> silo.v1.DivergeChatResponse
-	143, // 316: silo.v1.UI.CompactChat:output_type -> silo.v1.CompactChatResponse
-	145, // 317: silo.v1.UI.CollectMemories:output_type -> silo.v1.CollectMemoriesResponse
-	148, // 318: silo.v1.UI.ListSubagents:output_type -> silo.v1.ListSubagentsResponse
-	146, // 319: silo.v1.UI.GetSubagent:output_type -> silo.v1.Subagent
-	151, // 320: silo.v1.UI.StopSubagent:output_type -> silo.v1.StopSubagentResponse
-	153, // 321: silo.v1.UI.GetTaskboard:output_type -> silo.v1.Taskboard
-	153, // 322: silo.v1.UI.ClearTaskboard:output_type -> silo.v1.Taskboard
-	158, // 323: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
-	156, // 324: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
-	161, // 325: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
-	165, // 326: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
-	163, // 327: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
-	170, // 328: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
-	167, // 329: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
-	70,  // 330: silo.v1.UI.ListChanges:output_type -> silo.v1.ListChangesResponse
-	75,  // 331: silo.v1.UI.ListChangeFiles:output_type -> silo.v1.ListChangeFilesResponse
-	77,  // 332: silo.v1.UI.GetChangePatch:output_type -> silo.v1.GetChangePatchResponse
-	80,  // 333: silo.v1.UI.RestoreChange:output_type -> silo.v1.RestoreChangeResponse
-	73,  // 334: silo.v1.UI.ListDriveChanges:output_type -> silo.v1.ListDriveChangesResponse
-	174, // 335: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
-	176, // 336: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
-	180, // 337: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
-	180, // 338: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
-	180, // 339: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
-	182, // 340: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
-	182, // 341: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
-	182, // 342: silo.v1.UI.SetModels:output_type -> silo.v1.Settings
-	188, // 343: silo.v1.UI.ListProviderModels:output_type -> silo.v1.ListProviderModelsResponse
-	182, // 344: silo.v1.UI.SetConnectorVars:output_type -> silo.v1.Settings
-	182, // 345: silo.v1.UI.SetAutoenableConnectors:output_type -> silo.v1.Settings
-	199, // 346: silo.v1.UI.ListAudit:output_type -> silo.v1.ListAuditResponse
-	202, // 347: silo.v1.UI.ListLLMLogs:output_type -> silo.v1.ListLLMLogsResponse
-	208, // 348: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
-	206, // 349: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
-	206, // 350: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
-	213, // 351: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
-	216, // 352: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
-	214, // 353: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
-	214, // 354: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
-	220, // 355: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
-	214, // 356: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
-	223, // 357: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
-	225, // 358: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
-	227, // 359: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
-	230, // 360: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
-	232, // 361: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
-	234, // 362: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
-	237, // 363: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
-	235, // 364: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
-	174, // 365: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
-	176, // 366: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
-	242, // 367: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
-	250, // 368: silo.v1.UI.ListChannelAdapters:output_type -> silo.v1.ListChannelAdaptersResponse
-	252, // 369: silo.v1.UI.ListBotChannels:output_type -> silo.v1.ListBotChannelsResponse
-	248, // 370: silo.v1.UI.CreateChannel:output_type -> silo.v1.Channel
-	248, // 371: silo.v1.UI.UpdateChannel:output_type -> silo.v1.Channel
-	256, // 372: silo.v1.UI.DeleteChannel:output_type -> silo.v1.DeleteChannelResponse
-	258, // 373: silo.v1.UI.ChannelAction:output_type -> silo.v1.ChannelActionResponse
-	264, // 374: silo.v1.UI.ListDriveTemplates:output_type -> silo.v1.ListDriveTemplatesResponse
-	266, // 375: silo.v1.UI.ListDrives:output_type -> silo.v1.ListDrivesResponse
-	262, // 376: silo.v1.UI.SaveDrive:output_type -> silo.v1.Drive
-	269, // 377: silo.v1.UI.DeleteDrive:output_type -> silo.v1.DeleteDriveResponse
-	271, // 378: silo.v1.UI.BeginDriveAuth:output_type -> silo.v1.BeginDriveAuthResponse
-	273, // 379: silo.v1.UI.PickDriveOptions:output_type -> silo.v1.PickDriveOptionsResponse
-	276, // 380: silo.v1.UI.BrowseDrive:output_type -> silo.v1.BrowseDriveResponse
-	279, // 381: silo.v1.UI.GetDriveSettings:output_type -> silo.v1.DriveSettings
-	279, // 382: silo.v1.UI.PutDriveSettings:output_type -> silo.v1.DriveSettings
-	244, // [244:383] is the sub-list for method output_type
-	105, // [105:244] is the sub-list for method input_type
-	105, // [105:105] is the sub-list for extension type_name
-	105, // [105:105] is the sub-list for extension extendee
-	0,   // [0:105] is the sub-list for field type_name
+	117, // 51: silo.v1.Settings.decision_models:type_name -> silo.v1.ModelOption
+	184, // 52: silo.v1.Provider.fields:type_name -> silo.v1.ProviderField
+	187, // 53: silo.v1.ListProviderModelsResponse.models:type_name -> silo.v1.ProviderModel
+	0,   // 54: silo.v1.ConnectorVar.source:type_name -> silo.v1.ConfigSource
+	189, // 55: silo.v1.SetConnectorVarsRequest.connector_vars:type_name -> silo.v1.ConnectorVar
+	0,   // 56: silo.v1.AutoenableConnectors.source:type_name -> silo.v1.ConfigSource
+	194, // 57: silo.v1.SearchEngine.fields:type_name -> silo.v1.SearchEngineField
+	282, // 58: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
+	197, // 59: silo.v1.ListAuditResponse.rows:type_name -> silo.v1.AuditRow
+	200, // 60: silo.v1.ListLLMLogsResponse.logs:type_name -> silo.v1.LLMLog
+	203, // 61: silo.v1.Connector.header_keys:type_name -> silo.v1.HeaderKey
+	204, // 62: silo.v1.Connector.env_keys:type_name -> silo.v1.EnvKey
+	244, // 63: silo.v1.Connector.fields:type_name -> silo.v1.ChannelField
+	283, // 64: silo.v1.Connector.config:type_name -> silo.v1.Connector.ConfigEntry
+	206, // 65: silo.v1.ListConnectorsResponse.connectors:type_name -> silo.v1.Connector
+	209, // 66: silo.v1.CreateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	205, // 67: silo.v1.CreateConnectorRequest.env:type_name -> silo.v1.EnvInput
+	209, // 68: silo.v1.UpdateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	205, // 69: silo.v1.UpdateConnectorRequest.env:type_name -> silo.v1.EnvInput
+	284, // 70: silo.v1.UpdateConnectorRequest.config:type_name -> silo.v1.UpdateConnectorRequest.ConfigEntry
+	206, // 71: silo.v1.BotConnector.connector:type_name -> silo.v1.Connector
+	214, // 72: silo.v1.ListBotConnectorsResponse.connectors:type_name -> silo.v1.BotConnector
+	209, // 73: silo.v1.CreateBotConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	205, // 74: silo.v1.CreateBotConnectorRequest.env:type_name -> silo.v1.EnvInput
+	285, // 75: silo.v1.CreateBotConnectorRequest.config:type_name -> silo.v1.CreateBotConnectorRequest.ConfigEntry
+	228, // 76: silo.v1.ListSkillsResponse.skills:type_name -> silo.v1.Skill
+	235, // 77: silo.v1.ListBotSkillsResponse.skills:type_name -> silo.v1.BotSkill
+	243, // 78: silo.v1.ChannelField.options:type_name -> silo.v1.ChannelFieldOption
+	244, // 79: silo.v1.ChannelAdapter.fields:type_name -> silo.v1.ChannelField
+	245, // 80: silo.v1.ChannelAdapter.actions:type_name -> silo.v1.ChannelAdapterAction
+	243, // 81: silo.v1.ChannelState.options:type_name -> silo.v1.ChannelFieldOption
+	286, // 82: silo.v1.ChannelState.values:type_name -> silo.v1.ChannelState.ValuesEntry
+	287, // 83: silo.v1.Channel.config:type_name -> silo.v1.Channel.ConfigEntry
+	247, // 84: silo.v1.Channel.state:type_name -> silo.v1.ChannelState
+	246, // 85: silo.v1.ListChannelAdaptersResponse.adapters:type_name -> silo.v1.ChannelAdapter
+	248, // 86: silo.v1.ListBotChannelsResponse.channels:type_name -> silo.v1.Channel
+	288, // 87: silo.v1.CreateChannelRequest.config:type_name -> silo.v1.CreateChannelRequest.ConfigEntry
+	289, // 88: silo.v1.CreateChannelRequest.secrets:type_name -> silo.v1.CreateChannelRequest.SecretsEntry
+	290, // 89: silo.v1.UpdateChannelRequest.config:type_name -> silo.v1.UpdateChannelRequest.ConfigEntry
+	291, // 90: silo.v1.UpdateChannelRequest.secrets:type_name -> silo.v1.UpdateChannelRequest.SecretsEntry
+	292, // 91: silo.v1.ChannelActionRequest.payload:type_name -> silo.v1.ChannelActionRequest.PayloadEntry
+	247, // 92: silo.v1.ChannelActionResponse.state:type_name -> silo.v1.ChannelState
+	293, // 93: silo.v1.DriveOption.extra:type_name -> silo.v1.DriveOption.ExtraEntry
+	259, // 94: silo.v1.DriveVar.options:type_name -> silo.v1.DriveOption
+	294, // 95: silo.v1.DriveVar.visible_if:type_name -> silo.v1.DriveVar.VisibleIfEntry
+	260, // 96: silo.v1.DriveTemplate.vars:type_name -> silo.v1.DriveVar
+	295, // 97: silo.v1.Drive.options:type_name -> silo.v1.Drive.OptionsEntry
+	261, // 98: silo.v1.ListDriveTemplatesResponse.templates:type_name -> silo.v1.DriveTemplate
+	262, // 99: silo.v1.ListDrivesResponse.drives:type_name -> silo.v1.Drive
+	296, // 100: silo.v1.SaveDriveRequest.options:type_name -> silo.v1.SaveDriveRequest.OptionsEntry
+	259, // 101: silo.v1.PickDriveOptionsResponse.options:type_name -> silo.v1.DriveOption
+	275, // 102: silo.v1.BrowseDriveResponse.dirs:type_name -> silo.v1.BrowseDriveDir
+	277, // 103: silo.v1.DriveProviderSettings.fields:type_name -> silo.v1.DriveSystemField
+	278, // 104: silo.v1.DriveSettings.providers:type_name -> silo.v1.DriveProviderSettings
+	297, // 105: silo.v1.PutDriveSettingsRequest.values:type_name -> silo.v1.PutDriveSettingsRequest.ValuesEntry
+	1,   // 106: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
+	3,   // 107: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
+	5,   // 108: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
+	8,   // 109: silo.v1.UI.AuthOptions:input_type -> silo.v1.AuthOptionsRequest
+	10,  // 110: silo.v1.UI.GetInvite:input_type -> silo.v1.GetInviteRequest
+	12,  // 111: silo.v1.UI.AcceptInvite:input_type -> silo.v1.AcceptInviteRequest
+	14,  // 112: silo.v1.UI.ChangeEmail:input_type -> silo.v1.ChangeEmailRequest
+	15,  // 113: silo.v1.UI.ChangePassword:input_type -> silo.v1.ChangePasswordRequest
+	17,  // 114: silo.v1.UI.ListSessions:input_type -> silo.v1.ListSessionsRequest
+	19,  // 115: silo.v1.UI.RevokeSession:input_type -> silo.v1.RevokeSessionRequest
+	20,  // 116: silo.v1.UI.RevokeOtherSessions:input_type -> silo.v1.RevokeOtherSessionsRequest
+	21,  // 117: silo.v1.UI.StartTOTP:input_type -> silo.v1.StartTOTPRequest
+	23,  // 118: silo.v1.UI.ConfirmTOTP:input_type -> silo.v1.ConfirmTOTPRequest
+	25,  // 119: silo.v1.UI.DisableTOTP:input_type -> silo.v1.DisableTOTPRequest
+	26,  // 120: silo.v1.UI.NewRecoveryCodes:input_type -> silo.v1.NewRecoveryCodesRequest
+	27,  // 121: silo.v1.UI.ListUsers:input_type -> silo.v1.ListUsersRequest
+	29,  // 122: silo.v1.UI.UpdateUser:input_type -> silo.v1.UpdateUserRequest
+	30,  // 123: silo.v1.UI.DeleteUser:input_type -> silo.v1.DeleteUserRequest
+	33,  // 124: silo.v1.UI.CreateInvite:input_type -> silo.v1.CreateInviteRequest
+	34,  // 125: silo.v1.UI.DeleteInvite:input_type -> silo.v1.DeleteInviteRequest
+	36,  // 126: silo.v1.UI.CheckOIDC:input_type -> silo.v1.CheckOIDCRequest
+	39,  // 127: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
+	41,  // 128: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
+	42,  // 129: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
+	43,  // 130: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
+	43,  // 131: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
+	43,  // 132: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
+	43,  // 133: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
+	43,  // 134: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
+	43,  // 135: silo.v1.UI.ListBotContainers:input_type -> silo.v1.GetBotRequest
+	43,  // 136: silo.v1.UI.RemoveBotContainers:input_type -> silo.v1.GetBotRequest
+	43,  // 137: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
+	49,  // 138: silo.v1.UI.ListMemories:input_type -> silo.v1.ListMemoriesRequest
+	51,  // 139: silo.v1.UI.SearchMemories:input_type -> silo.v1.SearchMemoriesRequest
+	53,  // 140: silo.v1.UI.DeleteMemory:input_type -> silo.v1.DeleteMemoryRequest
+	57,  // 141: silo.v1.UI.ListKnowledge:input_type -> silo.v1.ListKnowledgeRequest
+	59,  // 142: silo.v1.UI.AddKnowledgeFolder:input_type -> silo.v1.AddKnowledgeFolderRequest
+	60,  // 143: silo.v1.UI.RemoveKnowledgeFolder:input_type -> silo.v1.RemoveKnowledgeFolderRequest
+	62,  // 144: silo.v1.UI.SyncKnowledge:input_type -> silo.v1.SyncKnowledgeRequest
+	64,  // 145: silo.v1.UI.SearchKnowledge:input_type -> silo.v1.SearchKnowledgeRequest
+	82,  // 146: silo.v1.UI.ListFeed:input_type -> silo.v1.ListFeedRequest
+	84,  // 147: silo.v1.UI.MarkFeedRead:input_type -> silo.v1.MarkFeedReadRequest
+	86,  // 148: silo.v1.UI.DeleteFeedPost:input_type -> silo.v1.DeleteFeedPostRequest
+	88,  // 149: silo.v1.UI.QuoteFeedPost:input_type -> silo.v1.QuoteFeedPostRequest
+	91,  // 150: silo.v1.UI.ListTunnels:input_type -> silo.v1.ListTunnelsRequest
+	93,  // 151: silo.v1.UI.CreateTunnel:input_type -> silo.v1.CreateTunnelRequest
+	94,  // 152: silo.v1.UI.UpdateTunnel:input_type -> silo.v1.UpdateTunnelRequest
+	95,  // 153: silo.v1.UI.DeleteTunnel:input_type -> silo.v1.DeleteTunnelRequest
+	100, // 154: silo.v1.UI.ListMail:input_type -> silo.v1.ListMailRequest
+	102, // 155: silo.v1.UI.GetMail:input_type -> silo.v1.GetMailRequest
+	103, // 156: silo.v1.UI.DeleteMail:input_type -> silo.v1.DeleteMailRequest
+	105, // 157: silo.v1.UI.UpdateMailbox:input_type -> silo.v1.UpdateMailboxRequest
+	106, // 158: silo.v1.UI.RotateMailbox:input_type -> silo.v1.RotateMailboxRequest
+	108, // 159: silo.v1.UI.ListAutomations:input_type -> silo.v1.ListAutomationsRequest
+	110, // 160: silo.v1.UI.CreateAutomation:input_type -> silo.v1.CreateAutomationRequest
+	111, // 161: silo.v1.UI.UpdateAutomation:input_type -> silo.v1.UpdateAutomationRequest
+	112, // 162: silo.v1.UI.DeleteAutomation:input_type -> silo.v1.DeleteAutomationRequest
+	114, // 163: silo.v1.UI.RunAutomation:input_type -> silo.v1.RunAutomationRequest
+	124, // 164: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
+	126, // 165: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
+	127, // 166: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
+	128, // 167: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
+	122, // 168: silo.v1.UI.SetChatModel:input_type -> silo.v1.SetChatModelRequest
+	123, // 169: silo.v1.UI.SetChatThinking:input_type -> silo.v1.SetChatThinkingRequest
+	118, // 170: silo.v1.UI.ListModels:input_type -> silo.v1.ListModelsRequest
+	120, // 171: silo.v1.UI.Transcribe:input_type -> silo.v1.TranscribeRequest
+	131, // 172: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
+	133, // 173: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
+	135, // 174: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
+	137, // 175: silo.v1.UI.EditMessage:input_type -> silo.v1.EditMessageRequest
+	138, // 176: silo.v1.UI.DeleteMessage:input_type -> silo.v1.DeleteMessageRequest
+	140, // 177: silo.v1.UI.DivergeChat:input_type -> silo.v1.DivergeChatRequest
+	142, // 178: silo.v1.UI.CompactChat:input_type -> silo.v1.CompactChatRequest
+	144, // 179: silo.v1.UI.CollectMemories:input_type -> silo.v1.CollectMemoriesRequest
+	147, // 180: silo.v1.UI.ListSubagents:input_type -> silo.v1.ListSubagentsRequest
+	149, // 181: silo.v1.UI.GetSubagent:input_type -> silo.v1.GetSubagentRequest
+	150, // 182: silo.v1.UI.StopSubagent:input_type -> silo.v1.StopSubagentRequest
+	154, // 183: silo.v1.UI.GetTaskboard:input_type -> silo.v1.GetTaskboardRequest
+	155, // 184: silo.v1.UI.ClearTaskboard:input_type -> silo.v1.ClearTaskboardRequest
+	157, // 185: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
+	159, // 186: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
+	160, // 187: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
+	164, // 188: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
+	166, // 189: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
+	169, // 190: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
+	171, // 191: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
+	69,  // 192: silo.v1.UI.ListChanges:input_type -> silo.v1.ListChangesRequest
+	74,  // 193: silo.v1.UI.ListChangeFiles:input_type -> silo.v1.ListChangeFilesRequest
+	76,  // 194: silo.v1.UI.GetChangePatch:input_type -> silo.v1.GetChangePatchRequest
+	78,  // 195: silo.v1.UI.RestoreChange:input_type -> silo.v1.RestoreChangeRequest
+	72,  // 196: silo.v1.UI.ListDriveChanges:input_type -> silo.v1.ListDriveChangesRequest
+	173, // 197: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
+	175, // 198: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
+	177, // 199: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
+	178, // 200: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
+	179, // 201: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
+	195, // 202: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
+	196, // 203: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
+	185, // 204: silo.v1.UI.SetModels:input_type -> silo.v1.SetModelsRequest
+	186, // 205: silo.v1.UI.ListProviderModels:input_type -> silo.v1.ListProviderModelsRequest
+	190, // 206: silo.v1.UI.SetConnectorVars:input_type -> silo.v1.SetConnectorVarsRequest
+	192, // 207: silo.v1.UI.SetAutoenableConnectors:input_type -> silo.v1.SetAutoenableConnectorsRequest
+	198, // 208: silo.v1.UI.ListAudit:input_type -> silo.v1.ListAuditRequest
+	201, // 209: silo.v1.UI.ListLLMLogs:input_type -> silo.v1.ListLLMLogsRequest
+	207, // 210: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
+	210, // 211: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
+	211, // 212: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
+	212, // 213: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
+	215, // 214: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
+	217, // 215: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
+	218, // 216: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
+	219, // 217: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
+	221, // 218: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
+	222, // 219: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
+	224, // 220: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
+	226, // 221: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
+	229, // 222: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
+	231, // 223: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
+	233, // 224: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
+	236, // 225: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
+	238, // 226: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
+	239, // 227: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
+	240, // 228: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
+	241, // 229: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
+	249, // 230: silo.v1.UI.ListChannelAdapters:input_type -> silo.v1.ListChannelAdaptersRequest
+	251, // 231: silo.v1.UI.ListBotChannels:input_type -> silo.v1.ListBotChannelsRequest
+	253, // 232: silo.v1.UI.CreateChannel:input_type -> silo.v1.CreateChannelRequest
+	254, // 233: silo.v1.UI.UpdateChannel:input_type -> silo.v1.UpdateChannelRequest
+	255, // 234: silo.v1.UI.DeleteChannel:input_type -> silo.v1.DeleteChannelRequest
+	257, // 235: silo.v1.UI.ChannelAction:input_type -> silo.v1.ChannelActionRequest
+	263, // 236: silo.v1.UI.ListDriveTemplates:input_type -> silo.v1.ListDriveTemplatesRequest
+	265, // 237: silo.v1.UI.ListDrives:input_type -> silo.v1.ListDrivesRequest
+	267, // 238: silo.v1.UI.SaveDrive:input_type -> silo.v1.SaveDriveRequest
+	268, // 239: silo.v1.UI.DeleteDrive:input_type -> silo.v1.DeleteDriveRequest
+	270, // 240: silo.v1.UI.BeginDriveAuth:input_type -> silo.v1.BeginDriveAuthRequest
+	272, // 241: silo.v1.UI.PickDriveOptions:input_type -> silo.v1.PickDriveOptionsRequest
+	274, // 242: silo.v1.UI.BrowseDrive:input_type -> silo.v1.BrowseDriveRequest
+	280, // 243: silo.v1.UI.GetDriveSettings:input_type -> silo.v1.GetDriveSettingsRequest
+	281, // 244: silo.v1.UI.PutDriveSettings:input_type -> silo.v1.PutDriveSettingsRequest
+	2,   // 245: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
+	4,   // 246: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
+	6,   // 247: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
+	9,   // 248: silo.v1.UI.AuthOptions:output_type -> silo.v1.AuthOptionsResponse
+	11,  // 249: silo.v1.UI.GetInvite:output_type -> silo.v1.InviteInfo
+	13,  // 250: silo.v1.UI.AcceptInvite:output_type -> silo.v1.AcceptInviteResponse
+	7,   // 251: silo.v1.UI.ChangeEmail:output_type -> silo.v1.User
+	7,   // 252: silo.v1.UI.ChangePassword:output_type -> silo.v1.User
+	18,  // 253: silo.v1.UI.ListSessions:output_type -> silo.v1.ListSessionsResponse
+	18,  // 254: silo.v1.UI.RevokeSession:output_type -> silo.v1.ListSessionsResponse
+	18,  // 255: silo.v1.UI.RevokeOtherSessions:output_type -> silo.v1.ListSessionsResponse
+	22,  // 256: silo.v1.UI.StartTOTP:output_type -> silo.v1.StartTOTPResponse
+	24,  // 257: silo.v1.UI.ConfirmTOTP:output_type -> silo.v1.RecoveryCodes
+	7,   // 258: silo.v1.UI.DisableTOTP:output_type -> silo.v1.User
+	24,  // 259: silo.v1.UI.NewRecoveryCodes:output_type -> silo.v1.RecoveryCodes
+	28,  // 260: silo.v1.UI.ListUsers:output_type -> silo.v1.ListUsersResponse
+	7,   // 261: silo.v1.UI.UpdateUser:output_type -> silo.v1.User
+	31,  // 262: silo.v1.UI.DeleteUser:output_type -> silo.v1.DeleteUserResponse
+	32,  // 263: silo.v1.UI.CreateInvite:output_type -> silo.v1.Invite
+	35,  // 264: silo.v1.UI.DeleteInvite:output_type -> silo.v1.DeleteInviteResponse
+	37,  // 265: silo.v1.UI.CheckOIDC:output_type -> silo.v1.CheckOIDCResponse
+	40,  // 266: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
+	38,  // 267: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
+	38,  // 268: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
+	38,  // 269: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
+	44,  // 270: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
+	38,  // 271: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
+	38,  // 272: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
+	38,  // 273: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
+	46,  // 274: silo.v1.UI.ListBotContainers:output_type -> silo.v1.BotContainers
+	38,  // 275: silo.v1.UI.RemoveBotContainers:output_type -> silo.v1.Bot
+	47,  // 276: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
+	50,  // 277: silo.v1.UI.ListMemories:output_type -> silo.v1.ListMemoriesResponse
+	52,  // 278: silo.v1.UI.SearchMemories:output_type -> silo.v1.SearchMemoriesResponse
+	54,  // 279: silo.v1.UI.DeleteMemory:output_type -> silo.v1.DeleteMemoryResponse
+	58,  // 280: silo.v1.UI.ListKnowledge:output_type -> silo.v1.ListKnowledgeResponse
+	55,  // 281: silo.v1.UI.AddKnowledgeFolder:output_type -> silo.v1.KnowledgeFolder
+	61,  // 282: silo.v1.UI.RemoveKnowledgeFolder:output_type -> silo.v1.RemoveKnowledgeFolderResponse
+	55,  // 283: silo.v1.UI.SyncKnowledge:output_type -> silo.v1.KnowledgeFolder
+	65,  // 284: silo.v1.UI.SearchKnowledge:output_type -> silo.v1.SearchKnowledgeResponse
+	83,  // 285: silo.v1.UI.ListFeed:output_type -> silo.v1.ListFeedResponse
+	85,  // 286: silo.v1.UI.MarkFeedRead:output_type -> silo.v1.MarkFeedReadResponse
+	87,  // 287: silo.v1.UI.DeleteFeedPost:output_type -> silo.v1.DeleteFeedPostResponse
+	89,  // 288: silo.v1.UI.QuoteFeedPost:output_type -> silo.v1.QuoteFeedPostResponse
+	92,  // 289: silo.v1.UI.ListTunnels:output_type -> silo.v1.ListTunnelsResponse
+	90,  // 290: silo.v1.UI.CreateTunnel:output_type -> silo.v1.Tunnel
+	90,  // 291: silo.v1.UI.UpdateTunnel:output_type -> silo.v1.Tunnel
+	96,  // 292: silo.v1.UI.DeleteTunnel:output_type -> silo.v1.DeleteTunnelResponse
+	101, // 293: silo.v1.UI.ListMail:output_type -> silo.v1.ListMailResponse
+	99,  // 294: silo.v1.UI.GetMail:output_type -> silo.v1.Mail
+	104, // 295: silo.v1.UI.DeleteMail:output_type -> silo.v1.DeleteMailResponse
+	97,  // 296: silo.v1.UI.UpdateMailbox:output_type -> silo.v1.Mailbox
+	97,  // 297: silo.v1.UI.RotateMailbox:output_type -> silo.v1.Mailbox
+	109, // 298: silo.v1.UI.ListAutomations:output_type -> silo.v1.ListAutomationsResponse
+	107, // 299: silo.v1.UI.CreateAutomation:output_type -> silo.v1.Automation
+	107, // 300: silo.v1.UI.UpdateAutomation:output_type -> silo.v1.Automation
+	113, // 301: silo.v1.UI.DeleteAutomation:output_type -> silo.v1.DeleteAutomationResponse
+	115, // 302: silo.v1.UI.RunAutomation:output_type -> silo.v1.RunAutomationResponse
+	125, // 303: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
+	116, // 304: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
+	116, // 305: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
+	129, // 306: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
+	116, // 307: silo.v1.UI.SetChatModel:output_type -> silo.v1.Chat
+	116, // 308: silo.v1.UI.SetChatThinking:output_type -> silo.v1.Chat
+	119, // 309: silo.v1.UI.ListModels:output_type -> silo.v1.ListModelsResponse
+	121, // 310: silo.v1.UI.Transcribe:output_type -> silo.v1.TranscribeResponse
+	132, // 311: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
+	134, // 312: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
+	136, // 313: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
+	132, // 314: silo.v1.UI.EditMessage:output_type -> silo.v1.SendResponse
+	139, // 315: silo.v1.UI.DeleteMessage:output_type -> silo.v1.DeleteMessageResponse
+	141, // 316: silo.v1.UI.DivergeChat:output_type -> silo.v1.DivergeChatResponse
+	143, // 317: silo.v1.UI.CompactChat:output_type -> silo.v1.CompactChatResponse
+	145, // 318: silo.v1.UI.CollectMemories:output_type -> silo.v1.CollectMemoriesResponse
+	148, // 319: silo.v1.UI.ListSubagents:output_type -> silo.v1.ListSubagentsResponse
+	146, // 320: silo.v1.UI.GetSubagent:output_type -> silo.v1.Subagent
+	151, // 321: silo.v1.UI.StopSubagent:output_type -> silo.v1.StopSubagentResponse
+	153, // 322: silo.v1.UI.GetTaskboard:output_type -> silo.v1.Taskboard
+	153, // 323: silo.v1.UI.ClearTaskboard:output_type -> silo.v1.Taskboard
+	158, // 324: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
+	156, // 325: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
+	161, // 326: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
+	165, // 327: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
+	163, // 328: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
+	170, // 329: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
+	167, // 330: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
+	70,  // 331: silo.v1.UI.ListChanges:output_type -> silo.v1.ListChangesResponse
+	75,  // 332: silo.v1.UI.ListChangeFiles:output_type -> silo.v1.ListChangeFilesResponse
+	77,  // 333: silo.v1.UI.GetChangePatch:output_type -> silo.v1.GetChangePatchResponse
+	80,  // 334: silo.v1.UI.RestoreChange:output_type -> silo.v1.RestoreChangeResponse
+	73,  // 335: silo.v1.UI.ListDriveChanges:output_type -> silo.v1.ListDriveChangesResponse
+	174, // 336: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
+	176, // 337: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
+	180, // 338: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
+	180, // 339: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
+	180, // 340: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
+	182, // 341: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
+	182, // 342: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
+	182, // 343: silo.v1.UI.SetModels:output_type -> silo.v1.Settings
+	188, // 344: silo.v1.UI.ListProviderModels:output_type -> silo.v1.ListProviderModelsResponse
+	182, // 345: silo.v1.UI.SetConnectorVars:output_type -> silo.v1.Settings
+	182, // 346: silo.v1.UI.SetAutoenableConnectors:output_type -> silo.v1.Settings
+	199, // 347: silo.v1.UI.ListAudit:output_type -> silo.v1.ListAuditResponse
+	202, // 348: silo.v1.UI.ListLLMLogs:output_type -> silo.v1.ListLLMLogsResponse
+	208, // 349: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
+	206, // 350: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
+	206, // 351: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
+	213, // 352: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
+	216, // 353: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
+	214, // 354: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
+	214, // 355: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
+	220, // 356: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
+	214, // 357: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
+	223, // 358: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
+	225, // 359: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
+	227, // 360: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
+	230, // 361: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
+	232, // 362: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
+	234, // 363: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
+	237, // 364: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
+	235, // 365: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
+	174, // 366: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
+	176, // 367: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
+	242, // 368: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
+	250, // 369: silo.v1.UI.ListChannelAdapters:output_type -> silo.v1.ListChannelAdaptersResponse
+	252, // 370: silo.v1.UI.ListBotChannels:output_type -> silo.v1.ListBotChannelsResponse
+	248, // 371: silo.v1.UI.CreateChannel:output_type -> silo.v1.Channel
+	248, // 372: silo.v1.UI.UpdateChannel:output_type -> silo.v1.Channel
+	256, // 373: silo.v1.UI.DeleteChannel:output_type -> silo.v1.DeleteChannelResponse
+	258, // 374: silo.v1.UI.ChannelAction:output_type -> silo.v1.ChannelActionResponse
+	264, // 375: silo.v1.UI.ListDriveTemplates:output_type -> silo.v1.ListDriveTemplatesResponse
+	266, // 376: silo.v1.UI.ListDrives:output_type -> silo.v1.ListDrivesResponse
+	262, // 377: silo.v1.UI.SaveDrive:output_type -> silo.v1.Drive
+	269, // 378: silo.v1.UI.DeleteDrive:output_type -> silo.v1.DeleteDriveResponse
+	271, // 379: silo.v1.UI.BeginDriveAuth:output_type -> silo.v1.BeginDriveAuthResponse
+	273, // 380: silo.v1.UI.PickDriveOptions:output_type -> silo.v1.PickDriveOptionsResponse
+	276, // 381: silo.v1.UI.BrowseDrive:output_type -> silo.v1.BrowseDriveResponse
+	279, // 382: silo.v1.UI.GetDriveSettings:output_type -> silo.v1.DriveSettings
+	279, // 383: silo.v1.UI.PutDriveSettings:output_type -> silo.v1.DriveSettings
+	245, // [245:384] is the sub-list for method output_type
+	106, // [106:245] is the sub-list for method input_type
+	106, // [106:106] is the sub-list for extension type_name
+	106, // [106:106] is the sub-list for extension extendee
+	0,   // [0:106] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_ui_proto_init() }

@@ -72,6 +72,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.channelSections,
 		a.driveSections,
 		a.knowledgeSections,
+		a.decideSections,
 		a.tunnelSections,
 		a.mailSections,
 		a.automationSections,
@@ -93,6 +94,13 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 		{title: "Channels", body: channel.ListPrompt(pc.channels, pc.channel)},
 		{title: "This conversation", body: channel.ConversationPrompt(pc.channel), trailing: true},
 	}
+}
+
+// decideSections explains the decide tool, only while the operator has allowed
+// a decision model. It names the operator's models and nothing of the Bot's,
+// so it is the same text for every Bot.
+func (a *App) decideSections(promptContext) []promptSection {
+	return []promptSection{{title: "Decisions", body: a.Models.DecidePrompt(prompts.Decide)}}
 }
 
 // tunnelSections explains the tunnel tools, only while the operator has tunnels

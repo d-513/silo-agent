@@ -84,7 +84,7 @@ sr.look(); sr.click(x, y, button="left"); sr.type_text(text); sr.key(name); sr.s
 sr.chrome_page()                             # Playwright page on the desktop Chromium
 ```
 
-Sections further down add the functions of features this Bot has (documents, tunnels, mail). Credentials come only from `get_secret`:
+Sections further down add the functions of features this Bot has (documents, decisions, tunnels, mail). Credentials come only from `get_secret`:
 
 ```python
 from silo_runtime import get_secret, click, type_text

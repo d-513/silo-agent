@@ -62,6 +62,24 @@ function searches(v: unknown): string {
   return `${list[0]} +${list.length - 1} more`;
 }
 
+// asked is the summary of a decision: the names of its questions, the first
+// three and how many more. A model sometimes writes the questions as a JSON
+// string; the server reads that, and so does this.
+function asked(v: unknown): string {
+  let questions = v;
+  if (typeof questions === "string") {
+    try {
+      questions = JSON.parse(questions);
+    } catch {
+      return "";
+    }
+  }
+  if (!questions || typeof questions !== "object" || Array.isArray(questions)) return "";
+  const names = Object.keys(questions);
+  const shown = names.slice(0, 3).join(", ");
+  return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
+}
+
 export function prettyJson(raw: string) {
   try {
     return JSON.stringify(JSON.parse(raw), null, 2);
@@ -117,6 +135,8 @@ export function toolMeta(name: string): { app: string } {
     case "list_models":
     case "switch_model":
       return { app: "Model" };
+    case "decide":
+      return { app: "Decision" };
     case "spawn_agent":
     case "agent_status":
     case "message_agent":
@@ -175,6 +195,8 @@ export function toolAction(name: string, raw: string): string {
       return "list";
     case "switch_model":
       return asStr(a.model);
+    case "decide":
+      return asked(a.questions);
     case "spawn_agent":
       return `start ${asStr(a.name)}`.trim();
     case "agent_status":

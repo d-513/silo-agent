@@ -19,6 +19,8 @@ type ModelInfo struct {
 	ContextWindow int
 	// Created is when the provider released the model; zero when unknown.
 	Created time.Time
+	// Kind is KindText or KindDecision.
+	Kind string
 }
 
 // ModelLister is the optional interface a provider implements when it can
@@ -39,13 +41,21 @@ type listedModel struct {
 	Created             int64    `json:"created"`
 	ContextLength       int      `json:"context_length"`
 	SupportedParameters []string `json:"supported_parameters"`
+	Architecture        struct {
+		OutputModalities []string `json:"output_modalities"`
+	} `json:"architecture"`
 }
 
 // fetchModels is the one GET {base}/models every OpenAI-compatible endpoint
-// answers. The error names the status only: an upstream error body can echo
-// the key back.
-func fetchModels(ctx context.Context, base, key string) ([]listedModel, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base, "/")+"/models", nil)
+// answers; query narrows it where the endpoint knows how (OpenRouter's
+// output_modalities). The error names the status only: an upstream error body
+// can echo the key back.
+func fetchModels(ctx context.Context, base, key string, query ...string) ([]listedModel, error) {
+	url := strings.TrimRight(base, "/") + "/models"
+	if len(query) > 0 {
+		url += "?" + strings.Join(query, "&")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +77,23 @@ func fetchModels(ctx context.Context, base, key string) ([]listedModel, error) {
 		return nil, fmt.Errorf("list models: %w", err)
 	}
 	return body.Data, nil
+}
+
+// modelInfos is a listing as the engine's own entries, all of one kind. An
+// entry with no id is dropped.
+func modelInfos(list []listedModel, kind string) []ModelInfo {
+	out := make([]ModelInfo, 0, len(list))
+	for _, m := range list {
+		if m.ID == "" {
+			continue
+		}
+		info := ModelInfo{ID: m.ID, Name: m.Name, ContextWindow: m.ContextLength, Kind: kind}
+		if m.Created > 0 {
+			info.Created = time.Unix(m.Created, 0)
+		}
+		out = append(out, info)
+	}
+	return out
 }
 
 // sortModels orders a listing newest first, then by id, so the order is the

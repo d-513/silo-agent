@@ -2162,6 +2162,10 @@ public nonisolated struct Silo_V1_ModelOption: Sendable {
   /// model has no selectable thinking.
   public var thinkingLevels: [String] = []
 
+  /// kind is "text" (a model that writes: chats and the text roles) or
+  /// "decision" (a model that answers typed questions with probabilities).
+  public var kind: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3254,6 +3258,10 @@ public nonisolated struct Silo_V1_Settings: Sendable {
   /// oidc_redirect_url is the callback to register at the OIDC provider.
   public var oidcRedirectURL: String = String()
 
+  /// decision_models is the allowlist of decision models; models (above) is
+  /// the allowlist of text models. An id is in one list only.
+  public var decisionModels: [Silo_V1_ModelOption] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3277,6 +3285,9 @@ public nonisolated struct Silo_V1_Provider: Sendable {
   public var supportsCache: Bool = false
 
   public var cacheTtls: [String] = []
+
+  /// kinds are the kinds of model the provider serves: "text", "decision".
+  public var kinds: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3309,6 +3320,10 @@ public nonisolated struct Silo_V1_SetModelsRequest: Sendable {
   // methods supported on all messages.
 
   public var models: [String] = []
+
+  /// kind picks the allowlist to replace: "text" (the default when empty) or
+  /// "decision".
+  public var kind: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3343,6 +3358,9 @@ public nonisolated struct Silo_V1_ProviderModel: Sendable {
 
   /// context_window is in tokens; 0 when the provider does not report one.
   public var contextWindow: Int32 = 0
+
+  /// kind is "text" or "decision": the allowlist the model belongs in.
+  public var kind: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -9967,7 +9985,7 @@ nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ModelOption"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}provider\0\u{1}label\0\u{3}thinking_levels\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}provider\0\u{1}label\0\u{3}thinking_levels\0\u{1}kind\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -9979,6 +9997,7 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
       case 2: try { try decoder.decodeSingularStringField(value: &self.provider) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.label) }()
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.thinkingLevels) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.kind) }()
       default: break
       }
     }
@@ -9997,6 +10016,9 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.thinkingLevels.isEmpty {
       try visitor.visitRepeatedStringField(value: self.thinkingLevels, fieldNumber: 4)
     }
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -10005,6 +10027,7 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.provider != rhs.provider {return false}
     if lhs.label != rhs.label {return false}
     if lhs.thinkingLevels != rhs.thinkingLevels {return false}
+    if lhs.kind != rhs.kind {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -12490,7 +12513,7 @@ nonisolated extension Silo_V1_ConfigField: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Settings"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}tunnels_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}tunnels_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0\u{3}decision_models\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12510,6 +12533,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 10: try { try decoder.decodeSingularStringField(value: &self.tunnelsHost) }()
       case 11: try { try decoder.decodeSingularMessageField(value: &self._autoenableConnectors) }()
       case 12: try { try decoder.decodeSingularStringField(value: &self.oidcRedirectURL) }()
+      case 13: try { try decoder.decodeRepeatedMessageField(value: &self.decisionModels) }()
       default: break
       }
     }
@@ -12556,6 +12580,9 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.oidcRedirectURL.isEmpty {
       try visitor.visitSingularStringField(value: self.oidcRedirectURL, fieldNumber: 12)
     }
+    if !self.decisionModels.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.decisionModels, fieldNumber: 13)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12572,6 +12599,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.tunnelsHost != rhs.tunnelsHost {return false}
     if lhs._autoenableConnectors != rhs._autoenableConnectors {return false}
     if lhs.oidcRedirectURL != rhs.oidcRedirectURL {return false}
+    if lhs.decisionModels != rhs.decisionModels {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -12579,7 +12607,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Provider"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}fields\0\u{3}supports_cache\0\u{3}cache_ttls\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}fields\0\u{3}supports_cache\0\u{3}cache_ttls\0\u{1}kinds\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12593,6 +12621,7 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 4: try { try decoder.decodeRepeatedMessageField(value: &self.fields) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.supportsCache) }()
       case 6: try { try decoder.decodeRepeatedStringField(value: &self.cacheTtls) }()
+      case 7: try { try decoder.decodeRepeatedStringField(value: &self.kinds) }()
       default: break
       }
     }
@@ -12617,6 +12646,9 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.cacheTtls.isEmpty {
       try visitor.visitRepeatedStringField(value: self.cacheTtls, fieldNumber: 6)
     }
+    if !self.kinds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.kinds, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12627,6 +12659,7 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.fields != rhs.fields {return false}
     if lhs.supportsCache != rhs.supportsCache {return false}
     if lhs.cacheTtls != rhs.cacheTtls {return false}
+    if lhs.kinds != rhs.kinds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -12684,7 +12717,7 @@ nonisolated extension Silo_V1_ProviderField: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Silo_V1_SetModelsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SetModelsRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}models\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}models\0\u{1}kind\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12693,6 +12726,7 @@ nonisolated extension Silo_V1_SetModelsRequest: SwiftProtobuf.Message, SwiftProt
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedStringField(value: &self.models) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.kind) }()
       default: break
       }
     }
@@ -12702,11 +12736,15 @@ nonisolated extension Silo_V1_SetModelsRequest: SwiftProtobuf.Message, SwiftProt
     if !self.models.isEmpty {
       try visitor.visitRepeatedStringField(value: self.models, fieldNumber: 1)
     }
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_SetModelsRequest, rhs: Silo_V1_SetModelsRequest) -> Bool {
     if lhs.models != rhs.models {return false}
+    if lhs.kind != rhs.kind {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -12744,7 +12782,7 @@ nonisolated extension Silo_V1_ListProviderModelsRequest: SwiftProtobuf.Message, 
 
 nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProviderModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0\u{1}kind\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12755,6 +12793,7 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.contextWindow) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.kind) }()
       default: break
       }
     }
@@ -12770,6 +12809,9 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if self.contextWindow != 0 {
       try visitor.visitSingularInt32Field(value: self.contextWindow, fieldNumber: 3)
     }
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12777,6 +12819,7 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.contextWindow != rhs.contextWindow {return false}
+    if lhs.kind != rhs.kind {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

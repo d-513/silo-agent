@@ -236,7 +236,7 @@ func (s *Store) Fields() []Field {
 	return out
 }
 
-// StringList reads a YAML sequence setting (currently just models).
+// StringList reads a YAML sequence setting (the model allowlists).
 func (s *Store) StringList(key string) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -246,9 +246,14 @@ func (s *Store) StringList(key string) []string {
 	return s.merged.Strings(key)
 }
 
-// SetModels writes the allowed-model allowlist and reloads.
+// SetModels writes the allowlist of text models and reloads.
 func (s *Store) SetModels(models []string) error {
 	return s.setList("models", models)
+}
+
+// SetDecisionModels writes the allowlist of decision models and reloads.
+func (s *Store) SetDecisionModels(models []string) error {
+	return s.setList("decision_models", models)
 }
 
 // SetAutoenableConnectors writes autoenable_connectors, the identifiers of the
@@ -394,21 +399,75 @@ func validateYAML(raw []byte) error {
 			return fmt.Errorf("unknown drive setting %q", key)
 		}
 	}
-	for _, m := range k.Strings("models") {
-		if _, _, err := llm.Parse(strings.TrimSpace(m)); err != nil {
-			return fmt.Errorf("invalid model %q: %w", m, err)
-		}
-	}
-	for _, key := range []string{"model", "model_title", "model_approval", "model_subagent", "model_memory"} {
-		if v := strings.TrimSpace(k.String(key)); v != "" {
-			if _, _, err := llm.Parse(v); err != nil {
-				return fmt.Errorf("%s: %w", key, err)
-			}
-		}
+	if err := validateModels(k); err != nil {
+		return err
 	}
 	if v := strings.TrimSpace(k.String("transcribe_model")); v != "" && !strings.EqualFold(v, TranscribeOff) {
 		if _, _, err := llm.Parse(v); err != nil {
 			return fmt.Errorf("transcribe_model: %w", err)
+		}
+	}
+	return nil
+}
+
+// textRoles are the settings that name a text model: one that writes.
+var textRoles = []string{"model", "model_title", "model_subagent", "model_memory"}
+
+// validateModels checks the two allowlists and the roles that pick from them.
+// A model is of one kind: its provider must serve that kind, and it is in one
+// list only. The auto-approval model may come from either.
+func validateModels(k *koanf.Koanf) error {
+	deciders := k.Strings("decision_models")
+	for _, list := range []struct{ key, kind, refusal string }{
+		{"models", llm.KindText, "has decision models only; allow it under decision_models"},
+		{"decision_models", llm.KindDecision, "has no decision models"},
+	} {
+		for _, m := range k.Strings(list.key) {
+			provider, _, err := llm.Parse(strings.TrimSpace(m))
+			if err != nil {
+				return fmt.Errorf("invalid model %q: %w", m, err)
+			}
+			if d, _ := llm.Lookup(provider); !d.Serves(list.kind) {
+				return fmt.Errorf("%s: %q: %s %s", list.key, m, d.Name, list.refusal)
+			}
+		}
+	}
+	for _, m := range k.Strings("models") {
+		if llm.Allowed(m, deciders) {
+			return fmt.Errorf("model %q is in both models and decision_models", strings.TrimSpace(m))
+		}
+	}
+	role := func(key string) (string, error) {
+		v := strings.TrimSpace(k.String(key))
+		if v == "" {
+			return "", nil
+		}
+		if _, _, err := llm.Parse(v); err != nil {
+			return "", fmt.Errorf("%s: %w", key, err)
+		}
+		return v, nil
+	}
+	for _, key := range textRoles {
+		v, err := role(key)
+		if err != nil {
+			return err
+		}
+		if v != "" && modelKind(v, deciders) == llm.KindDecision {
+			return fmt.Errorf("%s: %q is a decision model; it answers typed questions and writes no text", key, v)
+		}
+	}
+	if _, err := role("model_approval"); err != nil {
+		return err
+	}
+	// A default that is merely no longer allowed is not an error: it falls
+	// back (Config.DecisionModel), so a model can still be taken off the list.
+	v, err := role("model_decision")
+	if err != nil {
+		return err
+	}
+	if provider, _, ok := llm.Split(v); ok {
+		if d, _ := llm.Lookup(provider); llm.Allowed(v, k.Strings("models")) || !d.Serves(llm.KindDecision) {
+			return fmt.Errorf("model_decision: %q is a text model, not a decision model", v)
 		}
 	}
 	return nil
