@@ -378,6 +378,11 @@ public nonisolated struct Silo_V1_ExecPythonCmd: Sendable {
 
   public var code: String = String()
 
+  /// session names the persistent interpreter this code runs in (one per
+  /// conversation), so what one call defines the next still has. Empty runs
+  /// the code in a throwaway interpreter.
+  public var session: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1733,7 +1738,7 @@ nonisolated extension Silo_V1_TerminalCmd: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_ExecPythonCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ExecPythonCmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}session\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1742,6 +1747,7 @@ nonisolated extension Silo_V1_ExecPythonCmd: SwiftProtobuf.Message, SwiftProtobu
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.session) }()
       default: break
       }
     }
@@ -1751,11 +1757,15 @@ nonisolated extension Silo_V1_ExecPythonCmd: SwiftProtobuf.Message, SwiftProtobu
     if !self.code.isEmpty {
       try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
     }
+    if !self.session.isEmpty {
+      try visitor.visitSingularStringField(value: self.session, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_ExecPythonCmd, rhs: Silo_V1_ExecPythonCmd) -> Bool {
     if lhs.code != rhs.code {return false}
+    if lhs.session != rhs.session {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

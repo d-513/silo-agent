@@ -79,6 +79,10 @@ message TerminalCmd {
 
 message ExecPythonCmd {
   string code = 1;
+  // session names the persistent interpreter this code runs in (one per
+  // conversation), so what one call defines the next still has. Empty runs
+  // the code in a throwaway interpreter.
+  string session = 2;
 }
 
 message FileReadCmd {

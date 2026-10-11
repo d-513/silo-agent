@@ -73,6 +73,8 @@ type worker struct {
 	// commands take turns, since they share one git index.
 	history string
 	histMu  sync.Mutex
+	// kernels are the persistent Python sessions exec_python runs in.
+	kernels kernels
 }
 
 // screenDataURL reads the latest model-facing screenshot as a data: URL.
@@ -196,7 +198,7 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 	case *v1.Cmd_Terminal:
 		return w.shell(ctx, cmd.GetRunId(), b.Terminal.GetCommand(), chunk)
 	case *v1.Cmd_ExecPython:
-		return w.python(ctx, cmd.GetRunId(), b.ExecPython.GetCode(), chunk)
+		return w.python(ctx, cmd.GetRunId(), b.ExecPython.GetSession(), b.ExecPython.GetCode(), chunk)
 	case *v1.Cmd_FileRead:
 		return w.readFileSlice(b.FileRead.GetPath(), int(b.FileRead.GetOffset()), int(b.FileRead.GetLimit()))
 	case *v1.Cmd_FileWrite:

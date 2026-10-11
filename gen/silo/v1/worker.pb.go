@@ -812,8 +812,12 @@ func (x *TerminalCmd) GetCommand() string {
 }
 
 type ExecPythonCmd struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	// session names the persistent interpreter this code runs in (one per
+	// conversation), so what one call defines the next still has. Empty runs
+	// the code in a throwaway interpreter.
+	Session       string `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -851,6 +855,13 @@ func (*ExecPythonCmd) Descriptor() ([]byte, []int) {
 func (x *ExecPythonCmd) GetCode() string {
 	if x != nil {
 		return x.Code
+	}
+	return ""
+}
+
+func (x *ExecPythonCmd) GetSession() string {
+	if x != nil {
+		return x.Session
 	}
 	return ""
 }
@@ -2983,9 +2994,10 @@ const file_silo_v1_worker_proto_rawDesc = "" +
 	"resultJson\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\"'\n" +
 	"\vTerminalCmd\x12\x18\n" +
-	"\acommand\x18\x01 \x01(\tR\acommand\"#\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\"=\n" +
 	"\rExecPythonCmd\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"O\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
+	"\asession\x18\x02 \x01(\tR\asession\"O\n" +
 	"\vFileReadCmd\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x14\n" +

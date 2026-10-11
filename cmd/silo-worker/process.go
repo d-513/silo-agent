@@ -36,10 +36,18 @@ func (w *worker) shell(ctx context.Context, runID, command string, chunk func(st
 	return w.runCmd(ctx, runID, chunk, "/bin/sh", "-lc", command)
 }
 
-func (w *worker) python(ctx context.Context, runID, code string, chunk func(string)) (string, error) {
+// python runs code for exec_python. With a session it runs in that session's
+// persistent interpreter (kernel.go); without one, or when no interpreter can
+// be had, in a throwaway one.
+func (w *worker) python(ctx context.Context, runID, session, code string, chunk func(string)) (string, error) {
 	if desktop.WantsChromium(code) {
 		if _, err := w.ensureChrome(ctx); err != nil {
 			return "", err
+		}
+	}
+	if session != "" {
+		if k := w.kernels.get(w, session); k != nil {
+			return k.run(ctx, &w.kernels, session, runID, code, chunk), nil
 		}
 	}
 	return w.runCmd(ctx, runID, chunk, "python3", "-c", code)
