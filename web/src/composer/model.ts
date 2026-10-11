@@ -42,7 +42,7 @@ export function growHeight(scrollHeight: number): number {
   return Math.min(Math.max(scrollHeight, 26), 168);
 }
 
-export function placeholderFor(chatId?: string, botName?: string): string {
-  if (!chatId) return t("Select or create a chat to begin…");
+export function placeholderFor(ready: boolean, botName?: string): string {
+  if (!ready) return t("Select or create a chat to begin…");
   return botName ? t("Ask {{name}}…", { name: botName }) : t("Ask this Bot…");
 }

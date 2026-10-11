@@ -290,7 +290,23 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	}
 	chatID := req.Msg.GetChatId()
 	var ch *db.Chat
-	if chatID == "" {
+	made := false
+	if chatID == "" && req.Msg.GetNewChat() {
+		// The console's New chat page: the chat begins with this message.
+		model, merr := a.chatModel(req.Msg.GetModel())
+		if merr != nil {
+			return nil, merr
+		}
+		level := strings.ToLower(strings.TrimSpace(req.Msg.GetThinking()))
+		if !llm.ValidThinking(level) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown thinking level"))
+		}
+		ch = &db.Chat{ID: ids.New(), BotID: b.ID, Title: "New chat", Model: model, Thinking: level, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+		if err := a.DB.Create(ch).Error; err != nil {
+			return nil, err
+		}
+		made = true
+	} else if chatID == "" {
 		ch = a.backfillChats(b.ID)
 	} else {
 		owned, cerr := a.ownChat(ctx, b.ID, chatID)
@@ -305,6 +321,9 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	a.followZone(b, req.Msg.GetTimeZone())
 	runID, err := a.StartOrInject(b.ID, ch.ID, text, atts, nil)
 	if err != nil {
+		if made {
+			a.DB.Delete(&db.Chat{}, "id = ?", ch.ID)
+		}
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return connect.NewResponse(&v1.SendResponse{RunId: runID, ChatId: ch.ID}), nil

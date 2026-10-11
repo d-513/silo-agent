@@ -9,7 +9,7 @@ import { Taskboard } from "../Taskboard";
 import { Thread } from "../Thread";
 import type { useRunStream } from "../useRunStream";
 import type { useSubagents } from "../useSubagents";
-import type { RunActions } from "./runActions";
+import type { ChatPick, RunActions } from "./runActions";
 import type { ComposerDraft } from "./useComposerDraft";
 
 // The chat's working area: the shared taskboard, the thread, the tray of
@@ -18,6 +18,8 @@ export function RunPane({
   id,
   bot,
   chatId,
+  fresh,
+  pick,
   chats,
   models,
   defaultModel,
@@ -35,6 +37,8 @@ export function RunPane({
   id: string;
   bot: Bot;
   chatId?: string;
+  fresh: boolean;
+  pick: ChatPick;
   chats: Chat[];
   models: ModelOption[];
   defaultModel: string;
@@ -51,6 +55,8 @@ export function RunPane({
   onError: (message: string) => void;
 }) {
   const chat = chats.find((c) => c.id === chatId);
+  // The empty chat shows what was picked for it; the first send carries it.
+  const picked = !chatId && fresh ? pick : undefined;
   return (
     <>
       <Taskboard
@@ -107,12 +113,13 @@ export function RunPane({
         onStop={() => void actions.stopRun()}
         sending={run.sending}
         chatId={chatId}
+        fresh={fresh}
         workerConnected={bot.workerConnected}
         botName={bot.name}
         models={models}
-        model={chat?.model || defaultModel}
+        model={chat?.model || picked?.model || defaultModel}
         onModel={(m) => void actions.pickModel(m)}
-        thinking={chat?.thinking ?? ""}
+        thinking={chat?.thinking ?? picked?.thinking ?? ""}
         onThinking={(l) => void actions.pickThinking(l)}
         usage={run.usage}
         onCompact={() => void actions.compactChat()}

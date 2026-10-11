@@ -7,9 +7,16 @@ import { deviceZone } from "../zones";
 import { putChat } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
 
+// The model and thinking level chosen for a chat that does not exist yet.
+export type ChatPick = { model: string; thinking: string };
+
 type Ctx = {
   id: string;
   chatId?: string;
+  // On /run/new: the first send makes the chat, with what was picked there.
+  fresh?: boolean;
+  pick: ChatPick;
+  setPick: (p: ChatPick) => void;
   draft: ComposerDraft;
   run: { markSent: () => void; setSending: (v: boolean) => void; resync: () => void };
   onError: (message: string) => void;
@@ -33,9 +40,13 @@ export function runActions(c: Ctx) {
     run.markSent();
     onError("");
     try {
-      await ui.send({
+      const fresh = !chatId && !!c.fresh;
+      const res = await ui.send({
         botId: id,
         chatId: chatId || "",
+        newChat: fresh,
+        model: fresh ? c.pick.model : "",
+        thinking: fresh ? c.pick.thinking : "",
         text: msg,
         attachments: atts.map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
         // Where the human is now: an unpinned Bot follows it.
@@ -43,7 +54,12 @@ export function runActions(c: Ctx) {
       });
       draft.setAtts([]);
       reloadBot(id);
-      void refreshChats();
+      // The new chat is in the list before its page opens, so the sidebar
+      // lights it and the composer shows its model.
+      if (fresh) {
+        await refreshChats().catch(() => {});
+        c.openChat(res.chatId);
+      } else void refreshChats();
     } catch (ex) {
       run.setSending(false);
       onError(fail(ex));
@@ -95,6 +111,7 @@ export function runActions(c: Ctx) {
   }
 
   async function pickModel(model: string) {
+    if (!chatId && c.fresh) return c.setPick({ ...c.pick, model });
     if (!chatId) return;
     onError("");
     try {
@@ -105,6 +122,7 @@ export function runActions(c: Ctx) {
   }
 
   async function pickThinking(thinking: string) {
+    if (!chatId && c.fresh) return c.setPick({ ...c.pick, thinking });
     if (!chatId) return;
     onError("");
     try {

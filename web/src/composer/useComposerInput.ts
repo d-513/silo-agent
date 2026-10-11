@@ -10,7 +10,7 @@ export function useComposerInput({
   textareaRef,
   text,
   attCount,
-  chatId,
+  ready,
   workerConnected,
   sending,
   recording,
@@ -21,7 +21,8 @@ export function useComposerInput({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   text: string;
   attCount: number;
-  chatId?: string;
+  // There is somewhere to send to: a chat, or the empty one a send creates.
+  ready: boolean;
   workerConnected?: boolean;
   sending: boolean;
   recording: boolean;
@@ -40,7 +41,7 @@ export function useComposerInput({
     el.style.height = `${growHeight(el.scrollHeight)}px`;
   }, [text, textareaRef]);
 
-  const canSend = (text.trim().length > 0 || attCount > 0) && !!chatId;
+  const canSend = (text.trim().length > 0 || attCount > 0) && ready;
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Escape" && recording) return; // the window listener cancels the take
@@ -64,7 +65,7 @@ export function useComposerInput({
 
   const onDragOver = (e: DragEvent) => {
     e.preventDefault();
-    if (workerConnected && chatId) setIsDragging(true);
+    if (workerConnected && ready) setIsDragging(true);
   };
 
   const onDragLeave = (e: DragEvent) => {
@@ -75,7 +76,7 @@ export function useComposerInput({
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && workerConnected && chatId) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && workerConnected && ready) {
       void onAttach(e.dataTransfer.files);
     }
   };

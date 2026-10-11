@@ -4,7 +4,7 @@ import type { Bot, BotConnector, Chat, ModelOption } from "../gen/silo/v1/ui_pb"
 import type { AgentLink } from "../links";
 import type { useRunStream } from "../useRunStream";
 import type { useSubagents } from "../useSubagents";
-import type { RunActions } from "./runActions";
+import type { ChatPick, RunActions } from "./runActions";
 import type { Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
@@ -18,6 +18,9 @@ export type BotPageState = {
   admin: boolean;
   tab: Tab;
   chatId?: string;
+  // The empty chat (/run/new) and what is picked for it.
+  fresh: boolean;
+  pick: ChatPick;
   agentId?: string;
   start: () => void;
   stop: () => void;

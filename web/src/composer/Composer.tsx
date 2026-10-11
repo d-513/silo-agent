@@ -24,6 +24,8 @@ export interface ComposerProps {
   onStop: () => void;
   sending: boolean;
   chatId?: string;
+  // The empty chat a first message makes: it takes input without an id.
+  fresh?: boolean;
   workerConnected?: boolean;
   botName?: string;
   models?: ModelOption[];
@@ -56,6 +58,7 @@ export function Composer({
   onStop,
   sending,
   chatId,
+  fresh,
   workerConnected,
   botName,
   models,
@@ -72,11 +75,12 @@ export function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictation = useDictationInput(textareaRef, text, setText, onTranscribe);
+  const ready = !!chatId || !!fresh;
   const input = useComposerInput({
     textareaRef,
     text,
     attCount: atts.length,
-    chatId,
+    ready,
     workerConnected,
     sending,
     recording: dictation.state === "recording",
@@ -119,8 +123,8 @@ export function Composer({
             onChange={(e) => setText(e.target.value)}
             onKeyDown={input.onKeyDown}
             onPaste={input.onPaste}
-            placeholder={placeholderFor(chatId, botName)}
-            disabled={!chatId}
+            placeholder={placeholderFor(ready, botName)}
+            disabled={!ready}
             className="silo-grow block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-3 focus-visible:outline-none disabled:cursor-not-allowed"
           />
 
@@ -139,6 +143,7 @@ export function Composer({
             attCount={atts.length}
             fileInputRef={fileInputRef}
             chatId={chatId}
+            ready={ready}
             workerConnected={workerConnected}
             dictation={dictation}
             voice={!!voice && !!onTranscribe}

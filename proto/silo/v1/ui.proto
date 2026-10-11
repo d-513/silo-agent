@@ -1105,6 +1105,11 @@ message SendRequest {
   repeated Attachment attachments = 4;
   // The sending device's IANA zone. An unpinned Bot follows it.
   string time_zone = 5;
+  // With no chat_id: make a new chat for this message instead of using the
+  // newest one. model and thinking are what it starts with ("" = default).
+  bool new_chat = 6;
+  string model = 7;
+  string thinking = 8;
 }
 
 message SendResponse {

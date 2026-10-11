@@ -1,7 +1,7 @@
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { chatLink } from "../links";
+import { chatLink, newChatLink } from "../links";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { UI, type Chat } from "../gen/silo/v1/ui_pb";
@@ -34,8 +34,8 @@ export function putChat(botId: string, row: Chat) {
 // useChatList loads a Bot's chats (the sidebar shows them on every page) and,
 // while a chat-side page is open, its models; it opens the newest chat when
 // none is picked, and owns create, rename and delete.
-export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string }, onError: (message: string) => void) {
-  const { tab, chatSide, chatId } = route;
+export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string; fresh?: boolean }, onError: (message: string) => void) {
+  const { tab, chatSide, chatId, fresh } = route;
   const nav = useNavigate();
   const chatsQ = useQuery(UI.method.listChats, id ? { botId: id } : skipToken);
   const modelsQ = useQuery(UI.method.listModels, id && chatSide ? { botId: id } : skipToken);
@@ -52,8 +52,8 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
 
   const newest = chatsQ.data?.chats[0]?.id;
   useEffect(() => {
-    if (id && tab === "run" && !chatId && newest) void nav({ ...chatLink(id, newest), replace: true });
-  }, [id, tab, chatId, newest, nav]);
+    if (id && tab === "run" && !chatId && !fresh && newest) void nav({ ...chatLink(id, newest), replace: true });
+  }, [id, tab, chatId, fresh, newest, nav]);
 
   async function renameChat(cid: string) {
     if (!id) return;
@@ -71,9 +71,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
 
   async function newChat() {
     if (!id) return;
-    const c = await ui.createChat({ botId: id });
-    patchChats(id, (xs) => [c, ...xs]);
-    void nav(chatLink(id, c.id));
+    void nav(newChatLink(id));
   }
 
   async function deleteChat(cid: string) {
@@ -83,11 +81,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     patchChats(id, () => next);
     if (cid === chatId) {
       if (next[0]) void nav(chatLink(id, next[0].id));
-      else {
-        const created = await ui.createChat({ botId: id });
-        patchChats(id, () => [created]);
-        void nav(chatLink(id, created.id));
-      }
+      else void nav(newChatLink(id));
     }
   }
 

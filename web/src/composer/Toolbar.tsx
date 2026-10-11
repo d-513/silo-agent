@@ -21,6 +21,7 @@ export function Toolbar({
   attCount,
   fileInputRef,
   chatId,
+  ready,
   workerConnected,
   dictation,
   voice,
@@ -39,6 +40,8 @@ export function Toolbar({
   attCount: number;
   fileInputRef: RefObject<HTMLInputElement | null>;
   chatId?: string;
+  // A message can be written: a chat is open, or the empty one a send makes.
+  ready: boolean;
   workerConnected?: boolean;
   dictation: Dictation;
   // voice shows the dictation mic.
@@ -64,7 +67,7 @@ export function Toolbar({
           type="button"
           title={workerConnected ? t("Attach files to /workspace/tmp") : t("Start the Bot to attach files")}
           aria-label={t("Attach files")}
-          disabled={!workerConnected || !chatId}
+          disabled={!workerConnected || !ready}
           className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:text-ink-3 disabled:opacity-50 disabled:hover:bg-transparent"
           onClick={() => fileInputRef.current?.click()}
         >
@@ -76,7 +79,7 @@ export function Toolbar({
           )}
         </button>
 
-        {voice ? <MicButton dictation={dictation} disabled={!chatId} /> : null}
+        {voice ? <MicButton dictation={dictation} disabled={!ready} /> : null}
 
         {models && models.length > 0 && onModel ? (
           <Select
@@ -86,18 +89,18 @@ export function Toolbar({
             ariaLabel={t("Model for this conversation")}
             value={model && models.some((m) => m.id === model) ? model : models[0].id}
             onChange={onModel}
-            disabled={!chatId}
+            disabled={!ready}
             options={modelOptions(models)}
           />
         ) : null}
 
         {thinkingLevels.length > 0 && onThinking ? (
-          <ThinkingPicker value={fitThinking(thinking ?? "", thinkingLevels)} levels={thinkingLevels} onChange={onThinking} disabled={!chatId} />
+          <ThinkingPicker value={fitThinking(thinking ?? "", thinkingLevels)} levels={thinkingLevels} onChange={onThinking} disabled={!ready} />
         ) : null}
 
         <FollowToggle />
 
-        {onCollect ? <MemoryCollectButton chatId={chatId} onCollect={onCollect} /> : null}
+        {onCollect && chatId ? <MemoryCollectButton chatId={chatId} onCollect={onCollect} /> : null}
 
         {usage && usage.window > 0 ? <ContextMeter usage={usage} onCompact={onCompact} disabled={sending || !chatId} /> : null}
       </div>

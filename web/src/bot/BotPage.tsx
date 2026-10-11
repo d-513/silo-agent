@@ -8,7 +8,7 @@ import { fail } from "../errors";
 import { SkeletonRows } from "../Field";
 import { UI, type BotConnector } from "../gen/silo/v1/ui_pb";
 import { lazyNamed } from "../lazyNamed";
-import { agentLink, chatLink } from "../links";
+import { agentLink, chatLink, newChatLink } from "../links";
 import { reload, setBot } from "../query";
 import { useRunStream } from "../useRunStream";
 import { useSubagents } from "../useSubagents";
@@ -19,7 +19,7 @@ import { BotSlip } from "./BotSlip";
 import { BotStrip } from "./BotStrip";
 import { MachineRail } from "./MachineRail";
 import { setDocked, useDocked } from "./paneStore";
-import { runActions } from "./runActions";
+import { runActions, type ChatPick } from "./runActions";
 import { SidePane } from "./SidePane";
 import { onChatSide, paneOf, type PaneKind } from "./tabs";
 import { useBotLive } from "./useBotLive";
@@ -66,12 +66,16 @@ export function BotPage() {
   const { chatId, agentId } = useParams({ strict: false });
   // The tab is whatever the matched route says it lights (router.tsx).
   const tab = useMatches({ select: (ms) => ms.map((m) => m.staticData.tab).filter(Boolean).pop() }) ?? "run";
+  const fresh = useMatches({ select: (ms) => ms.some((m) => m.staticData.fresh) });
   const chatSide = onChatSide(tab);
   const navigate = useNavigate();
   const [actErr, setActErr] = useState("");
   const { bot, loadErr, pending, reloadApprovals } = useBotLive(id, chatId);
-  const { chats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId }, setActErr);
+  const { chats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId, fresh }, setActErr);
   const draft = useComposerDraft(id, bot?.workerConnected);
+  // Each visit to the empty chat starts from the defaults.
+  const [pick, setPick] = useState<ChatPick>({ model: "", thinking: "" });
+  useEffect(() => setPick({ model: "", thinking: "" }), [id, fresh]);
   const secrets = useSecrets(id, tab === "secrets", setActErr);
   const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
   // A machine pane is its own page on its route (`max`); on the chat side it
@@ -104,7 +108,8 @@ export function BotPage() {
   // Docking a pane back goes to the chat it was opened from.
   useEffect(() => {
     if (chatId) lastChat.current = chatId;
-  }, [chatId]);
+    else if (fresh) lastChat.current = "";
+  }, [chatId, fresh]);
   // Files keeps the folder a link opened it in after it is docked.
   useEffect(() => {
     if (open) setOpenAt(open);
@@ -173,7 +178,7 @@ export function BotPage() {
   }
   function dockPane(kind: PaneKind | "") {
     if (kind) setDocked(kind);
-    void navigate(chatLink(id, lastChat.current));
+    void navigate(lastChat.current === "" ? newChatLink(id) : chatLink(id, lastChat.current));
   }
 
   return (
@@ -184,6 +189,8 @@ export function BotPage() {
         admin,
         tab,
         chatId,
+        fresh,
+        pick,
         agentId,
         start,
         stop,
@@ -203,7 +210,7 @@ export function BotPage() {
         run,
         subs,
         draft,
-        actions: runActions({ id, chatId, draft, run, onError: setActErr, openChat: (cid) => void navigate(chatLink(id, cid)) }),
+        actions: runActions({ id, chatId, fresh, pick, setPick, draft, run, onError: setActErr, openChat: (cid) => void navigate(chatLink(id, cid)) }),
         waiting,
         waitingRuns,
         agentsBusy,

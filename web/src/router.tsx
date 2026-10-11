@@ -55,7 +55,7 @@ import { SignIn } from "./SignIn";
 //       connectors[/new|/$id]  skills  drives  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
-//         run[/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
+//         run[/new|/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
@@ -70,6 +70,8 @@ declare module "@tanstack/react-router" {
   }
   interface StaticDataRouteOption {
     tab?: Tab;
+    // /run/new: an empty chat that exists only once a message is sent.
+    fresh?: boolean;
   }
 }
 
@@ -188,6 +190,7 @@ const botElse = createRoute({ getParentRoute: () => bot, path: "$", beforeLoad: 
 
 const chat = createRoute({ getParentRoute: () => bot, id: "_chat", component: ChatLayout });
 const run = createRoute({ getParentRoute: () => chat, path: "run", staticData: { tab: "run" }, component: RunRoute });
+const runNew = createRoute({ getParentRoute: () => chat, path: "run/new", staticData: { tab: "run", fresh: true }, component: RunRoute });
 const runChat = createRoute({ getParentRoute: () => chat, path: "run/$chatId", staticData: { tab: "run" }, component: RunRoute });
 const runAgent = createRoute({ getParentRoute: () => chat, path: "run/$chatId/agent/$agentId", staticData: { tab: "run" }, component: AgentRoute });
 const automations = createRoute({ getParentRoute: () => chat, path: "automations", staticData: { tab: "automations" }, component: AutomationsLayout });
@@ -255,7 +258,7 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
+      chat.addChildren([run, runNew, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
       customize.addChildren([
         connectors,
         botSkills,

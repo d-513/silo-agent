@@ -19,6 +19,6 @@ eq(levelBars(0.4).length, 5, "five bars");
 
 eq([growHeight(0), growHeight(80), growHeight(500)], [26, 80, 168], "clamped to 26..168");
 
-eq(placeholderFor(undefined, "Atlas"), "Select or create a chat to begin…", "no chat");
-eq(placeholderFor("c1", "Atlas"), "Ask Atlas…", "named bot");
-eq(placeholderFor("c1"), "Ask this Bot…", "unnamed bot");
+eq(placeholderFor(false, "Atlas"), "Select or create a chat to begin…", "no chat");
+eq(placeholderFor(true, "Atlas"), "Ask Atlas…", "named bot");
+eq(placeholderFor(true), "Ask this Bot…", "unnamed bot");

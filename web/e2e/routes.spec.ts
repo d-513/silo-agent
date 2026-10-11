@@ -178,8 +178,9 @@ test("tabs and chats navigate by click", async ({ page }) => {
   const bot = first.match(/\/bots\/[^/]+/)![0];
   try {
     await page.getByRole("button", { name: "New chat" }).first().click();
-    await expect(page).not.toHaveURL(first);
-    await expect(page).toHaveURL(/\/run\/[^/]+$/);
+    // New chat is an empty page: no chat exists until a message is sent.
+    await expect(page).toHaveURL(/\/run\/new$/);
+    await expect(page.getByPlaceholder(/Ask /)).toBeEnabled();
     const second = page.url();
 
     // Settings, one of its tabs, and back: the chats stay in the sidebar.
@@ -189,6 +190,8 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(page).toHaveURL(new RegExp(`${bot}/rules$`));
     await expect(lit(page, "Rules")).toBeVisible();
     await page.getByRole("link", { name: "New chat" }).first().click();
+    await expect(page).toHaveURL(first);
+    await page.getByRole("button", { name: "New chat" }).first().click();
     await expect(page).toHaveURL(second);
 
     // A machine pane docks beside the chat without leaving it, and opens as

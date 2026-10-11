@@ -69,6 +69,8 @@ export function RunRoute() {
       id={p.id}
       bot={p.bot}
       chatId={p.chatId}
+      fresh={p.fresh}
+      pick={p.pick}
       chats={p.chats}
       models={p.models}
       defaultModel={p.defaultModel}

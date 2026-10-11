@@ -10,6 +10,11 @@ export function chatLink(botId: string, chatId?: string) {
     : linkOptions({ to: "/bots/$botId/run", params: { botId } });
 }
 
+/** An empty chat: nothing is created until a message is sent. */
+export function newChatLink(botId: string) {
+  return linkOptions({ to: "/bots/$botId/run/new", params: { botId } });
+}
+
 /** One of a chat's subagents. */
 export function agentLink(botId: string, chatId: string, agentId: string) {
   return linkOptions({ to: "/bots/$botId/run/$chatId/agent/$agentId", params: { botId, chatId, agentId } });

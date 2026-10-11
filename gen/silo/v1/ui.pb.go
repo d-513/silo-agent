@@ -7968,7 +7968,12 @@ type SendRequest struct {
 	ChatId      string                 `protobuf:"bytes,3,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	Attachments []*Attachment          `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	// The sending device's IANA zone. An unpinned Bot follows it.
-	TimeZone      string `protobuf:"bytes,5,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	TimeZone string `protobuf:"bytes,5,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// With no chat_id: make a new chat for this message instead of using the
+	// newest one. model and thinking are what it starts with ("" = default).
+	NewChat       bool   `protobuf:"varint,6,opt,name=new_chat,json=newChat,proto3" json:"new_chat,omitempty"`
+	Model         string `protobuf:"bytes,7,opt,name=model,proto3" json:"model,omitempty"`
+	Thinking      string `protobuf:"bytes,8,opt,name=thinking,proto3" json:"thinking,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8034,6 +8039,27 @@ func (x *SendRequest) GetAttachments() []*Attachment {
 func (x *SendRequest) GetTimeZone() string {
 	if x != nil {
 		return x.TimeZone
+	}
+	return ""
+}
+
+func (x *SendRequest) GetNewChat() bool {
+	if x != nil {
+		return x.NewChat
+	}
+	return false
+}
+
+func (x *SendRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *SendRequest) GetThinking() string {
+	if x != nil {
+		return x.Thinking
 	}
 	return ""
 }
@@ -18457,13 +18483,16 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x03R\x04size\x12\x12\n" +
-	"\x04mime\x18\x04 \x01(\tR\x04mime\"\xa5\x01\n" +
+	"\x04mime\x18\x04 \x01(\tR\x04mime\"\xf2\x01\n" +
 	"\vSendRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x17\n" +
 	"\achat_id\x18\x03 \x01(\tR\x06chatId\x125\n" +
 	"\vattachments\x18\x04 \x03(\v2\x13.silo.v1.AttachmentR\vattachments\x12\x1b\n" +
-	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\">\n" +
+	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\x12\x19\n" +
+	"\bnew_chat\x18\x06 \x01(\bR\anewChat\x12\x14\n" +
+	"\x05model\x18\a \x01(\tR\x05model\x12\x1a\n" +
+	"\bthinking\x18\b \x01(\tR\bthinking\">\n" +
 	"\fSendResponse\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\"@\n" +

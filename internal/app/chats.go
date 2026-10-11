@@ -144,18 +144,29 @@ func (a *App) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatM
 	if err != nil {
 		return nil, err
 	}
-	model := strings.TrimSpace(req.Msg.GetModel())
-	if model != "" {
-		if _, _, err := llm.Parse(model); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		if !llm.Allowed(model, a.cfg().Models) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("model is not in the allowed list"))
-		}
+	model, err := a.chatModel(req.Msg.GetModel())
+	if err != nil {
+		return nil, err
 	}
 	c.Model = model
 	a.DB.Save(c)
 	return connect.NewResponse(chats.Proto(c)), nil
+}
+
+// chatModel is a chat's model override as a client names it: "" (the Bot's
+// default) or a model on the operator's list.
+func (a *App) chatModel(raw string) (string, error) {
+	model := strings.TrimSpace(raw)
+	if model == "" {
+		return "", nil
+	}
+	if _, _, err := llm.Parse(model); err != nil {
+		return "", connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if !llm.Allowed(model, a.cfg().Models) {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("model is not in the allowed list"))
+	}
+	return model, nil
 }
 
 func cleanTitle(raw string) string {
