@@ -73,7 +73,7 @@ func TestStdioConnectorEndToEnd(t *testing.T) {
 	if err != nil || res.Msg.GetError() != "" {
 		t.Fatalf("CallTool: %v %+v", err, res.Msg)
 	}
-	if res.Msg.GetResultJson() != "hello-stdio" {
+	if res.Msg.GetResultJson() != `{"result":"hello-stdio"}` {
 		t.Fatalf("result %q", res.Msg.GetResultJson())
 	}
 

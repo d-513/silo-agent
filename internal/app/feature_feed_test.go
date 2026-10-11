@@ -194,7 +194,7 @@ func TestFeedPostFromPython(t *testing.T) {
 
 	// Python only reaches feed on the bot connector; soul stays a chat tool.
 	res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{Connector: "bot", Action: "soul", ArgsJson: `{"content":"x"}`, RunId: run}))
-	if err != nil || res.Msg.GetError() != "unknown connector" {
+	if err != nil || !strings.Contains(res.Msg.GetError(), "not available from Python") {
 		t.Fatalf("bot.soul from python: %v %+v", err, res.Msg)
 	}
 

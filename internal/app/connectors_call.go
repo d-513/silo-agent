@@ -14,216 +14,67 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
-	"silo.agent/internal/mcpx"
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
 )
 
+// CallTool is the Python surface of the tool engine: silo_runtime.call and the
+// generated `tools.<slug>` stubs arrive here through the worker. It resolves
+// connector.action to a definition, shows the call on the thread, runs it
+// through the same gate and handler a chat tool call would, and answers JSON.
 func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*connect.Response[v1.ToolRes], error) {
 	bot := currentBot(ctx)
-	slug := req.Msg.GetConnector()
-	action := req.Msg.GetAction()
+	slug, action, argsJSON := req.Msg.GetConnector(), req.Msg.GetAction(), req.Msg.GetArgsJson()
 	runID := a.callRun(bot.ID, req.Msg.GetRunId())
-	if security.Reserved(slug) {
-		return a.callBuiltin(ctx, bot, slug, action, req.Msg.GetArgsJson(), runID)
+	fail := func(err error) (*connect.Response[v1.ToolRes], error) {
+		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
-	bc, c, err := a.Connectors.FindBotConnector(bot.ID, slug)
+	def, err := a.Tools.ByAction(bot.ID, slug, action)
 	if err != nil {
-		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		return fail(err)
 	}
-	if c.Auth == connector.AuthOAuth && bc.AuthStatus != connector.StatusOK {
-		return connect.NewResponse(&v1.ToolRes{Error: "connector is not authorized"}), nil
+	call := &tool.Call{
+		Surface: tool.Python, Bot: bot, ChatID: a.ChatOfRun(runID), RunID: runID,
+		Def: def, Args: map[string]any{}, ArgsJSON: argsJSON,
 	}
-	if hdr, err := mcpx.HeadersFromJSON(a.Connectors.ResolveConnector(c).HeadersJSON); err == nil {
-		for _, v := range hdr {
-			a.Mask(bot.ID).Add(v)
-		}
+	// A local tool's arguments were held back by the worker, and a connector
+	// reads its own from the raw JSON, so a bad payload is theirs to refuse.
+	_ = json.Unmarshal([]byte(argsJSON), &call.Args)
+	title := security.Describe(slug, action, argsJSON).Title
+	if def.Title != nil {
+		title = def.Title(call)
 	}
-	tool := slug + "." + action
-	a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle(c.Name, action), tool)
-	if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, req.Msg.GetArgsJson(), connector.BuiltinMode(c, action)); err != nil {
-		a.emitCallDone(bot.ID, runID, tool, err.Error())
-		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-	}
-	if c.Transport == connector.TransportBuiltin {
-		out, err := a.Connectors.RunBuiltin(ctx, bot, c, action, req.Msg.GetArgsJson())
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
-		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
-	}
-	sess, err := a.Connectors.MCPSession(ctx, bc, c)
+	key := security.Key(slug, action)
+	a.Emit(bot.ID, call.ChatID, runID, "call", title, key)
+	res, err := a.Tools.Run(ctx, call)
 	if err != nil {
-		a.emitCallDone(bot.ID, runID, tool, err.Error())
-		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
+		a.emitCallDone(bot.ID, runID, key, err.Error())
+		return fail(err)
 	}
-	args := map[string]any{}
-	if raw := strings.TrimSpace(req.Msg.GetArgsJson()); raw != "" {
-		if err := json.Unmarshal([]byte(raw), &args); err != nil {
-			a.emitCallDone(bot.ID, runID, tool, "invalid args")
-			return connect.NewResponse(&v1.ToolRes{Error: "invalid args"}), nil
-		}
+	out := a.Mask(bot.ID).Apply(res.Text)
+	a.emitCallDone(bot.ID, runID, key, textx.Cap(out, callResultMax))
+	if res.Data != "" {
+		return connect.NewResponse(&v1.ToolRes{ResultJson: res.Data}), nil
 	}
-	for k, v := range args {
-		if v == nil {
-			delete(args, k)
-		}
-	}
-	out, err := mcpx.Call(ctx, sess, action, args)
-	if err != nil && errors.Is(err, mcpx.ErrSessionGone) {
-		a.Connectors.DropMCP(bc.ID)
-		sess, err = a.Connectors.MCPSession(ctx, bc, c)
-		if err == nil {
-			out, err = mcpx.Call(ctx, sess, action, args)
-		}
-	}
-	if err != nil {
-		a.emitCallDone(bot.ID, runID, tool, err.Error())
-		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-	}
-	out = a.Mask(bot.ID).Apply(out)
-	a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
-	return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
+	return connect.NewResponse(&v1.ToolRes{ResultJson: pythonResult(out)}), nil
 }
 
-func (a *App) callBuiltin(ctx context.Context, bot *db.Bot, slug, action, argsJSON, runID string) (*connect.Response[v1.ToolRes], error) {
-	switch slug {
-	case security.Desktop:
-		tool := security.Key(slug, action)
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", callTitle("Desktop", action), tool)
-		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, "ok")
-		return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
-	case security.Web:
-		if action != "search" {
-			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-		}
-		tool := security.Key(slug, action)
-		title := security.Describe(slug, action, argsJSON).Title
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
-		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		out, err := a.runWebSearch(ctx, argsJSON)
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		out = a.Mask(bot.ID).Apply(out)
-		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
-		return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
-	case security.Channels:
-		if action != "send" {
-			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-		}
-		args := map[string]any{}
-		_ = json.Unmarshal([]byte(argsJSON), &args)
-		name, _ := args["channel"].(string)
-		title := "Send to channel"
-		if strings.TrimSpace(name) != "" {
-			title = "Send to " + name
-		}
-		tool := security.Key(slug, action)
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
-		out, err := a.Channels.SendTool(ctx, bot.ID, runID, args)
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, out)
-		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
-	case security.Chats:
-		if action != "read" {
-			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-		}
-		args := map[string]any{}
-		_ = json.Unmarshal([]byte(argsJSON), &args)
-		tool := security.Key(slug, action)
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", "Read chats", tool)
-		out, err := a.Channels.ChatsTool(ctx, bot.ID, runID, args)
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
-		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
-	case security.Bot, security.Automations, security.Model, security.Tasks, security.Tunnels, security.Mailbox:
-		// Actions shared with a chat tool run the same code (runShared); the
-		// rest of these connectors (soul, core_memory, switch_model) are chat-only.
-		name, ok := sharedToolName(slug, action)
-		if !ok {
-			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-		}
-		args := map[string]any{}
-		_ = json.Unmarshal([]byte(argsJSON), &args)
-		tool := security.Key(slug, action)
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", security.Describe(slug, action, argsJSON).Title, tool)
-		out, err := a.runShared(ctx, bot, runID, name, args, true)
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, textx.Cap(out, callResultMax))
-		if strings.HasPrefix(out, "{") && json.Valid([]byte(out)) {
-			return connect.NewResponse(&v1.ToolRes{ResultJson: out}), nil
-		}
-		return connect.NewResponse(&v1.ToolRes{ResultJson: jsonResult(out)}), nil
-	case security.Artifact:
-		if action != "emit" {
-			return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-		}
-		if runID == "" {
-			// An orphan call has no thread to hold the card.
-			return connect.NewResponse(&v1.ToolRes{Error: "artifact needs a live chat run; this process is not attached to one"}), nil
-		}
-		tool := security.Key(slug, action)
-		title := security.Describe(slug, action, argsJSON).Title
-		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "call", title, tool)
-		if _, err := a.AuthorizeAction(ctx, bot, runID, slug, action, argsJSON, ""); err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		out, err := a.Artifacts.Tool(ctx, bot, runID, argsJSON)
-		if err != nil {
-			a.emitCallDone(bot.ID, runID, tool, err.Error())
-			return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
-		}
-		a.emitCallDone(bot.ID, runID, tool, out)
-		return connect.NewResponse(&v1.ToolRes{ResultJson: `{"ok":true}`}), nil
-	default:
-		return connect.NewResponse(&v1.ToolRes{Error: "unknown connector"}), nil
-	}
-}
+func callTitle(name, action string) string { return connector.CallTitle(name, action) }
 
-func callTitle(name, action string) string {
-	a := action
-	if i := strings.LastIndex(action, "__"); i >= 0 {
-		a = action[i+2:]
-	} else if i := strings.LastIndex(action, "."); i >= 0 {
-		a = action[i+1:]
-	}
-	a = strings.ReplaceAll(a, "_", " ")
-	if name == "" {
-		return a
-	}
-	return name + " · " + a
-}
-
-// callResultMax caps a connector call's result on the thread's call row.
+// callResultMax caps a call's result on the thread's call row.
 const callResultMax = 2000
 
-// jsonResult wraps a plain string as a JSON object for the Python bus.
-func jsonResult(s string) string {
+// pythonResult is a tool's text as the JSON Python receives: passed through
+// when it already is JSON, otherwise wrapped as {"result": text}.
+func pythonResult(s string) string {
+	if t := strings.TrimSpace(s); t != "" && json.Valid([]byte(t)) {
+		return s
+	}
 	b, err := json.Marshal(map[string]string{"result": s})
 	if err != nil {
 		return `{"result":""}`

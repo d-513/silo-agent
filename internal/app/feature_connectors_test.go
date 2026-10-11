@@ -56,7 +56,8 @@ func TestHTTPConnectorEndToEnd(t *testing.T) {
 	if err != nil || res.Msg.GetError() != "" {
 		t.Fatalf("CallTool: %v %+v", err, res.Msg)
 	}
-	if res.Msg.GetResultJson() != "hello-mcp" {
+	// A plain-text result reaches Python as {"result": text}.
+	if res.Msg.GetResultJson() != `{"result":"hello-mcp"}` {
 		t.Fatalf("result %q", res.Msg.GetResultJson())
 	}
 }
@@ -443,7 +444,7 @@ func TestConnectorVarsResolveAtConnect(t *testing.T) {
 	if err != nil || res.Msg.GetError() != "" {
 		t.Fatalf("CallTool: %v %+v", err, res.Msg)
 	}
-	if res.Msg.GetResultJson() != "vars-ok" {
+	if res.Msg.GetResultJson() != `{"result":"vars-ok"}` {
 		t.Fatalf("result %q", res.Msg.GetResultJson())
 	}
 }

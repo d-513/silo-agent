@@ -33,6 +33,7 @@ import (
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/skill"
+	"silo.agent/internal/app/tool"
 	"silo.agent/internal/app/tunnels"
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
@@ -168,16 +169,19 @@ type App struct {
 
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
-	Feed        *feed.Service
-	Tunnels     *tunnels.Service
-	Mail        *mailbox.Service
-	Models      *models.Service
-	Workspace   *workspace.Service
-	Voice       *voice.Service
-	Knowledge   *knowledge.Service
-	Changes     *changes.Service
-	Memory      *memory.Service
-	Connectors  *connector.Service
+	Feed       *feed.Service
+	Tunnels    *tunnels.Service
+	Mail       *mailbox.Service
+	Models     *models.Service
+	Workspace  *workspace.Service
+	Voice      *voice.Service
+	Knowledge  *knowledge.Service
+	Changes    *changes.Service
+	Memory     *memory.Service
+	Connectors *connector.Service
+	// Tools is the tool engine: every built-in tool and each Bot's connector
+	// tools as definitions, run the same from chat and from Python.
+	Tools       *tool.Engine
 	Admin       *admin.Service
 	Accounts    *account.Service
 	Drives      *drive.Service
@@ -219,6 +223,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)
 	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice, a.Accounts.OIDCRedirectURL)
+	a.Tools = a.newTools()
 	a.recoverOrphans()
 	a.Connectors.Init()
 	a.Connectors.ReconcileStdio()

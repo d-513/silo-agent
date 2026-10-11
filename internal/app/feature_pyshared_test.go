@@ -100,7 +100,7 @@ func TestPythonAutomationAndModelPaths(t *testing.T) {
 
 	// Chat-only actions stay off the Python bus.
 	for _, ca := range [][2]string{{"bot", "soul"}, {"bot", "core_memory"}, {"model", "switch"}} {
-		if res := pyCall(t, h, id, "", ca[0], ca[1], `{}`); res.GetError() != "unknown connector" {
+		if res := pyCall(t, h, id, "", ca[0], ca[1], `{}`); !strings.Contains(res.GetError(), "not available from Python") {
 			t.Fatalf("%s.%s from Python: %+v", ca[0], ca[1], res)
 		}
 	}

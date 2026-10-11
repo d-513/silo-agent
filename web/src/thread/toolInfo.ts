@@ -62,6 +62,14 @@ export function prettyJson(raw: string) {
   }
 }
 
+// connectorTool splits the name of a connector tool the model called directly
+// (`<slug>__<action>`, see tool.CompletionName on the server).
+export function connectorTool(name: string): { slug: string; action: string } | undefined {
+  const i = name.indexOf("__");
+  if (i <= 0 || i + 2 >= name.length) return undefined;
+  return { slug: name.slice(0, i), action: name.slice(i + 2) };
+}
+
 export function toolMeta(name: string): { app: string } {
   switch (name) {
     case "exec_python":
@@ -114,7 +122,7 @@ export function toolMeta(name: string): { app: string } {
     case "task_reset":
       return { app: "Taskboard" };
     default:
-      return { app: name };
+      return { app: connectorTool(name)?.slug ?? name };
   }
 }
 
@@ -178,6 +186,6 @@ export function toolAction(name: string, raw: string): string {
     case "task_reset":
       return "reset";
     default:
-      return "";
+      return connectorTool(name)?.action.replaceAll("_", " ").trim() ?? "";
   }
 }

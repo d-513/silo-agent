@@ -247,6 +247,9 @@ type Connector struct {
 	DefaultMode       string
 	Prompt            string
 	AutoAttach        bool `gorm:"index"`
+	// ExposeCompletion offers the connector's tools to the model as completion
+	// tools (`<slug>__<action>`) as well as through Python's `import tools`.
+	ExposeCompletion bool `gorm:"not null;default:false"`
 	// Builtin names an internal/builtin registry entry (Transport "builtin").
 	// ConfigJSON holds its plain field values and SecretsJSON the secret ones,
 	// both map[string]string; library rows carry neither.

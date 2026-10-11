@@ -427,10 +427,11 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		msgs = append(msgs, res.assistant)
 		lastLen = len(msgs)
 		for _, tc := range res.assistant.ToolCalls {
-			if tc.Name == "write" || tc.Name == "patch" || tc.Name == "delete" || tc.Name == "terminal" || tc.Name == "exec_python" {
+			def := a.toolDef(botID, tc.Name)
+			if def != nil && def.Writes {
 				clear(seen)
 			}
-			if tc.Name == "read" || tc.Name == "grep" {
+			if def != nil && def.RepeatGuard {
 				key := tc.Name + "\x00" + tc.Arguments
 				seen[key]++
 				if seen[key] >= 3 {
@@ -440,7 +441,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 					continue
 				}
 			}
-			out, img, err := a.execTool(ctx, botID, chatID, runID, tc.Name, tc.Arguments)
+			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments)
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}

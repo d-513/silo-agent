@@ -3769,6 +3769,14 @@ public nonisolated struct Silo_V1_Connector: @unchecked Sendable {
     set {_uniqueStorage()._autoenabled = newValue}
   }
 
+  /// expose_completion offers the connector's tools to the model directly, as
+  /// completion tools named `<slug>__<action>`, as well as through Python's
+  /// `import tools`. On a library preset it is what a new copy starts with.
+  public var exposeCompletion: Bool {
+    get {_storage._exposeCompletion}
+    set {_uniqueStorage()._exposeCompletion = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3913,6 +3921,11 @@ public nonisolated struct Silo_V1_CreateConnectorRequest: @unchecked Sendable {
     set {_uniqueStorage()._identifier = newValue}
   }
 
+  public var exposeCompletion: Bool {
+    get {_storage._exposeCompletion}
+    set {_uniqueStorage()._exposeCompletion = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4036,6 +4049,16 @@ public nonisolated struct Silo_V1_UpdateConnectorRequest: @unchecked Sendable {
     get {_storage._identifier}
     set {_uniqueStorage()._identifier = newValue}
   }
+
+  /// Unset keeps the stored value.
+  public var exposeCompletion: Bool {
+    get {_storage._exposeCompletion ?? false}
+    set {_uniqueStorage()._exposeCompletion = newValue}
+  }
+  /// Returns true if `exposeCompletion` has been explicitly set.
+  public var hasExposeCompletion: Bool {_storage._exposeCompletion != nil}
+  /// Clears the value of `exposeCompletion`. Subsequent reads from it will return its default value.
+  public mutating func clearExposeCompletion() {_uniqueStorage()._exposeCompletion = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4240,6 +4263,16 @@ public nonisolated struct Silo_V1_CreateBotConnectorRequest: @unchecked Sendable
     get {_storage._config}
     set {_uniqueStorage()._config = newValue}
   }
+
+  /// Unset takes the library preset's value (false for a custom connector).
+  public var exposeCompletion: Bool {
+    get {_storage._exposeCompletion ?? false}
+    set {_uniqueStorage()._exposeCompletion = newValue}
+  }
+  /// Returns true if `exposeCompletion` has been explicitly set.
+  public var hasExposeCompletion: Bool {_storage._exposeCompletion != nil}
+  /// Clears the value of `exposeCompletion`. Subsequent reads from it will return its default value.
+  public mutating func clearExposeCompletion() {_uniqueStorage()._exposeCompletion = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -13376,7 +13409,7 @@ nonisolated extension Silo_V1_EnvInput: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Connector"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{1}name\0\u{1}description\0\u{3}has_image\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{3}header_keys\0\u{3}created_at\0\u{3}default_mode\0\u{1}kind\0\u{3}source_id\0\u{3}oauth_client_id\0\u{3}has_oauth_client_secret\0\u{3}catalog_guide\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{3}env_keys\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}slug\0\u{1}builtin\0\u{1}fields\0\u{1}config\0\u{3}secrets_set\0\u{1}identifier\0\u{1}autoenabled\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{1}name\0\u{1}description\0\u{3}has_image\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{3}header_keys\0\u{3}created_at\0\u{3}default_mode\0\u{1}kind\0\u{3}source_id\0\u{3}oauth_client_id\0\u{3}has_oauth_client_secret\0\u{3}catalog_guide\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{3}env_keys\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}slug\0\u{1}builtin\0\u{1}fields\0\u{1}config\0\u{3}secrets_set\0\u{1}identifier\0\u{1}autoenabled\0\u{3}expose_completion\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -13409,6 +13442,7 @@ nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._M
     var _secretsSet: [String] = []
     var _identifier: String = String()
     var _autoenabled: Bool = false
+    var _exposeCompletion: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -13449,6 +13483,7 @@ nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._M
       _secretsSet = source._secretsSet
       _identifier = source._identifier
       _autoenabled = source._autoenabled
+      _exposeCompletion = source._exposeCompletion
     }
   }
 
@@ -13497,6 +13532,7 @@ nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._M
         case 28: try { try decoder.decodeRepeatedStringField(value: &_storage._secretsSet) }()
         case 29: try { try decoder.decodeSingularStringField(value: &_storage._identifier) }()
         case 30: try { try decoder.decodeSingularBoolField(value: &_storage._autoenabled) }()
+        case 31: try { try decoder.decodeSingularBoolField(value: &_storage._exposeCompletion) }()
         default: break
         }
       }
@@ -13595,6 +13631,9 @@ nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._M
       if _storage._autoenabled != false {
         try visitor.visitSingularBoolField(value: _storage._autoenabled, fieldNumber: 30)
       }
+      if _storage._exposeCompletion != false {
+        try visitor.visitSingularBoolField(value: _storage._exposeCompletion, fieldNumber: 31)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -13634,6 +13673,7 @@ nonisolated extension Silo_V1_Connector: SwiftProtobuf.Message, SwiftProtobuf._M
         if _storage._secretsSet != rhs_storage._secretsSet {return false}
         if _storage._identifier != rhs_storage._identifier {return false}
         if _storage._autoenabled != rhs_storage._autoenabled {return false}
+        if _storage._exposeCompletion != rhs_storage._exposeCompletion {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -13729,7 +13769,7 @@ nonisolated extension Silo_V1_HeaderInput: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateConnectorRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}identifier\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}identifier\0\u{3}expose_completion\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -13751,6 +13791,7 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
     var _autoAttach: Bool = false
     var _category: String = String()
     var _identifier: String = String()
+    var _exposeCompletion: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -13780,6 +13821,7 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
       _autoAttach = source._autoAttach
       _category = source._category
       _identifier = source._identifier
+      _exposeCompletion = source._exposeCompletion
     }
   }
 
@@ -13817,6 +13859,7 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
         case 17: try { try decoder.decodeSingularBoolField(value: &_storage._autoAttach) }()
         case 18: try { try decoder.decodeSingularStringField(value: &_storage._category) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._identifier) }()
+        case 20: try { try decoder.decodeSingularBoolField(value: &_storage._exposeCompletion) }()
         default: break
         }
       }
@@ -13882,6 +13925,9 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
       if !_storage._identifier.isEmpty {
         try visitor.visitSingularStringField(value: _storage._identifier, fieldNumber: 19)
       }
+      if _storage._exposeCompletion != false {
+        try visitor.visitSingularBoolField(value: _storage._exposeCompletion, fieldNumber: 20)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -13910,6 +13956,7 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
         if _storage._autoAttach != rhs_storage._autoAttach {return false}
         if _storage._category != rhs_storage._category {return false}
         if _storage._identifier != rhs_storage._identifier {return false}
+        if _storage._exposeCompletion != rhs_storage._exposeCompletion {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -13921,7 +13968,7 @@ nonisolated extension Silo_V1_CreateConnectorRequest: SwiftProtobuf.Message, Swi
 
 nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateConnectorRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{3}clear_image\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}config\0\u{1}identifier\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{3}clear_image\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{3}auto_attach\0\u{1}category\0\u{1}config\0\u{1}identifier\0\u{3}expose_completion\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -13946,6 +13993,7 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
     var _category: String = String()
     var _config: Dictionary<String,String> = [:]
     var _identifier: String = String()
+    var _exposeCompletion: Bool? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -13978,6 +14026,7 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
       _category = source._category
       _config = source._config
       _identifier = source._identifier
+      _exposeCompletion = source._exposeCompletion
     }
   }
 
@@ -14018,6 +14067,7 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
         case 20: try { try decoder.decodeSingularStringField(value: &_storage._category) }()
         case 21: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: &_storage._config) }()
         case 22: try { try decoder.decodeSingularStringField(value: &_storage._identifier) }()
+        case 23: try { try decoder.decodeSingularBoolField(value: &_storage._exposeCompletion) }()
         default: break
         }
       }
@@ -14026,6 +14076,10 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
       if !_storage._id.isEmpty {
         try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
       }
@@ -14092,6 +14146,9 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
       if !_storage._identifier.isEmpty {
         try visitor.visitSingularStringField(value: _storage._identifier, fieldNumber: 22)
       }
+      try { if let v = _storage._exposeCompletion {
+        try visitor.visitSingularBoolField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -14123,6 +14180,7 @@ nonisolated extension Silo_V1_UpdateConnectorRequest: SwiftProtobuf.Message, Swi
         if _storage._category != rhs_storage._category {return false}
         if _storage._config != rhs_storage._config {return false}
         if _storage._identifier != rhs_storage._identifier {return false}
+        if _storage._exposeCompletion != rhs_storage._exposeCompletion {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -14337,7 +14395,7 @@ nonisolated extension Silo_V1_AttachConnectorRequest: SwiftProtobuf.Message, Swi
 
 nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateBotConnectorRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}source_id\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{1}category\0\u{1}config\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}name\0\u{1}description\0\u{1}image\0\u{3}image_type\0\u{1}transport\0\u{3}http_url\0\u{1}auth\0\u{1}headers\0\u{3}default_mode\0\u{3}oauth_client_id\0\u{3}oauth_client_secret\0\u{3}source_id\0\u{3}stdio_command\0\u{3}stdio_args\0\u{3}stdio_image\0\u{1}env\0\u{1}prompt\0\u{1}category\0\u{1}config\0\u{3}expose_completion\0")
 
   fileprivate class _StorageClass {
     var _botID: String = String()
@@ -14360,6 +14418,7 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
     var _prompt: String = String()
     var _category: String = String()
     var _config: Dictionary<String,String> = [:]
+    var _exposeCompletion: Bool? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -14390,6 +14449,7 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
       _prompt = source._prompt
       _category = source._category
       _config = source._config
+      _exposeCompletion = source._exposeCompletion
     }
   }
 
@@ -14428,6 +14488,7 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
         case 18: try { try decoder.decodeSingularStringField(value: &_storage._prompt) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._category) }()
         case 20: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: &_storage._config) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._exposeCompletion) }()
         default: break
         }
       }
@@ -14436,6 +14497,10 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
       if !_storage._botID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._botID, fieldNumber: 1)
       }
@@ -14496,6 +14561,9 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
       if !_storage._config.isEmpty {
         try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: _storage._config, fieldNumber: 20)
       }
+      try { if let v = _storage._exposeCompletion {
+        try visitor.visitSingularBoolField(value: v, fieldNumber: 21)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -14525,6 +14593,7 @@ nonisolated extension Silo_V1_CreateBotConnectorRequest: SwiftProtobuf.Message, 
         if _storage._prompt != rhs_storage._prompt {return false}
         if _storage._category != rhs_storage._category {return false}
         if _storage._config != rhs_storage._config {return false}
+        if _storage._exposeCompletion != rhs_storage._exposeCompletion {return false}
         return true
       }
       if !storagesAreEqual {return false}

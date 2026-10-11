@@ -205,6 +205,18 @@ export function ConnectorFields({
       <p className="mb-3 text-ink-2">{builtin ? "Built-in — runs on the Silo server" : "MCP"}</p>
       {!builtin && <TransportFields value={value} set={set} existing={existing} fromCatalog={fromCatalog} allowStdioImage={allowStdioImage} />}
       <DefaultModeField value={value} set={set} builtin={builtin} />
+      <ToggleRow
+        className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"
+        label="Expose completions directly"
+        hint={
+          <>
+            The model also gets this connector's tools as its own (<span className="font-mono">slug__tool</span>), not only through
+            Python. Every tool is then described in each request, so leave it off for connectors with many tools.
+          </>
+        }
+        on={value.exposeCompletion}
+        onChange={(v) => set("exposeCompletion", v)}
+      />
       {allowAutoAttach && (
         <ToggleRow
           className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"

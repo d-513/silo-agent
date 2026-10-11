@@ -1612,6 +1612,10 @@ message Connector {
   // autoenabled is true when autoenable_connectors names this preset, so new
   // Bots get it whatever auto_attach says.
   bool autoenabled = 30;
+  // expose_completion offers the connector's tools to the model directly, as
+  // completion tools named `<slug>__<action>`, as well as through Python's
+  // `import tools`. On a library preset it is what a new copy starts with.
+  bool expose_completion = 31;
 }
 
 message ListConnectorsRequest {}
@@ -1646,6 +1650,7 @@ message CreateConnectorRequest {
   string category = 18;
   // Normalised by the server; empty makes one from the name.
   string identifier = 19;
+  bool expose_completion = 20;
 }
 
 message UpdateConnectorRequest {
@@ -1673,6 +1678,8 @@ message UpdateConnectorRequest {
   map<string, string> config = 21;
   // Library presets only; empty keeps the stored one.
   string identifier = 22;
+  // Unset keeps the stored value.
+  optional bool expose_completion = 23;
 }
 
 message DeleteConnectorRequest {
@@ -1725,6 +1732,8 @@ message CreateBotConnectorRequest {
   string category = 19;
   // Built-in config (see Connector.fields).
   map<string, string> config = 20;
+  // Unset takes the library preset's value (false for a custom connector).
+  optional bool expose_completion = 21;
 }
 
 message DetachConnectorRequest {

@@ -53,7 +53,7 @@ type_text(password)
 
 `get_secret` may pause until the human allows it. That is expected. Do not invent credentials, do not read `/proc` or env for tokens, do not print a secret, and do not pass it to chat `type`. Programmatic desktop (`look` captures the screen to `bot/screen.jpg`) is for sequences like that; the live click loop stays the chat tools.
 
-Connectors are Python packages under `tools`. They are **not** listed as chat tools. Do not say a connector is missing until you have listed `tools` in `exec_python`. No extra MCP URL or API key is required for attached connectors. `import tools` is enough — call `tools.<slug>.<fn>(...)` directly, no per-connector import.
+Connectors are Python packages under `tools`. They are **not** listed as chat tools, except a connector the Connectors section marks as also being chat tools: its actions are then in your tool list as `<slug>__<name>` too. Do not say a connector is missing until you have listed `tools` in `exec_python`. No extra MCP URL or API key is required for attached connectors. `import tools` is enough — call `tools.<slug>.<fn>(...)` directly, no per-connector import.
 
 ```python
 import tools

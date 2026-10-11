@@ -15,6 +15,8 @@ export type ConnectorDraft = {
   category: string;
   prompt: string;
   autoAttach: boolean;
+  // The tools are also offered to the model directly, not only through Python.
+  exposeCompletion: boolean;
   // Read-only: autoenable_connectors names this preset.
   autoenabled: boolean;
   httpUrl: string;
@@ -50,6 +52,7 @@ export function emptyDraft(): ConnectorDraft {
     category: "Custom",
     prompt: "",
     autoAttach: false,
+    exposeCompletion: false,
     autoenabled: false,
     httpUrl: "",
     auth: "none",
@@ -81,6 +84,7 @@ export function draftFrom(c: Connector): ConnectorDraft {
     category: c.category || "General",
     prompt: c.prompt || "",
     autoAttach: c.autoAttach,
+    exposeCompletion: !!c.exposeCompletion,
     autoenabled: !!c.autoenabled,
     httpUrl: c.httpUrl,
     auth: c.auth || "none",
@@ -127,6 +131,7 @@ export function specOf(d: ConnectorDraft) {
       category: d.category,
       prompt: d.prompt,
       autoAttach: d.autoAttach,
+      exposeCompletion: d.exposeCompletion,
       defaultMode: d.defaultMode,
       config: d.config,
       image: d.image,
@@ -141,6 +146,7 @@ export function specOf(d: ConnectorDraft) {
     category: d.category,
     prompt: d.prompt,
     autoAttach: d.autoAttach,
+    exposeCompletion: d.exposeCompletion,
     httpUrl: d.httpUrl,
     auth: d.transport === "stdio" ? "none" : d.auth,
     defaultMode: d.defaultMode,

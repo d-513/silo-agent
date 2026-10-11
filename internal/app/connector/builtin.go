@@ -242,6 +242,9 @@ func (s *Service) attachBuiltin(ctx context.Context, botID string, lib *db.Conne
 	if m.GetDefaultMode() != "" {
 		row.DefaultMode = security.Rule(m.GetDefaultMode())
 	}
+	if m.ExposeCompletion != nil {
+		row.ExposeCompletion = m.GetExposeCompletion()
+	}
 	if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

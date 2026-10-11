@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { ui } from "../api";
+import { connectorTool } from "./toolInfo";
 
 // The Python mark, one ink like the Lucide glyphs beside it.
 function PythonMark({ size = 14, className }: { size?: number; className?: string }) {
@@ -125,10 +126,13 @@ export function useConnectorMarks(botId: string): ConnectorMarks {
 // or a connector's own image (a plug when it has none).
 export function ToolIcon({ name, marks }: { name: string; marks?: ConnectorMarks }) {
   let inner: ReactNode;
+  const direct = toolIcons[name] ? undefined : connectorTool(name);
   if (name === "exec_python") {
     inner = <PythonMark size={14} />;
-  } else if (name === "call" || name.includes(".") || builtinCallIcons[name]) {
-    const slug = name.split(".")[0];
+  } else if (name === "call" || name.includes(".") || builtinCallIcons[name] || direct) {
+    // A connector reached through Python is `<slug>.<action>`; called by the
+    // model directly it is `<slug>__<action>`. Both wear the connector's mark.
+    const slug = direct?.slug ?? name.split(".")[0];
     const mark = marks?.get(slug);
     const Icon = builtinCallIcons[name] ?? builtinCallIcons[slug] ?? Plug;
     inner =

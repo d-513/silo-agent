@@ -10,9 +10,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
-	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
-	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 ) // Subagents are background agent loops a chat's lead starts with spawn_agent.
 // Each one owns a hidden log Chat (chats.subagent_id) and runs through the same
@@ -47,50 +45,6 @@ func runContext(d time.Duration) (context.Context, context.CancelFunc) {
 		return context.WithCancel(context.Background())
 	}
 	return context.WithTimeout(context.Background(), d)
-}
-
-// --- tool sets ---
-
-// leadOnlyTools are dropped from a subagent's tool list: it cannot start or
-// steer agents, wipe the shared board, talk on channels, switch models, or
-// schedule automations.
-var leadOnlyTools = map[string]bool{
-	"spawn_agent": true, "agent_status": true, "message_agent": true, "stop_agent": true,
-	"task_reset": true, "channel": true, "switch_model": true,
-	"list_automations": true, "create_automation": true, "update_automation": true, "delete_automation": true,
-}
-
-func isAgentTool(name string) bool {
-	switch name {
-	case "spawn_agent", "agent_status", "message_agent", "stop_agent":
-		return true
-	}
-	return false
-}
-
-// toolsFor is the tool list for a run: everything for a chat, minus the
-// lead-only tools for a subagent and search_docs while nothing is indexed.
-func (a *App) toolsFor(botID string, origin *run.Origin) []llm.Tool {
-	all := a.runTools()
-	if !a.Knowledge.Active(botID) {
-		kept := make([]llm.Tool, 0, len(all))
-		for _, t := range all {
-			if t.Name != "search_docs" {
-				kept = append(kept, t)
-			}
-		}
-		all = kept
-	}
-	if origin == nil || origin.Subagent == nil {
-		return all
-	}
-	out := make([]llm.Tool, 0, len(all))
-	for _, t := range all {
-		if !leadOnlyTools[t.Name] {
-			out = append(out, t)
-		}
-	}
-	return out
 }
 
 // --- lookups ---

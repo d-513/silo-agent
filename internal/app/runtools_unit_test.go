@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/tunnels"
@@ -11,7 +12,7 @@ import (
 )
 
 func offered(a *App, name string) bool {
-	for _, tl := range a.runTools() {
+	for _, tl := range a.toolsFor("bot", nil) {
 		if tl.Name == name {
 			return true
 		}
@@ -25,6 +26,8 @@ func newToolApp() *App {
 	a.Voice = voice.New(nil, a.cfg, a.Models, nil)
 	a.Tunnels = tunnels.New(nil, nil, a.cfg, nil)
 	a.Mail = mailbox.New(nil, a.cfg, nil, nil, nil)
+	a.Knowledge = knowledge.New(nil, nil, a.cfg, a.Models, nil)
+	a.Tools = a.newTools()
 	return a
 }
 

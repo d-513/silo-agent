@@ -36,6 +36,16 @@ eq((specOf(stdio) as any).env, [{ name: "K", value: "v", secret: "s" }], "blank 
 const bi = specOf({ ...emptyDraft(), builtin: "email", config: { host: "h" } }) as any;
 eq([bi.config, "httpUrl" in bi, "transport" in bi], [{ host: "h" }, false, false], "a built-in sends config, not transport settings");
 
+// Whether the tools also go to the model directly is sent for every kind of connector.
+eq(emptyDraft().exposeCompletion, false, "a new connector is Python-only");
+eq(draftFrom(conn({ exposeCompletion: true })).exposeCompletion, true, "the saved switch fills the form");
+eq(
+  [http, stdio, { ...emptyDraft(), builtin: "email" }].map((x) => (specOf({ ...x, exposeCompletion: true }) as any).exposeCompletion),
+  [true, true, true],
+  "http, stdio and built-in all send the switch",
+);
+eq((specOf(http) as any).exposeCompletion, false, "off is sent too, so a save can turn it off");
+
 // A new preset's identifier follows the name until someone types their own.
 const named = withName(withName(emptyDraft(), "fal", true), "fal.ai", true);
 eq([named.name, named.identifier], ["fal.ai", "fal_ai"], "the identifier follows the name");

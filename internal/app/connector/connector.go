@@ -120,6 +120,7 @@ func (s *Service) CreateConnector(ctx context.Context, req *connect.Request[v1.C
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	row.AutoAttach = m.GetAutoAttach()
+	row.ExposeCompletion = m.GetExposeCompletion()
 	if row.Identifier, err = s.libraryIdentifier(m.GetIdentifier(), row.Name, row.ID); err != nil {
 		return nil, err
 	}
@@ -156,6 +157,9 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	}
 	row.Description = strings.TrimSpace(m.GetDescription())
 	row.Prompt = strings.TrimSpace(m.GetPrompt())
+	if m.ExposeCompletion != nil {
+		row.ExposeCompletion = m.GetExposeCompletion()
+	}
 	if m.GetCategory() != "" {
 		row.Category = strings.TrimSpace(m.GetCategory())
 	}
@@ -337,7 +341,8 @@ func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v
 	if row.Transport != TransportSTDIO {
 		applyOAuthClient(&row, m.GetOauthClientId(), m.GetOauthClientSecret(), true)
 	}
-	if err := s.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv()); err != nil {
+	row.ExposeCompletion = m.GetExposeCompletion()
+	if err := s.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv(), m.ExposeCompletion == nil); err != nil {
 		return nil, err
 	}
 	out, err := s.putBotConnector(ctx, m.GetBotId(), row)
@@ -347,7 +352,10 @@ func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v
 	return connect.NewResponse(out), nil
 }
 
-func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput) error {
+// overlayLibrary fills what the add form left blank from the library preset it
+// started from. inheritExpose is true when the form did not say whether the
+// tools go to the model directly, so the preset's choice stands.
+func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput, inheritExpose bool) error {
 	if src == "" {
 		return nil
 	}
@@ -356,6 +364,9 @@ func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.He
 		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
 	row.SourceID = lib.ID
+	if inheritExpose {
+		row.ExposeCompletion = lib.ExposeCompletion
+	}
 	if row.Category == "" {
 		row.Category = lib.Category
 	}

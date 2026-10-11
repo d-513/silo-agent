@@ -13,6 +13,7 @@ import (
 	mcpauth "github.com/modelcontextprotocol/go-sdk/auth"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/tool"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
@@ -119,7 +120,7 @@ func (s *Service) Views(botID string) []View {
 // how to reach it from Python, with each authorized connector's own notes.
 func (s *Service) Prompt(views []View) string {
 	var b strings.Builder
-	b.WriteString("Attached on this Bot. Use exec_python and `import tools.<slug>`. They are not chat tools.\n")
+	b.WriteString("Attached on this Bot. Use exec_python and `import tools.<slug>`. They are not chat tools unless a line says so.\n")
 	if len(views) == 0 {
 		b.WriteString("None attached. Do not invent MCP servers, packages, or credentials.\n")
 		return b.String()
@@ -157,6 +158,9 @@ func (s *Service) Prompt(views []View) string {
 					names = append(names[:12], "…")
 				}
 				fmt.Fprintf(&b, "- `import tools.%s` — %s\n", slug, strings.Join(names, ", "))
+			}
+			if v.Conn.ExposeCompletion && v.Link.AuthStatus == StatusOK && len(names) > 0 {
+				fmt.Fprintf(&b, "  Also chat tools: call `%s<name>` directly for a single action; use Python to chain several or to process large results.\n", tool.CompletionName(slug, ""))
 			}
 			if v.Link.AuthStatus != StatusOK {
 				continue

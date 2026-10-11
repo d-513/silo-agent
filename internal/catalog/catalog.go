@@ -42,6 +42,10 @@ type entry struct {
 	StdioArgs    []string `json:"stdio_args"`
 	StdioImage   string   `json:"stdio_image"`
 	Builtin      string   `json:"builtin"`
+
+	// ExposeCompletion starts a preset's copies with their tools offered to
+	// the model directly, not only through Python.
+	ExposeCompletion bool `json:"expose_completion"`
 }
 
 // transportOf resolves an entry's transport, defaulting by which endpoint is set.
@@ -195,7 +199,7 @@ func Seed(gdb *gorm.DB) error {
 			ID: ids.New(), Kind: KindLibrary, SeedKey: e.Key, Type: typeMCP,
 			Name: e.Name, Description: e.Description, Category: e.Category, Image: img, ImageType: typ,
 			Transport: e.transportOf(), HTTPURL: e.HTTPURL, Auth: auth,
-			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach,
+			DefaultMode: security.Rule(e.DefaultMode), Prompt: e.Prompt, AutoAttach: e.AutoAttach, ExposeCompletion: e.ExposeCompletion,
 			CreatedAt: time.Now(),
 		}
 		// An admin's own preset may already hold the identifier: the seed still lands.

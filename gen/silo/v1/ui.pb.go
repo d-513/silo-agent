@@ -12473,9 +12473,13 @@ type Connector struct {
 	Identifier string `protobuf:"bytes,29,opt,name=identifier,proto3" json:"identifier,omitempty"`
 	// autoenabled is true when autoenable_connectors names this preset, so new
 	// Bots get it whatever auto_attach says.
-	Autoenabled   bool `protobuf:"varint,30,opt,name=autoenabled,proto3" json:"autoenabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Autoenabled bool `protobuf:"varint,30,opt,name=autoenabled,proto3" json:"autoenabled,omitempty"`
+	// expose_completion offers the connector's tools to the model directly, as
+	// completion tools named `<slug>__<action>`, as well as through Python's
+	// `import tools`. On a library preset it is what a new copy starts with.
+	ExposeCompletion bool `protobuf:"varint,31,opt,name=expose_completion,json=exposeCompletion,proto3" json:"expose_completion,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Connector) Reset() {
@@ -12718,6 +12722,13 @@ func (x *Connector) GetAutoenabled() bool {
 	return false
 }
 
+func (x *Connector) GetExposeCompletion() bool {
+	if x != nil {
+		return x.ExposeCompletion
+	}
+	return false
+}
+
 type ListConnectorsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -12871,9 +12882,10 @@ type CreateConnectorRequest struct {
 	AutoAttach        bool                   `protobuf:"varint,17,opt,name=auto_attach,json=autoAttach,proto3" json:"auto_attach,omitempty"`
 	Category          string                 `protobuf:"bytes,18,opt,name=category,proto3" json:"category,omitempty"`
 	// Normalised by the server; empty makes one from the name.
-	Identifier    string `protobuf:"bytes,19,opt,name=identifier,proto3" json:"identifier,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Identifier       string `protobuf:"bytes,19,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	ExposeCompletion bool   `protobuf:"varint,20,opt,name=expose_completion,json=exposeCompletion,proto3" json:"expose_completion,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateConnectorRequest) Reset() {
@@ -13039,6 +13051,13 @@ func (x *CreateConnectorRequest) GetIdentifier() string {
 	return ""
 }
 
+func (x *CreateConnectorRequest) GetExposeCompletion() bool {
+	if x != nil {
+		return x.ExposeCompletion
+	}
+	return false
+}
+
 type UpdateConnectorRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -13064,9 +13083,11 @@ type UpdateConnectorRequest struct {
 	// Built-in config; an empty secret keeps the stored value.
 	Config map[string]string `protobuf:"bytes,21,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Library presets only; empty keeps the stored one.
-	Identifier    string `protobuf:"bytes,22,opt,name=identifier,proto3" json:"identifier,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Identifier string `protobuf:"bytes,22,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	// Unset keeps the stored value.
+	ExposeCompletion *bool `protobuf:"varint,23,opt,name=expose_completion,json=exposeCompletion,proto3,oneof" json:"expose_completion,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateConnectorRequest) Reset() {
@@ -13251,6 +13272,13 @@ func (x *UpdateConnectorRequest) GetIdentifier() string {
 		return x.Identifier
 	}
 	return ""
+}
+
+func (x *UpdateConnectorRequest) GetExposeCompletion() bool {
+	if x != nil && x.ExposeCompletion != nil {
+		return *x.ExposeCompletion
+	}
+	return false
 }
 
 type DeleteConnectorRequest struct {
@@ -13579,9 +13607,11 @@ type CreateBotConnectorRequest struct {
 	Prompt            string                 `protobuf:"bytes,18,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	Category          string                 `protobuf:"bytes,19,opt,name=category,proto3" json:"category,omitempty"`
 	// Built-in config (see Connector.fields).
-	Config        map[string]string `protobuf:"bytes,20,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Config map[string]string `protobuf:"bytes,20,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Unset takes the library preset's value (false for a custom connector).
+	ExposeCompletion *bool `protobuf:"varint,21,opt,name=expose_completion,json=exposeCompletion,proto3,oneof" json:"expose_completion,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateBotConnectorRequest) Reset() {
@@ -13752,6 +13782,13 @@ func (x *CreateBotConnectorRequest) GetConfig() map[string]string {
 		return x.Config
 	}
 	return nil
+}
+
+func (x *CreateBotConnectorRequest) GetExposeCompletion() bool {
+	if x != nil && x.ExposeCompletion != nil {
+		return *x.ExposeCompletion
+	}
+	return false
 }
 
 type DetachConnectorRequest struct {
@@ -18533,7 +18570,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bEnvInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12\x16\n" +
-	"\x06secret\x18\x03 \x01(\tR\x06secret\"\x94\b\n" +
+	"\x06secret\x18\x03 \x01(\tR\x06secret\"\xc1\b\n" +
 	"\tConnector\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -18573,7 +18610,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\n" +
 	"identifier\x18\x1d \x01(\tR\n" +
 	"identifier\x12 \n" +
-	"\vautoenabled\x18\x1e \x01(\bR\vautoenabled\x1a9\n" +
+	"\vautoenabled\x18\x1e \x01(\bR\vautoenabled\x12+\n" +
+	"\x11expose_completion\x18\x1f \x01(\bR\x10exposeCompletion\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x17\n" +
@@ -18584,7 +18622,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"connectors\"7\n" +
 	"\vHeaderInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xfa\x04\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xa7\x05\n" +
 	"\x16CreateConnectorRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x14\n" +
@@ -18611,7 +18649,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bcategory\x18\x12 \x01(\tR\bcategory\x12\x1e\n" +
 	"\n" +
 	"identifier\x18\x13 \x01(\tR\n" +
-	"identifier\"\xab\x06\n" +
+	"identifier\x12+\n" +
+	"\x11expose_completion\x18\x14 \x01(\bR\x10exposeCompletion\"\xf3\x06\n" +
 	"\x16UpdateConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -18642,10 +18681,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06config\x18\x15 \x03(\v2+.silo.v1.UpdateConnectorRequest.ConfigEntryR\x06config\x12\x1e\n" +
 	"\n" +
 	"identifier\x18\x16 \x01(\tR\n" +
-	"identifier\x1a9\n" +
+	"identifier\x120\n" +
+	"\x11expose_completion\x18\x17 \x01(\bH\x00R\x10exposeCompletion\x88\x01\x01\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"(\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x14\n" +
+	"\x12_expose_completion\"(\n" +
 	"\x16DeleteConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x19\n" +
 	"\x17DeleteConnectorResponse\"\xcc\x01\n" +
@@ -18666,7 +18707,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"connectors\"R\n" +
 	"\x16AttachConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12!\n" +
-	"\fconnector_id\x18\x02 \x01(\tR\vconnectorId\"\xf3\x05\n" +
+	"\fconnector_id\x18\x02 \x01(\tR\vconnectorId\"\xbb\x06\n" +
 	"\x19CreateBotConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -18691,10 +18732,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x03env\x18\x11 \x03(\v2\x11.silo.v1.EnvInputR\x03env\x12\x16\n" +
 	"\x06prompt\x18\x12 \x01(\tR\x06prompt\x12\x1a\n" +
 	"\bcategory\x18\x13 \x01(\tR\bcategory\x12F\n" +
-	"\x06config\x18\x14 \x03(\v2..silo.v1.CreateBotConnectorRequest.ConfigEntryR\x06config\x1a9\n" +
+	"\x06config\x18\x14 \x03(\v2..silo.v1.CreateBotConnectorRequest.ConfigEntryR\x06config\x120\n" +
+	"\x11expose_completion\x18\x15 \x01(\bH\x00R\x10exposeCompletion\x88\x01\x01\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"?\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x14\n" +
+	"\x12_expose_completion\"?\n" +
 	"\x16DetachConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\x19\n" +
@@ -19879,6 +19922,8 @@ func file_silo_v1_ui_proto_init() {
 		return
 	}
 	file_silo_v1_ui_proto_msgTypes[28].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[210].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[217].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
