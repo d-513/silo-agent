@@ -145,11 +145,12 @@ func (a *App) PruneRules(botID, slug string, keepActions []string) {
 func (a *App) sweepRules(botID string) {
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Secrets, "get").Delete(&db.Rule{})
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Skills, "propose").Delete(&db.Rule{})
-	live := map[string]bool{
-		security.Python: true, security.Terminal: true, security.Files: true,
-		security.Desktop: true, security.Bot: true, security.Secrets: true, security.Skills: true,
-		security.Web: true, security.Artifact: true, security.Channels: true, security.Chats: true,
-		security.Model: true, security.Automations: true, security.Agents: true, security.Tasks: true,
+	// The built-ins come from the rows the page lists, never a second list kept
+	// by hand: one that fell behind dropped every tunnels and mailbox rule the
+	// owner set on the next look at the page.
+	live := map[string]bool{security.Secrets: true, security.Channels: true}
+	for _, row := range security.BuiltinRows() {
+		live[row.Connector] = true
 	}
 	secretOK := map[string]bool{}
 	var secs []db.Secret

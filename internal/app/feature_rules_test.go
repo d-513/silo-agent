@@ -9,6 +9,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/security"
 )
 
 func TestSecretsPerName(t *testing.T) {
@@ -100,6 +101,36 @@ func TestListRulesSectionsAndSweep(t *testing.T) {
 	h.DB.Model(&db.Rule{}).Where("id = ?", "ghost").Count(&n)
 	if n != 0 {
 		t.Fatal("ghost rule not swept")
+	}
+}
+
+// Every row the Rules page shows must keep the decision the owner gives it:
+// the sweep that drops ghost rules runs on each list, and a built-in it does
+// not know about would lose its rule there (tunnels and mailbox once did).
+func TestBuiltinRulesSurviveList(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Keeps")
+	for _, row := range security.BuiltinRows() {
+		for _, dec := range []string{security.Deny, security.Auto, security.Ask, security.Allow} {
+			if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+				BotId: bot.GetId(), Connector: row.Connector, Action: row.Action, Decision: dec,
+			})); err != nil {
+				t.Fatal(err)
+			}
+			res, err := h.Client.ListRules(h.Ctx(), connect.NewRequest(&v1.ListRulesRequest{BotId: bot.GetId()}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got string
+			for _, r := range res.Msg.GetRules() {
+				if r.GetConnector() == row.Connector && r.GetAction() == row.Action {
+					got = r.GetDecision()
+				}
+			}
+			if got != dec {
+				t.Errorf("%s.%s set to %s reads %q", row.Connector, row.Action, dec, got)
+			}
+		}
 	}
 }
 
