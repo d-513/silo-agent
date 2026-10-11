@@ -163,6 +163,9 @@ func (s *Service) oauthHandler(c *db.Connector, row *db.BotConnector, redirect s
 		}
 	}
 	cfg := &mcpauth.AuthorizationCodeHandlerConfig{
+		// The server names its own authorization and token endpoints, so they
+		// are held to the same policy as its URL.
+		Client:                   s.outbound(c).Client(0),
 		RedirectURL:              redirect,
 		AuthorizationCodeFetcher: fetch,
 		RequestRefreshToken:      true,

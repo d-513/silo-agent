@@ -35,12 +35,10 @@ func TestInstallZipSkipExisting(t *testing.T) {
 		_, _ = w.Write(buf.Bytes())
 	}))
 	t.Cleanup(srv.Close)
-	HTTPClient = srv.Client()
-	t.Cleanup(func() { HTTPClient = http.DefaultClient })
 
 	dest := t.TempDir()
 	writeSkill(t, filepath.Join(dest, "one"), "one", "Already there. Use when testing skip.")
-	got, err := InstallURL(dest, srv.URL+"/skills.zip")
+	got, err := InstallURL(dest, srv.URL+"/skills.zip", srv.Client())
 	if err != nil {
 		t.Fatal(err)
 	}

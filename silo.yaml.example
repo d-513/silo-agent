@@ -28,6 +28,13 @@ bootstrap:
   email: admin@local
   password: change-me
 
+# Keep connections Silo makes on a user's word (connector URLs, Email and
+# Calendar accounts, skill downloads) off this machine and your network
+# (docs/CONFIGURATION.md § Outbound connections).
+# outbound:
+#   block_private: true
+#   allow: 127.0.0.1:9223        # internal addresses that stay reachable
+
 # Sign-in (docs/CONFIGURATION.md § Sign-in). More people get an account from
 # an invite link in Admin → Users.
 # auth:

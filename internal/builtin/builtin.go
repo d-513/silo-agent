@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"silo.agent/internal/netguard"
 	"silo.agent/internal/registry"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
@@ -99,6 +100,9 @@ type Config struct {
 	// TimeZone is the Bot's IANA zone: what a connector that deals in
 	// wall-clock time uses when its own setting is blank.
 	TimeZone string
+	// Net is what the connector may connect to: every dial and HTTP client
+	// it makes goes through it. The zero value refuses nothing.
+	Net netguard.Policy
 }
 
 func (c Config) Get(key string) string {

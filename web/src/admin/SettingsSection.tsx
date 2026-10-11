@@ -11,7 +11,7 @@ import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
 import { OidcSettings } from "./OidcSettings";
-import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 
@@ -99,6 +99,7 @@ function ConnectorOptions() {
   const { connVars, saveConnVars, autoenable, saveAutoenable } = useSettingsForm();
   return (
     <>
+      <Group title="Outbound connections" note={OUTBOUND_NOTE} id="outbound" />
       <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
       <AutoenablePanel list={autoenable} onSave={saveAutoenable} />
     </>

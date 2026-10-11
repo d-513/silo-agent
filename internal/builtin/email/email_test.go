@@ -13,6 +13,7 @@ import (
 
 	"silo.agent/internal/builtin"
 	"silo.agent/internal/builtin/email/emailtest"
+	"silo.agent/internal/netguard"
 )
 
 type memEnv struct{ files map[string][]byte }
@@ -328,4 +329,20 @@ func toStrings(v any) []string {
 		out = append(out, x.(string))
 	}
 	return out
+}
+
+// The account's servers are whatever its owner typed. Under a policy that
+// keeps the control plane off its own network, a mail server there is refused
+// before a byte of the password is sent.
+func TestOutboundPolicyKeepsMailOffTheInside(t *testing.T) {
+	_, cfg, env := setup(t)
+	cfg.Net = netguard.Policy{Block: true}
+	err := (connector{}).Check(context.Background(), cfg)
+	if !errors.Is(err, netguard.ErrBlocked) {
+		t.Fatalf("IMAP on loopback under the policy: %v", err)
+	}
+	_, err = send(context.Background(), env, cfg, json.RawMessage(`{"to":["a@example.org"],"subject":"s","body":"b"}`))
+	if !errors.Is(err, netguard.ErrBlocked) {
+		t.Fatalf("SMTP on loopback under the policy: %v", err)
+	}
 }

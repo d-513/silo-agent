@@ -51,6 +51,8 @@ func (s *Service) builtinConfig(d builtin.Descriptor, c *db.Connector) builtin.C
 		vals[k] = v
 	}
 	cfg := builtin.Resolve(d, vals)
+	// The account's servers are whatever its owner typed in.
+	cfg.Net = s.cfg().OutboundPolicy()
 	if c.BotID != "" {
 		cfg.TimeZone = zone.OfBot(s.db, c.BotID).String()
 	}

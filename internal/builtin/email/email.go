@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"silo.agent/internal/builtin"
+	"silo.agent/internal/netguard"
 	"silo.agent/internal/security"
 )
 
@@ -205,6 +206,8 @@ type settings struct {
 	smtpSec   string
 	saveSent  bool
 	sentSaved bool
+	// net is what the account's servers may be: see builtin.Config.Net.
+	net netguard.Policy
 }
 
 func resolve(cfg builtin.Config) (settings, error) {
@@ -216,6 +219,7 @@ func resolve(cfg builtin.Config) (settings, error) {
 		password: cfg.Values["password"],
 		fromName: cfg.Get("from_name"),
 		saveSent: cfg.Bool("save_sent"),
+		net:      cfg.Net,
 	}
 	s.sentSaved = p.sentSaved
 	if s.address == "" {

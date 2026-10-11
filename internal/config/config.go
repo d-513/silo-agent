@@ -293,6 +293,7 @@ type Config struct {
 	Drives         Drives              `koanf:"drives"`
 	Tunnels        Tunnels             `koanf:"tunnels"`
 	Mail           Mail                `koanf:"mail"`
+	Outbound       Outbound            `koanf:"outbound"`
 	Tools          Tools               `koanf:"tools"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
@@ -476,6 +477,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "mail.max_size_mb"},
 	{Key: "mail.tls_cert"},
 	{Key: "mail.tls_key"},
+	{Key: "outbound.block_private", Type: "bool"},
+	{Key: "outbound.allow"},
 	{Key: "auth.password", Type: "bool"},
 	{Key: "auth.trusted_proxies"},
 	{Key: "auth.host_cookie", Type: "bool"},

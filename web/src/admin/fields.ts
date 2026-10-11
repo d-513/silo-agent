@@ -42,6 +42,8 @@ export const LABELS: Record<string, string> = {
   "drives.image": "Drive sidecar image",
   "drives.mount_root": "Drive mount root",
   "drives.cache_max_size": "Drive cache limit",
+  "outbound.block_private": "Block private addresses",
+  "outbound.allow": "Exceptions",
   "auth.password": "Password sign-in",
   "auth.trusted_proxies": "Trusted proxies",
   "auth.host_cookie": "Host-only session cookie",
@@ -78,6 +80,10 @@ export const HINTS: Record<string, string> = {
   "mail.tls_key": "The PEM private key that goes with the certificate.",
   "drives.mount_root": "Where drive mounts live, as a path the container engine sees.",
   "drives.cache_max_size": "The most one drive may cache on disk, such as 10G.",
+  "outbound.block_private":
+    "Refuses loopback, private (10.x, 172.16-31.x, 192.168.x), link-local and other internal addresses, and names that resolve to one, for everything Silo itself connects to because a user typed it: a connector's URL and sign-in, an Email or Calendar account, a skill's download address.",
+  "outbound.allow":
+    "Internal addresses that stay reachable, comma-separated: an IP or a CIDR, optionally with one port (10.0.4.20, 10.0.5.0/24, 127.0.0.1:9223). Names are not taken.",
   "auth.password": "Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out.",
   "auth.trusted_proxies":
     "IPs or CIDRs of the reverse proxies in front of Silo, comma-separated (127.0.0.1, 10.0.0.0/8). X-Forwarded-For is believed only from them. Behind a proxy with this unset, every visitor looks like the proxy and shares one sign-in limit.",
@@ -130,6 +136,9 @@ export const TUNNELS_NOTE =
 export const MAIL_NOTE =
   "Gives every Bot a receive-only address. The control plane runs its own small SMTP listener and files what arrives in the Bot's inbox, where the Bot reads it with list_mail and read_mail. Nothing is ever sent, so there is no relay or sender reputation to look after. On as soon as a domain is set; changes here apply within a few seconds, without a restart.";
 
+export const OUTBOUND_NOTE =
+  "Silo makes these connections itself, so without this a user can point a connector at 127.0.0.1 or at a machine on your network and read what answers. Turn it on when people you do not fully trust have accounts. A library connector you pointed at an internal address (the Lightpanda preset) keeps working for as long as a Bot's copy still points where yours does. This does not cover the models, search or sign-in providers you set up here, and it does not limit what a Bot's own machine can reach.";
+
 export const AUTH_NOTE =
   "Wrong passwords, two-factor codes and invite links are limited per account and address: five tries, then a wait that doubles from 30 seconds to 15 minutes.";
 
@@ -151,6 +160,7 @@ export function groupOf(key: string) {
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
+  if (key.startsWith("outbound.")) return "outbound";
   if (key.startsWith("auth.")) return "auth";
   if (key.startsWith("oidc.")) return "oidc";
   return "server";

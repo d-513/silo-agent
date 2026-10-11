@@ -19,6 +19,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/mcpx"
+	"silo.agent/internal/netguard"
 	"silo.agent/internal/toolsgen"
 )
 
@@ -259,7 +260,39 @@ func (s *Service) DropMCP(id string) {
 
 func (s *Service) dial(c *db.Connector, h mcpauth.OAuthHandler) mcpx.Dial {
 	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
-	return mcpx.Dial{URL: c.HTTPURL, Headers: hdr, OAuth: h}
+	return mcpx.Dial{URL: c.HTTPURL, Headers: hdr, OAuth: h, Base: s.outbound(c).Transport()}
+}
+
+// outbound is what the control plane may reach on this connector's behalf:
+// the operator's outbound policy (outbound.block_private), which keeps a URL a
+// user typed off the control plane's own network. A Bot's copy of a library
+// preset that still points where the preset points is not a user's word but
+// the operator's (the Lightpanda preset lives on localhost), so it connects
+// unrestricted; re-pointed, it is the user's again.
+func (s *Service) outbound(c *db.Connector) netguard.Policy {
+	p := s.cfg().OutboundPolicy()
+	if !p.Block || !s.operatorTarget(c) {
+		return p
+	}
+	return netguard.Policy{}
+}
+
+// operatorTarget reports whether c talks to an address the operator chose: a
+// library preset, or a copy of one that was not pointed elsewhere.
+func (s *Service) operatorTarget(c *db.Connector) bool {
+	if c.Kind != catalog.KindCustom {
+		return true
+	}
+	if c.SourceID == "" || s.db == nil {
+		return false
+	}
+	var lib db.Connector
+	res := s.db.Where("id = ? AND kind = ?", c.SourceID, catalog.KindLibrary).Limit(1).Find(&lib)
+	if res.Error != nil || res.RowsAffected == 0 {
+		return false
+	}
+	// Both sides resolved: c usually arrives with its variables expanded.
+	return sameTarget(s.ResolveConnector(c), s.ResolveConnector(&lib))
 }
 
 func (s *Service) Init() {

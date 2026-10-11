@@ -9,6 +9,7 @@ import (
 
 	"silo.agent/internal/builtin"
 	"silo.agent/internal/builtin/calendar/caldavtest"
+	"silo.agent/internal/netguard"
 )
 
 func setup(t *testing.T) (*caldavtest.Server, builtin.Config) {
@@ -397,5 +398,19 @@ func TestDiscoveryIsCached(t *testing.T) {
 	call(t, "list_events", cfg, map[string]any{"start": "2026-10-01", "end": "2026-10-31"})
 	if got := srv.Requests() - before; got != 2 {
 		t.Fatalf("second call made %d requests, want one REPORT per event calendar (2)", got)
+	}
+}
+
+// A CalDAV address is its owner's word too.
+func TestOutboundPolicyKeepsCalendarOffTheInside(t *testing.T) {
+	srv, cfg := setup(t)
+	before := srv.Requests()
+	cfg.Net = netguard.Policy{Block: true}
+	err := (connector{}).Check(context.Background(), cfg)
+	if !errors.Is(err, netguard.ErrBlocked) {
+		t.Fatalf("CalDAV on loopback under the policy: %v", err)
+	}
+	if srv.Requests() != before {
+		t.Fatal("the server was reached anyway")
 	}
 }

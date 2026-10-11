@@ -36,6 +36,9 @@ type Dial struct {
 	// Token is a static bearer credential for private bridges. It never
 	// triggers the OAuth flow.
 	Token string
+	// Base carries the HTTP requests; nil is http.DefaultTransport. The
+	// control plane passes one that refuses addresses it must not reach.
+	Base http.RoundTripper
 	// Transport, when set, is used directly instead of the HTTP/SSE ladder.
 	// STDIO sidecars use a reverse CP connection instead of a URL.
 	Transport mcp.Transport
@@ -63,6 +66,9 @@ func Connect(ctx context.Context, d Dial) (*Session, error) {
 		return nil, errors.New("mcp url required")
 	}
 	base := http.RoundTripper(http.DefaultTransport)
+	if d.Base != nil {
+		base = d.Base
+	}
 	if d.Sock != "" {
 		base = unixTransport(d.Sock)
 	}

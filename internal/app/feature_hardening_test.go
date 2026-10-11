@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
@@ -382,5 +383,111 @@ func TestHostCookieSetting(t *testing.T) {
 	res.Body.Close()
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("/artifacts/file took the plain name: status %d", res.StatusCode)
+	}
+}
+
+// countingMCP is the echo MCP server, counting what reaches it.
+func countingMCP(t *testing.T) (*httptest.Server, func() int) {
+	t.Helper()
+	var mu sync.Mutex
+	n := 0
+	inner := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return apptest.NewEchoServer() }, nil)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		n++
+		mu.Unlock()
+		inner.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return n
+	}
+}
+
+// With outbound.block_private on, an address a user typed never takes the
+// control plane onto its own network: not a connector's URL, not a skill's
+// download. What the operator pointed a library preset at still works, and so
+// does an address the operator listed.
+func TestOutboundBlocksWhatAUserPointsInside(t *testing.T) {
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithYAML(apptest.DefaultYAML(dir)+"outbound:\n  block_private: true\n"))
+	bot := h.CreateBot("Outbound")
+	inside, hits := countingMCP(t)
+
+	add := func(name, url string) *v1.BotConnector {
+		t.Helper()
+		if _, err := h.Client.CreateBotConnector(h.Ctx(), connect.NewRequest(&v1.CreateBotConnectorRequest{
+			BotId: bot.GetId(), Name: name, Transport: "http", HttpUrl: url, Auth: "none", DefaultMode: "allow",
+		})); err != nil {
+			t.Fatal(err)
+		}
+		return h.WaitConnector(bot.GetId(), name)
+	}
+	row := add("Sneaky", inside.URL)
+	if row.GetAuthStatus() == "authorized" || !strings.Contains(row.GetLastError(), "private network") {
+		t.Fatalf("a user's connector reached a loopback server: status %q error %q", row.GetAuthStatus(), row.GetLastError())
+	}
+	// A name is judged by where it resolves.
+	row = add("Named", strings.Replace(inside.URL, "127.0.0.1", "localhost", 1))
+	if row.GetAuthStatus() == "authorized" || !strings.Contains(row.GetLastError(), "private network") {
+		t.Fatalf("a name resolving to loopback got through: status %q error %q", row.GetAuthStatus(), row.GetLastError())
+	}
+	if n := hits(); n != 0 {
+		t.Fatalf("%d requests reached the inside server", n)
+	}
+
+	// The operator's preset points at the same server: that is their choice.
+	lib, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
+		Name: "Reader", Transport: "http", HttpUrl: inside.URL, Auth: "none", DefaultMode: "allow",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	att, err := h.Client.AttachConnector(h.Ctx(), connect.NewRequest(&v1.AttachConnectorRequest{BotId: bot.GetId(), ConnectorId: lib.Msg.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row := h.WaitConnectorID(bot.GetId(), att.Msg.GetId()); row.GetAuthStatus() != "authorized" {
+		t.Fatalf("the operator's preset was blocked: status %q error %q", row.GetAuthStatus(), row.GetLastError())
+	}
+	// Pointed elsewhere by its owner, the copy is a user's word again.
+	other, otherHits := countingMCP(t)
+	if _, err := h.Client.UpdateConnector(h.Ctx(), connect.NewRequest(&v1.UpdateConnectorRequest{Id: att.Msg.GetConnector().GetId(), HttpUrl: other.URL})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.RefreshBotConnector(h.Ctx(), connect.NewRequest(&v1.RefreshBotConnectorRequest{BotId: bot.GetId(), Id: att.Msg.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	if row := h.WaitConnectorID(bot.GetId(), att.Msg.GetId()); row.GetAuthStatus() == "authorized" || otherHits() != 0 {
+		t.Fatalf("a re-pointed copy kept the preset's pass: status %q, %d requests", row.GetAuthStatus(), otherHits())
+	}
+
+	// A skill's download address is a user's word too.
+	skillSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte("---\nname: planted\ndescription: d\n---\nbody\n"))
+	}))
+	defer skillSrv.Close()
+	_, err = h.Client.InstallSkill(h.Ctx(), connect.NewRequest(&v1.InstallSkillRequest{Scope: "personal", Url: skillSrv.URL + "/SKILL.md"}))
+	if err == nil || !strings.Contains(err.Error(), "private network") {
+		t.Fatalf("a skill was downloaded from loopback: %v", err)
+	}
+}
+
+// outbound.allow opens exactly what the operator lists.
+func TestOutboundAllowOpensOneAddress(t *testing.T) {
+	inside, _ := countingMCP(t)
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithYAML(apptest.DefaultYAML(dir)+
+		"outbound:\n  block_private: true\n  allow: "+inside.Listener.Addr().String()+"\n"))
+	bot := h.CreateBot("Allowed")
+	if _, err := h.Client.CreateBotConnector(h.Ctx(), connect.NewRequest(&v1.CreateBotConnectorRequest{
+		BotId: bot.GetId(), Name: "Echo", Transport: "http", HttpUrl: inside.URL, Auth: "none", DefaultMode: "allow",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if row := h.WaitConnector(bot.GetId(), "Echo"); row.GetAuthStatus() != "authorized" {
+		t.Fatalf("a listed address was blocked: status %q error %q", row.GetAuthStatus(), row.GetLastError())
 	}
 }

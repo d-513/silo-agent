@@ -122,11 +122,17 @@ func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Co
 	return &Service{db: gdb, docker: d, store: store, cfg: cfg, host: h, http: httpClient, hub: &driveHub{live: map[string]*driveSession{}}}
 }
 
+// httpClient reaches a provider's token endpoint and account lookups. Most of
+// those addresses are the template's own, but some carry a host the sign-in
+// handed back (pCloud's API host arrives as a callback parameter anyone can
+// write), so the client keeps to the operator's outbound policy.
 func (s *Service) httpClient() *http.Client {
-	if s.http == nil {
-		return nil
+	if s.http != nil {
+		if hc := s.http(); hc != nil {
+			return hc
+		}
 	}
-	return s.http()
+	return s.cfg().OutboundPolicy().Client(time.Minute)
 }
 
 // templates is the catalog the app serves; a seam for tests.

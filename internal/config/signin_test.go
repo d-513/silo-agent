@@ -163,3 +163,32 @@ func TestHostCookiesNeedHTTPS(t *testing.T) {
 		}
 	}
 }
+
+func TestOutboundPolicyFromConfig(t *testing.T) {
+	p := Config{Outbound: Outbound{BlockPrivate: true, Allow: "127.0.0.1:9223, 10.0.0.0/8"}}.OutboundPolicy()
+	if !p.Block || len(p.Allow) != 2 {
+		t.Fatalf("policy %+v", p)
+	}
+	// A list that cannot be read opens nothing rather than everything.
+	p = Config{Outbound: Outbound{BlockPrivate: true, Allow: "localhost"}}.OutboundPolicy()
+	if !p.Block || len(p.Allow) != 0 {
+		t.Fatalf("policy from a bad list %+v", p)
+	}
+	if (Config{}).OutboundPolicy().Block {
+		t.Fatal("the default blocks")
+	}
+}
+
+func TestOutboundSettingsAreValidated(t *testing.T) {
+	for raw, ok := range map[string]bool{
+		"outbound:\n  block_private: true\n  allow: 127.0.0.1:9223, 10.0.0.0/8\n": true,
+		"outbound:\n  block_private: true\n":                                      true,
+		"outbound:\n  allow: lightpanda:9223\n":                                   false,
+		"outbound:\n  block_private: maybe\n":                                     false,
+		"outbound:\n  block_lan: true\n":                                          false,
+	} {
+		if err := validateYAML([]byte(raw)); (err == nil) != ok {
+			t.Errorf("%q: %v, want ok=%v", raw, err, ok)
+		}
+	}
+}

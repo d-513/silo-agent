@@ -121,7 +121,7 @@ func (s *Service) InstallSkill(ctx context.Context, req *connect.Request[v1.Inst
 		}
 		got, err = skills.InstallArchive(root, req.Msg.GetArchive(), req.Msg.GetFilename())
 	default:
-		got, err = skills.InstallURL(root, req.Msg.GetUrl())
+		got, err = skills.InstallURL(root, req.Msg.GetUrl(), s.cfg().OutboundPolicy().Client(2*time.Minute))
 	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

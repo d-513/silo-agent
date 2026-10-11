@@ -92,6 +92,8 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `providers.openrouter.ignore` | `DeepInfra` | `SILO_PROVIDERS__OPENROUTER__IGNORE` | Comma list of upstream hosts OpenRouter must not route to (`provider.ignore`). DeepInfra sends a tool call's arguments in one chunk at the end, so Python/terminal/write input cannot stream into the thread. `none` routes anywhere |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | The first admin. Used at start only while no admin can sign in (see Sign-in) |
 | `bootstrap.password` | (none) | `SILO_BOOTSTRAP__PASSWORD` | Their password, when the account has to be created |
+| `outbound.block_private` | `false` | `SILO_OUTBOUND__BLOCK_PRIVATE` | Refuse loopback, private and other internal addresses (and names resolving to one) for connections Silo makes on a user's word (see Outbound connections) |
+| `outbound.allow` | (none) | `SILO_OUTBOUND__ALLOW` | Internal addresses that stay reachable: comma-separated IPs or CIDRs, each optionally with one port (`127.0.0.1:9223, 10.0.5.0/24`) |
 | `auth.password` | `true` | `SILO_AUTH__PASSWORD` | Password sign-in. `false` leaves only OIDC, and only counts while OIDC is configured (see Sign-in) |
 | `auth.trusted_proxies` | (none) | `SILO_AUTH__TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxies in front of the control plane. `X-Forwarded-For` is believed only from them |
 | `auth.host_cookie` | `false` | `SILO_AUTH__HOST_COOKIE` | Name the session cookie `__Host-silo_session`, which only the exact host can set. Counts only while `public_url` is https (see Sign-in) |
@@ -161,6 +163,25 @@ A provider that does not send `email_verified` (some Entra setups) can therefore
 `auth.password: false` hides the password form and refuses password sign-in. It is ignored while OIDC is not configured, so removing the OIDC settings brings passwords back.
 
 `auth.host_cookie: true` is for a deployment where tunnels (or anything else that serves content you do not write) live under the same registrable domain as Silo, such as `silo.example.com` with `*.tunnels.example.com`. A page on any host under `example.com` may set a cookie for `example.com`, and the browser sends it to Silo too; a tunnelled app could plant a `silo_session` of its own choosing and sign a visitor into another account without their noticing. A cookie whose name starts with `__Host-` is only accepted from the host itself, so with the setting on the session cookie is `__Host-silo_session` (and the OIDC round trip's `__Host-silo_oidc`), and the plain names are never read. Browsers only take such a cookie over HTTPS, so the setting is ignored unless `public_url` starts with `https://`. Turning it on or off signs everyone out once. Tunnels on a different registrable domain (`*.example-tunnels.com`) need none of this.
+
+## Outbound connections
+
+Some connections are made by the control plane itself, to an address a user typed: an HTTP connector's URL and the OAuth endpoints that server names, an Email connector's IMAP and SMTP servers, a Calendar connector's CalDAV address, the URL a skill is installed from, and a drive provider's sign-in. The control plane sits on your network, so by default a user can point one of these at `127.0.0.1`, at the database next to Silo, at a cloud metadata address (`169.254.169.254`) or at any machine on the LAN, and read what answers through the connector.
+
+```yaml
+outbound:
+  block_private: true
+  allow: 127.0.0.1:9223, 10.0.5.0/24   # what stays reachable anyway
+```
+
+`block_private` refuses loopback, private (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`), link-local, carrier-grade NAT (`100.64/10`, which is also Tailscale), multicast and reserved addresses. The check is made on the address a connection is about to be opened to, after DNS: a name that resolves inside is refused like the address itself, and so is a redirect that leads inside. `allow` takes IPs and CIDRs, each optionally with one port; names are not taken.
+
+What it leaves alone:
+
+- **A library connector you pointed at an internal address.** A Bot's copy connects unrestricted for as long as it still points where the library preset points (the Lightpanda preset on `localhost:9223` keeps working). Once its owner changes the address, it is their word again.
+- **What you configured yourself:** model providers (a `local` provider is on your network by design), search, OIDC.
+- **What a Bot's own machine, a STDIO connector's sidecar or a drive's sidecar can reach.** Those are containers; limit them with your container engine's network or a firewall.
+- **Requests through `HTTP_PROXY`/`HTTPS_PROXY`.** With a proxy set in the control plane's environment, the proxy does the resolving and the connecting: filter there.
 
 ## Tunnels
 

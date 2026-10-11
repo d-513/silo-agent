@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"path"
 	"strings"
 	"time"
@@ -42,8 +41,7 @@ func (s *strs) UnmarshalJSON(b []byte) error {
 }
 
 func dialSMTP(ctx context.Context, s settings) (*smtp.Client, error) {
-	d := &net.Dialer{Timeout: dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", s.smtpAddr)
+	conn, err := s.net.Dialer(dialTimeout).DialContext(ctx, "tcp", s.smtpAddr)
 	if err != nil {
 		return nil, fmt.Errorf("SMTP connect: %w", err)
 	}

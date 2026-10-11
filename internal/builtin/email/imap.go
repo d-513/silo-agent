@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"path"
 	"sort"
 	"strings"
@@ -46,8 +45,7 @@ func (m *mailbox) wrap(err error) error {
 
 func dialIMAP(ctx context.Context, s settings) (*mailbox, error) {
 	ctx, cancel := context.WithTimeout(ctx, opTimeout)
-	d := &net.Dialer{Timeout: dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", s.imapAddr)
+	conn, err := s.net.Dialer(dialTimeout).DialContext(ctx, "tcp", s.imapAddr)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("IMAP connect: %w", err)

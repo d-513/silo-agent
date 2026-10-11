@@ -65,7 +65,7 @@ func dial(s settings) (*session, error) {
 	if err != nil || base.Host == "" {
 		return nil, fmt.Errorf("server URL %q is not a URL", s.endpoint)
 	}
-	hc := authClient{c: &http.Client{Timeout: httpTimeout}, user: s.username, pass: s.password}
+	hc := authClient{c: s.net.Client(httpTimeout), user: s.username, pass: s.password}
 	sess := &session{s: s, http: hc}
 	if err := sess.rebase(base); err != nil {
 		return nil, err

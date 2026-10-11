@@ -358,6 +358,9 @@ func validateYAML(raw []byte) error {
 	if err := validateSignIn(k); err != nil {
 		return err
 	}
+	if err := validateOutbound(k); err != nil {
+		return err
+	}
 	if cv := k.Get("connector_vars"); cv != nil {
 		m, ok := cv.(map[string]any)
 		if !ok {

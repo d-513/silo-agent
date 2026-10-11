@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"silo.agent/internal/builtin"
+	"silo.agent/internal/netguard"
 	"silo.agent/internal/security"
 	"silo.agent/internal/zone"
 )
@@ -152,6 +153,8 @@ type settings struct {
 	password   string
 	loc        *time.Location
 	defaultCal string
+	// net is what the server may be: see builtin.Config.Net.
+	net netguard.Policy
 }
 
 func resolve(cfg builtin.Config) (settings, error) {
@@ -159,6 +162,7 @@ func resolve(cfg builtin.Config) (settings, error) {
 		username:   cfg.Get("username"),
 		password:   cfg.Values["password"],
 		defaultCal: cfg.Get("default_calendar"),
+		net:        cfg.Net,
 	}
 	provider := cfg.Get("provider")
 	def, known := providers[provider]

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -20,14 +21,24 @@ const (
 	MaxExtractFiles  = 1000
 )
 
-var HTTPClient = http.DefaultClient
+// HTTPClient downloads a skill when InstallURL is given no client of its own.
+var HTTPClient = &http.Client{Timeout: downloadTimeout}
+
+const downloadTimeout = 2 * time.Minute
 
 type InstallResult struct {
 	Installed []string
 	Skipped   []string
 }
 
-func InstallURL(dest, source string) (InstallResult, error) {
+// InstallURL installs the skills found at source, a GitHub repository or the
+// address of a SKILL.md or an archive. hc makes the download, redirects
+// included (nil is HTTPClient): the address is a user's, so the control plane
+// passes a client that will not reach its own network.
+func InstallURL(dest, source string, hc *http.Client) (InstallResult, error) {
+	if hc == nil {
+		hc = HTTPClient
+	}
 	source = strings.TrimSpace(source)
 	if source == "" {
 		return InstallResult{}, fmt.Errorf("url required")
@@ -37,7 +48,7 @@ func InstallURL(dest, source string) (InstallResult, error) {
 		return InstallResult{}, err
 	}
 	defer os.RemoveAll(tmp)
-	if err := fetchInto(tmp, source); err != nil {
+	if err := fetchInto(hc, tmp, source); err != nil {
 		return InstallResult{}, err
 	}
 	return installDiscovered(dest, tmp, source)
@@ -122,14 +133,14 @@ func loadInstall(dir, extractRoot string) (Info, error) {
 	return Info{Name: m.Name, Description: m.Description, Dir: dir}, nil
 }
 
-func fetchInto(dir, source string) error {
+func fetchInto(hc *http.Client, dir, source string) error {
 	owner, repo, ref, sub, ok := parseGitHub(source)
 	if ok {
 		if ref == "" {
 			ref = "HEAD"
 		}
 		u := fmt.Sprintf("https://codeload.github.com/%s/%s/zip/%s", owner, repo, ref)
-		body, ctype, err := get(u)
+		body, ctype, err := get(hc, u)
 		if err != nil {
 			return err
 		}
@@ -145,7 +156,7 @@ func fetchInto(dir, source string) error {
 	if !(strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://")) {
 		return fmt.Errorf("unsupported source %q", source)
 	}
-	body, ctype, err := get(source)
+	body, ctype, err := get(hc, source)
 	if err != nil {
 		return err
 	}
@@ -195,13 +206,13 @@ func parseGitHub(source string) (owner, repo, ref, sub string, ok bool) {
 	return "", "", "", "", false
 }
 
-func get(raw string) ([]byte, string, error) {
+func get(hc *http.Client, raw string) ([]byte, string, error) {
 	req, err := http.NewRequest(http.MethodGet, raw, nil)
 	if err != nil {
 		return nil, "", err
 	}
 	req.Header.Set("User-Agent", "silo-agent")
-	res, err := HTTPClient.Do(req)
+	res, err := hc.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
