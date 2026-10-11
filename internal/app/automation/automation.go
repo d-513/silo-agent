@@ -29,6 +29,7 @@ import (
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
+	"silo.agent/internal/zone"
 )
 
 // Tick is how often the scheduler looks for due automations.
@@ -83,8 +84,10 @@ func parseSchedule(s string) (cron.Schedule, error) {
 }
 
 // nextRun is the next firing after from, or nil when the automation is paused
-// or has no schedule.
-func nextRun(au *db.Automation, from time.Time) *time.Time {
+// or has no schedule. The cron fields are wall-clock time in loc, the Bot's
+// zone: a schedule with no zone of its own is read in the zone of the time it
+// is asked about.
+func nextRun(au *db.Automation, from time.Time, loc *time.Location) *time.Time {
 	if !au.Enabled {
 		return nil
 	}
@@ -92,11 +95,34 @@ func nextRun(au *db.Automation, from time.Time) *time.Time {
 	if err != nil || sched == nil {
 		return nil
 	}
-	t := sched.Next(from)
+	t := sched.Next(from.In(loc))
 	if t.IsZero() {
 		return nil
 	}
 	return &t
+}
+
+// zones answers a Bot's time zone, asking the database once per Bot.
+func (s *Service) zones() func(botID string) *time.Location {
+	seen := map[string]*time.Location{}
+	return func(botID string) *time.Location {
+		if loc, ok := seen[botID]; ok {
+			return loc
+		}
+		seen[botID] = zone.OfBot(s.db, botID)
+		return seen[botID]
+	}
+}
+
+// Rezone re-times a Bot's automations after its time zone changed: the same
+// cron now names other moments.
+func (s *Service) Rezone(botID string) {
+	var rows []db.Automation
+	s.db.Where("bot_id = ? AND next_run_at IS NOT NULL", botID).Find(&rows)
+	now, loc := time.Now(), s.zones()(botID)
+	for i := range rows {
+		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], now, loc))
+	}
 }
 
 // --- store ---
@@ -222,7 +248,7 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 		return nil, fmt.Errorf("an automation named %q already exists", au.Name)
 	}
 	now := time.Now()
-	au.NextRunAt = nextRun(au, now)
+	au.NextRunAt = nextRun(au, now, s.zones()(botID))
 	au.UpdatedAt = now
 	if creating {
 		au.CreatedAt = now
@@ -260,8 +286,9 @@ func (s *Service) Reschedule() {
 	}
 	var rows []db.Automation
 	s.db.Where("next_run_at IS NOT NULL AND next_run_at < ?", time.Now()).Find(&rows)
+	zoneOf := s.zones()
 	for i := range rows {
-		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], time.Now()))
+		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], time.Now(), zoneOf(rows[i].BotID)))
 	}
 }
 
@@ -271,9 +298,10 @@ func (s *Service) FireDue(now time.Time) int {
 	var due []db.Automation
 	s.db.Where("enabled = ? AND next_run_at IS NOT NULL AND next_run_at <= ?", true, now).Find(&due)
 	fired := 0
+	zoneOf := s.zones()
 	for i := range due {
 		au := &due[i]
-		next := nextRun(au, now)
+		next := nextRun(au, now, zoneOf(au.BotID))
 		// Claim the slot: only the writer that moves next_run_at fires it.
 		res := s.db.Model(&db.Automation{}).Where("id = ? AND next_run_at = ?", au.ID, au.NextRunAt).Update("next_run_at", next)
 		if res.RowsAffected != 1 {
@@ -398,7 +426,7 @@ func (s *Service) RunAutomation(ctx context.Context, req *connect.Request[v1.Run
 
 // --- Bot tools ---
 
-func (s *Service) automationLine(au *db.Automation) string {
+func (s *Service) automationLine(au *db.Automation, loc *time.Location) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "- %s  %s", au.ID, au.Name)
 	if au.Kind == automationHeartbeat {
@@ -413,11 +441,11 @@ func (s *Service) automationLine(au *db.Automation) string {
 		b.WriteString(" — paused")
 	}
 	if au.NextRunAt != nil {
-		fmt.Fprintf(&b, "; next: %s", au.NextRunAt.Local().Format("Mon 2006-01-02 15:04 MST"))
+		fmt.Fprintf(&b, "; next: %s", zone.Stamp(*au.NextRunAt, loc))
 	}
 	if au.LastRunAt != nil {
 		status, _ := s.automationStatus(au)
-		fmt.Fprintf(&b, "; last: %s (%s)", au.LastRunAt.Local().Format("Mon 2006-01-02 15:04 MST"), status)
+		fmt.Fprintf(&b, "; last: %s (%s)", zone.Stamp(*au.LastRunAt, loc), status)
 	}
 	p := au.Prompt
 	if utf8.RuneCountInString(p) > 300 {
@@ -469,13 +497,15 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 	if _, err := s.host.AuthorizeAction(ctx, bot, runID, security.Automations, action, string(slipJSON), ""); err != nil {
 		return "", err
 	}
+	// Asked now, not read off bot: the zone may have moved during the run.
+	loc := s.zones()(bot.ID)
 	switch action {
 	case "list":
 		rows := s.listAutomations(bot.ID)
 		var b strings.Builder
-		b.WriteString("Automations (cron in the machine's local time):\n")
+		fmt.Fprintf(&b, "Automations (cron in this Bot's time zone, %s):\n", loc)
 		for i := range rows {
-			b.WriteString(s.automationLine(&rows[i]))
+			b.WriteString(s.automationLine(&rows[i], loc))
 		}
 		return b.String(), nil
 	case "create":
@@ -483,7 +513,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		if err != nil {
 			return "", err
 		}
-		return "created\n" + s.automationLine(au), nil
+		return "created\n" + s.automationLine(au, loc), nil
 	case "update":
 		if target.Kind == automationHeartbeat {
 			p.name = nil
@@ -492,7 +522,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		if err != nil {
 			return "", err
 		}
-		return "updated\n" + s.automationLine(au), nil
+		return "updated\n" + s.automationLine(au, loc), nil
 	case "delete":
 		if err := s.deleteAutomation(target); err != nil {
 			return "", err

@@ -103,7 +103,7 @@ func (a *App) emitReport(botID, chatID, runID string, rep *run.Report) {
 	body := textx.ValidUTF8(a.Mask(botID).Apply(rep.Body))
 	id := ids.New()
 	now := time.Now()
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: subagentReportKind, Body: body, Tool: rep.Label, CreatedAt: now})
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: subagentReportKind, Body: body, Tool: rep.Label, Zone: a.botZone(botID), CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: subagentReportKind, Body: body, Tool: rep.Label, CreatedAt: now.Format(time.RFC3339)})
 }
 

@@ -86,12 +86,17 @@ type Bot struct {
 	// AutoApprove is the free-text policy the approval model reads when a rule
 	// decision is "auto".
 	AutoApprove string
-	TokenHash   string `gorm:"uniqueIndex"`
-	ContainerID string
-	Status      string
-	LastTask    string
-	Crest       int
-	CreatedAt   time.Time
+	// TimeZone is the IANA zone this Bot's schedules and the times it reads
+	// are in. Empty (a Bot from before zones) reads as the server's:
+	// zone.Resolve. Unless pinned it follows the device the owner writes from.
+	TimeZone       string `gorm:"not null;default:''"`
+	TimeZonePinned bool   `gorm:"not null;default:false"`
+	TokenHash      string `gorm:"uniqueIndex"`
+	ContainerID    string
+	Status         string
+	LastTask       string
+	Crest          int
+	CreatedAt      time.Time
 }
 
 type Secret struct {
@@ -173,12 +178,17 @@ type RunEvent struct {
 	ID string `gorm:"primaryKey"`
 	// Seq is the insert order. Postgres timestamps are microsecond and IDs are
 	// random, so events of one run can tie on CreatedAt; replay orders by Seq.
-	Seq       int64  `gorm:"autoIncrement;uniqueIndex"`
-	RunID     string `gorm:"index"`
-	Kind      string
-	Body      string
-	Tool      string
-	Meta      string
+	Seq   int64  `gorm:"autoIncrement;uniqueIndex"`
+	RunID string `gorm:"index"`
+	Kind  string
+	Body  string
+	Tool  string
+	Meta  string
+	// Zone is the Bot's time zone when a message was written. Its timestamp
+	// is told to the model in this zone on every replay, so a Bot that
+	// changes zone never rewrites the history it already sent. Empty on
+	// events from before zones.
+	Zone      string `gorm:"not null;default:''"`
 	CreatedAt time.Time
 }
 

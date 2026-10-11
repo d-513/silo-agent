@@ -36,7 +36,7 @@ const modeOptions: { value: Mode; label: string }[] = [
   { value: "custom", label: "Custom (cron)" },
 ];
 
-function ScheduleField({ value, onChange }: { value: string; onChange: (cron: string) => void }) {
+function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cron: string) => void; zone: string }) {
   const [s, setS] = useState<Sched>(() => parse(value));
   useEffect(() => {
     if (toCron(s) !== value) setS(parse(value));
@@ -60,7 +60,7 @@ function ScheduleField({ value, onChange }: { value: string; onChange: (cron: st
     />
   );
   return (
-    <Field label="Schedule" hint={`${describe(toCron(s))} · the machine's clock`}>
+    <Field label="Schedule" hint={`${describe(toCron(s))} · ${zone ? `${zone} time` : "the Bot's time zone"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <Select className="w-52" value={s.mode} options={modeOptions} onChange={(v) => set({ mode: v as Mode, every: v === "minutes" ? 30 : v === "hours" ? 1 : s.every })} />
         {s.mode === "minutes" && (
@@ -139,7 +139,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
       <Field label="Name">
         <input className={inputClass} value={name} disabled={heartbeat} placeholder="Morning digest" onChange={(e) => setName(e.target.value)} />
       </Field>
-      <ScheduleField value={schedule} onChange={setSchedule} />
+      <ScheduleField value={schedule} onChange={setSchedule} zone={bot.timeZone} />
       <PromptWell label="Prompt" hint="Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state." value={prompt} onChange={setPrompt} />
       <div className="flex items-center gap-3">
         <Switch on={enabled} onChange={setEnabled} title="Active" />

@@ -91,6 +91,22 @@ func TestResolve(t *testing.T) {
 	}
 }
 
+// With no zone of its own the connector works in its Bot's, and its own
+// setting wins when there is one.
+func TestZoneDefaultsToTheBots(t *testing.T) {
+	d := connector{}.Descriptor()
+	cfg := builtin.Resolve(d, map[string]string{"provider": "icloud", "username": "a", "password": "x"})
+	cfg.TimeZone = "Asia/Tokyo"
+	if s, err := resolve(cfg); err != nil || s.loc.String() != "Asia/Tokyo" {
+		t.Fatalf("zone %v err %v", s.loc, err)
+	}
+	cfg = builtin.Resolve(d, map[string]string{"provider": "icloud", "username": "a", "password": "x", "timezone": "America/Lima"})
+	cfg.TimeZone = "Asia/Tokyo"
+	if s, err := resolve(cfg); err != nil || s.loc.String() != "America/Lima" {
+		t.Fatalf("zone %v err %v", s.loc, err)
+	}
+}
+
 func TestCheck(t *testing.T) {
 	srv, cfg := setup(t)
 	if err := (connector{}).Check(context.Background(), cfg); err != nil {

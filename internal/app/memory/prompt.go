@@ -62,7 +62,7 @@ func (s *Service) Prompt(botID string) string {
 	var d db.MemoryDigest
 	s.db.Where("bot_id = ?", botID).Limit(1).Find(&d)
 	if strings.TrimSpace(d.Text) != "" {
-		return "Too many to list. This is a summary of them as of " + d.UpdatedAt.Local().Format("2006-01-02") +
+		return "Too many to list. This is a summary of them as of " + d.UpdatedAt.UTC().Format("2006-01-02") +
 			"; `recall` searches all of them by meaning — use it before relying on a detail that is not spelled out here.\n\n" +
 			strings.TrimSpace(d.Text)
 	}
@@ -152,7 +152,7 @@ func (s *Service) digest(ctx context.Context, botID string) (string, error) {
 	}
 	var b strings.Builder
 	for _, r := range rows {
-		fmt.Fprintf(&b, "- (%s, %s) %s\n", r.CreatedAt.Format("2006-01-02"), r.Kind, r.Content)
+		fmt.Fprintf(&b, "- (%s, %s) %s\n", r.CreatedAt.UTC().Format("2006-01-02"), r.Kind, r.Content)
 	}
 	client, _, model, err := s.models.Observed(s.cfg().MemoryModel(), botID, "memory")
 	if err != nil {

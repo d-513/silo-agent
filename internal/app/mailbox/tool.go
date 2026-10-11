@@ -18,6 +18,7 @@ import (
 	"silo.agent/internal/mailin"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
+	"silo.agent/internal/zone"
 )
 
 const (
@@ -144,13 +145,14 @@ func (s *Service) listTool(botID string, limit int, unreadOnly, structured bool)
 		return b.String(), nil
 	}
 	b.WriteString(" Newest first:\n")
+	loc := zone.OfBot(s.db, botID)
 	for i := range rows {
 		m := &rows[i]
 		b.WriteString("\n" + m.ID)
 		if m.ReadAt == nil {
 			b.WriteString(" [unread]")
 		}
-		fmt.Fprintf(&b, "\n  %s · from %s (%s)", m.CreatedAt.Local().Format("Mon 2006-01-02 15:04"), orNone(m.Sender), checked(m.Verified))
+		fmt.Fprintf(&b, "\n  %s · from %s (%s)", zone.Stamp(m.CreatedAt, loc), orNone(m.Sender), checked(m.Verified))
 		fmt.Fprintf(&b, "\n  Subject: %s", orNone(m.Subject))
 		if n := len(attachments(m)); n > 0 {
 			fmt.Fprintf(&b, " · %d attachment%s", n, textx.Plural(n))
@@ -229,7 +231,7 @@ func (s *Service) readTool(ctx context.Context, botID, id string, offset int, sa
 	} else {
 		fmt.Fprintf(&b, "Sender check: NOT verified, the From address may be forged (%s)\n", m.AuthDetail)
 	}
-	fmt.Fprintf(&b, "To: %s\nSubject: %s\nReceived: %s\n", orNone(m.Recipients), orNone(m.Subject), m.CreatedAt.Local().Format("Mon 2006-01-02 15:04 MST"))
+	fmt.Fprintf(&b, "To: %s\nSubject: %s\nReceived: %s\n", orNone(m.Recipients), orNone(m.Subject), zone.Stamp(m.CreatedAt, zone.OfBot(s.db, botID)))
 	if atts := attachments(m); len(atts) > 0 {
 		b.WriteString("Attachments:\n")
 		for _, a := range atts {

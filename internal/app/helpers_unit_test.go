@@ -19,15 +19,25 @@ func TestCallTitle(t *testing.T) {
 	}
 }
 
-// TestStampUserTextUsesLocalTime guards the date/time marker that rides on user
-// messages: it must render in the machine's local zone and leave the original
-// text intact.
-func TestStampUserTextUsesLocalTime(t *testing.T) {
+// TestStampUserTextUsesTheMessagesZone guards the date/time marker that rides
+// on user messages: it is the wall-clock time in the zone the message was
+// written in, with the offset and the zone's name, and the text is left intact.
+func TestStampUserTextUsesTheMessagesZone(t *testing.T) {
 	when := time.Date(2026, 9, 21, 14, 30, 5, 0, time.UTC)
-	got := stampUserText("hello", when)
-	if !strings.HasSuffix(got, " hello") || !strings.HasPrefix(got, "[") {
-		t.Fatalf("stampUserText %q", got)
+	if got, want := stampUserText("hello", when, "Asia/Tokyo"), "[Mon, 2026-09-21 23:30:05 +09:00 Asia/Tokyo] hello"; got != want {
+		t.Fatalf("stampUserText = %q, want %q", got, want)
 	}
+	if got, want := stampUserText("hello", when, "America/New_York"), "[Mon, 2026-09-21 10:30:05 -04:00 America/New_York] hello"; got != want {
+		t.Fatalf("stampUserText = %q, want %q", got, want)
+	}
+}
+
+// A message from before Bots had a zone carries none, and must replay as the
+// bytes it was first sent as: the server's zone in the old layout. Changing
+// them would cost every existing conversation its prompt cache.
+func TestStampUserTextKeepsOldMessagesAsTheyWere(t *testing.T) {
+	when := time.Date(2026, 9, 21, 14, 30, 5, 0, time.UTC)
+	got := stampUserText("hello", when, "")
 	want := "[" + when.Local().Format("Mon, 2006-01-02 15:04:05 MST") + "] hello"
 	if got != want {
 		t.Fatalf("stampUserText = %q, want %q", got, want)

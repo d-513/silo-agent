@@ -22,6 +22,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
+	"silo.agent/internal/zone"
 )
 
 const (
@@ -120,11 +121,18 @@ func feedLabel(p *db.FeedPost) string {
 
 // QuoteText is what the model sees for a quoted post: a user turn that
 // frames the post, so the human's next message reads as a reply to it.
-func QuoteText(label, body string, posted time.Time) string {
+// zoneName is the Bot's zone when the post was quoted, kept on the event so
+// the turn replays as the same text wherever the Bot is later.
+func QuoteText(label, body string, posted time.Time, zoneName string) string {
 	var b strings.Builder
 	b.WriteString("I'm quoting a post you made to my Feed")
-	if !posted.IsZero() {
+	switch {
+	case posted.IsZero():
+	case zoneName == "":
+		// A quote from before Bots had a zone: the bytes it always had.
 		fmt.Fprintf(&b, " on %s", posted.Local().Format("Mon 2006-01-02 15:04 MST"))
+	default:
+		fmt.Fprintf(&b, " on %s", zone.Stamp(posted, zone.Resolve(zoneName)))
 	}
 	if label != "" {
 		b.WriteString(" from " + label)
@@ -197,7 +205,7 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 		body = "**" + p.Title + "**\n\n" + body
 	}
 	// CreatedAt is the post's time: history frames the quote with when it was posted.
-	ev := db.RunEvent{ID: ids.New(), RunID: run.ID, Kind: QuoteKind, Body: body, Tool: feedLabel(p), CreatedAt: p.CreatedAt}
+	ev := db.RunEvent{ID: ids.New(), RunID: run.ID, Kind: QuoteKind, Body: body, Tool: feedLabel(p), Zone: zone.OfBot(s.db, p.BotID).String(), CreatedAt: p.CreatedAt}
 	if err := s.db.Create(&ev).Error; err != nil {
 		return nil, err
 	}

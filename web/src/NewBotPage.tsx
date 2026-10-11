@@ -7,6 +7,7 @@ import { fail } from "./errors";
 import { UI } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
 import { inputClass, textareaClass } from "./Field";
+import { deviceZone } from "./zones";
 
 function randomCrest() {
   return packCrest(Math.floor(Math.random() * SHAPE_COUNT), Math.floor(Math.random() * COLOR_COUNT));
@@ -25,7 +26,8 @@ export function NewBotPage() {
     setBusy(true);
     setErr("");
     try {
-      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim() });
+      // The Bot starts in this device's time zone and follows it from here.
+      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim(), timeZone: deviceZone() });
       void reload(UI.method.listBots);
       void nav({ to: "/bots/$botId/run", params: { botId: b.id } });
     } catch (ex) {

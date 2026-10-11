@@ -135,7 +135,7 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 				}
 			}
 		}
-		ne := db.RunEvent{ID: ids.New(), RunID: newRunID, Kind: e.ev.Kind, Body: e.ev.Body, Tool: e.ev.Tool, Meta: meta, CreatedAt: e.ev.CreatedAt}
+		ne := db.RunEvent{ID: ids.New(), RunID: newRunID, Kind: e.ev.Kind, Body: e.ev.Body, Tool: e.ev.Tool, Meta: meta, Zone: e.ev.Zone, CreatedAt: e.ev.CreatedAt}
 		evIDs[e.ev.ID] = ne.ID
 		if err := a.DB.Create(&ne).Error; err != nil {
 			return nil, err
@@ -197,6 +197,7 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("message not found"))
 	}
 	a.publishReset(b.ID, ch.ID)
+	a.followZone(b, req.Msg.GetTimeZone())
 	runID, err := a.startOrInjectLocked(b.ID, ch.ID, text, atts, nil)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)

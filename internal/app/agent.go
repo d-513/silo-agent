@@ -20,14 +20,15 @@ import (
 	"silo.agent/internal/textx"
 )
 
-// inboxMsg is a user message injected into a live run. id and at are its
+// inboxMsg is a user message injected into a live run. id, at and zone are its
 // persisted event: the run moves the event to where it reads the message, and
-// stamps the message with the time replay will stamp it with.
+// stamps the message with the time and zone replay will stamp it with.
 type inboxMsg struct {
 	text string
 	atts []*v1.Attachment
 	id   string
 	at   time.Time
+	zone string
 }
 
 // StartRun records a run and launches the agent loop. Callers with a live run
@@ -120,10 +121,10 @@ func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment, f
 	}
 	lr.injecting.Lock()
 	defer lr.injecting.Unlock()
-	id, at := ids.New(), time.Now()
+	id, at, zn := ids.New(), time.Now(), a.botZone(botID)
 	select {
-	case lr.inbox <- inboxMsg{text: text, atts: atts, id: id, at: at}:
-		a.emitUserAt(botID, chatID, runID, id, at, text, atts, from)
+	case lr.inbox <- inboxMsg{text: text, atts: atts, id: id, at: at, zone: zn}:
+		a.emitUserAt(botID, chatID, runID, id, at, zn, text, atts, from)
 		a.dbSaveBotWorking(botID, text)
 		lr.signal("message")
 		return true
@@ -154,7 +155,7 @@ func (a *App) drainInbox(lr *liveRun, msgs []llm.Message) []llm.Message {
 	for _, m := range got {
 		a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
 		text := userTextWithAttachments(a.kept(lr.botID, m.text), m.atts)
-		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, m.at)})
+		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, m.at, m.zone)})
 	}
 	return msgs
 }

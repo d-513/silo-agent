@@ -410,6 +410,12 @@ message Bot {
   // MailAddress is this Bot's receive-only address; empty while the operator
   // has mail off or no mail.domain.
   string mail_address = 13;
+  // TimeZone is the IANA zone this Bot's schedules and the times it reads are
+  // in; never empty (a Bot with none set answers the server's).
+  string time_zone = 14;
+  // TimeZonePinned keeps the zone as set. Unpinned, it follows the device the
+  // owner sends messages from.
+  bool time_zone_pinned = 15;
 }
 
 message ListBotsRequest {}
@@ -422,6 +428,8 @@ message CreateBotRequest {
   string name = 1;
   int32 crest = 2;
   string description = 3;
+  // The creating device's IANA zone. Empty or unknown takes the server's.
+  string time_zone = 4;
 }
 
 message UpdateBotRequest {
@@ -432,6 +440,9 @@ message UpdateBotRequest {
   string memory = 5;
   string auto_approve = 6;
   string model = 7;
+  // Optional, so a save of the other fields leaves the zone alone.
+  optional string time_zone = 8;
+  optional bool time_zone_pinned = 9;
 }
 
 message GetBotRequest {
@@ -915,7 +926,7 @@ message Automation {
   string bot_id = 2;
   string name = 3;
   string prompt = 4;
-  // Standard 5-field cron in the Control Plane's local time. Empty never
+  // Standard 5-field cron in the Bot's time zone. Empty never
   // fires on its own (Run now still works).
   string schedule = 5;
   bool enabled = 6;
@@ -1075,6 +1086,8 @@ message SendRequest {
   string text = 2;
   string chat_id = 3;
   repeated Attachment attachments = 4;
+  // The sending device's IANA zone. An unpinned Bot follows it.
+  string time_zone = 5;
 }
 
 message SendResponse {
@@ -1117,6 +1130,8 @@ message EditMessageRequest {
   string event_id = 3;
   string text = 4;
   repeated Attachment attachments = 5;
+  // The sending device's IANA zone, as on SendRequest.
+  string time_zone = 6;
 }
 
 // DeleteMessage truncates this chat at the last user message and stops there.

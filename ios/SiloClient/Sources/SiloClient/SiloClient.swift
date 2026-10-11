@@ -116,6 +116,8 @@ public final class SiloClient: Sendable {
         request.name = name
         request.crest = crest
         request.description_p = description
+        // The Bot starts in this device's time zone and follows it from here.
+        request.timeZone = TimeZone.current.identifier
         let response = await ui.createBot(request: request, headers: [:])
         return try unwrap(response)
     }
@@ -158,6 +160,8 @@ public final class SiloClient: Sendable {
         request.chatID = chatID
         request.text = text
         request.attachments = attachments
+        // Where the human is now: an unpinned Bot follows it.
+        request.timeZone = TimeZone.current.identifier
         let response = await ui.send(request: request, headers: [:])
         return try unwrap(response)
     }
@@ -273,6 +277,7 @@ public final class SiloClient: Sendable {
         request.eventID = eventID
         request.text = text
         request.attachments = attachments
+        request.timeZone = TimeZone.current.identifier
         _ = try unwrap(await ui.editMessage(request: request, headers: [:]))
     }
 

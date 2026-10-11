@@ -136,6 +136,10 @@ func TestFeedQuoteStartsChatWithPostInContext(t *testing.T) {
 	if len(evs) != 1 || evs[0].Kind != "feed_quote" || !strings.Contains(evs[0].Body, "Coffee went up") {
 		t.Fatalf("quote events %v", evs)
 	}
+	// The quote keeps the zone it was made in, so it replays as the same text.
+	if evs[0].Zone == "" || evs[0].Zone != bot.GetTimeZone() {
+		t.Fatalf("the quote is in zone %q, the Bot in %q", evs[0].Zone, bot.GetTimeZone())
+	}
 	if !listFeed(t, h, bot.GetId())[0].GetRead() {
 		t.Fatal("quoting marks the post read")
 	}

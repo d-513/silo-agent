@@ -96,6 +96,9 @@ type Env interface {
 // Config is a connector copy's resolved config, secrets included.
 type Config struct {
 	Values map[string]string
+	// TimeZone is the Bot's IANA zone: what a connector that deals in
+	// wall-clock time uses when its own setting is blank.
+	TimeZone string
 }
 
 func (c Config) Get(key string) string {

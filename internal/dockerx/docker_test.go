@@ -1,6 +1,7 @@
 package dockerx
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -50,5 +51,17 @@ func TestIsNotFoundEmpty(t *testing.T) {
 func TestStdioName(t *testing.T) {
 	if StdioName("abc") != "silo-mcp-abc" {
 		t.Fatal(StdioName("abc"))
+	}
+}
+
+// A Bot's machine runs on UTC whatever the host is set to: the human's zone is
+// the Bot's (it follows them), never the box's.
+func TestBotMachineIsUTC(t *testing.T) {
+	env := botEnv("http://cp", "bot1", "tok")
+	if !slices.Contains(env, "TZ=UTC") {
+		t.Fatalf("env %v has no TZ=UTC", env)
+	}
+	if !slices.Contains(env, "SILO_BOT_TOKEN=tok") {
+		t.Fatalf("env %v lost the bot token", env)
 	}
 }

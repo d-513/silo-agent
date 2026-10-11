@@ -9,20 +9,27 @@ import (
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
+	"silo.agent/internal/zone"
 )
 
-// messageTimeStamp renders t in the machine's local timezone as a compact
-// marker the model can read. The date and time ride on the user message rather
-// than the system prompt so the cached prompt prefix is never invalidated.
-func messageTimeStamp(t time.Time) string {
-	return "[" + t.Local().Format("Mon, 2006-01-02 15:04:05 MST") + "] "
+// messageTimeStamp renders t as a compact marker the model can read, in the
+// zone the Bot was in when the message was written (zoneName, kept on its
+// event). The date, time and zone ride on the user message rather than the
+// system prompt, so the cached prompt prefix is never invalidated and a Bot
+// that moves zone does not rewrite what it already sent.
+func messageTimeStamp(t time.Time, zoneName string) string {
+	if zoneName == "" {
+		// A message from before Bots had a zone: the bytes it always had.
+		return "[" + t.Local().Format("Mon, 2006-01-02 15:04:05 MST") + "] "
+	}
+	return "[" + zone.Stamp(t, zone.Resolve(zoneName)) + "] "
 }
 
 // stampUserText prefixes a user message with the moment it was sent. History
-// keeps its original timestamp (stable across runs, so prompt caches hold) and
-// the newest message carries the current local time.
-func stampUserText(text string, t time.Time) string {
-	return messageTimeStamp(t) + text
+// keeps its original timestamp and zone (stable across runs, so prompt caches
+// hold) and the newest message carries the current time where the human is.
+func stampUserText(text string, t time.Time, zoneName string) string {
+	return messageTimeStamp(t, zoneName) + text
 }
 
 func userTextWithAttachments(text string, atts []*v1.Attachment) string {
@@ -172,12 +179,12 @@ func replayEvents(evs []db.RunEvent) replayed {
 			out.cleared = max(out.cleared, meta.Results)
 		case feed.QuoteKind:
 			flushTools()
-			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feed.QuoteText(ev.Tool, ev.Body, ev.CreatedAt)})
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feed.QuoteText(ev.Tool, ev.Body, ev.CreatedAt, ev.Zone)})
 			fold = true
 			continue
 		case subagentReportKind:
 			flushTools()
-			text := stampUserText(subagentReportText(ev.Body), ev.CreatedAt)
+			text := stampUserText(subagentReportText(ev.Body), ev.CreatedAt, ev.Zone)
 			if n := len(msgs); n > 0 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
 			} else {
@@ -195,7 +202,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 				}
 				text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 			}
-			text = stampUserText(text, ev.CreatedAt)
+			text = stampUserText(text, ev.CreatedAt, ev.Zone)
 			if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
 			} else {

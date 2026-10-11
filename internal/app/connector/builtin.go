@@ -21,6 +21,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
 	"silo.agent/internal/security"
+	"silo.agent/internal/zone"
 )
 
 // builtinCallWait bounds one built-in action (an IMAP fetch, an SMTP send).
@@ -42,13 +43,18 @@ func decodeStrMap(raw string) map[string]string {
 	return out
 }
 
-// builtinConfig merges a row's plain and secret values over field defaults.
-func builtinConfig(d builtin.Descriptor, c *db.Connector) builtin.Config {
+// builtinConfig merges a row's plain and secret values over field defaults,
+// and carries the time zone of the Bot the copy belongs to.
+func (s *Service) builtinConfig(d builtin.Descriptor, c *db.Connector) builtin.Config {
 	vals := decodeStrMap(c.ConfigJSON)
 	for k, v := range decodeStrMap(c.SecretsJSON) {
 		vals[k] = v
 	}
-	return builtin.Resolve(d, vals)
+	cfg := builtin.Resolve(d, vals)
+	if c.BotID != "" {
+		cfg.TimeZone = zone.OfBot(s.db, c.BotID).String()
+	}
+	return cfg
 }
 
 // applyBuiltinConfig writes submitted field values onto the row: secrets to
@@ -115,7 +121,7 @@ func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *d
 		return fmt.Errorf("unknown built-in connector %q", c.Builtin)
 	}
 	d := bc.Descriptor()
-	cfg := builtinConfig(d, c)
+	cfg := s.builtinConfig(d, c)
 	if f := builtin.Missing(d, cfg); f != nil {
 		row.AuthStatus = StatusNeedsAuth
 		row.StatusDetail = "Fill in " + f.Label + " in the connector's settings."
@@ -152,7 +158,7 @@ func (s *Service) RunBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, 
 	if !ok {
 		return "", fmt.Errorf("%s has no action %q", c.Name, action)
 	}
-	cfg := builtinConfig(d, c)
+	cfg := s.builtinConfig(d, c)
 	mask := s.mask(bot.ID)
 	for k, v := range decodeStrMap(c.SecretsJSON) {
 		if f, ok := d.Field(k); ok && f.Type == builtin.FieldSecret {

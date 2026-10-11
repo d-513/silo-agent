@@ -2021,9 +2021,15 @@ type Bot struct {
 	FeedUnread int32 `protobuf:"varint,12,opt,name=feed_unread,json=feedUnread,proto3" json:"feed_unread,omitempty"`
 	// MailAddress is this Bot's receive-only address; empty while the operator
 	// has mail off or no mail.domain.
-	MailAddress   string `protobuf:"bytes,13,opt,name=mail_address,json=mailAddress,proto3" json:"mail_address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MailAddress string `protobuf:"bytes,13,opt,name=mail_address,json=mailAddress,proto3" json:"mail_address,omitempty"`
+	// TimeZone is the IANA zone this Bot's schedules and the times it reads are
+	// in; never empty (a Bot with none set answers the server's).
+	TimeZone string `protobuf:"bytes,14,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// TimeZonePinned keeps the zone as set. Unpinned, it follows the device the
+	// owner sends messages from.
+	TimeZonePinned bool `protobuf:"varint,15,opt,name=time_zone_pinned,json=timeZonePinned,proto3" json:"time_zone_pinned,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Bot) Reset() {
@@ -2147,6 +2153,20 @@ func (x *Bot) GetMailAddress() string {
 	return ""
 }
 
+func (x *Bot) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+func (x *Bot) GetTimeZonePinned() bool {
+	if x != nil {
+		return x.TimeZonePinned
+	}
+	return false
+}
+
 type ListBotsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2228,10 +2248,12 @@ func (x *ListBotsResponse) GetBots() []*Bot {
 }
 
 type CreateBotRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Crest         int32                  `protobuf:"varint,2,opt,name=crest,proto3" json:"crest,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Crest       int32                  `protobuf:"varint,2,opt,name=crest,proto3" json:"crest,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	// The creating device's IANA zone. Empty or unknown takes the server's.
+	TimeZone      string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2287,17 +2309,27 @@ func (x *CreateBotRequest) GetDescription() string {
 	return ""
 }
 
+func (x *CreateBotRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
 type UpdateBotRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Soul          string                 `protobuf:"bytes,4,opt,name=soul,proto3" json:"soul,omitempty"`
-	Memory        string                 `protobuf:"bytes,5,opt,name=memory,proto3" json:"memory,omitempty"`
-	AutoApprove   string                 `protobuf:"bytes,6,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
-	Model         string                 `protobuf:"bytes,7,opt,name=model,proto3" json:"model,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Soul        string                 `protobuf:"bytes,4,opt,name=soul,proto3" json:"soul,omitempty"`
+	Memory      string                 `protobuf:"bytes,5,opt,name=memory,proto3" json:"memory,omitempty"`
+	AutoApprove string                 `protobuf:"bytes,6,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
+	Model       string                 `protobuf:"bytes,7,opt,name=model,proto3" json:"model,omitempty"`
+	// Optional, so a save of the other fields leaves the zone alone.
+	TimeZone       *string `protobuf:"bytes,8,opt,name=time_zone,json=timeZone,proto3,oneof" json:"time_zone,omitempty"`
+	TimeZonePinned *bool   `protobuf:"varint,9,opt,name=time_zone_pinned,json=timeZonePinned,proto3,oneof" json:"time_zone_pinned,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdateBotRequest) Reset() {
@@ -2377,6 +2409,20 @@ func (x *UpdateBotRequest) GetModel() string {
 		return x.Model
 	}
 	return ""
+}
+
+func (x *UpdateBotRequest) GetTimeZone() string {
+	if x != nil && x.TimeZone != nil {
+		return *x.TimeZone
+	}
+	return ""
+}
+
+func (x *UpdateBotRequest) GetTimeZonePinned() bool {
+	if x != nil && x.TimeZonePinned != nil {
+		return *x.TimeZonePinned
+	}
+	return false
 }
 
 type GetBotRequest struct {
@@ -6380,7 +6426,7 @@ type Automation struct {
 	BotId  string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
 	Name   string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Prompt string                 `protobuf:"bytes,4,opt,name=prompt,proto3" json:"prompt,omitempty"`
-	// Standard 5-field cron in the Control Plane's local time. Empty never
+	// Standard 5-field cron in the Bot's time zone. Empty never
 	// fires on its own (Run now still works).
 	Schedule string `protobuf:"bytes,5,opt,name=schedule,proto3" json:"schedule,omitempty"`
 	Enabled  bool   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -7833,11 +7879,13 @@ func (x *Attachment) GetMime() string {
 }
 
 type SendRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	ChatId        string                 `protobuf:"bytes,3,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	Attachments   []*Attachment          `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BotId       string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Text        string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	ChatId      string                 `protobuf:"bytes,3,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	Attachments []*Attachment          `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// The sending device's IANA zone. An unpinned Bot follows it.
+	TimeZone      string `protobuf:"bytes,5,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7898,6 +7946,13 @@ func (x *SendRequest) GetAttachments() []*Attachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *SendRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
 }
 
 type SendResponse struct {
@@ -8206,12 +8261,14 @@ func (x *RunEvent) GetCreatedAt() string {
 // edited text as a fresh turn. Only the trailing user message can be edited;
 // earlier points use DivergeChat.
 type EditMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	ChatId        string                 `protobuf:"bytes,2,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	EventId       string                 `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Text          string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
-	Attachments   []*Attachment          `protobuf:"bytes,5,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BotId       string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	ChatId      string                 `protobuf:"bytes,2,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	EventId     string                 `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Text        string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	Attachments []*Attachment          `protobuf:"bytes,5,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// The sending device's IANA zone, as on SendRequest.
+	TimeZone      string `protobuf:"bytes,6,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8279,6 +8336,13 @@ func (x *EditMessageRequest) GetAttachments() []*Attachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *EditMessageRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
 }
 
 // DeleteMessage truncates this chat at the last user message and stops there.
@@ -17822,7 +17886,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xea\x02\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xb1\x03\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -17838,14 +17902,17 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x05model\x18\v \x01(\tR\x05model\x12\x1f\n" +
 	"\vfeed_unread\x18\f \x01(\x05R\n" +
 	"feedUnread\x12!\n" +
-	"\fmail_address\x18\r \x01(\tR\vmailAddress\"\x11\n" +
+	"\fmail_address\x18\r \x01(\tR\vmailAddress\x12\x1b\n" +
+	"\ttime_zone\x18\x0e \x01(\tR\btimeZone\x12(\n" +
+	"\x10time_zone_pinned\x18\x0f \x01(\bR\x0etimeZonePinned\"\x11\n" +
 	"\x0fListBotsRequest\"4\n" +
 	"\x10ListBotsResponse\x12 \n" +
-	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"^\n" +
+	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"{\n" +
 	"\x10CreateBotRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x02 \x01(\x05R\x05crest\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xbd\x01\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\xb1\x02\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -17853,7 +17920,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04soul\x18\x04 \x01(\tR\x04soul\x12\x16\n" +
 	"\x06memory\x18\x05 \x01(\tR\x06memory\x12!\n" +
 	"\fauto_approve\x18\x06 \x01(\tR\vautoApprove\x12\x14\n" +
-	"\x05model\x18\a \x01(\tR\x05model\"\x1f\n" +
+	"\x05model\x18\a \x01(\tR\x05model\x12 \n" +
+	"\ttime_zone\x18\b \x01(\tH\x00R\btimeZone\x88\x01\x01\x12-\n" +
+	"\x10time_zone_pinned\x18\t \x01(\bH\x01R\x0etimeZonePinned\x88\x01\x01B\f\n" +
+	"\n" +
+	"_time_zoneB\x13\n" +
+	"\x11_time_zone_pinned\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +
@@ -18245,12 +18317,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x03R\x04size\x12\x12\n" +
-	"\x04mime\x18\x04 \x01(\tR\x04mime\"\x88\x01\n" +
+	"\x04mime\x18\x04 \x01(\tR\x04mime\"\xa5\x01\n" +
 	"\vSendRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x17\n" +
 	"\achat_id\x18\x03 \x01(\tR\x06chatId\x125\n" +
-	"\vattachments\x18\x04 \x03(\v2\x13.silo.v1.AttachmentR\vattachments\">\n" +
+	"\vattachments\x18\x04 \x03(\v2\x13.silo.v1.AttachmentR\vattachments\x12\x1b\n" +
+	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\">\n" +
 	"\fSendResponse\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\"@\n" +
@@ -18271,13 +18344,14 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x02id\x18\x06 \x01(\tR\x02id\x125\n" +
 	"\vattachments\x18\a \x03(\v2\x13.silo.v1.AttachmentR\vattachments\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\xaa\x01\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"\xc7\x01\n" +
 	"\x12EditMessageRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x19\n" +
 	"\bevent_id\x18\x03 \x01(\tR\aeventId\x12\x12\n" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x125\n" +
-	"\vattachments\x18\x05 \x03(\v2\x13.silo.v1.AttachmentR\vattachments\"a\n" +
+	"\vattachments\x18\x05 \x03(\v2\x13.silo.v1.AttachmentR\vattachments\x12\x1b\n" +
+	"\ttime_zone\x18\x06 \x01(\tR\btimeZone\"a\n" +
 	"\x14DeleteMessageRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x19\n" +
@@ -19922,6 +19996,7 @@ func file_silo_v1_ui_proto_init() {
 		return
 	}
 	file_silo_v1_ui_proto_msgTypes[28].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[41].OneofWrappers = []any{}
 	file_silo_v1_ui_proto_msgTypes[210].OneofWrappers = []any{}
 	file_silo_v1_ui_proto_msgTypes[217].OneofWrappers = []any{}
 	type x struct{}

@@ -20,6 +20,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
+	"silo.agent/internal/zone"
 )
 
 func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
@@ -38,6 +39,8 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Model:           b.Model,
 		FeedUnread:      a.Feed.Unread(b.ID),
 		MailAddress:     a.Mail.Address(b.ID),
+		TimeZone:        zone.Resolve(b.TimeZone).String(),
+		TimeZonePinned:  b.TimeZonePinned,
 	}
 }
 
@@ -82,9 +85,12 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		Name:        name,
 		Description: clipDesc(req.Msg.GetDescription()),
 		Soul:        defaultSoul,
-		Status:      "stopped",
-		Crest:       crest,
-		CreatedAt:   time.Now(),
+		// The zone of the device that makes the Bot; a client that names
+		// none, or one unknown here, gets the server's.
+		TimeZone:  zone.Resolve(req.Msg.GetTimeZone()).String(),
+		Status:    "stopped",
+		Crest:     crest,
+		CreatedAt: time.Now(),
 	}
 	if err := a.DB.Create(&b).Error; err != nil {
 		return nil, err
@@ -121,8 +127,23 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 		}
 	}
 	b.Model = model
+	rezone := false
+	if req.Msg.TimeZone != nil {
+		tz := strings.TrimSpace(req.Msg.GetTimeZone())
+		if err := zone.Check(tz); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		rezone = tz != b.TimeZone
+		b.TimeZone = tz
+	}
+	if req.Msg.TimeZonePinned != nil {
+		b.TimeZonePinned = req.Msg.GetTimeZonePinned()
+	}
 	if err := a.DB.Save(b).Error; err != nil {
 		return nil, err
+	}
+	if rezone {
+		a.Automations.Rezone(b.ID)
 	}
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
@@ -271,6 +292,7 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	if err := writableChat(ch); err != nil {
 		return nil, err
 	}
+	a.followZone(b, req.Msg.GetTimeZone())
 	runID, err := a.StartOrInject(b.ID, ch.ID, text, atts, nil)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)

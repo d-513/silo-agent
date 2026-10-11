@@ -8,12 +8,12 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"silo.agent/internal/builtin"
 	"silo.agent/internal/security"
+	"silo.agent/internal/zone"
 )
 
 //go:embed GUIDE.md
@@ -88,7 +88,7 @@ func (connector) Descriptor() builtin.Descriptor {
 			{Key: "password", Label: "App password", Type: builtin.FieldSecret, Required: true,
 				Description: "An app password, not your account password. See the guide for your provider."},
 			{Key: "timezone", Label: "Time zone", Type: builtin.FieldText,
-				Description: "IANA name such as Europe/Warsaw. Leave blank for the server's."},
+				Description: "IANA name such as Europe/Warsaw. Leave blank for this Bot's."},
 			{Key: "default_calendar", Label: "Default calendar", Advanced: true, Type: builtin.FieldText,
 				Description: "Where new events go when none is named. Leave blank for the first one."},
 		},
@@ -178,35 +178,14 @@ func resolve(cfg builtin.Config) (settings, error) {
 	if s.username == "" {
 		return s, errors.New("set the username")
 	}
-	loc, err := zone(cfg.Get("timezone"))
-	if err != nil {
+	// A named zone matters: events are written with its TZID so recurrences
+	// keep their wall-clock time. Blank is the Bot's zone.
+	name := cfg.Get("timezone")
+	if name == "" {
+		name = cfg.TimeZone
+	} else if err := zone.Check(name); err != nil {
 		return s, err
 	}
-	s.loc = loc
+	s.loc = zone.Resolve(name)
 	return s, nil
-}
-
-// zone loads the configured IANA zone, or the host's. A named zone matters:
-// events are written with its TZID so recurrences keep their wall-clock time.
-func zone(name string) (*time.Location, error) {
-	if name != "" {
-		loc, err := time.LoadLocation(name)
-		if err != nil {
-			return nil, fmt.Errorf("unknown time zone %q (use an IANA name such as Europe/Warsaw)", name)
-		}
-		return loc, nil
-	}
-	if tz := strings.TrimPrefix(os.Getenv("TZ"), ":"); tz != "" {
-		if loc, err := time.LoadLocation(tz); err == nil {
-			return loc, nil
-		}
-	}
-	if link, err := os.Readlink("/etc/localtime"); err == nil {
-		if i := strings.Index(link, "zoneinfo/"); i >= 0 {
-			if loc, err := time.LoadLocation(link[i+len("zoneinfo/"):]); err == nil {
-				return loc, nil
-			}
-		}
-	}
-	return time.UTC, nil
 }

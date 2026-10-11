@@ -14,5 +14,6 @@ The iOS client aims for parity with the web client (see the plan in the repo his
 | **Knowledge** (`/bots/:id/knowledge`) | The folder picker, per-folder sync state and the try-a-search panel. Web only for now; the Swift client already has the RPCs. |
 | **Changes** (`/bots/:id/changes`) | The diff pane for what changed in the workspace. Web only for now; the Swift client already has the RPCs. |
 | **Tunnels** (`/bots/:id/tunnels`) | Add/flip/delete a tunnel and open its address. Web only for now; the Swift client already has the RPCs. |
+| **Time zone panel** (Bot Settings) | Follow my device / Fixed and the zone picker. iOS already sends the device's zone when it creates a Bot and with every message, so an unpinned Bot follows the phone; pinning one is on the web. |
 
 Drives, Files, Secrets, Rules, Skills, Automations, Memories, Feed, Containers and Settings are in scope.

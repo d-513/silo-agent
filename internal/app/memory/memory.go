@@ -209,7 +209,9 @@ func formatRecalled(rows []Recalled) string {
 		if r.Kind == Lesson {
 			kind = " lesson:"
 		}
-		fmt.Fprintf(&b, "- [%s] (%s)%s %s\n", r.ID, r.CreatedAt.Format("2006-01-02"), kind, r.Content)
+		// UTC dates: this list sits in the prompt ahead of the conversation,
+		// so it must read the same wherever the Bot or the server is.
+		fmt.Fprintf(&b, "- [%s] (%s)%s %s\n", r.ID, r.CreatedAt.UTC().Format("2006-01-02"), kind, r.Content)
 	}
 	return b.String()
 }

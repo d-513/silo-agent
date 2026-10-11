@@ -697,6 +697,14 @@ public nonisolated struct Silo_V1_Bot: Sendable {
   /// has mail off or no mail.domain.
   public var mailAddress: String = String()
 
+  /// TimeZone is the IANA zone this Bot's schedules and the times it reads are
+  /// in; never empty (a Bot with none set answers the server's).
+  public var timeZone: String = String()
+
+  /// TimeZonePinned keeps the zone as set. Unpinned, it follows the device the
+  /// owner sends messages from.
+  public var timeZonePinned: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -735,6 +743,9 @@ public nonisolated struct Silo_V1_CreateBotRequest: Sendable {
 
   public var description_p: String = String()
 
+  /// The creating device's IANA zone. Empty or unknown takes the server's.
+  public var timeZone: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -759,9 +770,31 @@ public nonisolated struct Silo_V1_UpdateBotRequest: Sendable {
 
   public var model: String = String()
 
+  /// Optional, so a save of the other fields leaves the zone alone.
+  public var timeZone: String {
+    get {_timeZone ?? String()}
+    set {_timeZone = newValue}
+  }
+  /// Returns true if `timeZone` has been explicitly set.
+  public var hasTimeZone: Bool {self._timeZone != nil}
+  /// Clears the value of `timeZone`. Subsequent reads from it will return its default value.
+  public mutating func clearTimeZone() {self._timeZone = nil}
+
+  public var timeZonePinned: Bool {
+    get {_timeZonePinned ?? false}
+    set {_timeZonePinned = newValue}
+  }
+  /// Returns true if `timeZonePinned` has been explicitly set.
+  public var hasTimeZonePinned: Bool {self._timeZonePinned != nil}
+  /// Clears the value of `timeZonePinned`. Subsequent reads from it will return its default value.
+  public mutating func clearTimeZonePinned() {self._timeZonePinned = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _timeZone: String? = nil
+  fileprivate var _timeZonePinned: Bool? = nil
 }
 
 public nonisolated struct Silo_V1_GetBotRequest: Sendable {
@@ -1939,7 +1972,7 @@ public nonisolated struct Silo_V1_Automation: Sendable {
 
   public var prompt: String = String()
 
-  /// Standard 5-field cron in the Control Plane's local time. Empty never
+  /// Standard 5-field cron in the Bot's time zone. Empty never
   /// fires on its own (Run now still works).
   public var schedule: String = String()
 
@@ -2341,6 +2374,9 @@ public nonisolated struct Silo_V1_SendRequest: Sendable {
 
   public var attachments: [Silo_V1_Attachment] = []
 
+  /// The sending device's IANA zone. An unpinned Bot follows it.
+  public var timeZone: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2445,6 +2481,9 @@ public nonisolated struct Silo_V1_EditMessageRequest: Sendable {
   public var text: String = String()
 
   public var attachments: [Silo_V1_Attachment] = []
+
+  /// The sending device's IANA zone, as on SendRequest.
+  public var timeZone: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -6651,7 +6690,7 @@ nonisolated extension Silo_V1_CheckOIDCResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Bot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6672,6 +6711,8 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 11: try { try decoder.decodeSingularStringField(value: &self.model) }()
       case 12: try { try decoder.decodeSingularInt32Field(value: &self.feedUnread) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.mailAddress) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.timeZone) }()
+      case 15: try { try decoder.decodeSingularBoolField(value: &self.timeZonePinned) }()
       default: break
       }
     }
@@ -6717,6 +6758,12 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.mailAddress.isEmpty {
       try visitor.visitSingularStringField(value: self.mailAddress, fieldNumber: 13)
     }
+    if !self.timeZone.isEmpty {
+      try visitor.visitSingularStringField(value: self.timeZone, fieldNumber: 14)
+    }
+    if self.timeZonePinned != false {
+      try visitor.visitSingularBoolField(value: self.timeZonePinned, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6734,6 +6781,8 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.model != rhs.model {return false}
     if lhs.feedUnread != rhs.feedUnread {return false}
     if lhs.mailAddress != rhs.mailAddress {return false}
+    if lhs.timeZone != rhs.timeZone {return false}
+    if lhs.timeZonePinned != rhs.timeZonePinned {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6790,7 +6839,7 @@ nonisolated extension Silo_V1_ListBotsResponse: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateBotRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}crest\0\u{1}description\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}crest\0\u{1}description\0\u{3}time_zone\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6801,6 +6850,7 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
       case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 2: try { try decoder.decodeSingularInt32Field(value: &self.crest) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.timeZone) }()
       default: break
       }
     }
@@ -6816,6 +6866,9 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
     if !self.description_p.isEmpty {
       try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
     }
+    if !self.timeZone.isEmpty {
+      try visitor.visitSingularStringField(value: self.timeZone, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6823,6 +6876,7 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
     if lhs.name != rhs.name {return false}
     if lhs.crest != rhs.crest {return false}
     if lhs.description_p != rhs.description_p {return false}
+    if lhs.timeZone != rhs.timeZone {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6830,7 +6884,7 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateBotRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0\u{3}time_zone\0\u{3}time_zone_pinned\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6845,12 +6899,18 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
       case 5: try { try decoder.decodeSingularStringField(value: &self.memory) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.autoApprove) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.model) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._timeZone) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self._timeZonePinned) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -6872,6 +6932,12 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     if !self.model.isEmpty {
       try visitor.visitSingularStringField(value: self.model, fieldNumber: 7)
     }
+    try { if let v = self._timeZone {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try { if let v = self._timeZonePinned {
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 9)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6883,6 +6949,8 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     if lhs.memory != rhs.memory {return false}
     if lhs.autoApprove != rhs.autoApprove {return false}
     if lhs.model != rhs.model {return false}
+    if lhs._timeZone != rhs._timeZone {return false}
+    if lhs._timeZonePinned != rhs._timeZonePinned {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -10408,7 +10476,7 @@ nonisolated extension Silo_V1_Attachment: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension Silo_V1_SendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SendRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}text\0\u{3}chat_id\0\u{1}attachments\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}text\0\u{3}chat_id\0\u{1}attachments\0\u{3}time_zone\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -10420,6 +10488,7 @@ nonisolated extension Silo_V1_SendRequest: SwiftProtobuf.Message, SwiftProtobuf.
       case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
       case 4: try { try decoder.decodeRepeatedMessageField(value: &self.attachments) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.timeZone) }()
       default: break
       }
     }
@@ -10438,6 +10507,9 @@ nonisolated extension Silo_V1_SendRequest: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.attachments.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.attachments, fieldNumber: 4)
     }
+    if !self.timeZone.isEmpty {
+      try visitor.visitSingularStringField(value: self.timeZone, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -10446,6 +10518,7 @@ nonisolated extension Silo_V1_SendRequest: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.text != rhs.text {return false}
     if lhs.chatID != rhs.chatID {return false}
     if lhs.attachments != rhs.attachments {return false}
+    if lhs.timeZone != rhs.timeZone {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -10647,7 +10720,7 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Silo_V1_EditMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EditMessageRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{3}chat_id\0\u{3}event_id\0\u{1}text\0\u{1}attachments\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{3}chat_id\0\u{3}event_id\0\u{1}text\0\u{1}attachments\0\u{3}time_zone\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -10660,6 +10733,7 @@ nonisolated extension Silo_V1_EditMessageRequest: SwiftProtobuf.Message, SwiftPr
       case 3: try { try decoder.decodeSingularStringField(value: &self.eventID) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.attachments) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.timeZone) }()
       default: break
       }
     }
@@ -10681,6 +10755,9 @@ nonisolated extension Silo_V1_EditMessageRequest: SwiftProtobuf.Message, SwiftPr
     if !self.attachments.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.attachments, fieldNumber: 5)
     }
+    if !self.timeZone.isEmpty {
+      try visitor.visitSingularStringField(value: self.timeZone, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -10690,6 +10767,7 @@ nonisolated extension Silo_V1_EditMessageRequest: SwiftProtobuf.Message, SwiftPr
     if lhs.eventID != rhs.eventID {return false}
     if lhs.text != rhs.text {return false}
     if lhs.attachments != rhs.attachments {return false}
+    if lhs.timeZone != rhs.timeZone {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

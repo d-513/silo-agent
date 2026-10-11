@@ -222,6 +222,18 @@ func (a *App) toolDefs() []tool.Def {
 			}),
 		},
 		{
+			Name:        "set_timezone",
+			Description: "Set the time zone this Bot's automation schedules and message timestamps use, when the human says where they are (it otherwise follows the device they write from).",
+			Params: tool.Object(map[string]any{
+				"time_zone": map[string]any{"type": "string", "description": "IANA name, e.g. Europe/Warsaw or America/New_York"},
+			}, "time_zone"),
+			Connector: security.Bot, Action: "set_timezone",
+			ExposePython: true, LeadOnly: true,
+			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
+				return a.zoneTool(c.Bot.ID, c.Str("time_zone"))
+			}),
+		},
+		{
 			Name:        "list_models",
 			Description: "List the models this Bot may switch to, with the current chat model and the operator default. Use this before switch_model.",
 			Params:      tool.Object(nil),
@@ -481,7 +493,7 @@ func (a *App) toolDefs() []tool.Def {
 			Params: tool.Object(map[string]any{
 				"name":     map[string]any{"type": "string", "description": "short unique name"},
 				"prompt":   map[string]any{"type": "string", "description": "the instruction each run receives as its message"},
-				"schedule": map[string]any{"type": "string", "description": "5-field cron in the machine's local time (minute hour day-of-month month day-of-week), e.g. `0 9 * * 1-5` for weekdays at 09:00, `*/30 * * * *` every 30 minutes. At least 5 minutes apart. Empty never fires."},
+				"schedule": map[string]any{"type": "string", "description": "5-field cron in this Bot's time zone, the one on the human's messages (minute hour day-of-month month day-of-week), e.g. `0 9 * * 1-5` for weekdays at 09:00, `*/30 * * * *` every 30 minutes. At least 5 minutes apart. Empty never fires."},
 				"enabled":  map[string]any{"type": "boolean", "description": "default true"},
 			}, "name", "prompt", "schedule"),
 			Connector: security.Automations, Action: "create",
@@ -495,7 +507,7 @@ func (a *App) toolDefs() []tool.Def {
 				"automation": map[string]any{"type": "string", "description": "id or name"},
 				"name":       map[string]any{"type": "string"},
 				"prompt":     map[string]any{"type": "string"},
-				"schedule":   map[string]any{"type": "string", "description": "5-field cron, local time; empty never fires"},
+				"schedule":   map[string]any{"type": "string", "description": "5-field cron in this Bot's time zone; empty never fires"},
 				"enabled":    map[string]any{"type": "boolean"},
 			}, "automation"),
 			Connector: security.Automations, Action: "update",

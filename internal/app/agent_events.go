@@ -67,12 +67,13 @@ type eventAttachment struct {
 // from names a non-human sender ("lead" for a subagent's brief and the lead's
 // messages); it rides on Tool so the thread can label the bubble.
 func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment, from string) {
-	a.emitUserAt(botID, chatID, runID, ids.New(), time.Now(), body, atts, from)
+	a.emitUserAt(botID, chatID, runID, ids.New(), time.Now(), a.botZone(botID), body, atts, from)
 }
 
-// emitUserAt is emitUser for a caller that needs the event's id and time: a
-// message injected into a live run is stamped with them when the run reads it.
-func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, body string, atts []*v1.Attachment, from string) {
+// emitUserAt is emitUser for a caller that needs the event's id, time and
+// zone: a message injected into a live run is stamped with them when the run
+// reads it.
+func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneName, body string, atts []*v1.Attachment, from string) {
 	body = a.kept(botID, body)
 	meta := ""
 	if len(atts) > 0 {
@@ -84,7 +85,7 @@ func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, body st
 			meta = string(b)
 		}
 	}
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: meta, CreatedAt: now})
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: meta, Zone: zoneName, CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
 }
 

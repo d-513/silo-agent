@@ -209,12 +209,8 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 		binds = append(binds, b)
 	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
-		Image: cfg.BotImage,
-		Env: []string{
-			"SILO_CP_URL=" + cfg.CPURL,
-			"SILO_BOT_TOKEN=" + token,
-			"SILO_BOT_ID=" + botID,
-		},
+		Image:    cfg.BotImage,
+		Env:      botEnv(cfg.CPURL, botID, token),
 		Hostname: "bot",
 	}, &container.HostConfig{
 		Binds:         binds,
@@ -225,6 +221,19 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 		return "", fmt.Errorf("container create: %w", err)
 	}
 	return resp.ID, nil
+}
+
+// botEnv is the environment a Bot's machine starts with.
+func botEnv(cpURL, botID, token string) []string {
+	return []string{
+		"SILO_CP_URL=" + cpURL,
+		"SILO_BOT_TOKEN=" + token,
+		"SILO_BOT_ID=" + botID,
+		// The machine's clock is UTC whatever the host or the image says.
+		// The human's zone belongs to the Bot (bots.time_zone) and follows
+		// them; the model reads it off its messages.
+		"TZ=UTC",
+	}
 }
 
 func (e *Engine) Start(ctx context.Context, id string) error {

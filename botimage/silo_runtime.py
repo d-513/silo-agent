@@ -248,13 +248,23 @@ def forget(id: str) -> dict:
     return call("bot", "forget", {"id": id})
 
 
+def set_timezone(time_zone: str) -> dict:
+    """Set the time zone this Bot's automation schedules and message timestamps use.
+
+    An IANA name such as "Europe/Warsaw". The zone normally follows the device
+    the human writes from; call this when they tell you where they are instead.
+    This machine's own clock stays UTC.
+    """
+    return call("bot", "set_timezone", {"time_zone": time_zone})
+
+
 def list_automations() -> dict:
     """List this Bot's automations, including the pinned Heartbeat."""
     return call("automations", "list", {})
 
 
 def create_automation(name: str, prompt: str, schedule: str, enabled: bool | None = None) -> dict:
-    """Create an automation: a prompt run on a 5-field cron schedule (local time).
+    """Create an automation: a prompt run on a 5-field cron schedule (this Bot's time zone).
 
     Each run starts with a fresh context, so the prompt must be self-contained.
     Asks the human first by default.

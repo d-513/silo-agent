@@ -11,6 +11,7 @@ import { reload, setBot } from "./query";
 import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
 import { MailSettings } from "./Mail";
+import { TimeZoneSettings } from "./TimeZone";
 
 export function PromptWell({
   label,
@@ -164,6 +165,8 @@ export function SettingsPane({
           </SaveButton>
         </div>
       </form>
+
+      <TimeZoneSettings bot={bot} onError={onError} />
 
       {/* A Bot has a mailbox only while the operator has mail set up. */}
       {bot.mailAddress ? <MailSettings bot={bot} onError={onError} /> : null}

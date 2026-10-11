@@ -3,6 +3,7 @@ import { ui } from "../api";
 import { fail } from "../errors";
 import { UI } from "../gen/silo/v1/ui_pb";
 import { reload, reloadBot } from "../query";
+import { deviceZone } from "../zones";
 import { putChat } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
 
@@ -37,6 +38,8 @@ export function runActions(c: Ctx) {
         chatId: chatId || "",
         text: msg,
         attachments: atts.map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+        // Where the human is now: an unpinned Bot follows it.
+        timeZone: deviceZone(),
       });
       draft.setAtts([]);
       reloadBot(id);
@@ -57,6 +60,7 @@ export function runActions(c: Ctx) {
         eventId,
         text,
         attachments: (attachments ?? []).map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+        timeZone: deviceZone(),
       });
       run.resync();
       reloadBot(id);
