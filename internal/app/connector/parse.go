@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -185,6 +186,11 @@ func protoConnector(c *db.Connector, admin bool) *v1.Connector {
 	return out
 }
 
+// clipImage checks an uploaded connector mark and says what it is. The type the
+// upload claims is not believed: any user can add a connector, the mark is
+// served from the control plane's own origin to everyone who can see it, and a
+// "mark" of type text/html would be a page there. The bytes decide, and only an
+// image is taken.
 func clipImage(b []byte, typ string) ([]byte, string, error) {
 	if len(b) == 0 {
 		return nil, "", nil
@@ -192,10 +198,28 @@ func clipImage(b []byte, typ string) ([]byte, string, error) {
 	if len(b) > imageMax {
 		return nil, "", fmt.Errorf("image too large (%d bytes, max %d)", len(b), imageMax)
 	}
-	if typ == "" {
-		typ = http.DetectContentType(b)
+	got := imageType(b, typ)
+	if got == "" {
+		return nil, "", errors.New("the image must be a PNG, JPEG, GIF, WebP or SVG")
 	}
-	return b, typ, nil
+	return b, got, nil
+}
+
+// imageType is the image type of b, or "" when it is not an image a connector
+// may carry. SVG has no magic number, so it is taken when the upload says SVG
+// (or names no type) and the text holds an <svg element.
+func imageType(b []byte, claimed string) string {
+	sniffed, _, _ := strings.Cut(http.DetectContentType(b), ";")
+	switch sniffed {
+	case "image/png", "image/jpeg", "image/gif", "image/webp":
+		return sniffed
+	case "text/xml", "text/plain":
+		claimed, _, _ = strings.Cut(strings.ToLower(strings.TrimSpace(claimed)), ";")
+		if (claimed == "" || claimed == "image/svg+xml") && bytes.Contains(b[:min(len(b), 4096)], []byte("<svg")) {
+			return "image/svg+xml"
+		}
+	}
+	return ""
 }
 
 func mergeHeaders(existingJSON string, ins []*v1.HeaderInput, requireValue bool) (string, error) {

@@ -238,10 +238,13 @@ func (s *Service) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, 
 	if ct == "" {
 		ct = "application/octet-stream"
 	}
+	// The Bot wrote these bytes. Only a type that cannot act as a page opens
+	// in place; the rest is a download whatever the link asks for.
 	disp := "attachment"
-	if r.URL.Query().Get("inline") != "" {
+	if r.URL.Query().Get("inline") != "" && workspace.Passive(ct) {
 		disp = "inline"
 	}
+	workspace.Untrusted(w.Header(), ct)
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Content-Disposition", disp+`; filename="`+safeFilename(name)+`"`)
 	w.Header().Set("Cache-Control", "private, no-store")

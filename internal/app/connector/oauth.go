@@ -19,6 +19,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/drive"
+	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
 )
@@ -40,14 +41,19 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 	}
 	c = *s.ResolveConnector(&c)
 	redirect := s.PublicURL(ctx) + "/oauth/callback"
+	starter := access.User(ctx).ID
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
 	h, err := s.oauthHandler(&c, &row, redirect, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 		u := args.URL
+		// The server names this address and the browser is about to open it.
+		if !webURL(u) {
+			return nil, errors.New("the server's authorization address is not a web address")
+		}
 		if st := queryParam(u, "state"); st != "" {
 			s.mu.Lock()
-			s.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u)}
+			s.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u), user: starter}
 			s.mu.Unlock()
 		}
 		select {
@@ -102,9 +108,32 @@ func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	state := q.Get("state")
 	s.mu.Lock()
 	wait := s.oauth[state]
-	delete(s.oauth, state)
 	s.mu.Unlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if wait == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "<p>Unknown or expired authorization. You can close this window.</p>")
+		return
+	}
+	// A connector's sign-in ends in the browser of whoever started it. The
+	// authorization link can be handed to anyone: without this, a user could
+	// start a sign-in for their own Bot, send the link to somebody else, and
+	// have that person's consent land their account's token on the Bot. The
+	// state is left in place, so the real owner can still finish.
+	if wait.user != "" {
+		u, err := siloauth.UserFromRequest(s.db, r)
+		if err != nil || u.ID != wait.user {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(w, "<p>This sign-in was started by someone else, or you are not signed in to Silo in this browser. Nothing was connected. You can close this window.</p>")
+			return
+		}
+	}
+	s.mu.Lock()
+	if s.oauth[state] != wait {
+		wait = nil
+	}
+	delete(s.oauth, state)
+	s.mu.Unlock()
 	if wait == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = io.WriteString(w, "<p>Unknown or expired authorization. You can close this window.</p>")
@@ -226,6 +255,13 @@ func wrapOAuth(err error) error {
 	return err
 }
 
+// webURL reports whether raw is an http(s) address: the only kind a browser
+// should be sent to on a server's say-so.
+func webURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && u.Host != "" && (u.Scheme == "https" || u.Scheme == "http")
+}
+
 func queryParam(raw, key string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -248,7 +284,10 @@ func originOf(raw string) string {
 type oauthWait struct {
 	ch     chan *mcpauth.AuthorizationResult
 	issuer string
-	drive  func(ctx context.Context, q url.Values) error
+	// user is who started a connector's sign-in; only their browser may
+	// finish it. Empty for a drive, whose mobile flow ends in another browser.
+	user  string
+	drive func(ctx context.Context, q url.Values) error
 }
 
 // AwaitOAuth registers a pending sign-in whose callback finishes in complete

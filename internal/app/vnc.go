@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/coder/websocket"
 
@@ -13,7 +15,35 @@ import (
 	"silo.agent/internal/hub"
 )
 
+// socketOrigin reports whether a browser page at this Origin may open a Bot's
+// desktop or console socket. CORS does not hold a WebSocket back and the
+// session cookie rides along from any page of the same site (a tunnelled app
+// on a sibling subdomain is one), so the Origin is the only thing that tells
+// the console's own page from somebody else's. It must be the host the request
+// came to (Vite and a reverse proxy both keep it) or the operator's public_url.
+// No Origin at all is a native client, which no page can pretend to be.
+func socketOrigin(r *http.Request, publicURL string) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	o, err := url.Parse(origin)
+	if err != nil || o.Host == "" {
+		return false
+	}
+	if strings.EqualFold(o.Host, r.Host) {
+		return true
+	}
+	pub, err := url.Parse(strings.TrimSpace(publicURL))
+	return err == nil && pub.Host != "" && strings.EqualFold(o.Host, pub.Host) && strings.EqualFold(o.Scheme, pub.Scheme)
+}
+
 func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*websocket.Conn, *hub.Session, string, bool) {
+	if !socketOrigin(r, a.cfg().PublicURL) {
+		log.Printf("%s ws refused: origin %q is not this site", what, r.Header.Get("Origin"))
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return nil, nil, "", false
+	}
 	u, err := auth.UserFromRequest(a.DB, r)
 	if err != nil {
 		access.HTTPSessionError(w, err)
@@ -32,7 +62,7 @@ func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*w
 	}
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		CompressionMode:    websocket.CompressionDisabled,
-		InsecureSkipVerify: true, // session cookie is the gate; Vite proxies from :5173
+		InsecureSkipVerify: true, // socketOrigin has checked it, against public_url too
 	})
 	if err != nil {
 		log.Printf("%s ws accept bot=%s: %v", what, botID, err)

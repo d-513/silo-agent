@@ -146,6 +146,7 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 		return nil, err
 	}
 	m := req.Msg
+	before := row
 	if n := strings.TrimSpace(m.GetName()); n != "" {
 		if row.Kind == catalog.KindCustom && s.slugTaken(row.BotID, n, row.ID) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
@@ -261,9 +262,50 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	if err := setConnectorImage(&row, m); err != nil {
 		return nil, err
 	}
+	if row.Kind == catalog.KindCustom && row.SourceID != "" && !sameTarget(&before, &row) {
+		if err := keepOnlyGiven(&row, m.GetHeaders(), m.GetEnv(), m.GetOauthClientSecret()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
 	s.db.Save(&row)
 	s.restartConnector(&row)
 	return connect.NewResponse(s.protoLibrary(&row, true)), nil
+}
+
+// sameTarget reports whether two connectors talk to the same thing: the same
+// address, or the same program with the same arguments in the same image.
+func sameTarget(a, b *db.Connector) bool {
+	if a.Transport != b.Transport {
+		return false
+	}
+	if a.Transport == TransportSTDIO {
+		return strings.TrimSpace(a.StdioCommand) == strings.TrimSpace(b.StdioCommand) &&
+			strings.TrimSpace(a.StdioImage) == strings.TrimSpace(b.StdioImage) &&
+			slices.Equal(mcpbridge.ParseArgs(a.StdioArgsJSON), mcpbridge.ParseArgs(b.StdioArgsJSON))
+	}
+	return strings.TrimSpace(a.HTTPURL) == strings.TrimSpace(b.HTTPURL)
+}
+
+// keepOnlyGiven strips a Bot's copy of a library preset down to the header
+// values, environment and OAuth client secret this very request supplied. It
+// runs when the copy stops talking to what the preset talks to. Those values
+// came from the operator, who chose where they are sent; the Bot's owner never
+// sees them, and must not be able to read them by pointing the copy at a
+// server or a program of their own.
+func keepOnlyGiven(row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvInput, oauthSecret string) error {
+	hdr, err := mergeHeaders("", headers, false)
+	if err != nil {
+		return err
+	}
+	vars, err := mergeEnv("", env, false)
+	if err != nil {
+		return err
+	}
+	row.HeadersJSON, row.EnvJSON, row.OAuthClientSecret = hdr, vars, oauthSecret
+	if row.Transport == TransportSTDIO {
+		row.HeadersJSON, row.OAuthClientSecret = "{}", ""
+	}
+	return nil
 }
 
 func (s *Service) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
@@ -377,14 +419,14 @@ func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.He
 	if row.OAuthClientID == "" {
 		row.OAuthClientID = lib.OAuthClientID
 	}
-	if row.OAuthClientSecret == "" {
-		row.OAuthClientSecret = lib.OAuthClientSecret
-	}
 	if row.Prompt == "" {
 		row.Prompt = lib.Prompt
 	}
 	if row.Transport == "" {
 		row.Transport = lib.Transport
+	}
+	if row.Transport == lib.Transport && row.Transport != TransportSTDIO && row.HTTPURL == "" {
+		row.HTTPURL = lib.HTTPURL
 	}
 	if row.StdioCommand == "" {
 		row.StdioCommand = lib.StdioCommand
@@ -392,6 +434,21 @@ func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.He
 	}
 	if row.StdioImage == "" {
 		row.StdioImage = lib.StdioImage
+	}
+	// The preset's header values, environment and OAuth client secret are the
+	// operator's, sent where the operator pointed the preset. A copy that
+	// starts out pointed elsewhere gets only what its own form supplied.
+	if !sameTarget(row, &lib) {
+		if err := keepOnlyGiven(row, headers, env, row.OAuthClientSecret); err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if row.Transport == TransportSTDIO && row.StdioCommand == "" {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("stdio_command required"))
+		}
+		return nil
+	}
+	if row.OAuthClientSecret == "" {
+		row.OAuthClientSecret = lib.OAuthClientSecret
 	}
 	if len(headers) == 0 {
 		row.HeadersJSON = lib.HeadersJSON
@@ -485,10 +542,17 @@ func (s *Service) ServeImage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	ct := c.ImageType
+	// The stored type is what an upload claimed in rows from before uploads
+	// were checked, so the bytes are asked again: an image, or a download.
+	ct := imageType(c.Image, c.ImageType)
 	if ct == "" {
-		ct = "image/png"
+		ct = "application/octet-stream"
+		w.Header().Set("Content-Disposition", "attachment")
 	}
+	// An SVG opened as a page of its own is a document: sandboxed, it has no
+	// origin and runs nothing. As an <img> the policy changes nothing.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	_, _ = w.Write(c.Image)

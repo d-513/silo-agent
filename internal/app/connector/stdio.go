@@ -97,7 +97,7 @@ func (s *Service) startStdio(ctx context.Context, row *db.BotConnector, c *db.Co
 		"SILO_BRIDGE_TOKEN="+token,
 	)
 	s.mask(row.BotID).Add(token)
-	cid, err := s.docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, Image: image, Env: env})
+	cid, err := s.docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, BotID: row.BotID, Image: image, Env: env})
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package dockerx
 
 import (
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -63,5 +64,25 @@ func TestBotMachineIsUTC(t *testing.T) {
 	}
 	if !slices.Contains(env, "SILO_BOT_TOKEN=tok") {
 		t.Fatalf("env %v lost the bot token", env)
+	}
+}
+
+// One Bot's sidecars must never share an npm directory with another's: npx
+// runs what is in it.
+func TestStdioCacheDirIsPerBot(t *testing.T) {
+	a, b := stdioCacheDir("/data", "bot-a"), stdioCacheDir("/data", "bot-b")
+	if a == "" || a == b {
+		t.Fatalf("cache dirs %q %q", a, b)
+	}
+	if want := filepath.Join("/data", "bots", "bot-a", "mcp-npm"); a != want {
+		t.Fatalf("cache dir %q, want %q", a, want)
+	}
+	for _, id := range []string{"", "..", "a/b", "../x", ".hidden"} {
+		if got := stdioCacheDir("/data", id); got != "" {
+			t.Fatalf("bot id %q got a cache dir %q", id, got)
+		}
+	}
+	if got := stdioCacheDir("", "bot-a"); got != "" {
+		t.Fatalf("no data dir, yet %q", got)
 	}
 }

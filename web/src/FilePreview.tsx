@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { codeLang, kindOf, mimeOf } from "./fileKind";
 import { Highlighted } from "./Highlighted";
+import { safeHtml } from "./safeHtml";
 
 export function downloadFile(name: string, content: string, data?: Uint8Array) {
   const blob = new Blob([data && data.length ? data.slice() : content], { type: mimeOf(name) });
@@ -64,7 +65,8 @@ function DocxView({ data }: { data: Uint8Array }) {
         }),
       )
       .then((r) => {
-        if (!dead) setHtml(r.value);
+        // The converter does not clean what the document's author put in it.
+        if (!dead) setHtml(safeHtml(r.value));
       })
       .catch((e) => {
         if (!dead) setErr(e instanceof Error ? e.message : "could not read document");

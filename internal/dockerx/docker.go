@@ -63,7 +63,9 @@ type Host interface {
 }
 
 type StdioSpec struct {
-	ID    string
+	ID string
+	// BotID is the Bot the sidecar serves: its npm cache is that Bot's alone.
+	BotID string
 	Image string
 	Env   []string
 }
@@ -267,14 +269,11 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 		image = cfg.MCPStdioImage
 	}
 	var binds []string
-	if cfg.DataDir != "" {
-		cache := filepath.Join(cfg.DataDir, "mcp-npm")
+	if cache := stdioCacheDir(cfg.DataDir, spec.BotID); cache != "" {
 		if err := os.MkdirAll(cache, 0o700); err != nil {
 			return "", err
 		}
 		if abs, err := filepath.Abs(cache); err == nil {
-			// Shared npm cache so recreating a sidecar does not re-download
-			// packages its siblings already pulled.
 			binds = append(binds, abs+":/root/.npm")
 		}
 	}
@@ -295,6 +294,21 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 		return "", fmt.Errorf("stdio create: %w", err)
 	}
 	return resp.ID, nil
+}
+
+// stdioCacheDir is the npm directory a Bot's STDIO sidecars share, so that
+// recreating one does not download again what its siblings already pulled; ""
+// when there is none to give. It is the Bot's own and never wider: a sidecar
+// runs, as root, whatever package its Bot's owner named, and npx runs what it
+// finds in this directory (~/.npm/_npx) without asking the registry again. One
+// directory for every Bot would let any owner plant code that the next
+// owner's sidecar starts with their keys in its environment. It sits in the
+// Bot's data directory and goes when the Bot does.
+func stdioCacheDir(dataDir, botID string) string {
+	if dataDir == "" || botID == "" || botID != filepath.Base(botID) || strings.HasPrefix(botID, ".") {
+		return ""
+	}
+	return filepath.Join(dataDir, "bots", botID, "mcp-npm")
 }
 
 func (e *Engine) DropStdio(ctx context.Context, id, containerID string) {
