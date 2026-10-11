@@ -79,7 +79,8 @@ func pythonResult(s string) string {
 
 func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
 	decision := security.Rule(a.ruleDecision(bot.ID, conn, action, fallback))
-	if decision == security.Auto {
+	auto := decision == security.Auto
+	if auto {
 		switch a.Approval.Judge(ctx, bot, a.ChatOfRun(runID), conn, action, argsJSON) {
 		case security.Allow:
 			a.audit(bot, "auto", conn+"."+action, "auto_allow")
@@ -102,7 +103,7 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 	default:
 		ap := db.Approval{
 			ID: ids.New(), BotID: bot.ID, RunID: runID,
-			Connector: conn, Action: action, ArgsJSON: security.Redact(conn, action, argsJSON), Status: "pending", CreatedAt: time.Now(),
+			Connector: conn, Action: action, ArgsJSON: security.Redact(conn, action, argsJSON), Status: "pending", Auto: auto, CreatedAt: time.Now(),
 		}
 		a.DB.Create(&ap)
 		ch := make(chan string, 1)

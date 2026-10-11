@@ -1308,6 +1308,10 @@ message Approval {
   // "Subagent · <name>", or "Background process" for an orphan call (no live
   // run; see callRun).
   string source = 11;
+  // The action's rule is Auto and its model would not decide, so the human is
+  // asked about this one call. The slip offers Allow and Deny only: the rule
+  // stays Auto whatever the vote (an `always` vote counts as `allow_once`).
+  bool auto = 12;
 }
 
 message ListApprovalsRequest {

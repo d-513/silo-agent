@@ -10,6 +10,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
+	"silo.agent/internal/db"
 )
 
 // setAutoPolicy stores the Bot's auto-approval policy and routes desktop.click
@@ -106,5 +107,73 @@ debug: true
 	}
 	if !sawChat {
 		t.Fatalf("no chat log captured: %+v", res.Msg.GetLogs())
+	}
+}
+
+// ruleOf reads the decision stored for one action.
+func ruleOf(t *testing.T, h *apptest.H, botID, conn, action string) string {
+	t.Helper()
+	var rule db.Rule
+	h.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, conn, action).Limit(1).Find(&rule)
+	return rule.Decision
+}
+
+// When the approval model will not decide, the human is asked about that one
+// call. The approval says so, and voting on it never replaces the Auto rule:
+// "always allow" from a client that still offers it allows this call only.
+func TestAutoApproveUnsureAsksWithoutChangingTheRule(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Auto")
+	setAutoPolicy(t, h, bot.GetId(), "Use your judgement.")
+	click := func() chan *v1.ToolRes {
+		done := make(chan *v1.ToolRes, 1)
+		go func() {
+			res, err := h.WorkerClient(bot.GetId()).CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{
+				Connector: "desktop", Action: "click", ArgsJson: `{"x":1,"y":2}`,
+			}))
+			if err != nil {
+				t.Error(err)
+				done <- &v1.ToolRes{}
+				return
+			}
+			done <- res.Msg
+		}()
+		return done
+	}
+
+	done := click()
+	ap := h.WaitApproval(bot.GetId())
+	if !ap.GetAuto() {
+		t.Fatalf("an approval the Auto rule fell back to must say so: %+v", ap)
+	}
+	if _, err := h.Client.DecideApproval(h.Ctx(), connect.NewRequest(&v1.DecideApprovalRequest{Id: ap.GetId(), Decision: "always"})); err != nil {
+		t.Fatal(err)
+	}
+	if res := <-done; res.GetError() != "" {
+		t.Fatalf("the human allowed: %+v", res)
+	}
+	if got := ruleOf(t, h, bot.GetId(), "desktop", "click"); got != "auto" {
+		t.Fatalf("the rule must stay auto, reads %q", got)
+	}
+
+	// A plain Ask rule is the owner's to settle from the slip.
+	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+		BotId: bot.GetId(), Connector: "desktop", Action: "click", Decision: "ask",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	done = click()
+	ap = h.WaitApproval(bot.GetId())
+	if ap.GetAuto() {
+		t.Fatalf("an Ask rule's approval is not an auto one: %+v", ap)
+	}
+	if _, err := h.Client.DecideApproval(h.Ctx(), connect.NewRequest(&v1.DecideApprovalRequest{Id: ap.GetId(), Decision: "always"})); err != nil {
+		t.Fatal(err)
+	}
+	if res := <-done; res.GetError() != "" {
+		t.Fatalf("the human allowed: %+v", res)
+	}
+	if got := ruleOf(t, h, bot.GetId(), "desktop", "click"); got != "allow" {
+		t.Fatalf("always on an Ask rule sets allow, reads %q", got)
 	}
 }

@@ -2932,6 +2932,11 @@ public nonisolated struct Silo_V1_Approval: Sendable {
   /// run; see callRun).
   public var source: String = String()
 
+  /// The action's rule is Auto and its model would not decide, so the human is
+  /// asked about this one call. The slip offers Allow and Deny only: the rule
+  /// stays Auto whatever the vote (an `always` vote counts as `allow_once`).
+  public var auto: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -11734,7 +11739,7 @@ nonisolated extension Silo_V1_ApprovalField: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Approval"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{3}run_id\0\u{1}connector\0\u{1}action\0\u{3}args_json\0\u{1}status\0\u{1}title\0\u{1}summary\0\u{1}fields\0\u{1}source\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{3}run_id\0\u{1}connector\0\u{1}action\0\u{3}args_json\0\u{1}status\0\u{1}title\0\u{1}summary\0\u{1}fields\0\u{1}source\0\u{1}auto\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11753,6 +11758,7 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 9: try { try decoder.decodeSingularStringField(value: &self.summary) }()
       case 10: try { try decoder.decodeRepeatedMessageField(value: &self.fields) }()
       case 11: try { try decoder.decodeSingularStringField(value: &self.source) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.auto) }()
       default: break
       }
     }
@@ -11792,6 +11798,9 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.source.isEmpty {
       try visitor.visitSingularStringField(value: self.source, fieldNumber: 11)
     }
+    if self.auto != false {
+      try visitor.visitSingularBoolField(value: self.auto, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -11807,6 +11816,7 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.summary != rhs.summary {return false}
     if lhs.fields != rhs.fields {return false}
     if lhs.source != rhs.source {return false}
+    if lhs.auto != rhs.auto {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

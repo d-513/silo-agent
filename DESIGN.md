@@ -326,6 +326,7 @@ No bounce, and no overshoot beyond the settle curve.
   - One `ink-2` sentence.
   - A `well` group of labelled rows (Secret → `vendor_password` in mono, Used for → host, Last used).
   - Pinned to the bottom: **Allow once** (primary ink), **Always allow this action** (secondary), **Deny** (vermilion text).
+  - When the action's rule is Auto and its model would not decide, the slip settles that one call and nothing else: **Allow** (primary ink) and **Deny**, then one centred `ink-3` line, "Auto-approval was not sure about this one." with a `cobalt` **Rules** link to the Rules page. No button here changes the rule.
   - The footer line: breathing `vermilion` dot + "This run is paused until you choose."
 - Secret values never render.
 - Choosing: the slip leaves, a receipt lands in the thread, the tool row's state changes, and the lamp crossfades back to Working.

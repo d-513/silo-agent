@@ -200,6 +200,9 @@ type Approval struct {
 	Action    string
 	ArgsJSON  string
 	Status    string
+	// Auto: the rule was Auto and its model would not decide, so a human is
+	// asked about this one call and the rule is not theirs to change from here.
+	Auto      bool `gorm:"not null;default:false"`
 	CreatedAt time.Time
 }
 

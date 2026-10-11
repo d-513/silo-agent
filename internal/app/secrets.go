@@ -108,7 +108,7 @@ func protoApproval(r *db.Approval) *v1.Approval {
 	out := &v1.Approval{
 		Id: r.ID, BotId: r.BotID, RunId: r.RunID,
 		Connector: r.Connector, Action: r.Action, ArgsJson: r.ArgsJSON, Status: r.Status,
-		Title: p.Title, Summary: p.Summary,
+		Title: p.Title, Summary: p.Summary, Auto: r.Auto,
 	}
 	for _, f := range p.Fields {
 		out.Fields = append(out.Fields, &v1.ApprovalField{Label: f.Label, Value: f.Value})
@@ -128,6 +128,11 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	if dec == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("decision must be allow_once, always, or deny"))
 	}
+	// The slip of an Auto rule's approval settles one call. The rule stays
+	// Auto: a client that still offers "always" must not turn it into Allow.
+	if row.Auto && dec == security.Always {
+		dec = security.Once
+	}
 	row.Status = dec
 	a.DB.Save(&row)
 	u := access.User(ctx)
@@ -137,7 +142,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 		ID: ids.New(), BotID: bot.ID, BotName: bot.Name, Crest: bot.Crest,
 		Actor: u.Email, Action: row.Connector + "." + row.Action, Decision: dec, CreatedAt: time.Now(),
 	})
-	if dec == "always" {
+	if dec == security.Always {
 		var rule db.Rule
 		a.DB.Where("bot_id = ? AND connector = ? AND action = ?", row.BotID, row.Connector, row.Action).Limit(1).Find(&rule)
 		if rule.ID == "" {

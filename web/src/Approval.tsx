@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
@@ -138,6 +139,26 @@ export function ApprovalSlip({
   // No run: a background process (a script that outlived its command, or one
   // started from the Console) asked; it waits, but no chat is paused.
   const waiting = approval.runId ? "This run is paused until you choose." : "The process is waiting for your choice.";
+  // An Auto rule whose model would not decide: this one call is the human's,
+  // the rule is not. Changing it is a trip to Rules, never a button here.
+  if (approval.auto) {
+    return (
+      <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
+        <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
+          Allow
+        </Btn>
+        <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
+          Deny
+        </Btn>
+        <p className="mt-1 text-center text-[12.5px] leading-[18px] text-ink-3">
+          Auto-approval was not sure about this one.{" "}
+          <Link to="/bots/$botId/rules" params={{ botId: bot.id }} className="font-medium text-cobalt hover:underline">
+            Rules
+          </Link>
+        </p>
+      </NeedYouSlip>
+    );
+  }
   return (
     <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
       <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>

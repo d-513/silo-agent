@@ -2,7 +2,7 @@ import SiloClient
 import SwiftUI
 
 /// The "Needs you" slip: a native sheet (bottom on iPhone, form sheet on iPad) with the Bot's
-/// request and four choices. The run stays paused until one is picked.
+/// request and its choices. The run stays paused until one is picked.
 struct ApprovalSheet: View {
     @Environment(AppModel.self) private var model
     let bot: Silo_V1_Bot
@@ -56,23 +56,32 @@ struct ApprovalSheet: View {
 
     private var actions: some View {
         VStack(spacing: 10) {
+            // An Auto rule whose model would not decide: this one call is the human's to
+            // settle, the rule is not, so there is no "always" or "auto" here.
             Button { decide("allow_once") } label: {
-                Text("Allow once").frame(maxWidth: .infinity)
+                Text(approval.auto ? "Allow" : "Allow once").frame(maxWidth: .infinity)
             }
             .buttonStyle(.glassProminent)
-            Button { decide("always") } label: {
-                Text("Always allow this action").frame(maxWidth: .infinity)
+            if !approval.auto {
+                Button { decide("always") } label: {
+                    Text("Always allow this action").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+                Button { decide("auto") } label: {
+                    Text("Auto-approve this action").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
             }
-            .buttonStyle(.glass)
-            Button { decide("auto") } label: {
-                Text("Auto-approve this action").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
             Button(role: .destructive) { decide("deny") } label: {
                 Text("Deny").frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
             .tint(Theme.vermilion)
+            if approval.auto {
+                Text("Auto-approval was not sure about this one. The rule is in Rules.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Text(approval.runID.isEmpty ? "The process is waiting for your choice." : "This run is paused until you choose.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)

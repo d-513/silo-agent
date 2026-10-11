@@ -9809,7 +9809,11 @@ type Approval struct {
 	// Who asked: "Chat · <title>", "Automation · <name>", "Channel · <name>",
 	// "Subagent · <name>", or "Background process" for an orphan call (no live
 	// run; see callRun).
-	Source        string `protobuf:"bytes,11,opt,name=source,proto3" json:"source,omitempty"`
+	Source string `protobuf:"bytes,11,opt,name=source,proto3" json:"source,omitempty"`
+	// The action's rule is Auto and its model would not decide, so the human is
+	// asked about this one call. The slip offers Allow and Deny only: the rule
+	// stays Auto whatever the vote (an `always` vote counts as `allow_once`).
+	Auto          bool `protobuf:"varint,12,opt,name=auto,proto3" json:"auto,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9919,6 +9923,13 @@ func (x *Approval) GetSource() string {
 		return x.Source
 	}
 	return ""
+}
+
+func (x *Approval) GetAuto() bool {
+	if x != nil {
+		return x.Auto
+	}
+	return false
 }
 
 type ListApprovalsRequest struct {
@@ -18497,7 +18508,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x14DeleteSecretResponse\";\n" +
 	"\rApprovalField\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xab\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xbf\x02\n" +
 	"\bApproval\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x15\n" +
@@ -18510,7 +18521,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\asummary\x18\t \x01(\tR\asummary\x12.\n" +
 	"\x06fields\x18\n" +
 	" \x03(\v2\x16.silo.v1.ApprovalFieldR\x06fields\x12\x16\n" +
-	"\x06source\x18\v \x01(\tR\x06source\"-\n" +
+	"\x06source\x18\v \x01(\tR\x06source\x12\x12\n" +
+	"\x04auto\x18\f \x01(\bR\x04auto\"-\n" +
 	"\x14ListApprovalsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"H\n" +
 	"\x15ListApprovalsResponse\x12/\n" +
