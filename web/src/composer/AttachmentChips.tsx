@@ -1,5 +1,6 @@
 import { Paperclip, X } from "lucide-react";
 import { fmtBytes } from "../format";
+import { t } from "../i18n.ts";
 
 export interface Attachment {
   name: string;
@@ -22,7 +23,7 @@ export function AttachmentChips({ atts, onRemove }: { atts: Attachment[]; onRemo
           <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtBytes(a.size)}</span>
           <button
             type="button"
-            title="Remove attachment"
+            title={t("Remove attachment")}
             className="flex h-5 w-5 items-center justify-center rounded-xs text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink"
             onClick={() => onRemove(a.path)}
           >

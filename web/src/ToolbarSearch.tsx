@@ -1,5 +1,6 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { t } from "./i18n.ts";
 
 // The search field of a list page's toolbar: a magnifier, a clear button once
 // there is text, and a ⌘K / Ctrl+K hint (and shortcut) while it is empty.
@@ -33,7 +34,7 @@ export function ToolbarSearch({ value, onChange, placeholder, className = "sm:w-
         }}
       />
       {value ? (
-        <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-ink-2 hover:text-ink" onClick={() => onChange("")} title="Clear search">
+        <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-ink-2 hover:text-ink" onClick={() => onChange("")} title={t("Clear search")}>
           <X size={14} />
         </button>
       ) : (

@@ -1,3 +1,5 @@
+import { locale, t } from "./i18n.ts";
+
 // How the UI writes sizes and times. Every page that shows one comes here, so a
 // byte count or a "Tue 07:30" reads the same wherever it appears.
 
@@ -15,9 +17,9 @@ export function fmtBytes(n: bigint | number) {
   return i === 0 ? `${Math.round(x)} B` : `${x.toFixed(1)} ${units[i]}`;
 }
 
-const clockTime = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const weekdayShort = (d: Date) => d.toLocaleDateString([], { weekday: "short" });
-const monthDay = (d: Date) => d.toLocaleDateString([], { month: "short", day: "numeric" });
+const clockTime = (d: Date) => d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+const weekdayShort = (d: Date) => d.toLocaleDateString(locale(), { weekday: "short" });
+const monthDay = (d: Date) => d.toLocaleDateString(locale(), { month: "short", day: "numeric" });
 
 // Calendar days from d back to now: 0 is today, 1 is yesterday.
 export function daysAgo(d: Date, now = new Date()): number {
@@ -27,28 +29,28 @@ export function daysAgo(d: Date, now = new Date()): number {
 
 // "Mar 4, 2026" for an ISO timestamp, "" when there is none.
 export function day(iso: string) {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+  return iso ? new Date(iso).toLocaleDateString(locale(), { year: "numeric", month: "short", day: "numeric" }) : "";
 }
 
 // "just now", "12 min ago", "3 h ago", then the date; "never" for none.
 export function ago(iso: string) {
-  if (!iso) return "never";
+  if (!iso) return t("never");
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 90) return "just now";
-  if (s < 5400) return `${Math.round(s / 60)} min ago`;
-  if (s < 129600) return `${Math.round(s / 3600)} h ago`;
+  if (s < 90) return t("just now");
+  if (s < 5400) return t("{{n}} min ago", { n: Math.round(s / 60) });
+  if (s < 129600) return t("{{n}} h ago", { n: Math.round(s / 3600) });
   return day(iso);
 }
 
 // A run's divider: "Today 09:12", "Yesterday 18:00", "Tue 07:30", "Mar 4 07:30".
 export function runWhen(iso?: string) {
-  const t = iso ? Date.parse(iso) : NaN;
-  if (!Number.isFinite(t)) return "";
-  const d = new Date(t);
+  const ms = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(ms)) return "";
+  const d = new Date(ms);
   const time = clockTime(d);
   const days = daysAgo(d);
-  if (days === 0) return `Today ${time}`;
-  if (days === 1) return `Yesterday ${time}`;
+  if (days === 0) return t("Today {{time}}", { time });
+  if (days === 1) return t("Yesterday {{time}}", { time });
   if (days < 7) return `${weekdayShort(d)} ${time}`;
   return `${monthDay(d)} ${time}`;
 }
@@ -57,17 +59,17 @@ export function runWhen(iso?: string) {
 export function feedStamp(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return daysAgo(d) === 0 ? clockTime(d) : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return daysAgo(d) === 0 ? clockTime(d) : d.toLocaleString(locale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 // When an automation fires next: "Tue, Oct 4 09:12".
 export function nextWhen(iso: string) {
   if (!iso) return "";
   const d = new Date(iso);
-  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${clockTime(d)}`;
+  return `${d.toLocaleDateString(locale(), { weekday: "short", month: "short", day: "numeric" })} ${clockTime(d)}`;
 }
 
 // "Oct 4, 2026, 9:12 AM": a time the reader may want in full.
 export function fullTime(d: Date) {
-  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" });
 }

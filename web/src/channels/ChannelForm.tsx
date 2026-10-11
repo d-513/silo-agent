@@ -11,6 +11,7 @@ import { Step } from "../Step";
 import { ToggleRow } from "../Switch";
 import { AdapterHead } from "./AdapterHead";
 import { GuideCard } from "./GuideCard";
+import { t } from "../i18n.ts";
 
 // A field that fits beside another: not a secret (tokens are long) or a textarea.
 const isShort = (f: ChannelField) => !f.secret && f.type !== "textarea";
@@ -96,56 +97,56 @@ export function ChannelForm({
       <AdapterHead
         adapter={adapter}
         title={channel ? channel.name : adapter.name}
-        subtitle={channel ? adapter.name : `Add a ${adapter.name} channel`}
+        subtitle={channel ? adapter.name : t("Add a {{name}} channel", { name: adapter.name })}
         onBack={onBack}
       />
 
       <div className={`grid items-start gap-6 ${adapter.guide ? "lg:grid-cols-[minmax(0,1fr)_360px]" : "max-w-3xl"}`}>
         {adapter.guide ? (
           <div className="min-w-0 lg:order-2">
-            <GuideCard guide={adapter.guide} title={`${adapter.name} setup guide`} />
+            <GuideCard guide={adapter.guide} title={t("{{name}} setup guide", { name: adapter.name })} />
           </div>
         ) : null}
 
         <form className="min-w-0 space-y-4 lg:order-1" onSubmit={(e) => void save(e)}>
           <Step
             n={1}
-            title={connect.length ? "Connect" : "Name it"}
+            title={connect.length ? t("Connect") : t("Name it")}
             note={
               connect.length
-                ? `What ${adapter.name} needs to sign in. Secrets are write-only: once saved they are never shown again.`
-                : `This is how the channel appears in the list. ${adapter.name} signs in on the next screen.`
+                ? t("What {{name}} needs to sign in. Secrets are write-only: once saved they are never shown again.", { name: adapter.name })
+                : t("This is how the channel appears in the list. {{name}} signs in on the next screen.", { name: adapter.name })
             }
             done={connected}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Name" required className={nameAlone ? "sm:col-span-2" : ""}>
+              <Field label={t("Name")} required className={nameAlone ? "sm:col-span-2" : ""}>
                 <input className={inputClass} value={name} placeholder={adapter.name} autoFocus={!channel} onChange={(e) => setName(e.target.value)} />
               </Field>
               {connect.map(input)}
             </div>
           </Step>
 
-          <Step n={2} title="Behavior" note={`How the Bot answers on ${adapter.name}.`}>
+          <Step n={2} title={t("Behavior")} note={t("How the Bot answers on {{name}}.", { name: adapter.name })}>
             {behavior.length ? <div className="grid gap-4 sm:grid-cols-2">{behavior.map(input)}</div> : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <ToggleRow className="rounded-control bg-well px-3.5 py-3" label="Enabled" hint="Connect this channel when saved." on={enabled} onChange={setEnabled} />
+              <ToggleRow className="rounded-control bg-well px-3.5 py-3" label={t("Enabled")} hint={t("Connect this channel when saved.")} on={enabled} onChange={setEnabled} />
               <ToggleRow
                 className="rounded-control bg-well px-3.5 py-3"
-                label="Deliver messages to the Bot"
-                hint="Off makes it send-only, used by tools."
+                label={t("Deliver messages to the Bot")}
+                hint={t("Off makes it send-only, used by tools.")}
                 on={inbound}
                 onChange={setInbound}
               />
             </div>
 
-            <Field label="Prompt" hint="Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”">
+            <Field label={t("Prompt")} hint={t("Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”")}>
               <textarea
                 className={`${textareaClass} h-[130px] font-mono text-[13px] leading-5`}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Keep answers concise..."
+                placeholder={t("Keep answers concise...")}
               />
             </Field>
           </Step>
@@ -154,10 +155,10 @@ export function ChannelForm({
 
           <div className="flex items-center gap-2.5">
             <SaveButton type="submit" state={saver.state} disabled={busy || (!channel && !name.trim())}>
-              {channel ? "Save changes" : "Add channel"}
+              {channel ? t("Save changes") : t("Add channel")}
             </SaveButton>
             <Btn kind="ghost" type="button" onClick={onBack}>
-              Cancel
+              {t("Cancel")}
             </Btn>
           </div>
         </form>

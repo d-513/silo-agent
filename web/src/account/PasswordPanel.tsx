@@ -6,6 +6,7 @@ import { ErrorWell, Field, inputClass, Panel } from "../Field";
 import { UI, type User } from "../gen/silo/v1/ui_pb";
 import { reload } from "../query";
 import { passwordProblem } from "../signinFlow";
+import { t } from "../i18n.ts";
 
 // PasswordPanel changes the password, or sets a first one for an account that
 // so far only signs in with single sign-on.
@@ -36,26 +37,26 @@ export function PasswordPanel({ user, onChange }: { user: User; onChange: (u: Us
   }
   return (
     <Panel
-      title="Password"
-      note={user.hasPassword ? "Changing it signs you out everywhere else." : "This account has no password yet."}
+      title={t("Password")}
+      note={user.hasPassword ? t("Changing it signs you out everywhere else.") : t("This account has no password yet.")}
     >
       <form onSubmit={onSubmit} className="grid gap-4">
         <input className="hidden" type="email" autoComplete="username" value={user.email} readOnly />
         {user.hasPassword ? (
-          <Field label="Current password">
+          <Field label={t("Current password")}>
             <input className={inputClass} type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
           </Field>
         ) : null}
-        <Field label="New password" hint="At least 8 characters.">
+        <Field label={t("New password")} hint={t("At least 8 characters.")}>
           <input className={inputClass} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
-        <Field label="New password again">
+        <Field label={t("New password again")}>
           <input className={inputClass} type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} required />
         </Field>
         {err ? <ErrorWell>{err}</ErrorWell> : null}
         <div>
-          <SaveButton state={saver.state} type="submit" savedLabel="Changed">
-            {user.hasPassword ? "Change password" : "Set password"}
+          <SaveButton state={saver.state} type="submit" savedLabel={t("Changed")}>
+            {user.hasPassword ? t("Change password") : t("Set password")}
           </SaveButton>
         </div>
       </form>

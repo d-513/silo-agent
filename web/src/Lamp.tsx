@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { msg, t } from "./i18n.ts";
 
 export type LampStatus = "online" | "idle" | "working" | "needs_you" | "starting" | "stopped";
 
@@ -77,11 +78,11 @@ export function Lamp({
 }
 
 const WORDS: Record<Norm, string> = {
-  online: "Online",
-  working: "Working",
-  needs_you: "Needs you",
-  starting: "Starting",
-  stopped: "Stopped",
+  online: msg("Online"),
+  working: msg("Working"),
+  needs_you: msg("Needs you"),
+  starting: msg("Starting"),
+  stopped: msg("Stopped"),
 };
 
 const TONE: Record<Norm, string> = {
@@ -93,7 +94,7 @@ const TONE: Record<Norm, string> = {
 };
 
 export function statusText(status: string) {
-  return WORDS[norm(status)];
+  return t(WORDS[norm(status)]);
 }
 
 /** The status word beside a lamp: the old word fades out while the new one rises 4px. */
@@ -110,11 +111,11 @@ export function StatusWord({ status, className = "" }: { status: string; classNa
           className={`word-out col-start-1 row-start-1 whitespace-nowrap ${TONE[shown.old]}`}
           onAnimationEnd={() => setShown((x) => ({ ...x, old: null }))}
         >
-          {WORDS[shown.old]}
+          {t(WORDS[shown.old])}
         </span>
       ) : null}
       <span key={`n${shown.n}`} className={`col-start-1 row-start-1 whitespace-nowrap ${shown.n ? "word-in" : ""} ${TONE[s]}`}>
-        {WORDS[s]}
+        {t(WORDS[s])}
       </span>
     </span>
   );

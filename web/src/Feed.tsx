@@ -11,15 +11,16 @@ import { feedStamp } from "./format";
 import { Md } from "./Md";
 import { fail } from "./errors";
 import { patch, recheck, reloadBot } from "./query";
+import { t } from "./i18n.ts";
 
 function sourceLabel(p: FeedPost) {
   switch (p.sourceKind) {
     case "automation":
-      return `Automation · ${p.sourceName}`;
+      return `${t("Automation")} · ${p.sourceName}`;
     case "channel":
-      return `Channel · ${p.sourceName}`;
+      return `${t("Channel")} · ${p.sourceName}`;
     case "chat":
-      return p.sourceName || "Chat";
+      return p.sourceName || t("Chat");
     default:
       return "";
   }
@@ -80,15 +81,15 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
 
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-title">Feed</h2>
-      <p className="mb-6 text-ink-2">What this Bot posted for you to read later. Quote a post to talk about it in a new chat.</p>
+      <h2 className="text-title">{t("Feed")}</h2>
+      <p className="mb-6 text-ink-2">{t("What this Bot posted for you to read later. Quote a post to talk about it in a new chat.")}</p>
       {posts === null ? (
-        <p className="text-ink-3">Loading…</p>
+        <p className="text-ink-3">{t("Loading…")}</p>
       ) : posts.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Inbox size={20} className="text-ink-3" />
-          <p className="text-ink-2">Nothing yet.</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">The Bot posts here with the feed tool — from a chat, an automation, or a channel.</p>
+          <p className="text-ink-2">{t("Nothing yet.")}</p>
+          <p className="max-w-sm text-[12.5px] text-ink-3">{t("The Bot posts here with the feed tool — from a chat, an automation, or a channel.")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -98,7 +99,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                 <div className="min-w-0 flex-1">
                   {p.title ? <h3 className="text-card-title leading-5 text-ink">{p.title}</h3> : null}
                   <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-ink-3">
-                    {fresh.has(p.id) ? <span aria-label="New" className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
+                    {fresh.has(p.id) ? <span aria-label={t("New")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
                     <span className="shrink-0 font-mono">{feedStamp(p.createdAt)}</span>
                     {sourceLabel(p) ? (
                       <>
@@ -119,14 +120,14 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                     kind="ghost"
                     size="sm"
                     iconOnly
-                    title="Quote in a new chat"
-                    aria-label="Quote in a new chat"
+                    title={t("Quote in a new chat")}
+                    aria-label={t("Quote in a new chat")}
                     disabled={!!quoting}
                     icon={<MessageSquareQuote size={14} />}
                     onClick={() => void quote(p.id)}
                   />
-                  <ArmedButton kind="ghost" size="sm" iconOnly title="Delete post" icon={<Trash2 size={13} />} onConfirm={() => void remove(p.id)}>
-                    Delete
+                  <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete post")} icon={<Trash2 size={13} />} onConfirm={() => void remove(p.id)}>
+                    {t("Delete")}
                   </ArmedButton>
                 </span>
               </header>

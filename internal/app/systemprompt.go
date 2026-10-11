@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/db"
+	"silo.agent/internal/lang"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/prompts"
 	"silo.agent/internal/skills"
@@ -158,6 +159,7 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 			fmt.Fprintf(&session, " Description: %s.", d)
 		}
 	}
+	session.WriteString("\n\n" + lang.Prompt(b.bot.Language))
 	for _, sec := range b.sections {
 		session.WriteString(sec.render())
 	}

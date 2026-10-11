@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { t } from "../i18n.ts";
 
 export function FadeScroll({
   className = "",
@@ -46,7 +47,7 @@ export function FadeScroll({
         <div className={`absolute inset-y-0 left-0 z-10 flex w-8 items-stretch bg-gradient-to-r ${fade} to-transparent`}>
           <button
             type="button"
-            title="Previous"
+            title={t("Previous")}
             className="flex w-8 items-center justify-center text-ink-2 hover:text-ink"
             onClick={() => nudge(-1)}
           >
@@ -58,7 +59,7 @@ export function FadeScroll({
         <div className={`absolute inset-y-0 right-0 z-10 flex w-8 items-stretch justify-end bg-gradient-to-l ${fade} to-transparent`}>
           <button
             type="button"
-            title="Next"
+            title={t("Next")}
             className="flex w-8 items-center justify-center text-ink-2 hover:text-ink"
             onClick={() => nudge(1)}
           >

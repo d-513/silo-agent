@@ -1,6 +1,7 @@
 import { Power } from "lucide-react";
 import { useEffect, useState } from "react";
 import { btnClass } from "./Btn";
+import { t } from "./i18n.ts";
 
 export function NeedMachine({
   copy,
@@ -18,7 +19,7 @@ export function NeedMachine({
         <WakeMark />
       ) : (
         <button type="button" className={btnClass("primary", "!h-11 pl-5 pr-2 text-[15px]")} onClick={onStart}>
-          Start Bot
+          {t("Start Bot")}
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-on-ink/20">
             <Power size={15} />
           </span>
@@ -34,7 +35,7 @@ function WakeMark() {
     const t = setInterval(() => setSec((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  const line = sec < 3 ? "Waking the box" : sec < 8 ? "Waiting for the worker" : "Still connecting";
+  const line = sec < 3 ? t("Waking the box") : sec < 8 ? t("Waiting for the worker") : t("Still connecting");
   return (
     <div className="flex flex-col items-center" aria-busy="true" aria-live="polite">
       <div className="silo-wake" />

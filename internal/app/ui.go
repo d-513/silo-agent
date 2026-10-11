@@ -18,6 +18,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/lang"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 	"silo.agent/internal/zone"
@@ -41,6 +42,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
 		TimeZonePinned:  b.TimeZonePinned,
+		Language:        lang.Bot(b.Language),
 	}
 }
 
@@ -87,7 +89,9 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		Soul:        defaultSoul,
 		// The zone of the device that makes the Bot; a client that names
 		// none, or one unknown here, gets the server's.
-		TimeZone:  zone.Resolve(req.Msg.GetTimeZone()).String(),
+		TimeZone: zone.Resolve(req.Msg.GetTimeZone()).String(),
+		// A Bot starts out writing in the language its maker reads Silo in.
+		Language:  lang.UI(u.Language),
 		Status:    "stopped",
 		Crest:     crest,
 		CreatedAt: time.Now(),
@@ -138,6 +142,12 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	}
 	if req.Msg.TimeZonePinned != nil {
 		b.TimeZonePinned = req.Msg.GetTimeZonePinned()
+	}
+	if req.Msg.Language != nil {
+		if err := lang.Check(req.Msg.GetLanguage()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		b.Language = req.Msg.GetLanguage()
 	}
 	if err := a.DB.Save(b).Error; err != nil {
 		return nil, err

@@ -47,6 +47,8 @@ const (
 	UIAcceptInviteProcedure = "/silo.v1.UI/AcceptInvite"
 	// UIChangeEmailProcedure is the fully-qualified name of the UI's ChangeEmail RPC.
 	UIChangeEmailProcedure = "/silo.v1.UI/ChangeEmail"
+	// UISetLanguageProcedure is the fully-qualified name of the UI's SetLanguage RPC.
+	UISetLanguageProcedure = "/silo.v1.UI/SetLanguage"
 	// UIChangePasswordProcedure is the fully-qualified name of the UI's ChangePassword RPC.
 	UIChangePasswordProcedure = "/silo.v1.UI/ChangePassword"
 	// UIListSessionsProcedure is the fully-qualified name of the UI's ListSessions RPC.
@@ -329,6 +331,8 @@ type UIClient interface {
 	// ChangeEmail sets the address the signed-in user signs in with. Nothing is
 	// sent to it: Silo has no mail.
 	ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error)
+	// SetLanguage picks the language the signed-in user reads the console in.
+	SetLanguage(context.Context, *connect.Request[v1.SetLanguageRequest]) (*connect.Response[v1.User], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -536,6 +540,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIChangeEmailProcedure,
 			connect.WithSchema(uIMethods.ByName("ChangeEmail")),
+			connect.WithClientOptions(opts...),
+		),
+		setLanguage: connect.NewClient[v1.SetLanguageRequest, v1.User](
+			httpClient,
+			baseURL+UISetLanguageProcedure,
+			connect.WithSchema(uIMethods.ByName("SetLanguage")),
 			connect.WithClientOptions(opts...),
 		),
 		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.User](
@@ -1342,6 +1352,7 @@ type uIClient struct {
 	getInvite               *connect.Client[v1.GetInviteRequest, v1.InviteInfo]
 	acceptInvite            *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
 	changeEmail             *connect.Client[v1.ChangeEmailRequest, v1.User]
+	setLanguage             *connect.Client[v1.SetLanguageRequest, v1.User]
 	changePassword          *connect.Client[v1.ChangePasswordRequest, v1.User]
 	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	revokeSession           *connect.Client[v1.RevokeSessionRequest, v1.ListSessionsResponse]
@@ -1509,6 +1520,11 @@ func (c *uIClient) AcceptInvite(ctx context.Context, req *connect.Request[v1.Acc
 // ChangeEmail calls silo.v1.UI.ChangeEmail.
 func (c *uIClient) ChangeEmail(ctx context.Context, req *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error) {
 	return c.changeEmail.CallUnary(ctx, req)
+}
+
+// SetLanguage calls silo.v1.UI.SetLanguage.
+func (c *uIClient) SetLanguage(ctx context.Context, req *connect.Request[v1.SetLanguageRequest]) (*connect.Response[v1.User], error) {
+	return c.setLanguage.CallUnary(ctx, req)
 }
 
 // ChangePassword calls silo.v1.UI.ChangePassword.
@@ -2185,6 +2201,8 @@ type UIHandler interface {
 	// ChangeEmail sets the address the signed-in user signs in with. Nothing is
 	// sent to it: Silo has no mail.
 	ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error)
+	// SetLanguage picks the language the signed-in user reads the console in.
+	SetLanguage(context.Context, *connect.Request[v1.SetLanguageRequest]) (*connect.Response[v1.User], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.ListSessionsResponse], error)
@@ -2388,6 +2406,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIChangeEmailProcedure,
 		svc.ChangeEmail,
 		connect.WithSchema(uIMethods.ByName("ChangeEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetLanguageHandler := connect.NewUnaryHandler(
+		UISetLanguageProcedure,
+		svc.SetLanguage,
+		connect.WithSchema(uIMethods.ByName("SetLanguage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIChangePasswordHandler := connect.NewUnaryHandler(
@@ -3198,6 +3222,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIAcceptInviteHandler.ServeHTTP(w, r)
 		case UIChangeEmailProcedure:
 			uIChangeEmailHandler.ServeHTTP(w, r)
+		case UISetLanguageProcedure:
+			uISetLanguageHandler.ServeHTTP(w, r)
 		case UIChangePasswordProcedure:
 			uIChangePasswordHandler.ServeHTTP(w, r)
 		case UIListSessionsProcedure:
@@ -3497,6 +3523,10 @@ func (UnimplementedUIHandler) AcceptInvite(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) ChangeEmail(context.Context, *connect.Request[v1.ChangeEmailRequest]) (*connect.Response[v1.User], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ChangeEmail is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetLanguage(context.Context, *connect.Request[v1.SetLanguageRequest]) (*connect.Response[v1.User], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetLanguage is not implemented"))
 }
 
 func (UnimplementedUIHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.User], error) {

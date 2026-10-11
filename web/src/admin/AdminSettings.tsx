@@ -6,6 +6,7 @@ import { ErrorWell, SkeletonRows } from "../Field";
 import { SaveBar } from "./SaveBar";
 import { FIRST_SECTION, SECTIONS, isFormSection, isSection, type SectionId } from "./sections";
 import { SettingsFormContext, useAdminSettings } from "./useAdminSettings";
+import { t } from "../i18n.ts";
 
 const ICONS: Record<SectionId, LucideIcon> = {
   models: Cpu,
@@ -56,7 +57,7 @@ function SectionList({ open }: { open: SectionId }) {
   return (
     <nav
       ref={nav}
-      aria-label="Settings"
+      aria-label={t("Settings")}
       className="flex shrink-0 gap-0.5 max-wide:-mx-4 max-wide:overflow-x-auto max-wide:overscroll-x-contain max-wide:px-4 max-wide:[scrollbar-width:none] wide:sticky wide:top-7 wide:w-[196px] wide:flex-col wide:self-start max-wide:[&::-webkit-scrollbar]:hidden"
     >
       {SECTIONS.map((s) => {
@@ -78,7 +79,7 @@ function SectionList({ open }: { open: SectionId }) {
                 <ActiveBar on={on} />
               </span>
               <Icon size={15} className="shrink-0" />
-              {s.label}
+              {t(s.label)}
             </Link>
           </span>
         );

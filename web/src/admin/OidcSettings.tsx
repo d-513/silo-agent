@@ -6,6 +6,7 @@ import { CopyButton } from "../Feedback";
 import { FieldGroup } from "./FieldGroup";
 import { OIDC_NOTE, groupOf } from "./fields";
 import { useSettingsForm } from "./useAdminSettings";
+import { t } from "../i18n.ts";
 
 // The OIDC provider's settings, the callback address it has to be told, and a
 // button that asks the provider whether the saved settings reach it.
@@ -19,7 +20,7 @@ export function OidcSettings() {
     setResult(null);
     try {
       const r = await ui.checkOIDC({});
-      setResult({ ok: true, text: `The provider answered as ${r.issuer}.` });
+      setResult({ ok: true, text: t("The provider answered as {{issuer}}.", { issuer: r.issuer }) });
     } catch (e) {
       setResult({ ok: false, text: fail(e) });
     } finally {
@@ -28,28 +29,28 @@ export function OidcSettings() {
   }
   return (
     <FieldGroup
-      title="OIDC"
-      note={OIDC_NOTE}
+      title={t("OIDC")}
+      note={t(OIDC_NOTE)}
       rows={fields.filter((f) => groupOf(f.key) === "oidc")}
       action={
         <Btn size="sm" type="button" disabled={busy} onClick={() => void check()}>
-          {busy ? "Checking…" : "Check"}
+          {busy ? t("Checking…") : t("Check")}
         </Btn>
       }
     >
       <div className="px-5 py-3.5 shadow-[inset_0_1px_0_var(--color-line-strong)]">
-        <div className="mb-1.5 text-[12px] font-medium text-ink-3">Redirect URI</div>
+        <div className="mb-1.5 text-[12px] font-medium text-ink-3">{t("Redirect URI")}</div>
         <div className="flex items-center gap-2 rounded-sm bg-well py-1 pl-3 pr-1">
           <code className="min-w-0 flex-1 break-all font-mono text-[12.5px] leading-5 text-ink">{oidcRedirectUrl}</code>
-          <CopyButton text={oidcRedirectUrl} title="Copy the redirect URI" className="shrink-0" />
+          <CopyButton text={oidcRedirectUrl} title={t("Copy the redirect URI")} className="shrink-0" />
         </div>
-        <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">Register this at the provider. It follows the Public URL under Server.</p>
+        <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">{t("Register this at the provider. It follows the Public URL under Server.")}</p>
         {result ? (
           <p role="status" className={`mt-3 text-[13px] leading-5 ${result.ok ? "text-ink-2" : "text-vermilion"}`}>
             {result.text}
           </p>
         ) : dirty > 0 ? (
-          <p className="mt-3 text-[12.5px] leading-[18px] text-ink-3">Check asks the provider with the saved settings. Save first.</p>
+          <p className="mt-3 text-[12.5px] leading-[18px] text-ink-3">{t("Check asks the provider with the saved settings. Save first.")}</p>
         ) : null}
       </div>
     </FieldGroup>

@@ -5,6 +5,7 @@ import { Field } from "../Field";
 import { FolderNav } from "../FolderNav";
 import type { BrowseDriveDir, DriveVar } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
+import { t } from "../i18n.ts";
 
 // FolderPicker browses the remote live through the sidecar. It walks one level
 // at a time (a crumb trail plus the folders here) instead of a tree: a remote
@@ -47,7 +48,7 @@ export function FolderPicker({
     [browse],
   );
 
-  const rootLabel = v.placeholder || "Whole drive";
+  const rootLabel = v.placeholder || t("Whole drive");
 
   return (
     <Field label={v.label} hint={v.help}>
@@ -58,7 +59,7 @@ export function FolderPicker({
         </div>
         {value ? (
           <Btn kind="ghost" type="button" onClick={() => onChange("")}>
-            Clear
+            {t("Clear")}
           </Btn>
         ) : null}
         <Btn
@@ -72,7 +73,7 @@ export function FolderPicker({
             if (next) void go(value);
           }}
         >
-          {open ? "Close" : "Browse"}
+          {open ? t("Close") : t("Browse")}
         </Btn>
       </div>
       {open ? (
@@ -89,7 +90,7 @@ export function FolderPicker({
                 setOpen(false);
               }}
             >
-              {at ? "Mount this folder" : "Mount everything"}
+              {at ? t("Mount this folder") : t("Mount everything")}
             </Btn>
           </div>
         </div>

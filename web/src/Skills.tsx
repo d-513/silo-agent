@@ -18,6 +18,8 @@ import { SkillCard } from "./skills/SkillCard";
 import { Switch } from "./Switch";
 import { TabPill, TabPills } from "./TabPills";
 import { ToolbarSearch } from "./ToolbarSearch";
+import { t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 function SkillGrid({ columns = 2, children }: { columns?: 1 | 2; children: ReactNode }) {
   return <div className={`grid grid-cols-1 gap-4 ${columns === 2 ? "md:grid-cols-2" : ""}`}>{children}</div>;
@@ -52,9 +54,9 @@ function EmptyState({ title, children, actions }: { title: string; children: Rea
 function NoMatch({ search, onClear }: { search: string; onClear: () => void }) {
   return (
     <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
-      <p className="text-[13px]">No skills match “{search}”.</p>
+      <p className="text-[13px]">{t("No skills match “{{search}}”.", { search })}</p>
       <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={onClear}>
-        Clear search
+        {t("Clear search")}
       </button>
     </div>
   );
@@ -62,7 +64,7 @@ function NoMatch({ search, onClear }: { search: string; onClear: () => void }) {
 
 function SkeletonCards() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-busy="true" aria-label="Loading">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-busy="true" aria-label={t("Loading")}>
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="skeleton h-[140px] rounded-card" />
       ))}
@@ -108,11 +110,11 @@ export function SkillRows({
               <ArmedButton
                 kind="ghost"
                 size="sm"
-                armedLabel="Click again to remove"
+                armedLabel={t("Click again to remove")}
                 icon={<Trash2 size={13} />}
                 onConfirm={() => onRemove(s.name)}
               >
-                Remove
+                {t("Remove")}
               </ArmedButton>
             ) : null
           }
@@ -155,18 +157,18 @@ export function AdminSkills() {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h2 className="text-title">Skills Library</h2>
+        <h2 className="text-title">{t("Skills Library")}</h2>
         <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
-          Re-add defaults
+          {t("Re-add defaults")}
         </Btn>
       </div>
-      <p className="mb-6 text-[13px] leading-relaxed text-ink-2">Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.</p>
+      <p className="mb-6 text-[13px] leading-relaxed text-ink-2">{t("Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.")}</p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       <InstallPanel scope="library" onDone={() => void load()} />
       {rows === null ? (
         <SkeletonCards />
       ) : rows.length === 0 ? (
-        <EmptyState title="The library is empty">Install a skill above, or re-add the defaults.</EmptyState>
+        <EmptyState title={t("The library is empty")}>{t("Install a skill above, or re-add the defaults.")}</EmptyState>
       ) : (
         <SkillRows rows={rows} columns={1} onRemove={(n) => void remove(n)} onOpen={(s) => setOpen(s.name)} />
       )}
@@ -206,8 +208,8 @@ export function SkillHub() {
 
   return (
     <div className={widePage}>
-      <Header title="Skills">
-        Skills are instructions and scripts a Bot loads when a task calls for them. Personal skills are yours; Library skills are site-wide. Enable either on a Bot's Skills tab.
+      <Header title={t("Skills")}>
+        {t("Skills are instructions and scripts a Bot loads when a task calls for them. Personal skills are yours; Library skills are site-wide. Enable either on a Bot's Skills tab.")}
       </Header>
 
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
@@ -215,13 +217,13 @@ export function SkillHub() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <TabPills>
           <TabPill on={scope === "personal"} onClick={() => setScope("personal")} count={lists?.personal.length}>
-            <span>Personal</span>
+            <span>{t("Personal")}</span>
           </TabPill>
           <TabPill on={scope === "library"} onClick={() => setScope("library")} count={lists?.library.length}>
-            <span>Library</span>
+            <span>{t("Library")}</span>
           </TabPill>
         </TabPills>
-        <ToolbarSearch value={search} onChange={setSearch} placeholder="Search skills..." />
+        <ToolbarSearch value={search} onChange={setSearch} placeholder={t("Search skills...")} />
       </div>
 
       {scope === "personal" ? <InstallPanel scope="personal" onDone={() => void load()} /> : null}
@@ -231,17 +233,17 @@ export function SkillHub() {
       ) : all.length === 0 ? (
         scope === "personal" ? (
           <EmptyState
-            title="No personal skills yet"
+            title={t("No personal skills yet")}
             actions={
               <Btn kind="secondary" type="button" onClick={() => setScope("library")}>
-                Browse the Library
+                {t("Browse the Library")}
               </Btn>
             }
           >
-            Install one above to teach your Bots something new, or see what the Library already offers.
+            {t("Install one above to teach your Bots something new, or see what the Library already offers.")}
           </EmptyState>
         ) : (
-          <EmptyState title="The Library is empty">An admin can add site-wide skills in Admin → Skills Library.</EmptyState>
+          <EmptyState title={t("The Library is empty")}>{t("An admin can add site-wide skills in Admin → Skills Library.")}</EmptyState>
         )
       ) : shown.length === 0 ? (
         <NoMatch search={search} onClear={() => setSearch("")} />
@@ -249,10 +251,10 @@ export function SkillHub() {
         <SkillRows rows={shown} onRemove={(n) => void remove(n)} onOpen={onOpen} />
       ) : catalog.length > 0 && added.length > 0 ? (
         <div className="space-y-7">
-          <Section title="Catalog" count={catalog.length}>
+          <Section title={t("Catalog")} count={catalog.length}>
             <SkillRows rows={catalog} onOpen={onOpen} />
           </Section>
-          <Section title="Added by admins" count={added.length}>
+          <Section title={t("Added by admins")} count={added.length}>
             <SkillRows rows={added} onOpen={onOpen} />
           </Section>
         </div>
@@ -287,9 +289,12 @@ export function BotSkills({ botId }: { botId: string }) {
   const on = (rows ?? []).filter((s) => s.enabled).length;
   return (
     <div className={widePage}>
-      <Header title="Skills" count={rows ? on : undefined}>
-        Enabled skills show as name + description in the Bot's prompt; it loads the rest with <code className="rounded-xs bg-well px-1 py-0.5 font-mono text-[12px] text-ink">skill</code> when it needs them.
-        {rows ? ` ${on} of ${rows.length} on.` : ""}
+      <Header title={t("Skills")} count={rows ? on : undefined}>
+        <Trans
+          i18nKey="Enabled skills show as name + description in the Bot's prompt; it loads the rest with <code>skill</code> when it needs them."
+          components={{ code: <code className="rounded-xs bg-well px-1 py-0.5 font-mono text-[12px] text-ink" /> }}
+        />
+        {rows ? ` ${t("{{on}} of {{total}} on.", { on, total: rows.length })}` : ""}
       </Header>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       {rows === null ? (
@@ -298,24 +303,20 @@ export function BotSkills({ botId }: { botId: string }) {
         <>
           {rows.length > 0 ? (
             <div className="mb-6">
-              <ToolbarSearch value={search} onChange={setSearch} placeholder="Search skills..." className="sm:w-80" />
+              <ToolbarSearch value={search} onChange={setSearch} placeholder={t("Search skills...")} className="sm:w-80" />
             </div>
           ) : null}
           {rows.length > 0 && shown.length === 0 ? (
             <NoMatch search={search} onClear={() => setSearch("")} />
           ) : (
             <div className="space-y-7">
-              <Group title="Library" rows={library} empty="No Library skills yet. An admin adds them in Admin → Skills Library." onToggle={(s) => void toggle(s)} onOpen={setOpen} />
+              <Group title={t("Library")} rows={library} empty={t("No Library skills yet. An admin adds them in Admin → Skills Library.")} onToggle={(s) => void toggle(s)} onOpen={setOpen} />
               <Group
-                title="Personal"
+                title={t("Personal")}
                 rows={personal}
                 empty={
                   <>
-                    You have no personal skills. Install one in the{" "}
-                    <Link to="/skills" className="font-medium text-cobalt hover:underline">
-                      Skill Hub
-                    </Link>
-                    .
+                    <Trans i18nKey="You have no personal skills. Install one in the <link>Skill Hub</link>." components={{ link: <Link to="/skills" className="font-medium text-cobalt hover:underline" /> }} />
                   </>
                 }
                 onToggle={(s) => void toggle(s)}
@@ -356,15 +357,14 @@ function Group({
               description={s.description}
               source={s.source}
               onOpen={() => onOpen(s)}
-              aside={<Switch on={s.enabled} onChange={() => onToggle(s)} title={s.enabled ? "Disable" : "Enable"} />}
+              aside={<Switch on={s.enabled} onChange={() => onToggle(s)} title={s.enabled ? t("Disable") : t("Enable")} />}
               actions={
                 s.enabled ? (
                   <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-emerald">
-                    <Check size={13} />
-                    In the prompt
+                    <Check size={13} />{t("In the prompt")}
                   </span>
                 ) : (
-                  <span className="text-[12.5px] font-medium text-ink-3">Off</span>
+                  <span className="text-[12.5px] font-medium text-ink-3">{t("Off")}</span>
                 )
               }
             />

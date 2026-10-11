@@ -1,11 +1,12 @@
 import { HardDrive } from "lucide-react";
 import { useMemo } from "react";
+import { msg } from "../i18n.ts";
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  consumer: "Personal cloud",
-  "self-hosted": "Self-hosted",
-  "object-storage": "Object storage",
-  protocol: "File servers",
+  consumer: msg("Personal cloud"),
+  "self-hosted": msg("Self-hosted"),
+  "object-storage": msg("Object storage"),
+  protocol: msg("File servers"),
 };
 
 // Provider marks are the brands' own SVGs (thesvg.org), drawn as an <img> from

@@ -9,6 +9,7 @@ import { renderBlock, type BlockCtx } from "./thread/renderBlock";
 import { useConnectorMarks } from "./thread/toolIcons";
 import { asStr, parseToolArgs } from "./thread/toolInfo";
 import { useStickyScroll } from "./thread/useStickyScroll";
+import { t } from "./i18n.ts";
 
 // One-line rows (as opposed to bubbles, replies and cards).
 function isActivity(b: Block) {
@@ -141,7 +142,7 @@ export function Thread({
         {rows}
         {working ? (
           <div className={`rise flex h-8 items-center text-[13px] font-medium ${gapAfter(prevRow, true)}`}>
-            <span className="shimmer-text">Working…</span>
+            <span className="shimmer-text">{t("Working…")}</span>
           </div>
         ) : null}
       </div>
@@ -154,7 +155,7 @@ export function Thread({
             className="rise pointer-events-auto flex h-8 items-center gap-1.5 rounded-control bg-surface px-3 text-[12.5px] font-medium text-ink shadow-float transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.97] active:duration-[70ms]"
           >
             <ArrowDown size={13} />
-            <span>Latest</span>
+            <span>{t("Latest")}</span>
           </button>
         </div>
       )}

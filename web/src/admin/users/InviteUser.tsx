@@ -10,6 +10,7 @@ import { type Invite } from "../../gen/silo/v1/ui_pb";
 import { PageHead } from "../../PageHead";
 import { ToggleRow } from "../../Switch";
 import { reloadUsers } from "./useUsers";
+import { t } from "../../i18n.ts";
 
 // InviteUser makes the link that becomes someone's account.
 export function InviteUser() {
@@ -36,27 +37,27 @@ export function InviteUser() {
   }
   return (
     <div className="max-w-xl">
-      <PageHead title="Invite someone" onBack={back} />
+      <PageHead title={t("Invite someone")} onBack={back} />
       {made ? (
-        <Panel title={`Link for ${made.email}`} note={`Send it to them yourself. It works once, until ${day(made.expiresAt)}, and is not shown again.`}>
+        <Panel title={t("Link for {{email}}", { email: made.email })} note={t("Send it to them yourself. It works once, until {{date}}, and is not shown again.", { date: day(made.expiresAt) })}>
           <LinkWell url={made.url} />
           <div className="mt-4">
             <Btn kind="primary" type="button" onClick={back}>
-              Done
+              {t("Done")}
             </Btn>
           </div>
         </Panel>
       ) : (
         <Panel>
           <form onSubmit={onSubmit} className="grid gap-5">
-            <Field label="Email" hint="What they sign in with. Silo does not send mail: you pass the link on.">
-              <input className={inputClass} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoFocus required />
+            <Field label={t("Email")} hint={t("What they sign in with. Silo does not send mail: you pass the link on.")}>
+              <input className={inputClass} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={"name@example.com"} autoFocus required />
             </Field>
-            <ToggleRow label="Admin" hint="Admins change settings and manage everyone's accounts. They do not see other people's Bots." on={admin} onChange={setAdmin} />
+            <ToggleRow label={t("Admin")} hint={t("Admins change settings and manage everyone's accounts. They do not see other people's Bots.")} on={admin} onChange={setAdmin} />
             {err ? <ErrorWell>{err}</ErrorWell> : null}
             <div>
               <Btn kind="primary" type="submit" disabled={busy}>
-                {busy ? "Making the link…" : "Make invite link"}
+                {busy ? t("Making the link…") : t("Make invite link")}
               </Btn>
             </div>
           </form>
@@ -71,7 +72,7 @@ export function LinkWell({ url }: { url: string }) {
   return (
     <div className="flex items-center gap-2 rounded-sm bg-well py-1.5 pl-3 pr-1.5">
       <code className="min-w-0 flex-1 break-all font-mono text-[12.5px] leading-5 text-ink">{url}</code>
-      <CopyButton label text={url} title="Copy the link" className="shrink-0" />
+      <CopyButton label text={url} title={t("Copy the link")} className="shrink-0" />
     </div>
   );
 }

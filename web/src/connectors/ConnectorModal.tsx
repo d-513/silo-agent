@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { t } from "../i18n.ts";
 
 // The overlay the connector dialogs share: a card over a dimmed page with a
 // close button. `wide` is the error viewer's width; `rise` animates it in;
@@ -26,7 +27,7 @@ export function ConnectorModal({
         className={`w-full ${wide ? "max-w-[720px]" : "max-w-[560px]"} rounded-card shadow-card bg-surface p-6 shadow-slip relative${rise ? " rise" : ""}`}
         onClick={dismissOnBackdrop ? (e) => e.stopPropagation() : undefined}
       >
-        <button type="button" className="absolute top-4 right-4 text-ink-2 hover:text-ink p-1 rounded-md transition-colors" onClick={onClose} title="Close">
+        <button type="button" className="absolute top-4 right-4 text-ink-2 hover:text-ink p-1 rounded-md transition-colors" onClick={onClose} title={t("Close")}>
           <X size={18} />
         </button>
         {children}

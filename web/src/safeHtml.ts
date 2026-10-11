@@ -1,3 +1,4 @@
+
 // HTML made from a document somebody else wrote (a .docx turned into markup)
 // is shown inside the console's own page, so anything in it that could act
 // there is taken out first. The converter escapes text but passes a link's

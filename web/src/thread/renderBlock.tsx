@@ -9,6 +9,7 @@ import { isBotScratch, PresentFile, QuietPreview } from "./Present";
 import type { ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, toolAction, toolMeta } from "./toolInfo";
 import { ToolInput, ToolResult, ToolRow } from "./ToolRow";
+import { t } from "../i18n.ts";
 
 // Everything a block needs to know about the thread it sits in.
 export type BlockCtx = {
@@ -44,9 +45,9 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
   const path = asStr(parseToolArgs(b.args).path);
   const failed = !b.running && b.result?.startsWith("error:");
   if (b.name === "look" || (b.name === "present" && path && isBotScratch(path))) {
-    const what = b.name === "look" ? "screen" : path.split("/").filter(Boolean).pop() || path;
+    const what = b.name === "look" ? t("screen") : path.split("/").filter(Boolean).pop() || path;
     return (
-      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, "Looking at", "Looked at")} app={what} live={live}>
+      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, t("Looking at"), t("Looked at"))} app={what} live={live}>
         {!b.running && b.result && !failed ? (
           <QuietPreview botId={botId} path={b.name === "look" ? "bot/screen.jpg" : path} />
         ) : b.result ? (
@@ -68,7 +69,7 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
     ) : undefined;
   const python =
     b.name === "call" ? null : (
-      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, "Using", "Used")} app={app} action={toolAction(b.name, b.args)} live={live}>
+      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, t("Using"), t("Used", { context: "tool" }))} app={app} action={toolAction(b.name, b.args)} live={live}>
         {body}
       </ToolRow>
     );
@@ -84,7 +85,7 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
             state={cs}
             icon={call.name || "call"}
             marks={marks}
-            verb={rowVerb(cs, call.outcome, "Using", "Used")}
+            verb={rowVerb(cs, call.outcome, t("Using"), t("Used", { context: "tool" }))}
             app={call.title}
             action={call.name && call.name !== call.title ? call.name : undefined}
             live={sending && !!call.running}

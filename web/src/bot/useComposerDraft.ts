@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { joinPath } from "../fs";
+import { t } from "../i18n.ts";
 
 export type Att = { name: string; path: string; size: number };
 
@@ -19,7 +20,7 @@ export function useComposerDraft(botId: string, workerConnected: boolean | undef
     const added: Att[] = [];
     for (const f of list) {
       if (f.size > 50 << 20) {
-        setAttachErr(`${f.name} is larger than 50 MB`);
+        setAttachErr(t("{{name}} is larger than 50 MB", { name: f.name }));
         continue;
       }
       const path = joinPath("tmp", f.name);

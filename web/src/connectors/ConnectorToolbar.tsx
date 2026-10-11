@@ -3,6 +3,7 @@ import { btnClass } from "../Btn";
 import { TabPill, TabPills } from "../TabPills";
 import { ToolbarSearch } from "../ToolbarSearch";
 import type { TabMode } from "./model";
+import { t } from "../i18n.ts";
 
 // Tabs (in use / library / custom), the search box with its ⌘K hint, and the
 // Add connector shortcut on the in-use tab.
@@ -25,24 +26,24 @@ export function ConnectorToolbar({
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <TabPills>
         <TabPill on={tab === "in_use"} onClick={() => setTab("in_use")} count={attachedCount}>
-          <span>In Use</span>
+          <span>{t("In Use")}</span>
         </TabPill>
         <TabPill on={tab === "library"} onClick={() => setTab("library")} count={catalogCount}>
-          <span>Library</span>
+          <span>{t("Library")}</span>
         </TabPill>
         <TabPill on={tab === "custom"} onClick={() => setTab("custom")}>
           <Plus size={14} />
-          <span>Custom</span>
+          <span>{t("Custom")}</span>
         </TabPill>
       </TabPills>
 
       <div className="flex items-center gap-2.5">
-        <ToolbarSearch value={search} onChange={setSearch} placeholder={tab === "in_use" ? "Search installed..." : "Search connectors..."} />
+        <ToolbarSearch value={search} onChange={setSearch} placeholder={tab === "in_use" ? t("Search installed...") : t("Search connectors...")} />
 
         {tab === "in_use" && (
           <button type="button" className={btnClass("primary")} onClick={() => setTab("library")}>
             <Plus size={15} />
-            <span>Add connector</span>
+            <span>{t("Add connector")}</span>
           </button>
         )}
       </div>

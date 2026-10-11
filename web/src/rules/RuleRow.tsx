@@ -1,5 +1,6 @@
 import type { Rule } from "../gen/silo/v1/ui_pb";
 import { RuleDecisionSegment } from "./RuleDecisionSegment";
+import { t } from "../i18n.ts";
 
 // One action and its Allow / Auto / Ask / Deny switch.
 export function RuleRow({ rule: r, onChange }: { rule: Rule; onChange: (decision: string) => void }) {
@@ -14,7 +15,7 @@ export function RuleRow({ rule: r, onChange }: { rule: Rule; onChange: (decision
             {r.connector !== "secrets" && r.title && r.action && r.title !== r.action && r.action !== "*" && (
               <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">{r.action}</span>
             )}
-            {r.connector === "secrets" && <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-3">Secret</span>}
+            {r.connector === "secrets" && <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-3">{t("Secret")}</span>}
           </div>
         </div>
       </div>

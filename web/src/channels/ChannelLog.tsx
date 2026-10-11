@@ -4,6 +4,7 @@ import { useState } from "react";
 import { UI, type Channel, type Chat } from "../gen/silo/v1/ui_pb";
 import { Thread } from "../Thread";
 import { useRunStream } from "../useRunStream";
+import { t } from "../i18n.ts";
 
 const none: Chat[] = [];
 
@@ -28,9 +29,9 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
               <Radio size={16} />
             </div>
             <div>
-              <span className="font-semibold text-sm text-ink">{channel.name} Log</span>
+              <span className="font-semibold text-sm text-ink">{t("{{name}} Log", { name: channel.name })}</span>
               <span className="ml-2 rounded-full bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
-                {chats.length} {chats.length === 1 ? "conversation" : "conversations"}
+                {t("{{count}} conversations", { count: chats.length })}
               </span>
             </div>
           </div>
@@ -65,7 +66,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
             <Thread botId={botId} chatId={chatId} events={events} sending={false} />
           ) : (
             <div className="flex h-full items-center justify-center text-ink-3 text-[13px]">
-              No conversations recorded yet.
+              {t("No conversations recorded yet.")}
             </div>
           )}
         </div>

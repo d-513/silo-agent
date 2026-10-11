@@ -6,6 +6,7 @@ import type { BotConnector } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { connectorLook } from "../statusLook";
 import { isCustom } from "./model";
+import { t } from "../i18n.ts";
 
 // One connector attached to the Bot: what it is, its state, and what you can do
 // about it.
@@ -60,7 +61,7 @@ export function AttachedCard({
               {row.lastError && <span className="truncate text-vermilion">· {row.lastError}</span>}
               {(row.lastError || (row.authStatus === "error" && row.statusDetail)) && (
                 <button type="button" className="shrink-0 font-medium text-cobalt hover:underline" onClick={onViewError}>
-                  View error
+                  {t("View error")}
                 </button>
               )}
             </div>
@@ -70,29 +71,29 @@ export function AttachedCard({
 
       {/* Card Bottom: Actions */}
       <div className="mt-4 flex items-center justify-between border-t border-line/80 pt-3.5">
-        <div className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">{c.builtin ? "built-in" : `${c.transport} · ${c.auth}`}</div>
+        <div className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">{c.builtin ? t("Built-in") : `${c.transport} · ${c.auth}`}</div>
 
         <div className="flex items-center gap-1.5">
           {row.authStatus === "needs_auth" &&
             (c.builtin ? (
               <Btn kind="primary" onClick={onEdit}>
-                Set up
+                {t("Set up")}
               </Btn>
             ) : (
               <Btn kind="primary" onClick={onAuthorize}>
-                Authorize
+                {t("Authorize")}
               </Btn>
             ))}
           <Btn kind="ghost" onClick={onEdit}>
             <Pencil size={13} />
-            <span>Edit</span>
+            <span>{t("Edit")}</span>
           </Btn>
-          <Btn kind="ghost" disabled={isBusy} onClick={onRefresh} title="Refresh status">
+          <Btn kind="ghost" disabled={isBusy} onClick={onRefresh} title={t("Refresh status")}>
             <RefreshCw size={13} className={isBusy ? "spin" : ""} />
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </Btn>
-          <ArmedButton kind="ghost" armedLabel="Click again to remove" icon={<Trash2 size={13} />} onConfirm={onDetach}>
-            Remove
+          <ArmedButton kind="ghost" armedLabel={t("Click again to remove")} icon={<Trash2 size={13} />} onConfirm={onDetach}>
+            {t("Remove")}
           </ArmedButton>
         </div>
       </div>

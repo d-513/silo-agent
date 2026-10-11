@@ -3,6 +3,7 @@
 // round trip can be checked without a screen.
 import type { ChannelField, Connector } from "../../gen/silo/v1/ui_pb";
 import { identOf } from "./ident.ts";
+import { t } from "../../i18n.ts";
 
 export type HeaderDraft = { name: string; value: string };
 export type EnvDraft = { name: string; value: string; secret: string };
@@ -49,7 +50,7 @@ export function emptyDraft(): ConnectorDraft {
     name: "",
     identifier: "",
     description: "",
-    category: "Custom",
+    category: t("Custom"),
     prompt: "",
     autoAttach: false,
     exposeCompletion: false,
@@ -81,7 +82,7 @@ export function draftFrom(c: Connector): ConnectorDraft {
     name: c.name,
     identifier: c.identifier || "",
     description: c.description,
-    category: c.category || "General",
+    category: c.category || t("General"),
     prompt: c.prompt || "",
     autoAttach: c.autoAttach,
     exposeCompletion: !!c.exposeCompletion,

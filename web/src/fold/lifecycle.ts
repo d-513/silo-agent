@@ -1,5 +1,6 @@
 import { closeThinking, runOk, runningCompaction } from "./find.ts";
 import type { Handler } from "./text.ts";
+import { t } from "../i18n.ts";
 
 // Handlers for what happens to the run itself: compaction, its end, artifact
 // cards, and errors.
@@ -46,7 +47,7 @@ export const done: Handler = (out, e, key) => {
     last.streaming = false;
     last.bounds = undefined;
   }
-  if (e.body === "stopped") out.push({ key, type: "receipt", decision: "stopped", title: "this run", target: "", runId: e.runId });
+  if (e.body === "stopped") out.push({ key, type: "receipt", decision: "stopped", title: t("this run"), target: "", runId: e.runId });
 };
 
 // An artifact card: a later event for the same approval, or the same file or

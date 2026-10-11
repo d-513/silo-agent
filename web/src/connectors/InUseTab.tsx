@@ -3,6 +3,7 @@ import { btnClass } from "../Btn";
 import type { BotConnector } from "../gen/silo/v1/ui_pb";
 import { AttachedCard } from "./AttachedCard";
 import type { TabMode } from "./model";
+import { t } from "../i18n.ts";
 
 // The connectors attached to this Bot, or why there are none to show.
 export function InUseTab({
@@ -37,25 +38,24 @@ export function InUseTab({
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Plug size={28} />
           </div>
-          <h3 className="text-base font-semibold text-ink">No connectors in use yet</h3>
+          <h3 className="text-base font-semibold text-ink">{t("No connectors in use yet")}</h3>
           <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">
-            Add verified integrations from the library to grant this Bot external tools, or connect your own local or remote MCP servers.
+            {t("Add verified integrations from the library to grant this Bot external tools, or connect your own local or remote MCP servers.")}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <button type="button" className={btnClass("primary")} onClick={() => setTab("library")}>
-              <Plus size={15} />
-              Browse Library
+              <Plus size={15} />{t("Browse Library")}
             </button>
             <button type="button" className={btnClass("secondary")} onClick={() => setTab("custom")}>
-              Add Custom Connector
+              {t("Add Custom Connector")}
             </button>
           </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-card shadow-card bg-surface p-8 text-center text-ink-3">
-          <p className="text-[13px]">No installed connectors match "{search}".</p>
+          <p className="text-[13px]">{t("No installed connectors match \"{{search}}\".", { search })}</p>
           <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={() => setSearch("")}>
-            Clear search filter
+            {t("Clear search filter")}
           </button>
         </div>
       ) : (

@@ -1,4 +1,5 @@
 import { useCallback, useState, type MouseEventHandler, type RefObject } from "react";
+import { t } from "./i18n.ts";
 
 // The state of a live link to a Bot's machine (the Desktop hatch and the Console).
 export type LinkPhase = "off" | "connecting" | "connected" | "lost";
@@ -35,7 +36,7 @@ export function LinkSurface({
       <div ref={surfaceRef} className={`${surfaceClass} h-full min-h-[320px] w-full`} onMouseDown={onMouseDown} />
       {phase !== "connected" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
-          {phase === "off" ? `${noun} not connected` : phase === "connecting" ? `Opening ${noun.toLowerCase()}…` : `${noun} lost`}
+          {phase === "off" ? t("{{name}} not connected", { name: noun }) : phase === "connecting" ? t("Opening {{name}}…", { name: noun.toLowerCase() }) : t("{{name}} lost", { name: noun })}
         </div>
       )}
     </div>

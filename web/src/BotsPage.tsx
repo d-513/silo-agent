@@ -4,6 +4,7 @@ import { useBots } from "./bots";
 import { btnClass } from "./Btn";
 import { Crest } from "./Crest";
 import { Lamp, StatusWord } from "./Lamp";
+import { t } from "./i18n.ts";
 
 function FolioSkeleton() {
   return (
@@ -27,12 +28,11 @@ export function BotsPage() {
       {!empty ? (
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-title">Bots</h1>
-            <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">Machines you can open.</p>
+            <h1 className="text-title">{t("Bots")}</h1>
+            <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{t("Machines you can open.")}</p>
           </div>
           <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} />
-            New Bot
+            <Plus size={16} />{t("New Bot")}
           </Link>
         </div>
       ) : null}
@@ -49,11 +49,10 @@ export function BotsPage() {
         </div>
       ) : empty ? (
         <div className="rise pt-[12vh]">
-          <p className="mb-2 text-[40px] leading-[48px] font-medium tracking-[-0.02em]">No Bots yet</p>
-          <p className="mb-7 text-[14px] text-ink-2">A Bot is its own machine. It does not share files with the others.</p>
+          <p className="mb-2 text-[40px] leading-[48px] font-medium tracking-[-0.02em]">{t("No Bots yet")}</p>
+          <p className="mb-7 text-[14px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
           <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} />
-            New Bot
+            <Plus size={16} />{t("New Bot")}
           </Link>
         </div>
       ) : (

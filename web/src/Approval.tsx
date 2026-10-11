@@ -4,6 +4,7 @@ import { Btn } from "./Btn";
 import { Crest } from "./Crest";
 import { Lamp, StatusWord } from "./Lamp";
 import type { Approval, Bot } from "./gen/silo/v1/ui_pb";
+import { t } from "./i18n.ts";
 
 function phrase(s: string) {
   return s
@@ -28,7 +29,7 @@ export function describeApproval(ap: Approval) {
     /* ignore */
   }
   const fields = Object.entries(args).map(([k, value]) => ({ label: phrase(k), value }));
-  return { title, summary: `This Bot wants to ${phrase(ap.action).toLowerCase()} (${phrase(ap.connector)}).`, fields };
+  return { title, summary: t("This Bot wants to {{action}} ({{connector}}).", { action: phrase(ap.action).toLowerCase(), connector: phrase(ap.connector) }), fields };
 }
 
 // Keeps a slip mounted through its exit: when `show` drops, the last children
@@ -138,22 +139,22 @@ export function ApprovalSlip({
   const d = describeApproval(approval);
   // No run: a background process (a script that outlived its command, or one
   // started from the Console) asked; it waits, but no chat is paused.
-  const waiting = approval.runId ? "This run is paused until you choose." : "The process is waiting for your choice.";
+  const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
   // An Auto rule whose model would not decide: this one call is the human's,
   // the rule is not. Changing it is a trip to Rules, never a button here.
   if (approval.auto) {
     return (
       <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
         <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
-          Allow
+          {t("Allow")}
         </Btn>
         <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
-          Deny
+          {t("Deny")}
         </Btn>
         <p className="mt-1 text-center text-[12.5px] leading-[18px] text-ink-3">
-          Auto-approval was not sure about this one.{" "}
+          {t("Auto-approval was not sure about this one.")}{" "}
           <Link to="/bots/$botId/rules" params={{ botId: bot.id }} className="font-medium text-cobalt hover:underline">
-            Rules
+            {t("Rules")}
           </Link>
         </p>
       </NeedYouSlip>
@@ -162,23 +163,23 @@ export function ApprovalSlip({
   return (
     <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
       <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
-        Allow once
+        {t("Allow once")}
       </Btn>
       <Btn kind="secondary" className="!h-10 w-full justify-center" onClick={() => onDecide("always")}>
-        Always allow this action
+        {t("Always allow this action")}
       </Btn>
       {onAutoApprove && (
         <Btn
           kind="secondary"
           className="!h-10 w-full justify-center"
-          title="Set this action to Auto and let the approval model decide from now on. This run is allowed once."
+          title={t("Set this action to Auto and let the approval model decide from now on. This run is allowed once.")}
           onClick={onAutoApprove}
         >
-          Auto-approve this action
+          {t("Auto-approve this action")}
         </Btn>
       )}
       <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
-        Deny
+        {t("Deny")}
       </Btn>
     </NeedYouSlip>
   );
@@ -198,14 +199,14 @@ export function ConnectorAuthSlip({
   return (
     <NeedYouSlip
       bot={bot}
-      title={`Authorize ${name}`}
-      summary="This connector uses OAuth. A browser window will ask you to allow Silo to call it."
+      title={t("Authorize {{name}}", { name })}
+      summary={t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}
     >
       <Btn kind="primary" className="!h-10 w-full justify-center" onClick={onAuthorize}>
-        Authorize
+        {t("Authorize")}
       </Btn>
       <Btn kind="secondary" className="!h-10 w-full justify-center" onClick={onLater}>
-        Later
+        {t("Later")}
       </Btn>
     </NeedYouSlip>
   );

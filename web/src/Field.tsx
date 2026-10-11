@@ -1,5 +1,6 @@
 import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { t } from "./i18n.ts";
 
 // Inputs: 36px surface with an inset line-strong ring. Focus is a 1px cobalt
 // ring plus the global 2px cobalt outline. Inside a Field with an error the
@@ -103,7 +104,7 @@ export function ErrorWell({ children, className = "" }: { children: ReactNode; c
 // Skeleton rows for list loads: reserve the row height so nothing shifts.
 export function SkeletonRows({ rows = 3, height = 56, className = "" }: { rows?: number; height?: number; className?: string }) {
   return (
-    <div className={`space-y-2 ${className}`} aria-busy="true" aria-label="Loading">
+    <div className={`space-y-2 ${className}`} aria-busy="true" aria-label={t("Loading")}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="skeleton rounded-control" style={{ height }} />
       ))}

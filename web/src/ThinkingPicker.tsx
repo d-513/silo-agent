@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { thinkingLabel } from "./thinking";
 import { Tip, TipAction, TipTitle } from "./Tip";
 import { listboxKeys, useDismiss } from "./useMenu";
+import { t } from "./i18n.ts";
 
 // ThinkingPicker is the composer's thinking-level chip: a bulb (with the level
 // beside it once one is chosen) that drops a short menu of the model's levels.
@@ -59,9 +60,9 @@ export function ThinkingPicker({
       <Tip
         content={
           <>
-            <TipTitle aside={thinkingLabel(value)}>Thinking</TipTitle>
-            <p className="mt-1">How hard the model reasons before it replies.</p>
-            <TipAction>Click to change</TipAction>
+            <TipTitle aside={thinkingLabel(value)}>{t("Thinking")}</TipTitle>
+            <p className="mt-1">{t("How hard the model reasons before it replies.")}</p>
+            <TipAction>{t("Click to change")}</TipAction>
           </>
         }
       >
@@ -70,7 +71,7 @@ export function ThinkingPicker({
           type="button"
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-label={`Thinking: ${thinkingLabel(value)}`}
+          aria-label={t("Thinking: {{level}}", { level: thinkingLabel(value) })}
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
           onKeyDown={onKeyDown}
@@ -84,7 +85,7 @@ export function ThinkingPicker({
       </Tip>
       {open
         ? createPortal(
-            <div ref={menuRef} role="listbox" aria-label="Thinking level" className="fixed z-50 w-[140px] rounded-control bg-surface p-1 shadow-slip" style={style}>
+            <div ref={menuRef} role="listbox" aria-label={t("Thinking level")} className="fixed z-50 w-[140px] rounded-control bg-surface p-1 shadow-slip" style={style}>
               <div className="rise">
                 {options.map((l, i) => {
                   const selected = l === value;

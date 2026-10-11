@@ -5,6 +5,7 @@ import { lazyNamed } from "../lazyNamed";
 import { PaneFallback } from "../PaneFallback";
 import { clampShare, setShare } from "./paneStore";
 import type { PaneKind } from "./tabs";
+import { msg, t } from "../i18n.ts";
 
 const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
 const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
@@ -17,11 +18,11 @@ const chrome = 296;
 const widthOf = (share: number) => `calc((100% - ${chrome}px) * ${share})`;
 
 const captions: Record<PaneKind, string> = {
-  desktop: "Same browser the Bot uses. You can type and click.",
-  console: "A shell on this Bot, started in /workspace.",
+  desktop: msg("Same browser the Bot uses. You can type and click."),
+  console: msg("A shell on this Bot, started in /workspace."),
   files: "",
-  changes: "What changed in /workspace, compared before and after each run.",
-  mail: "What arrives at the Bot's address. It only receives.",
+  changes: msg("What changed in /workspace, compared before and after each run."),
+  mail: msg("What arrives at the Bot's address. It only receives."),
 };
 
 function Act({ dark, label, icon: Icon, onClick }: { dark: boolean; label: string; icon: LucideIcon; onClick: () => void }) {
@@ -62,7 +63,7 @@ function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize the pane"
+      aria-label={t("Resize the pane")}
       className="group/grip absolute inset-y-0 left-0 z-10 w-2 cursor-col-resize touch-none"
       onPointerDown={(e) => {
         e.preventDefault();
@@ -135,11 +136,11 @@ export function SidePane({
 
   const actions = (dark: boolean) =>
     max ? (
-      canDock ? <Act dark={dark} label="Dock beside the chat" icon={Minimize2} onClick={onDock} /> : null
+      canDock ? <Act dark={dark} label={t("Dock beside the chat")} icon={Minimize2} onClick={onDock} /> : null
     ) : (
       <>
-        <Act dark={dark} label="Open as a page" icon={Maximize2} onClick={onMax} />
-        <Act dark={dark} label="Close" icon={X} onClick={onClose} />
+        <Act dark={dark} label={t("Open as a page")} icon={Maximize2} onClick={onMax} />
+        <Act dark={dark} label={t("Close")} icon={X} onClick={onClose} />
       </>
     );
 
@@ -147,14 +148,14 @@ export function SidePane({
     has(k) ? (
       <div className={`min-h-0 flex-1 flex-col p-3 ${kind === k ? "flex" : "hidden"}`}>
         <MachinePane bot={bot} onStart={onStart} visible={kind === k} kind={k} actions={actions(true)} />
-        {max ? <p className="mt-2 text-[12.5px] text-ink-2">{captions[k]}</p> : null}
+        {max ? <p className="mt-2 text-[12.5px] text-ink-2">{t(captions[k])}</p> : null}
       </div>
     ) : null;
 
   return (
     <aside
       ref={ref}
-      aria-label={kind ? "Side pane" : undefined}
+      aria-label={kind ? t("Side pane") : undefined}
       className={`relative min-h-0 min-w-0 flex-col ${kind ? "flex" : "hidden"} ${max ? "flex-1" : "max-w-[calc(100%-656px)] min-w-[320px] shrink-0"}`}
       style={max ? undefined : { width: widthOf(share) }}
     >

@@ -3,6 +3,7 @@ import { Field } from "../Field";
 import { Select } from "../Select";
 import type { DriveOption, DriveVar } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
+import { t } from "../i18n.ts";
 
 export function PickInput({
   v,
@@ -37,7 +38,7 @@ export function PickInput({
       dead = true;
     };
   }, [ready, load]);
-  const empty = v.required ? [] : [{ value: "", label: v.placeholder || "Default" }];
+  const empty = v.required ? [] : [{ value: "", label: v.placeholder || t("Default") }];
   const options = [...empty, ...(opts ?? []).map((o) => ({ value: o.value, label: o.label, hint: o.detail }))];
   if (value && !options.some((o) => o.value === value)) options.push({ value, label: value });
   return (
@@ -45,7 +46,7 @@ export function PickInput({
       <Select
         value={value}
         disabled={!ready || opts === null}
-        placeholder={opts === null && ready ? "Loading…" : v.placeholder || "Choose…"}
+        placeholder={opts === null && ready ? t("Loading…") : v.placeholder || t("Choose…")}
         onChange={(val) => onPick((opts ?? []).find((o) => o.value === val) ?? (val ? null : null))}
         options={options}
       />

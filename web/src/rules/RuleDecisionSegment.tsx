@@ -1,10 +1,11 @@
 import { Bot, Check, CircleHelp, X } from "lucide-react";
+import { msg, t } from "../i18n.ts";
 
 const modes = [
-  { id: "allow", label: "Allow", icon: Check },
-  { id: "auto", label: "Auto", icon: Bot },
-  { id: "ask", label: "Ask", icon: CircleHelp },
-  { id: "deny", label: "Deny", icon: X },
+  { id: "allow", label: msg("Allow"), icon: Check },
+  { id: "auto", label: msg("Auto"), icon: Bot },
+  { id: "ask", label: msg("Ask"), icon: CircleHelp },
+  { id: "deny", label: msg("Deny"), icon: X },
 ];
 
 // The Allow / Auto / Ask / Deny switch for one rule, or for a whole section.
@@ -45,7 +46,7 @@ export function RuleDecisionSegment({
             }}
           >
             <Icon size={size === "sm" ? 11 : 12} />
-            <span>{m.label}</span>
+            <span>{t(m.label)}</span>
           </button>
         );
       })}

@@ -7,6 +7,8 @@ import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { channelLook } from "../statusLook";
 import { AdapterLogo } from "./AdapterLogo";
+import { t } from "../i18n.ts";
+import { Trans } from "../Trans.tsx";
 
 // One channel in the list: who it is, what it is bound to, its state, and the
 // ways into it (setup, log, configure, delete).
@@ -33,12 +35,12 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
               </span>
               {!c.enabled && (
                 <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
-                  Disabled
+                  {t("Disabled")}
                 </span>
               )}
               {!c.inbound && (
                 <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
-                  Send-only
+                  {t("Send-only")}
                 </span>
               )}
             </div>
@@ -48,11 +50,11 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
               <div className="mt-1.5 text-xs">
                 {c.externalId ? (
                   <span className="text-ink-3">
-                    Chat: <span className="font-medium text-ink">{c.targetTitle || c.externalId}</span>
+                    <Trans i18nKey="Chat: <b>{{chat}}</b>" values={{ chat: c.targetTitle || c.externalId }} components={{ b: <span className="font-medium text-ink" /> }} />
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 font-semibold text-vermilion">
-                    <CircleAlert size={13} /> Needs setup
+                    <CircleAlert size={13} /> {t("Needs setup")}
                   </span>
                 )}
               </div>
@@ -81,7 +83,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
                 onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId/setup", params: { botId, channelId: c.id } })}
               >
                 <Settings size={14} className="breathe" />
-                <span>Set up</span>
+                <span>{t("Set up")}</span>
               </Btn>
             ) : (
               <Btn
@@ -90,7 +92,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
                 onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId/setup", params: { botId, channelId: c.id } })}
               >
                 <Settings size={14} />
-                <span>Set up</span>
+                <span>{t("Set up")}</span>
               </Btn>
             )
           ) : null}
@@ -101,32 +103,32 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
             kind="ghost"
             type="button"
             onClick={onLog}
-            title="View conversation log"
+            title={t("View conversation log")}
           >
             <History size={14} />
-            <span>Log</span>
+            <span>{t("Log")}</span>
           </Btn>
 
           <Btn
             kind="ghost"
             type="button"
             onClick={() => void navigate({ to: "/bots/$botId/channels/$channelId", params: { botId, channelId: c.id } })}
-            title="Configure channel"
+            title={t("Configure channel")}
           >
             <Pencil size={14} />
-            <span>Configure</span>
+            <span>{t("Configure")}</span>
           </Btn>
 
           <ArmedButton
             kind="ghost"
-            title="Delete channel"
+            title={t("Delete channel")}
             icon={<Trash2 size={14} />}
             onConfirm={async () => {
               await ui.deleteChannel({ botId, id: c.id });
               onDeleted();
             }}
           >
-            Delete
+            {t("Delete")}
           </ArmedButton>
         </div>
       </div>

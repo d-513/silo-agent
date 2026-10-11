@@ -14,6 +14,7 @@ import { OidcSettings } from "./OidcSettings";
 import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
+import { t } from "../i18n.ts";
 
 const YamlEditor = lazy(() => import("../YamlEditor").then((m) => ({ default: m.YamlEditor })));
 
@@ -31,31 +32,31 @@ const pages: Record<SectionId, () => React.ReactNode> = {
   search: () => <SearchSettings />,
   memory: () => (
     <>
-      <Group title="Memory" note={MEMORY_NOTE} id="memory" />
-      <Group title="Knowledge" note={KNOWLEDGE_NOTE} id="knowledge" />
+      <Group title={t("Memory")} note={t(MEMORY_NOTE)} id="memory" />
+      <Group title={t("Knowledge")} note={t(KNOWLEDGE_NOTE)} id="knowledge" />
     </>
   ),
   runs: () => (
     <>
-      <Group title="Context" note={CONTEXT_NOTE} id="context" />
-      <Group title="Runs" note={RUNS_NOTE} id="runs" />
-      <Group title="Workspace changes" note={CHANGES_NOTE} id="changes" />
+      <Group title={t("Context")} note={t(CONTEXT_NOTE)} id="context" />
+      <Group title={t("Runs")} note={t(RUNS_NOTE)} id="runs" />
+      <Group title={t("Workspace changes")} note={t(CHANGES_NOTE)} id="changes" />
     </>
   ),
   connectors: () => <ConnectorOptions />,
   tunnels: () => <Tunnels />,
-  mail: () => <Group title="Mail" note={MAIL_NOTE} id="mail" />,
+  mail: () => <Group title={t("Mail")} note={t(MAIL_NOTE)} id="mail" />,
   signin: () => (
     <>
-      <Group title="Password sign-in" note={AUTH_NOTE} id="auth" />
+      <Group title={t("Password sign-in")} note={t(AUTH_NOTE)} id="auth" />
       <OidcSettings />
-      <Group title="Bootstrap" note={BOOTSTRAP_NOTE} id="bootstrap" />
+      <Group title={t("Bootstrap")} note={t(BOOTSTRAP_NOTE)} id="bootstrap" />
     </>
   ),
   server: () => (
     <>
-      <Group title="Server" id="server" />
-      <Group title="Containers" note={CONTAINERS_NOTE} id="containers" />
+      <Group title={t("Server")} id="server" />
+      <Group title={t("Containers")} note={t(CONTAINERS_NOTE)} id="containers" />
     </>
   ),
   yaml: () => <Yaml />,
@@ -71,8 +72,8 @@ function Tunnels() {
   const { fields, tunnelsHost } = useSettingsForm();
   return (
     <FieldGroup
-      title="Tunnels"
-      note={TUNNELS_NOTE}
+      title={t("Tunnels")}
+      note={t(TUNNELS_NOTE)}
       rows={fields.filter((f) => groupOf(f.key) === "tunnels")}
       placeholders={{ "tunnels.host": tunnelsHost || "tunnels.example.com" }}
     />
@@ -86,8 +87,8 @@ function SearchSettings() {
   const rows = fields.filter((f) => f.key === "search.engine" || f.key.startsWith(`search.${engine}.`));
   return (
     <FieldGroup
-      title="Search"
-      note="The engine behind the Bot's web search (silo_runtime.web_search)."
+      title={t("Search")}
+      note={t("The engine behind the Bot's web search (silo_runtime.web_search).")}
       rows={rows}
       hints={{ "search.engine": engines.find((e) => e.id === engine)?.description || undefined }}
     />
@@ -99,7 +100,7 @@ function ConnectorOptions() {
   const { connVars, saveConnVars, autoenable, saveAutoenable } = useSettingsForm();
   return (
     <>
-      <Group title="Outbound connections" note={OUTBOUND_NOTE} id="outbound" />
+      <Group title={t("Outbound connections")} note={t(OUTBOUND_NOTE)} id="outbound" />
       <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
       <AutoenablePanel list={autoenable} onSave={saveAutoenable} />
     </>
@@ -112,11 +113,11 @@ function Yaml() {
   const env = fields.filter((f) => f.source === ConfigSource.ENV);
   return (
     <Panel
-      title="silo.yaml"
-      note="Everything the other sections edit, as one file. Saving it drops unsaved changes made there."
+      title={t("silo.yaml")}
+      note={t("Everything the other sections edit, as one file. Saving it drops unsaved changes made there.")}
       action={
         <SaveButton size="sm" state={yamlSaver.state} onClick={() => void saveYaml()}>
-          Save YAML
+          {t("Save YAML")}
         </SaveButton>
       }
     >
@@ -124,7 +125,7 @@ function Yaml() {
       {env.length > 0 ? (
         <p className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
           <TriangleAlert className="mt-0.5 shrink-0" size={16} />
-          <span>Overridden by env and will not apply until unset: {env.map((f) => f.envName).join(", ")}</span>
+          <span>{t("Overridden by env and will not apply until unset: {{names}}", { names: env.map((f) => f.envName).join(", ") })}</span>
         </p>
       ) : null}
       <Suspense fallback={<div className="h-80 rounded-sm bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]" />}>
@@ -137,7 +138,7 @@ function Yaml() {
 function Audit() {
   const { audit } = useSettingsForm();
   return (
-    <Panel title="Audit" note="The last 100 approval decisions on every Bot, newest first.">
+    <Panel title={t("Audit")} note={t("The last 100 approval decisions on every Bot, newest first.")}>
       <AuditTable audit={audit} />
     </Panel>
   );

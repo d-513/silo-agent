@@ -1,5 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { t } from "../i18n.ts";
 
 // The pages a Bot's sidebar opens: the conversation-side ones, the first page
 // of Customize and of Settings, and (in the narrow strip) the machine panes.
@@ -53,7 +54,7 @@ export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SidePr
 
 // UnreadBadge counts unseen Feed posts: a small cobalt pill.
 function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
-  const label = `${n} unread`;
+  const label = t("{{count}} unread", { count: n });
   if (dot) {
     return <span aria-label={label} title={label} className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" />;
   }

@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAutoExpand } from "../autoExpand";
 import { Collapse } from "../Collapse";
+import { t } from "../i18n.ts";
 
 export type RowState = "running" | "done" | "waiting" | "stopped";
 
@@ -13,8 +14,8 @@ export function rowState(t: { running?: boolean; waiting?: boolean; outcome?: st
 }
 
 export function rowVerb(state: RowState, outcome: string | undefined, live: string, past: string) {
-  if (outcome === "denied") return "Skipped";
-  if (outcome === "stopped") return "Stopped";
+  if (outcome === "denied") return t("Skipped");
+  if (outcome === "stopped") return t("Stopped");
   return state === "running" || state === "waiting" ? live : past;
 }
 

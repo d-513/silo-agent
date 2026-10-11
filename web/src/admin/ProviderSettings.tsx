@@ -12,6 +12,7 @@ import { Tip } from "../Tip";
 import { FieldGroup } from "./FieldGroup";
 import { bareModel, filterModels, fmtContext, kindOf, KINDS, kindsIn, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
+import { locale, t } from "../i18n.ts";
 
 export function ProviderSettings() {
   const { providers } = useSettingsForm();
@@ -47,7 +48,7 @@ function ProviderPanel({ provider }: { provider: Provider }) {
         setOpen(!open);
       }}
     >
-      {open ? "Hide models" : "List models"}
+      {open ? t("Hide models") : t("List models")}
     </Btn>
   );
 
@@ -56,7 +57,7 @@ function ProviderPanel({ provider }: { provider: Provider }) {
       title={provider.name}
       note={provider.description || undefined}
       rows={rows}
-      action={unsaved && !open ? <Tip content={`Save your changes first. The list is asked with ${provider.name}'s saved settings.`}>{button}</Tip> : button}
+      action={unsaved && !open ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
     >
       {open ? (
         <div className="bg-well px-5 py-4 shadow-[inset_0_1px_0_var(--color-line)]">
@@ -66,7 +67,7 @@ function ProviderPanel({ provider }: { provider: Provider }) {
             <div className="flex items-start gap-3">
               <ErrorWell className="min-w-0 flex-1">{fail(list.error)}</ErrorWell>
               <Btn size="sm" onClick={() => void list.refetch()}>
-                Try again
+                {t("Try again")}
               </Btn>
             </div>
           ) : (
@@ -91,25 +92,25 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
 
   if (models.length === 0) {
-    return <p className="text-[13px] text-ink-2">{provider.name} lists no models for this key. Add one by id under Models.</p>;
+    return <p className="text-[13px] text-ink-2">{t("{{name}} lists no models for this key. Add one by id under Models.", { name: provider.name })}</p>;
   }
   return (
     <>
       <div className="mb-3 flex items-center gap-2">
         {kinds.length > 1 ? (
           <div className="w-[176px] shrink-0 text-[13px]">
-            <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={KINDS} />
+            <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={KINDS.map((k) => ({ id: k, label: k === "decision" ? t("Decision", { context: "kind" }) : t("Text", { context: "kind" }) }))} />
           </div>
         ) : null}
         <div className="min-w-0 flex-1">
-          <SearchBox value={query} onChange={setQuery} placeholder={`Filter ${ofKind.length} ${kind} models`} searching={false} />
+          <SearchBox value={query} onChange={setQuery} placeholder={kind === "decision" ? t("Filter {{count}} decision models", { count: ofKind.length }) : t("Filter {{count}} text models", { count: ofKind.length })} searching={false} />
         </div>
-        <Btn kind="ghost" size="sm" iconOnly title="Ask again" aria-label="Ask again" disabled={refreshing} onClick={onRefresh}>
+        <Btn kind="ghost" size="sm" iconOnly title={t("Ask again")} aria-label={t("Ask again")} disabled={refreshing} onClick={onRefresh}>
           {refreshing ? <Spinner size={13} /> : <RefreshCw size={14} />}
         </Btn>
       </div>
       {shown.length === 0 ? (
-        <p className="py-2 text-[13px] text-ink-2">No model matches “{query.trim()}”.</p>
+        <p className="py-2 text-[13px] text-ink-2">{t("No model matches “{{search}}”.", { search: query.trim() })}</p>
       ) : (
         <ul className="max-h-[396px] divide-y divide-line overflow-y-auto overscroll-contain rounded-control bg-surface shadow-card">
           {shown.map((m) => {
@@ -121,7 +122,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
                 <span className="max-w-full shrink-0 truncate font-mono text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:shrink">{bareModel(m.id)}</span>
                 <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.name}</span>
                 {context ? (
-                  <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={`${m.contextWindow.toLocaleString()} tokens of context`}>
+                  <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
                     {context}
                   </span>
                 ) : null}
@@ -134,16 +135,15 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
                   ) : on ? (
                     <>
                       <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
-                        <Check size={14} />
-                        Allowed
+                        <Check size={14} />{t("Allowed")}
                       </span>
-                      <Btn kind="ghost" size="sm" iconOnly title={`Remove from the allowed ${kind} models`} aria-label={`Remove ${m.id}`} onClick={() => void setModel(m.id, false, kind)}>
+                      <Btn kind="ghost" size="sm" iconOnly title={kind === "decision" ? t("Remove from the allowed decision models") : t("Remove from the allowed text models")} aria-label={t("Remove {{id}}", { id: m.id })} onClick={() => void setModel(m.id, false, kind)}>
                         <X size={14} />
                       </Btn>
                     </>
                   ) : (
-                    <Btn size="sm" aria-label={`Add ${m.id}`} onClick={() => void setModel(m.id, true, kind)}>
-                      <Plus size={14} /> Add
+                    <Btn size="sm" aria-label={t("Add {{id}}", { id: m.id })} onClick={() => void setModel(m.id, true, kind)}>
+                      <Plus size={14} /> {t("Add")}
                     </Btn>
                   )}
                 </span>

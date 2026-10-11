@@ -5,6 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { LinkSurface, retryDelay, useLinkPhase } from "./machineLink";
 import { useTheme, type Theme } from "./theme";
 import { palette } from "./tokens";
+import { t } from "./i18n.ts";
 
 // xterm paints to a canvas, so it takes hex. Only the ground follows the
 // theme: the hatch is dark in both, a shade deeper in the dark room.
@@ -47,7 +48,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     setPhase("connecting");
     const termInst = new Terminal({
       cursorBlink: true,
-      fontFamily: '"Geist Mono Variable", "Geist Mono", ui-monospace, monospace',
+      fontFamily: "\"Geist Mono Variable\", \"Geist Mono\", ui-monospace, monospace",
       fontSize: 13,
       lineHeight: 1.4,
       theme: termTheme(themeRef.current),
@@ -117,5 +118,5 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     return () => ro.disconnect();
   }, [visible]);
 
-  return <LinkSurface noun="Console" phase={phase} surfaceRef={ref} surfaceClass="silo-console" onMouseDown={() => termRef.current?.focus()} />;
+  return <LinkSurface noun={t("Console")} phase={phase} surfaceRef={ref} surfaceClass="silo-console" onMouseDown={() => termRef.current?.focus()} />;
 }

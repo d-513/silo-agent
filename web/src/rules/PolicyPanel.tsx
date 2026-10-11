@@ -1,5 +1,6 @@
 import { SaveButton } from "../Feedback";
 import { Panel, textareaClass } from "../Field";
+import { t } from "../i18n.ts";
 
 // The free-text policy the approval model reads when a rule is set to Auto.
 export function PolicyPanel({
@@ -17,19 +18,19 @@ export function PolicyPanel({
 }) {
   return (
     <Panel
-      title="Auto-approve policy"
-      note="Read by the auto-approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Write the actions this Bot may run without a human. Empty means every Auto rule asks."
+      title={t("Auto-approve policy")}
+      note={t("Read by the auto-approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Write the actions this Bot may run without a human. Empty means every Auto rule asks.")}
       className="mb-5"
     >
       <textarea
         className={`${textareaClass} h-[120px] font-mono text-[13px] leading-5`}
-        placeholder="e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret."
+        placeholder={t("e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret.")}
         value={policy}
         onChange={(e) => onChange(e.target.value)}
       />
       <div className="mt-3 flex items-center gap-3">
         <SaveButton state={state} onClick={onSave} disabled={state === "idle" && policy === saved}>
-          Save policy
+          {t("Save policy")}
         </SaveButton>
       </div>
     </Panel>

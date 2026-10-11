@@ -1,4 +1,5 @@
 import { Plug } from "lucide-react";
+import { t } from "../../i18n.ts";
 
 export function ConnectorMark({
   id,
@@ -35,12 +36,12 @@ export function ConnectorMark({
 }
 
 export function McpChip({ transport }: { transport?: string }) {
-  const label = transport === "builtin" ? "Built-in" : "MCP";
+  const label = transport === "builtin" ? t("Built-in") : "MCP";
   return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-[11px] font-medium text-canvas">{label}</span>;
 }
 
 export function CustomChip() {
-  return <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">Custom</span>;
+  return <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t("Custom")}</span>;
 }
 
 export function CategoryChip({ label }: { label: string }) {

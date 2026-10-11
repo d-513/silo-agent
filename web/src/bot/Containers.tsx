@@ -10,6 +10,7 @@ import { UI, type Bot } from "../gen/silo/v1/ui_pb";
 import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
 import { setBot } from "../query";
+import { msg, t } from "../i18n.ts";
 
 function n64(v: bigint | number | undefined) {
   if (typeof v === "bigint") return Number(v);
@@ -32,16 +33,16 @@ function uptime(iso: string, now: number) {
   s -= d * 86400;
   const h = Math.floor(s / 3600);
   const m = Math.floor((s - h * 3600) / 60);
-  if (d > 0) return `Up ${d}d ${h}h`;
-  if (h > 0) return `Up ${h}h ${m}m`;
-  if (m > 0) return `Up ${m}m`;
-  return "Up just now";
+  if (d > 0) return t("Up {{d}}d {{h}}h", { d, h });
+  if (h > 0) return t("Up {{h}}h {{m}}m", { h, m });
+  if (m > 0) return t("Up {{m}}m", { m });
+  return t("Up just now");
 }
 
 const BOX_KIND: Record<string, { icon: typeof MessageCircle; chip: string }> = {
-  bot: { icon: Monitor, chip: "Machine" },
-  drive: { icon: HardDrive, chip: "Drive sidecar" },
-  mcp: { icon: Plug, chip: "MCP sidecar" },
+  bot: { icon: Monitor, chip: msg("Machine") },
+  drive: { icon: HardDrive, chip: msg("Drive sidecar") },
+  mcp: { icon: Plug, chip: msg("MCP sidecar") },
 };
 
 function BoxStat({ label, value, meter }: { label: string; value: string; meter?: ReactNode }) {
@@ -72,14 +73,14 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
 
   return (
     <div className="silo-page">
-      <h2 className="text-title">Containers</h2>
-      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.</p>
+      <h2 className="text-title">{t("Containers")}</h2>
+      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
       {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}
 
       <div className="mb-5 grid grid-cols-3 gap-4 rounded-card bg-well px-5 py-4">
-        <BoxStat label="Running" value={boxes ? `${running.length} of ${boxes.length}` : "—"} />
-        <BoxStat label="CPU" value={boxes ? `${cpu.toFixed(1)}%` : "—"} />
-        <BoxStat label="RAM" value={boxes ? fmtBytes(mem) : "—"} />
+        <BoxStat label={t("Running")} value={boxes ? `${running.length} of ${boxes.length}` : "—"} />
+        <BoxStat label={t("CPU")} value={boxes ? `${cpu.toFixed(1)}%` : "—"} />
+        <BoxStat label={t("RAM")} value={boxes ? fmtBytes(mem) : "—"} />
       </div>
 
       {boxes === null ? (
@@ -91,7 +92,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
             const Icon = kind.icon;
             const up = b.state === "running";
             const lamp = up ? "online" : "stopped";
-            const word = up ? "Running" : b.state === "stopped" ? "Stopped" : "Not created";
+            const word = up ? t("Running") : b.state === "stopped" ? t("Stopped") : t("Not created");
             const memUsed = n64(b.memUsed);
             const memCap = n64(b.memLimit);
             return (
@@ -103,7 +104,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-card-title text-ink">{b.label}</span>
-                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{kind.chip}</span>
+                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t(kind.chip)}</span>
                     </div>
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{b.detail}</div>
                     <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
@@ -118,19 +119,19 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                   {b.kind === "bot" ? (
                     bot.workerConnected ? (
                       <Btn kind="secondary" size="sm" onClick={onStop} icon={<Power size={12} />}>
-                        Stop
+                        {t("Stop")}
                       </Btn>
                     ) : (
                       <Btn kind="primary" size="sm" onClick={onStart} disabled={bot.status === "starting"} icon={<Power size={12} />}>
-                        {bot.status === "starting" ? "Starting…" : "Start"}
+                        {bot.status === "starting" ? t("Starting…") : t("Start")}
                       </Btn>
                     )
                   ) : null}
                 </div>
                 {up ? (
                   <div className="mt-4 grid grid-cols-2 gap-5 pl-[54px] max-wide:pl-0">
-                    <BoxStat label="CPU" value={`${b.cpuPercent.toFixed(1)}%`} meter={<Meter value={b.cpuPercent} max={100} />} />
-                    <BoxStat label="RAM" value={`${fmtBytes(memUsed)}${memCap ? ` / ${fmtBytes(memCap)}` : ""}`} meter={<Meter value={memUsed} max={memCap} />} />
+                    <BoxStat label={t("CPU")} value={`${b.cpuPercent.toFixed(1)}%`} meter={<Meter value={b.cpuPercent} max={100} />} />
+                    <BoxStat label={t("RAM")} value={`${fmtBytes(memUsed)}${memCap ? ` / ${fmtBytes(memCap)}` : ""}`} meter={<Meter value={memUsed} max={memCap} />} />
                   </div>
                 ) : null}
                 {b.image ? <div className="mt-3 truncate pl-[54px] font-mono text-[11.5px] text-ink-3 max-wide:pl-0">{b.image}</div> : null}
@@ -140,11 +141,11 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
         </ul>
       )}
 
-      <Panel title="Remove all containers" tone="danger" className="mt-6" note="Stops and removes every container above. The workspace, drives, connectors, and caches stay; each container is made again the next time it is needed.">
+      <Panel title={t("Remove all containers")} tone="danger" className="mt-6" note={t("Stops and removes every container above. The workspace, drives, connectors, and caches stay; each container is made again the next time it is needed.")}>
         <div className="flex flex-wrap items-center gap-3">
           <ArmedButton
             kind="secondary"
-            armedLabel="Click again to remove all"
+            armedLabel={t("Click again to remove all")}
             disabled={!anyUp}
             onConfirm={async () => {
               try {
@@ -155,9 +156,9 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
               }
             }}
           >
-            Remove all containers
+            {t("Remove all containers")}
           </ArmedButton>
-          {removed && !anyUp ? <span className="text-[12.5px] text-ink-3">Removed. Start the Bot to bring them back.</span> : null}
+          {removed && !anyUp ? <span className="text-[12.5px] text-ink-3">{t("Removed. Start the Bot to bring them back.")}</span> : null}
         </div>
       </Panel>
     </div>

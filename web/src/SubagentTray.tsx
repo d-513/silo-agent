@@ -5,6 +5,7 @@ import { agentLink, type AgentLink } from "./links";
 import type { Subagent } from "./gen/silo/v1/ui_pb";
 import { Lamp, StatusWord } from "./Lamp";
 import { elapsed, shortModel } from "./useSubagents";
+import { t } from "./i18n.ts";
 
 // SubagentTray sits between the thread and the composer while a chat has
 // subagents working: one card per running subagent (click to open its page),
@@ -61,8 +62,8 @@ export function SubagentTray({
                 </Link>
                 <button
                   type="button"
-                  title={`Stop ${a.name}`}
-                  aria-label={`Stop ${a.name}`}
+                  title={t("Stop {{name}}", { name: a.name })}
+                  aria-label={t("Stop {{name}}", { name: a.name })}
                   onClick={() => onStop(a.id)}
                   className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-sm text-ink-2 opacity-0 transition-[opacity,color,background-color] duration-[160ms] group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-vermilion-pale hover:text-vermilion"
                 >
@@ -76,11 +77,11 @@ export function SubagentTray({
           <button
             type="button"
             onClick={onStopAll}
-            title="Stop every running subagent"
+            title={t("Stop every running subagent")}
             className="flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-vermilion"
           >
             <Square size={11} />
-            <span className="hidden wide:inline">Stop all</span>
+            <span className="hidden wide:inline">{t("Stop all")}</span>
           </button>
         ) : null}
         {finished.length > 0 ? <Finished agents={finished} href={href} /> : null}
@@ -111,7 +112,7 @@ function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) =>
         className="flex h-9 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
       >
         <Bot size={13} />
-        <span>{agents.length} finished</span>
+        <span>{t("{{count}} finished", { count: agents.length })}</span>
         <ChevronDown size={12} className={`transition-transform duration-[160ms] ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (

@@ -1,3 +1,5 @@
+import { getLanguage, msg, t } from "./i18n.ts";
+
 // Friendly schedules over 5-field cron (minute hour day-of-month month
 // day-of-week). The Control Plane only stores cron; these shapes are what the
 // Automations editor offers, and anything else stays "custom".
@@ -14,7 +16,7 @@ export type Sched = {
   cron: string; // custom
 };
 
-export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const DAY_SHORT = [msg("Sun"), msg("Mon"), msg("Tue"), msg("Wed"), msg("Thu"), msg("Fri"), msg("Sat")];
 export const MINUTE_STEPS = [5, 10, 15, 20, 30];
 export const HOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
 
@@ -110,7 +112,10 @@ export function toCron(s: Sched): string {
 const pad = (n: number) => String(n).padStart(2, "0");
 export const clock = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 
+// "1st", "22nd": English only. Other languages write the day as a number and
+// put what goes around it in the message.
 function ordinal(n: number) {
+  if (getLanguage() !== "en") return String(n);
   const s = n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th";
   return `${n}${s}`;
 }
@@ -120,21 +125,21 @@ export function describe(cron: string): string {
   const s = parse(cron);
   switch (s.mode) {
     case "none":
-      return "No schedule";
+      return t("No schedule");
     case "minutes":
-      return `Every ${s.every} minutes`;
+      return t("Every {{count}} minutes", { count: s.every });
     case "hours":
-      return s.every === 1 ? `Every hour at :${pad(s.minute)}` : `Every ${s.every} hours at :${pad(s.minute)}`;
+      return t("Every {{count}} hours at :{{minute}}", { count: s.every, minute: pad(s.minute) });
     case "daily":
-      return `Every day at ${clock(s.hour, s.minute)}`;
+      return t("Every day at {{time}}", { time: clock(s.hour, s.minute) });
     case "weekly": {
       const f = dowField(s.days);
-      const when = f === "1-5" ? "Weekdays" : f === "0,6" ? "Weekends" : s.days.map((d) => DAY_SHORT[d]).join(", ");
-      return `${when} at ${clock(s.hour, s.minute)}`;
+      const when = f === "1-5" ? t("Weekdays") : f === "0,6" ? t("Weekends") : s.days.map((d) => t(DAY_SHORT[d])).join(", ");
+      return t("{{days}} at {{time}}", { days: when, time: clock(s.hour, s.minute) });
     }
     case "monthly":
-      return `Monthly on the ${ordinal(s.dom)} at ${clock(s.hour, s.minute)}`;
+      return t("Monthly on the {{day}} at {{time}}", { day: ordinal(s.dom), time: clock(s.hour, s.minute) });
     case "custom":
-      return `Custom: ${s.cron}`;
+      return t("Custom: {{cron}}", { cron: s.cron });
   }
 }

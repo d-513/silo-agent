@@ -5,13 +5,14 @@ import { useSave } from "../Feedback";
 import { UI, type Drive, type DriveOption, type DriveTemplate } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
 import { NAME_RE, uniqueName, visible } from "./driveModel";
+import { t } from "../i18n.ts";
 
 // useDriveForm is the add/edit form's state and its three jobs: keep a draft
 // drive in step with what is on screen, sign in through the provider's popup,
 // and test the connection (again on its own once a connection field changes).
 export function useDriveForm({
   botId,
-  t,
+  t: tpl,
   drive,
   taken,
   onDone,
@@ -26,7 +27,7 @@ export function useDriveForm({
   const [draft, setDraft] = useState<Drive | undefined>(drive);
   const [values, setValues] = useState<Record<string, string>>(() => ({ ...(drive?.options ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
-  const [name, setName] = useState(drive?.name ?? uniqueName(t.title, taken));
+  const [name, setName] = useState(drive?.name ?? uniqueName(tpl.title, taken));
   const [readOnly, setReadOnly] = useState(drive?.readOnly ?? false);
   const [err, setErr] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
@@ -36,8 +37,8 @@ export function useDriveForm({
   const draftRef = useRef<Drive | undefined>(drive);
   draftRef.current = draft;
 
-  const oauth = t.authKind === "oauth2";
-  const userVars = t.vars.filter((v) => v.kind === "user" && v.type !== "hidden" && visible(v, values, t));
+  const oauth = tpl.authKind === "oauth2";
+  const userVars = tpl.vars.filter((v) => v.kind === "user" && v.type !== "hidden" && visible(v, values, tpl));
   const connectVars = userVars.filter((v) => !v.advanced && v.type !== "pick" && v.type !== "folder");
   const mountVars = userVars.filter((v) => !v.advanced && (v.type === "pick" || v.type === "folder"));
   const advancedVars = userVars.filter((v) => v.advanced);
@@ -47,7 +48,7 @@ export function useDriveForm({
   // Only connection fields change what a test proves. Choosing a folder or a
   // pick never does, so it must not send the owner back to Test connection.
   const connectionField = (k: string) => {
-    const v = t.vars.find((x) => x.kind === "user" && x.key === k);
+    const v = tpl.vars.find((x) => x.kind === "user" && x.key === k);
     return !!v && v.type !== "folder" && v.type !== "pick";
   };
   const set = (k: string, val: string) => setValues((m) => ({ ...m, [k]: val }));
@@ -55,7 +56,7 @@ export function useDriveForm({
 
   function options() {
     const out: Record<string, string> = {};
-    for (const v of t.vars) {
+    for (const v of tpl.vars) {
       if (v.kind !== "user") continue;
       if (v.secret) {
         if (secrets[v.key]) out[v.key] = secrets[v.key];
@@ -69,12 +70,12 @@ export function useDriveForm({
   const sync = useCallback(async (): Promise<Drive> => {
     const cur = draftRef.current;
     if (cur && !cur.draft) return cur;
-    const d = await ui.saveDrive({ botId, id: cur?.id ?? "", template: t.key, draft: true, readOnly, options: options() });
+    const d = await ui.saveDrive({ botId, id: cur?.id ?? "", template: tpl.key, draft: true, readOnly, options: options() });
     setDraft(d);
     draftRef.current = d;
     return d;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botId, t.key, readOnly, values, secrets]);
+  }, [botId, tpl.key, readOnly, values, secrets]);
 
   const reloadDraft = useCallback(async () => {
     const cur = draftRef.current;
@@ -109,7 +110,7 @@ export function useDriveForm({
       const m = e.data as { silo?: string; ok?: boolean; message?: string };
       if (m?.silo !== "drive-auth") return;
       setAuthBusy(false);
-      if (!m.ok) setAuthErr(m.message || "Sign-in did not finish.");
+      if (!m.ok) setAuthErr(m.message || t("Sign-in did not finish."));
       void reloadDraft();
     };
     window.addEventListener("message", onMsg);
@@ -128,7 +129,7 @@ export function useDriveForm({
         w.location.href = r.url;
         setAuthBusy(true);
       } else {
-        setAuthErr("Your browser blocked the sign-in window. Allow pop-ups for Silo and try again.");
+        setAuthErr(t("Your browser blocked the sign-in window. Allow pop-ups for Silo and try again."));
       }
     } catch (e) {
       w?.close();
@@ -143,7 +144,7 @@ export function useDriveForm({
       const d = await sync();
       const r = await ui.browseDrive({ id: d.id, path: "" });
       const n = r.dirs.length;
-      setTest({ state: "ok", msg: n === 0 ? "Connected. The drive is empty at the top level." : `Connected. Found ${n} folder${n === 1 ? "" : "s"}.` });
+      setTest({ state: "ok", msg: n === 0 ? t("Connected. The drive is empty at the top level.") : t("Connected. Found {{count}} folders.", { count: n }) });
     } catch (e) {
       setTest({ state: "fail", msg: fail(e) });
     }
@@ -202,7 +203,7 @@ export function useDriveForm({
         await ui.saveDrive({
           botId,
           id: cur?.id ?? "",
-          template: t.key,
+          template: tpl.key,
           name,
           readOnly,
           draft: false,

@@ -3,6 +3,7 @@ import { btnClass } from "../Btn";
 import { CategoryChip, ConnectorMark, McpChip } from "./form";
 import type { Connector } from "../gen/silo/v1/ui_pb";
 import { featuredPoints } from "./model";
+import { t } from "../i18n.ts";
 
 export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; onAdd: () => void }) {
   return (
@@ -28,7 +29,7 @@ export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; 
                 <span>·</span>
                 <span className="inline-flex items-center gap-1 font-medium text-emerald">
                   <Check size={11} />
-                  {count === 1 ? "In use" : `${count} in use`}
+                  {count === 1 ? t("In use") : t("{{count}} in use", { count })}
                 </span>
               </>
             )}
@@ -40,7 +41,7 @@ export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; 
         type="button"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm shadow-card bg-surface text-ink-2 transition-[background-color,color,box-shadow] hover:shadow-float hover:bg-well hover:text-ink"
         onClick={onAdd}
-        title={`Add ${c.name}`}
+        title={t("Add {{name}}", { name: c.name })}
       >
         <Plus size={16} />
       </button>
@@ -49,7 +50,7 @@ export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; 
 }
 
 export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number; onAdd: () => void }) {
-  const points = featuredPoints[c.builtin] ?? [];
+  const points = (featuredPoints[c.builtin] ?? []).map((p) => t(p));
   return (
     <div className="relative overflow-hidden rounded-card shadow-card bg-surface transition-shadow hover:shadow-float">
       <div
@@ -64,7 +65,7 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-[19px] font-semibold tracking-tight text-ink">{c.name}</h4>
             <span className="rounded-full bg-cobalt-pale px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-cobalt">
-              Built in
+              {t("Built in")}
             </span>
             {c.category && <CategoryChip label={c.category} />}
           </div>
@@ -83,12 +84,12 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
         <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
           <button type="button" className={btnClass("primary")} onClick={onAdd}>
             <Plus size={15} />
-            {count > 0 ? "Add another" : `Add ${c.name}`}
+            {count > 0 ? t("Add another") : t("Add {{name}}", { name: c.name })}
           </button>
           {count > 0 && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald">
               <Check size={11} />
-              {count === 1 ? "In use" : `${count} in use`}
+              {count === 1 ? t("In use") : t("{{count}} in use", { count })}
             </span>
           )}
         </div>

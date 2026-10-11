@@ -10,6 +10,8 @@ import { UI } from "./gen/silo/v1/ui_pb";
 import { queryClient } from "./query";
 import { passwordProblem } from "./signinFlow";
 import { AuthCard, AuthError, authLabel } from "./SignIn";
+import { followUser, t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 // InvitePage is where an admin's link lands: a new account picks its password
 // and is signed in; an existing one picks a new password and signs in with it.
@@ -25,25 +27,25 @@ export function InvitePage() {
 
   if (done) {
     return (
-      <AuthCard title="Password changed">
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">Sign in with your new password. Anywhere you were signed in before has been signed out.</p>
+      <AuthCard title={t("Password changed")}>
+        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{t("Sign in with your new password. Anywhere you were signed in before has been signed out.")}</p>
         <Link to="/signin" className={btnClass("primary", "w-full justify-center")}>
-          Sign in
+          {t("Sign in")}
         </Link>
       </AuthCard>
     );
   }
   if (invite.error) {
     return (
-      <AuthCard title="This link has expired">
+      <AuthCard title={t("This link has expired")}>
         <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{fail(invite.error)}</p>
         <Link to="/signin" className={btnClass("secondary", "w-full justify-center")}>
-          Go to sign in
+          {t("Go to sign in")}
         </Link>
       </AuthCard>
     );
   }
-  if (!invite.data) return <AuthCard title="One moment">{null}</AuthCard>;
+  if (!invite.data) return <AuthCard title={t("One moment")}>{null}</AuthCard>;
 
   const reset = invite.data.passwordReset;
   async function onSubmit(e: FormEvent) {
@@ -63,6 +65,7 @@ export function InvitePage() {
       }
       // Whoever was signed in on this browser before is not any more.
       queryClient.clear();
+      if (r.user) await followUser(r.user.language);
       setSession({ email: r.user?.email ?? "", admin: r.user?.admin ?? false });
       void navigate({ to: "/" });
     } catch (ex) {
@@ -71,17 +74,19 @@ export function InvitePage() {
     }
   }
   return (
-    <AuthCard title={reset ? "Choose a new password" : "Welcome to Silo"}>
+    <AuthCard title={reset ? t("Choose a new password") : t("Welcome to Silo")}>
       <form onSubmit={onSubmit}>
         <p className="mb-4 text-[13.5px] leading-[21px] text-ink-2">
-          {reset ? "For " : "You were invited as "}
-          <span className="font-medium text-ink">{invite.data.email}</span>
-          {reset ? "." : ". Choose a password to finish your account."}
+          <Trans
+            i18nKey={reset ? "For <b>{{email}}</b>." : "You were invited as <b>{{email}}</b>. Choose a password to finish your account."}
+            values={{ email: invite.data.email }}
+            components={{ b: <span className="font-medium text-ink" /> }}
+          />
         </p>
         {/* Lets a password manager file the new password under the right name. */}
         <input className="hidden" type="email" autoComplete="username" value={invite.data.email} readOnly />
         <label htmlFor="silo-new-pass" className={authLabel}>
-          Password
+          {t("Password")}
         </label>
         <input
           id="silo-new-pass"
@@ -94,12 +99,12 @@ export function InvitePage() {
           required
         />
         <label htmlFor="silo-new-pass-2" className={authLabel}>
-          Password again
+          {t("Password again")}
         </label>
         <input id="silo-new-pass-2" type="password" className={`${inputClass} mb-6`} value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" required />
         {err && <AuthError>{err}</AuthError>}
         <Btn kind="primary" className="w-full justify-center" type="submit" disabled={busy}>
-          {busy ? "Saving…" : reset ? "Set password" : "Create account"}
+          {busy ? t("Saving…") : reset ? t("Set password") : t("Create account")}
         </Btn>
       </form>
     </AuthCard>

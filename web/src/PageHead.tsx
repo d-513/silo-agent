@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import { t } from "./i18n.ts";
 
 // The frame of a wide Bot page (Connectors, Channels and their sub-pages).
 export const widePage = "w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20";
@@ -13,7 +14,7 @@ export function PageHead({ title, subtitle, mark, onBack }: { title: string; sub
         type="button"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card transition-colors hover:text-ink hover:shadow-float"
         onClick={onBack}
-        aria-label="Back"
+        aria-label={t("Back")}
       >
         <ArrowLeft size={16} />
       </button>

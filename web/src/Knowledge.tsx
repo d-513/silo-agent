@@ -13,6 +13,8 @@ import { NeedMachine } from "./NeedMachine";
 import { patch, reload } from "./query";
 import { SearchBox } from "./SearchBox";
 import { useSearch } from "./useSearch";
+import { t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 // Folders the Bot cannot index even if picked; the server refuses them too.
 const scratch = new Set(["bot", "tmp"]);
@@ -68,32 +70,32 @@ function FolderPicker({
   if (!bot.workerConnected) {
     return (
       <div className="flex min-h-[200px] flex-col">
-        <NeedMachine copy="Start the Bot to browse its folders." starting={bot.status === "starting"} onStart={onStart} />
+        <NeedMachine copy={t("Start the Bot to browse its folders.")} starting={bot.status === "starting"} onStart={onStart} />
       </div>
     );
   }
 
   const drive = cwd === "drives" || cwd.startsWith("drives/");
   let blocked = "";
-  if (cwd === "") blocked = "Open a folder first.";
-  else if (cwd === "drives") blocked = "Open one drive folder, not all drives at once.";
-  else if (taken.some((t) => within(cwd, t))) blocked = "Already indexed.";
-  else if (taken.some((t) => within(t, cwd))) blocked = "Holds a folder that is already indexed.";
+  if (cwd === "") blocked = t("Open a folder first.");
+  else if (cwd === "drives") blocked = t("Open one drive folder, not all drives at once.");
+  else if (taken.some((t) => within(cwd, t))) blocked = t("Already indexed.");
+  else if (taken.some((t) => within(t, cwd))) blocked = t("Holds a folder that is already indexed.");
 
   return (
     <div>
-      <FolderNav rootLabel="workspace" at={cwd} dirs={dirs} err={err} onGo={setCwd} empty="No subfolders." />
+      <FolderNav rootLabel="workspace" at={cwd} dirs={dirs} err={err} onGo={setCwd} empty={t("No subfolders.")} />
       {drive && (
         <p className="px-5 pt-3 text-[12.5px] leading-[18px] text-ink-2">
-          This folder is on a drive. Indexing reads every file over the network, so a large folder, or a provider that rate-limits, can be slow. It is re-checked less often than local folders.
+          {t("This folder is on a drive. Indexing reads every file over the network, so a large folder, or a provider that rate-limits, can be slow. It is re-checked less often than local folders.")}
         </p>
       )}
       <div className="flex items-center gap-3 px-5 py-4">
         <Btn kind="primary" disabled={blocked !== "" || adding} icon={adding ? <Spinner size={13} tone="on-ink" /> : <FolderPlus size={14} />} onClick={() => onPick(cwd)}>
-          Index {cwd ? <span className="font-mono">{cwd}</span> : "this folder"}
+          {cwd ? <Trans i18nKey="Index <mono>{{folder}}</mono>" values={{ folder: cwd }} components={{ mono: <span className="font-mono" /> }} /> : t("Index this folder")}
         </Btn>
         <Btn kind="ghost" onClick={onCancel}>
-          Cancel
+          {t("Cancel")}
         </Btn>
         {blocked && <span className="text-[12.5px] text-ink-3">{blocked}</span>}
       </div>
@@ -120,27 +122,27 @@ function FolderRow({
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[13.5px] break-all">{f.path}</span>
-            {f.drive && <span className="rounded-xs bg-well px-1.5 py-px font-mono text-[11px] text-ink-2">drive</span>}
+            {f.drive && <span className="rounded-xs bg-well px-1.5 py-px font-mono text-[11px] text-ink-2">{t("drive")}</span>}
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-2">
             {syncing ? (
               <>
                 <Spinner size={12} />
-                <span>Indexing… {f.files > 0 ? `${f.files} files so far` : ""}</span>
+                <span>{f.files > 0 ? t("Indexing… {{count}} files so far", { count: f.files }) : t("Indexing…")}</span>
               </>
             ) : f.status === "error" ? (
-              <span className="text-vermilion">{f.detail || "Sync failed."}</span>
+              <span className="text-vermilion">{f.detail || t("Sync failed.")}</span>
             ) : (
               <span>
-                {f.files} {f.files === 1 ? "file" : "files"} · {f.chunks} passages · synced {ago(f.lastSyncAt)}
+                {[t("{{count}} files", { count: f.files }), t("{{count}} passages", { count: f.chunks }), t("synced {{when}}", { when: ago(f.lastSyncAt) })].join(" · ")}
               </span>
             )}
-            {f.status === "error" && f.lastSyncAt && <span className="text-ink-3">last attempt {ago(f.lastSyncAt)}</span>}
+            {f.status === "error" && f.lastSyncAt && <span className="text-ink-3">{t("last attempt {{when}}", { when: ago(f.lastSyncAt) })}</span>}
           </p>
           {f.status === "idle" && f.detail && <p className="mt-0.5 text-[12.5px] text-ink-2">{f.detail}</p>}
           {f.skipped > 0 && (
             <button type="button" className="mt-1 text-[12.5px] text-cobalt-deep hover:underline" onClick={() => setOpen(!open)}>
-              {f.skipped} not indexed {open ? "▾" : "▸"}
+              {t("{{count}} not indexed", { count: f.skipped })} {open ? "▾" : "▸"}
             </button>
           )}
           {open && (
@@ -150,7 +152,7 @@ function FolderRow({
                   {i.path} <span className="text-ink-3">— {i.detail}</span>
                 </li>
               ))}
-              {f.skipped > f.issues.length && <li className="text-ink-3">…and {f.skipped - f.issues.length} more</li>}
+              {f.skipped > f.issues.length && <li className="text-ink-3">{t("…and {{count}} more", { count: f.skipped - f.issues.length })}</li>}
             </ul>
           )}
         </div>
@@ -159,16 +161,16 @@ function FolderRow({
           size="sm"
           iconOnly
           className="shrink-0"
-          title={canSync ? "Check for changes now" : "Start the Bot to sync"}
-          aria-label="Sync now"
+          title={canSync ? t("Check for changes now") : t("Start the Bot to sync")}
+          aria-label={t("Sync now")}
           aria-disabled={!canSync || syncing}
           icon={<RefreshCw size={13} />}
           onClick={() => {
             if (canSync && !syncing) onSync();
           }}
         />
-        <ArmedButton kind="ghost" size="sm" iconOnly className="shrink-0" title="Stop indexing and forget this folder" icon={<Trash2 size={13} />} onConfirm={onRemove}>
-          Remove
+        <ArmedButton kind="ghost" size="sm" iconOnly className="shrink-0" title={t("Stop indexing and forget this folder")} icon={<Trash2 size={13} />} onConfirm={onRemove}>
+          {t("Remove")}
         </ArmedButton>
       </div>
     </div>
@@ -184,18 +186,18 @@ function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) =
 
   return (
     <Panel
-      title="Try a search"
-      note="The same search the Bot gets as search_docs: meaning and exact words together. Use it to check what the Bot will find."
+      title={t("Try a search")}
+      note={t("The same search the Bot gets as search_docs: meaning and exact words together. Use it to check what the Bot will find.")}
       padded={false}
       className="mt-4"
     >
       <div className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder="Ask about your documents, or paste a name or part number" />
+        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder={t("Ask about your documents, or paste a name or part number")} />
       </div>
       {hits === null ? (
-        <p className="px-5 py-4 text-ink-3">{searching ? "Searching…" : "Type to search."}</p>
+        <p className="px-5 py-4 text-ink-3">{searching ? t("Searching…") : t("Type to search.")}</p>
       ) : hits.length === 0 ? (
-        <p className="px-5 py-4 text-ink-3">Nothing matches.</p>
+        <p className="px-5 py-4 text-ink-3">{t("Nothing matches.")}</p>
       ) : (
         hits.map((h, i) => (
           <div key={`${h.path}:${h.locator}:${i}`} className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
@@ -203,7 +205,7 @@ function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) =
               {h.path} <span className="text-ink-3">· {h.locator}</span>
             </p>
             <p className="mt-1 line-clamp-4 text-[13.5px] break-words whitespace-pre-wrap text-ink-2">{h.snippet}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-ink-3">indexed {day(h.indexedAt)}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-ink-3">{t("indexed {{when}}", { when: day(h.indexedAt) })}</p>
           </div>
         ))
       )}
@@ -265,19 +267,19 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
 
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-title">Knowledge</h2>
+      <h2 className="text-title">{t("Knowledge")}</h2>
       <p className="mb-6 text-ink-2">
-        Pick folders of documents and the Bot can search them by meaning and by exact words, with the file and page cited. Files stay on the Bot's machine; only their text and an embedding are kept in the control plane.
+        {t("Pick folders of documents and the Bot can search them by meaning and by exact words, with the file and page cited. Files stay on the Bot's machine; only their text and an embedding are kept in the control plane.")}
       </p>
-      {!enabled && <p className="mb-4 text-[13px] text-vermilion">The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.</p>}
+      {!enabled && <p className="mb-4 text-[13px] text-vermilion">{t("The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.")}</p>}
       <Panel
-        title="Indexed folders"
-        note="PDFs, Word and OpenDocument files, HTML, Markdown, and plain text or code. Scanned PDF pages and images (English and Polish) are read with OCR. Changes are picked up every few minutes, sooner when the Bot or you write there."
+        title={t("Indexed folders")}
+        note={t("PDFs, Word and OpenDocument files, HTML, Markdown, and plain text or code. Scanned PDF pages and images (English and Polish) are read with OCR. Changes are picked up every few minutes, sooner when the Bot or you write there.")}
         padded={false}
         action={
           !picking && (
             <Btn size="sm" icon={<FolderPlus size={13} />} disabled={!enabled} onClick={() => setPicking(true)}>
-              Add folder
+              {t("Add folder")}
             </Btn>
           )
         }
@@ -288,9 +290,9 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
           </div>
         )}
         {folders === null ? (
-          <p className="px-5 py-4 text-ink-3">Loading…</p>
+          <p className="px-5 py-4 text-ink-3">{t("Loading…")}</p>
         ) : folders.length === 0 ? (
-          !picking && <p className="px-5 py-4 text-ink-3">No folders yet. Add one to give the Bot something to search.</p>
+          !picking && <p className="px-5 py-4 text-ink-3">{t("No folders yet. Add one to give the Bot something to search.")}</p>
         ) : (
           folders.map((f) => <FolderRow key={f.id} f={f} canSync={bot.workerConnected} onSync={() => void sync(f.id)} onRemove={() => void remove(f.id)} />)
         )}

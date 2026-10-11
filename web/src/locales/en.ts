@@ -1,0 +1,49 @@
+// English is the source language: a message's key is its English text, so
+// only the messages that are counted, and read differently for one, need an
+// entry here: one per plural form.
+const en: Record<string, string> = {
+  "{{count}} files_one": "{{count}} file",
+  "{{count}} files_other": "{{count}} files",
+  "{{count}} passages_one": "{{count}} passage",
+  "{{count}} passages_other": "{{count}} passages",
+  "{{count}} Bots_one": "{{count}} Bot",
+  "{{count}} Bots_other": "{{count}} Bots",
+  "{{count}} actions_one": "{{count}} action",
+  "{{count}} actions_other": "{{count}} actions",
+  "{{count}} conversations_one": "{{count}} conversation",
+  "{{count}} conversations_other": "{{count}} conversations",
+  "{{count}} unsaved changes_one": "{{count}} unsaved change",
+  "{{count}} unsaved changes_other": "{{count}} unsaved changes",
+  "every {{count}} hours_one": "every hour",
+  "every {{count}} hours_other": "every {{count}} hours",
+  "Every {{count}} minutes_one": "Every minute",
+  "Every {{count}} minutes_other": "Every {{count}} minutes",
+  "Every {{count}} hours at :{{minute}}_one": "Every hour at :{{minute}}",
+  "Every {{count}} hours at :{{minute}}_other": "Every {{count}} hours at :{{minute}}",
+  "The newest {{count}} lines are kept._one": "The newest line is kept.",
+  "The newest {{count}} lines are kept._other": "The newest {{count}} lines are kept.",
+  "The newest {{count}} messages are kept. A dot marks one the Bot has not read yet._one": "The newest message is kept. A dot marks one the Bot has not read yet.",
+  "The newest {{count}} messages are kept. A dot marks one the Bot has not read yet._other": "The newest {{count}} messages are kept. A dot marks one the Bot has not read yet.",
+  "Only the first {{count}} files are listed._one": "Only the first file is listed.",
+  "Only the first {{count}} files are listed._other": "Only the first {{count}} files are listed.",
+  "Indexing… {{count}} files so far_one": "Indexing… {{count}} file so far",
+  "Indexing… {{count}} files so far_other": "Indexing… {{count}} files so far",
+  "Filter {{count}} decision models_one": "Filter {{count}} decision model",
+  "Filter {{count}} decision models_other": "Filter {{count}} decision models",
+  "Filter {{count}} text models_one": "Filter {{count}} text model",
+  "Filter {{count}} text models_other": "Filter {{count}} text models",
+  "Showing {{count}} connectors_one": "Showing {{count}} connector",
+  "Showing {{count}} connectors_other": "Showing {{count}} connectors",
+  "Connected. Found {{count}} folders._one": "Connected. Found {{count}} folder.",
+  "Connected. Found {{count}} folders._other": "Connected. Found {{count}} folders.",
+  "This Bot has {{count}} tunnels, the most it can have. Delete one to add another._one": "This Bot has {{count}} tunnel, the most it can have. Delete one to add another.",
+  "This Bot has {{count}} tunnels, the most it can have. Delete one to add another._other": "This Bot has {{count}} tunnels, the most it can have. Delete one to add another.",
+  "Removes the account with its {{count}} Bots, their files and its personal skills. This cannot be undone._one":
+    "Removes the account with its Bot, the Bot's files and its personal skills. This cannot be undone.",
+  "Removes the account with its {{count}} Bots, their files and its personal skills. This cannot be undone._other":
+    "Removes the account with its {{count}} Bots, their files and its personal skills. This cannot be undone.",
+  "Left as they are: {{list}}._one": "Left as it is: {{list}}.",
+  "Left as they are: {{list}}._other": "Left as they are: {{list}}.",
+};
+
+export default en;

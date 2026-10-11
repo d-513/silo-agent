@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useMdModules } from "./mdPlugins";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
+import { t } from "./i18n.ts";
 
 function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode }) {
   const display = isDisplayMath(node);
@@ -28,8 +29,8 @@ function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode })
       {tex ? (
         <button
           type="button"
-          title={copied ? "Copied LaTeX" : "Copy LaTeX"}
-          aria-label={copied ? "Copied LaTeX" : "Copy LaTeX"}
+          title={copied ? t("Copied LaTeX") : t("Copy LaTeX")}
+          aria-label={copied ? t("Copied LaTeX") : t("Copy LaTeX")}
           onClick={copy}
           className={`silo-math-copy absolute z-10 inline-flex items-center justify-center rounded-xs bg-surface text-ink-2 shadow-card transition-[opacity,color,background-color] duration-[160ms] hover:bg-well hover:text-ink ${
             display

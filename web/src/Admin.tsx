@@ -2,6 +2,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { type ReactNode } from "react";
 import { Link, Outlet, type LinkProps } from "@tanstack/react-router";
 import { UI } from "./gen/silo/v1/ui_pb";
+import { t } from "./i18n.ts";
 
 function AdminTab({ to, children }: { to: LinkProps["to"]; children: ReactNode }) {
   return (
@@ -23,14 +24,14 @@ export function AdminLayout() {
   const debug = useQuery(UI.method.getSettings, {}).data?.fields.some((f) => f.key === "debug" && f.value === "true") ?? false;
   return (
     <div className="silo-page silo-page-lg">
-      <h1 className="text-title">Admin</h1>
+      <h1 className="text-title">{t("Admin")}</h1>
       <nav className="silo-scroll-x mb-6 mt-4 flex gap-1 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <AdminTab to="/admin/settings">Settings</AdminTab>
-        <AdminTab to="/admin/users">Users</AdminTab>
-        <AdminTab to="/admin/connectors">Connectors Library</AdminTab>
-        <AdminTab to="/admin/skills">Skills Library</AdminTab>
-        <AdminTab to="/admin/drives">Drives</AdminTab>
-        {debug && <AdminTab to="/admin/debug">Debug</AdminTab>}
+        <AdminTab to="/admin/settings">{t("Settings")}</AdminTab>
+        <AdminTab to="/admin/users">{t("Users")}</AdminTab>
+        <AdminTab to="/admin/connectors">{t("Connectors Library")}</AdminTab>
+        <AdminTab to="/admin/skills">{t("Skills Library")}</AdminTab>
+        <AdminTab to="/admin/drives">{t("Drives")}</AdminTab>
+        {debug && <AdminTab to="/admin/debug">{t("Debug")}</AdminTab>}
       </nav>
       <Outlet />
     </div>

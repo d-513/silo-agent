@@ -8,6 +8,7 @@ import { ago } from "../format";
 import { UI, type ListSessionsResponse, type Session } from "../gen/silo/v1/ui_pb";
 import { put } from "../query";
 import { deviceName, methodName } from "./device";
+import { t } from "../i18n.ts";
 
 // SessionsPanel lists where the account is signed in, and signs any of them
 // out. The session in use is first and is ended with Sign out, not here.
@@ -29,13 +30,13 @@ export function SessionsPanel() {
   }
   return (
     <Panel
-      title="Sessions"
-      note="Everywhere this account is signed in."
+      title={t("Sessions")}
+      note={t("Everywhere this account is signed in.")}
       padded={false}
       action={
         others > 0 ? (
-          <ArmedButton size="sm" armedLabel="Click again to sign them out" onConfirm={() => void act(() => ui.revokeOtherSessions({}))}>
-            Sign out everywhere else
+          <ArmedButton size="sm" armedLabel={t("Click again to sign them out")} onConfirm={() => void act(() => ui.revokeOtherSessions({}))}>
+            {t("Sign out everywhere else")}
           </ArmedButton>
         ) : null
       }
@@ -54,10 +55,10 @@ export function SessionsPanel() {
                 <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">{details(s)}</p>
               </div>
               {s.current ? (
-                <span className="shrink-0 text-[12.5px] text-ink-2">This device</span>
+                <span className="shrink-0 text-[12.5px] text-ink-2">{t("This device")}</span>
               ) : (
-                <ArmedButton kind="ghost" size="sm" armedLabel="Click again to sign out" onConfirm={() => void act(() => ui.revokeSession({ id: s.id }))}>
-                  Sign out
+                <ArmedButton kind="ghost" size="sm" armedLabel={t("Click again to sign out")} onConfirm={() => void act(() => ui.revokeSession({ id: s.id }))}>
+                  {t("Sign out")}
                 </ArmedButton>
               )}
             </li>
@@ -71,7 +72,7 @@ export function SessionsPanel() {
 function details(s: Session) {
   const parts = [methodName(s.method)];
   if (s.ip) parts.push(s.ip);
-  parts.push(s.current ? "Active now" : s.lastSeenAt ? `Last seen ${ago(s.lastSeenAt)}` : "Not seen yet");
+  parts.push(s.current ? t("Active now") : s.lastSeenAt ? t("Last seen {{when}}", { when: ago(s.lastSeenAt) }) : t("Not seen yet"));
   return parts.map((p, i) => (
     <span key={i} className="flex gap-x-1.5">
       {i > 0 ? <span aria-hidden>·</span> : null}

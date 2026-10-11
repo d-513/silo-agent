@@ -1,13 +1,15 @@
+import { msg, t } from "../i18n.ts";
+
 // deviceName turns a User-Agent into the few words a person recognises their
 // session by: "Firefox on macOS". It is a label, not detection: anything it
 // does not know is named plainly.
 export function deviceName(ua: string): string {
-  if (!ua.trim()) return "Unknown device";
-  if (/SiloClient|CFNetwork|Darwin\//i.test(ua) && !/Mozilla/i.test(ua)) return "Silo for iOS";
+  if (!ua.trim()) return t("Unknown device");
+  if (/SiloClient|CFNetwork|Darwin\//i.test(ua) && !/Mozilla/i.test(ua)) return t("Silo for iOS");
   const browser = browserOf(ua);
   const os = osOf(ua);
-  if (browser && os) return `${browser} on ${os}`;
-  return browser || os || "Another app";
+  if (browser && os) return t("{{browser}} on {{os}}", { browser, os });
+  return browser || os || t("Another app");
 }
 
 function browserOf(ua: string): string {
@@ -30,9 +32,9 @@ function osOf(ua: string): string {
   return "";
 }
 
-const METHODS: Record<string, string> = { password: "Password", oidc: "Single sign-on", invite: "Invite link" };
+const METHODS: Record<string, string> = { password: msg("Password"), oidc: msg("Single sign-on"), invite: msg("Invite link") };
 
 /** How a session was started, in words. */
 export function methodName(method: string): string {
-  return METHODS[method] ?? "Signed in";
+  return t(METHODS[method] ?? msg("Signed in"));
 }

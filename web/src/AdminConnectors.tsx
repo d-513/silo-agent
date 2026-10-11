@@ -11,13 +11,15 @@ import { Select } from "./Select";
 import { UI, type Connector } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
 import { fail } from "./errors";
+import { t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 function byName(a: Connector, b: Connector) {
   return a.name.localeCompare(b.name);
 }
 
 function categoryOf(c: Connector) {
-  return c.category?.trim() || "General";
+  return c.category?.trim() || t("General");
 }
 
 function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
@@ -33,7 +35,7 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
             <McpChip transport={c.transport} />
             {c.category && <CategoryChip label={c.category} />}
             {(c.autoAttach || c.autoenabled) && (
-              <span className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-[11px] font-medium text-cobalt">Default</span>
+              <span className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-[11px] font-medium text-cobalt">{t("Default")}</span>
             )}
           </div>
           <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-ink-3">{c.description || c.httpUrl || c.stdioCommand}</p>
@@ -50,12 +52,12 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
         kind="ghost"
         size="sm"
         className="shrink-0"
-        title="Remove from the library"
-        armedLabel="Click again to remove"
+        title={t("Remove from the library")}
+        armedLabel={t("Click again to remove")}
         icon={<Trash2 size={13} />}
         onConfirm={onRemove}
       >
-        Remove
+        {t("Remove")}
       </ArmedButton>
     </div>
   );
@@ -128,23 +130,22 @@ export function CatalogList() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-title">Connectors Library</h2>
+        <h2 className="text-title">{t("Connectors Library")}</h2>
         <div className="flex flex-wrap gap-2">
           <Btn kind="secondary" type="button" onClick={() => void seed()} icon={<RotateCcw size={12} />}>
-            Add new presets
+            {t("Add new presets")}
           </Btn>
           <Link to="/admin/connectors/new" className={btnClass("primary")}>
-            <Plus size={16} />
-            Add connector
+            <Plus size={16} />{t("Add connector")}
           </Link>
         </div>
       </div>
-      <p className="mb-4 text-ink-2">Presets every Bot can pick. Attaching copies the preset onto that Bot. Removing one keeps it gone; <span className="text-ink">Add new presets</span> only pulls in newly published ones.</p>
+      <p className="mb-4 text-ink-2"><Trans i18nKey="Presets every Bot can pick. Attaching copies the preset onto that Bot. Removing one keeps it gone; <b>Add new presets</b> only pulls in newly published ones." components={{ b: <span className="text-ink" /> }} /></p>
       {err && <p className="mb-3 text-vermilion">{err}</p>}
       {rows === null ? (
         <SkeletonRows rows={4} height={96} />
       ) : rows.length === 0 ? (
-        <p className="text-ink-2">No presets yet. HTTP or STDIO MCP servers added here show up when a Bot adds from the library.</p>
+        <p className="text-ink-2">{t("No presets yet. HTTP or STDIO MCP servers added here show up when a Bot adds from the library.")}</p>
       ) : (
         <>
           <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -152,7 +153,7 @@ export function CatalogList() {
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
               <input
                 className={`${inputClass} pl-9`}
-                placeholder="Search presets…"
+                placeholder={t("Search presets…")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -160,17 +161,17 @@ export function CatalogList() {
             <Select
               value={sort}
               onChange={setSort}
-              ariaLabel="Sort presets"
+              ariaLabel={t("Sort presets")}
               className="w-[200px] shrink-0"
               options={[
-                { value: "category", label: "Group by category" },
-                { value: "name", label: "Sort by name" },
-                { value: "transport", label: "Sort by transport" },
+                { value: "category", label: t("Group by category") },
+                { value: "name", label: t("Sort by name") },
+                { value: "transport", label: t("Sort by transport") },
               ]}
             />
           </div>
           {filtered.length === 0 ? (
-            <p className="text-ink-2">No presets match “{search}”.</p>
+            <p className="text-ink-2">{t("No presets match “{{search}}”.", { search })}</p>
           ) : groups ? (
             <div className="space-y-7">
               {Array.from(groups.entries()).map(([categoryName, items]) => (
@@ -202,7 +203,7 @@ export function LibraryForm() {
   // The preset fills the form once; after that the form is the human's.
   const [loaded, setLoaded] = useState(!id);
   const [actErr, setErr] = useState("");
-  const err = actErr || (q.error ? fail(q.error) : id && q.data && !preset && !loaded ? "not found" : "");
+  const err = actErr || (q.error ? fail(q.error) : id && q.data && !preset && !loaded ? t("This preset is gone.") : "");
   const saver = useSave();
 
   useEffect(() => {
@@ -243,19 +244,19 @@ export function LibraryForm() {
 
   return (
     <form onSubmit={onSubmit} className="max-w-[560px]">
-      <h2 className="mb-4 text-title">{id ? "Edit preset" : "Add preset"}</h2>
+      <h2 className="mb-4 text-title">{id ? t("Edit preset") : t("Add preset")}</h2>
       {err && <p className="mb-3 text-vermilion">{err}</p>}
       <ConnectorFields value={draft} onChange={setDraft} existing={!!id} allowStdioImage allowAutoAttach allowIdentifier showConfig={false} />
       <div className="flex gap-2">
         <SaveButton type="submit" state={saver.state}>
-          {id ? "Save" : "Add to library"}
+          {id ? t("Save") : t("Add to library")}
         </SaveButton>
         <Btn kind="ghost" type="button" onClick={() => nav({ to: "/admin/connectors" })}>
-          Cancel
+          {t("Cancel")}
         </Btn>
         {id && (
           <ArmedButton kind="ghost" icon={<Trash2 size={14} />} onConfirm={() => void remove()}>
-            Delete
+            {t("Delete")}
           </ArmedButton>
         )}
       </div>

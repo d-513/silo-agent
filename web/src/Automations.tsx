@@ -18,22 +18,23 @@ import { UI, type Automation, type Bot } from "./gen/silo/v1/ui_pb";
 import { patch } from "./query";
 import { fail } from "./errors";
 import { nextWhen } from "./format";
+import { msg, t } from "./i18n.ts";
 
 function nextLine(a: Automation) {
-  if (a.running) return "Running now";
-  if (!a.enabled) return "Paused";
-  if (!a.schedule) return "No schedule — never runs on its own";
-  return a.nextRunAt ? `Next ${nextWhen(a.nextRunAt)}` : "";
+  if (a.running) return t("Running now");
+  if (!a.enabled) return t("Paused");
+  if (!a.schedule) return t("No schedule — never runs on its own");
+  return a.nextRunAt ? t("Next {{when}}", { when: nextWhen(a.nextRunAt) }) : "";
 }
 
 const modeOptions: { value: Mode; label: string }[] = [
-  { value: "none", label: "No schedule" },
-  { value: "minutes", label: "Every few minutes" },
-  { value: "hours", label: "Every few hours" },
-  { value: "daily", label: "Every day" },
-  { value: "weekly", label: "On chosen days" },
-  { value: "monthly", label: "Every month" },
-  { value: "custom", label: "Custom (cron)" },
+  { value: "none", label: msg("No schedule") },
+  { value: "minutes", label: msg("Every few minutes") },
+  { value: "hours", label: msg("Every few hours") },
+  { value: "daily", label: msg("Every day") },
+  { value: "weekly", label: msg("On chosen days") },
+  { value: "monthly", label: msg("Every month") },
+  { value: "custom", label: msg("Custom (cron)") },
 ];
 
 function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cron: string) => void; zone: string }) {
@@ -60,16 +61,16 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
     />
   );
   return (
-    <Field label="Schedule" hint={`${describe(toCron(s))} · ${zone ? `${zone} time` : "the Bot's time zone"}`}>
+    <Field label={t("Schedule")} hint={`${describe(toCron(s))} · ${zone ? t("{{zone}} time", { zone }) : t("the Bot's time zone")}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <Select className="w-52" value={s.mode} options={modeOptions} onChange={(v) => set({ mode: v as Mode, every: v === "minutes" ? 30 : v === "hours" ? 1 : s.every })} />
+        <Select className="w-52" value={s.mode} options={modeOptions.map((o) => ({ value: o.value, label: t(o.label) }))} onChange={(v) => set({ mode: v as Mode, every: v === "minutes" ? 30 : v === "hours" ? 1 : s.every })} />
         {s.mode === "minutes" && (
-          <Select className="w-40" value={String(s.every)} options={MINUTE_STEPS.map((n) => ({ value: String(n), label: `every ${n} min` }))} onChange={(v) => set({ every: Number(v) })} />
+          <Select className="w-40" value={String(s.every)} options={MINUTE_STEPS.map((n) => ({ value: String(n), label: t("every {{count}} min", { count: n }) }))} onChange={(v) => set({ every: Number(v) })} />
         )}
         {s.mode === "hours" && (
           <>
-            <Select className="w-40" value={String(s.every)} options={HOUR_STEPS.map((n) => ({ value: String(n), label: n === 1 ? "every hour" : `every ${n} hours` }))} onChange={(v) => set({ every: Number(v) })} />
-            <span className="text-[13px] text-ink-2">at minute</span>
+            <Select className="w-40" value={String(s.every)} options={HOUR_STEPS.map((n) => ({ value: String(n), label: t("every {{count}} hours", { count: n }) }))} onChange={(v) => set({ every: Number(v) })} />
+            <span className="text-[13px] text-ink-2">{t("at minute")}</span>
             <input type="number" min={0} max={59} className={`${inputClass} w-20`} value={s.minute} onChange={(e) => set({ minute: Math.max(0, Math.min(59, Number(e.target.value) || 0)) })} />
           </>
         )}
@@ -77,11 +78,11 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
           <>
             {s.mode === "monthly" && (
               <>
-                <span className="text-[13px] text-ink-2">on day</span>
+                <span className="text-[13px] text-ink-2">{t("on day")}</span>
                 <input type="number" min={1} max={31} className={`${inputClass} w-20`} value={s.dom} onChange={(e) => set({ dom: Math.max(1, Math.min(31, Number(e.target.value) || 1)) })} />
               </>
             )}
-            <span className="text-[13px] text-ink-2">at</span>
+            <span className="text-[13px] text-ink-2">{t("at")}</span>
             {time}
           </>
         )}
@@ -103,7 +104,7 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
                   on ? "bg-cobalt-pale text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "text-ink-2 hover:bg-well"
                 }`}
               >
-                {DAY_SHORT[d]}
+                {t(DAY_SHORT[d])}
               </button>
             );
           })}
@@ -136,18 +137,18 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
   }
   return (
     <form onSubmit={save} className="grid gap-4">
-      <Field label="Name">
-        <input className={inputClass} value={name} disabled={heartbeat} placeholder="Morning digest" onChange={(e) => setName(e.target.value)} />
+      <Field label={t("Name")}>
+        <input className={inputClass} value={name} disabled={heartbeat} placeholder={t("Morning digest")} onChange={(e) => setName(e.target.value)} />
       </Field>
       <ScheduleField value={schedule} onChange={setSchedule} zone={bot.timeZone} />
-      <PromptWell label="Prompt" hint="Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state." value={prompt} onChange={setPrompt} />
+      <PromptWell label={t("Prompt")} hint={t("Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state.")} value={prompt} onChange={setPrompt} />
       <div className="flex items-center gap-3">
-        <Switch on={enabled} onChange={setEnabled} title="Active" />
-        <span className="text-[13px] text-ink-2">{enabled ? "Active — runs on its schedule" : "Paused — keeps its schedule, does not run"}</span>
+        <Switch on={enabled} onChange={setEnabled} title={t("Active")} />
+        <span className="text-[13px] text-ink-2">{enabled ? t("Active — runs on its schedule") : t("Paused — keeps its schedule, does not run")}</span>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <SaveButton type="submit" state={saver.state} disabled={!name.trim() || !prompt.trim()}>
-          {auto ? "Save" : "Create automation"}
+          {auto ? t("Save") : t("Create automation")}
         </SaveButton>
         {auto && !heartbeat && onDeleted && (
           <ArmedButton
@@ -161,7 +162,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
               }
             }}
           >
-            Delete
+            {t("Delete")}
           </ArmedButton>
         )}
       </div>
@@ -184,14 +185,14 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
           <span className="flex items-center gap-2">
             <span className="truncate text-[13.5px] font-medium text-ink">{a.name}</span>
             {a.running ? <Lamp status="working" /> : null}
-            {a.lastStatus === "error" ? <span className="text-[12px] text-vermilion">Last run failed</span> : null}
+            {a.lastStatus === "error" ? <span className="text-[12px] text-vermilion">{t("Last run failed")}</span> : null}
           </span>
           <span className="block truncate text-[12.5px] text-ink-3">
             {describe(a.schedule)} · {nextLine(a)}
           </span>
         </span>
       </Link>
-      <Switch on={a.enabled} onChange={onToggle} title={a.enabled ? "Pause" : "Resume"} />
+      <Switch on={a.enabled} onChange={onToggle} title={a.enabled ? t("Pause") : t("Resume")} />
     </div>
   );
 }
@@ -216,9 +217,9 @@ export function AutomationNew({ bot, onError }: { bot: Bot; onError: (s: string)
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="silo-page">
         <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
-          <ChevronLeft size={14} /> Automations
+          <ChevronLeft size={14} /> {t("Automations")}
         </Link>
-        <h2 className="mb-6 text-title">New automation</h2>
+        <h2 className="mb-6 text-title">{t("New automation")}</h2>
         <Panel>
           <Editor
             bot={bot}
@@ -257,14 +258,14 @@ export function AutomationLog({
   const sel = list?.find((a) => a.id === automationId);
   const stream = useRunStream(bot.id, sel?.chatId, { onApproval: onApprovals });
   if (!sel) {
-    return <div className="p-7">{list === null ? <SkeletonRows rows={3} /> : <p className="text-ink-2">This automation is gone.</p>}</div>;
+    return <div className="p-7">{list === null ? <SkeletonRows rows={3} /> : <p className="text-ink-2">{t("This automation is gone.")}</p>}</div>;
   }
   const busy = stream.sending || sel.running;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-4 wide:px-7">
         <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
-          <ChevronLeft size={14} /> Automations
+          <ChevronLeft size={14} /> {t("Automations")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
@@ -274,11 +275,11 @@ export function AutomationLog({
           </span>
           <span className="flex-1" />
           <Btn kind="ghost" size="sm" onClick={() => setEditing((v) => !v)}>
-            {editing ? "Close" : "Edit"}
+            {editing ? t("Close") : t("Edit")}
           </Btn>
           {busy ? (
             <Btn kind="secondary" size="sm" icon={<Square size={11} />} onClick={() => ui.stopRun({ botId: bot.id, chatId: sel.chatId }).catch((e) => onError(fail(e)))}>
-              Stop
+              {t("Stop")}
             </Btn>
           ) : (
             <Btn
@@ -292,7 +293,7 @@ export function AutomationLog({
                   .catch((e) => onError(fail(e)))
               }
             >
-              Run now
+              {t("Run now")}
             </Btn>
           )}
         </div>
@@ -325,7 +326,7 @@ export function AutomationLog({
         userAs="run"
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
-        emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">No runs yet. Run it now, or wait for its schedule.</p>}
+        emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">{t("No runs yet. Run it now, or wait for its schedule.")}</p>}
       />
     </div>
   );
@@ -351,11 +352,11 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
       <div className="silo-page">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-title">Automations</h2>
-            <p className="text-ink-2">Prompts {bot.name} runs on its own, on a schedule. Each run starts fresh and lands in its log.</p>
+            <h2 className="text-title">{t("Automations")}</h2>
+            <p className="text-ink-2">{t("Prompts {{name}} runs on its own, on a schedule. Each run starts fresh and lands in its log.", { name: bot.name })}</p>
           </div>
           <Btn kind="primary" icon={<Plus size={13} />} onClick={() => void nav({ to: "/bots/$botId/automations/new", params: { botId: bot.id } })}>
-            New
+            {t("New")}
           </Btn>
         </div>
         {list === null ? (
@@ -366,11 +367,11 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
               {heartbeat.map((a) => (
                 <Row key={a.id} bot={bot} a={a} onToggle={(on) => void toggle(a, on)} />
               ))}
-              <p className="px-5 py-3 text-[12.5px] leading-[18px] text-ink-3">Every Bot has one, and it cannot be deleted. It does not run until you give it a schedule.</p>
+              <p className="px-5 py-3 text-[12.5px] leading-[18px] text-ink-3">{t("Every Bot has one, and it cannot be deleted. It does not run until you give it a schedule.")}</p>
             </Panel>
-            <Panel padded={false} title="Scheduled" className="mt-4">
+            <Panel padded={false} title={t("Scheduled")} className="mt-4">
               {custom.length === 0 ? (
-                <p className="px-5 py-4 text-[13px] text-ink-3">None yet. Ask {bot.name} in a chat — “every weekday at 9, summarize my inbox” — or add one here.</p>
+                <p className="px-5 py-4 text-[13px] text-ink-3">{t("None yet. Ask {{name}} in a chat — “every weekday at 9, summarize my inbox” — or add one here.", { name: bot.name })}</p>
               ) : (
                 custom.map((a) => <Row key={a.id} bot={bot} a={a} onToggle={(on) => void toggle(a, on)} />)
               )}

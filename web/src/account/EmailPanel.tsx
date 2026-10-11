@@ -5,6 +5,7 @@ import { fail } from "../errors";
 import { SaveButton, useSave } from "../Feedback";
 import { ErrorWell, Field, inputClass, Panel } from "../Field";
 import { type User } from "../gen/silo/v1/ui_pb";
+import { t } from "../i18n.ts";
 
 // EmailPanel changes the address the account signs in with. Silo sends no
 // mail, so the change is immediate and nothing is confirmed.
@@ -30,15 +31,15 @@ export function EmailPanel({ user, onChange }: { user: User; onChange: (u: User)
     }
   }
   return (
-    <Panel title="Email" note={methods(user)}>
+    <Panel title={t("Email")} note={methods(user)}>
       <form onSubmit={onSubmit} className="grid gap-4">
-        <Field label="Email" hint="What you sign in with. It changes at once; Silo sends no mail to confirm it.">
+        <Field label={t("Email")} hint={t("What you sign in with. It changes at once; Silo sends no mail to confirm it.")}>
           <input className={inputClass} type="email" autoComplete="username" spellCheck={false} value={email} onChange={(e) => setDraft(e.target.value)} required />
         </Field>
         {err ? <ErrorWell>{err}</ErrorWell> : null}
         <div>
-          <SaveButton state={saver.state} type="submit" savedLabel="Changed" disabled={!changed}>
-            Change email
+          <SaveButton state={saver.state} type="submit" savedLabel={t("Changed")} disabled={!changed}>
+            {t("Change email")}
           </SaveButton>
         </div>
       </form>
@@ -47,7 +48,7 @@ export function EmailPanel({ user, onChange }: { user: User; onChange: (u: User)
 }
 
 function methods(u: User): string {
-  if (u.hasPassword && u.oidc) return "You sign in with your password or with single sign-on.";
-  if (u.oidc) return "You sign in with single sign-on. Set a password to be able to sign in without it.";
-  return "You sign in with your password.";
+  if (u.hasPassword && u.oidc) return t("You sign in with your password or with single sign-on.");
+  if (u.oidc) return t("You sign in with single sign-on. Set a password to be able to sign in without it.");
+  return t("You sign in with your password.");
 }

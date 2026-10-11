@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
+	"silo.agent/internal/lang"
 )
 
 // ChangeEmail sets the address the signed-in user signs in with. Nothing
@@ -55,4 +56,23 @@ func (s *Service) setEmail(u *db.User, raw string, selfSet bool) error {
 		// A reset link that is out for them stays theirs, under the new name.
 		return tx.Model(&db.Invite{}).Where("user_id = ?", u.ID).Update("email", email).Error
 	})
+}
+
+// SetLanguage picks the language the signed-in user reads the console in. It
+// is one of the few the web is translated into; a Bot's own language is a
+// separate, longer list (UpdateBot).
+func (s *Service) SetLanguage(ctx context.Context, req *connect.Request[v1.SetLanguageRequest]) (*connect.Response[v1.User], error) {
+	u := access.User(ctx)
+	code := req.Msg.GetLanguage()
+	if err := lang.CheckUI(code); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err := s.db.Model(&db.User{}).Where("id = ?", u.ID).Update("language", code).Error; err != nil {
+		return nil, err
+	}
+	fresh, err := s.reload(u.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(protoUser(fresh)), nil
 }

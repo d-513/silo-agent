@@ -4,6 +4,8 @@ import { SaveButton, useSave } from "../Feedback";
 import { Btn } from "../Btn";
 import { Panel, inputClass } from "../Field";
 import { ConfigSource, type ConnectorVar } from "../gen/silo/v1/ui_pb";
+import { t } from "../i18n.ts";
+import { Trans } from "../Trans.tsx";
 
 type VarDraft = { name: string; value: string; source: ConfigSource; envName: string };
 
@@ -34,18 +36,17 @@ export function ConnectorVarsPanel({
 
   return (
     <Panel
-      title="Connector variables"
-      note="Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}."
+      title={t("Connector variables")}
+      note={t("Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}.")}
     >
       <p className="mb-4 flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-[13px] text-ink">
         <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={16} />
         <span>
-          These are variables, not secrets. Values are stored in plain text in <span className="font-mono">silo.yaml</span> and are not
-          protected — anyone who can read the config can see them. Use a Bot Secret for credentials.
+          <Trans i18nKey="These are variables, not secrets. Values are stored in plain text in <mono>silo.yaml</mono> and are not protected — anyone who can read the config can see them. Use a Bot Secret for credentials." components={{ mono: <span className="font-mono" /> }} />
         </span>
       </p>
       {draft.length === 0 ? (
-        <p className="mb-3 text-[13px] text-ink-2">No variables yet.</p>
+        <p className="mb-3 text-[13px] text-ink-2">{t("No variables yet.")}</p>
       ) : (
         <div className="mb-3 grid gap-2">
           {draft.map((r, i) => {
@@ -54,7 +55,7 @@ export function ConnectorVarsPanel({
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
                   className={`${inputClass} w-48 font-mono text-[13px]`}
-                  placeholder="NAME"
+                  placeholder={"NAME"}
                   value={r.name}
                   disabled={locked}
                   onChange={(e) => update(i, { name: e.target.value })}
@@ -62,7 +63,7 @@ export function ConnectorVarsPanel({
                 <span className="text-ink-3">=</span>
                 <input
                   className={`${inputClass} min-w-[160px] flex-1 font-mono text-[13px]`}
-                  placeholder="value"
+                  placeholder={t("value")}
                   value={r.value}
                   disabled={locked}
                   onChange={(e) => update(i, { value: e.target.value })}
@@ -75,7 +76,7 @@ export function ConnectorVarsPanel({
                 ) : (
                   <button
                     type="button"
-                    title="Remove"
+                    title={t("Remove")}
                     className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
                     onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))}
                   >
@@ -89,10 +90,10 @@ export function ConnectorVarsPanel({
       )}
       <div className="flex items-center gap-3">
         <Btn onClick={() => setDraft((prev) => [...prev, { name: "", value: "", source: ConfigSource.DEFAULT, envName: "" }])}>
-          <Plus size={14} /> Add variable
+          <Plus size={14} /> {t("Add variable")}
         </Btn>
         <SaveButton state={varSaver.state} onClick={save}>
-          Save variables
+          {t("Save variables")}
         </SaveButton>
       </div>
     </Panel>

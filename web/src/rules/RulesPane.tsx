@@ -6,6 +6,7 @@ import { PolicyPanel } from "./PolicyPanel";
 import { RulesFilter } from "./RulesFilter";
 import { SectionCard } from "./SectionCard";
 import { useRules } from "./useRules";
+import { t } from "../i18n.ts";
 
 // The Rules tab: what each Bot, secret and connector action is allowed to do.
 export function RulesPane({ botId }: { botId: string }) {
@@ -21,8 +22,8 @@ export function RulesPane({ botId }: { botId: string }) {
     <div className="silo-page">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h2 className="text-title text-ink">Rules</h2>
-          <p className="mt-0.5 text-ink-2">Permissions for tools, secrets, and system actions</p>
+          <h2 className="text-title text-ink">{t("Rules")}</h2>
+          <p className="mt-0.5 text-ink-2">{t("Permissions for tools, secrets, and system actions")}</p>
         </div>
         {total > 5 && <RulesFilter value={filter} onChange={setFilter} />}
       </div>
@@ -37,7 +38,7 @@ export function RulesPane({ botId }: { botId: string }) {
 
       {loaded && visible.length === 0 && (
         <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
-          No matching rules found for &ldquo;{filter}&rdquo;
+          {t("No matching rules found for “{{filter}}”", { filter })}
         </div>
       )}
 

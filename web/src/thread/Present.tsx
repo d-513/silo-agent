@@ -7,6 +7,7 @@ import { fail } from "../errors";
 import { kindLabel } from "../fileKind";
 import { downloadFile, FilePreview } from "../FilePreview";
 import { fmtBytes } from "../format";
+import { t } from "../i18n.ts";
 
 export function isBotScratch(path: string): boolean {
   const p = path.replace(/^\/+/, "").replace(/^(workspace\/)+/, "");
@@ -42,7 +43,7 @@ function fileSize(f: LoadedFile) {
 function PreviewBody({ file, err, className = "" }: { file: LoadedFile | null; err: string; className?: string }) {
   return (
     <div className={`space-y-2 ${className}`.trim()}>
-      {file?.truncated ? <p className="text-[12.5px] text-ink-3">Showing the first 2 MB.</p> : null}
+      {file?.truncated ? <p className="text-[12.5px] text-ink-3">{t("Showing the first 2 MB.")}</p> : null}
       {err ? <p className="text-[13px] text-vermilion">{err}</p> : null}
       {!file && !err ? <div className="skeleton h-40 rounded-sm" /> : null}
       {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
@@ -67,8 +68,7 @@ export function PresentFile({ botId, path }: { botId: string; path: string }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13.5px] leading-5 font-medium text-ink">{name}</div>
           <div className="truncate text-[12.5px] leading-[18px] text-ink-3">
-            {kindLabel(name)}
-            {file ? ` · ${fmtBytes(fileSize(file))}` : ""} · in Files
+            {[kindLabel(name), file ? fmtBytes(fileSize(file)) : "", t("in Files")].filter(Boolean).join(" · ")}
           </div>
         </div>
         {file ? (
@@ -76,8 +76,8 @@ export function PresentFile({ botId, path }: { botId: string; path: string }) {
             kind="ghost"
             size="sm"
             iconOnly
-            title="Download"
-            aria-label="Download"
+            title={t("Download")}
+            aria-label={t("Download")}
             icon={<Download size={15} />}
             onClick={() => downloadFile(file.name, file.content, file.data)}
           />

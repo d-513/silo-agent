@@ -2,6 +2,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { listboxKeys, useDismiss } from "./useMenu";
+import { t } from "./i18n.ts";
 
 export interface SelectOption {
   value: string;
@@ -22,8 +23,8 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder = "Select…",
-  emptyLabel = "No options",
+  placeholder = t("Select…"),
+  emptyLabel = t("No options"),
   disabled = false,
   variant = "field",
   className = "",

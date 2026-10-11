@@ -6,6 +6,7 @@ import { resultLang } from "../highlight";
 import { FoldRow, type RowState } from "./FoldRow";
 import { ToolIcon, type ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, prettyJson } from "./toolInfo";
+import { t } from "../i18n.ts";
 
 function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   const displayLang = lang || (resultLang(code) ?? "");
@@ -13,7 +14,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
     <div className="overflow-hidden rounded-sm bg-well">
       <div className="flex h-8 items-center justify-between pr-1 pl-3 shadow-[inset_0_-1px_0_var(--color-line)]">
         <span className="text-label-caps leading-4 text-ink-3 uppercase">{displayLang || "code"}</span>
-        <CopyButton text={code} title="Copy code" label size={12} />
+        <CopyButton text={code} title={t("Copy code")} label size={12} />
       </div>
       <Highlighted code={code} lang={lang} preClass="whitespace-pre-wrap break-words p-3 font-mono text-[12.5px] leading-5" codeClass="hljs whitespace-pre-wrap break-words" />
     </div>
@@ -60,8 +61,7 @@ export function ToolRow({
         <>
           {state === "waiting" ? (
             <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-vermilion">
-              <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" aria-hidden />
-              Waiting for you
+              <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" aria-hidden />{t("Waiting for you")}
             </span>
           ) : null}
           {action ? <span className="min-w-0 truncate font-mono text-[12.5px] text-ink-3">{action}</span> : null}
@@ -202,7 +202,7 @@ export function ToolResult({ text, live }: { text: string; live?: boolean }) {
   if (!long || live) return inner;
   return (
     <details>
-      <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">Result</summary>
+      <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">{t("Result")}</summary>
       <div className="mt-2">{inner}</div>
     </details>
   );

@@ -7,6 +7,8 @@ import { Select } from "./Select";
 import { UI, type Bot, type LLMLog } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
 import { fail } from "./errors";
+import { t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 const labelClass: Record<string, string> = {
   chat: "bg-cobalt-pale text-ink",
@@ -30,25 +32,25 @@ function LogRow({ log }: { log: LLMLog }) {
         <LabelChip label={log.label} />
         <span className="font-mono text-ink">{log.model}</span>
         <span className="text-ink-3">{log.provider}</span>
-        {log.error ? <span className="font-medium text-vermilion">error</span> : null}
+        {log.error ? <span className="font-medium text-vermilion">{t("error")}</span> : null}
         <span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-ink-3">
-          <span>in {log.inputTokens}</span>
-          <span>out {log.outputTokens}</span>
+          <span>{t("in {{tokens}}", { tokens: log.inputTokens })}</span>
+          <span>{t("out {{tokens}}", { tokens: log.outputTokens })}</span>
           <span>{log.durationMs}ms</span>
         </span>
       </summary>
       <div className="space-y-3 border-t border-line-strong bg-well p-3">
         {log.error ? <p className="break-words font-mono text-[12px] text-vermilion">{log.error}</p> : null}
         <div>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">Request</div>
+          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{t("Request")}</div>
           <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-[12px] leading-5 text-ink">
-            {log.request || "(empty)"}
+            {log.request || t("(empty)")}
           </pre>
         </div>
         <div>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">Response</div>
+          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{t("Response")}</div>
           <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-[12px] leading-5 text-ink">
-            {log.response || "(empty)"}
+            {log.response || t("(empty)")}
           </pre>
         </div>
       </div>
@@ -76,11 +78,12 @@ export function AdminDebug() {
   if (!enabled && !loading) {
     return (
       <div>
-        <h2 className="mb-2 text-title">Debug</h2>
+        <h2 className="mb-2 text-title">{t("Debug")}</h2>
         <p className="text-ink-2">
-          Debug logging is off. Set <span className="font-mono text-ink">debug: true</span> in{" "}
-          <span className="font-mono text-ink">silo.yaml</span> (or{" "}
-          <span className="font-mono text-ink">SILO_DEBUG=true</span>) and reload.
+          <Trans
+            i18nKey="Debug logging is off. Set <mono>debug: true</mono> in <mono>silo.yaml</mono> (or <mono>SILO_DEBUG=true</mono>) and reload."
+            components={{ mono: <span className="font-mono text-ink" /> }}
+          />
         </p>
       </div>
     );
@@ -90,19 +93,19 @@ export function AdminDebug() {
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-title">Debug</h2>
-          <p className="mt-0.5 text-ink-2">Raw model requests and responses from every feature, including auto-approval.</p>
+          <h2 className="text-title">{t("Debug")}</h2>
+          <p className="mt-0.5 text-ink-2">{t("Raw model requests and responses from every feature, including auto-approval.")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-[200px]">
             <Select
               value={botId}
               onChange={setBotId}
-              options={[{ value: "", label: "All Bots" }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
+              options={[{ value: "", label: t("All Bots") }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
             />
           </div>
           <Btn kind="secondary" icon={<RefreshCw size={12} />} onClick={() => void reload(UI.method.listLLMLogs)}>
-            Refresh
+            {t("Refresh")}
           </Btn>
         </div>
       </div>
@@ -110,7 +113,7 @@ export function AdminDebug() {
       {logs.length === 0 && loading ? (
         <SkeletonRows rows={3} height={52} />
       ) : logs.length === 0 ? (
-        <div className="rounded-card bg-well p-8 text-center text-[13px] text-ink-3">No model calls captured yet.</div>
+        <div className="rounded-card bg-well p-8 text-center text-[13px] text-ink-3">{t("No model calls captured yet.")}</div>
       ) : (
         <div className="grid gap-2">
           {logs.map((l) => (

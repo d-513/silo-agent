@@ -4,6 +4,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { useBotPage } from "./context";
 import { FadeScroll } from "./FadeScroll";
 import type { CustomizeTab, SettingsTab } from "./tabs";
+import { msg, t } from "../i18n.ts";
 
 // One 2px cobalt underline that slides to the active tab. It measures the tab
 // marked data-tab-on in the strip it sits in, and re-measures on resize and
@@ -76,11 +77,11 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
       <header className="flex h-12 shrink-0 items-center gap-4 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:px-5">
         <h1 className="hidden shrink-0 text-card-title leading-5 wide:block">{title}</h1>
         <TabStrip tab={tab}>
-          {items.map(({ tab: t, to, label, icon: Icon }) => {
-            const on = tab === t;
+          {items.map(({ tab: item, to, label, icon: Icon }) => {
+            const on = tab === item;
             return (
               <Link
-                key={t}
+                key={item}
                 to={to}
                 params={{ botId: id }}
                 data-tab-on={on || undefined}
@@ -89,7 +90,7 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
                 }`}
               >
                 <Icon size={15} />
-                {label}
+                {t(label)}
               </Link>
             );
           })}
@@ -103,26 +104,26 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
 }
 
 const customize: readonly Item[] = [
-  { tab: "connectors", to: "/bots/$botId/connectors", label: "Connectors", icon: Plug },
-  { tab: "skills", to: "/bots/$botId/skills", label: "Skills", icon: Book },
-  { tab: "drives", to: "/bots/$botId/drives", label: "Drives", icon: HardDrive },
-  { tab: "channels", to: "/bots/$botId/channels", label: "Channels", icon: Radio },
+  { tab: "connectors", to: "/bots/$botId/connectors", label: msg("Connectors"), icon: Plug },
+  { tab: "skills", to: "/bots/$botId/skills", label: msg("Skills"), icon: Book },
+  { tab: "drives", to: "/bots/$botId/drives", label: msg("Drives"), icon: HardDrive },
+  { tab: "channels", to: "/bots/$botId/channels", label: msg("Channels"), icon: Radio },
 ];
 
 const settings: readonly Item[] = [
-  { tab: "settings", to: "/bots/$botId/settings", label: "General", icon: SlidersHorizontal },
-  { tab: "rules", to: "/bots/$botId/rules", label: "Rules", icon: ListChecks },
-  { tab: "secrets", to: "/bots/$botId/secrets", label: "Secrets", icon: Key },
-  { tab: "tunnels", to: "/bots/$botId/tunnels", label: "Tunnels", icon: Waypoints },
-  { tab: "container", to: "/bots/$botId/container", label: "Containers", icon: Box },
+  { tab: "settings", to: "/bots/$botId/settings", label: msg("General"), icon: SlidersHorizontal },
+  { tab: "rules", to: "/bots/$botId/rules", label: msg("Rules"), icon: ListChecks },
+  { tab: "secrets", to: "/bots/$botId/secrets", label: msg("Secrets"), icon: Key },
+  { tab: "tunnels", to: "/bots/$botId/tunnels", label: msg("Tunnels"), icon: Waypoints },
+  { tab: "container", to: "/bots/$botId/container", label: msg("Containers"), icon: Box },
 ];
 
 /** Customize: what the Bot can reach and use. */
 export function CustomizeLayout() {
-  return <Section title="Customize" items={customize} />;
+  return <Section title={t("Customize")} items={customize} />;
 }
 
 /** Settings: the Bot itself, what it may do, and what it runs on. */
 export function SettingsLayout() {
-  return <Section title="Settings" items={settings} />;
+  return <Section title={t("Settings")} items={settings} />;
 }

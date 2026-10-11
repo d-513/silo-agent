@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
+import { msg, t } from "./i18n.ts";
 
 // errors.ts is the one place the UI classifies a failed call. Only
 // Unauthenticated ends the session; a CP restart, a dev-proxy 502, or a network
@@ -39,18 +40,18 @@ export function isCanceled(e: unknown): boolean {
 }
 
 const fallback: Partial<Record<Code, string>> = {
-  [Code.NotFound]: "Not found.",
-  [Code.PermissionDenied]: "You don't have access to that.",
-  [Code.Canceled]: "Canceled.",
-  [Code.ResourceExhausted]: "Too many requests. Try again in a moment.",
+  [Code.NotFound]: msg("Not found."),
+  [Code.PermissionDenied]: msg("You don't have access to that."),
+  [Code.Canceled]: msg("Canceled."),
+  [Code.ResourceExhausted]: msg("Too many requests. Try again in a moment."),
 };
 
 /** A short sentence for the user. Never a "[code]" prefix, never empty. */
 export function fail(e: unknown): string {
-  if (isSignedOut(e)) return "Your session ended. Sign in again.";
-  if (isTransient(e)) return "Can't reach Silo. Try again in a moment.";
+  if (isSignedOut(e)) return t("Your session ended. Sign in again.");
+  if (isTransient(e)) return t("Can't reach Silo. Try again in a moment.");
   const c = code(e);
   const raw = e instanceof ConnectError ? e.rawMessage : e instanceof Error ? e.message.replace(/^\[[^\]]+\]\s*/, "") : "";
   if (raw.trim()) return raw;
-  return (c !== undefined && fallback[c]) || "Something went wrong.";
+  return t((c !== undefined && fallback[c]) || msg("Something went wrong."));
 }

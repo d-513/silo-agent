@@ -1,3 +1,5 @@
+import { t } from "../i18n.ts";
+
 // Pure helpers for a provider's model list (kept out of the component so node
 // can test them).
 
@@ -29,10 +31,7 @@ export function filterModels<T extends { id: string; name: string }>(list: T[], 
 /** The two kinds of model. A text model writes; a decision model answers typed questions. */
 export type ModelKind = "text" | "decision";
 
-export const KINDS: { id: ModelKind; label: string }[] = [
-  { id: "text", label: "Text" },
-  { id: "decision", label: "Decision" },
-];
+export const KINDS: ModelKind[] = ["text", "decision"];
 
 /** A listed model's kind; anything a provider does not mark as a decision model is text. */
 export function kindOf(m: { kind?: string }): ModelKind {
@@ -41,13 +40,13 @@ export function kindOf(m: { kind?: string }): ModelKind {
 
 /** The kinds a list holds, text first. */
 export function kindsIn(list: { kind?: string }[]): ModelKind[] {
-  return KINDS.map((k) => k.id).filter((k) => list.some((m) => kindOf(m) === k));
+  return KINDS.filter((k) => list.some((m) => kindOf(m) === k));
 }
 
 /** A role's picker rows when it takes either kind: decision models first, each saying what it is. */
 export function eitherKind<T extends { id: string; label: string }>(text: T[], decision: T[]): { value: string; label: string; hint: string }[] {
   const rows = (list: T[], hint: string) => list.map((m) => ({ value: m.id, label: m.label || m.id, hint }));
-  return [...rows(decision, "Decision model"), ...rows(text, "Text model")];
+  return [...rows(decision, t("Decision model")), ...rows(text, t("Text model"))];
 }
 
 /** The allowlist with `id` added at the end, or taken out; unchanged if there is nothing to do. */

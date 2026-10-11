@@ -2,6 +2,7 @@ import { Plug, Plus, Sparkles } from "lucide-react";
 import { btnClass } from "../Btn";
 import type { Connector } from "../gen/silo/v1/ui_pb";
 import { CatalogCard, FeaturedCard } from "./LibraryCards";
+import { t } from "../i18n.ts";
 
 // The library: category pills, then featured presets and the rest by category
 // (or the flat filtered list once a category or search narrows it), and a
@@ -45,10 +46,10 @@ export function LibraryTab({
           }`}
           onClick={() => setSelectedCategory("all")}
         >
-          All ({catalog.length})
+          {t("All ({{count}})", { count: catalog.length })}
         </button>
         {categories.map((cat) => {
-          const count = catalog.filter((c) => (c.category?.trim() || "General") === cat).length;
+          const count = catalog.filter((c) => (c.category?.trim() || t("General")) === cat).length;
           const active = selectedCategory.toLowerCase() === cat.toLowerCase();
           return (
             <button
@@ -67,7 +68,7 @@ export function LibraryTab({
 
       {filtered.length === 0 ? (
         <div className="rounded-card shadow-card bg-surface p-8 text-center text-ink-3">
-          <p className="text-[13px]">No catalog connectors found matching your criteria.</p>
+          <p className="text-[13px]">{t("No catalog connectors found matching your criteria.")}</p>
           <button
             type="button"
             className="mt-2 text-[12px] font-medium text-cobalt hover:underline"
@@ -76,7 +77,7 @@ export function LibraryTab({
               setSelectedCategory("all");
             }}
           >
-            Reset filters
+            {t("Reset filters")}
           </button>
         </div>
       ) : selectedCategory === "all" && !search.trim() ? (
@@ -86,7 +87,7 @@ export function LibraryTab({
             <section className="space-y-3">
               <div className="flex items-center gap-2 border-b border-line/70 pb-2">
                 <Sparkles size={14} className="text-cobalt" />
-                <h3 className="font-semibold text-sm text-ink">Featured</h3>
+                <h3 className="font-semibold text-sm text-ink">{t("Featured")}</h3>
               </div>
               <div className={`grid grid-cols-1 gap-4 ${featured.length > 1 ? "md:grid-cols-2" : ""}`}>
                 {featured.map((c) => (
@@ -117,7 +118,7 @@ export function LibraryTab({
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-ink-3">
             <span>
-              Showing {filtered.length} connector{filtered.length === 1 ? "" : "s"}
+              {t("Showing {{count}} connectors", { count: filtered.length })}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -135,14 +136,13 @@ export function LibraryTab({
             <Plug size={20} />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-ink">Need a private or in-house connector?</h4>
-            <p className="text-xs text-ink-2">Connect any standard Model Context Protocol (MCP) server over HTTP or STDIO (Docker sidecar).</p>
+            <h4 className="text-sm font-semibold text-ink">{t("Need a private or in-house connector?")}</h4>
+            <p className="text-xs text-ink-2">{t("Connect any standard Model Context Protocol (MCP) server over HTTP or STDIO (Docker sidecar).")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button type="button" className={btnClass("primary")} onClick={onCustom}>
-            <Plus size={14} />
-            Connect Custom MCP
+            <Plus size={14} />{t("Connect Custom MCP")}
           </button>
         </div>
       </div>

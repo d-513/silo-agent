@@ -2,6 +2,7 @@ import { BookOpen, ChevronDown } from "lucide-react";
 import Markdown from "react-markdown";
 import { useSyncExternalStore } from "react";
 import remarkGfm from "remark-gfm";
+import { t } from "../i18n.ts";
 
 // Tailwind's `lg`. Media queries read rem against the browser's own 16px, not
 // the app's 14px root, so this is 1024px like the `lg:` classes beside it.
@@ -16,7 +17,7 @@ const useWide = () => useSyncExternalStore(subscribe, () => window.matchMedia(lg
 // An adapter's setup guide. Wide: a panel beside the form that stays in view
 // while you fill it in and scrolls on its own. Narrow: a fold above the form,
 // shut, so it does not push the form down the page.
-export function GuideCard({ guide, title = "Setup guide" }: { guide: string; title?: string }) {
+export function GuideCard({ guide, title = t("Setup guide") }: { guide: string; title?: string }) {
   const wide = useWide();
   const body = (
     <div className="silo-md text-[13px] leading-relaxed text-ink">

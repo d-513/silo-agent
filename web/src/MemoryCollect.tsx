@@ -2,22 +2,20 @@ import { BrainCircuit, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Tip, TipAction, TipTitle } from "./Tip";
 import type { CollectMemoriesResponse } from "./gen/silo/v1/ui_pb";
+import { t } from "./i18n.ts";
 
 type State = { kind: "idle" } | { kind: "running" } | { kind: "done"; res: CollectMemoriesResponse; fresh: boolean } | { kind: "error"; message: string };
 
 // collectSummary is the one-line result of a collection.
 export function collectSummary(res: Pick<CollectMemoriesResponse, "saved" | "updated" | "forgotten" | "note">): string {
   const parts: string[] = [];
-  if (res.saved) parts.push(`Saved ${res.saved}`);
-  if (res.updated) parts.push(`updated ${res.updated}`);
-  if (res.forgotten) parts.push(`forgot ${res.forgotten}`);
-  if (parts.length) {
-    const s = parts.join(" · ");
-    return s[0].toUpperCase() + s.slice(1);
-  }
-  if (res.note === "nothing new") return "Nothing new since the last save";
+  if (res.saved) parts.push(t("Saved {{n}}", { n: res.saved }));
+  if (res.updated) parts.push(t("Updated {{n}}", { n: res.updated }));
+  if (res.forgotten) parts.push(t("Forgot {{n}}", { n: res.forgotten }));
+  if (parts.length) return parts.join(" · ");
+  if (res.note === "nothing new") return t("Nothing new since the last save");
   if (res.note) return res.note[0].toUpperCase() + res.note.slice(1);
-  return "Nothing worth keeping";
+  return t("Nothing worth keeping");
 }
 
 /**
@@ -57,37 +55,37 @@ export function MemoryCollectButton({ chatId, onCollect }: { chatId?: string; on
   }
 
   const changed = state.kind === "done" ? state.res.saved + state.res.updated : 0;
-  const aside = running ? "Reading…" : state.kind === "done" ? collectSummary(state.res) : state.kind === "error" ? "Failed" : undefined;
+  const aside = running ? t("Reading…") : state.kind === "done" ? collectSummary(state.res) : state.kind === "error" ? t("Failed") : undefined;
 
   return (
     <Tip
       closeOnClick={false}
       content={
         <>
-          <TipTitle aside={aside}>Save memories</TipTitle>
+          <TipTitle aside={aside}>{t("Save memories")}</TipTitle>
           <p className="mt-1">
             {running
-              ? "Reading this chat for facts and lessons worth keeping."
-              : "Reads what was said since the last save and keeps the facts and lessons the Bot missed. Chats are also read on their own once they have been quiet for 10 minutes."}
+              ? t("Reading this chat for facts and lessons worth keeping.")
+              : t("Reads what was said since the last save and keeps the facts and lessons the Bot missed. Chats are also read on their own once they have been quiet for 10 minutes.")}
           </p>
           {state.kind === "done" && state.res.memories.length > 0 ? (
             <ul className="mt-2 grid gap-1">
               {state.res.memories.slice(0, 4).map((m) => (
                 <li key={m.id} className="line-clamp-2 text-[12.5px]">
-                  {m.kind === "lesson" ? <span className="mr-1 font-medium">Lesson:</span> : null}
+                  {m.kind === "lesson" ? <span className="mr-1 font-medium">{t("Lesson:")}</span> : null}
                   {m.content}
                 </li>
               ))}
             </ul>
           ) : null}
           {state.kind === "error" ? <p className="mt-1 text-vermilion">{state.message}</p> : null}
-          {unavailable ? null : running ? null : <TipAction>Click to read this chat now</TipAction>}
+          {unavailable ? null : running ? null : <TipAction>{t("Click to read this chat now")}</TipAction>}
         </>
       }
     >
       <button
         type="button"
-        aria-label="Save memories from this chat"
+        aria-label={t("Save memories from this chat")}
         aria-busy={running}
         aria-disabled={unavailable || running}
         className={`relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.94] active:duration-[70ms] aria-disabled:cursor-not-allowed ${

@@ -9,6 +9,7 @@ import { Notice } from "./Notice";
 import { Toolbar } from "./Toolbar";
 import { useComposerInput } from "./useComposerInput";
 import { useDictationInput } from "./useDictationInput";
+import { t } from "../i18n.ts";
 
 export type { Attachment } from "./AttachmentChips";
 
@@ -99,7 +100,7 @@ export function Composer({
           {input.isDragging && (
             <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[18px] bg-surface text-[13px] font-medium text-emerald">
               <Upload size={18} />
-              <span>Drop files to attach to /workspace/tmp</span>
+              <span>{t("Drop files to attach to /workspace/tmp")}</span>
             </div>
           )}
 

@@ -2,6 +2,7 @@ import { Globe, Lock } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useArmed } from "../Feedback";
 import { accessOf } from "../tunnels";
+import { t } from "../i18n.ts";
 
 const options = [
   { pub: false, icon: Lock, tone: "text-emerald" },
@@ -44,7 +45,7 @@ export function TunnelAccess({
   };
 
   return (
-    <div role="radiogroup" aria-label="Who can open this tunnel" onKeyDown={keys} className="flex w-fit select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
+    <div role="radiogroup" aria-label={t("Who can open this tunnel")} onKeyDown={keys} className="flex w-fit select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
       {options.map((o) => {
         const active = o.pub === isPublic;
         const arming = o.pub && armed && !active;
@@ -57,7 +58,7 @@ export function TunnelAccess({
             aria-checked={active}
             tabIndex={active ? 0 : -1}
             disabled={disabled}
-            title={arming ? "Click again to make it public" : accessOf(o.pub).caption}
+            title={arming ? t("Click again to make it public") : accessOf(o.pub).caption}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -68,7 +69,7 @@ export function TunnelAccess({
             } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
           >
             <Icon size={12} />
-            <span>{arming ? "Click again" : accessOf(o.pub).label}</span>
+            <span>{arming ? t("Click again") : accessOf(o.pub).label}</span>
           </button>
         );
       })}

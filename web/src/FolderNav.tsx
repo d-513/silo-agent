@@ -1,6 +1,7 @@
 import { ChevronRight, Folder } from "lucide-react";
 import { ErrorWell, SkeletonRows } from "./Field";
 import { crumbs } from "./fs";
+import { t } from "./i18n.ts";
 
 export type FolderEntry = { name: string; path: string };
 
@@ -13,7 +14,7 @@ export function FolderNav({
   dirs,
   err,
   onGo,
-  empty = "No folders here.",
+  empty = t("No folders here."),
 }: {
   rootLabel: string;
   at: string;
@@ -25,7 +26,7 @@ export function FolderNav({
   const trail = crumbs(at, rootLabel);
   return (
     <>
-      <nav className="silo-scroll-x flex items-center gap-1 px-2 py-2 text-[12.5px] shadow-[inset_0_-1px_0_var(--color-line)]" aria-label="Folder path">
+      <nav className="silo-scroll-x flex items-center gap-1 px-2 py-2 text-[12.5px] shadow-[inset_0_-1px_0_var(--color-line)]" aria-label={t("Folder path")}>
         {trail.map((c, i) => {
           const last = i === trail.length - 1;
           const button = (

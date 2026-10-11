@@ -10,6 +10,8 @@ import { widePage } from "../PageHead";
 import { channelLook } from "../statusLook";
 import { AdapterHead } from "./AdapterHead";
 import { GuideCard } from "./GuideCard";
+import { t } from "../i18n.ts";
+import { Trans } from "../Trans.tsx";
 
 const caps = "text-label-caps uppercase text-ink-3";
 
@@ -83,12 +85,12 @@ export function ChannelSetup({
 
   return (
     <div className={widePage}>
-      <AdapterHead adapter={adapter} title={channel.name} subtitle={`${adapter.name} setup`} onBack={onBack} />
+      <AdapterHead adapter={adapter} title={channel.name} subtitle={t("{{name}} setup", { name: adapter.name })} onBack={onBack} />
 
       <div className={`grid items-start gap-6 ${adapter.guide ? "lg:grid-cols-[minmax(0,1fr)_360px]" : "max-w-3xl"}`}>
         {adapter.guide ? (
           <div className="min-w-0 lg:order-2">
-            <GuideCard guide={adapter.guide} title={`${adapter.name} setup guide`} />
+            <GuideCard guide={adapter.guide} title={t("{{name}} setup guide", { name: adapter.name })} />
           </div>
         ) : null}
 
@@ -101,36 +103,35 @@ export function ChannelSetup({
 
           {/* A login in progress comes first: nothing else works until it is scanned. */}
           {state?.kind === "qr" && state.qr ? (
-            <Panel title="Link your device" note="Scan this code in the app. It refreshes by itself until you do.">
+            <Panel title={t("Link your device")} note={t("Scan this code in the app. It refreshes by itself until you do.")}>
               <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
-                <img src={state.qr} alt="Login QR code" className="w-56 rounded-card bg-white p-2 shadow-card" />
+                <img src={state.qr} alt={t("Login QR code")} className="w-56 rounded-card bg-white p-2 shadow-card" />
                 <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
               </div>
             </Panel>
           ) : null}
 
           {adapter.requiresTarget ? (
-            <Panel title="Target chat" note="The one conversation this channel reads and writes. The Bot ignores every other chat.">
+            <Panel title={t("Target chat")} note={t("The one conversation this channel reads and writes. The Bot ignores every other chat.")}>
               <div className="space-y-5">
                 <div className="rounded-sm bg-well px-3.5 py-3 text-[14px]">
                   {target.id ? (
                     <span className="flex items-center gap-1.5 font-medium text-ink">
                       <CircleCheck size={16} className="shrink-0 text-emerald" />
                       <span>
-                        Bound to <span className="font-semibold">{target.title || target.id}</span>
+                        <Trans i18nKey="Bound to <b>{{chat}}</b>" values={{ chat: target.title || target.id }} components={{ b: <span className="font-semibold" /> }} />
                       </span>
                     </span>
                   ) : (
                     <span className="flex items-center gap-1.5 text-vermilion">
-                      <CircleAlert size={16} className="shrink-0" />
-                      No chat picked yet. This channel is inactive until you pick one.
+                      <CircleAlert size={16} className="shrink-0" />{t("No chat picked yet. This channel is inactive until you pick one.")}
                     </span>
                   )}
                 </div>
 
                 {buttons ? (
                   <div className="space-y-2">
-                    <div className={caps}>Actions</div>
+                    <div className={caps}>{t("Actions")}</div>
                     {buttons}
                   </div>
                 ) : null}
@@ -138,7 +139,7 @@ export function ChannelSetup({
 
                 {state?.kind === "select" && state.options.length > 0 ? (
                   <div className="space-y-2">
-                    <div className={caps}>Available chats</div>
+                    <div className={caps}>{t("Available chats")}</div>
                     <div className="grid max-h-[320px] gap-2 overflow-auto sm:grid-cols-2">
                       {state.options.map((o) => {
                         const on = o.value === target.id;
@@ -163,12 +164,12 @@ export function ChannelSetup({
                 ) : null}
 
                 <div className="space-y-2 border-t border-line pt-5">
-                  <div className={caps}>Set chat directly</div>
+                  <div className={caps}>{t("Set chat directly")}</div>
                   <div className="flex items-center gap-2">
                     <input
                       className={`${inputClass} min-w-0 flex-1`}
-                      placeholder="Chat id, @username, link, or phone number"
-                      aria-label="Chat id, @username, link, or phone number"
+                      placeholder={t("Chat id, @username, link, or phone number")}
+                      aria-label={t("Chat id, @username, link, or phone number")}
                       value={manual}
                       onChange={(e) => setManual(e.target.value)}
                       onKeyDown={(e) => {
@@ -176,14 +177,14 @@ export function ChannelSetup({
                       }}
                     />
                     <Btn kind="secondary" type="button" disabled={busy || !manual.trim()} onClick={() => void choose(manual.trim(), manual.trim())}>
-                      Set target
+                      {t("Set target")}
                     </Btn>
                   </div>
                 </div>
               </div>
             </Panel>
           ) : buttons || message ? (
-            <Panel title="Actions">
+            <Panel title={t("Actions")}>
               <div className="space-y-5">
                 {buttons}
                 {message}

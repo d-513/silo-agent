@@ -4,13 +4,14 @@ import { Field, inputClass } from "../Field";
 import { Select } from "../Select";
 import { ToggleRow } from "../Switch";
 import { ConfigSource, type ConfigField, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
-import { PLACEHOLDERS, hintOf, labelOf, sourceWord } from "./fields";
+import { hintOf, labelOf, placeholderOf, sourceWord } from "./fields";
+import { t } from "../i18n.ts";
 
 export function SourceChips({ field }: { field: ConfigField }) {
   return (
     <>
       <span className="font-mono text-[11px] text-ink-3">{sourceWord(field.source)}</span>
-      {field.restartRequired ? <span className="text-[11px] text-ink-3">restart</span> : null}
+      {field.restartRequired ? <span className="text-[11px] text-ink-3">{t("restart")}</span> : null}
       {field.source === ConfigSource.ENV ? (
         <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={field.envName}>
           <TriangleAlert size={14} />
@@ -64,7 +65,7 @@ export function FieldRow({
         value={value}
         onChange={onChange}
         disabled={locked}
-        emptyLabel="No engines"
+        emptyLabel={t("No engines")}
         options={engines.map((e) => ({ value: e.id, label: e.name }))}
       />
     );
@@ -78,7 +79,7 @@ export function FieldRow({
         className={inputClass}
         type={field.secret ? "password" : "text"}
         autoComplete="off"
-        placeholder={placeholder ?? PLACEHOLDERS[field.key]}
+        placeholder={placeholder ?? placeholderOf(field.key)}
         value={value}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}

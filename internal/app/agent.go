@@ -16,6 +16,7 @@ import (
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/lang"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
@@ -537,6 +538,13 @@ func (a *App) bumpChat(chatID string) {
 	a.DB.Model(&db.Chat{}).Where("id = ?", chatID).Update("updated_at", time.Now())
 }
 
+// botLanguage is the language a Bot is set to write in ("" when it has none).
+func (a *App) botLanguage(botID string) string {
+	var b db.Bot
+	a.DB.Select("language").Where("id = ?", botID).Limit(1).Find(&b)
+	return b.Language
+}
+
 func (a *App) nameChat(botID, chatID, runID, userText string) {
 	var c db.Chat
 	if a.DB.First(&c, "id = ?", chatID).Error != nil || !chats.Untitled(c.Title) {
@@ -555,7 +563,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	}
 	res, err := client.Complete(ctx, llm.Request{
 		Model:    model,
-		System:   []llm.SystemBlock{{Text: "Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation."}},
+		System:   []llm.SystemBlock{{Text: "Reply with only a 2-6 word chat title for the user's message. Capture intent, not a quote. No quotes, no punctuation, no explanation. " + lang.Title(a.botLanguage(botID))}},
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: snippet}},
 		Cache:    models.CachePolicy(a.cfg().ProviderSettings(provider), botID),
 	})

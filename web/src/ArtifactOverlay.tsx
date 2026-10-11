@@ -4,6 +4,7 @@ import { artifactSource, artifactURL, downloadArtifact, type Artifact } from "./
 import { isTextKind } from "./fileKind";
 import { SkillBrowserOverlay, TypeIcon } from "./FileBrowser";
 import { FilePreview } from "./FilePreview";
+import { t } from "./i18n.ts";
 
 // The full-screen inspector for a skill or file card: a file tree for a skill
 // directory, a preview for a single file. It is its own chunk, loaded on first
@@ -60,7 +61,7 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
         if (isTextKind(name)) setContent(new TextDecoder().decode(bytes));
       })
       .catch((e) => {
-        if (!dead) setErr(e instanceof Error ? e.message : "could not open file");
+        if (!dead) setErr(e instanceof Error ? e.message : t("could not open file"));
       });
     return () => {
       dead = true;
@@ -78,12 +79,12 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
           <button
             type="button"
             className="shrink-0 text-on-hatch/70 hover:text-on-hatch"
-            title="Download"
+            title={t("Download")}
             onClick={() => downloadArtifact(botId, artifact)}
           >
             <Download size={16} />
           </button>
-          <button type="button" className="shrink-0 text-on-hatch/70 hover:text-on-hatch" title="Close" onClick={onClose}>
+          <button type="button" className="shrink-0 text-on-hatch/70 hover:text-on-hatch" title={t("Close")} onClick={onClose}>
             <X size={16} />
           </button>
         </div>
@@ -93,7 +94,7 @@ function FileArtifactOverlay({ botId, artifact, onClose }: { botId: string; arti
           ) : !data ? (
             <div className="flex items-center gap-2 text-ink-3">
               <LoaderCircle size={14} className="spin" />
-              <span className="text-[13px]">Opening…</span>
+              <span className="text-[13px]">{t("Opening…")}</span>
             </div>
           ) : (
             <FilePreview

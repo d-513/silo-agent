@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { codeLang, kindOf, mimeOf } from "./fileKind";
 import { Highlighted } from "./Highlighted";
 import { safeHtml } from "./safeHtml";
+import { t } from "./i18n.ts";
 
 export function downloadFile(name: string, content: string, data?: Uint8Array) {
   const blob = new Blob([data && data.length ? data.slice() : content], { type: mimeOf(name) });
@@ -69,14 +70,14 @@ function DocxView({ data }: { data: Uint8Array }) {
         if (!dead) setHtml(safeHtml(r.value));
       })
       .catch((e) => {
-        if (!dead) setErr(e instanceof Error ? e.message : "could not read document");
+        if (!dead) setErr(e instanceof Error ? e.message : t("could not read document"));
       });
     return () => {
       dead = true;
     };
   }, [data]);
   if (err) return <p className="text-vermilion">{err}</p>;
-  if (!html) return <p className="text-ink-2">Opening…</p>;
+  if (!html) return <p className="text-ink-2">{t("Opening…")}</p>;
   return <div className="silo-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -152,5 +153,5 @@ export function FilePreview({
   if (!binary && text) {
     return <pre className="whitespace-pre-wrap font-mono text-[13px]">{text}</pre>;
   }
-  return <p className="text-ink-2">No preview for this type. Download it instead.</p>;
+  return <p className="text-ink-2">{t("No preview for this type. Download it instead.")}</p>;
 }

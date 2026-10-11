@@ -5,6 +5,7 @@ import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp, statusText } from "../Lamp";
 import { LinkSurface, retryDelay, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
+import { t } from "../i18n.ts";
 
 function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -83,7 +84,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
   useEffect(() => {
     if (visible) window.dispatchEvent(new Event("resize"));
   }, [visible]);
-  return <LinkSurface noun="Desktop" phase={phase} surfaceRef={ref} surfaceClass="silo-hatch" />;
+  return <LinkSurface noun={t("Desktop")} phase={phase} surfaceRef={ref} surfaceClass="silo-hatch" />;
 }
 
 export function MachinePane({
@@ -100,11 +101,11 @@ export function MachinePane({
   // Controls for the end of the hatch's header (dock, open as a page, close).
   actions?: ReactNode;
 }) {
-  const label = kind === "console" ? "Console" : "Desktop";
+  const label = kind === "console" ? t("Console") : t("Desktop");
   if (!bot.workerConnected) {
     return (
       <NeedMachine
-        copy={`${label} not connected`}
+        copy={t("{{name}} not connected", { name: label })}
         starting={bot.status === "starting"}
         onStart={onStart}
       />

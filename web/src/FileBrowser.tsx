@@ -7,6 +7,7 @@ import { SkeletonRows } from "./Field";
 import { fmtBytes } from "./format";
 import { crumbs, type FsEntry, type FsFile, type FsSource } from "./fs";
 import { fail } from "./errors";
+import { t } from "./i18n.ts";
 
 export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean; size?: number }) {
   const cls = "shrink-0 text-current opacity-70";
@@ -173,7 +174,7 @@ export function FileBrowser({
           <button
             type="button"
             className={hatch ? "text-on-hatch/70 hover:text-on-hatch" : "text-ink-2 hover:text-ink"}
-            title="Download"
+            title={t("Download")}
             onClick={() => downloadFile(file.name, file.content, file.data)}
           >
             <Download size={16} />
@@ -198,11 +199,11 @@ export function FileBrowser({
           />
         </nav>
         <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "@max-[640px]:hidden"}`}>
-          {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">Showing the first 2 MB.</p>}
+          {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">{t("Showing the first 2 MB.")}</p>}
           <div className="min-h-0 flex-1 overflow-auto p-3">
-            {busy ? <p className="text-ink-2">Opening…</p> : null}
+            {busy ? <p className="text-ink-2">{t("Opening…")}</p> : null}
             {!busy && file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
-            {!busy && !file && !err ? <p className="text-ink-2">Select a file.</p> : null}
+            {!busy && !file && !err ? <p className="text-ink-2">{t("Select a file.")}</p> : null}
           </div>
         </section>
       </div>
@@ -235,7 +236,7 @@ function Tree({
 }) {
   const ents = kids[path];
   if (!ents) return depth === 0 ? <SkeletonRows rows={5} height={28} className="p-2" /> : null;
-  if (ents.length === 0 && depth === 0) return <p className="px-3 py-4 text-ink-2">This folder is empty.</p>;
+  if (ents.length === 0 && depth === 0) return <p className="px-3 py-4 text-ink-2">{t("This folder is empty.")}</p>;
   return (
     <ul>
       {ents.map((e) => {
@@ -267,10 +268,10 @@ function Tree({
                 <button
                   type="button"
                   className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-on-hatch/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
-                  title={pendingDel === e.path ? "Click again to delete" : "Delete"}
+                  title={pendingDel === e.path ? t("Click again to delete") : t("Delete")}
                   onClick={() => onDelete(e)}
                 >
-                  {pendingDel === e.path ? "Delete?" : <Trash2 size={12} />}
+                  {pendingDel === e.path ? t("Delete?") : <Trash2 size={12} />}
                 </button>
               )}
             </div>
@@ -315,10 +316,10 @@ export function SkillBrowserOverlay({
             <>
               {pending && (
                 <Btn kind="primary" type="button" className="h-8" onClick={pending.onSave}>
-                  Save skill
+                  {t("Save skill")}
                 </Btn>
               )}
-              <button type="button" className="text-on-hatch/70 hover:text-on-hatch" title="Close" onClick={onClose}>
+              <button type="button" className="text-on-hatch/70 hover:text-on-hatch" title={t("Close")} onClick={onClose}>
                 <X size={16} />
               </button>
             </>

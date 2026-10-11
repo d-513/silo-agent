@@ -7,6 +7,7 @@ import { botSource, joinPath, parentPath, type FsEntry } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
+import { t } from "./i18n.ts";
 
 // openAt lands the tree in that folder (Drives → Open in Files). `actions` are
 // the pane's own controls (dock, open as a page, close), at the header's end.
@@ -38,7 +39,7 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
   if (!bot.workerConnected) {
     return (
       <NeedMachine
-        copy="Start the Bot to browse /workspace."
+        copy={t("Start the Bot to browse /workspace.")}
         starting={bot.status === "starting"}
         onStart={onStart}
       />
@@ -70,7 +71,7 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
         if (!dest) continue;
         const buf = new Uint8Array(await f.arrayBuffer());
         if (buf.byteLength > 50 << 20) {
-          setErr(`${f.name} is larger than 50 MB`);
+          setErr(t("{{name}} is larger than 50 MB", { name: f.name }));
           continue;
         }
         await ui.putFile({ botId: bot.id, path: dest, data: buf });
@@ -106,11 +107,11 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
             autoFocus
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
-            placeholder={draft === "dir" ? "Folder name" : "File name"}
+            placeholder={draft === "dir" ? t("Folder name") : t("File name")}
             className="h-9 flex-1 rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-2 outline-none"
           />
           <Btn kind="primary" type="submit" disabled={!draftName.trim()}>
-            Create
+            {t("Create")}
           </Btn>
           <button type="button" className="text-ink-2 hover:text-ink" onClick={() => setDraft(null)}>
             <X size={14} />
@@ -131,16 +132,16 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
         }}
         headerRight={
           <>
-            <button className="text-ink-2 hover:text-ink" title="Refresh" onClick={() => setTick((n) => n + 1)}>
+            <button className="text-ink-2 hover:text-ink" title={t("Refresh")} onClick={() => setTick((n) => n + 1)}>
               <RefreshCw size={16} />
             </button>
-            <button className="text-ink-2 hover:text-ink" title="New folder" onClick={() => { setDraft("dir"); setDraftName(""); }}>
+            <button className="text-ink-2 hover:text-ink" title={t("New folder")} onClick={() => { setDraft("dir"); setDraftName(""); }}>
               <FolderPlus size={16} />
             </button>
-            <button className="text-ink-2 hover:text-ink" title="New file" onClick={() => { setDraft("file"); setDraftName(""); }}>
+            <button className="text-ink-2 hover:text-ink" title={t("New file")} onClick={() => { setDraft("file"); setDraftName(""); }}>
               <Plus size={16} />
             </button>
-            <button className="text-ink-2 hover:text-ink" title="Upload" onClick={() => upload.current?.click()}>
+            <button className="text-ink-2 hover:text-ink" title={t("Upload")} onClick={() => upload.current?.click()}>
               <Upload size={16} />
             </button>
             <input ref={upload} type="file" multiple className="hidden" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />

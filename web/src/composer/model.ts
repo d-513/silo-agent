@@ -1,6 +1,7 @@
 // The composer's small decisions as plain functions: how a number or a level is
 // shown, so they can be checked without a screen.
 import type { Usage } from "../useRunStream";
+import { t } from "../i18n.ts";
 
 // "850", "1.5k", "12k": token counts for the context meter.
 export function fmtTokens(n: number): string {
@@ -24,10 +25,10 @@ export function contextFill(usage: Pick<Usage, "input" | "output" | "window">) {
 
 // What the mic's tooltip says: why it is off, or what the click will do.
 export function micTitle(supported: boolean, state: string): string {
-  if (!supported) return "Dictation needs https or localhost and a browser that can record";
-  if (state === "recording") return "Stop and transcribe";
-  if (state === "transcribing") return "Transcribing…";
-  return "Dictate";
+  if (!supported) return t("Dictation needs https or localhost and a browser that can record");
+  if (state === "recording") return t("Stop and transcribe");
+  if (state === "transcribing") return t("Transcribing…");
+  return t("Dictate");
 }
 
 // Heights (px) of the five level bars while a take is live; the middle bar
@@ -42,6 +43,6 @@ export function growHeight(scrollHeight: number): number {
 }
 
 export function placeholderFor(chatId?: string, botName?: string): string {
-  if (!chatId) return "Select or create a chat to begin…";
-  return botName ? `Ask ${botName}…` : "Ask this Bot…";
+  if (!chatId) return t("Select or create a chat to begin…");
+  return botName ? t("Ask {{name}}…", { name: botName }) : t("Ask this Bot…");
 }

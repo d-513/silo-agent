@@ -12,6 +12,7 @@ import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
 import { SiloMark } from "./SiloMark";
 import { flipTheme, setTheme, useTheme } from "./theme";
+import { t } from "./i18n.ts";
 
 // Rail items: 40px hit areas. The active one is a lifted surface well with a
 // 3px cobalt bar on the leading edge (bottom edge in the narrow top bar).
@@ -36,7 +37,7 @@ function railBar(on: boolean) {
 function ThemeToggle() {
   const theme = useTheme();
   const dark = theme === "dark";
-  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  const label = dark ? t("Switch to light mode") : t("Switch to dark mode");
   const glyph = "col-start-1 row-start-1 transition-[transform,opacity] duration-[320ms] ease-settle motion-reduce:transition-opacity";
   const away = "scale-[.6] opacity-0";
   return (
@@ -61,11 +62,11 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
     <aside className="flex shrink-0 bg-well max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center">
       <SiloMark />
       <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
-        <Link to="/" title="Bots" className={railHit(homeActive)}>
+        <Link to="/" title={t("Bots")} className={railHit(homeActive)}>
           {railBar(homeActive)}
           <LayoutGrid size={20} />
         </Link>
-        <Link to="/skills" title="Skills" className={railHit(page === "skills")}>
+        <Link to="/skills" title={t("Skills")} className={railHit(page === "skills")}>
           {railBar(page === "skills")}
           <Book size={20} />
         </Link>
@@ -89,7 +90,7 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
               </Link>
             );
           })}
-          <Link to="/new" title="New Bot" className={railHit(loc.pathname === "/new")}>
+          <Link to="/new" title={t("New Bot")} className={railHit(loc.pathname === "/new")}>
             {railBar(loc.pathname === "/new")}
             <Plus size={20} />
           </Link>
@@ -97,19 +98,19 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
       </nav>
       <div className="flex items-center gap-1 max-wide:pr-2 wide:mb-4 wide:flex-col">
         {admin && (
-          <Link to="/admin/settings" title="Admin" className={railHit(page === "admin")}>
+          <Link to="/admin/settings" title={t("Admin")} className={railHit(page === "admin")}>
             {railBar(page === "admin")}
             <Wrench size={20} />
           </Link>
         )}
         <ThemeToggle />
-        <Link to="/account" title={email ? `Account · ${email}` : "Account"} className={railHit(page === "account")}>
+        <Link to="/account" title={email ? `${t("Account")} · ${email}` : t("Account")} className={railHit(page === "account")}>
           {railBar(page === "account")}
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
         </Link>
         <button
           type="button"
-          title="Sign out"
+          title={t("Sign out")}
           className={railHit(false)}
           onClick={async () => {
             try {

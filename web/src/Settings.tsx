@@ -12,6 +12,8 @@ import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
 import { MailSettings } from "./Mail";
 import { TimeZoneSettings } from "./TimeZone";
+import { locale, t } from "./i18n.ts";
+import { botLanguageOptions, mixed } from "./languages.ts";
 
 export function PromptWell({
   label,
@@ -66,6 +68,7 @@ export function SettingsPane({
   const [description, setDescription] = useState(bot.description);
   const [soul, setSoul] = useState(bot.soul);
   const [model, setModel] = useState(bot.model);
+  const [language, setLanguage] = useState(bot.language);
   const models = useQuery(UI.method.listModels, { botId: bot.id }).data?.models ?? noModels;
   const saver = useSave();
   const [dangerBusy, setDangerBusy] = useState(false);
@@ -75,6 +78,7 @@ export function SettingsPane({
     setDescription(bot.description);
     setSoul(bot.soul);
     setModel(bot.model);
+    setLanguage(bot.language);
     setDangerBusy(false);
   }, [bot.id]);
   // Drop a stored model the operator has since removed from the allowlist, so
@@ -94,10 +98,12 @@ export function SettingsPane({
         memory: bot.memory,
         autoApprove: bot.autoApprove,
         model: selectedModel,
+        language,
       }));
       setBot(next);
       setSoul(next.soul);
       setModel(next.model);
+      setLanguage(next.language);
     } catch (ex) {
       onError(fail(ex));
     }
@@ -122,18 +128,18 @@ export function SettingsPane({
   }
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-title">Settings</h2>
-      <p className="mb-6 text-ink-2">This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories page.</p>
+      <h2 className="text-title">{t("Settings")}</h2>
+      <p className="mb-6 text-ink-2">{t("This Bot only. SOUL is in the prompt and the Bot can edit it too. Core memory and long-term memories are on the Memories page.")}</p>
       <form onSubmit={save} className="grid gap-4">
-        <Panel title="Identity" note="Shown on the folio and in the sidebar.">
+        <Panel title={t("Identity")} note={t("Shown on the folio and in the sidebar.")}>
           <div className="grid gap-4">
-            <Field label="Name" required>
+            <Field label={t("Name")} required>
               <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
-            <Field label="Description" hint="One line. Use it to remember what this machine is for.">
+            <Field label={t("Description")} hint={t("One line. Use it to remember what this machine is for.")}>
               <textarea
                 className={`${textareaClass} h-[72px]`}
-                placeholder="What this machine is for"
+                placeholder={t("What this machine is for")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -141,27 +147,33 @@ export function SettingsPane({
           </div>
         </Panel>
 
-        <Panel title="Model" note="Default for this Bot's chats. From the operator's allowed list; a conversation can still override it from the composer.">
-          <Field label="Default model">
+        <Panel title={t("Model")} note={t("Default for this Bot's chats. From the operator's allowed list; a conversation can still override it from the composer.")}>
+          <Field label={t("Default model")}>
             <Select
               value={selectedModel}
               onChange={setModel}
-              emptyLabel="No models allowed"
+              emptyLabel={t("No models allowed")}
               options={[
-                { value: "", label: "Operator default" },
+                { value: "", label: t("Operator default") },
                 ...modelOptions(models),
               ]}
             />
           </Field>
         </Panel>
 
-        <Panel title="Prompt" note="Injected into the system prompt every run. The Bot can rewrite it.">
-          <PromptWell label="SOUL" hint="Identity, tone, hard rules." value={soul} onChange={setSoul} />
+        <Panel title={t("Language")} note={t("What this Bot writes to people in: its replies, chat titles, Feed posts and channel messages. It started as your display language.")}>
+          <Field label={t("Bot language")} hint={language === mixed ? t("Mixed: the Bot answers in whatever language it is written to in.") : t("The Bot writes in this language unless you ask it for another. It applies from the next reply.")}>
+            <Select className="max-w-[320px]" value={language} onChange={setLanguage} options={[{ value: mixed, label: t("Mixed", { context: "language" }) }, ...botLanguageOptions(locale())]} />
+          </Field>
+        </Panel>
+
+        <Panel title={t("Prompt")} note={t("Injected into the system prompt every run. The Bot can rewrite it.")}>
+          <PromptWell label={t("SOUL")} hint={t("Identity, tone, hard rules.")} value={soul} onChange={setSoul} />
         </Panel>
 
         <div className="flex items-center gap-3">
           <SaveButton type="submit" state={saver.state} disabled={!name.trim()}>
-            Save changes
+            {t("Save changes")}
           </SaveButton>
         </div>
       </form>
@@ -172,36 +184,36 @@ export function SettingsPane({
       {bot.mailAddress ? <MailSettings bot={bot} onError={onError} /> : null}
 
       <Panel
-        title="Dangerous"
-        note="The first click arms, the second acts. These cannot be undone from here."
+        title={t("Dangerous")}
+        note={t("The first click arms, the second acts. These cannot be undone from here.")}
         tone="danger"
         padded={false}
         className="mt-8"
       >
         <DangerRow
-          title="Reset container"
-          note="Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one."
+          title={t("Reset container")}
+          note={t("Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one.")}
           action={
             <ArmedButton
               disabled={dangerBusy}
-              armedLabel="Click again to reset"
+              armedLabel={t("Click again to reset")}
               icon={<RotateCcw size={14} />}
               onConfirm={() => void go("reset")}
             >
-              Reset
+              {t("Reset")}
             </ArmedButton>
           }
         />
         <DangerRow
-          title="Delete Bot"
-          note="Chats, secrets, connectors, the container, and files on disk."
+          title={t("Delete Bot")}
+          note={t("Chats, secrets, connectors, the container, and files on disk.")}
           action={
             <ArmedButton
               disabled={dangerBusy}
               icon={<Trash2 size={14} />}
               onConfirm={() => void go("delete")}
             >
-              Delete
+              {t("Delete")}
             </ArmedButton>
           }
         />

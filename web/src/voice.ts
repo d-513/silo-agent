@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "./i18n.ts";
 
 // Composer dictation: record with MediaRecorder, hand the blob to the CP
 // (`Transcribe`), and put the text back in the draft. Never auto-sends.
@@ -49,10 +50,10 @@ export function fmtClock(ms: number): string {
 // micError turns a getUserMedia / MediaRecorder failure into one plain line.
 export function micError(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
-  if (name === "NotAllowedError" || name === "SecurityError") return "Microphone access is blocked for this site.";
-  if (name === "NotFoundError" || name === "OverconstrainedError") return "No microphone found.";
-  if (name === "NotReadableError") return "The microphone is in use by another app.";
-  return err instanceof Error && err.message ? err.message : "Could not start the microphone.";
+  if (name === "NotAllowedError" || name === "SecurityError") return t("Microphone access is blocked for this site.");
+  if (name === "NotFoundError" || name === "OverconstrainedError") return t("No microphone found.");
+  if (name === "NotReadableError") return t("The microphone is in use by another app.");
+  return err instanceof Error && err.message ? err.message : t("Could not start the microphone.");
 }
 
 export type DictationState = "idle" | "recording" | "transcribing";
@@ -156,9 +157,9 @@ export function useDictation(transcribe: (audio: Uint8Array, mime: string) => Pr
         .then((buf) => transcribeRef.current(new Uint8Array(buf), type))
         .then((text) => {
           if (text.trim()) onTextRef.current(text);
-          else setError("No speech was heard.");
+          else setError(t("No speech was heard."));
         })
-        .catch((err: unknown) => setError(err instanceof Error ? err.message.replace(/^\[\w+\]\s*/, "") : "Transcription failed."))
+        .catch((err: unknown) => setError(err instanceof Error ? err.message.replace(/^\[\w+\]\s*/, "") : t("Transcription failed.")))
         .finally(() => setState("idle"));
     };
 

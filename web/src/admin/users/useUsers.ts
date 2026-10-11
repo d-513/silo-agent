@@ -2,6 +2,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { fail } from "../../errors";
 import { UI, type Invite, type User } from "../../gen/silo/v1/ui_pb";
 import { patch, reload } from "../../query";
+import { t } from "../../i18n.ts";
 
 const noUsers: User[] = [];
 const noInvites: Invite[] = [];
@@ -39,7 +40,7 @@ export function reloadUsers() {
 /** How a user gets in, in a few words. */
 export function signInWays(u: User): string {
   const ways = [];
-  if (u.hasPassword) ways.push(u.totp ? "Password with two-factor" : "Password");
-  if (u.oidc) ways.push("Single sign-on");
-  return ways.join(", ") || "No way to sign in yet";
+  if (u.hasPassword) ways.push(u.totp ? t("Password with two-factor") : t("Password"));
+  if (u.oidc) ways.push(t("Single sign-on"));
+  return ways.join(", ") || t("No way to sign in yet");
 }

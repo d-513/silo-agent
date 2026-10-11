@@ -1,3 +1,5 @@
+import { t } from "./i18n.ts";
+
 export type Kind = "dir" | "image" | "pdf" | "video" | "audio" | "markdown" | "csv" | "json" | "code" | "docx" | "text" | "other";
 
 const images = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif"]);
@@ -106,31 +108,31 @@ export function codeLang(name: string) {
 export function kindLabel(name: string): string {
   switch (kindOf(name)) {
     case "image":
-      return "Image";
+      return t("Image");
     case "pdf":
       return "PDF";
     case "video":
-      return "Video";
+      return t("Video");
     case "audio":
-      return "Audio";
+      return t("Audio");
     case "markdown":
-      return "Markdown";
+      return t("Markdown");
     case "csv":
-      return "Spreadsheet";
+      return t("Spreadsheet");
     case "json":
       return "JSON";
     case "docx":
-      return "Document";
+      return t("Document");
     case "code":
-      return extOf(name).toUpperCase() || "Code";
+      return extOf(name).toUpperCase() || t("Code");
     case "text":
-      return "Text";
+      return t("Text");
     default:
       break;
   }
   const e = extOf(name);
-  if (isArchive(e)) return "Archive";
-  return e ? e.toUpperCase() : "File";
+  if (isArchive(e)) return t("Archive");
+  return e ? e.toUpperCase() : t("File");
 }
 
 export function isTextKind(name: string): boolean {

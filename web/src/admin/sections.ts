@@ -1,19 +1,21 @@
+import { msg } from "../i18n.ts";
+
 // The categories of Admin → Settings, in the order the list shows them. Each
 // is a page at /admin/settings/<id>. No React here: the router imports it too.
 export const SECTIONS = [
-  { id: "models", label: "Models" },
-  { id: "providers", label: "Providers" },
-  { id: "search", label: "Search" },
-  { id: "memory", label: "Memory & knowledge" },
-  { id: "runs", label: "Context & runs" },
-  { id: "connectors", label: "Connector options" },
-  { id: "tunnels", label: "Tunnels" },
-  { id: "mail", label: "Mail" },
-  { id: "signin", label: "Sign-in" },
-  { id: "server", label: "Server" },
+  { id: "models", label: msg("Models") },
+  { id: "providers", label: msg("Providers") },
+  { id: "search", label: msg("Search") },
+  { id: "memory", label: msg("Memory & knowledge") },
+  { id: "runs", label: msg("Context & runs") },
+  { id: "connectors", label: msg("Connector options") },
+  { id: "tunnels", label: msg("Tunnels") },
+  { id: "mail", label: msg("Mail") },
+  { id: "signin", label: msg("Sign-in") },
+  { id: "server", label: msg("Server") },
   // The two below are not the form: the file itself, and the decision log.
   { id: "yaml", label: "silo.yaml" },
-  { id: "audit", label: "Audit" },
+  { id: "audit", label: msg("Audit") },
 ] as const;
 
 export type SectionId = (typeof SECTIONS)[number]["id"];

@@ -3,6 +3,7 @@ import { btnClass } from "./Btn";
 import { extOf, kindLabel } from "./fileKind";
 import { fmtBytes } from "./format";
 import { skillSource, workspaceDirSource, type FsSource } from "./fs";
+import { t } from "./i18n.ts";
 
 export type Artifact = {
   type: "skill" | "file";
@@ -24,7 +25,7 @@ export function parseArtifact(body: string): Artifact | null {
     return {
       type,
       name: String(v.name || ""),
-      title: String(v.title || v.name || (type === "skill" ? "Skill" : "File")),
+      title: String(v.title || v.name || (type === "skill" ? t("Skill") : t("File"))),
       path: String(v.path || ""),
       scope: String(v.scope || ""),
       status: String(v.status || ""),
@@ -90,17 +91,17 @@ export function ArtifactCard({
           <span className="block truncate text-[12.5px] leading-[18px] text-ink-3">
             {skill
               ? saved
-                ? "Skill · saved to your skills"
-                : "Skill"
-              : `${kindLabel(name)}${artifact.size ? ` · ${fmtBytes(artifact.size)}` : ""} · saved to Files`}
+                ? t("Skill · saved to your skills")
+                : t("Skill")
+              : [kindLabel(name), artifact.size ? fmtBytes(artifact.size) : "", t("saved to Files")].filter(Boolean).join(" · ")}
           </span>
         </span>
       </button>
       <button
         type="button"
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]"
-        title="Download"
-        aria-label="Download"
+        title={t("Download")}
+        aria-label={t("Download")}
         onClick={(e) => {
           e.stopPropagation();
           onDownload?.();
@@ -117,11 +118,11 @@ export function ArtifactCard({
             onSave();
           }}
         >
-          Save skill
+          {t("Save skill")}
         </button>
       ) : null}
       {saved ? (
-        <span className="pop flex h-8 w-8 shrink-0 items-center justify-center text-emerald" title="Saved">
+        <span className="pop flex h-8 w-8 shrink-0 items-center justify-center text-emerald" title={t("Saved")}>
           <Check size={17} strokeWidth={2.25} />
         </span>
       ) : null}

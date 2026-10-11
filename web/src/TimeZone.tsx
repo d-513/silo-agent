@@ -5,10 +5,12 @@ import { Field, Panel, inputClass } from "./Field";
 import type { Bot } from "./gen/silo/v1/ui_pb";
 import { setBot } from "./query";
 import { deviceZone, zoneLabel, zoneNames, zoneOffset } from "./zones";
+import { msg, t } from "./i18n.ts";
+import { Trans } from "./Trans.tsx";
 
 const modes = [
-  { pinned: false, label: "Follow my device" },
-  { pinned: true, label: "Fixed" },
+  { pinned: false, label: msg("Follow my device") },
+  { pinned: true, label: msg("Fixed") },
 ] as const;
 
 // TimeZoneSettings is where a Bot's time zone is kept: following the device
@@ -61,12 +63,12 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
 
   return (
     <Panel
-      title="Time zone"
-      note="Automation schedules and the times this Bot reads are in it. The Bot's machine itself runs on UTC."
+      title={t("Time zone")}
+      note={t("Automation schedules and the times this Bot reads are in it. The Bot's machine itself runs on UTC.")}
       className="mt-8"
     >
       <div className="grid gap-4">
-        <div role="radiogroup" aria-label="How this Bot's time zone is set" className="flex w-fit select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
+        <div role="radiogroup" aria-label={t("How this Bot's time zone is set")} className="flex w-fit select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
           {modes.map((m) => {
             const active = m.pinned === bot.timeZonePinned;
             return (
@@ -81,16 +83,16 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
                   active ? "bg-surface text-ink shadow-card" : "text-ink-3 hover:bg-pressed hover:text-ink"
                 } ${busy ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
               >
-                {m.label}
+                {t(m.label)}
               </button>
             );
           })}
         </div>
         {bot.timeZonePinned ? (
           <Field
-            label="Zone"
-            hint={`An IANA name such as Europe/Warsaw. Now ${zoneLabel(bot.timeZone)}; it stays there wherever you write from.`}
-            error={draft !== null && draft !== "" && zoneOffset(draft) === "" ? "Not a time zone this browser knows." : undefined}
+            label={t("Zone")}
+            hint={t("An IANA name such as Europe/Warsaw. Now {{zone}}; it stays there wherever you write from.", { zone: zoneLabel(bot.timeZone) })}
+            error={draft !== null && draft !== "" && zoneOffset(draft) === "" ? t("Not a time zone this browser knows.") : undefined}
           >
             <input
               className={`${inputClass} max-w-[320px] font-mono text-[13px]`}
@@ -109,10 +111,15 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
           </Field>
         ) : (
           <p className="text-[13px] leading-[20px] text-ink-2">
-            <span className="font-mono text-ink">{zoneLabel(bot.timeZone)}</span>
-            {device && device !== bot.timeZone
-              ? `. This device is in ${device}; the Bot moves there with your next message.`
-              : ". It moves with the device you send messages from."}
+            <Trans
+              i18nKey={
+                device && device !== bot.timeZone
+                  ? "<mono>{{zone}}</mono>. This device is in {{device}}; the Bot moves there with your next message."
+                  : "<mono>{{zone}}</mono>. It moves with the device you send messages from."
+              }
+              values={{ zone: zoneLabel(bot.timeZone), device }}
+              components={{ mono: <span className="font-mono text-ink" /> }}
+            />
           </p>
         )}
       </div>

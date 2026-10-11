@@ -12,6 +12,7 @@ import { ContextMeter } from "./ContextMeter";
 import { FollowToggle } from "./FollowToggle";
 import { MicButton } from "./MicButton";
 import { SendStop } from "./SendStop";
+import { t } from "../i18n.ts";
 
 // The row under the textarea: attach, mic, model, thinking, the live-steps
 // toggle, memory collection and the context meter on the left; the key hint and
@@ -61,8 +62,8 @@ export function Toolbar({
       <div className="flex min-w-0 items-center gap-1">
         <button
           type="button"
-          title={workerConnected ? "Attach files to /workspace/tmp" : "Start the Bot to attach files"}
-          aria-label="Attach files"
+          title={workerConnected ? t("Attach files to /workspace/tmp") : t("Start the Bot to attach files")}
+          aria-label={t("Attach files")}
           disabled={!workerConnected || !chatId}
           className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:text-ink-3 disabled:opacity-50 disabled:hover:bg-transparent"
           onClick={() => fileInputRef.current?.click()}
@@ -81,8 +82,8 @@ export function Toolbar({
           <Select
             variant="ghost"
             className="min-w-0 max-w-[220px]"
-            title="Model for this conversation"
-            ariaLabel="Model for this conversation"
+            title={t("Model for this conversation")}
+            ariaLabel={t("Model for this conversation")}
             value={model && models.some((m) => m.id === model) ? model : models[0].id}
             onChange={onModel}
             disabled={!chatId}
@@ -105,10 +106,10 @@ export function Toolbar({
 
       <span className="mr-1.5 hidden select-none text-[12px] text-ink-3 @min-[460px]:inline-grid" aria-hidden>
         <span className={`col-start-1 row-start-1 text-right transition-opacity duration-[240ms] ease-quiet ${sending ? "opacity-0" : "opacity-100"}`}>
-          Enter to send
+          {t("Enter to send")}
         </span>
         <span className={`col-start-1 row-start-1 text-right transition-opacity duration-[240ms] ease-quiet ${sending ? "opacity-100" : "opacity-0"}`}>
-          Esc stops the reply
+          {t("Esc stops the reply")}
         </span>
       </span>
 

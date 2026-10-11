@@ -13,6 +13,8 @@ import { DriveForm } from "./DriveForm";
 import { DriveMark } from "./DriveMark";
 import { DriveRow } from "./DriveRow";
 import { Gallery } from "./Gallery";
+import { t } from "../i18n.ts";
+import { Trans } from "../Trans.tsx";
 
 const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", "s3", "r2", "b2", "sftp"];
 
@@ -105,15 +107,14 @@ export function DrivesList({ botId }: { botId: string }) {
     <div className="silo-page">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-title text-ink">Drives</h2>
+          <h2 className="text-title text-ink">{t("Drives")}</h2>
           <p className="mt-1 max-w-[520px] text-[13.5px] leading-[21px] text-ink-2">
-            Cloud storage and file servers, mounted as folders in <code className="font-mono text-[12.5px] text-ink">/workspace/drives</code>. The Bot works on them like any file. Sign-ins and passwords stay on the Silo server.
+            <Trans i18nKey="Cloud storage and file servers, mounted as folders in <code>/workspace/drives</code>. The Bot works on them like any file. Sign-ins and passwords stay on the Silo server." components={{ code: <code className="font-mono text-[12.5px] text-ink" /> }} />
           </p>
         </div>
         {drives && drives.length > 0 ? (
           <button type="button" className={btnClass("primary")} onClick={gallery}>
-            <Plus size={15} />
-            Add drive
+            <Plus size={15} />{t("Add drive")}
           </button>
         ) : null}
       </div>
@@ -127,9 +128,9 @@ export function DrivesList({ botId }: { botId: string }) {
       {!bindOk ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card bg-well px-4 py-3">
           <CircleAlert size={16} className="shrink-0 text-vermilion" />
-          <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink">This Bot’s container was made before it had drives. Reset it once so the Bot can see them. Its files are kept.</p>
+          <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink">{t("This Bot’s container was made before it had drives. Reset it once so the Bot can see them. Its files are kept.")}</p>
           <Btn kind="secondary" size="sm" type="button" onClick={() => void navigate({ to: "/bots/$botId/container", params: { botId } })}>
-            Go to Containers
+            {t("Go to Containers")}
           </Btn>
         </div>
       ) : null}
@@ -143,8 +144,8 @@ export function DrivesList({ botId }: { botId: string }) {
               <HardDrive size={22} />
             </div>
             <div>
-              <h3 className="text-card-title text-ink">No drives yet</h3>
-              <p className="text-[13px] text-ink-2">Give the Bot a folder from somewhere else.</p>
+              <h3 className="text-card-title text-ink">{t("No drives yet")}</h3>
+              <p className="text-[13px] text-ink-2">{t("Give the Bot a folder from somewhere else.")}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -163,7 +164,7 @@ export function DrivesList({ botId }: { botId: string }) {
               ))}
           </div>
           <button type="button" className="mt-4 flex items-center gap-1 text-[13px] font-medium text-cobalt hover:text-cobalt-deep" onClick={gallery}>
-            All {templates.length} providers <ChevronRight size={14} />
+            {t("All {{count}} providers", { count: templates.length })} <ChevronRight size={14} />
           </button>
         </div>
       ) : (
@@ -180,7 +181,7 @@ export function DrivesList({ botId }: { botId: string }) {
 function Loading({ onBack }: { onBack: () => void }) {
   return (
     <div className="silo-page">
-      <PageHead title="Drives" onBack={onBack} />
+      <PageHead title={t("Drives")} onBack={onBack} />
       <SkeletonRows rows={3} height={64} />
     </div>
   );
@@ -189,8 +190,8 @@ function Loading({ onBack }: { onBack: () => void }) {
 function Missing({ onBack }: { onBack: () => void }) {
   return (
     <div className="silo-page">
-      <PageHead title="Drives" onBack={onBack} />
-      <p className="text-[13.5px] text-ink-2">That drive is gone. It may have been removed.</p>
+      <PageHead title={t("Drives")} onBack={onBack} />
+      <p className="text-[13.5px] text-ink-2">{t("That drive is gone. It may have been removed.")}</p>
     </div>
   );
 }

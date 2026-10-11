@@ -1,6 +1,7 @@
 import { Mic, Square } from "lucide-react";
 import type { Dictation } from "../voice";
 import { micTitle } from "./model";
+import { t } from "../i18n.ts";
 
 // The mic toggles a take: Mic to start, a vermilion square to stop and
 // transcribe. It is disabled (with the reason as its title) where the browser
@@ -13,7 +14,7 @@ export function MicButton({ dictation, disabled }: { dictation: Dictation; disab
     <button
       type="button"
       title={micTitle(supported, state)}
-      aria-label={recording ? "Stop dictation" : "Dictate"}
+      aria-label={recording ? t("Stop dictation") : t("Dictate")}
       aria-pressed={recording}
       disabled={disabled || !supported || busy}
       className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control transition-[background-color,color,transform] duration-[160ms] ease-quiet active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent ${

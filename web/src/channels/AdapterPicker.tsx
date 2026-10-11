@@ -7,6 +7,7 @@ import { PageHead, widePage } from "../PageHead";
 import { ToolbarSearch } from "../ToolbarSearch";
 import { AdapterLogo } from "./AdapterLogo";
 import { adapterPoints, adapterTraits, filterAdapters } from "./model";
+import { t } from "../i18n.ts";
 
 // Past this many adapters the picker grows a search box.
 const searchable = 4;
@@ -28,7 +29,7 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
           {count > 0 ? (
             <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald">
               <Check size={11} />
-              {count === 1 ? "In use" : `${count} in use`}
+              {count === 1 ? t("In use") : t("{{count}} in use", { count })}
             </span>
           ) : null}
         </div>
@@ -59,7 +60,7 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
         <div className="mt-auto pt-2">
           <button type="button" className={btnClass("primary", "w-full justify-center")} onClick={onAdd}>
             <Plus size={15} />
-            {count > 0 ? "Add another" : `Add ${a.name}`}
+            {count > 0 ? t("Add another") : t("Add {{name}}", { name: a.name })}
           </button>
         </div>
       </div>
@@ -86,27 +87,27 @@ export function AdapterPicker({
   const shown = useMemo(() => filterAdapters(adapters, search), [adapters, search]);
   return (
     <div className={widePage}>
-      <PageHead title="Add a channel" subtitle="Pick the app you want to talk to this Bot from." onBack={onBack} />
+      <PageHead title={t("Add a channel")} subtitle={t("Pick the app you want to talk to this Bot from.")} onBack={onBack} />
 
       {adapters.length > searchable ? (
         <div className="mb-6">
-          <ToolbarSearch value={search} onChange={setSearch} placeholder="Search channels..." className="sm:w-80" />
+          <ToolbarSearch value={search} onChange={setSearch} placeholder={t("Search channels...")} className="sm:w-80" />
         </div>
       ) : null}
 
       {!loaded ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label={t("Loading")}>
           {[0, 1, 2].map((i) => (
             <div key={i} className="skeleton h-[340px] rounded-card" />
           ))}
         </div>
       ) : adapters.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center text-ink-3">No channel adapters available on this system.</div>
+        <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center text-ink-3">{t("No channel adapters available on this system.")}</div>
       ) : shown.length === 0 ? (
         <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
-          <p className="text-[13px]">No channels match “{search}”.</p>
+          <p className="text-[13px]">{t("No channels match “{{search}}”.", { search })}</p>
           <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={() => setSearch("")}>
-            Clear search
+            {t("Clear search")}
           </button>
         </div>
       ) : (
@@ -123,12 +124,12 @@ export function AdapterPicker({
             <Plug size={20} />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-ink">Looking for email, a calendar, or another service?</h4>
-            <p className="text-xs text-ink-2">Those are Connectors: the Bot calls them as tools instead of chatting through them.</p>
+            <h4 className="text-sm font-semibold text-ink">{t("Looking for email, a calendar, or another service?")}</h4>
+            <p className="text-xs text-ink-2">{t("Those are Connectors: the Bot calls them as tools instead of chatting through them.")}</p>
           </div>
         </div>
         <button type="button" className={btnClass("secondary")} onClick={() => void navigate({ to: "/bots/$botId/connectors", params: { botId } })}>
-          Browse Connectors
+          {t("Browse Connectors")}
         </button>
       </div>
     </div>

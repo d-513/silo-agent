@@ -26,6 +26,7 @@ import { useBotLive } from "./useBotLive";
 import { patchChats, useChatList } from "./useChatList";
 import { useComposerDraft } from "./useComposerDraft";
 import { useSecrets } from "./useSecrets";
+import { t } from "../i18n.ts";
 
 const ArtifactOverlay = lazyNamed(() => import("../ArtifactOverlay"), "ArtifactOverlay");
 
@@ -114,7 +115,7 @@ export function BotPage() {
       <div className="p-7">
         <p className="mb-3 text-vermilion">{loadErr}</p>
         <Link to="/" className="text-cobalt">
-          Back to Bots
+          {t("Back to Bots")}
         </Link>
       </div>
     );
@@ -214,7 +215,7 @@ export function BotPage() {
           <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-[13px] text-vermilion">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
             <span className="min-w-0 flex-1">{actErr}</span>
-            <button type="button" title="Dismiss" className="rounded-xs p-1 hover:bg-surface/60" onClick={() => setActErr("")}>
+            <button type="button" title={t("Dismiss")} className="rounded-xs p-1 hover:bg-surface/60" onClick={() => setActErr("")}>
               <X size={13} />
             </button>
           </div>

@@ -8,6 +8,7 @@ import type { Attachment } from "../fold";
 import { fmtBytes, fullTime, runWhen } from "../format";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
+import { t } from "../i18n.ts";
 
 const miniBtn =
   "flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-40";
@@ -70,10 +71,10 @@ export function UserBubble({
           />
           <div className="mt-1.5 flex items-center justify-end gap-1.5">
             <Btn kind="secondary" size="sm" onClick={() => setEditing(false)}>
-              Cancel
+              {t("Cancel")}
             </Btn>
             <Btn kind="primary" size="sm" onClick={saveEdit}>
-              Save & resend
+              {t("Save & resend")}
             </Btn>
           </div>
         </div>
@@ -102,9 +103,9 @@ export function UserBubble({
         ) : null}
       </div>
       <div className="flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100">
-        <CopyButton text={text} title="Copy prompt" size={13} />
+        <CopyButton text={text} title={t("Copy prompt")} size={13} />
         {onEdit && isLast ? (
-          <button type="button" onClick={startEdit} disabled={busy} title={busy ? "Stop the Bot to edit" : "Edit and resend"} className={miniBtn}>
+          <button type="button" onClick={startEdit} disabled={busy} title={busy ? t("Stop the Bot to edit") : t("Edit and resend")} className={miniBtn}>
             <Pencil size={13} />
           </button>
         ) : null}
@@ -113,7 +114,7 @@ export function UserBubble({
             type="button"
             onClick={() => del.fire(() => onDelete())}
             disabled={busy}
-            title={busy ? "Stop the Bot to delete" : del.armed ? "Click again to delete" : "Delete"}
+            title={busy ? t("Stop the Bot to delete") : del.armed ? t("Click again to delete") : t("Delete")}
             className={`${miniBtn} relative overflow-hidden ${del.armed ? "!bg-vermilion !text-on-accent" : "hover:!text-vermilion"}`}
           >
             <Trash2 size={13} />
@@ -121,7 +122,7 @@ export function UserBubble({
           </button>
         ) : null}
         {onDiverge ? (
-          <button type="button" onClick={onDiverge} disabled={busy} title="Diverge into a new chat" className={miniBtn}>
+          <button type="button" onClick={onDiverge} disabled={busy} title={t("Diverge into a new chat")} className={miniBtn}>
             <GitBranch size={13} />
           </button>
         ) : null}
@@ -139,8 +140,7 @@ export function FeedQuote({ text, source, createdAt }: { text: string; source: s
       <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
         <Inbox size={12} className="shrink-0" />
         <span className="truncate">
-          Quoted from the Feed{source ? ` · ${source}` : ""}
-          {at && !Number.isNaN(at.getTime()) ? ` · ${fullTime(at)}` : ""}
+          {[t("Quoted from the Feed"), source, at && !Number.isNaN(at.getTime()) ? fullTime(at) : ""].filter(Boolean).join(" · ")}
         </span>
       </figcaption>
       <div className="silo-reply">
@@ -158,7 +158,7 @@ export function LeadNote({ text, createdAt }: { text: string; createdAt?: string
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-ink-3)]">
       <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
         <Bot size={12} className="shrink-0" />
-        <span className="truncate">From the lead{when ? ` · ${when}` : ""}</span>
+        <span className="truncate">{[t("From the lead"), when].filter(Boolean).join(" · ")}</span>
       </figcaption>
       <div className="silo-reply">
         <Md text={text} />
@@ -184,7 +184,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
           <Bot size={14} strokeWidth={1.75} />
         </span>
       }
-      title={<span className="shrink-0 font-medium text-ink-2">{agents.length === 1 ? "Subagent finished" : "Subagents finished"}</span>}
+      title={<span className="shrink-0 font-medium text-ink-2">{agents.length === 1 ? t("Subagent finished") : t("Subagents finished")}</span>}
       tail={
         <span className="flex min-w-0 items-center gap-1.5 truncate">
           {agents.map((ag, i) => {
@@ -227,9 +227,9 @@ export function Reply({ text, bounds, streaming, onRetry }: { text: string; boun
       </div>
       {!streaming ? (
         <div className="mt-1 -ml-1.5 flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within/reply:translate-y-0 group-focus-within/reply:opacity-100 group-hover/reply:translate-y-0 group-hover/reply:opacity-100">
-          <CopyButton text={text} title="Copy reply" />
+          <CopyButton text={text} title={t("Copy reply")} />
           {onRetry ? (
-            <button type="button" onClick={onRetry} title="Retry" aria-label="Retry" className={miniBtn}>
+            <button type="button" onClick={onRetry} title={t("Retry")} aria-label={t("Retry")} className={miniBtn}>
               <RotateCcw size={14} />
             </button>
           ) : null}
@@ -248,7 +248,7 @@ export function RunMark({ prompt, createdAt }: { prompt: string; createdAt?: str
       <span aria-hidden className="h-px flex-1 bg-line" />
       <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
         <Timer size={12} />
-        {when ? `Ran ${when}` : "Ran"}
+        {when ? t("Ran {{when}}", { when }) : t("Ran")}
       </span>
       <span aria-hidden className="h-px flex-1 bg-line" />
     </div>

@@ -13,6 +13,7 @@ import { ChatTitleInput } from "./ChatTitleInput";
 import { ActiveBar, SideLink } from "./SideNav";
 import { onCustomize, onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
+import { t } from "../i18n.ts";
 
 // What the open chat is doing, for its lamp: waiting on you, or working.
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
@@ -67,15 +68,15 @@ export function BotSidebar({
       <div className="px-2 pb-3">
         <NewChat onClick={onNewChat} />
       </div>
-      <nav className="space-y-0.5 px-2" aria-label="Pages">
-        <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label="Automations" />
-        <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label="Memories" />
-        <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label="Knowledge" />
-        <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label="Feed" badge={tab === "feed" ? 0 : bot.feedUnread} />
-        <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label="Customize" />
+      <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
+        <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
+        <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
+        <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
+        <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={tab === "feed" ? 0 : bot.feedUnread} />
+        <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label={t("Customize")} />
       </nav>
       <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">
-        {chats.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">No chats</p>}
+        {chats.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No chats")}</p>}
         {groups.map((g) => (
           <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
             {g.chats.map((c) => {
@@ -95,8 +96,8 @@ export function BotSidebar({
           </ChatGroupSection>
         ))}
       </div>
-      <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label="Bot">
-        <SideLink to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label="Settings" />
+      <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label={t("Bot")}>
+        <SideLink to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label={t("Settings")} />
       </nav>
     </aside>
   );
@@ -114,7 +115,7 @@ function NewChat({ onClick }: { onClick: () => void }) {
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
         <Plus size={15} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
       </span>
-      New chat
+      {t("New chat")}
     </button>
   );
 }
@@ -165,7 +166,7 @@ function ChatRow({
   onDelete: () => void;
 }) {
   const editing = rename.editing === chat.id;
-  const t = Date.parse(chat.updatedAt);
+  const ms = Date.parse(chat.updatedAt);
   return (
     <div
       className={`group relative rounded-control bg-(--row) transition-[background-color] duration-[160ms] ease-quiet ${
@@ -181,7 +182,7 @@ function ChatRow({
         <Link
           to="/bots/$botId/run/$chatId"
           params={{ botId, chatId: chat.id }}
-          title={Number.isFinite(t) ? fullTime(new Date(t)) : undefined}
+          title={Number.isFinite(ms) ? fullTime(new Date(ms)) : undefined}
           onDoubleClick={(e) => {
             e.preventDefault();
             rename.begin(chat);
@@ -193,7 +194,7 @@ function ChatRow({
               on ? "text-ink" : "text-ink-2 group-hover:text-ink"
             }`}
           >
-            {chat.title || "New chat"}
+            {chat.title || t("New chat")}
           </span>
           {status ? <Status status={status} className="shrink-0" /> : null}
         </Link>
@@ -202,8 +203,8 @@ function ChatRow({
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 opacity-0 transition-opacity duration-[160ms] ease-quiet group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
           <button
             type="button"
-            title="Rename chat"
-            aria-label="Rename chat"
+            title={t("Rename chat")}
+            aria-label={t("Rename chat")}
             className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
             onClick={(e) => {
               e.preventDefault();
@@ -214,8 +215,8 @@ function ChatRow({
           </button>
           <button
             type="button"
-            title="Delete chat"
-            aria-label="Delete chat"
+            title={t("Delete chat")}
+            aria-label={t("Delete chat")}
             className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion"
             onClick={onDelete}
           >

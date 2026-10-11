@@ -8,6 +8,8 @@ import { identTyped } from "./ident";
 import { EnvEditor, HeadersEditor } from "./ListEditors";
 import { TextRow } from "./TextRow";
 import { TransportFields } from "./Transport";
+import { t } from "../../i18n.ts";
+import { Trans } from "../../Trans.tsx";
 
 type Edit = <K extends keyof ConnectorDraft>(k: K, v: ConnectorDraft[K]) => void;
 
@@ -27,8 +29,7 @@ function AdvancedSettings({ children }: { children: ReactNode }) {
   return (
     <details className="group mb-6">
       <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
-        <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
-        Advanced settings
+        <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />{t("Advanced settings")}
       </summary>
       <div className="mt-4">{children}</div>
     </details>
@@ -38,13 +39,13 @@ function AdvancedSettings({ children }: { children: ReactNode }) {
 function PromptField({ value, set }: { value: ConnectorDraft; set: Edit }) {
   return (
     <>
-      <label className="mb-1 block text-[12px] font-medium text-ink-3">Prompt</label>
-      <p className="mb-2 text-ink-2">Extra instructions added to the system prompt while this connector is authorized and its tools are ready.</p>
+      <label className="mb-1 block text-[12px] font-medium text-ink-3">{t("Prompt")}</label>
+      <p className="mb-2 text-ink-2">{t("Extra instructions added to the system prompt while this connector is authorized and its tools are ready.")}</p>
       <textarea
         className="mb-3 min-h-24 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 py-2"
         value={value.prompt}
         onChange={(e) => set("prompt", e.target.value)}
-        placeholder="When to use this connector, and how."
+        placeholder={t("When to use this connector, and how.")}
       />
     </>
   );
@@ -60,7 +61,7 @@ function ImageField({ value, onChange }: { value: ConnectorDraft; onChange: (nex
   }
   return (
     <>
-      <label className="mb-1 block text-[12px] font-medium text-ink-3">Image</label>
+      <label className="mb-1 block text-[12px] font-medium text-ink-3">{t("Image")}</label>
       <div className="mb-3 flex items-center gap-3">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} />
         <input type="file" accept="image/*" onChange={(e) => void onFile(e.target.files?.[0])} />
@@ -73,7 +74,7 @@ function ImageField({ value, onChange }: { value: ConnectorDraft; onChange: (nex
               onChange(withoutImage(value));
             }}
           >
-            Remove
+            {t("Remove")}
           </button>
         )}
       </div>
@@ -85,20 +86,20 @@ function ImageField({ value, onChange }: { value: ConnectorDraft; onChange: (nex
 function DefaultModeField({ value, set, builtin }: { value: ConnectorDraft; set: Edit; builtin: boolean }) {
   return (
     <>
-      <div className="mb-1 text-[12px] font-medium text-ink-3">Default for tools</div>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Default for tools")}</div>
       <p className="mb-2 text-ink-2">
         {builtin
-          ? "Each action already has its own default (reading allowed, sending asks); this covers anything else. Rules can still override."
-          : "Used when there is no rule for an action. Rules can still override."}
+          ? t("Each action already has its own default (reading allowed, sending asks); this covers anything else. Rules can still override.")
+          : t("Used when there is no rule for an action. Rules can still override.")}
       </p>
       <div className="mb-3">
         <Segmented
           value={value.defaultMode}
           onChange={(v) => set("defaultMode", v)}
           options={[
-            { id: "allow", label: "Allow" },
-            { id: "ask", label: "Ask" },
-            { id: "deny", label: "Deny" },
+            { id: "allow", label: t("Allow") },
+            { id: "ask", label: t("Ask") },
+            { id: "deny", label: t("Deny") },
           ]}
         />
       </div>
@@ -122,7 +123,7 @@ function CatalogHeader({ value, guide }: { value: ConnectorDraft; guide?: string
       </div>
       {guide && (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
-          <p className="mb-2 text-label-caps uppercase text-ink-3">Before you add</p>
+          <p className="mb-2 text-label-caps uppercase text-ink-3">{t("Before you add")}</p>
           <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{guide}</p>
         </div>
       )}
@@ -159,24 +160,23 @@ export function ConnectorFields({
   const settings = (
     <>
       <TextRow
-        label="Name"
+        label={t("Name")}
         value={value.name}
         onChange={(e) => onChange(withName(value, e.target.value, !!allowIdentifier && !existing))}
         required={!fromCatalog}
       />
       {allowIdentifier && (
         <TextRow
-          label="Identifier"
+          label={t("Identifier")}
           hint={
             <>
-              What this preset is called in <span className="font-mono">autoenable_connectors</span>. Lowercase letters, digits and
-              underscores; no two presets share one.
+              <Trans i18nKey="What this preset is called in <mono>autoenable_connectors</mono>. Lowercase letters, digits and underscores; no two presets share one." components={{ mono: <span className="font-mono" /> }} />
             </>
           }
           mono
           value={value.identifier}
           onChange={(e) => set("identifier", identTyped(e.target.value))}
-          placeholder="fal_ai"
+          placeholder={"fal_ai"}
           spellCheck={false}
           autoCapitalize="off"
           required
@@ -184,12 +184,12 @@ export function ConnectorFields({
       )}
       {!fromCatalog && (
         <>
-          <TextRow label="Description" value={value.description} onChange={(e) => set("description", e.target.value)} />
+          <TextRow label={t("Description")} value={value.description} onChange={(e) => set("description", e.target.value)} />
           <TextRow
-            label="Category"
+            label={t("Category")}
             value={value.category}
             onChange={(e) => set("category", e.target.value)}
-            placeholder="e.g. Developer Tools, Productivity, Custom"
+            placeholder={t("e.g. Developer Tools, Productivity, Custom")}
             list="connector-category-suggestions"
           />
           <datalist id="connector-category-suggestions">
@@ -201,17 +201,16 @@ export function ConnectorFields({
       )}
       <PromptField value={value} set={set} />
       <ImageField value={value} onChange={onChange} />
-      <div className="mb-1 text-[12px] font-medium text-ink-3">Type</div>
-      <p className="mb-3 text-ink-2">{builtin ? "Built-in — runs on the Silo server" : "MCP"}</p>
+      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Type")}</div>
+      <p className="mb-3 text-ink-2">{builtin ? t("Built-in — runs on the Silo server") : "MCP"}</p>
       {!builtin && <TransportFields value={value} set={set} existing={existing} fromCatalog={fromCatalog} allowStdioImage={allowStdioImage} />}
       <DefaultModeField value={value} set={set} builtin={builtin} />
       <ToggleRow
         className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"
-        label="Expose completions directly"
+        label={t("Expose completions directly")}
         hint={
           <>
-            The model also gets this connector's tools as its own (<span className="font-mono">slug__tool</span>), not only through
-            Python. Every tool is then described in each request, so leave it off for connectors with many tools.
+            <Trans i18nKey="The model also gets this connector's tools as its own (<mono>slug__tool</mono>), not only through Python. Every tool is then described in each request, so leave it off for connectors with many tools." components={{ mono: <span className="font-mono" /> }} />
           </>
         }
         on={value.exposeCompletion}
@@ -220,15 +219,14 @@ export function ConnectorFields({
       {allowAutoAttach && (
         <ToggleRow
           className="mb-3 rounded-card shadow-card bg-surface px-3 py-2.5"
-          label="Add to new bots by default"
+          label={t("Add to new bots by default")}
           hint={
             value.autoenabled ? (
               <>
-                On for every new bot: <span className="font-mono">autoenable_connectors</span> names this preset (Settings → Connector
-                options), whatever this switch says.
+                <Trans i18nKey="On for every new bot: <mono>autoenable_connectors</mono> names this preset (Settings → Connector options), whatever this switch says." components={{ mono: <span className="font-mono" /> }} />
               </>
             ) : (
-              "New bots get this connector automatically. Removing it from a bot does not re-add it."
+              t("New bots get this connector automatically. Removing it from a bot does not re-add it.")
             )
           }
           on={value.autoAttach || value.autoenabled}

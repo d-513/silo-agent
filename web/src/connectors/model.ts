@@ -1,4 +1,5 @@
 import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
+import { msg, t } from "../i18n.ts";
 
 export type TabMode = "in_use" | "library" | "custom";
 
@@ -7,8 +8,8 @@ export const FEATURED = ["email", "calendar"];
 
 // Short selling points under a featured card; falls back to none.
 export const featuredPoints: Record<string, string[]> = {
-  email: ["Any IMAP / SMTP inbox", "Gmail & Outlook presets", "Sends ask you first"],
-  calendar: ["iCloud, Fastmail, Nextcloud & any CalDAV", "Recurring events & free/busy", "Changes ask you first"],
+  email: [msg("Any IMAP / SMTP inbox"), msg("Gmail & Outlook presets"), msg("Sends ask you first")],
+  calendar: [msg("iCloud, Fastmail, Nextcloud & any CalDAV"), msg("Recurring events & free/busy"), msg("Changes ask you first")],
 };
 
 // A connector the owner wrote, not a copy of a library preset.
@@ -28,7 +29,7 @@ export function nextCopyName(base: string, names: string[]) {
   return `${stem} ${names.length + 1}`;
 }
 
-export const categoryOf = (c: Connector) => c.category?.trim() || "General";
+export const categoryOf = (c: Connector) => c.category?.trim() || t("General");
 
 // Distinct categories in the library, sorted.
 export function categoriesOf(catalog: Connector[]) {

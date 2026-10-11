@@ -1,4 +1,5 @@
 import { ArrowUp } from "lucide-react";
+import { t } from "../i18n.ts";
 
 // Send and Stop are one 34px button. The arrow lifts out while the square
 // rotates in (320ms settle); the fill crossfades over 240ms.
@@ -10,8 +11,8 @@ export function SendStop({ sending, canSend, onStop }: { sending: boolean; canSe
       type={sending ? "button" : "submit"}
       onClick={sending ? onStop : undefined}
       disabled={!sending && !canSend}
-      title={sending ? "Stop this reply" : "Send message"}
-      aria-label={sending ? "Stop this reply" : "Send message"}
+      title={sending ? t("Stop this reply") : t("Send message")}
+      aria-label={sending ? t("Stop this reply") : t("Send message")}
       className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] transition-[background-color,transform] duration-[240ms] ease-quiet active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:active:scale-100 ${fill}`}
     >
       <ArrowUp

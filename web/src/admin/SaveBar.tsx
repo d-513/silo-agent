@@ -1,5 +1,6 @@
 import { SaveButton, type SaveState } from "../Feedback";
 import { Btn } from "../Btn";
+import { t } from "../i18n.ts";
 
 const SAVE_KEY = typeof navigator !== "undefined" && /Mac|iP(hone|ad)/.test(navigator.platform) ? "⌘S" : "Ctrl+S";
 
@@ -31,19 +32,19 @@ export function SaveBar({
           {error
             ? error
             : live
-              ? `${dirty} unsaved ${dirty === 1 ? "change" : "changes"}`
+              ? t("{{count}} unsaved changes", { count: dirty })
               : state === "saved"
-                ? "Saved to silo.yaml"
-                : "No unsaved changes"}
+                ? t("Saved to silo.yaml")
+                : t("No unsaved changes")}
         </p>
         <span className="font-mono text-[11px] text-ink-3 max-wide:hidden">{SAVE_KEY}</span>
         {live ? (
           <Btn kind="ghost" size="sm" onClick={onDiscard} disabled={state === "saving"}>
-            Discard
+            {t("Discard")}
           </Btn>
         ) : null}
         <SaveButton size="sm" state={state} disabled={!live && state !== "saved"} onClick={onSave}>
-          Save changes
+          {t("Save changes")}
         </SaveButton>
       </div>
     </div>

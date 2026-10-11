@@ -3,22 +3,26 @@ import { useEffect, useState } from "react";
 import { onSignedOut, ui } from "./api";
 import { setSession, useSession } from "./auth";
 import { isSignedOut } from "./errors";
+import { followUser, useLanguage } from "./i18n.ts";
 import { Unreachable } from "./Offline";
 import { queryClient } from "./query";
 import { router } from "./router";
 
 export default function App() {
   const session = useSession();
+  const language = useLanguage();
   const [unreachable, setUnreachable] = useState(false);
   // Only an Unauthenticated answer means signed out. Anything else (the CP
   // restarting, a proxy 502, a store error) retries with backoff instead of
   // showing a Sign in screen for a session that may be fine.
   useEffect(() => {
     let dead = false;
-    let t: ReturnType<typeof setTimeout> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const check = (delay: number) => {
       ui.me({})
-        .then((r) => {
+        .then(async (r) => {
+          // Their language first, so the first page is drawn in it.
+          if (r.user) await followUser(r.user.language);
           if (dead) return;
           setUnreachable(false);
           setSession(r.user ? { email: r.user.email, admin: r.user.admin } : null);
@@ -31,13 +35,13 @@ export default function App() {
             return;
           }
           setUnreachable(true);
-          t = setTimeout(() => check(Math.min(delay * 2, 8000)), delay);
+          timer = setTimeout(() => check(Math.min(delay * 2, 8000)), delay);
         });
     };
     check(500);
     return () => {
       dead = true;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, []);
   useEffect(() => onSignedOut(() => setSession(null)), []);
@@ -46,6 +50,7 @@ export default function App() {
     if (session === null) queryClient.clear();
   }, [session]);
   if (session === undefined) return unreachable ? <Unreachable /> : null;
-  // The routes guard themselves on the session (router.tsx).
-  return <RouterProvider router={router} />;
+  // The routes guard themselves on the session (router.tsx). They are keyed by
+  // the language: nothing subscribes to it, so a change draws every page anew.
+  return <RouterProvider key={language} router={router} />;
 }

@@ -1,6 +1,7 @@
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { btnClass, type BtnKind, type BtnSize } from "./Btn";
+import { t } from "./i18n.ts";
 
 /**
  * Destructive confirm: the first call arms for `ms`, the second fires.
@@ -33,7 +34,7 @@ export function useArmed(ms = 3000) {
 /** A button that arms on first click (vermilion + draining bar) and acts on the second. */
 export function ArmedButton({
   onConfirm,
-  armedLabel = "Click again to delete",
+  armedLabel = t("Click again to delete"),
   kind = "secondary",
   size = "md",
   iconOnly = false,
@@ -85,7 +86,7 @@ export function ArmedButton({
 export function CopyButton({
   text,
   label,
-  title = "Copy",
+  title = t("Copy"),
   className = "",
   size = 14,
 }: {
@@ -115,8 +116,8 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      title={copied ? "Copied" : title}
-      aria-label={copied ? "Copied" : title}
+      title={copied ? t("Copied") : title}
+      aria-label={copied ? t("Copied") : title}
       className={`inline-flex items-center gap-1.5 rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] ${
         label ? "h-7 px-2 text-[12px] font-medium" : "h-7 w-7 justify-center"
       } ${className}`}
@@ -131,7 +132,7 @@ export function CopyButton({
           className={`${morph} text-emerald ${copied ? "opacity-100" : "scale-50 -rotate-[30deg] opacity-0"}`}
         />
       </span>
-      {label ? <span>{copied ? "Copied" : "Copy"}</span> : null}
+      {label ? <span>{copied ? t("Copied") : t("Copy")}</span> : null}
     </button>
   );
 }
@@ -182,9 +183,9 @@ export function SaveButton({
   state,
   kind = "primary",
   size = "md",
-  children = "Save",
-  savingLabel = "Saving…",
-  savedLabel = "Saved",
+  children = t("Save"),
+  savingLabel = t("Saving…"),
+  savedLabel = t("Saved"),
   className = "",
   disabled,
   ...rest

@@ -14,6 +14,7 @@ import { InUseTab } from "./InUseTab";
 import { LibraryTab } from "./LibraryTab";
 import { attachedCount, categoriesOf, FEATURED, filterAttached, filterCatalog, groupByCategory, nextCopyName, type TabMode } from "./model";
 import { useBotConnectors } from "./useBotConnectors";
+import { t } from "../i18n.ts";
 
 export function BotConnectors({
   botId,
@@ -158,9 +159,9 @@ export function BotConnectors({
     <div className={widePage}>
       {/* Header & Page Description */}
       <div className="mb-6 space-y-1.5">
-        <h1 className="text-title text-ink">Connectors</h1>
+        <h1 className="text-title text-ink">{t("Connectors")}</h1>
         <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
-          Connectors let this Bot work with outside services like GitHub, Slack, Notion, or your custom MCP servers. Search the library to add verified integrations or link bespoke tools directly into your bot runtime.
+          {t("Connectors let this Bot work with outside services like GitHub, Slack, Notion, or your custom MCP servers. Search the library to add verified integrations or link bespoke tools directly into your bot runtime.")}
         </p>
       </div>
 
@@ -224,10 +225,10 @@ export function BotConnectors({
             <ConnectorFields value={libraryDraft} onChange={setLibraryDraft} fromCatalog={true} catalogGuide={libraryModal.catalogGuide} />
             <div className="mt-6 flex items-center gap-2">
               <Btn kind="primary" type="submit">
-                Add to Bot
+                {t("Add to Bot")}
               </Btn>
               <Btn kind="ghost" type="button" onClick={closeLibraryModal}>
-                Cancel
+                {t("Cancel")}
               </Btn>
             </div>
           </form>
@@ -237,7 +238,7 @@ export function BotConnectors({
       {/* POPUP: the full error of one connector */}
       {errView && (
         <ConnectorModal wide dismissOnBackdrop onClose={() => setErrView(null)}>
-          <h3 className="mb-1 text-base font-semibold text-ink">{errView.connector?.name} error</h3>
+          <h3 className="mb-1 text-base font-semibold text-ink">{t("{{name}} error", { name: errView.connector?.name ?? "" })}</h3>
           <p className="mb-3 text-[12px] text-ink-3">{errView.statusDetail}</p>
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-well p-3 font-mono text-[12px] leading-relaxed text-ink">
             {errView.lastError || errView.statusDetail}
@@ -245,10 +246,10 @@ export function BotConnectors({
           <div className="mt-4 flex items-center gap-2">
             <Btn kind="ghost" onClick={() => void navigator.clipboard?.writeText(errView.lastError || errView.statusDetail)}>
               <Copy size={13} />
-              <span>Copy</span>
+              <span>{t("Copy")}</span>
             </Btn>
             <Btn kind="ghost" onClick={() => setErrView(null)}>
-              Close
+              {t("Close")}
             </Btn>
           </div>
         </ConnectorModal>
@@ -257,15 +258,15 @@ export function BotConnectors({
       {/* POPUP: Edit Attached Connector Modal */}
       {edit && (
         <ConnectorModal onClose={() => setEdit(null)}>
-          <h3 className="mb-4 text-base font-semibold text-ink">Edit connector</h3>
+          <h3 className="mb-4 text-base font-semibold text-ink">{t("Edit connector")}</h3>
           <form onSubmit={saveEdit}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
             <div className="mt-6 flex items-center gap-2">
               <Btn kind="primary" type="submit">
-                Save changes
+                {t("Save changes")}
               </Btn>
               <Btn kind="ghost" type="button" onClick={() => setEdit(null)}>
-                Cancel
+                {t("Cancel")}
               </Btn>
             </div>
           </form>

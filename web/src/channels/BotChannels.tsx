@@ -14,6 +14,7 @@ import { ChannelCard } from "./ChannelCard";
 import { ChannelForm } from "./ChannelForm";
 import { ChannelLog } from "./ChannelLog";
 import { ChannelSetup } from "./ChannelSetup";
+import { t } from "../i18n.ts";
 
 const noAdapters: ChannelAdapter[] = [];
 const noChannels: Channel[] = [];
@@ -21,8 +22,8 @@ const noChannels: Channel[] = [];
 function Opening({ onBack }: { onBack: () => void }) {
   return (
     <div className={widePage}>
-      <PageHead title="Channels" onBack={onBack} />
-      <p className="text-ink-2 text-[13px]">Opening…</p>
+      <PageHead title={t("Channels")} onBack={onBack} />
+      <p className="text-ink-2 text-[13px]">{t("Opening…")}</p>
     </div>
   );
 }
@@ -101,25 +102,24 @@ export function ChannelsList({ botId }: { botId: string }) {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-title text-ink">Channels</h1>
+            <h1 className="text-title text-ink">{t("Channels")}</h1>
             {loaded ? <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{channels.length}</span> : null}
           </div>
           <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
-            Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers
-            there, and can send to it from its tools.
+            {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
           </p>
         </div>
 
         <button type="button" className={btnClass("primary")} onClick={() => add()}>
           <Plus size={15} />
-          <span>Add channel</span>
+          <span>{t("Add channel")}</span>
         </button>
       </div>
 
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
 
       {!loaded ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5" aria-busy="true" aria-label="Loading">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5" aria-busy="true" aria-label={t("Loading")}>
           {[0, 1].map((i) => (
             <div key={i} className="skeleton h-[160px] rounded-card" />
           ))}
@@ -129,8 +129,8 @@ export function ChannelsList({ botId }: { botId: string }) {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Radio size={28} />
           </div>
-          <h3 className="text-base font-semibold text-ink">No channels yet</h3>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">Pick an app to start with. You can add more later, one conversation each.</p>
+          <h3 className="text-base font-semibold text-ink">{t("No channels yet")}</h3>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{t("Pick an app to start with. You can add more later, one conversation each.")}</p>
           {adapters.length > 0 ? (
             <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2.5 text-left sm:grid-cols-3">
               {adapters.map((a) => (
@@ -148,7 +148,7 @@ export function ChannelsList({ botId }: { botId: string }) {
             </div>
           ) : null}
           <button type="button" className="mt-5 text-[12.5px] font-medium text-cobalt hover:underline" onClick={() => add()}>
-            Compare channels
+            {t("Compare channels")}
           </button>
         </div>
       ) : (

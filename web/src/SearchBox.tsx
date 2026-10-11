@@ -1,6 +1,7 @@
 import { Search, X } from "lucide-react";
 import { inputClass } from "./Field";
 import { Spinner } from "./Feedback";
+import { t } from "./i18n.ts";
 
 // The search input of a list panel: a magnifier, a spinner while a search runs
 // or a clear button once there is text, and Escape to clear.
@@ -21,7 +22,7 @@ export function SearchBox({ value, onChange, placeholder, searching }: { value: 
         {searching ? (
           <Spinner size={13} />
         ) : value ? (
-          <button type="button" className="text-ink-3 hover:text-ink" title="Clear search" onClick={() => onChange("")}>
+          <button type="button" className="text-ink-3 hover:text-ink" title={t("Clear search")} onClick={() => onChange("")}>
             <X size={14} />
           </button>
         ) : null}

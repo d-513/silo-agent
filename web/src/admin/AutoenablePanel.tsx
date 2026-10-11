@@ -6,6 +6,8 @@ import { SaveButton, useSave } from "../Feedback";
 import { Panel } from "../Field";
 import { ConfigSource, UI, type AutoenableConnectors } from "../gen/silo/v1/ui_pb";
 import { Select } from "../Select";
+import { t } from "../i18n.ts";
+import { Trans } from "../Trans.tsx";
 
 const none: string[] = [];
 
@@ -32,19 +34,19 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
 
   return (
     <Panel
-      title="On every new bot"
-      note="Library connectors every new Bot starts with, on top of the ones switched on in the Connectors Library. Removing one from a Bot does not re-add it."
+      title={t("On every new bot")}
+      note={t("Library connectors every new Bot starts with, on top of the ones switched on in the Connectors Library. Removing one from a Bot does not re-add it.")}
     >
       {locked ? (
         <p className="mb-4 flex items-start gap-2 text-[13px] text-vermilion">
           <TriangleAlert className="mt-0.5 shrink-0" size={16} />
           <span>
-            Set by <span className="font-mono">{list?.envName}</span>; change it there.
+            <Trans i18nKey="Set by <mono>{{envName}}</mono>; change it there." values={{ envName: list?.envName }} components={{ mono: <span className="font-mono" /> }} />
           </span>
         </p>
       ) : null}
       {ids.length === 0 ? (
-        <p className="mb-3 text-[13px] text-ink-2">No connectors listed.</p>
+        <p className="mb-3 text-[13px] text-ink-2">{t("No connectors listed.")}</p>
       ) : (
         <ul className="mb-3 grid gap-2">
           {ids.map((id) => {
@@ -57,13 +59,13 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
                   {c ? (
                     <div className="truncate font-mono text-[12px] text-ink-3">{id}</div>
                   ) : lib.isPending ? null : (
-                    <div className="text-[12px] text-vermilion">Not in the library, so nothing is added.</div>
+                    <div className="text-[12px] text-vermilion">{t("Not in the library, so nothing is added.")}</div>
                   )}
                 </div>
                 {locked ? null : (
                   <button
                     type="button"
-                    title="Remove"
+                    title={t("Remove")}
                     className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
                     onClick={() => setEdit(ids.filter((x) => x !== id))}
                   >
@@ -81,13 +83,13 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
             value=""
             onChange={(id) => setEdit([...ids, id])}
             options={addable.map((c) => ({ value: c.identifier, label: c.name, hint: c.identifier }))}
-            placeholder="Add a connector…"
-            emptyLabel="Every library connector is listed"
-            ariaLabel="Add a connector to every new bot"
+            placeholder={t("Add a connector…")}
+            emptyLabel={t("Every library connector is listed")}
+            ariaLabel={t("Add a connector to every new bot")}
             className="max-w-[280px]"
           />
           <SaveButton state={saver.state} onClick={save}>
-            Save list
+            {t("Save list")}
           </SaveButton>
         </div>
       )}

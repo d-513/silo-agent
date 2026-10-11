@@ -4,6 +4,7 @@ import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell, inputClass } from "../Field";
+import { t } from "../i18n.ts";
 
 const zipLimit = 10 << 20;
 
@@ -19,10 +20,12 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
   const file = useRef<HTMLInputElement>(null);
 
   function report(r: { installed: string[]; skipped: string[] }) {
-    const parts = [];
-    if (r.installed.length) parts.push("Installed " + r.installed.join(", "));
-    if (r.skipped.length) parts.push("already had " + r.skipped.join(", "));
-    setNote(parts.join("; ").replace(/^./, (c) => c.toUpperCase()) || "Nothing new");
+    const installed = r.installed.join(", ");
+    const skipped = r.skipped.join(", ");
+    if (installed && skipped) setNote(t("Installed {{installed}}; already had {{skipped}}", { installed, skipped }));
+    else if (installed) setNote(t("Installed {{installed}}", { installed }));
+    else if (skipped) setNote(t("Already had {{skipped}}", { skipped }));
+    else setNote(t("Nothing new"));
     onDone();
   }
   async function go(e: FormEvent) {
@@ -45,7 +48,7 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
     setErr("");
     setNote("");
     if (f.size > zipLimit) {
-      setErr("The zip is larger than 10 MB.");
+      setErr(t("The zip is larger than 10 MB."));
       return;
     }
     setBusy(true);
@@ -82,27 +85,27 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
           <PackagePlus size={19} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-card-title leading-5 text-ink">{scope === "library" ? "Add to the library" : "Install a skill"}</h3>
+          <h3 className="text-card-title leading-5 text-ink">{scope === "library" ? t("Add to the library") : t("Install a skill")}</h3>
           <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">
             {over
-              ? "Drop the zip to install it."
+              ? t("Drop the zip to install it.")
               : scope === "library"
-                ? "Paste a GitHub URL or owner/repo, or drop a skill zip. Every Bot can then enable it."
-                : "Paste a GitHub URL or owner/repo, or drop a skill zip here. It stays yours until you enable it on a Bot."}
+                ? t("Paste a GitHub URL or owner/repo, or drop a skill zip. Every Bot can then enable it.")
+                : t("Paste a GitHub URL or owner/repo, or drop a skill zip here. It stays yours until you enable it on a Bot.")}
           </p>
           <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={(e) => void go(e)}>
             <input
               className={`${inputClass} min-w-0 flex-1 wide:min-w-[240px]`}
-              placeholder="GitHub URL or owner/repo"
-              aria-label="GitHub URL or owner/repo"
+              placeholder={t("GitHub URL or owner/repo")}
+              aria-label={t("GitHub URL or owner/repo")}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
             <Btn kind="primary" type="submit" disabled={busy || !url.trim()}>
-              {busy ? "Installing…" : "Install"}
+              {busy ? t("Installing…") : t("Install")}
             </Btn>
             <Btn kind="secondary" type="button" disabled={busy} icon={<Upload size={12} />} onClick={() => file.current?.click()}>
-              Upload zip
+              {t("Upload zip")}
             </Btn>
             <input
               ref={file}

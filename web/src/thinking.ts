@@ -1,3 +1,5 @@
+import { msg, t } from "./i18n.ts";
+
 // Thinking levels mirror internal/llm/thinking.go: the CP lists what each
 // model accepts (ModelOption.thinkingLevels) and fits a chat's level to the
 // model on every turn. The composer shows the level that will actually be
@@ -6,17 +8,17 @@
 export const THINKING_ORDER = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
 const LABELS: Record<string, string> = {
-  off: "Off",
-  minimal: "Minimal",
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  xhigh: "Extra high",
-  max: "Max",
+  off: msg("Off"),
+  minimal: msg("Minimal"),
+  low: msg("Low"),
+  medium: msg("Medium"),
+  high: msg("High"),
+  xhigh: msg("Extra high"),
+  max: msg("Max"),
 };
 
 export function thinkingLabel(level: string): string {
-  return level ? (LABELS[level] ?? level) : "Default";
+  return level ? (LABELS[level] ? t(LABELS[level]) : level) : t("Default");
 }
 
 function rank(level: string): number {

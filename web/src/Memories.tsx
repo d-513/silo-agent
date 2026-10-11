@@ -11,6 +11,7 @@ import { UI, type Bot, type Memory } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 import { patch, setBot } from "./query";
 import { day } from "./format";
+import { t } from "./i18n.ts";
 
 // match turns a cosine distance (0 = same, 2 = opposite) into a 0–100 score.
 function match(distance: number) {
@@ -45,11 +46,11 @@ function CorePanel({ bot, onError }: { bot: Bot; onError: (s: string) => void })
   }
   return (
     <form onSubmit={save}>
-      <Panel title="Core memory" note="Always in the prompt, every run. Keep only what every conversation needs; the Bot edits it with core_memory.">
-        <PromptWell label="CORE MEMORY" hint="Lasting facts. Compact past 8000." value={memory} onChange={setMemory} />
+      <Panel title={t("Core memory")} note={t("Always in the prompt, every run. Keep only what every conversation needs; the Bot edits it with core_memory.")}>
+        <PromptWell label={t("CORE MEMORY")} hint={t("Lasting facts. Compact past 8000.")} value={memory} onChange={setMemory} />
         <div className="mt-4 flex items-center gap-3">
           <SaveButton type="submit" state={saver.state} disabled={memory === bot.memory}>
-            Save core memory
+            {t("Save core memory")}
           </SaveButton>
         </div>
       </Panel>
@@ -84,23 +85,23 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
 
   const searchMode = query.trim() !== "";
   const rows = searchMode ? hits : all;
-  const count = all ? `${all.length} saved. ` : "";
+  const count = all ? `${t("{{count}} saved.", { count: all.length })} ` : "";
   return (
     <Panel
-      title="Long-term memories"
-      note={`${count}Saved by the Bot with remember, or collected from chats once they go quiet, and found by meaning. Lessons are pitfalls and what worked. Only the closest few reach a run.`}
+      title={t("Long-term memories")}
+      note={count + t("Saved by the Bot with remember, or collected from chats once they go quiet, and found by meaning. Lessons are pitfalls and what worked. Only the closest few reach a run.")}
       padded={false}
       className="mt-4"
     >
       <div className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)]">
-        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder="Search by meaning, e.g. “what does the user drink”" />
+        <SearchBox value={query} onChange={setQuery} searching={searching} placeholder={t("Search by meaning, e.g. “what does the user drink”")} />
         {searchErr && <p className="mt-2 text-[12.5px] text-vermilion">{searchErr}</p>}
       </div>
       {rows === null ? (
-        <p className="px-5 py-4 text-ink-3">{searchMode ? "Searching…" : "Loading…"}</p>
+        <p className="px-5 py-4 text-ink-3">{searchMode ? t("Searching…") : t("Loading…")}</p>
       ) : rows.length === 0 ? (
         <p className="px-5 py-4 text-ink-3">
-          {searchMode ? (searchErr ? "Search failed." : "Nothing matches.") : "None yet. The Bot adds them as it learns durable facts."}
+          {searchMode ? (searchErr ? t("Search failed.") : t("Nothing matches.")) : t("None yet. The Bot adds them as it learns durable facts.")}
         </p>
       ) : (
         rows.map((m) => (
@@ -108,11 +109,10 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
             <div className="min-w-0 flex-1">
               <p className="break-words whitespace-pre-wrap">{m.content}</p>
               <p className="mt-0.5 font-mono text-[11px] text-ink-3">
-                {m.kind === "lesson" ? <span className="mr-1.5 rounded-xs bg-cobalt-pale px-1.5 py-px text-cobalt-deep">lesson</span> : null}
-                {searchMode ? `${match(m.distance)}% match · ` : ""}
-                {day(m.createdAt)}
-                {m.chatId ? " · collected" : ""}
-                {m.lastUsedAt ? ` · recalled ${day(m.lastUsedAt)}` : ""}
+                {m.kind === "lesson" ? <span className="mr-1.5 rounded-xs bg-cobalt-pale px-1.5 py-px text-cobalt-deep">{t("lesson")}</span> : null}
+                {[searchMode ? t("{{percent}}% match", { percent: match(m.distance) }) : "", day(m.createdAt), m.chatId ? t("collected") : "", m.lastUsedAt ? t("recalled {{date}}", { date: day(m.lastUsedAt) }) : ""]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
             <ArmedButton
@@ -120,11 +120,11 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
               size="sm"
               iconOnly
               className="shrink-0"
-              title="Delete memory"
+              title={t("Delete memory")}
               icon={<Trash2 size={13} />}
               onConfirm={() => void remove(m.id)}
             >
-              Delete
+              {t("Delete")}
             </ArmedButton>
           </div>
         ))
@@ -136,8 +136,8 @@ function LongTermPanel({ botId, onError }: { botId: string; onError: (s: string)
 export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-title">Memories</h2>
-      <p className="mb-6 text-ink-2">Core memory rides in every prompt. Long-term memories are unlimited: the Bot sees all of them while they are few, a summary once they are many, and searches them by meaning.</p>
+      <h2 className="text-title">{t("Memories")}</h2>
+      <p className="mb-6 text-ink-2">{t("Core memory rides in every prompt. Long-term memories are unlimited: the Bot sees all of them while they are few, a summary once they are many, and searches them by meaning.")}</p>
       <CorePanel bot={bot} onError={onError} />
       <LongTermPanel botId={bot.id} onError={onError} />
     </div>

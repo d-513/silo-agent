@@ -1,3 +1,5 @@
+import { msg, t } from "./i18n.ts";
+
 // The order is packed into `crest` as color * 8 + shape. Never reorder, only
 // restyle. `eyes` follows DESIGN.md: ink on the two light fills, canvas on
 // the rest; mist also takes a line-strong outline. A crest is the Bot's own
@@ -5,18 +7,18 @@
 // ink and canvas); the ink crest gains an edge in the dark, where it would
 // otherwise sink into the ground the way mist does on paper.
 export const CREST_FILLS = [
-  { name: "mist", fill: "#F3F2EF", eyes: "ink", outline: true },
-  { name: "brown", fill: "#8B5A3C", eyes: "canvas" },
-  { name: "wine", fill: "#9F1239", eyes: "canvas" },
-  { name: "orange", fill: "#EA580C", eyes: "canvas" },
-  { name: "yellow", fill: "#E0AE1C", eyes: "ink" },
-  { name: "green", fill: "#16A34A", eyes: "canvas" },
-  { name: "emerald", fill: "#0F7A55", eyes: "canvas" },
-  { name: "cobalt", fill: "#2B4FC7", eyes: "canvas" },
-  { name: "purple", fill: "#6D28D9", eyes: "canvas" },
-  { name: "pink", fill: "#DB2777", eyes: "canvas" },
-  { name: "graphite", fill: "#55534E", eyes: "canvas" },
-  { name: "ink", fill: "#1A1917", eyes: "canvas", outline: "dark" },
+  { name: msg("mist"), fill: "#F3F2EF", eyes: "ink", outline: true },
+  { name: msg("brown"), fill: "#8B5A3C", eyes: "canvas" },
+  { name: msg("wine"), fill: "#9F1239", eyes: "canvas" },
+  { name: msg("orange"), fill: "#EA580C", eyes: "canvas" },
+  { name: msg("yellow"), fill: "#E0AE1C", eyes: "ink" },
+  { name: msg("green"), fill: "#16A34A", eyes: "canvas" },
+  { name: msg("emerald"), fill: "#0F7A55", eyes: "canvas" },
+  { name: msg("cobalt"), fill: "#2B4FC7", eyes: "canvas" },
+  { name: msg("purple"), fill: "#6D28D9", eyes: "canvas" },
+  { name: msg("pink"), fill: "#DB2777", eyes: "canvas" },
+  { name: msg("graphite"), fill: "#55534E", eyes: "canvas" },
+  { name: msg("ink"), fill: "#1A1917", eyes: "canvas", outline: "dark" },
 ] as const satisfies readonly { name: string; fill: string; eyes: "ink" | "canvas"; outline?: true | "dark" }[];
 
 const EYES = { ink: "#1A1917", canvas: "#FAF9F7" } as const;
@@ -26,7 +28,7 @@ export const CREST_COLORS = CREST_FILLS.map((c) => c.fill);
 export const SHAPE_COUNT = 8;
 export const COLOR_COUNT = CREST_COLORS.length;
 
-const NAMES = ["circle", "blob", "squircle", "pill", "triangle", "hex", "cloud", "drop"] as const;
+const NAMES = [msg("circle"), msg("blob"), msg("squircle"), msg("pill"), msg("triangle"), msg("hex"), msg("cloud"), msg("drop")] as const;
 
 export function packCrest(shape: number, color: number) {
   const s = ((shape % SHAPE_COUNT) + SHAPE_COUNT) % SHAPE_COUNT;
@@ -141,7 +143,7 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
   const { shape, color } = unpackCrest(value);
   return (
     <div className="rounded-card bg-surface p-4 shadow-card">
-      <div className="mb-2 text-label-caps text-ink-3 uppercase">Shape</div>
+      <div className="mb-2 text-label-caps text-ink-3 uppercase">{t("Shape")}</div>
       <div className="mb-4 grid grid-cols-4 gap-1.5">
         {NAMES.map((name, i) => {
           const on = i === shape;
@@ -149,8 +151,8 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
             <button
               key={name}
               type="button"
-              title={name}
-              aria-label={name}
+              title={t(name)}
+              aria-label={t(name)}
               aria-pressed={on}
               onClick={() => onChange(packCrest(i, color))}
               className={`blink flex h-14 items-center justify-center rounded-control transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
@@ -162,7 +164,7 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
           );
         })}
       </div>
-      <div className="mb-2 text-label-caps text-ink-3 uppercase">Color</div>
+      <div className="mb-2 text-label-caps text-ink-3 uppercase">{t("Color")}</div>
       <div className="flex flex-wrap gap-2 px-0.5">
         {CREST_FILLS.map(({ name, fill: hex }, i) => {
           const on = i === color;
@@ -170,8 +172,8 @@ export function CrestPicker({ value, onChange }: { value: number; onChange: (n: 
             <button
               key={name}
               type="button"
-              title={name}
-              aria-label={`color ${i + 1}`}
+              title={t(name)}
+              aria-label={t(name)}
               aria-pressed={on}
               onClick={() => onChange(packCrest(shape, i))}
               className={`h-7 w-7 rounded-full transition-[box-shadow,transform] duration-[200ms] ease-quiet active:scale-[.94] active:duration-[70ms] ${

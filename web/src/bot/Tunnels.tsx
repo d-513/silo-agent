@@ -13,6 +13,7 @@ import { UI, type Tunnel } from "../gen/silo/v1/ui_pb";
 import { patch } from "../query";
 import { accessOf, parsePort, tunnelNotice } from "../tunnels";
 import { TunnelAccess } from "./TunnelAccess";
+import { t } from "../i18n.ts";
 
 // TunnelsPane lists the addresses that reach services on this Bot's machine.
 // A tunnel is a generated name and a port; private ones open for the owner
@@ -41,8 +42,8 @@ export function TunnelsPane({ botId }: { botId: string }) {
     setErr("");
     setBusy(true);
     try {
-      const t = await ui.createTunnel({ botId, port: p.port, public: pub });
-      change((rows) => [...rows, t]);
+      const tn = await ui.createTunnel({ botId, port: p.port, public: pub });
+      change((rows) => [...rows, tn]);
       setPort("");
       setPub(false);
     } catch (e) {
@@ -52,23 +53,23 @@ export function TunnelsPane({ botId }: { botId: string }) {
     }
   }
 
-  async function setPublic(t: Tunnel, on: boolean) {
+  async function setPublic(tn: Tunnel, on: boolean) {
     setErr("");
-    change((rows) => rows.map((r) => (r.id === t.id ? ({ ...r, public: on } as Tunnel) : r)));
+    change((rows) => rows.map((r) => (r.id === tn.id ? ({ ...r, public: on } as Tunnel) : r)));
     try {
-      const u = await ui.updateTunnel({ botId, id: t.id, public: on });
-      change((rows) => rows.map((r) => (r.id === t.id ? u : r)));
+      const u = await ui.updateTunnel({ botId, id: tn.id, public: on });
+      change((rows) => rows.map((r) => (r.id === tn.id ? u : r)));
     } catch (e) {
-      change((rows) => rows.map((r) => (r.id === t.id ? t : r)));
+      change((rows) => rows.map((r) => (r.id === tn.id ? tn : r)));
       setErr(fail(e));
     }
   }
 
-  async function remove(t: Tunnel) {
+  async function remove(tn: Tunnel) {
     setErr("");
     try {
-      await ui.deleteTunnel({ botId, id: t.id });
-      change((rows) => rows.filter((r) => r.id !== t.id));
+      await ui.deleteTunnel({ botId, id: tn.id });
+      change((rows) => rows.filter((r) => r.id !== tn.id));
     } catch (e) {
       setErr(fail(e));
     }
@@ -81,9 +82,9 @@ export function TunnelsPane({ botId }: { botId: string }) {
 
   return (
     <div className="silo-page pb-12">
-      <h2 className="text-title">Tunnels</h2>
+      <h2 className="text-title">{t("Tunnels")}</h2>
       <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">
-        Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.
+        {t("Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.")}
       </p>
       {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}
       {notice ? (
@@ -91,7 +92,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
           {notice.text}{" "}
           {notice.admin ? (
             <Link to="/admin/settings/$section" params={{ section: "tunnels" }} className="font-medium text-cobalt hover:underline">
-              Open settings
+              {t("Open settings")}
             </Link>
           ) : null}
         </div>
@@ -105,7 +106,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
             void add();
           }}
         >
-          <Field label="Port" error={portErr} className="w-36">
+          <Field label={t("Port")} error={portErr} className="w-36">
             <input
               className={inputClass}
               inputMode="numeric"
@@ -118,16 +119,16 @@ export function TunnelsPane({ botId }: { botId: string }) {
               }}
             />
           </Field>
-          <Field label="Who can open it" className="w-fit">
+          <Field label={t("Who can open it")} className="w-fit">
             <TunnelAccess isPublic={pub} onChange={setPub} />
           </Field>
           <div className="pt-[22px]">
             <Btn kind="primary" type="submit" disabled={busy || full} icon={<Plus size={13} />}>
-              Open tunnel
+              {t("Open tunnel")}
             </Btn>
           </div>
           <p className={`basis-full text-[12.5px] leading-[18px] ${pub ? "text-vermilion" : "text-ink-3"}`}>{accessOf(pub).caption}</p>
-          {full ? <p className="basis-full text-[12.5px] text-ink-3">This Bot has {data?.max} tunnels, the most it can have. Delete one to add another.</p> : null}
+          {full ? <p className="basis-full text-[12.5px] text-ink-3">{t("This Bot has {{count}} tunnels, the most it can have. Delete one to add another.", { count: data?.max })}</p> : null}
         </form>
       ) : null}
 
@@ -136,48 +137,48 @@ export function TunnelsPane({ botId }: { botId: string }) {
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Globe size={20} className="text-ink-3" />
-          <p className="text-ink-2">No tunnels yet.</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.</p>
+          <p className="text-ink-2">{t("No tunnels yet.")}</p>
+          <p className="max-w-sm text-[12.5px] text-ink-3">{t("Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.")}</p>
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {rows.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card bg-surface p-4 shadow-card">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">{t.public ? <Globe size={18} /> : <Lock size={18} />}</div>
+          {rows.map((tn) => (
+            <li key={tn.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-card bg-surface p-4 shadow-card">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">{tn.public ? <Globe size={18} /> : <Lock size={18} />}</div>
               <div className="min-w-0 flex-1 basis-60">
-                {t.url ? (
-                  <a href={t.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-[13.5px] font-medium text-ink hover:underline">
-                    {t.url.replace(/^https?:\/\//, "")}
+                {tn.url ? (
+                  <a href={tn.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-[13.5px] font-medium text-ink hover:underline">
+                    {tn.url.replace(/^https?:\/\//, "")}
                   </a>
                 ) : (
-                  <span className="block truncate font-mono text-[13.5px] font-medium text-ink">{t.name}</span>
+                  <span className="block truncate font-mono text-[13.5px] font-medium text-ink">{tn.name}</span>
                 )}
-                <p className={`mt-0.5 text-[12.5px] ${t.public ? "text-vermilion" : "text-ink-2"}`}>{accessOf(t.public).caption}</p>
+                <p className={`mt-0.5 text-[12.5px] ${tn.public ? "text-vermilion" : "text-ink-2"}`}>{accessOf(tn.public).caption}</p>
                 <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">
-                  <span>Port {t.port}</span>
+                  <span>{t("Port {{port}}", { port: tn.port })}</span>
                   <span aria-hidden>·</span>
-                  <span>{t.createdBy === "bot" ? "Opened by the Bot" : "Opened by you"}</span>
+                  <span>{tn.createdBy === "bot" ? t("Opened by the Bot") : t("Opened by you")}</span>
                   <span aria-hidden>·</span>
-                  <span>{t.lastUsedAt ? `Used ${ago(t.lastUsedAt)}` : "Not used yet"}</span>
+                  <span>{tn.lastUsedAt ? t("Used {{when}}", { when: ago(tn.lastUsedAt) }) : t("Not used yet")}</span>
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <TunnelAccess isPublic={t.public} confirm onChange={(on) => void setPublic(t, on)} />
-                {t.url ? <CopyButton text={t.url} title="Copy address" /> : null}
-                {t.url ? (
+                <TunnelAccess isPublic={tn.public} confirm onChange={(on) => void setPublic(tn, on)} />
+                {tn.url ? <CopyButton text={tn.url} title={t("Copy address")} /> : null}
+                {tn.url ? (
                   <a
-                    href={t.url}
+                    href={tn.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Open in a new tab"
-                    aria-label="Open in a new tab"
+                    title={t("Open in a new tab")}
+                    aria-label={t("Open in a new tab")}
                     className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color] duration-[160ms] ease-quiet hover:bg-well hover:text-ink"
                   >
                     <ExternalLink size={14} />
                   </a>
                 ) : null}
-                <ArmedButton kind="ghost" size="sm" iconOnly title="Delete tunnel" armedLabel="Click again to delete" icon={<Trash2 size={13} />} onConfirm={() => void remove(t)}>
-                  Delete
+                <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete tunnel")} armedLabel={t("Click again to delete")} icon={<Trash2 size={13} />} onConfirm={() => void remove(tn)}>
+                  {t("Delete")}
                 </ArmedButton>
               </div>
             </li>

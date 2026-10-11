@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { t } from "../i18n.ts";
 
 // A one-line red notice above the textarea: an attach failure or a dictation
 // error (which can be dismissed).
@@ -17,8 +18,8 @@ export function Notice({ text, onDismiss }: { text: string; onDismiss?: () => vo
       <span className="min-w-0 truncate">{text}</span>
       <button
         type="button"
-        title="Dismiss"
-        aria-label="Dismiss"
+        title={t("Dismiss")}
+        aria-label={t("Dismiss")}
         className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-xs text-ink-3 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
         onClick={onDismiss}
       >

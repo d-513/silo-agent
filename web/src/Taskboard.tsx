@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import type { AgentLink } from "./links";
 import { useArmed } from "./Feedback";
 import type { TaskItem } from "./gen/silo/v1/ui_pb";
+import { t } from "./i18n.ts";
 
 function AgentChip({ name, to }: { name: string; to?: AgentLink }) {
   const inner = (
@@ -39,8 +40,8 @@ export function Taskboard({
   const [open, setOpen] = useState(false);
   const clear = useArmed();
   if (items.length === 0) return null;
-  const done = items.filter((t) => t.done).length;
-  const owners = [...new Set(items.map((t) => t.assignee).filter(Boolean))];
+  const done = items.filter((task) => task.done).length;
+  const owners = [...new Set(items.map((task) => task.assignee).filter(Boolean))];
   const pct = Math.round((done / items.length) * 100);
   return (
     <div className="shrink-0 px-3 pt-2 wide:px-6">
@@ -53,7 +54,7 @@ export function Taskboard({
         >
           <ChevronRight size={14} className={`shrink-0 text-ink-3 transition-transform duration-[160ms] ${open ? "rotate-90" : ""}`} />
           <ListChecks size={14} className="shrink-0 text-ink-2" />
-          <span className="shrink-0 font-medium text-ink">Tasks</span>
+          <span className="shrink-0 font-medium text-ink">{t("Tasks")}</span>
           <span className="shrink-0 font-mono text-[12px] text-ink-3">
             {done}/{items.length}
           </span>
@@ -69,26 +70,26 @@ export function Taskboard({
         {open ? (
           <div className="max-h-[40vh] overflow-auto px-2 pt-1 pb-2">
             <ol className="space-y-0.5">
-              {items.map((t) => {
-                const dim = mine !== undefined && t.assignee.toLowerCase() !== mine.toLowerCase();
+              {items.map((task) => {
+                const dim = mine !== undefined && task.assignee.toLowerCase() !== mine.toLowerCase();
                 return (
-                  <li key={t.n} className={`flex items-start gap-2 rounded-control px-2 py-1.5 text-[13px] leading-5 ${dim ? "opacity-55" : ""}`}>
+                  <li key={task.n} className={`flex items-start gap-2 rounded-control px-2 py-1.5 text-[13px] leading-5 ${dim ? "opacity-55" : ""}`}>
                     <span
-                      aria-label={t.done ? "done" : "open"}
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${t.done ? "bg-emerald text-on-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
+                      aria-label={task.done ? t("done") : t("open")}
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${task.done ? "bg-emerald text-on-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
                     >
-                      {t.done ? <Check size={11} strokeWidth={3} /> : null}
+                      {task.done ? <Check size={11} strokeWidth={3} /> : null}
                     </span>
-                    <span className="w-7 shrink-0 font-mono text-[12px] leading-5 text-ink-3">#{t.n}</span>
+                    <span className="w-7 shrink-0 font-mono text-[12px] leading-5 text-ink-3">#{task.n}</span>
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        {t.assignee ? <AgentChip name={t.assignee} to={agentHref?.(t.assignee)} /> : null}
-                        <span className={t.done ? "text-ink-2 line-through decoration-ink-3/60" : "text-ink"}>{t.text}</span>
+                        {task.assignee ? <AgentChip name={task.assignee} to={agentHref?.(task.assignee)} /> : null}
+                        <span className={task.done ? "text-ink-2 line-through decoration-ink-3/60" : "text-ink"}>{task.text}</span>
                       </span>
-                      {t.done && (t.doneBy || t.note) ? (
+                      {task.done && (task.doneBy || task.note) ? (
                         <span className="block text-[12px] leading-[18px] text-ink-3">
-                          {t.doneBy ? `done by ${t.doneBy}` : "done"}
-                          {t.note ? ` · ${t.note}` : ""}
+                          {task.doneBy ? t("done by {{name}}", { name: task.doneBy }) : t("done")}
+                          {task.note ? ` · ${task.note}` : ""}
                         </span>
                       ) : null}
                     </span>
@@ -106,7 +107,7 @@ export function Taskboard({
                   }`}
                 >
                   <Trash2 size={12} />
-                  {clear.armed ? "Click again to clear" : "Clear board"}
+                  {clear.armed ? t("Click again to clear") : t("Clear board")}
                 </button>
               </div>
             ) : null}

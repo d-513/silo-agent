@@ -10,6 +10,7 @@ import { UI } from "./gen/silo/v1/ui_pb";
 import { oidcStart, signInError } from "./signinFlow";
 import { tunnelNext } from "./signinNext";
 import { SiloGlyph } from "./SiloMark";
+import { followUser, t } from "./i18n.ts";
 
 // The card every signed-out page sits in: Sign in, and an invite link's page.
 export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
@@ -20,7 +21,7 @@ export function AuthCard({ title, children }: { title: string; children: ReactNo
           <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-well text-ink">
             <SiloGlyph className="h-5 w-5" />
           </span>
-          <span className="text-[14px] font-medium">Silo Agent</span>
+          <span className="text-[14px] font-medium">{"Silo Agent"}</span>
         </div>
         <h1 className="mb-6 text-title">{title}</h1>
         {children}
@@ -74,6 +75,7 @@ export function SignIn() {
       }
       // The /signin route sees the session and goes back to where it ended
       // (router.tsx), not the Bots list.
+      if (r.user) await followUser(r.user.language);
       setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
     } catch (ex) {
       setErr(fail(ex));
@@ -82,12 +84,12 @@ export function SignIn() {
   }
   const shown = err || signInError(search.error);
   return (
-    <AuthCard title={needsCode ? "Two-factor code" : "Sign in"}>
+    <AuthCard title={needsCode ? t("Two-factor code") : t("Sign in")}>
       {needsCode ? (
         <form onSubmit={onSubmit}>
-          <p className="mb-4 text-[13.5px] leading-[21px] text-ink-2">Enter the 6-digit code from your authenticator app, or one of your recovery codes.</p>
+          <p className="mb-4 text-[13.5px] leading-[21px] text-ink-2">{t("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")}</p>
           <label htmlFor="silo-code" className={authLabel}>
-            Code
+            {t("Code")}
           </label>
           <input
             id="silo-code"
@@ -102,7 +104,7 @@ export function SignIn() {
           />
           {shown && <AuthError>{shown}</AuthError>}
           <Btn kind="primary" className="w-full justify-center" type="submit" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
+            {busy ? t("Signing in…") : t("Sign in")}
           </Btn>
           <Btn
             kind="ghost"
@@ -115,7 +117,7 @@ export function SignIn() {
               setErr("");
             }}
           >
-            Use another account
+            {t("Use another account")}
           </Btn>
         </form>
       ) : (
@@ -123,11 +125,11 @@ export function SignIn() {
           {withPassword ? (
             <form onSubmit={onSubmit}>
               <label htmlFor="silo-email" className={authLabel}>
-                Email
+                {t("Email")}
               </label>
               <input id="silo-email" className={`${inputClass} mb-4`} value={email} onChange={(e) => setEm(e.target.value)} autoComplete="username" autoFocus required />
               <label htmlFor="silo-pass" className={authLabel}>
-                Password
+                {t("Password")}
               </label>
               <input
                 id="silo-pass"
@@ -140,7 +142,7 @@ export function SignIn() {
               />
               {shown && <AuthError>{shown}</AuthError>}
               <Btn kind="primary" className="w-full justify-center" type="submit" disabled={busy}>
-                {busy ? "Signing in…" : "Sign in"}
+                {busy ? t("Signing in…") : t("Sign in")}
               </Btn>
             </form>
           ) : (
@@ -151,7 +153,7 @@ export function SignIn() {
               {withPassword ? (
                 <div className="my-5 flex items-center gap-3 text-[12px] text-ink-3" aria-hidden>
                   <span className="h-px flex-1 bg-line-strong" />
-                  or
+                  {t("or")}
                   <span className="h-px flex-1 bg-line-strong" />
                 </div>
               ) : null}
@@ -162,7 +164,7 @@ export function SignIn() {
                 type="button"
                 onClick={() => window.location.assign(oidcStart(window.location.search, window.location.origin))}
               >
-                {options.oidcLabel || "Single sign-on"}
+                {options.oidcLabel || t("Single sign-on")}
               </Btn>
             </>
           ) : null}

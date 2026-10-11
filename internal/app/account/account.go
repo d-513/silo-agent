@@ -18,6 +18,7 @@ import (
 	"silo.agent/internal/auth"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/lang"
 )
 
 // Host is what accounts need from the App around them: a user's Bots are the
@@ -57,7 +58,7 @@ func protoUser(u *db.User) *v1.User {
 	out := &v1.User{
 		Id: u.ID, Email: u.Email, Admin: u.Admin, Disabled: u.Disabled,
 		HasPassword: u.PasswordHash != "", Totp: u.TOTPSecret != "", Oidc: u.OIDCSubject != "",
-		CreatedAt: stamp(u.CreatedAt),
+		CreatedAt: stamp(u.CreatedAt), Language: lang.UI(u.Language),
 	}
 	if u.LastSignInAt != nil {
 		out.LastSignInAt = stamp(*u.LastSignInAt)

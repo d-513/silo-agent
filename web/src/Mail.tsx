@@ -14,6 +14,7 @@ import { chatLink } from "./links";
 import { mailNotice, rawMailHref, senderName, wakeListError } from "./mailbox";
 import { patch, reloadBot } from "./query";
 import { ToggleRow } from "./Switch";
+import { t } from "./i18n.ts";
 
 // MailPane is the right-rail pane: the Bot's address to copy and what arrived.
 // The Bot reads the same messages with list_mail and read_mail; nothing can be
@@ -49,11 +50,11 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]">
         <MailIcon size={15} className="shrink-0 text-ink-2" />
-        <span className="shrink-0 font-medium">Mail</span>
+        <span className="shrink-0 font-medium">{t("Mail")}</span>
         {box?.address ? (
           <span className="flex min-w-0 items-center gap-0.5">
             <span className="truncate font-mono text-[12px] text-ink-3">{box.address}</span>
-            <CopyButton text={box.address} title="Copy address" size={13} className="shrink-0" />
+            <CopyButton text={box.address} title={t("Copy address")} size={13} className="shrink-0" />
           </span>
         ) : null}
         {actions ? (
@@ -69,19 +70,19 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
             {notice.text}{" "}
             {notice.admin ? (
               <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
-                Open settings
+                {t("Open settings")}
               </Link>
             ) : null}
           </div>
         ) : null}
-        {box?.problem ? <ErrorWell className="mb-3">The mail listener is not running: {box.problem}</ErrorWell> : null}
+        {box?.problem ? <ErrorWell className="mb-3">{t("The mail listener is not running: {{problem}}", { problem: box.problem })}</ErrorWell> : null}
         {box === null ? (
           <SkeletonRows rows={3} height={64} />
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
             <MailIcon size={20} className="text-ink-3" />
-            <p className="text-ink-2">No mail yet.</p>
-            {box.address ? <p className="max-w-sm text-[12.5px] text-ink-3">Anything sent to the address above lands here, usually within a minute.</p> : null}
+            <p className="text-ink-2">{t("No mail yet.")}</p>
+            {box.address ? <p className="max-w-sm text-[12.5px] text-ink-3">{t("Anything sent to the address above lands here, usually within a minute.")}</p> : null}
           </div>
         ) : (
           <section>
@@ -91,7 +92,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
               ))}
             </ul>
             <p className="mt-2 px-1 text-[12.5px] text-ink-3">
-              The newest {box.keep} messages are kept. A dot marks one the Bot has not read yet.
+              {t("The newest {{count}} messages are kept. A dot marks one the Bot has not read yet.", { count: box.keep })}
             </p>
           </section>
         )}
@@ -128,8 +129,8 @@ export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) 
 
   return (
     <Panel
-      title="Mail"
-      note="This Bot's own address. It only receives: give it to a sign-up, a newsletter or a report, and the Bot reads what arrives. Nothing can be sent from it."
+      title={t("Mail")}
+      note={t("This Bot's own address. It only receives: give it to a sign-up, a newsletter or a report, and the Bot reads what arrives. Nothing can be sent from it.")}
       className="mt-8"
     >
       {notice ? (
@@ -137,12 +138,12 @@ export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) 
           {notice.text}{" "}
           {notice.admin ? (
             <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
-              Open settings
+              {t("Open settings")}
             </Link>
           ) : null}
         </div>
       ) : null}
-      {box?.problem ? <ErrorWell className="mb-4">The mail listener is not running: {box.problem}</ErrorWell> : null}
+      {box?.problem ? <ErrorWell className="mb-4">{t("The mail listener is not running: {{problem}}", { problem: box.problem })}</ErrorWell> : null}
       {box === null ? (
         <SkeletonRows rows={2} height={64} />
       ) : box.address ? (
@@ -163,12 +164,12 @@ function AddressRow({ address, onRotate }: { address: string; onRotate: () => vo
       </div>
       <div className="min-w-0 flex-1 basis-60">
         <p className="truncate font-mono text-[13.5px] font-medium text-ink">{address}</p>
-        <p className="mt-0.5 text-[12.5px] text-ink-2">Anyone who knows it can write to it. Adding +anything before the @ reaches the same mailbox.</p>
+        <p className="mt-0.5 text-[12.5px] text-ink-2">{t("Anyone who knows it can write to it. Adding +anything before the @ reaches the same mailbox.")}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <CopyButton text={address} label title="Copy address" />
-        <ArmedButton kind="ghost" size="sm" iconOnly title="New address" armedLabel="Click again: the old address stops working" icon={<RefreshCw size={13} />} onConfirm={onRotate}>
-          New address
+        <CopyButton text={address} label title={t("Copy address")} />
+        <ArmedButton kind="ghost" size="sm" iconOnly title={t("New address")} armedLabel={t("Click again: the old address stops working")} icon={<RefreshCw size={13} />} onConfirm={onRotate}>
+          {t("New address")}
         </ArmedButton>
       </div>
     </div>
@@ -208,8 +209,8 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
   return (
     <div className="border-t border-line pt-4">
       <ToggleRow
-        label="Start a chat when mail arrives from someone I trust"
-        hint="Off, mail waits in the inbox until the Bot is asked to look. On, a message from a sender below opens a new chat and the Bot acts on it."
+        label={t("Start a chat when mail arrives from someone I trust")}
+        hint={t("Off, mail waits in the inbox until the Bot is asked to look. On, a message from a sender below opens a new chat and the Bot acts on it.")}
         on={wake}
         onChange={(v) => {
           setEdits((e) => ({ ...e, wake: v }));
@@ -219,15 +220,15 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
       {wake || wakeFrom ? (
         <Field
           className="mt-4"
-          label="Senders"
+          label={t("Senders")}
           error={err}
-          hint="One per line: an address (ada@example.com) or a whole domain (@example.com). Only mail the sender's domain vouches for counts, so a forged From address wakes nobody."
+          hint={t("One per line: an address (ada@example.com) or a whole domain (@example.com). Only mail the sender's domain vouches for counts, so a forged From address wakes nobody.")}
         >
           <textarea
             className={`${textareaClass} font-mono text-[13px]`}
             rows={3}
             spellCheck={false}
-            placeholder="you@example.com"
+            placeholder={"you@example.com"}
             value={wakeFrom}
             aria-invalid={err ? true : undefined}
             onChange={(e) => {
@@ -244,10 +245,10 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
       {dirty ? (
         <div className="mt-4 flex items-center gap-2">
           <SaveButton state={saver.state} onClick={() => void save()}>
-            Save
+            {t("Save")}
           </SaveButton>
           <button type="button" className={btnClass("ghost")} onClick={() => (setEdits({}), setErr(""))}>
-            Discard
+            {t("Discard")}
           </button>
         </div>
       ) : null}
@@ -267,17 +268,17 @@ function MailRow({ botId, mail: m, first, open, onToggle, onDelete }: { botId: s
         <ChevronRight size={14} className={`mt-[3px] shrink-0 text-ink-3 transition-transform duration-200 ease-quiet ${open ? "rotate-90" : ""}`} />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2">
-            {m.read ? null : <span aria-label="Not read by the Bot yet" title="Not read by the Bot yet" className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" />}
+            {m.read ? null : <span aria-label={t("Not read by the Bot yet")} title={t("Not read by the Bot yet")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" />}
             <span className="truncate text-[13.5px] font-medium text-ink">{senderName(m.from, m.fromAddress)}</span>
             {m.verified ? null : (
-              <span title="Sender not verified: the From address may be forged" className="flex shrink-0 items-center text-ink-3">
-                <ShieldAlert size={13} aria-label="Sender not verified" />
+              <span title={t("Sender not verified: the From address may be forged")} className="flex shrink-0 items-center text-ink-3">
+                <ShieldAlert size={13} aria-label={t("Sender not verified")} />
               </span>
             )}
-            {m.attachments.length > 0 ? <Paperclip size={12} className="shrink-0 text-ink-3" aria-label={`${m.attachments.length} attached`} /> : null}
+            {m.attachments.length > 0 ? <Paperclip size={12} className="shrink-0 text-ink-3" aria-label={t("{{count}} attached", { count: m.attachments.length })} /> : null}
             <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{feedStamp(m.receivedAt)}</span>
           </span>
-          <span className="mt-0.5 block truncate text-[13.5px] text-ink">{m.subject || "(no subject)"}</span>
+          <span className="mt-0.5 block truncate text-[13.5px] text-ink">{m.subject || t("(no subject)")}</span>
           {open ? null : <span className="mt-0.5 block truncate text-[12.5px] text-ink-3">{m.preview}</span>}
         </span>
       </button>
@@ -293,14 +294,14 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
   return (
     <div className="px-4 pb-4 pl-[42px]">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12.5px] leading-[18px]">
-        <dt className="text-ink-3">From</dt>
-        <dd className="min-w-0 break-words text-ink-2">{m.from || "Unknown"}</dd>
-        <dt className="text-ink-3">To</dt>
-        <dd className="min-w-0 break-words text-ink-2">{m.to || "Not named"}</dd>
+        <dt className="text-ink-3">{t("From")}</dt>
+        <dd className="min-w-0 break-words text-ink-2">{m.from || t("Unknown")}</dd>
+        <dt className="text-ink-3">{t("To")}</dt>
+        <dd className="min-w-0 break-words text-ink-2">{m.to || t("Not named")}</dd>
       </dl>
       <p className={`mt-2 flex items-start gap-1.5 text-[12.5px] leading-[18px] ${m.verified ? "text-ink-2" : "text-vermilion"}`} title={m.authDetail}>
         <Shield size={13} className={`mt-[2.5px] shrink-0 ${m.verified ? "text-emerald" : ""}`} />
-        <span>{m.verified ? "Sender verified: their domain vouched for this message." : "Sender not verified: the From address may be forged."}</span>
+        <span>{m.verified ? t("Sender verified: their domain vouched for this message.") : t("Sender not verified: the From address may be forged.")}</span>
       </p>
       {q.error ? (
         <ErrorWell className="mt-3">{fail(q.error)}</ErrorWell>
@@ -308,7 +309,7 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
         <SkeletonRows rows={1} height={64} className="mt-3" />
       ) : (
         <pre className="mt-3 max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-sm bg-well px-3 py-2.5 font-sans text-[13.5px] leading-[21px] text-ink">
-          {full.text || "(no text)"}
+          {full.text || t("(no text)")}
         </pre>
       )}
       {m.attachments.length > 0 ? (
@@ -326,15 +327,15 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
         {m.chatId ? (
           <Link {...chatLink(botId, m.chatId)} className={btnClass("secondary", "", "sm")}>
             <MessageCircle size={13} />
-            <span>Open the chat it started</span>
+            <span>{t("Open the chat it started")}</span>
           </Link>
         ) : null}
         <a href={rawMailHref(botId, m.id)} download className={btnClass("ghost", "", "sm")}>
           <Download size={13} />
-          <span>{m.attachments.length > 0 ? "Download original with attachments" : "Download original"}</span>
+          <span>{m.attachments.length > 0 ? t("Download original with attachments") : t("Download original")}</span>
         </a>
-        <ArmedButton kind="ghost" size="sm" iconOnly title="Delete message" icon={<Trash2 size={13} />} onConfirm={onDelete}>
-          Delete
+        <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete message")} icon={<Trash2 size={13} />} onConfirm={onDelete}>
+          {t("Delete")}
         </ArmedButton>
       </div>
     </div>

@@ -1,3 +1,5 @@
+import { t } from "../i18n.ts";
+
 // What a tool call's arguments say, read without a schema: streaming args are
 // partial JSON, so fields are pulled out by hand until the object closes.
 
@@ -59,7 +61,7 @@ export function asStr(v: unknown): string {
 function searches(v: unknown): string {
   const list = Array.isArray(v) ? v.map(asStr).filter(Boolean) : [];
   if (list.length < 2) return list[0] ?? "";
-  return `${list[0]} +${list.length - 1} more`;
+  return t("{{shown}} +{{count}} more", { shown: list[0], count: list.length - 1 });
 }
 
 // asked is the summary of a decision: the names of its questions, the first
@@ -77,7 +79,7 @@ function asked(v: unknown): string {
   if (!questions || typeof questions !== "object" || Array.isArray(questions)) return "";
   const names = Object.keys(questions);
   const shown = names.slice(0, 3).join(", ");
-  return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
+  return names.length > 3 ? t("{{shown}} +{{count}} more", { shown, count: names.length - 3 }) : shown;
 }
 
 export function prettyJson(raw: string) {
@@ -99,56 +101,56 @@ export function connectorTool(name: string): { slug: string; action: string } | 
 export function toolMeta(name: string): { app: string } {
   switch (name) {
     case "exec_python":
-      return { app: "Python" };
+      return { app: t("Python") };
     case "terminal":
-      return { app: "Terminal" };
+      return { app: t("Terminal") };
     case "read":
     case "write":
     case "patch":
     case "grep":
     case "delete":
     case "present":
-      return { app: "Files" };
+      return { app: t("Files") };
     case "look":
     case "click":
     case "type":
     case "key":
     case "scroll":
-      return { app: "Desktop" };
+      return { app: t("Desktop") };
     case "soul":
       return { app: "SOUL" };
     case "memory":
     case "core_memory":
-      return { app: "CORE MEMORY" };
+      return { app: t("CORE MEMORY") };
     case "skill":
-      return { app: "Skills" };
+      return { app: t("Skills") };
     case "artifact":
-      return { app: "Artifact" };
+      return { app: t("Artifact") };
     case "web_search":
-      return { app: "Web search" };
+      return { app: t("Web search") };
     case "channel":
-      return { app: "Channels" };
+      return { app: t("Channels") };
     case "chats":
-      return { app: "Chats" };
+      return { app: t("Chats") };
     case "feed":
-      return { app: "Feed" };
+      return { app: t("Feed") };
     case "list_models":
     case "switch_model":
-      return { app: "Model" };
+      return { app: t("Model") };
     case "decide":
-      return { app: "Decision" };
+      return { app: t("Decision") };
     case "spawn_agent":
     case "agent_status":
     case "message_agent":
     case "stop_agent":
-      return { app: "Subagents" };
+      return { app: t("Subagents") };
     case "sleep":
-      return { app: "Sleep" };
+      return { app: t("Sleep") };
     case "task_add":
     case "task_list":
     case "task_done":
     case "task_reset":
-      return { app: "Taskboard" };
+      return { app: t("Taskboard") };
     default:
       return { app: connectorTool(name)?.slug ?? name };
   }

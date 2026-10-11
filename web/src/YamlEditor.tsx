@@ -2,20 +2,20 @@ import CodeMirror from "@uiw/react-codemirror";
 import { yaml } from "@codemirror/lang-yaml";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
-import { tags as t } from "@lezer/highlight";
+import { tags } from "@lezer/highlight";
 import { useTheme } from "./theme";
 
 const highlight = HighlightStyle.define([
-  { tag: t.comment, color: "var(--color-ink-3)" },
-  { tag: t.lineComment, color: "var(--color-ink-3)" },
-  { tag: t.keyword, color: "var(--color-cobalt)" },
-  { tag: t.atom, color: "var(--color-cobalt)" },
-  { tag: t.bool, color: "var(--color-cobalt)" },
-  { tag: t.number, color: "var(--color-cobalt)" },
-  { tag: t.string, color: "var(--color-emerald)" },
-  { tag: t.propertyName, color: "var(--color-ink)" },
-  { tag: t.definition(t.propertyName), color: "var(--color-ink)" },
-  { tag: t.separator, color: "var(--color-ink-3)" },
+  { tag: tags.comment, color: "var(--color-ink-3)" },
+  { tag: tags.lineComment, color: "var(--color-ink-3)" },
+  { tag: tags.keyword, color: "var(--color-cobalt)" },
+  { tag: tags.atom, color: "var(--color-cobalt)" },
+  { tag: tags.bool, color: "var(--color-cobalt)" },
+  { tag: tags.number, color: "var(--color-cobalt)" },
+  { tag: tags.string, color: "var(--color-emerald)" },
+  { tag: tags.propertyName, color: "var(--color-ink)" },
+  { tag: tags.definition(tags.propertyName), color: "var(--color-ink)" },
+  { tag: tags.separator, color: "var(--color-ink-3)" },
 ]);
 
 // Every color is a token, so one spec serves both themes; the flag only tells
@@ -32,7 +32,7 @@ const themeFor = (dark: boolean) =>
         fontSize: "13px",
       },
       ".cm-content": {
-        fontFamily: '"Geist Mono Variable", "Geist Mono", ui-monospace, monospace',
+        fontFamily: "\"Geist Mono Variable\", \"Geist Mono\", ui-monospace, monospace",
         caretColor: "var(--color-ink)",
         minHeight: "16rem",
       },

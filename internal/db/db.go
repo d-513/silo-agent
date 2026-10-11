@@ -22,6 +22,9 @@ type User struct {
 	// Disabled blocks sign-in and pauses the user's Bots; nothing is deleted.
 	// (The defaults below fill the rows of users from before the column.)
 	Disabled bool `gorm:"not null;default:false"`
+	// Language is the display language of the console for this user; empty (a
+	// user who never picked) reads as the default: lang.UI.
+	Language string `gorm:"not null;default:''"`
 	// OIDCIssuer and OIDCSubject name the identity at the OIDC provider this
 	// user signs in with; both empty for a password-only account.
 	OIDCIssuer  string `gorm:"column:oidc_issuer"`
@@ -91,12 +94,15 @@ type Bot struct {
 	// zone.Resolve. Unless pinned it follows the device the owner writes from.
 	TimeZone       string `gorm:"not null;default:''"`
 	TimeZonePinned bool   `gorm:"not null;default:false"`
-	TokenHash      string `gorm:"uniqueIndex"`
-	ContainerID    string
-	Status         string
-	LastTask       string
-	Crest          int
-	CreatedAt      time.Time
+	// Language is what this Bot writes to people in: a language code or
+	// "mixed". Empty (a Bot from before languages) reads as mixed: lang.Bot.
+	Language    string `gorm:"not null;default:''"`
+	TokenHash   string `gorm:"uniqueIndex"`
+	ContainerID string
+	Status      string
+	LastTask    string
+	Crest       int
+	CreatedAt   time.Time
 }
 
 type Secret struct {

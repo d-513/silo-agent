@@ -1,13 +1,14 @@
 import { Folder, GitCompareArrows, Mail, Monitor, Power, SquareTerminal, type LucideIcon } from "lucide-react";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import type { PaneKind } from "./tabs";
+import { msg, t } from "../i18n.ts";
 
 export const paneMeta: Record<PaneKind, { label: string; icon: LucideIcon }> = {
-  files: { label: "Files", icon: Folder },
-  desktop: { label: "Desktop", icon: Monitor },
-  console: { label: "Console", icon: SquareTerminal },
-  changes: { label: "Changes", icon: GitCompareArrows },
-  mail: { label: "Mail", icon: Mail },
+  files: { label: msg("Files"), icon: Folder },
+  desktop: { label: msg("Desktop"), icon: Monitor },
+  console: { label: msg("Console"), icon: SquareTerminal },
+  changes: { label: msg("Changes"), icon: GitCompareArrows },
+  mail: { label: msg("Mail"), icon: Mail },
 };
 
 function hit(on: boolean) {
@@ -34,14 +35,15 @@ export function MachineRail({
   onStop: () => void;
 }) {
   const starting = bot.status === "starting";
-  const power = bot.workerConnected ? "Stop Bot" : starting ? "Starting…" : "Start Bot";
+  const power = bot.workerConnected ? t("Stop Bot") : starting ? t("Starting…") : t("Start Bot");
   return (
-    <aside className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-well pt-2.5 pb-4 wide:flex" aria-label="Machine">
+    <aside className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-well pt-2.5 pb-4 wide:flex" aria-label={t("Machine")}>
       {(Object.keys(paneMeta) as PaneKind[])
         // Mail has no machine: its icon is only here while the Bot has an address.
         .filter((k) => k !== "mail" || bot.mailAddress || open === "mail")
         .map((k) => {
-          const { label, icon: Icon } = paneMeta[k];
+          const { icon: Icon } = paneMeta[k];
+          const label = t(paneMeta[k].label);
           const on = open === k;
           return (
             <button key={k} type="button" title={label} aria-label={label} aria-pressed={on} data-tab-on={on || undefined} className={hit(on)} onClick={() => onPick(k)}>

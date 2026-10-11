@@ -17,6 +17,8 @@ service UI {
   // ChangeEmail sets the address the signed-in user signs in with. Nothing is
   // sent to it: Silo has no mail.
   rpc ChangeEmail(ChangeEmailRequest) returns (User);
+  // SetLanguage picks the language the signed-in user reads the console in.
+  rpc SetLanguage(SetLanguageRequest) returns (User);
   rpc ChangePassword(ChangePasswordRequest) returns (User);
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc RevokeSession(RevokeSessionRequest) returns (ListSessionsResponse);
@@ -230,6 +232,9 @@ message User {
   string last_sign_in_at = 9;
   // bots is how many Bots the user owns; set only by ListUsers.
   int32 bots = 10;
+  // language is the display language of the console for this user: a code the
+  // web is translated into (en, pl, de); never empty.
+  string language = 11;
 }
 
 message AuthOptionsRequest {}
@@ -265,6 +270,10 @@ message AcceptInviteResponse {
 
 message ChangeEmailRequest {
   string email = 1;
+}
+
+message SetLanguageRequest {
+  string language = 1;
 }
 
 message ChangePasswordRequest {
@@ -416,6 +425,9 @@ message Bot {
   // TimeZonePinned keeps the zone as set. Unpinned, it follows the device the
   // owner sends messages from.
   bool time_zone_pinned = 15;
+  // Language is what this Bot writes to people in: a language code, or
+  // "mixed" for whatever it is written to in. Never empty.
+  string language = 16;
 }
 
 message ListBotsRequest {}
@@ -443,6 +455,8 @@ message UpdateBotRequest {
   // Optional, so a save of the other fields leaves the zone alone.
   optional string time_zone = 8;
   optional bool time_zone_pinned = 9;
+  // Optional, so a save of the other fields leaves the language alone.
+  optional string language = 10;
 }
 
 message GetBotRequest {

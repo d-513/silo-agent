@@ -1,4 +1,5 @@
 import { daysAgo } from "../format.ts";
+import { locale, msg, t } from "../i18n.ts";
 
 // The chats column groups a Bot's conversations by when they last moved:
 // Today, Yesterday, Previous 7 days, Previous 30 days, then one group per
@@ -8,20 +9,18 @@ import { daysAgo } from "../format.ts";
 export type ChatGroup<T> = { key: string; label: string; chats: T[] };
 
 const fixed = [
-  { key: "today", label: "Today" },
-  { key: "yesterday", label: "Yesterday" },
-  { key: "week", label: "Previous 7 days" },
-  { key: "month", label: "Previous 30 days" },
+  { key: "today", label: msg("Today") },
+  { key: "yesterday", label: msg("Yesterday") },
+  { key: "week", label: msg("Previous 7 days") },
+  { key: "month", label: msg("Previous 30 days") },
 ] as const;
 
 function bucket(d: Date, now: Date): { key: string; label: string } {
   const days = daysAgo(d, now);
   // A clock a little ahead of the server's is still today.
-  if (days <= 0) return fixed[0];
-  if (days === 1) return fixed[1];
-  if (days <= 7) return fixed[2];
-  if (days <= 30) return fixed[3];
-  const m = d.toLocaleDateString([], { month: "long" });
+  const recent = days <= 0 ? fixed[0] : days === 1 ? fixed[1] : days <= 7 ? fixed[2] : days <= 30 ? fixed[3] : null;
+  if (recent) return { key: recent.key, label: t(recent.label) };
+  const m = d.toLocaleDateString(locale(), { month: "long" });
   const year = d.getFullYear();
   return {
     key: `m:${year}-${String(d.getMonth() + 1).padStart(2, "0")}`,
@@ -35,12 +34,12 @@ export function groupChats<T extends { updatedAt: string }>(chats: T[], now = ne
   const at = new Map<string, ChatGroup<T>>();
   const undated: T[] = [];
   for (const c of chats) {
-    const t = Date.parse(c.updatedAt);
-    if (!Number.isFinite(t)) {
+    const ms = Date.parse(c.updatedAt);
+    if (!Number.isFinite(ms)) {
       undated.push(c);
       continue;
     }
-    const b = bucket(new Date(t), now);
+    const b = bucket(new Date(ms), now);
     let g = at.get(b.key);
     if (!g) {
       g = { ...b, chats: [] };
@@ -49,14 +48,14 @@ export function groupChats<T extends { updatedAt: string }>(chats: T[], now = ne
     }
     g.chats.push(c);
   }
-  if (undated.length) out.push({ key: "earlier", label: "Earlier", chats: undated });
+  if (undated.length) out.push({ key: "earlier", label: t("Earlier"), chats: undated });
   return out;
 }
 
 /** The group a chat sits in, by its last activity ("" when it has no time). */
 export function groupKeyOf(updatedAt: string, now = new Date()): string {
-  const t = Date.parse(updatedAt);
-  return Number.isFinite(t) ? bucket(new Date(t), now).key : "earlier";
+  const ms = Date.parse(updatedAt);
+  return Number.isFinite(ms) ? bucket(new Date(ms), now).key : "earlier";
 }
 
 // The recent groups start open; the month groups start folded, so a long
