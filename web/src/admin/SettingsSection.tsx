@@ -11,7 +11,7 @@ import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
 import { OidcSettings } from "./OidcSettings";
-import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
@@ -41,6 +41,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
       <Group title={t("Context")} note={t(CONTEXT_NOTE)} id="context" />
       <Group title={t("Runs")} note={t(RUNS_NOTE)} id="runs" />
       <Group title={t("Workspace changes")} note={t(CHANGES_NOTE)} id="changes" />
+      <Group title={t("Output filter")} note={t(FILTER_NOTE)} id="filter" />
     </>
   ),
   connectors: () => <ConnectorOptions />,

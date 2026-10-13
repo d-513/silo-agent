@@ -24,6 +24,7 @@ const handlers: Record<string, text.Handler> = {
   tool_result: tools.toolResult,
   call: tools.call,
   call_result: tools.callResult,
+  filtered: tools.filtered,
   approval: approvals.approval,
   decision: approvals.decision,
   compacting: lifecycle.compacting,

@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react";
+import type { Filtered } from "../fold/types";
 import { CopyButton } from "../Feedback";
 import { Highlighted } from "../Highlighted";
 import { codeLang } from "../fileKind";
@@ -21,6 +22,13 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   );
 }
 
+// filterWord is the one word a row carries about its filtered result.
+function filterWord(f: Filtered): string {
+  if (f.verdict === "withheld") return t("Withheld");
+  if (f.verdict === "unchecked") return t("Unchecked");
+  return f.mode === "flag" ? t("Marked untrusted") : t("Flagged");
+}
+
 export function ToolRow({
   state,
   icon,
@@ -29,6 +37,7 @@ export function ToolRow({
   app,
   action,
   live,
+  filter,
   children,
 }: {
   state: RowState;
@@ -38,6 +47,8 @@ export function ToolRow({
   app: string;
   action?: string;
   live?: boolean;
+  // What the owner's output rule did to this call's result.
+  filter?: Filtered;
   children?: ReactNode;
 }) {
   return (
@@ -64,10 +75,17 @@ export function ToolRow({
               <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" aria-hidden />{t("Waiting for you")}
             </span>
           ) : null}
+          {filter ? <span className={`shrink-0 text-[12.5px] ${filter.verdict === "withheld" ? "text-vermilion" : "text-ink-3"}`}>{filterWord(filter)}</span> : null}
           {action ? <span className="min-w-0 truncate font-mono text-[12.5px] text-ink-3">{action}</span> : null}
         </>
       }
     >
+      {filter?.verdict === "withheld" && filter.original ? (
+        <details className="mb-2">
+          <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">{t("Withheld from the Bot")}</summary>
+          <pre className="mt-2 whitespace-pre-wrap break-words rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5 text-ink-2">{filter.original}</pre>
+        </details>
+      ) : null}
       {children}
     </FoldRow>
   );

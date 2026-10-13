@@ -1,9 +1,10 @@
 import type { Rule } from "../gen/silo/v1/ui_pb";
+import type { Side } from "./model";
 import { RuleDecisionSegment } from "./RuleDecisionSegment";
 import { t } from "../i18n.ts";
 
-// One action and its Allow / Auto / Ask / Deny switch.
-export function RuleRow({ rule: r, onChange }: { rule: Rule; onChange: (decision: string) => void }) {
+// One action and the switch for the side of its rule the page is showing.
+export function RuleRow({ rule: r, side, onChange }: { rule: Rule; side: Side; onChange: (decision: string) => void }) {
   return (
     <div className="group/row -mx-2.5 flex flex-col gap-2 rounded-sm border-t border-line px-2.5 py-2.5 transition-colors hover:bg-well wide:flex-row wide:items-center wide:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -20,7 +21,7 @@ export function RuleRow({ rule: r, onChange }: { rule: Rule; onChange: (decision
         </div>
       </div>
       <div className="w-full wide:w-[260px] wide:shrink-0">
-        <RuleDecisionSegment value={r.decision} onChange={onChange} />
+        <RuleDecisionSegment side={side} value={r[side]} onChange={onChange} />
       </div>
     </div>
   );

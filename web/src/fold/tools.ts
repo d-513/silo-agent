@@ -1,6 +1,6 @@
 import { closeThinking, isPartialArgs, lastRunning, runOk } from "./find.ts";
 import type { Handler } from "./text.ts";
-import type { Block, Ev, NestedCall, ToolBlock } from "./types.ts";
+import type { Block, Ev, Filtered, NestedCall, ToolBlock } from "./types.ts";
 
 // Handlers for tool rows and the connector calls a Python tool makes inside one.
 
@@ -84,4 +84,29 @@ export const callResult: Handler = (out, e) => {
     }
     break;
   }
+};
+
+// filtered arrives while the call it is about is still running, just before
+// its result: the output rule's verdict on that result. e.tool is the rule's
+// connector.action, which is how a call made from Python is named; a chat
+// tool has its own name, so there it is the running row.
+export const filtered: Handler = (out, e) => {
+  let f: Filtered;
+  try {
+    const raw = JSON.parse(e.body);
+    if (raw?.verdict !== "flagged" && raw?.verdict !== "withheld" && raw?.verdict !== "unchecked") return;
+    f = { verdict: raw.verdict, mode: String(raw.mode ?? ""), original: raw.original ? String(raw.original) : undefined };
+  } catch {
+    return;
+  }
+  const t = lastRunning(out, (b) => runOk(b, e.runId));
+  if (!t) return;
+  const cs = t.calls;
+  for (let k = (cs?.length ?? 0) - 1; k >= 0; k--) {
+    if (cs![k].running && cs![k].name === e.tool) {
+      cs![k].filter = f;
+      return;
+    }
+  }
+  t.filter = f;
 };

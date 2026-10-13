@@ -5,29 +5,40 @@ import { fail } from "../errors";
 import { useSave } from "../Feedback";
 import { UI, type Rule, type RuleSection } from "../gen/silo/v1/ui_pb";
 import { patch, reload, setBot } from "../query";
-import { withDecision, withSectionDecision } from "./model";
+import { type Side, withDecision, withSectionDecision } from "./model";
 
 const none: RuleSection[] = [];
 
-// useRules loads a Bot's rule sections and auto-approve policy and saves each
-// change: a decision shows at once and rolls back if the server refuses it.
+// useRules loads a Bot's rule sections and its two policies (auto-approve for
+// calls, output for results) and saves each change: a rule shows at once and
+// rolls back if the server refuses it.
 export function useRules(botId: string) {
   const sectionsQ = useQuery(UI.method.listRules, { botId });
   const sections = sectionsQ.data?.sections ?? none;
   const botQ = useQuery(UI.method.getBot, { id: botId });
   const savedPolicy = botQ.data?.autoApprove ?? "";
+  const savedOutputPolicy = botQ.data?.outputPolicy ?? "";
   // null until the human types: the box then shows the saved policy.
   const [draft, setPolicy] = useState<string | null>(null);
+  const [outputDraft, setOutputPolicy] = useState<string | null>(null);
   const [actErr, setErr] = useState("");
   const saver = useSave();
+  const outputSaver = useSave();
   const failed = sectionsQ.error ?? botQ.error;
 
-  useEffect(() => setPolicy(null), [botId]);
+  useEffect(() => {
+    setPolicy(null);
+    setOutputPolicy(null);
+  }, [botId]);
 
-  async function savePolicy() {
+  // Both policies ride on UpdateBot, which takes the Bot's other fields
+  // whole: they are read fresh and sent back as they are. The output policy
+  // is optional there, so saving one never touches the other.
+  async function savePolicy(side: Side = "decision") {
     setErr("");
+    const output = side === "output";
     try {
-      const next = await saver.run(async () => {
+      const next = await (output ? outputSaver : saver).run(async () => {
         const b = await ui.getBot({ id: botId });
         return ui.updateBot({
           id: botId,
@@ -35,12 +46,14 @@ export function useRules(botId: string) {
           description: b.description,
           soul: b.soul,
           memory: b.memory,
-          autoApprove: draft ?? savedPolicy,
+          autoApprove: output ? b.autoApprove : (draft ?? savedPolicy),
           model: b.model,
+          outputPolicy: output ? (outputDraft ?? savedOutputPolicy) : undefined,
         });
       });
       setBot(next);
-      setPolicy(null);
+      if (output) setOutputPolicy(null);
+      else setPolicy(null);
     } catch (e) {
       setErr(fail(e));
     }
@@ -62,18 +75,23 @@ export function useRules(botId: string) {
     }
   }
 
-  function setDecision(r: Rule, decision: string) {
+  // One side of a rule is saved alone: a request with an output and no
+  // decision leaves the call rule as it is, and the other way round.
+  const send = (r: Rule, value: string, side: Side) =>
+    ui.setRule({ botId, connector: r.connector, action: r.action, ...(side === "output" ? { output: value } : { decision: value }) });
+
+  function setDecision(r: Rule, decision: string, side: Side = "decision") {
     return change(
-      (curr) => withDecision(curr, r.connector, r.action, decision),
-      () => ui.setRule({ botId, connector: r.connector, action: r.action, decision }),
+      (curr) => withDecision(curr, r.connector, r.action, decision, side),
+      () => send(r, decision, side),
     );
   }
 
-  function setSection(s: RuleSection, decision: string) {
-    if (s.rules.every((r) => r.decision === decision)) return Promise.resolve();
+  function setSection(s: RuleSection, decision: string, side: Side = "decision") {
+    if (s.rules.every((r) => r[side] === decision)) return Promise.resolve();
     return change(
-      (curr) => withSectionDecision(curr, s.id, decision),
-      () => Promise.all(s.rules.map((r) => ui.setRule({ botId, connector: r.connector, action: r.action, decision }))),
+      (curr) => withSectionDecision(curr, s.id, decision, side),
+      () => Promise.all(s.rules.map((r) => send(r, decision, side))),
     );
   }
 
@@ -86,6 +104,12 @@ export function useRules(botId: string) {
     savedPolicy,
     saver,
     savePolicy,
+    outputPolicy: outputDraft ?? savedOutputPolicy,
+    setOutputPolicy,
+    savedOutputPolicy,
+    outputSaver,
+    defaultOutputPolicy: sectionsQ.data?.defaultOutputPolicy ?? "",
+    filterEnabled: sectionsQ.data?.filterEnabled ?? true,
     setDecision,
     setSection,
   };

@@ -69,7 +69,7 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
     ) : undefined;
   const python =
     b.name === "call" ? null : (
-      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, t("Using"), t("Used", { context: "tool" }))} app={app} action={toolAction(b.name, b.args)} live={live}>
+      <ToolRow state={state} icon={b.name} verb={rowVerb(state, b.outcome, t("Using"), t("Used", { context: "tool" }))} app={app} action={toolAction(b.name, b.args)} live={live} filter={b.filter}>
         {body}
       </ToolRow>
     );
@@ -89,6 +89,7 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
             app={call.title}
             action={call.name && call.name !== call.title ? call.name : undefined}
             live={sending && !!call.running}
+            filter={call.filter}
           >
             {call.result ? <ToolResult text={call.result} live={sending && !!call.running} /> : undefined}
           </ToolRow>

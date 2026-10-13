@@ -8,7 +8,12 @@ export type Ev = { id?: string; kind: string; body: string; tool: string; runId?
 // was stopped/interrupted around it.
 export type Outcome = "denied" | "stopped";
 
-export type NestedCall = { key: string; title: string; name: string; result?: string; running?: boolean; waiting?: boolean; outcome?: Outcome };
+// What the owner's output rule did to a result before the Bot read it:
+// passed on flagged or unchecked, or withheld (`original` is then what the
+// Bot was not given, kept for the owner).
+export type Filtered = { verdict: "flagged" | "withheld" | "unchecked"; mode: string; original?: string };
+
+export type NestedCall = { key: string; title: string; name: string; result?: string; running?: boolean; waiting?: boolean; outcome?: Outcome; filter?: Filtered };
 
 export type ToolBlock = {
   key: string;
@@ -23,6 +28,7 @@ export type ToolBlock = {
   waiting?: boolean;
   approvalId?: string;
   outcome?: Outcome;
+  filter?: Filtered;
 };
 
 export type CompactionBlock = { key: string; type: "compaction"; text: string; reason: string; running?: boolean; runId?: string };

@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { Rule, RuleSection } from "../gen/silo/v1/ui_pb";
-import { sectionDecision } from "./model";
+import { sectionDecision, type Side } from "./model";
 import { RuleDecisionSegment } from "./RuleDecisionSegment";
 import { RuleRow } from "./RuleRow";
 import { t } from "../i18n.ts";
@@ -9,6 +9,7 @@ import { t } from "../i18n.ts";
 // switch for the whole section, and a row per action underneath.
 export function SectionCard({
   section: s,
+  side,
   open,
   locked,
   onToggle,
@@ -16,6 +17,7 @@ export function SectionCard({
   onRule,
 }: {
   section: RuleSection;
+  side: Side;
   open: boolean;
   // locked keeps the card open (a search is showing its matches).
   locked: boolean;
@@ -23,7 +25,7 @@ export function SectionCard({
   onSection: (decision: string) => void;
   onRule: (rule: Rule, decision: string) => void;
 }) {
-  const shared = sectionDecision(s);
+  const shared = sectionDecision(s, side);
   return (
     <details
       className="group mb-5 rounded-card shadow-card bg-surface"
@@ -44,7 +46,7 @@ export function SectionCard({
               </span>
             )}
           </div>
-          <p className="mt-1 text-[13px] text-ink-2">{s.summary}</p>
+          <p className="mt-1 text-[13px] text-ink-2">{side === "output" ? s.outputSummary : s.summary}</p>
         </div>
         {s.rules.length > 0 && (
           <div
@@ -60,7 +62,7 @@ export function SectionCard({
               className="w-full wide:w-[260px] wide:shrink-0"
               title={shared === "" ? t("Mixed. Pick one to apply to every action below.") : t("Apply to every action below.")}
             >
-              <RuleDecisionSegment size="sm" value={shared} onChange={onSection} />
+              <RuleDecisionSegment size="sm" side={side} value={shared} onChange={onSection} />
             </div>
           </div>
         )}
@@ -69,7 +71,7 @@ export function SectionCard({
         {s.rules.length === 0 ? (
           <p className="py-2 text-ink-2">{t("Nothing to set here yet.")}</p>
         ) : (
-          s.rules.map((r) => <RuleRow key={`${r.connector}.${r.action}`} rule={r} onChange={(d) => onRule(r, d)} />)
+          s.rules.map((r) => <RuleRow key={`${r.connector}.${r.action}`} rule={r} side={side} onChange={(d) => onRule(r, d)} />)
         )}
       </div>
     </details>

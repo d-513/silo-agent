@@ -5,6 +5,7 @@ export const LABELS: Record<string, string> = {
   model: msg("Default model"),
   model_title: msg("Chat title model"),
   model_approval: msg("Auto-approval model"),
+  model_filter: msg("Output filter model"),
   model_subagent: msg("Subagent model"),
   model_memory: msg("Memory save model"),
   model_decision: msg("Default decision model"),
@@ -30,6 +31,8 @@ export const LABELS: Record<string, string> = {
   "changes.enabled": msg("Track workspace changes"),
   "changes.max_file_mb": msg("Largest file kept (MB)"),
   "changes.keep_days": msg("Keep history for (days)"),
+  "filter.enabled": msg("Filter tool results"),
+  "filter.max_chars": msg("Longest result checked (characters)"),
   debug: msg("Debug logging"),
   "search.engine": msg("Engine"),
   http_addr: msg("Listen address"),
@@ -66,6 +69,7 @@ export const HINTS: Record<string, string> = {
   "context.compact_at": msg("Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call."),
   "changes.max_file_mb": msg("A bigger file is recorded by its size only, never its content. 1 to 100."),
   "changes.keep_days": msg("Older snapshots are forgotten. 1 to 365."),
+  "filter.max_chars": msg("A longer result is passed on marked as unchecked. 1000 to 400000."),
   "runs.max_duration": msg("How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this."),
   embedding_model: msg("For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
   "knowledge.sync_interval": msg("A Go duration such as 15m or 1h (minimum 1m)."),
@@ -123,6 +127,9 @@ export const RUNS_NOTE = msg("A run is one reply: every model call and tool call
 export const CHANGES_NOTE =
   msg("Each Bot's machine snapshots /workspace before and after every run, and the Changes pane shows the difference as diffs. The history stays on the Bot's own disk, beside the workspace. Drives, tmp/, bot/ and dependency folders are never read, and a Bot keeps at most 300 snapshots and 1 GB. Drives get a journal instead: what was written, deleted or renamed on them, without any content. Turning this off stops both; what was recorded stays.");
 
+export const FILTER_NOTE =
+  msg("Before a Bot reads what a tool brought back from outside (a web search, a mail, a connector's answer), the filter model judges it by the Bot's output policy: clean results pass, suspicious ones are handed over marked as untrusted, malicious ones are withheld. Each Bot's owner sets which actions are checked under Rules, Results. One model call per checked result; turning this off passes everything and keeps the rules.");
+
 export const CONTAINERS_NOTE = msg("The container engine and the images a Bot's machine and its sidecars start from. A running Bot keeps its old image until its container is reset.");
 
 export const MEMORY_NOTE =
@@ -149,7 +156,7 @@ export const OIDC_NOTE =
 export const BOOTSTRAP_NOTE = msg("First admin only. Ignored after a user exists. Restart required.");
 
 export function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "transcribe_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "transcribe_model") return "models";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("tunnels.")) return "tunnels";
@@ -157,6 +164,7 @@ export function groupOf(key: string) {
   if (key.startsWith("context.")) return "context";
   if (key.startsWith("runs.")) return "runs";
   if (key.startsWith("changes.")) return "changes";
+  if (key.startsWith("filter.")) return "filter";
   if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";

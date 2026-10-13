@@ -349,6 +349,13 @@ No bounce, and no overshoot beyond the settle curve.
 - **Blink:** on hover, the eyes squash to `scaleY(.12)` and back over 220ms (`transform-box: fill-box; transform-origin: center`). Working Bots in the rail blink by themselves about every 6s. That's the only personality animation in the product.
 - Picker: selected cell `cobalt-pale` with an inset 1px `cobalt` ring; selected color dot `0 0 0 2px surface, 0 0 0 4px cobalt`.
 
+### Rules
+
+- Every action has two rules, and the page shows one side at a time behind a **Calls | Results** pill switch under the title: Calls is what the Bot may do (Allow / Auto / Ask / Deny), Results is what happens to what comes back before the Bot reads it (Pass / Check / Flag / Withhold). The same rows, the same four-way segment, the same order of meaning: through, a model decides, a middle way, never.
+- The legend and the policy panel follow the side: the auto-approve policy for Calls, the output policy for Results (empty means the built-in one; **Start from the built-in policy** loads it to edit).
+- A row with no result to filter (a secret, a channel send) is not on the Results side.
+- In the thread a filtered result adds one quiet word to its tool row's tail: **Flagged**, **Marked untrusted**, **Unchecked** in `ink-3`, **Withheld** in `vermilion` (it is the one the owner should look at). A withheld row's body opens with "Withheld from the Bot": what the Bot was not given. No badge, no card of its own.
+
 ### Section tabs (Customize, Settings)
 
 - A Bot has no top bar. The two sections with pages of their own open with a 56px head on `canvas` with a `line` bottom edge: the section name in `card-title`, then its tabs.

@@ -16,8 +16,8 @@ import { Trans } from "../Trans.tsx";
 
 // The jobs a model can be given, and the kind of model each takes: a text
 // model writes, a decision model answers typed questions with probabilities.
-// Only auto-approval takes either. All but the two defaults may be left to
-// follow another role.
+// Only auto-approval and the output filter take either. All but the two
+// defaults may be left to follow another role.
 const ROLES: { key: string; takes?: ModelKind | "either"; unset?: string; hint?: string }[] = [
   { key: "model" },
   { key: "model_title", unset: msg("Same as default") },
@@ -26,6 +26,12 @@ const ROLES: { key: string; takes?: ModelKind | "either"; unset?: string; hint?:
     takes: "either",
     unset: msg("Same as title model"),
     hint: msg("Decides rules set to Auto. A decision model answers in a fraction of a second and only a sure yes approves; a text model is asked for one word."),
+  },
+  {
+    key: "model_filter",
+    takes: "either",
+    unset: msg("Same as auto-approval model"),
+    hint: msg("Judges tool results for rules set to Check, once per result. A decision model is the fast, cheap choice; a text model is asked for one word."),
   },
   { key: "model_subagent", unset: msg("Same as the lead"), hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.") },
   { key: "model_memory", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts and lessons the Bot missed. A cheap model is enough.") },

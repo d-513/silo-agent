@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { countRules, filterSections, sectionDecision, withDecision, withSectionDecision } from "./model.ts";
+import { countRules, filterSections, sectionDecision, sideSections, withDecision, withSectionDecision } from "./model.ts";
 
 const rule = (connector: string, action: string, title: string, decision: string) => ({ connector, action, title, decision }) as any;
 const section = (id: string, title: string, rules: any[]) => ({ id, title, summary: "", rules }) as any;
@@ -30,3 +30,22 @@ eq(changed[0].rules.map((r) => r.decision), ["allow", "allow"], "other sections 
 const all = withSectionDecision(sections, "gh", "auto");
 eq(all[1].rules.map((r) => r.decision), ["auto", "auto"], "every rule in the section changes");
 eq(all[0].rules.map((r) => r.decision), ["allow", "allow"], "other sections are untouched");
+
+// The output side: its own value per rule, and only for actions that have one.
+const out = (connector: string, action: string, decision: string, output: string) => ({ connector, action, title: action, decision, output }) as any;
+const both = [
+  section("bot", "Bot", [out("web", "search", "allow", "check"), out("python", "run", "allow", "pass")]),
+  section("secrets", "Secrets", [out("secrets", "token", "ask", "")]),
+  section("gh", "GitHub", [out("github", "list", "allow", "check"), out("github", "get", "ask", "check")]),
+];
+eq(sideSections(both, "decision").length, 3, "every section has call rules");
+eq(sideSections(both, "output").map((s) => s.id), ["bot", "gh"], "a section with no results to filter is not on the output side");
+eq(sectionDecision(both[2], "output"), "check", "a section's shared output rule");
+eq(sectionDecision(both[2]), "", "while its call rules differ");
+eq(sectionDecision(both[0], "output"), "", "mixed output rules");
+
+const flagged = withDecision(both, "web", "search", "flag", "output");
+eq(flagged[0].rules.map((r) => [r.decision, r.output]), [["allow", "flag"], ["allow", "pass"]], "the output side changes alone");
+const held = withSectionDecision(both, "gh", "withhold", "output");
+eq(held[2].rules.map((r) => [r.decision, r.output]), [["allow", "withhold"], ["ask", "withhold"]], "a section's output rules, call rules untouched");
+eq(withSectionDecision(both, "secrets", "check", "output")[1].rules[0].output, "", "a rule with no output side gets none");

@@ -2,12 +2,27 @@
 // the optimistic updates can be checked without a screen.
 import type { Rule, RuleSection } from "../gen/silo/v1/ui_pb";
 
-// The one decision every rule in a section shares, or "" when they differ or
-// there are none.
-export function sectionDecision(s: RuleSection): string {
+// A rule has two sides: the call rule (may the action run) and the output
+// rule (what happens to its result before the Bot reads it). The page shows
+// one side at a time.
+export type Side = "decision" | "output";
+
+// The one decision every rule in a section shares on a side, or "" when they
+// differ or there are none.
+export function sectionDecision(s: RuleSection, side: Side = "decision"): string {
   if (s.rules.length === 0) return "";
-  const d = s.rules[0].decision;
-  return s.rules.every((r) => r.decision === d) ? d : "";
+  const d = s.rules[0][side];
+  return s.rules.every((r) => r[side] === d) ? d : "";
+}
+
+// The sections as one side shows them. Every action has a call rule; only an
+// action whose result the Bot reads has an output rule (a secret and a channel
+// send have none), and a section left with nothing to set is dropped.
+export function sideSections(sections: RuleSection[], side: Side): RuleSection[] {
+  if (side === "decision") return sections;
+  return sections
+    .map((s) => ({ ...s, rules: s.rules.filter((r) => r.output !== "") }) as RuleSection)
+    .filter((s) => s.rules.length > 0);
 }
 
 // The sections that match a search: a section whose title matches keeps all
@@ -33,17 +48,20 @@ export function countRules(sections: RuleSection[]): number {
   return sections.reduce((sum, s) => sum + s.rules.length, 0);
 }
 
-// The sections with one rule's decision changed (shown before the server agrees).
-export function withDecision(sections: RuleSection[], connector: string, action: string, decision: string): RuleSection[] {
+// The sections with one side of one rule changed (shown before the server agrees).
+export function withDecision(sections: RuleSection[], connector: string, action: string, decision: string, side: Side = "decision"): RuleSection[] {
   return sections.map((s) => ({
     ...s,
-    rules: s.rules.map((r) => (r.connector === connector && r.action === action ? ({ ...r, decision } as Rule) : r)),
+    rules: s.rules.map((r) => (r.connector === connector && r.action === action ? ({ ...r, [side]: decision } as Rule) : r)),
   })) as RuleSection[];
 }
 
-// The sections with every rule of one section set to a decision.
-export function withSectionDecision(sections: RuleSection[], sectionId: string, decision: string): RuleSection[] {
+// The sections with one side of every rule of one section set. On the output
+// side a rule with no output rule keeps none.
+export function withSectionDecision(sections: RuleSection[], sectionId: string, decision: string, side: Side = "decision"): RuleSection[] {
   return sections.map((s) =>
-    s.id === sectionId ? ({ ...s, rules: s.rules.map((r) => ({ ...r, decision }) as Rule) } as RuleSection) : s,
+    s.id === sectionId
+      ? ({ ...s, rules: s.rules.map((r) => (side === "output" && r.output === "" ? r : ({ ...r, [side]: decision } as Rule))) } as RuleSection)
+      : s,
   );
 }

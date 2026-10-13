@@ -144,3 +144,27 @@ console.log("fold ok");
   }
   if (r[2]?.type !== "user" || r[2].from !== "lead") throw new Error(`lead brief ${JSON.stringify(r[2])}`);
 }
+
+// An output rule's verdict lands on the call it is about: a chat tool's own
+// row, or the connector call a Python cell made.
+const marked = foldEvents([
+  ev("tool", '{"q":"x"}', "echo__echo"),
+  ev("filtered", '{"verdict":"flagged","mode":"check"}', "echo.echo"),
+  ev("tool_result", "[Silo output filter: …]\n\nx", "echo__echo"),
+  ev("tool", '{"code":"y"}', "exec_python"),
+  ev("call", "Web search", "web.search"),
+  ev("filtered", '{"verdict":"withheld","mode":"check","original":"bad page"}', "web.search"),
+  ev("call_result", "[Silo output filter: withheld]", "web.search"),
+  ev("call", "Echo · echo", "echo.echo"),
+  ev("call_result", "fine", "echo.echo"),
+  ev("tool_result", "done", "exec_python"),
+  ev("filtered", "not json", "echo.echo"),
+  ev("filtered", '{"verdict":"clean"}', "echo.echo"),
+]);
+const direct = marked.find((b) => b.type === "tool" && b.name === "echo__echo");
+if (!direct || direct.type !== "tool" || direct.filter?.verdict !== "flagged" || direct.filter.original !== undefined) throw new Error("chat tool row not marked flagged");
+const cell = marked.find((b) => b.type === "tool" && b.name === "exec_python");
+if (!cell || cell.type !== "tool" || cell.filter) throw new Error("the Python row took a verdict meant for its call");
+if (cell.calls?.[0].filter?.verdict !== "withheld" || cell.calls[0].filter.original !== "bad page") throw new Error("nested call not marked withheld");
+if (cell.calls?.[1].filter) throw new Error("a clean call was marked");
+if (marked.length !== 2) throw new Error(`a filtered event made a block of its own: ${marked.length}`);
