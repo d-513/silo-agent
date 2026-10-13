@@ -16,6 +16,18 @@ var Channel string
 //go:embed APPROVAL.md
 var Approval string
 
+// Filter is the base system prompt for the output filter when its model is a
+// text model. The output policy is appended to it.
+//
+//go:embed FILTER.md
+var Filter string
+
+// FilterPolicy is the output policy of a Bot whose owner wrote none: what in
+// a tool result counts as an attempt to steer the Bot.
+//
+//go:embed FILTER_POLICY.md
+var FilterPolicy string
+
 // Automation is the per-run note for a run an automation started.
 //
 //go:embed AUTOMATION.md

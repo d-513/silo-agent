@@ -2084,7 +2084,11 @@ type Bot struct {
 	TimeZonePinned bool `protobuf:"varint,15,opt,name=time_zone_pinned,json=timeZonePinned,proto3" json:"time_zone_pinned,omitempty"`
 	// Language is what this Bot writes to people in: a language code, or
 	// "mixed" for whatever it is written to in. Never empty.
-	Language      string `protobuf:"bytes,16,opt,name=language,proto3" json:"language,omitempty"`
+	Language string `protobuf:"bytes,16,opt,name=language,proto3" json:"language,omitempty"`
+	// OutputPolicy is this Bot's free-text output policy: what the filter
+	// model judges tool results by, for actions whose output rule is "check".
+	// Empty means the built-in policy.
+	OutputPolicy  string `protobuf:"bytes,17,opt,name=output_policy,json=outputPolicy,proto3" json:"output_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2227,6 +2231,13 @@ func (x *Bot) GetTimeZonePinned() bool {
 func (x *Bot) GetLanguage() string {
 	if x != nil {
 		return x.Language
+	}
+	return ""
+}
+
+func (x *Bot) GetOutputPolicy() string {
+	if x != nil {
+		return x.OutputPolicy
 	}
 	return ""
 }
@@ -2393,7 +2404,9 @@ type UpdateBotRequest struct {
 	TimeZone       *string `protobuf:"bytes,8,opt,name=time_zone,json=timeZone,proto3,oneof" json:"time_zone,omitempty"`
 	TimeZonePinned *bool   `protobuf:"varint,9,opt,name=time_zone_pinned,json=timeZonePinned,proto3,oneof" json:"time_zone_pinned,omitempty"`
 	// Optional, so a save of the other fields leaves the language alone.
-	Language      *string `protobuf:"bytes,10,opt,name=language,proto3,oneof" json:"language,omitempty"`
+	Language *string `protobuf:"bytes,10,opt,name=language,proto3,oneof" json:"language,omitempty"`
+	// Optional, so a save of the other fields leaves the output policy alone.
+	OutputPolicy  *string `protobuf:"bytes,11,opt,name=output_policy,json=outputPolicy,proto3,oneof" json:"output_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2494,6 +2507,13 @@ func (x *UpdateBotRequest) GetTimeZonePinned() bool {
 func (x *UpdateBotRequest) GetLanguage() string {
 	if x != nil && x.Language != nil {
 		return *x.Language
+	}
+	return ""
+}
+
+func (x *UpdateBotRequest) GetOutputPolicy() string {
+	if x != nil && x.OutputPolicy != nil {
+		return *x.OutputPolicy
 	}
 	return ""
 }
@@ -10172,13 +10192,17 @@ func (x *DecideApprovalRequest) GetDecision() string {
 }
 
 type Rule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	BotId         string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	Connector     string                 `protobuf:"bytes,3,opt,name=connector,proto3" json:"connector,omitempty"`
-	Action        string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
-	Decision      string                 `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`
-	Title         string                 `protobuf:"bytes,6,opt,name=title,proto3" json:"title,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BotId     string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Connector string                 `protobuf:"bytes,3,opt,name=connector,proto3" json:"connector,omitempty"`
+	Action    string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	Decision  string                 `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`
+	Title     string                 `protobuf:"bytes,6,opt,name=title,proto3" json:"title,omitempty"`
+	// The output rule in effect: what happens to this action's result before
+	// the Bot reads it. "pass", "flag", "check" or "withhold"; empty for an
+	// action whose result is not filtered (a secret, a channel send).
+	Output        string `protobuf:"bytes,7,opt,name=output,proto3" json:"output,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10255,12 +10279,22 @@ func (x *Rule) GetTitle() string {
 	return ""
 }
 
+func (x *Rule) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
 type RuleSection struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Summary       string                 `protobuf:"bytes,3,opt,name=summary,proto3" json:"summary,omitempty"`
-	Rules         []*Rule                `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title   string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Summary string                 `protobuf:"bytes,3,opt,name=summary,proto3" json:"summary,omitempty"`
+	Rules   []*Rule                `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
+	// What the section's output rules do by default: the summary of its
+	// Results side. Empty for a section with no results to filter.
+	OutputSummary string `protobuf:"bytes,5,opt,name=output_summary,json=outputSummary,proto3" json:"output_summary,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10323,6 +10357,13 @@ func (x *RuleSection) GetRules() []*Rule {
 	return nil
 }
 
+func (x *RuleSection) GetOutputSummary() string {
+	if x != nil {
+		return x.OutputSummary
+	}
+	return ""
+}
+
 type ListRulesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
@@ -10368,9 +10409,15 @@ func (x *ListRulesRequest) GetBotId() string {
 }
 
 type ListRulesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Rules         []*Rule                `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
-	Sections      []*RuleSection         `protobuf:"bytes,2,rep,name=sections,proto3" json:"sections,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Rules    []*Rule                `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	Sections []*RuleSection         `protobuf:"bytes,2,rep,name=sections,proto3" json:"sections,omitempty"`
+	// The built-in output policy, used while the Bot's own is empty: shown so
+	// the owner can start theirs from it.
+	DefaultOutputPolicy string `protobuf:"bytes,3,opt,name=default_output_policy,json=defaultOutputPolicy,proto3" json:"default_output_policy,omitempty"`
+	// False while the operator has the output filter off: output rules are
+	// kept but every result passes.
+	FilterEnabled bool `protobuf:"varint,4,opt,name=filter_enabled,json=filterEnabled,proto3" json:"filter_enabled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10419,12 +10466,30 @@ func (x *ListRulesResponse) GetSections() []*RuleSection {
 	return nil
 }
 
+func (x *ListRulesResponse) GetDefaultOutputPolicy() string {
+	if x != nil {
+		return x.DefaultOutputPolicy
+	}
+	return ""
+}
+
+func (x *ListRulesResponse) GetFilterEnabled() bool {
+	if x != nil {
+		return x.FilterEnabled
+	}
+	return false
+}
+
+// SetRule sets the call rule, the output rule, or both. A request with an
+// output and an empty decision changes the output rule only; one with no
+// output leaves the output rule alone.
 type SetRuleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
 	Connector     string                 `protobuf:"bytes,2,opt,name=connector,proto3" json:"connector,omitempty"`
 	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
 	Decision      string                 `protobuf:"bytes,4,opt,name=decision,proto3" json:"decision,omitempty"`
+	Output        *string                `protobuf:"bytes,5,opt,name=output,proto3,oneof" json:"output,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10483,6 +10548,13 @@ func (x *SetRuleRequest) GetAction() string {
 func (x *SetRuleRequest) GetDecision() string {
 	if x != nil {
 		return x.Decision
+	}
+	return ""
+}
+
+func (x *SetRuleRequest) GetOutput() string {
+	if x != nil && x.Output != nil {
+		return *x.Output
 	}
 	return ""
 }
@@ -18047,7 +18119,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xcd\x03\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xf2\x03\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -18066,7 +18138,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\fmail_address\x18\r \x01(\tR\vmailAddress\x12\x1b\n" +
 	"\ttime_zone\x18\x0e \x01(\tR\btimeZone\x12(\n" +
 	"\x10time_zone_pinned\x18\x0f \x01(\bR\x0etimeZonePinned\x12\x1a\n" +
-	"\blanguage\x18\x10 \x01(\tR\blanguage\"\x11\n" +
+	"\blanguage\x18\x10 \x01(\tR\blanguage\x12#\n" +
+	"\routput_policy\x18\x11 \x01(\tR\foutputPolicy\"\x11\n" +
 	"\x0fListBotsRequest\"4\n" +
 	"\x10ListBotsResponse\x12 \n" +
 	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"{\n" +
@@ -18074,7 +18147,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x02 \x01(\x05R\x05crest\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
-	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\xdf\x02\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\x9b\x03\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -18086,11 +18159,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\ttime_zone\x18\b \x01(\tH\x00R\btimeZone\x88\x01\x01\x12-\n" +
 	"\x10time_zone_pinned\x18\t \x01(\bH\x01R\x0etimeZonePinned\x88\x01\x01\x12\x1f\n" +
 	"\blanguage\x18\n" +
-	" \x01(\tH\x02R\blanguage\x88\x01\x01B\f\n" +
+	" \x01(\tH\x02R\blanguage\x88\x01\x01\x12(\n" +
+	"\routput_policy\x18\v \x01(\tH\x03R\foutputPolicy\x88\x01\x01B\f\n" +
 	"\n" +
 	"_time_zoneB\x13\n" +
 	"\x11_time_zone_pinnedB\v\n" +
-	"\t_language\"\x1f\n" +
+	"\t_languageB\x10\n" +
+	"\x0e_output_policy\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +
@@ -18638,29 +18713,35 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\tapprovals\x18\x01 \x03(\v2\x11.silo.v1.ApprovalR\tapprovals\"C\n" +
 	"\x15DecideApprovalRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\bdecision\x18\x02 \x01(\tR\bdecision\"\x95\x01\n" +
+	"\bdecision\x18\x02 \x01(\tR\bdecision\"\xad\x01\n" +
 	"\x04Rule\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x1c\n" +
 	"\tconnector\x18\x03 \x01(\tR\tconnector\x12\x16\n" +
 	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1a\n" +
 	"\bdecision\x18\x05 \x01(\tR\bdecision\x12\x14\n" +
-	"\x05title\x18\x06 \x01(\tR\x05title\"r\n" +
+	"\x05title\x18\x06 \x01(\tR\x05title\x12\x16\n" +
+	"\x06output\x18\a \x01(\tR\x06output\"\x99\x01\n" +
 	"\vRuleSection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\asummary\x18\x03 \x01(\tR\asummary\x12#\n" +
-	"\x05rules\x18\x04 \x03(\v2\r.silo.v1.RuleR\x05rules\")\n" +
+	"\x05rules\x18\x04 \x03(\v2\r.silo.v1.RuleR\x05rules\x12%\n" +
+	"\x0eoutput_summary\x18\x05 \x01(\tR\routputSummary\")\n" +
 	"\x10ListRulesRequest\x12\x15\n" +
-	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"j\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\xc5\x01\n" +
 	"\x11ListRulesResponse\x12#\n" +
 	"\x05rules\x18\x01 \x03(\v2\r.silo.v1.RuleR\x05rules\x120\n" +
-	"\bsections\x18\x02 \x03(\v2\x14.silo.v1.RuleSectionR\bsections\"y\n" +
+	"\bsections\x18\x02 \x03(\v2\x14.silo.v1.RuleSectionR\bsections\x122\n" +
+	"\x15default_output_policy\x18\x03 \x01(\tR\x13defaultOutputPolicy\x12%\n" +
+	"\x0efilter_enabled\x18\x04 \x01(\bR\rfilterEnabled\"\xa1\x01\n" +
 	"\x0eSetRuleRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x1c\n" +
 	"\tconnector\x18\x02 \x01(\tR\tconnector\x12\x16\n" +
 	"\x06action\x18\x03 \x01(\tR\x06action\x12\x1a\n" +
-	"\bdecision\x18\x04 \x01(\tR\bdecision\"u\n" +
+	"\bdecision\x18\x04 \x01(\tR\bdecision\x12\x1b\n" +
+	"\x06output\x18\x05 \x01(\tH\x00R\x06output\x88\x01\x01B\t\n" +
+	"\a_output\"u\n" +
 	"\tFileEntry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x10\n" +
@@ -20176,6 +20257,7 @@ func file_silo_v1_ui_proto_init() {
 	}
 	file_silo_v1_ui_proto_msgTypes[29].OneofWrappers = []any{}
 	file_silo_v1_ui_proto_msgTypes[42].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[171].OneofWrappers = []any{}
 	file_silo_v1_ui_proto_msgTypes[211].OneofWrappers = []any{}
 	file_silo_v1_ui_proto_msgTypes[218].OneofWrappers = []any{}
 	type x struct{}

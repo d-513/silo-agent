@@ -89,6 +89,10 @@ type Bot struct {
 	// AutoApprove is the free-text policy the approval model reads when a rule
 	// decision is "auto".
 	AutoApprove string
+	// OutputPolicy is the free-text policy the filter model judges tool
+	// results by, for actions whose output rule is Check. Empty means the
+	// built-in policy.
+	OutputPolicy string `gorm:"not null;default:''"`
 	// TimeZone is the IANA zone this Bot's schedules and the times it reads
 	// are in. Empty (a Bot from before zones) reads as the server's:
 	// zone.Resolve. Unless pinned it follows the device the owner writes from.
@@ -119,7 +123,12 @@ type Rule struct {
 	BotID     string `gorm:"uniqueIndex:bot_rule"`
 	Connector string `gorm:"uniqueIndex:bot_rule"`
 	Action    string `gorm:"uniqueIndex:bot_rule"`
-	Decision  string
+	// Decision is the call rule (allow, ask, deny, auto); empty means the
+	// row holds only an output rule and the call's default applies.
+	Decision string
+	// Output is the output rule (pass, flag, check, withhold): what happens
+	// to the action's result before the Bot reads it. Empty means the default.
+	Output string `gorm:"not null;default:''"`
 }
 
 type Chat struct {

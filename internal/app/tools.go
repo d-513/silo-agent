@@ -26,6 +26,7 @@ import (
 func (a *App) newTools() *tool.Engine {
 	e := tool.New(a)
 	e.Expose = func() []string { return a.cfg().Tools.ExposeCompletion }
+	e.Filter = a
 	e.Register(a.toolDefs()...)
 	if a.Connectors != nil {
 		e.AddSource(a.Connectors)

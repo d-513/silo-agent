@@ -69,8 +69,10 @@ type Row struct {
 }
 
 type spec struct {
-	title   string
-	mode    string
+	title string
+	mode  string
+	// output is the action's output mode by default; empty passes.
+	output  string
 	hide    []string
 	summary func(map[string]string) string
 	fields  func(map[string]string) []Field
@@ -96,11 +98,11 @@ var catalog = map[string]spec{
 	"bot.set_timezone":   {title: "Set time zone", mode: Allow, summary: want("change the time zone its schedules use")},
 	"bot.search_docs":    {title: "Search documents", mode: Allow, summary: want("search the owner's indexed documents")},
 	"bot.feed":           {title: "Post to Feed", mode: Allow, summary: want("post to your Feed")},
-	"bot.transcribe":     {title: "Transcribe audio", mode: Allow, summary: want("transcribe an audio file")},
+	"bot.transcribe":     {title: "Transcribe audio", mode: Allow, output: OutCheck, summary: want("transcribe an audio file")},
 	"skills.load":        {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit":      {title: "Artifact", mode: Allow, summary: want("show an artifact")},
-	"web.search":         {title: "Web search", mode: Allow, summary: want("search the web")},
-	"chats.read":         {title: "Read chats", mode: Allow, summary: want("read chat messages")},
+	"web.search":         {title: "Web search", mode: Allow, output: OutCheck, summary: want("search the web")},
+	"chats.read":         {title: "Read chats", mode: Allow, output: OutCheck, summary: want("read chat messages")},
 	"model.list":         {title: "List models", mode: Allow, summary: want("list the allowed models")},
 	"model.switch":       {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
 	"model.decide":       {title: "Ask a decision model", mode: Allow, summary: want("ask a decision model typed questions"), fields: switchFields},
@@ -120,8 +122,8 @@ var catalog = map[string]spec{
 	"tunnels.list":       {title: "List tunnels", mode: Allow, summary: want("list its tunnels")},
 	"tunnels.close":      {title: "Close tunnel", mode: Allow, summary: want("close a tunnel")},
 	"tunnels.public":     {title: "Make tunnel public", mode: Ask, summary: tunnelPublicSummary, fields: tunnelFields},
-	"mailbox.list":       {title: "List mail", mode: Allow, summary: want("list the mail in its mailbox")},
-	"mailbox.read":       {title: "Read mail", mode: Allow, summary: want("read a message from its mailbox")},
+	"mailbox.list":       {title: "List mail", mode: Allow, output: OutCheck, summary: want("list the mail in its mailbox")},
+	"mailbox.read":       {title: "Read mail", mode: Allow, output: OutCheck, summary: want("read a message from its mailbox")},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
 	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
@@ -258,6 +260,7 @@ func BuiltinRows() []Row {
 		{Bot, "set_timezone", "Set time zone"},
 		{Bot, "search_docs", "Search documents"},
 		{Bot, "feed", "Post to Feed"},
+		{Bot, "transcribe", "Transcribe audio"},
 		{Skills, "load", "Load skill"},
 		{Artifact, "emit", "Artifact"},
 		{Web, "search", "Web search"},

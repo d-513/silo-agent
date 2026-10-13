@@ -29,6 +29,7 @@ import (
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/feed"
+	"silo.agent/internal/app/filter"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
@@ -154,6 +155,7 @@ type App struct {
 	// lookups); nil is http.DefaultClient. Tests point it at a fake provider.
 	DriveHTTP *http.Client
 
+	heldNotices
 	mu        sync.Mutex
 	approvals map[string]*waiter
 	cmdRun    map[string]string
@@ -182,6 +184,7 @@ type App struct {
 	Mail       *mailbox.Service
 	Models     *models.Service
 	Approval   *approval.Service
+	Filter     *filter.Service
 	Workspace  *workspace.Service
 	Voice      *voice.Service
 	Knowledge  *knowledge.Service
@@ -216,6 +219,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	}
 	a.Models = models.New(a.DB, a.cfg)
 	a.Approval = approval.New(a.DB, a.cfg, a.Models)
+	a.Filter = filter.New(a.cfg, a.Models, a.Approval)
 	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)

@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
+	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
 
@@ -72,6 +73,7 @@ func (s *Service) toolDef(link *db.BotConnector, c *db.Connector, action string)
 		ExposePython:     true,
 		ExposeCompletion: c.ExposeCompletion,
 		Mode:             BuiltinMode(c, action),
+		OutMode:          security.OutCheck,
 		Title:            func(*tool.Call) string { return CallTitle(name, action) },
 		Run: func(ctx context.Context, call *tool.Call) (tool.Result, error) {
 			out, err := s.Call(ctx, call.Bot, link, c, action, call.ArgsJSON)

@@ -102,33 +102,51 @@ func (s *Service) Judge(ctx context.Context, bot *db.Bot, chatID, conn, action, 
 
 // request gathers what the gate is shown about one action.
 func (s *Service) request(policy, chatID, conn, action, argsJSON string) Request {
-	req := Request{
-		Policy: policy, Origin: OriginUnknown,
+	src := s.Source(chatID)
+	return Request{
+		Policy: policy, Origin: src.Origin, Name: src.Name, Human: src.Human,
 		Key:    security.Key(conn, action),
 		Action: security.Describe(conn, action, security.Redact(conn, action, argsJSON)),
 	}
+}
+
+// Source is where a call came from: which kind of conversation, its name, and
+// what the human last wrote there. The output filter is shown the same.
+type Source struct {
+	// Origin is one of the Origin constants; Name is the chat's title, the
+	// channel's, automation's or subagent's name.
+	Origin string
+	Name   string
+	// Human is the human's latest message there, empty when nobody wrote one.
+	Human string
+}
+
+// Source finds where the calls of a conversation come from. chatID is "" for
+// a call outside any run.
+func (s *Service) Source(chatID string) Source {
+	src := Source{Origin: OriginUnknown}
 	if chatID == "" {
-		return req
+		return src
 	}
 	kind, name := chats.Source(s.db, chatID)
 	switch kind {
 	case "chat":
-		req.Origin, req.Name, req.Human = OriginChat, name, s.lastHuman(chatID)
+		src.Origin, src.Name, src.Human = OriginChat, name, s.lastHuman(chatID)
 	case "channel":
-		req.Origin, req.Name, req.Human = OriginChannel, name, s.lastHuman(chatID)
+		src.Origin, src.Name, src.Human = OriginChannel, name, s.lastHuman(chatID)
 	case "subagent":
 		// A subagent works for its lead's conversation: the human there is
 		// the one whose request it serves.
-		req.Origin, req.Name = OriginSubagent, name
+		src.Origin, src.Name = OriginSubagent, name
 		var sa db.Subagent
 		s.db.Select("parent_chat_id").Where("chat_id = ?", chatID).Limit(1).Find(&sa)
 		if sa.ParentChatID != "" {
-			req.Human = s.lastHuman(sa.ParentChatID)
+			src.Human = s.lastHuman(sa.ParentChatID)
 		}
 	case "automation":
-		req.Origin, req.Name = OriginAutomation, name
+		src.Origin, src.Name = OriginAutomation, name
 	}
-	return req
+	return src
 }
 
 // lastHuman is the newest message a human wrote in a chat. A user turn with a
@@ -143,6 +161,12 @@ func (s *Service) lastHuman(chatID string) string {
 
 // from says where the action came from, and whether a human asked for it.
 func (r Request) from() string {
+	return Source{Origin: r.Origin, Name: r.Name, Human: r.Human}.From()
+}
+
+// From says in a sentence where a call came from, and whether a human asked
+// for it.
+func (r Source) From() string {
 	name := ""
 	if r.Name != "" {
 		name = fmt.Sprintf(" %q", r.Name)

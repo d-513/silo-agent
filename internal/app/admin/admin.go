@@ -109,6 +109,7 @@ var modelRoles = map[string][]string{
 	"model_subagent": {llm.KindText},
 	"model_memory":   {llm.KindText},
 	"model_approval": {llm.KindText, llm.KindDecision},
+	"model_filter":   {llm.KindText, llm.KindDecision},
 	"model_decision": {llm.KindDecision},
 }
 

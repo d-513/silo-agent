@@ -251,3 +251,43 @@ func TestObjectSchemaOmitsEmptyRequired(t *testing.T) {
 		t.Fatalf("schema %s", got)
 	}
 }
+
+// suffix is a ResultFilter that marks what it saw.
+type suffix struct{ seen []string }
+
+func (f *suffix) FilterResult(_ context.Context, c *Call, res Result, err error) (Result, error) {
+	f.seen = append(f.seen, string(c.Surface)+":"+c.Def.Key())
+	res.Text += " (filtered)"
+	return res, err
+}
+
+// The filter sees what every handler returns on both surfaces, and nothing
+// that never ran: a refused call, or a local tool Python only asks leave for.
+func TestEngineFiltersWhatHandlersReturn(t *testing.T) {
+	g := &gate{}
+	e := newEngine(g)
+	f := &suffix{}
+	e.Filter = f
+	e.Register(Def{Name: "look", Connector: "desktop", Action: "look", ExposeCompletion: true, ExposePython: true, Local: true, Run: say("screen")})
+	bot := &db.Bot{ID: "b"}
+	run := func(name string, s Surface) (Result, error) {
+		d, _ := e.ByName(bot.ID, name)
+		return e.Run(context.Background(), &Call{Surface: s, Bot: bot, Def: d})
+	}
+	if res, err := run("feed", Completion); err != nil || res.Text != "posted (filtered)" {
+		t.Fatalf("completion: %q %v", res.Text, err)
+	}
+	if res, err := run("feed", Python); err != nil || res.Text != "posted (filtered)" {
+		t.Fatalf("python: %q %v", res.Text, err)
+	}
+	if res, err := run("look", Python); err != nil || res.Text != "ok" {
+		t.Fatalf("a local grant was filtered: %q %v", res.Text, err)
+	}
+	g.deny = true
+	if _, err := run("feed", Completion); err == nil {
+		t.Fatal("a denied call ran")
+	}
+	if got := strings.Join(f.seen, " "); got != "completion:bot.feed python:bot.feed" {
+		t.Fatalf("the filter saw %q", got)
+	}
+}

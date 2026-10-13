@@ -47,6 +47,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("changes.enabled", true)
 	_ = k.Set("changes.max_file_mb", DefaultChangesFileMB)
 	_ = k.Set("changes.keep_days", DefaultChangesKeepDays)
+	_ = k.Set("filter.enabled", true)
+	_ = k.Set("filter.max_chars", DefaultFilterMaxChars)
 	_ = k.Set("context.window", DefaultContextWindow)
 	_ = k.Set("context.compact_at", DefaultCompactAt)
 	_ = k.Set("runs.max_duration", "120m")
@@ -352,6 +354,9 @@ func validateYAML(raw []byte) error {
 	if err := validateChanges(k); err != nil {
 		return err
 	}
+	if err := validateFilter(k); err != nil {
+		return err
+	}
 	if err := validateMail(k); err != nil {
 		return err
 	}
@@ -459,8 +464,10 @@ func validateModels(k *koanf.Koanf) error {
 			return fmt.Errorf("%s: %q is a decision model; it answers typed questions and writes no text", key, v)
 		}
 	}
-	if _, err := role("model_approval"); err != nil {
-		return err
+	for _, key := range []string{"model_approval", "model_filter"} {
+		if _, err := role(key); err != nil {
+			return err
+		}
 	}
 	// A default that is merely no longer allowed is not an error: it falls
 	// back (Config.DecisionModel), so a model can still be taken off the list.

@@ -205,16 +205,37 @@ func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, e
 	return llm.Response{Text: "Dummy Title", Usage: llm.Usage{InputTokens: 8, OutputTokens: 2}}, nil
 }
 
+// FilterMarker is how the dummy knows a request is the output filter's: its
+// system prompt says so.
+const FilterMarker = "Silo's output filter"
+
 // verdictFrom lets a test drive the auto-approval gate: a request carrying one
 // of these tokens in its system prompt or messages answers with that verdict.
 // Nothing else uses it, so the title path still returns "Dummy Title".
+//
+// The output filter is driven the same way, by a token in the tool result it
+// is shown: Test_Flag, Test_Withhold, and Test_Unsure for an answer that is
+// no verdict. With no token it answers clean, as a decision model's choice
+// does.
 func verdictFrom(req llm.Request) string {
-	hay := ""
+	hay, filter := "", false
 	for _, blk := range req.System {
 		hay += blk.Text + "\n"
+		filter = filter || strings.Contains(blk.Text, FilterMarker)
 	}
 	for _, m := range req.Messages {
 		hay += m.Text + "\n"
+	}
+	if filter {
+		switch {
+		case strings.Contains(hay, "Test_Withhold"):
+			return "withhold"
+		case strings.Contains(hay, "Test_Flag"):
+			return "flag"
+		case strings.Contains(hay, "Test_Unsure"):
+			return ""
+		}
+		return "clean"
 	}
 	switch {
 	case strings.Contains(hay, "Test_Approve"):

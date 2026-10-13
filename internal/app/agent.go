@@ -506,6 +506,9 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 			if err != nil {
 				out = "error: " + err.Error()
 			}
+			// What the output filter has to say about results the tool's own
+			// code received goes first, where the cap cannot cut it.
+			out = a.takeNotices(botID, runID) + out
 			out = a.kept(botID, textx.Cap(a.Mask(botID).Apply(out), 12000))
 			sameLook := img != "" && img == lastLook && isLookTool(tc.Name)
 			if sameLook {
@@ -594,6 +597,7 @@ func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 func (a *App) finish(botID, chatID, runID, st string) {
 	a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", st)
 	a.untrackRun(runID)
+	a.dropNotices(runID)
 	a.recomputeStatus(botID)
 	a.Emit(botID, chatID, runID, "done", st, "")
 	// The closing snapshot is a worker round trip; nothing waits for it.

@@ -63,6 +63,9 @@ type Def struct {
 	// SelfGated means Run authorizes on its own: its rule depends on the
 	// arguments (one rule per channel, a public tunnel) or it needs none.
 	SelfGated bool
+	// OutMode is the output rule when the Bot has none for the action and
+	// the rule catalog has no default: a connector's results are checked.
+	OutMode string
 	// Local means the worker performs the action itself when Python asks, so
 	// the engine only grants it there (the desktop: typed text stays on the
 	// machine). The completion surface still runs it.
@@ -161,6 +164,13 @@ type Result struct {
 	Data string
 }
 
+// ResultFilter is what an action's output rule does to its result before
+// anyone reads it. It sees every result of every surface, errors included (a
+// connector's error is its server's text), and answers what the caller gets.
+type ResultFilter interface {
+	FilterResult(ctx context.Context, c *Call, res Result, err error) (Result, error)
+}
+
 // Handler runs a tool.
 type Handler func(ctx context.Context, c *Call) (Result, error)
 
@@ -177,7 +187,9 @@ type Source interface {
 type Engine struct {
 	// Expose, when set, names built-in tools the operator also wants offered
 	// to the model (tools.expose_completion); it is read on every use.
-	Expose  func() []string
+	Expose func() []string
+	// Filter, when set, is applied to what every handler returns.
+	Filter  ResultFilter
 	auth    host.Authorizer
 	defs    []Def
 	byName  map[string]int
@@ -332,7 +344,11 @@ func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 			return Result{}, err
 		}
 	}
-	return d.Run(ctx, c)
+	res, err := d.Run(ctx, c)
+	if e.Filter != nil {
+		return e.Filter.FilterResult(ctx, c, res, err)
+	}
+	return res, err
 }
 
 // Need is a Check that requires string arguments to be present.

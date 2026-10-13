@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -12,6 +13,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/mcpx"
+	"silo.agent/internal/prompts"
 	"silo.agent/internal/security"
 	"silo.agent/internal/toolsgen"
 )
@@ -25,9 +27,10 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 	stored := a.ruleMap(botID)
 	out := &v1.ListRulesResponse{}
 	botSec := &v1.RuleSection{
-		Id:      "bot",
-		Title:   "This Bot",
-		Summary: "Python, Terminal, Web search, and Artifacts are allowed until you change them. Files and Desktop cover the chat tools (and the Python desktop helpers).",
+		Id:            "bot",
+		Title:         "This Bot",
+		Summary:       "Python, Terminal, Web search, and Artifacts are allowed until you change them. Files and Desktop cover the chat tools (and the Python desktop helpers).",
+		OutputSummary: "What comes from outside (web search, mail, chat history, transcripts) is checked until you change it. The Bot's own tools pass; set Python or Terminal to Check to cover what a script fetched itself.",
 	}
 	for _, row := range security.BuiltinRows() {
 		r := a.effectiveRule(botID, row.Connector, row.Action, row.Title, stored, "")
@@ -79,9 +82,10 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 		}
 		slug := toolsgen.Slug(c.Name)
 		sec := &v1.RuleSection{
-			Id:      slug,
-			Title:   c.Name,
-			Summary: fmt.Sprintf("When there is no override, this connector uses %s.", modeWord(c.DefaultMode)),
+			Id:            slug,
+			Title:         c.Name,
+			Summary:       fmt.Sprintf("When there is no override, this connector uses %s.", modeWord(c.DefaultMode)),
+			OutputSummary: "Everything this connector answers was written somewhere else, so each result is checked until you change it.",
 		}
 		if c.Transport == connector.TransportBuiltin {
 			sec.Summary = "Each action has its own default: reading is allowed, anything that sends or changes mail asks."
@@ -101,27 +105,39 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 		}
 		out.Sections = append(out.Sections, sec)
 	}
+	out.DefaultOutputPolicy = strings.TrimSpace(prompts.FilterPolicy)
+	out.FilterEnabled = a.cfg().Filter.Enabled
 	return connect.NewResponse(out), nil
 }
 
 func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	m := req.Msg
+	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
 		return nil, err
 	}
-	dec := security.Rule(req.Msg.GetDecision())
+	// A request that names an output and no decision is about the output
+	// rule alone; the call rule stays as it is.
+	setDecision := m.Output == nil || m.GetDecision() != ""
 	var rule db.Rule
-	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", req.Msg.GetBotId(), req.Msg.GetConnector(), req.Msg.GetAction()).Limit(1).Find(&rule)
-	if rule.ID == "" {
-		rule = db.Rule{ID: ids.New(), BotID: req.Msg.GetBotId(), Connector: req.Msg.GetConnector(), Action: req.Msg.GetAction(), Decision: dec}
+	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", m.GetBotId(), m.GetConnector(), m.GetAction()).Limit(1).Find(&rule)
+	fresh := rule.ID == ""
+	if fresh {
+		rule = db.Rule{ID: ids.New(), BotID: m.GetBotId(), Connector: m.GetConnector(), Action: m.GetAction()}
+	}
+	if setDecision {
+		rule.Decision = security.Rule(m.GetDecision())
+	}
+	if m.Output != nil {
+		rule.Output = security.Output(m.GetOutput())
+	}
+	if fresh {
 		a.DB.Create(&rule)
 	} else {
-		rule.Decision = dec
 		a.DB.Save(&rule)
 	}
-	return connect.NewResponse(&v1.Rule{
-		Id: rule.ID, BotId: rule.BotID, Connector: rule.Connector, Action: rule.Action, Decision: rule.Decision,
-		Title: security.Describe(rule.Connector, rule.Action, "").Title,
-	}), nil
+	out := a.effectiveRule(rule.BotID, rule.Connector, rule.Action, security.Describe(rule.Connector, rule.Action, "").Title,
+		map[string]db.Rule{security.Key(rule.Connector, rule.Action): rule}, a.callFallback(rule.BotID, rule.Connector, rule.Action))
+	return connect.NewResponse(out), nil
 }
 
 func (a *App) PruneRules(botID, slug string, keepActions []string) {
@@ -223,6 +239,9 @@ func (a *App) ruleMap(botID string) map[string]db.Rule {
 func (a *App) effectiveRule(botID, conn, action, title string, stored map[string]db.Rule, mcpDefault string) *v1.Rule {
 	dec := security.Rule(a.ruleDecision(botID, conn, action, mcpDefault))
 	r := &v1.Rule{BotId: botID, Connector: conn, Action: action, Decision: dec, Title: title}
+	if outputApplies(conn, action) {
+		r.Output = a.ruleOutput(botID, conn, action, outputFallback(conn))
+	}
 	if row, ok := stored[security.Key(conn, action)]; ok {
 		r.Id = row.ID
 	}
@@ -240,4 +259,44 @@ func modeWord(s string) string {
 	default:
 		return "Ask"
 	}
+}
+
+// outputApplies reports whether an action has a result the output filter
+// sees. A secret's value and a channel send do not, and tunnels.public is a
+// permission inside open_tunnel, not a tool of its own.
+func outputApplies(conn, action string) bool {
+	switch {
+	case conn == security.Secrets, conn == security.Channels:
+		return false
+	case conn == security.Tunnels && action == "public":
+		return false
+	}
+	return true
+}
+
+// outputFallback is the output mode of an action the catalog does not know:
+// a connector's, which is checked, since everything it answers was written
+// somewhere else.
+func outputFallback(conn string) string {
+	if security.Reserved(conn) {
+		return security.OutPass
+	}
+	return security.OutCheck
+}
+
+// callFallback is the call mode an attached connector gives its action when
+// the Bot has no rule for it; "" for a built-in.
+func (a *App) callFallback(botID, slug, action string) string {
+	if security.Reserved(slug) {
+		return ""
+	}
+	var links []db.BotConnector
+	a.DB.Where("bot_id = ?", botID).Find(&links)
+	for i := range links {
+		var c db.Connector
+		if a.DB.First(&c, "id = ?", links[i].ConnectorID).Error == nil && toolsgen.Slug(c.Name) == slug {
+			return connector.BuiltinMode(&c, action)
+		}
+	}
+	return ""
 }

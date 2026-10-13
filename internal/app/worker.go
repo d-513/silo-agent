@@ -373,6 +373,32 @@ func (a *App) ruleDecision(botID, conn, action, fallback string) string {
 	return security.Ask
 }
 
+// ruleOutput is the output rule in effect for an action: the Bot's rule for
+// it, then its rule for the connector's every action, then the catalog's
+// default, then fallback (what the tool's definition says). Nothing passes.
+func (a *App) ruleOutput(botID, conn, action, fallback string) string {
+	actions := []string{action}
+	if action != security.Star {
+		actions = append(actions, security.Star)
+	}
+	var rows []db.Rule
+	a.DB.Where("bot_id = ? AND connector = ? AND action IN ? AND output <> ''", botID, conn, actions).Find(&rows)
+	var star string
+	for _, r := range rows {
+		if r.Action == action {
+			return security.Output(r.Output)
+		}
+		star = r.Output
+	}
+	if star != "" {
+		return security.Output(star)
+	}
+	if d, ok := security.DefaultOutput(conn, action); ok {
+		return d
+	}
+	return security.Output(fallback)
+}
+
 func (a *App) emitCallDone(botID, runID, tool, body string) {
 	a.Emit(botID, a.ChatOfRun(runID), runID, "call_result", body, tool)
 }

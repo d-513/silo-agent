@@ -100,7 +100,14 @@ func (h *H) StartWorker(botID string) *Worker {
 	}
 	ws := h.T.TempDir()
 	scratch := h.T.TempDir()
-	sockDir := h.T.TempDir()
+	// A Unix socket's address is at most ~104 bytes and a test's temp dir is
+	// longer than that on macOS, where the worker then cannot bind its local
+	// socket at all: give it a short directory of its own.
+	sockDir, err := os.MkdirTemp("/tmp", "silo")
+	if err != nil {
+		h.T.Fatal(err)
+	}
+	h.T.Cleanup(func() { _ = os.RemoveAll(sockDir) })
 	sock := filepath.Join(sockDir, "worker.sock")
 
 	cmd := exec.Command(WorkerBinary(h.T))

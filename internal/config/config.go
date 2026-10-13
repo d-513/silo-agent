@@ -261,6 +261,9 @@ type Config struct {
 	Model         string `koanf:"model"`
 	ModelTitle    string `koanf:"model_title"`
 	ModelApproval string `koanf:"model_approval"`
+	// ModelFilter judges tool results for output rules set to Check; empty
+	// means the auto-approval model.
+	ModelFilter string `koanf:"model_filter"`
 	// ModelSubagent is the default model of subagents a lead starts; empty
 	// means the lead's own model. spawn_agent may still name another.
 	ModelSubagent string `koanf:"model_subagent"`
@@ -274,6 +277,7 @@ type Config struct {
 	Memory        Memory    `koanf:"memory"`
 	Knowledge     Knowledge `koanf:"knowledge"`
 	Changes       Changes   `koanf:"changes"`
+	Filter        Filter    `koanf:"filter"`
 	Context       Context   `koanf:"context"`
 	Thinking      Thinking  `koanf:"thinking"`
 	Runs          Runs      `koanf:"runs"`
@@ -439,6 +443,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model"},
 	{Key: "model_title"},
 	{Key: "model_approval"},
+	{Key: "model_filter"},
 	{Key: "model_subagent"},
 	{Key: "model_memory"},
 	{Key: "model_decision"},
@@ -452,6 +457,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "changes.enabled", Type: "bool"},
 	{Key: "changes.max_file_mb"},
 	{Key: "changes.keep_days"},
+	{Key: "filter.enabled", Type: "bool"},
+	{Key: "filter.max_chars"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},
