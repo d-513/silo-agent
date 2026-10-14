@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+// EgressHost is the reverse channel of the network filter (silo-egress): one
+// gateway per container engine that every Bot box and STDIO sidecar reaches
+// the internet through. The gateway dials the control plane with its token;
+// the CP pushes the whole desired state (who is on which network, the lists,
+// the surrogate secrets, the CA) and the gateway reports what it blocked,
+// what it flagged and how much went where.
+service EgressHost {
+  rpc Session(stream EgressUp) returns (stream EgressDown);
+}
+
+message EgressDown {
+  oneof body {
+    EgressApply apply = 1;
+  }
+}
+
+// EgressApply replaces the gateway's whole state. Connections already open
+// keep the verdict they were given.
+message EgressApply {
+  repeated EgressClient clients = 1;
+  repeated EgressBot bots = 2;
+  // The operator's lists: the floor every Bot stands on.
+  EgressHostLists operator = 3;
+  // The installation's CA, PEM. The key never leaves the CP and the gateway.
+  bytes ca_cert = 4;
+  bytes ca_key = 5;
+  // host:port of the control plane, which a client's CP link is forwarded to.
+  string cp_addr = 6;
+  EgressLimits limits = 7;
+  repeated EgressFeed feeds = 8;
+}
+
+// EgressClient is one container on its own internal network. The gateway
+// knows a client by the network a connection arrives on.
+message EgressClient {
+  // The network's subnet, CIDR.
+  string subnet = 1;
+  // bot | stdio
+  string kind = 2;
+  string bot_id = 3;
+  // For a STDIO sidecar: the Bot's connector row.
+  string connector_id = 4;
+  // What dashboards call it: the connector's name for a sidecar.
+  string name = 5;
+}
+
+// EgressBot is what the gateway needs to know about one Bot, shared by every
+// client of that Bot.
+message EgressBot {
+  string bot_id = 1;
+  EgressHostLists lists = 2;
+  repeated EgressSurrogate surrogates = 3;
+  // Values of the Bot's plain secrets: seeing one leave is a flag.
+  repeated string plain_secrets = 4;
+  // The "Other protocols" switch: SOCKS5 for anything that is not HTTP.
+  bool other_protocols = 5;
+}
+
+// EgressHostLists are host patterns: "example.com" (that host and below) or
+// "*.example.com" (only below).
+message EgressHostLists {
+  // Always refused.
+  repeated string block = 1;
+  // Never flagged. Threat lists and private addresses still win.
+  repeated string trust = 2;
+  // Passed through on SNI only, never decrypted.
+  repeated string pass = 3;
+}
+
+// EgressSurrogate is a secret the box only knows by a stand-in. The gateway
+// writes the real value into requests to the allowed hosts, and writes the
+// stand-in back over the real value in their answers.
+message EgressSurrogate {
+  string name = 1;
+  string surrogate = 2;
+  string real = 3;
+  repeated string hosts = 4;
+}
+
+message EgressLimits {
+  // Bytes one client may send to one host in an hour before it is flagged.
+  int64 upload_budget = 1;
+  // A query string at least this long, whose randomness is high, is flagged.
+  int32 query_min = 2;
+}
+
+// EgressFeed is a threat list the gateway downloads and refreshes itself.
+message EgressFeed {
+  string id = 1;
+  string url = 2;
+  // hosts ("127.0.0.1 host"), domains (one per line, covering subdomains),
+  // ips (an address or CIDR per line), cidr_json (Spamhaus DROP).
+  string format = 3;
+}
+
+message EgressUp {
+  oneof body {
+    EgressHello hello = 1;
+    EgressEvents events = 2;
+    EgressTraffic traffic = 3;
+    EgressHealth health = 4;
+  }
+}
+
+// EgressHello is sent first: ConnectRPC holds the stream's headers until the
+// first message.
+message EgressHello {
+  string version = 1;
+}
+
+// EgressEvent is one thing the filter did something about: a block or a flag.
+message EgressEvent {
+  string bot_id = 1;
+  string connector_id = 2;
+  // Unix milliseconds.
+  int64 at = 3;
+  // block | flag
+  string verdict = 4;
+  // A short code: threat_list, private, blocked_host, surrogate_leak,
+  // exfil_sink, secret_shape, plain_secret, query_entropy, upload_budget,
+  // dns_shape, random_domain, beaconing, executable, other_protocols.
+  string reason = 5;
+  // Human words: which list, which secret, which pattern.
+  string detail = 6;
+  string host = 7;
+  int32 port = 8;
+  // http | https | tcp | dns
+  string proto = 9;
+  string method = 10;
+  // The path and query, masked of the Bot's secrets and capped.
+  string path = 11;
+  int64 bytes_up = 12;
+  int64 bytes_down = 13;
+}
+
+message EgressEvents {
+  repeated EgressEvent events = 1;
+}
+
+// EgressTrafficRow sums one minute of one client's traffic to one host.
+message EgressTrafficRow {
+  string bot_id = 1;
+  string connector_id = 2;
+  string host = 3;
+  // Unix seconds at the start of the minute.
+  int64 minute = 4;
+  int32 requests = 5;
+  int32 blocked = 6;
+  int32 flagged = 7;
+  int64 bytes_up = 8;
+  int64 bytes_down = 9;
+}
+
+message EgressTraffic {
+  repeated EgressTrafficRow rows = 1;
+}
+
+message EgressFeedState {
+  string id = 1;
+  int32 entries = 2;
+  // Unix seconds of the last good download; 0 when never.
+  int64 updated_at = 3;
+  string error = 4;
+}
+
+message EgressHealth {
+  repeated EgressFeedState feeds = 1;
+  // Networks the gateway has an address on.
+  int32 networks = 2;
+}

@@ -1,0 +1,82 @@
+# Places that take data from anyone with no account: paste sites, file drops,
+# request catchers, tunnels and chat webhooks. Sending data to one is flagged,
+# never blocked: people use them for real work too. One pattern per line, as
+# the host lists read them ("example.com" covers everything below it).
+
+# Paste sites
+pastebin.com
+paste.ee
+paste.rs
+dpaste.org
+dpaste.com
+hastebin.com
+ghostbin.co
+rentry.co
+rentry.org
+controlc.com
+privatebin.net
+termbin.com
+ix.io
+sprunge.us
+paste.mozilla.org
+justpaste.it
+gist.githubusercontent.com
+api.github.com/gists
+
+# File drops
+transfer.sh
+file.io
+0x0.st
+tmpfiles.org
+temp.sh
+bashupload.com
+oshi.at
+catbox.moe
+litterbox.catbox.moe
+gofile.io
+anonfiles.com
+wetransfer.com
+sendspace.com
+filebin.net
+uguu.se
+pixeldrain.com
+
+# Request catchers and out-of-band testing
+webhook.site
+requestbin.com
+requestbin.net
+pipedream.net
+beeceptor.com
+hookbin.com
+requestcatcher.com
+mockbin.org
+interact.sh
+oast.fun
+oast.live
+oast.me
+oast.online
+oast.pro
+oast.site
+burpcollaborator.net
+oastify.com
+dnslog.cn
+canarytokens.com
+ngrok-free.app
+
+# Tunnels that hand out a public address
+ngrok.io
+ngrok.app
+ngrok-free.dev
+trycloudflare.com
+loca.lt
+localtunnel.me
+serveo.net
+localhost.run
+pinggy.io
+bore.pub
+
+# Chat webhooks and bot APIs
+discord.com/api/webhooks
+discordapp.com/api/webhooks
+hooks.slack.com
+api.telegram.org
