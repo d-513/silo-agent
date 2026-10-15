@@ -305,6 +305,18 @@ type Config struct {
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
 	// Rules is the operator's layer of the rules engine.
 	Rules Rules `koanf:"rules"`
+	// Audit is how long the audit timeline and the traffic summaries are kept.
+	Audit Audit `koanf:"audit"`
+}
+
+// Audit configures retention. Both tables are swept by a background tick, so a
+// change needs no restart.
+type Audit struct {
+	// DetailDays is how long an audit line is kept, in days.
+	DetailDays int `koanf:"detail_days"`
+	// TrafficDays is how long the per-minute traffic summaries are kept, in
+	// days.
+	TrafficDays int `koanf:"traffic_days"`
 }
 
 // Rules holds the operator's policy text, read before a Bot's own by the
@@ -475,6 +487,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "filter.max_chars"},
 	{Key: "rules.approval_policy", Type: "text"},
 	{Key: "rules.output_policy", Type: "text"},
+	{Key: "audit.detail_days"},
+	{Key: "audit.traffic_days"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},

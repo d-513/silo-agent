@@ -139,6 +139,21 @@ Done:
   `SetOperatorRule` / `DeleteOperatorRule` (admin-only) behind Admin → Settings
   → Rules, which holds the rows editor and the two policy texts.
 
+- The audit timeline. `audit_events` (`db.AuditEvent`, the old `audits` table
+  renamed and widened) holds one line per tool call and its decision, per tool
+  result the output filter did not pass, and per thing the network filter
+  blocked, flagged or wants a human to look at (`attention`: a block, or a
+  leak/secret/exfil reason). `egress_traffics` sums one minute of one client's
+  traffic to one host (requests, blocked, flagged, bytes), a report added to
+  what is already there. `internal/app/audit` records the first two as they
+  happen (`Record`, called by the engine's `a.audit`) and is the gateway's
+  `OnEvents`/`OnTraffic` sink, so nothing is dropped when a gateway is ahead of
+  its CP; a background tick (`audit.Tick`) sweeps detail after
+  `audit.detail_days` (7) and traffic after `audit.traffic_days` (30). A
+  gateway event is put down to a run only when exactly one was live on that
+  Bot; otherwise it is "outside a run". The searchable column set has a
+  `pg_trgm` GIN index (`db.Migrate` creates the extension).
+
 A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
 user-defined network (the container's resolver becomes the network's own gateway
 address, `dns.podman`), so the box does not learn the gateway that way. The box
@@ -149,6 +164,10 @@ variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
 proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
 Next, in order:
-6. Audit storage, RPCs and the owner and admin UI (the gateway's `OnEvents` /
-   `OnTraffic` sinks, currently nil, are filled here), and the proxy environment
-   variables where they do not catch the CP link.
+6. The owner and admin UI over the audit tables, and the rest of the network
+   settings the owner needs: the lists (Block / Trust / Pass-through), the
+   per-Bot "Other protocols" switch, the gateway health shown to admins, the
+   Audit tab (timeline and Traffic view, Block host / Trust host on an entry)
+   and `AuditTable`'s replacement on the admin side ("Needs attention" first,
+   filters, paging). Plus the proxy environment variables where they do not
+   catch the CP link.

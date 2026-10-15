@@ -23,6 +23,7 @@ import (
 	"silo.agent/internal/app/admin"
 	"silo.agent/internal/app/approval"
 	"silo.agent/internal/app/artifact"
+	"silo.agent/internal/app/audit"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/changes"
 	"silo.agent/internal/app/channel"
@@ -199,6 +200,7 @@ type App struct {
 	Accounts    *account.Service
 	Drives      *drive.Service
 	Egress      *egress.Service
+	Audit       *audit.Service
 	Automations *automation.Service
 	Channels    *channel.Service
 	Skills      *skill.Service
@@ -235,6 +237,9 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Drives.OnChange = a.Changes.RecordDrive
 	a.Egress = egress.New(a.DB, a.Docker, a.Store, a.cfg)
+	a.Audit = audit.New(a.DB, a.cfg, a)
+	a.Egress.OnEvents = a.Audit.IngestEvents
+	a.Egress.OnTraffic = a.Audit.IngestTraffic
 	a.Connectors.ClientNet = func(ctx context.Context, botID, connectorID, name string) (*dockerx.ClientNet, error) {
 		return a.Egress.ClientNetwork(ctx, "stdio", botID, connectorID, name)
 	}
@@ -261,6 +266,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
 		go tickLoop(a.stopAutomations, egress.Tick, func(now time.Time) { a.Egress.Reconcile(context.Background()) })
+		go tickLoop(a.stopAutomations, audit.Tick, func(now time.Time) { a.Audit.Trim(now) })
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
@@ -537,6 +543,20 @@ func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, i
 	a.runs[runID] = lr
 	a.mu.Unlock()
 	return lr
+}
+
+// LiveRuns names the runs at work on a Bot now, for the audit timeline: a
+// gateway event can be put down to a run only when exactly one was live.
+func (a *App) LiveRuns(botID string) []audit.LiveRun {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out []audit.LiveRun
+	for id, lr := range a.runs {
+		if lr.botID == botID {
+			out = append(out, audit.LiveRun{RunID: id, ChatID: lr.chatID})
+		}
+	}
+	return out
 }
 
 // liveRunFor returns the active run for a conversation, if any.

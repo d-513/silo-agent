@@ -13,7 +13,6 @@ import (
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
-	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
 	"silo.agent/internal/tunnel"
 )
@@ -389,9 +388,8 @@ func (a *App) emitCallDone(botID, runID, tool, body string) {
 	a.Emit(botID, a.ChatOfRun(runID), runID, "call_result", body, tool)
 }
 
-func (a *App) audit(bot *db.Bot, actor, action, decision string) {
-	a.DB.Create(&db.Audit{
-		ID: ids.New(), BotID: bot.ID, BotName: bot.Name, Crest: bot.Crest,
-		Actor: actor, Action: action, Decision: decision, CreatedAt: time.Now(),
-	})
+// audit adds a line to the Bot's timeline: the run it belongs to, who decided
+// it and what was decided.
+func (a *App) audit(bot *db.Bot, runID, actor, action, decision string) {
+	a.Audit.Record(bot, runID, actor, action, decision)
 }

@@ -392,7 +392,7 @@ func (s *Service) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAudit
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	var rows []db.Audit
+	var rows []db.AuditEvent
 	s.db.Order("created_at desc").Limit(100).Find(&rows)
 	out := &v1.ListAuditResponse{}
 	for _, r := range rows {

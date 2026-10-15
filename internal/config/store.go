@@ -360,6 +360,9 @@ func validateYAML(raw []byte) error {
 	if err := validateEgress(k); err != nil {
 		return err
 	}
+	if err := validateAudit(k); err != nil {
+		return err
+	}
 	if err := validateFilter(k); err != nil {
 		return err
 	}

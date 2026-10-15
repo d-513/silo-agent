@@ -267,15 +267,49 @@ type LLMLog struct {
 	DurationMs int64
 }
 
-type Audit struct {
-	ID        string `gorm:"primaryKey"`
-	BotID     string
-	BotName   string
-	Crest     int
-	Actor     string
-	Action    string
-	Decision  string
-	CreatedAt time.Time
+// AuditEvent is one line of the audit timeline: a tool call and its decision, a
+// result the output filter did not pass, or something the network filter
+// blocked, flagged or alerted on. Detail lines are kept for audit.detail_days
+// and then swept; the traffic summaries beside them are kept longer.
+type AuditEvent struct {
+	ID      string `gorm:"primaryKey"`
+	BotID   string `gorm:"index"`
+	BotName string
+	Crest   int
+	// Actor is who decided or observed: worker, auto, filter, egress, system.
+	Actor string
+	// Action is what it was about: connector.action for a call, empty for a
+	// network event (which names its Host).
+	Action string
+	// Decision is the outcome: allow, ask, deny, auto_allow, auto_deny,
+	// output_flagged, output_withheld, output_unchecked, network_allow, block,
+	// flag.
+	Decision string
+	// Reason is the network filter's short code (threat_list, private, …).
+	Reason string
+	// Detail is human words from the network filter: which list, which secret,
+	// which pattern.
+	Detail string
+	Host   string
+	Port   int32
+	Proto  string
+	Method string
+	// Path is the request path and query, capped (the gateway masks the Bot's
+	// own secrets before it leaves).
+	Path      string
+	BytesUp   int64
+	BytesDown int64
+	// Attention marks a line the owner should look at: a block, or an alert
+	// reason (a secret leaving, an exfil sink).
+	Attention bool
+	// ConnectorID names the STDIO sidecar whose traffic it was, when the event
+	// was a sidecar's rather than the Bot's box.
+	ConnectorID string
+	// RunID and ChatID are the run at work on the Bot when it happened, when
+	// exactly one was; empty means it was outside a run.
+	RunID     string
+	ChatID    string
+	CreatedAt time.Time `gorm:"index"`
 }
 
 type Connector struct {
@@ -636,14 +670,14 @@ type MailBody struct {
 func Models() []any {
 	return []any{
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
-		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
+		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},
-		&EgressHost{}, &EgressClient{}, &EgressCA{},
+		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{},
 	}
 }
 
@@ -669,6 +703,14 @@ func Migrate(gdb *gorm.DB) error {
 	}
 	if err := gdb.Exec("CREATE EXTENSION IF NOT EXISTS vector").Error; err != nil {
 		return fmt.Errorf("pgvector: %w", err)
+	}
+	// The audit page searches its rows: a trigram index makes a substring of a
+	// host, path or decision a query instead of a scan. It is installed in
+	// public, like vector, so a per-test schema (which is on the search path
+	// with public) finds the operator class and dropping the schema does not
+	// take the extension with it.
+	if err := gdb.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA public").Error; err != nil {
+		return fmt.Errorf("pg_trgm: %w", err)
 	}
 	hadWatermark := !gdb.Migrator().HasTable(&Chat{}) || gdb.Migrator().HasColumn(&Chat{}, "MemorySeq")
 	if err := gdb.AutoMigrate(Models()...); err != nil {
@@ -698,6 +740,7 @@ func Migrate(gdb *gorm.DB) error {
 		"CREATE INDEX IF NOT EXISTS knowledge_chunks_tsv ON knowledge_chunks USING gin (tsv)",
 		// One user per identity at the provider; password-only users have none.
 		"CREATE UNIQUE INDEX IF NOT EXISTS users_oidc_identity ON users (oidc_issuer, oidc_subject) WHERE oidc_subject <> ''",
+		"CREATE INDEX IF NOT EXISTS audit_events_search ON audit_events USING gin ((coalesce(bot_name, '') || ' ' || coalesce(action, '') || ' ' || coalesce(decision, '') || ' ' || coalesce(reason, '') || ' ' || coalesce(host, '') || ' ' || coalesce(method, '') || ' ' || coalesce(path, '') || ' ' || coalesce(detail, '')) gin_trgm_ops)",
 	} {
 		if err := gdb.Exec(stmt).Error; err != nil {
 			return err

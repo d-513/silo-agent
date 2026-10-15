@@ -285,10 +285,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	u := access.User(ctx)
 	var bot db.Bot
 	a.DB.First(&bot, "id = ?", row.BotID)
-	a.DB.Create(&db.Audit{
-		ID: ids.New(), BotID: bot.ID, BotName: bot.Name, Crest: bot.Crest,
-		Actor: u.Email, Action: row.Connector + "." + row.Action, Decision: dec, CreatedAt: time.Now(),
-	})
+	a.audit(&bot, row.RunID, u.Email, row.Connector+"."+row.Action, dec)
 	if dec == security.Always {
 		var rule db.Rule
 		a.DB.Where("bot_id = ? AND connector = ? AND action = ?", row.BotID, row.Connector, row.Action).Limit(1).Find(&rule)

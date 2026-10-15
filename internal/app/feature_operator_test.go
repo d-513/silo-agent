@@ -185,7 +185,7 @@ func TestOperatorOutputPolicyFilters(t *testing.T) {
 	if res.GetError() != "" || res.GetResultJson() != `{"result":"a page about hotels"}` {
 		t.Fatalf("a flagged result keeps its shape from Python: %+v", res)
 	}
-	var a db.Audit
+	var a db.AuditEvent
 	h.DB.Where("bot_id = ? AND actor = ?", id, "filter").Last(&a)
 	if a.Decision != "output_flagged" {
 		t.Fatalf("the operator's policy was not read by the filter: %q", a.Decision)

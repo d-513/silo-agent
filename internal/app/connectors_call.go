@@ -83,10 +83,10 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 	if auto {
 		switch a.Approval.Judge(ctx, bot, a.ChatOfRun(runID), conn, action, argsJSON) {
 		case security.Allow:
-			a.audit(bot, "auto", conn+"."+action, "auto_allow")
+			a.audit(bot, runID, "auto", conn+"."+action, "auto_allow")
 			return "", nil
 		case security.Deny:
-			a.audit(bot, "auto", conn+"."+action, "auto_deny")
+			a.audit(bot, runID, "auto", conn+"."+action, "auto_deny")
 			return "", errors.New("denied")
 		default:
 			// The policy did not clearly decide; a human gets the slip.
@@ -95,10 +95,10 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 	}
 	switch decision {
 	case security.Deny:
-		a.audit(bot, "worker", conn+"."+action, security.Deny)
+		a.audit(bot, runID, "worker", conn+"."+action, security.Deny)
 		return "", errors.New("denied")
 	case security.Allow:
-		a.audit(bot, "worker", conn+"."+action, security.Allow)
+		a.audit(bot, runID, "worker", conn+"."+action, security.Allow)
 		return "", nil
 	default:
 		ap := db.Approval{

@@ -95,7 +95,7 @@ func (a *App) FilterResult(ctx context.Context, c *tool.Call, res tool.Result, e
 		return res, err
 	}
 	key := d.Key()
-	a.audit(c.Bot, "filter", key, "output_"+string(verdict))
+	a.audit(c.Bot, c.RunID, "filter", key, "output_"+string(verdict))
 	body := filteredBody{Verdict: string(verdict), Mode: mode}
 	if verdict == filter.Withheld {
 		body.Original = textx.Cap(content, filteredMax)

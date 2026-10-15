@@ -128,7 +128,7 @@ func TestOutputRuleFromPython(t *testing.T) {
 				t.Fatalf("unsure result: %+v", res)
 			}
 
-			var audits []db.Audit
+			var audits []db.AuditEvent
 			h.DB.Where("bot_id = ? AND actor = ?", id, "filter").Order("created_at").Find(&audits)
 			got := ""
 			for _, a := range audits {
@@ -148,7 +148,7 @@ func TestOutputFilterModelErrorPassesWithAWarning(t *testing.T) {
 	if res.GetError() != "" || !strings.Contains(res.GetResultJson(), "page") {
 		t.Fatalf("result after a model error: %+v", res)
 	}
-	var a db.Audit
+	var a db.AuditEvent
 	h.DB.Where("bot_id = ? AND actor = ?", id, "filter").Last(&a)
 	if a.Decision != "output_unchecked" {
 		t.Fatalf("audit after a model error = %q", a.Decision)
@@ -284,7 +284,7 @@ func TestOutputRuleModes(t *testing.T) {
 		t.Fatalf("pass: %+v", res)
 	}
 	audits := func() (n int64) {
-		h.DB.Model(&db.Audit{}).Where("bot_id = ? AND actor = ?", id, "filter").Count(&n)
+		h.DB.Model(&db.AuditEvent{}).Where("bot_id = ? AND actor = ?", id, "filter").Count(&n)
 		return n
 	}
 	if audits() != 0 {

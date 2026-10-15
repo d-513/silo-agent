@@ -56,8 +56,8 @@ type Service struct {
 	store  *config.Store
 	cfg    func() config.Config
 
-	// OnEvents and OnTraffic are the ingest sinks (audit). Nil drops with a
-	// log line; a later step fills them.
+	// OnEvents and OnTraffic are the ingest sinks: the audit timeline and the
+	// per-minute traffic sums (wired in app.New). Nil drops the report.
 	OnEvents  func(events []*v1.EgressEvent)
 	OnTraffic func(rows []*v1.EgressTrafficRow)
 

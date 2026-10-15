@@ -38,3 +38,22 @@ type EgressCA struct {
 	KeyPEM    []byte
 	CreatedAt time.Time
 }
+
+// EgressTraffic is one minute of one client's traffic to one host, summed as
+// the gateway reports it. Detail (what was asked for) is not kept: the audit
+// timeline has that for the lines worth looking at. Trimmed to
+// audit.traffic_days.
+type EgressTraffic struct {
+	ID          string `gorm:"primaryKey"`
+	BotID       string `gorm:"index:egress_minute,unique;index:idx_egress_traffic_bot"`
+	ConnectorID string `gorm:"index:egress_minute,unique"`
+	Host        string `gorm:"index:egress_minute,unique"`
+	// Minute is the start of the minute the traffic was in.
+	Minute    time.Time `gorm:"index:egress_minute,unique;index:idx_egress_traffic_minute"`
+	Requests  int32
+	Blocked   int32
+	Flagged   int32
+	BytesUp   int64
+	BytesDown int64
+	UpdatedAt time.Time
+}
