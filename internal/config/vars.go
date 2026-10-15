@@ -16,7 +16,9 @@ var varNameRE = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 // ValidVarName reports whether name can be a connector variable.
 func ValidVarName(name string) bool { return varNameRE.MatchString(name) }
 
-var varRefRE = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+// A reference may carry dots, so ${secrets.NAME} (a Bot's own secret, resolved
+// by the connector service) sits beside the operator's plain ${NAME} variables.
+var varRefRE = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_.]*)\}`)
 
 // ExpandVars replaces ${NAME} references in s with values from vars. A name is
 // matched exactly first, then case-insensitively, so a variable supplied

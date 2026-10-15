@@ -166,7 +166,7 @@ func (s *Service) Prompt(views []View) string {
 			if v.Link.AuthStatus != StatusOK {
 				continue
 			}
-			prompt := config.ExpandVars(v.Conn.Prompt, s.connectorVars())
+			prompt := config.ExpandVars(v.Conn.Prompt, s.operatorVars())
 			// A built-in's usage notes live in code, so they stay current on
 			// copies attached before they changed.
 			if bc, ok := builtinOf(&v.Conn); ok {

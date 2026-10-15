@@ -8,6 +8,7 @@ package egress
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/netip"
@@ -405,18 +406,44 @@ func (s *Service) feeds() []*v1.EgressFeed {
 	return out
 }
 
-// renderBot is what the gateway needs about one Bot. Surrogates come in a later
-// step; for now only the plain secrets and the empty lists.
+// renderBot is what the gateway needs about one Bot: its surrogate secrets
+// (the box holds the stand-in; the gateway swaps in the real value for the
+// allowed hosts and the stand-in back in their answers) and the values of its
+// plain secrets (seeing one leave is a flag). A channel's own secrets are the
+// CP's, never the Bot's, so they are left out.
 func (s *Service) renderBot(botID string) *v1.EgressBot {
 	var secrets []db.Secret
-	s.db.Where("bot_id = ?", botID).Find(&secrets)
-	var plain []string
+	s.db.Where("bot_id = ? AND name NOT LIKE ?", botID, "channel.%").Find(&secrets)
+	bot := &v1.EgressBot{BotId: botID}
 	for _, sec := range secrets {
-		if sec.Value != "" {
-			plain = append(plain, sec.Value)
+		if sec.Value == "" {
+			continue
 		}
+		if sec.Mode != "plain" && sec.Surrogate != "" {
+			hosts := secretHosts(sec.Hosts)
+			if len(hosts) == 0 {
+				continue
+			}
+			bot.Surrogates = append(bot.Surrogates, &v1.EgressSurrogate{
+				Name: sec.Name, Surrogate: sec.Surrogate, Real: sec.Value, Hosts: hosts,
+			})
+			continue
+		}
+		bot.PlainSecrets = append(bot.PlainSecrets, sec.Value)
 	}
-	return &v1.EgressBot{BotId: botID, PlainSecrets: plain}
+	return bot
+}
+
+// secretHosts reads a secret's stored JSON host list, or nil.
+func secretHosts(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var out []string
+	if json.Unmarshal([]byte(raw), &out) != nil {
+		return nil
+	}
+	return out
 }
 
 // Apply pushes a fresh apply to a connected gateway; a gateway that is away

@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -95,6 +96,109 @@ func TestEgressOffMeansNoGateway(t *testing.T) {
 	}
 	if h.Fake.EgressUps.Load() != 0 {
 		t.Fatal("the gateway was started with the filter off")
+	}
+}
+
+func strptr(s string) *string { return &s }
+
+// A surrogate secret: the box only ever sees the stand-in, and the stand-in is
+// stable. Switching to plain hands the box the real value.
+func TestEgressSurrogateSecretIsWhatTheBoxSees(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Surrogates")
+	const real = "ghp_REALVALUE11111111111111"
+
+	add, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "GITHUB_TOKEN", Value: real,
+		Mode: "surrogate", Hosts: []string{"api.github.com", "*.githubusercontent.com"},
+	}))
+	if err != nil {
+		t.Fatalf("AddSecret: %v", err)
+	}
+	if add.Msg.GetMode() != "surrogate" || !add.Msg.GetSurrogate() {
+		t.Fatalf("secret meta = %+v", add.Msg)
+	}
+	if len(add.Msg.GetHosts()) != 2 {
+		t.Fatalf("hosts = %v", add.Msg.GetHosts())
+	}
+
+	// Reading a secret is Ask by default; allow it so nothing waits on a vote.
+	h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+		BotId: bot.GetId(), Connector: "secrets", Action: "GITHUB_TOKEN", Decision: "allow",
+	}))
+
+	wc := h.WorkerClient(bot.GetId())
+	got, err := wc.GetSecret(h.Ctx(), connect.NewRequest(&v1.SecretReq{Name: "GITHUB_TOKEN"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Msg.GetValue() == real {
+		t.Fatal("the box got the real value of a surrogate secret")
+	}
+	if !strings.HasPrefix(got.Msg.GetValue(), "ghp_") || len(got.Msg.GetValue()) != len(real) {
+		t.Fatalf("stand-in = %q, want a ghp_ token of the same length", got.Msg.GetValue())
+	}
+	again, _ := wc.GetSecret(h.Ctx(), connect.NewRequest(&v1.SecretReq{Name: "GITHUB_TOKEN"}))
+	if again.Msg.GetValue() != got.Msg.GetValue() {
+		t.Fatalf("the stand-in changed between reads: %q then %q", got.Msg.GetValue(), again.Msg.GetValue())
+	}
+
+	if _, err := h.Client.UpdateSecret(h.Ctx(), connect.NewRequest(&v1.UpdateSecretRequest{
+		BotId: bot.GetId(), Id: add.Msg.GetId(), Mode: strptr("plain"),
+	})); err != nil {
+		t.Fatalf("UpdateSecret: %v", err)
+	}
+	plain, _ := wc.GetSecret(h.Ctx(), connect.NewRequest(&v1.SecretReq{Name: "GITHUB_TOKEN"}))
+	if plain.Msg.GetValue() != real {
+		t.Fatalf("plain secret = %q, want the real value", plain.Msg.GetValue())
+	}
+}
+
+// A surrogate needs hosts and a value long enough to stand in for.
+func TestEgressSurrogateNeedsHosts(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Strict")
+	_, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "NO_HOSTS", Value: "ghp_REALVALUE11111111111111", Mode: "surrogate",
+	}))
+	if err == nil {
+		t.Fatal("a surrogate secret with no hosts was accepted")
+	}
+	_, err = h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "SHORT", Value: "abc", Mode: "surrogate", Hosts: []string{"x.example"},
+	}))
+	if err == nil {
+		t.Fatal("a too-short surrogate was accepted")
+	}
+}
+
+// ${secrets.NAME} in a connector resolves to the Bot's own secret on the
+// connection path, so a connector never needs its value written into it.
+func TestEgressConnectorSecretReference(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Connectors")
+	// No hosts: a plain secret, so the real value is what resolves.
+	if _, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "API_KEY", Value: "s3cr3t-value",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	c := &db.Connector{
+		BotID:       bot.GetId(),
+		HTTPURL:     "https://api.example.com/mcp",
+		HeadersJSON: `{"Authorization":"Bearer ${secrets.API_KEY}"}`,
+	}
+	got := h.App.Connectors.ResolveConnector(c)
+	var hdr map[string]string
+	if err := json.Unmarshal([]byte(got.HeadersJSON), &hdr); err != nil {
+		t.Fatal(err)
+	}
+	if hdr["Authorization"] != "Bearer s3cr3t-value" {
+		t.Fatalf("header = %q, want the secret resolved", hdr["Authorization"])
+	}
+	// The stored row keeps the placeholder.
+	if !strings.Contains(c.HeadersJSON, "${secrets.API_KEY}") {
+		t.Fatalf("the row was rewritten: %q", c.HeadersJSON)
 	}
 }
 

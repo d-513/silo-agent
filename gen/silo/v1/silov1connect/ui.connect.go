@@ -198,6 +198,8 @@ const (
 	UIListSecretsProcedure = "/silo.v1.UI/ListSecrets"
 	// UIAddSecretProcedure is the fully-qualified name of the UI's AddSecret RPC.
 	UIAddSecretProcedure = "/silo.v1.UI/AddSecret"
+	// UIUpdateSecretProcedure is the fully-qualified name of the UI's UpdateSecret RPC.
+	UIUpdateSecretProcedure = "/silo.v1.UI/UpdateSecret"
 	// UIDeleteSecretProcedure is the fully-qualified name of the UI's DeleteSecret RPC.
 	UIDeleteSecretProcedure = "/silo.v1.UI/DeleteSecret"
 	// UIListApprovalsProcedure is the fully-qualified name of the UI's ListApprovals RPC.
@@ -420,6 +422,9 @@ type UIClient interface {
 	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
+	// UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
+	// the fields set are touched; a value re-writes the stand-in.
+	UpdateSecret(context.Context, *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
 	ListApprovals(context.Context, *connect.Request[v1.ListApprovalsRequest]) (*connect.Response[v1.ListApprovalsResponse], error)
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
@@ -992,6 +997,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("AddSecret")),
 			connect.WithClientOptions(opts...),
 		),
+		updateSecret: connect.NewClient[v1.UpdateSecretRequest, v1.SecretMeta](
+			httpClient,
+			baseURL+UIUpdateSecretProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateSecret")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteSecret: connect.NewClient[v1.DeleteSecretRequest, v1.DeleteSecretResponse](
 			httpClient,
 			baseURL+UIDeleteSecretProcedure,
@@ -1427,6 +1438,7 @@ type uIClient struct {
 	clearTaskboard          *connect.Client[v1.ClearTaskboardRequest, v1.Taskboard]
 	listSecrets             *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret               *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
+	updateSecret            *connect.Client[v1.UpdateSecretRequest, v1.SecretMeta]
 	deleteSecret            *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
 	listApprovals           *connect.Client[v1.ListApprovalsRequest, v1.ListApprovalsResponse]
 	decideApproval          *connect.Client[v1.DecideApprovalRequest, v1.Approval]
@@ -1897,6 +1909,11 @@ func (c *uIClient) AddSecret(ctx context.Context, req *connect.Request[v1.AddSec
 	return c.addSecret.CallUnary(ctx, req)
 }
 
+// UpdateSecret calls silo.v1.UI.UpdateSecret.
+func (c *uIClient) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
+	return c.updateSecret.CallUnary(ctx, req)
+}
+
 // DeleteSecret calls silo.v1.UI.DeleteSecret.
 func (c *uIClient) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error) {
 	return c.deleteSecret.CallUnary(ctx, req)
@@ -2290,6 +2307,9 @@ type UIHandler interface {
 	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
+	// UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
+	// the fields set are touched; a value re-writes the stand-in.
+	UpdateSecret(context.Context, *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error)
 	ListApprovals(context.Context, *connect.Request[v1.ListApprovalsRequest]) (*connect.Response[v1.ListApprovalsResponse], error)
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
@@ -2858,6 +2878,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("AddSecret")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIUpdateSecretHandler := connect.NewUnaryHandler(
+		UIUpdateSecretProcedure,
+		svc.UpdateSecret,
+		connect.WithSchema(uIMethods.ByName("UpdateSecret")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIDeleteSecretHandler := connect.NewUnaryHandler(
 		UIDeleteSecretProcedure,
 		svc.DeleteSecret,
@@ -3372,6 +3398,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListSecretsHandler.ServeHTTP(w, r)
 		case UIAddSecretProcedure:
 			uIAddSecretHandler.ServeHTTP(w, r)
+		case UIUpdateSecretProcedure:
+			uIUpdateSecretHandler.ServeHTTP(w, r)
 		case UIDeleteSecretProcedure:
 			uIDeleteSecretHandler.ServeHTTP(w, r)
 		case UIListApprovalsProcedure:
@@ -3823,6 +3851,10 @@ func (UnimplementedUIHandler) ListSecrets(context.Context, *connect.Request[v1.L
 
 func (UnimplementedUIHandler) AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AddSecret is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateSecret(context.Context, *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateSecret is not implemented"))
 }
 
 func (UnimplementedUIHandler) DeleteSecret(context.Context, *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error) {

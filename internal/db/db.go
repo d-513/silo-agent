@@ -110,10 +110,23 @@ type Bot struct {
 }
 
 type Secret struct {
-	ID         string `gorm:"primaryKey"`
-	BotID      string `gorm:"uniqueIndex:bot_secret"`
-	Name       string `gorm:"uniqueIndex:bot_secret"`
-	Value      string
+	ID    string `gorm:"primaryKey"`
+	BotID string `gorm:"uniqueIndex:bot_secret"`
+	Name  string `gorm:"uniqueIndex:bot_secret"`
+	Value string
+	// Mode is how the Bot's box sees the secret. "surrogate" (the default):
+	// the box only ever gets Surrogate, and the network filter swaps Value in
+	// on the way to the allowed Hosts and the stand-in back in answers, so the
+	// real value never lives on the box. "plain": the box gets Value (SSH keys,
+	// database passwords that a host must see as-is); seeing it leave is a flag.
+	Mode string `gorm:"not null;default:'surrogate'"`
+	// Hosts is the JSON list of host patterns a surrogate's real value may be
+	// sent to. A surrogate with no hosts is not made.
+	Hosts string `gorm:"not null;default:''"`
+	// Surrogate is the stable stand-in the box knows, generated when a secret
+	// is saved in surrogate mode. Empty for a plain secret, for a value too
+	// short to stand in for, and for a channel's own secret.
+	Surrogate  string `gorm:"not null;default:''"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 }

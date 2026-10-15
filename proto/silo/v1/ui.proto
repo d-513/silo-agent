@@ -111,6 +111,9 @@ service UI {
 
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
   rpc AddSecret(AddSecretRequest) returns (SecretMeta);
+  // UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
+  // the fields set are touched; a value re-writes the stand-in.
+  rpc UpdateSecret(UpdateSecretRequest) returns (SecretMeta);
   rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
 
   rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse);
@@ -1290,6 +1293,12 @@ message SecretMeta {
   string name = 2;
   string created_at = 3;
   string last_used_at = 4;
+  // "surrogate" (the default) or "plain". See db.Secret.Mode.
+  string mode = 5;
+  // Host patterns a surrogate's real value may be sent to.
+  repeated string hosts = 6;
+  // Whether a stand-in exists: false for a plain secret or one too short.
+  bool surrogate = 7;
 }
 
 message ListSecretsRequest {
@@ -1304,6 +1313,18 @@ message AddSecretRequest {
   string bot_id = 1;
   string name = 2;
   string value = 3;
+  // "surrogate" (the default when empty) or "plain".
+  string mode = 4;
+  repeated string hosts = 5;
+}
+
+message UpdateSecretRequest {
+  string bot_id = 1;
+  string id = 2;
+  optional string name = 3;
+  optional string value = 4;
+  optional string mode = 5;
+  repeated string hosts = 6;
 }
 
 message DeleteSecretRequest {

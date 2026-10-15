@@ -8,7 +8,7 @@ import (
 )
 
 func TestExpandVars(t *testing.T) {
-	vars := map[string]string{"TENANT": "acme", "PORT": "8080"}
+	vars := map[string]string{"TENANT": "acme", "PORT": "8080", "secrets.TOKEN": "s3cr3t"}
 	cases := []struct {
 		in, want string
 	}{
@@ -17,6 +17,8 @@ func TestExpandVars(t *testing.T) {
 		{"${MISSING}", "${MISSING}"},
 		{"${tenant}", "acme"},
 		{"prefix-${PORT}", "prefix-8080"},
+		{"Bearer ${secrets.TOKEN}", "Bearer s3cr3t"},
+		{"${secrets.NOPE}", "${secrets.NOPE}"},
 	}
 	for _, c := range cases {
 		if got := ExpandVars(c.in, vars); got != c.want {

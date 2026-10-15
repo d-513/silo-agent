@@ -13,6 +13,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
+	"silo.agent/internal/egress"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
 )
@@ -25,13 +26,24 @@ func (a *App) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecre
 	a.DB.Where("bot_id = ? AND name NOT LIKE ?", req.Msg.GetBotId(), "channel.%").Find(&secs)
 	out := &v1.ListSecretsResponse{}
 	for _, s := range secs {
-		m := &v1.SecretMeta{Id: s.ID, Name: s.Name, CreatedAt: s.CreatedAt.Format(time.RFC3339)}
-		if s.LastUsedAt != nil {
-			m.LastUsedAt = s.LastUsedAt.Format(time.RFC3339)
-		}
-		out.Secrets = append(out.Secrets, m)
+		out.Secrets = append(out.Secrets, protoSecret(&s))
 	}
 	return connect.NewResponse(out), nil
+}
+
+func protoSecret(s *db.Secret) *v1.SecretMeta {
+	m := &v1.SecretMeta{
+		Id:        s.ID,
+		Name:      s.Name,
+		Mode:      secretMode(s.Mode),
+		Hosts:     secretHostsOf(s.Hosts),
+		Surrogate: s.Surrogate != "",
+	}
+	m.CreatedAt = s.CreatedAt.Format(time.RFC3339)
+	if s.LastUsedAt != nil {
+		m.LastUsedAt = s.LastUsedAt.Format(time.RFC3339)
+	}
+	return m
 }
 
 func (a *App) AddSecret(ctx context.Context, req *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
@@ -42,13 +54,149 @@ func (a *App) AddSecret(ctx context.Context, req *connect.Request[v1.AddSecretRe
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name and value required"))
 	}
 	s := db.Secret{ID: ids.New(), BotID: req.Msg.GetBotId(), Name: req.Msg.GetName(), Value: req.Msg.GetValue(), CreatedAt: time.Now()}
-	if err := a.DB.Create(&s).Error; err != nil {
+	if err := applySecretMode(&s, req.Msg.GetMode(), req.Msg.GetHosts(), true); err != nil {
 		return nil, err
 	}
+	if err := a.DB.Create(&s).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a secret with that name already exists"))
+	}
+	a.forgetMask(s.BotID)
+	a.Egress.Apply()
+	return connect.NewResponse(protoSecret(&s)), nil
+}
+
+func (a *App) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
+	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+		return nil, err
+	}
+	var s db.Secret
+	if err := a.DB.First(&s, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	regenerate := false
+	if req.Msg.Name != nil {
+		if *req.Msg.Name == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
+		}
+		s.Name = *req.Msg.Name
+	}
+	if req.Msg.Value != nil {
+		if *req.Msg.Value == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("value required"))
+		}
+		s.Value = *req.Msg.Value
+		regenerate = true
+	}
+	mode := s.Mode
+	if req.Msg.Mode != nil {
+		mode = req.Msg.GetMode()
+		regenerate = true
+	}
+	hosts := req.Msg.GetHosts()
+	if len(hosts) == 0 {
+		hosts = secretHostsOf(s.Hosts)
+	}
+	// A stand-in only changes where the value or the mode did, so a Bot
+	// holding one is not broken by an unrelated edit.
+	if err := applySecretMode(&s, mode, hosts, regenerate); err != nil {
+		return nil, err
+	}
+	if err := a.DB.Save(&s).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a secret with that name already exists"))
+	}
+	a.forgetMask(s.BotID)
+	a.Egress.Apply()
+	return connect.NewResponse(protoSecret(&s)), nil
+}
+
+// applySecretMode writes a secret's mode, hosts and (surrogate-mode) stand-in
+// from the caller's request. A surrogate needs allowed hosts and a value long
+// enough to stand in for; anything else must be plain. The stand-in is only
+// regenerated when regen is set (the value or the mode changed).
+func applySecretMode(s *db.Secret, mode string, hosts []string, regen bool) error {
+	if mode == "" {
+		// Unspecified: surrogate when there are hosts to send the real value
+		// to, plain otherwise (there is nothing to swap the stand-in back for).
+		if len(hosts) == 0 {
+			mode = "plain"
+		} else {
+			mode = "surrogate"
+		}
+	}
+	s.Mode = secretMode(mode)
+	s.Hosts = marshalSecretHosts(hosts)
+	if s.Mode == "surrogate" {
+		if len(hosts) == 0 {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("a surrogate secret needs at least one allowed host"))
+		}
+		if egress.NewSurrogate(s.Value) == "" {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("the value is too short for a surrogate; use plain mode"))
+		}
+	}
+	if regen || s.Surrogate == "" {
+		s.Surrogate = makeSurrogate(s)
+	}
+	return nil
+}
+
+// makeSurrogate is the stand-in for a secret, or "" when it has none.
+func makeSurrogate(s *db.Secret) string {
+	if s.Mode != "surrogate" {
+		return ""
+	}
+	return egress.NewSurrogate(s.Value)
+}
+
+// secretMode normalizes a stored or requested mode; empty and anything
+// unknown is the default, surrogate.
+func secretMode(m string) string {
+	if m == "plain" {
+		return "plain"
+	}
+	return "surrogate"
+}
+
+// marshalSecretHosts normalizes host patterns (trim, lower, drop empty) into
+// the JSON list the row stores.
+func marshalSecretHosts(hosts []string) string {
+	out := normalizeHosts(hosts)
+	if len(out) == 0 {
+		return ""
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
+}
+
+func normalizeHosts(hosts []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, h := range hosts {
+		h = strings.ToLower(strings.TrimSpace(h))
+		if h == "" || seen[h] {
+			continue
+		}
+		seen[h] = true
+		out = append(out, h)
+	}
+	return out
+}
+
+// secretHostsOf reads the host list a row stores.
+func secretHostsOf(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var out []string
+	if json.Unmarshal([]byte(raw), &out) != nil {
+		return nil
+	}
+	return normalizeHosts(out)
+}
+
+func (a *App) forgetMask(botID string) {
 	a.mu.Lock()
-	delete(a.mask, s.BotID)
+	delete(a.mask, botID)
 	a.mu.Unlock()
-	return connect.NewResponse(&v1.SecretMeta{Id: s.ID, Name: s.Name, CreatedAt: s.CreatedAt.Format(time.RFC3339)}), nil
 }
 
 func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error) {
@@ -60,9 +208,8 @@ func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSe
 		a.DB.Where("bot_id = ? AND connector = ? AND action = ?", sec.BotID, security.Secrets, sec.Name).Delete(&db.Rule{})
 	}
 	a.DB.Where("id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Delete(&db.Secret{})
-	a.mu.Lock()
-	delete(a.mask, req.Msg.GetBotId())
-	a.mu.Unlock()
+	a.forgetMask(req.Msg.GetBotId())
+	a.Egress.Apply()
 	return connect.NewResponse(&v1.DeleteSecretResponse{}), nil
 }
 

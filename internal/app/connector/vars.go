@@ -8,24 +8,54 @@ import (
 	"silo.agent/internal/db"
 )
 
-// connectorVars is the effective connector variable map, nil-safe.
-func (s *Service) connectorVars() map[string]string {
+// connectorVars is the effective connector variable map for one Bot: the
+// operator's connector variables plus the Bot's own secrets under
+// "secrets.<name>". A reference to a Bot secret resolves to the real value
+// here, because the connector call is made by the control plane (or, for a
+// STDIO sidecar, which the handoff keeps free of surrogates), not by a box the
+// network filter can swap a stand-in for. Nil-safe.
+func (s *Service) connectorVars(botID string) map[string]string {
+	vars := map[string]string{}
+	for k, v := range s.operatorVars() {
+		vars[k] = v
+	}
+	if s.db != nil && botID != "" {
+		var secs []db.Secret
+		s.db.Where("bot_id = ? AND name NOT LIKE ?", botID, "channel.%").Find(&secs)
+		for _, sec := range secs {
+			if sec.Value == "" {
+				continue
+			}
+			vars["secrets."+sec.Name] = sec.Value
+		}
+	}
+	if len(vars) == 0 {
+		return nil
+	}
+	return vars
+}
+
+// operatorVars are the operator's connector variables alone: a Bot's secrets
+// must never be expanded into a prompt, which the model reads.
+func (s *Service) operatorVars() map[string]string {
 	if s.store == nil {
 		return nil
 	}
 	return s.store.ConnectorVarMap()
 }
 
-// resolveConnector returns a copy of c with operator connector variables
-// (${NAME}) expanded in every technical field. Unknown references are left
-// untouched. The raw row keeps the placeholders; only the connection path sees
-// the resolved values, so changing a variable takes effect on the next
-// reconnect without rewriting connectors.
+// ResolveConnector returns a copy of c with operator connector variables
+// (${NAME}) and the Bot's own secrets (${secrets.NAME}) expanded in every
+// technical field. Unknown references are left untouched. The raw row keeps
+// the placeholders; only the connection path sees the resolved values, so
+// changing a variable or a secret takes effect on the next reconnect without
+// rewriting connectors. The Prompt is expanded with operator variables alone,
+// so a Bot's secrets never reach the model.
 func (s *Service) ResolveConnector(c *db.Connector) *db.Connector {
 	if c == nil {
 		return c
 	}
-	vars := s.connectorVars()
+	vars := s.connectorVars(c.BotID)
 	if len(vars) == 0 {
 		return c
 	}
@@ -35,7 +65,7 @@ func (s *Service) ResolveConnector(c *db.Connector) *db.Connector {
 	out.OAuthClientSecret = config.ExpandVars(c.OAuthClientSecret, vars)
 	out.StdioCommand = config.ExpandVars(c.StdioCommand, vars)
 	out.StdioImage = config.ExpandVars(c.StdioImage, vars)
-	out.Prompt = config.ExpandVars(c.Prompt, vars)
+	out.Prompt = config.ExpandVars(c.Prompt, s.operatorVars())
 	out.HeadersJSON = expandJSONMap(c.HeadersJSON, vars)
 	out.StdioArgsJSON = expandJSONStrings(c.StdioArgsJSON, vars)
 	out.EnvJSON = expandEnvValues(c.EnvJSON, vars)

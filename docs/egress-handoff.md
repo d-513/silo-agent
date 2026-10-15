@@ -109,6 +109,19 @@ Done:
   (never an unfiltered box). Deleting a Bot or detaching a sidecar reclaims its
   network; a CP with no clients drops the gateway.
 
+- Surrogate secrets. A `Secret` carries a `mode` (default `surrogate`),
+  allowed `hosts` and its `surrogate` value; `internal/egress/surrogate.go`
+  makes a format-preserving stand-in (same length and byte shapes, the prefix
+  up to the first `-`/`_` kept), refused for a value under 8 bytes. `AddSecret`
+  /`UpdateSecret` resolve the mode (no hosts and no mode means plain; a
+  surrogate with no hosts or a too-short value is `InvalidArgument`) and
+  `GetSecret` hands the box the stand-in, never the real value. `renderBot`
+  sends surrogates and plain secrets to the gateway with their hosts (and
+  channel secrets are no longer leaked into the plain list). `${secrets.NAME}`
+  resolves on the connector path (headers, URL, STDIO env) to the real value,
+  never in a connector's prompt text. The Secrets tab sets the mode and the
+  hosts and edits a stored secret.
+
 A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
 user-defined network (the container's resolver becomes the network's own gateway
 address, `dns.podman`), so the box does not learn the gateway that way. The box
@@ -119,7 +132,6 @@ variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
 proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
 Next, in order:
-4. Surrogate secrets and `${secrets.NAME}` in connectors.
 5. The operator rule layer.
 6. Audit storage, RPCs and the owner and admin UI (the gateway's `OnEvents` /
    `OnTraffic` sinks, currently nil, are filled here), and the proxy environment

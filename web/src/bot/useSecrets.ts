@@ -5,6 +5,21 @@ import { useSave } from "../Feedback";
 import { UI } from "../gen/silo/v1/ui_pb";
 import { patch, reload } from "../query";
 
+// "surrogate" is the default: the Bot holds a stand-in and the network filter
+// swaps in the real value for the hosts listed. "plain" hands the Bot the real
+// value (an SSH key, a database password) — nothing can stand in for it.
+export type SecretMode = "surrogate" | "plain";
+
+// A comma or whitespace separated list of hosts, as typed in the form.
+export function parseHosts(text: string): string[] {
+  return text
+    .split(/[\s,]+/)
+    .map((h) => h.trim())
+    .filter((h) => h.length > 0);
+}
+
+export type SecretEdit = { id: string; name: string; mode: string; hosts: string; value: string };
+
 // The Secrets tab's list and add form. The list reloads each time the tab
 // opens; a half-typed secret survives leaving the tab.
 export function useSecrets(botId: string | undefined, open: boolean, onError: (message: string) => void) {
@@ -12,10 +27,20 @@ export function useSecrets(botId: string | undefined, open: boolean, onError: (m
   const saver = useSave();
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
+  const [mode, setMode] = useState<SecretMode>("surrogate");
+  const [hosts, setHosts] = useState("");
+  const [editing, setEditing] = useState<SecretEdit | null>(null);
 
   useEffect(() => {
     if (q.error) onError(fail(q.error));
   }, [q.error]);
+
+  const reset = () => {
+    setName("");
+    setValue("");
+    setMode("surrogate");
+    setHosts("");
+  };
 
   return {
     // null while the first load is out; a failed load shows the empty list.
@@ -29,6 +54,16 @@ export function useSecrets(botId: string | undefined, open: boolean, onError: (m
     setName,
     value,
     setValue,
+    mode,
+    setMode,
+    hosts,
+    setHosts,
+    reset,
+    editing,
+    startEdit: (s: { id: string; name: string; mode: string; hosts: string[] }) =>
+      setEditing({ id: s.id, name: s.name, mode: s.mode, hosts: s.hosts.join(", "), value: "" }),
+    stopEdit: () => setEditing(null),
+    editField: (patch: Partial<SecretEdit>) => setEditing((e) => (e ? { ...e, ...patch } : e)),
   };
 }
 

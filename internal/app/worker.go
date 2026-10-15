@@ -121,9 +121,19 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	now := time.Now()
 	sec.LastUsedAt = &now
 	a.DB.Save(&sec)
+	// A surrogate secret never leaves the real value: the box gets the
+	// stand-in, which the network filter swaps for the real one only on the
+	// way to the allowed hosts. Mask both so neither shows up in the log.
+	val := sec.Value
+	if sec.Mode == "surrogate" && sec.Surrogate != "" {
+		val = sec.Surrogate
+	}
 	a.Mask(bot.ID).Add(sec.Value)
+	if sec.Surrogate != "" {
+		a.Mask(bot.ID).Add(sec.Surrogate)
+	}
 	a.emitCallDone(bot.ID, runID, tool, "ok")
-	return connect.NewResponse(&v1.SecretRes{Value: sec.Value}), nil
+	return connect.NewResponse(&v1.SecretRes{Value: val}), nil
 }
 
 func (a *App) dropWaiter(id string) {
