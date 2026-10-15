@@ -26,6 +26,9 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
 	_ = k.Set("drives.image", DefaultDriveImage)
 	_ = k.Set("drives.cache_max_size", "10G")
+	_ = k.Set("egress.enabled", true)
+	_ = k.Set("egress.image", DefaultEgressImage)
+	_ = k.Set("egress.subnet_pool", DefaultEgressPool)
 	_ = k.Set("tunnels.enabled", true)
 	_ = k.Set("mail.enabled", true)
 	_ = k.Set("mail.addr", DefaultMailAddr)
@@ -352,6 +355,9 @@ func validateYAML(raw []byte) error {
 		return err
 	}
 	if err := validateChanges(k); err != nil {
+		return err
+	}
+	if err := validateEgress(k); err != nil {
 		return err
 	}
 	if err := validateFilter(k); err != nil {

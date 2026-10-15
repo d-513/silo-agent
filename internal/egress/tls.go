@@ -1,0 +1,160 @@
+package egress
+
+import (
+	"crypto/tls"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"time"
+
+	utls "github.com/refraction-networking/utls"
+)
+
+// TLS record and handshake types we read off the wire.
+const (
+	recordHandshake    = 0x16
+	handshakeHello     = 0x01
+	extServerName      = 0x0000
+	maxClientHelloSize = 1 << 16
+)
+
+// readClientHello reads TLS records from r until a whole ClientHello is
+// buffered. It returns every byte it read (so the caller can replay them to the
+// real handshake) and the SNI the hello carries.
+func readClientHello(r io.Reader) (raw []byte, sni string, err error) {
+	var hs []byte
+	for {
+		var hdr [5]byte
+		if _, err := io.ReadFull(r, hdr[:]); err != nil {
+			return nil, "", err
+		}
+		if hdr[0] != recordHandshake {
+			return nil, "", fmt.Errorf("not a TLS handshake (record type %d)", hdr[0])
+		}
+		n := int(binary.BigEndian.Uint16(hdr[3:5]))
+		if n <= 0 || n > maxClientHelloSize {
+			return nil, "", errors.New("bad TLS record length")
+		}
+		rec := make([]byte, n)
+		if _, err := io.ReadFull(r, rec); err != nil {
+			return nil, "", err
+		}
+		raw = append(raw, hdr[:]...)
+		raw = append(raw, rec...)
+		hs = append(hs, rec...)
+		if len(hs) < 4 {
+			continue
+		}
+		if hs[0] != handshakeHello {
+			return nil, "", errors.New("not a ClientHello")
+		}
+		hlen := int(hs[1])<<16 | int(hs[2])<<8 | int(hs[3])
+		if len(hs) >= 4+hlen {
+			return raw, sniFromClientHello(hs[4 : 4+hlen]), nil
+		}
+	}
+}
+
+// sniFromClientHello reads the server_name extension out of a ClientHello body.
+func sniFromClientHello(b []byte) string {
+	p := 2 + 32 // legacy_version + random
+	if p >= len(b) {
+		return ""
+	}
+	p += 1 + int(b[p]) // session id
+	if p+2 > len(b) {
+		return ""
+	}
+	p += 2 + int(binary.BigEndian.Uint16(b[p:])) // cipher suites
+	if p >= len(b) {
+		return ""
+	}
+	p += 1 + int(b[p]) // compression methods
+	if p+2 > len(b) {
+		return ""
+	}
+	extLen := int(binary.BigEndian.Uint16(b[p:]))
+	p += 2
+	end := min(p+extLen, len(b))
+	for p+4 <= end {
+		et := binary.BigEndian.Uint16(b[p:])
+		el := int(binary.BigEndian.Uint16(b[p+2:]))
+		p += 4
+		if p+el > end {
+			break
+		}
+		if et == extServerName {
+			d := b[p : p+el]
+			if len(d) >= 5 {
+				nl := int(binary.BigEndian.Uint16(d[3:]))
+				if 5+nl <= len(d) {
+					return string(d[5 : 5+nl])
+				}
+			}
+		}
+		p += el
+	}
+	return ""
+}
+
+// mirrorSpec turns the client's ClientHello into a spec the gateway can send
+// upstream, dropping ALPN so the origin answers with HTTP/1.1 (which is what
+// the gateway speaks) while keeping the rest of the fingerprint. The SNI is
+// filled from host by the caller.
+func mirrorSpec(raw []byte, host string) *utls.ClientHelloSpec {
+	var spec *utls.ClientHelloSpec
+	if s, err := (&utls.Fingerprinter{}).RawClientHello(raw); err == nil {
+		spec = s
+	} else {
+		// An unusual hello: a Chrome one is the closest thing to a browser.
+		if s, err := utls.UTLSIdToSpec(utls.HelloChrome_Auto); err == nil {
+			spec = &s
+		}
+	}
+	if spec == nil {
+		return nil
+	}
+	out := *spec
+	exts := make([]utls.TLSExtension, 0, len(spec.Extensions))
+	for _, e := range spec.Extensions {
+		if _, ok := e.(*utls.ALPNExtension); ok {
+			continue
+		}
+		exts = append(exts, e)
+	}
+	out.Extensions = exts
+	return &out
+}
+
+// dialTLS opens a TLS connection to addr that mirrors the client's hello.
+func dialTLS(conn net.Conn, host string, spec *utls.ClientHelloSpec) (*utls.UConn, error) {
+	cfg := &utls.Config{ServerName: host, InsecureSkipVerify: true, NextProtos: []string{"http/1.1"}}
+	uconn := utls.UClient(conn, cfg, utls.HelloCustom)
+	if spec == nil {
+		uconn = utls.UClient(conn, cfg, utls.HelloChrome_Auto)
+	} else if err := uconn.ApplyPreset(spec); err != nil {
+		uconn = utls.UClient(conn, cfg, utls.HelloChrome_Auto)
+	} else {
+		uconn.SetSNI(host)
+	}
+	if err := uconn.Handshake(); err != nil {
+		return nil, err
+	}
+	return uconn, nil
+}
+
+// serverTLSConfig serves the box a certificate minted for the SNI it asked
+// for. It speaks HTTP/1.1 (no ALPN) so the gateway's HTTP handling fits.
+func serverTLSConfig(ca *CA) *tls.Config {
+	return &tls.Config{
+		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			host := NormHost(hello.ServerName)
+			if host == "" {
+				return nil, errors.New("no SNI to mint a certificate for")
+			}
+			return ca.Cert(host, time.Now())
+		},
+	}
+}

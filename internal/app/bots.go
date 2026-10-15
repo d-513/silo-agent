@@ -171,7 +171,14 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	}
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	token := ids.Token()
-	cid, err := a.Docker.Create(ctx, b.ID, token)
+	net, err := a.Egress.ClientNetwork(ctx, "bot", b.ID, "", b.Name)
+	if err != nil {
+		b.Status = "stopped"
+		b.LastTask = err.Error()
+		a.DB.Save(b)
+		return err
+	}
+	cid, err := a.Docker.Create(ctx, b.ID, token, net)
 	if err != nil {
 		b.Status = "stopped"
 		b.LastTask = err.Error()

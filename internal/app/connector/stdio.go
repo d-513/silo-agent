@@ -89,15 +89,23 @@ func (s *Service) startStdio(ctx context.Context, row *db.BotConnector, c *db.Co
 	if image == "" {
 		image = s.cfg().MCPStdioImage
 	}
+	net, err := s.clientNet(ctx, row.BotID, row.ID, c.Name)
+	if err != nil {
+		return err
+	}
+	cpURL := s.cfg().CPURL
+	if net != nil && net.CPURL != "" {
+		cpURL = net.CPURL
+	}
 	token := ids.New() + ids.New()
 	env = append(env,
 		"SILO_MCP_CMD="+c.StdioCommand,
 		"SILO_MCP_ARGS="+mustJSON(mcpbridge.ParseArgs(c.StdioArgsJSON)),
-		"SILO_CP_URL="+s.cfg().CPURL,
+		"SILO_CP_URL="+cpURL,
 		"SILO_BRIDGE_TOKEN="+token,
 	)
 	s.mask(row.BotID).Add(token)
-	cid, err := s.docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, BotID: row.BotID, Image: image, Env: env})
+	cid, err := s.docker.CreateStdio(ctx, dockerx.StdioSpec{ID: row.ID, BotID: row.BotID, Image: image, Env: env, Net: net})
 	if err != nil {
 		return err
 	}

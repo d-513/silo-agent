@@ -164,7 +164,12 @@ func New(t *testing.T, opts ...Option) *H {
 		}
 	}
 	if o.stdioBridge && fake != nil {
+		// The bridge runs in-process here, not in a container, so it dials the
+		// test CP directly rather than the egress gateway the CP would hand a
+		// real sidecar.
+		cp := "http://" + clientAddr(ln)
 		fake.StdioLaunch = func(spec dockerx.StdioSpec) func() {
+			spec.Env = setEnvValue(spec.Env, "SILO_CP_URL", cp)
 			return StartBridge(t, spec)
 		}
 	}

@@ -20,6 +20,14 @@ chmod 700 /var/lib/silo/history
 chmod 1777 /workspace /workspace/bot /workspace/tmp
 chmod 700 /run/user/1000
 
+# Behind the network filter the box has no resolver of its own: point it at the
+# egress gateway, which answers every name with itself so connections are
+# intercepted. Podman ignores a container's --dns on a user-defined network, so
+# it is set here rather than in the create.
+if [ -n "$SILO_EGRESS_DNS" ]; then
+  printf 'nameserver %s\noptions ndots:1 timeout:2 attempts:2\n' "$SILO_EGRESS_DNS" > /etc/resolv.conf
+fi
+
 children=()
 
 kill_children() {

@@ -1,0 +1,11 @@
+# The network filter gateway: one per container engine. It serves DNS, the HTTP
+# proxy, transparent 80/443 and SOCKS5 for every Bot box and STDIO sidecar, and
+# dials the control plane. It needs nothing but its binary and root CA certs
+# (for the threat-list downloads).
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY bin/silo-egress /usr/local/bin/silo-egress
+RUN chmod +x /usr/local/bin/silo-egress
+ENTRYPOINT ["/usr/local/bin/silo-egress"]

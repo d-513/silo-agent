@@ -58,6 +58,18 @@ func StartBridge(t *testing.T, spec dockerx.StdioSpec) func() {
 	return stop
 }
 
+// setEnvValue returns env with key set to value.
+func setEnvValue(env []string, key, value string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		if strings.HasPrefix(kv, key+"=") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return append(out, key+"="+value)
+}
+
 func specEnvValue(spec dockerx.StdioSpec, key string) string {
 	for _, kv := range spec.Env {
 		if strings.HasPrefix(kv, key+"=") {

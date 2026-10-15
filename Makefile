@@ -14,6 +14,7 @@ CONTAINER_ARCH ?= $(shell $(PODMAN) info --format '{{.Host.Arch}}' 2>/dev/null |
 BOT_IMAGE   ?= localhost/silo-bot:v1
 STDIO_IMAGE ?= localhost/silo-mcp-stdio:v1
 DRIVE_IMAGE ?= localhost/silo-drive:v1
+EGRESS_IMAGE ?= localhost/silo-egress:v1
 
 # tmux session name used by `make dev`.
 SESSION ?= silo
@@ -40,7 +41,7 @@ WATCH_OPTS  := \
 .DEFAULT_GOAL := help
 
 .PHONY: help install deps web-install build build-cp build-worker \
-	build-bridge build-drive build-all images bot-image stdio-image drive-image run run-control \
+	build-bridge build-drive build-egress build-all images bot-image stdio-image drive-image egress-image run run-control \
 	run-frontend watch-control dev attach test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
@@ -81,9 +82,12 @@ build-bridge: ## Cross-build the STDIO MCP bridge to bin/silo-mcp-bridge
 build-drive: ## Cross-build the drive sidecar to bin/silo-drive
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-drive ./cmd/silo-drive
 
-build-all: build-cp build-worker build-bridge bot-image stdio-image drive-image ## Build control plane, worker, bridge, drive sidecar
+build-egress: ## Cross-build the network filter gateway to bin/silo-egress
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-egress ./cmd/silo-egress
 
-images: bot-image stdio-image drive-image ## Build all container images
+build-all: build-cp build-worker build-bridge bot-image stdio-image drive-image egress-image ## Build control plane, worker, bridge, drive sidecar, egress gateway
+
+images: bot-image stdio-image drive-image egress-image ## Build all container images
 
 bot-image: build-worker ## Build the local bot image
 	$(PODMAN) build -t $(BOT_IMAGE) -f botimage/Containerfile .
@@ -93,6 +97,9 @@ stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
 
 drive-image: build-drive ## Build the local drive (rclone) sidecar image
 	$(PODMAN) build -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+
+egress-image: build-egress ## Build the local network filter gateway image
+	$(PODMAN) build -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
 
 ## --- run -------------------------------------------------------------------
 
@@ -177,8 +184,8 @@ db-check:
 clean: ## Remove build artifacts (bin/, web/dist)
 	rm -rf bin web/dist
 
-clean-images: ## Remove the local bot, STDIO, and drive images
-	-$(PODMAN) rmi -f $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE)
+clean-images: ## Remove the local bot, STDIO, drive and egress images
+	-$(PODMAN) rmi -f $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE)
 
 cleanup: ## Force-remove every silo-* container
 	@ids=$$($(PODMAN) ps -aq --filter name='^silo-' || true); \

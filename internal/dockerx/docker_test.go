@@ -58,12 +58,19 @@ func TestStdioName(t *testing.T) {
 // A Bot's machine runs on UTC whatever the host is set to: the human's zone is
 // the Bot's (it follows them), never the box's.
 func TestBotMachineIsUTC(t *testing.T) {
-	env := botEnv("http://cp", "bot1", "tok")
+	env := botEnv("http://cp", "bot1", "tok", "")
 	if !slices.Contains(env, "TZ=UTC") {
 		t.Fatalf("env %v has no TZ=UTC", env)
 	}
 	if !slices.Contains(env, "SILO_BOT_TOKEN=tok") {
 		t.Fatalf("env %v lost the bot token", env)
+	}
+	if slices.Contains(env, "SILO_EGRESS_DNS=") {
+		t.Fatalf("env %v sets an egress resolver with the filter off", env)
+	}
+	on := botEnv("http://cp", "bot1", "tok", "10.0.0.2")
+	if !slices.Contains(on, "SILO_EGRESS_DNS=10.0.0.2") {
+		t.Fatalf("env %v has no egress resolver", on)
 	}
 }
 

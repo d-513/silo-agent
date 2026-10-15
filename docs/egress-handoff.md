@@ -91,13 +91,36 @@ Done:
   signals and the exfil sink list (`signals.go`, `lists/`), the CA (`ca.go`),
   the gateway state (`state.go`), event and traffic batching (`report.go`),
   each with tests.
+- The gateway proxy core: the verdict (`verdict.go`), DNS (`dns.go`), SOCKS5
+  (`socks.go`), the ClientHello read and utls mirror (`tls.go`), the HTTP /
+  transparent / MITM proxy (`proxy.go`), the CP-link forward (`cplink.go`),
+  the gateway that wires the listeners (`gateway.go`), with tests.
+- The gateway session (`session.go`), `cmd/silo-egress`, `egressimage/` and
+  the Makefile targets (`build-egress`, `egress-image`).
+
+- The CP side: config (`internal/config/egress.go`), the tables
+  (`internal/db/egress.go`), the dockerx primitives (`internal/dockerx/egress.go`
+  — `EgressUp`/`EnsureNetwork`/`NetworkConnect`/`NetworkAddr`/`ListClientNetworks`/
+  `Runtime`), and `internal/app/egress` (one gateway, a `/24` per client carved
+  from the pool, the CA, `renderApply`, `Session`/`Intercept`, `Reconcile`).
+  A Bot's box and a STDIO sidecar are created on their own internal network with
+  the gateway as their only way out; `ClientNetwork` hands back the gateway's
+  address (DNS) and the CP-link URL, and a failure refuses to start the client
+  (never an unfiltered box). Deleting a Bot or detaching a sidecar reclaims its
+  network; a CP with no clients drops the gateway.
+
+A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
+user-defined network (the container's resolver becomes the network's own gateway
+address, `dns.podman`), so the box does not learn the gateway that way. The box
+is instead told the gateway address in `SILO_EGRESS_DNS` and `botimage/start.sh`
+writes it into `/etc/resolv.conf`; the gateway answers every name with itself
+(the DNS safety net). The CP link is by IP, and no HTTP proxy environment
+variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
+proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
 Next, in order:
-1. The gateway's proxy core in `internal/egress` (the verdict, HTTP proxy,
-   transparent 80/443, MITM with utls, surrogate swap, DNS, SOCKS5, CP link).
-2. The gateway session and `cmd/silo-egress`, `egressimage/`, Makefile.
-3. CP: `internal/app/egress` (token, CA, apply, networks, reconcile, ingest)
-   and the `dockerx` network/DNS/proxy/CA changes for boxes and sidecars.
 4. Surrogate secrets and `${secrets.NAME}` in connectors.
 5. The operator rule layer.
-6. Audit storage, RPCs and the owner and admin UI.
+6. Audit storage, RPCs and the owner and admin UI (the gateway's `OnEvents` /
+   `OnTraffic` sinks, currently nil, are filled here), and the proxy environment
+   variables where they do not catch the CP link.

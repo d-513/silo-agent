@@ -614,6 +614,7 @@ func Models() []any {
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},
+		&EgressHost{}, &EgressClient{}, &EgressCA{},
 	}
 }
 

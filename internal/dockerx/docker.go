@@ -47,7 +47,7 @@ type Host interface {
 	Inspect(ctx context.Context, id string) (State, error)
 	Stats(ctx context.Context, id string) (Stats, error)
 	EnvTokenHash(ctx context.Context, id string) (string, error)
-	Create(ctx context.Context, botID, token string) (string, error)
+	Create(ctx context.Context, botID, token string, net *ClientNet) (string, error)
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string) error
 	Drop(ctx context.Context, botID, containerID string)
@@ -60,6 +60,17 @@ type Host interface {
 	DropDrive(ctx context.Context, botID, containerID string)
 	ListDrives(ctx context.Context) ([]DriveContainer, error)
 	HasDriveBind(ctx context.Context, id string) (bool, error)
+	// The network filter: the gateway container and each client's own network.
+	EgressUp(ctx context.Context, spec EgressSpec) (string, error)
+	EgressID(ctx context.Context) (string, error)
+	DropEgress(ctx context.Context, containerID string)
+	EnsureNetwork(ctx context.Context, name, subnet, clientID string) error
+	DropNetwork(ctx context.Context, name string) error
+	NetworkConnect(ctx context.Context, networkName, containerID string) error
+	NetworkDisconnect(ctx context.Context, networkName, containerID string) error
+	NetworkAddr(ctx context.Context, containerID, networkName string) (string, error)
+	ListClientNetworks(ctx context.Context) ([]NetworkInfo, error)
+	Runtime(ctx context.Context) (string, error)
 }
 
 type StdioSpec struct {
@@ -68,6 +79,8 @@ type StdioSpec struct {
 	BotID string
 	Image string
 	Env   []string
+	// Net, when set, is the sidecar's own internal network and its gateway.
+	Net *ClientNet
 }
 
 // StdioContainer is a discovered MCP sidecar container.
@@ -185,7 +198,7 @@ func (e *Engine) Stats(ctx context.Context, id string) (Stats, error) {
 	return Stats{CPUPercent: cpuPct(s), MemUsed: memUsed(s), MemLimit: int64(s.MemoryStats.Limit)}, nil
 }
 
-func (e *Engine) Create(ctx context.Context, botID, token string) (string, error) {
+func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet) (string, error) {
 	cfg := e.store.Config()
 	ws := filepath.Join(cfg.DataDir, "bots", botID, "workspace")
 	bot := filepath.Join(ws, "bot")
@@ -210,15 +223,31 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 	if b := e.botDriveBind(ctx, botID); b != "" {
 		binds = append(binds, b)
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
-		Image:    cfg.BotImage,
-		Env:      botEnv(cfg.CPURL, botID, token),
-		Hostname: "bot",
-	}, &container.HostConfig{
+	cpURL := cfg.CPURL
+	if net != nil && net.CPURL != "" {
+		cpURL = net.CPURL
+	}
+	host := &container.HostConfig{
 		Binds:         binds,
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-		ExtraHosts:    []string{"host.containers.internal:host-gateway"},
-	}, nil, nil, Name(botID))
+	}
+	if net != nil && net.Network != "" {
+		// The box lives only on its own internal network; the gateway is its
+		// only way out and its DNS.
+		host.NetworkMode = container.NetworkMode(net.Network)
+		host.DNS = clientDNS(net)
+	} else {
+		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
+	}
+	dns := ""
+	if net != nil {
+		dns = net.DNS
+	}
+	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+		Image:    cfg.BotImage,
+		Env:      botEnv(cpURL, botID, token, dns),
+		Hostname: "bot",
+	}, host, clientNetworkConfig(net), nil, Name(botID))
 	if err != nil {
 		return "", fmt.Errorf("container create: %w", err)
 	}
@@ -226,8 +255,8 @@ func (e *Engine) Create(ctx context.Context, botID, token string) (string, error
 }
 
 // botEnv is the environment a Bot's machine starts with.
-func botEnv(cpURL, botID, token string) []string {
-	return []string{
+func botEnv(cpURL, botID, token, dns string) []string {
+	env := []string{
 		"SILO_CP_URL=" + cpURL,
 		"SILO_BOT_TOKEN=" + token,
 		"SILO_BOT_ID=" + botID,
@@ -236,6 +265,13 @@ func botEnv(cpURL, botID, token string) []string {
 		// them; the model reads it off its messages.
 		"TZ=UTC",
 	}
+	// With the network filter on, the box's resolver is the egress gateway:
+	// start.sh writes it into /etc/resolv.conf (podman ignores --dns on a
+	// user-defined network).
+	if dns != "" {
+		env = append(env, "SILO_EGRESS_DNS="+dns)
+	}
+	return env
 }
 
 func (e *Engine) Start(ctx context.Context, id string) error {
@@ -277,6 +313,16 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 			binds = append(binds, abs+":/root/.npm")
 		}
 	}
+	host := &container.HostConfig{
+		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		Binds:         binds,
+	}
+	if spec.Net != nil && spec.Net.Network != "" {
+		host.NetworkMode = container.NetworkMode(spec.Net.Network)
+		host.DNS = clientDNS(spec.Net)
+	} else {
+		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
+	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image:    image,
 		Env:      spec.Env,
@@ -285,11 +331,7 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 			"silo.role":         "mcp-stdio",
 			"silo.connector_id": spec.ID,
 		},
-	}, &container.HostConfig{
-		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-		ExtraHosts:    []string{"host.containers.internal:host-gateway"},
-		Binds:         binds,
-	}, nil, nil, StdioName(spec.ID))
+	}, host, clientNetworkConfig(spec.Net), nil, StdioName(spec.ID))
 	if err != nil {
 		return "", fmt.Errorf("stdio create: %w", err)
 	}

@@ -11,6 +11,7 @@ package apptest
 
 import (
 	"context"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 
@@ -45,6 +46,16 @@ type FakeHost struct {
 	driveStops   map[string]func()
 	driveOrphans []dockerx.DriveContainer
 
+	// The network filter: the gateway, each client network, and the spec each
+	// client container was created with.
+	botNet   map[string]*dockerx.ClientNet
+	egress   *egressState
+	runtimeS string
+
+	EgressUps    atomic.Int32
+	NetworkMade  atomic.Int32
+	NetworkDrops atomic.Int32
+
 	Creates      atomic.Int32
 	Starts       atomic.Int32
 	Stops        atomic.Int32
@@ -62,6 +73,7 @@ func NewFakeHost() *FakeHost {
 		tokens:     map[string]string{},
 		specs:      map[string]dockerx.StdioSpec{},
 		stdioStops: map[string]func(){},
+		botNet:     map[string]*dockerx.ClientNet{},
 	}
 }
 
@@ -94,7 +106,7 @@ func (f *FakeHost) EnvTokenHash(_ context.Context, id string) (string, error) {
 	return f.envHash[id], nil
 }
 
-func (f *FakeHost) Create(_ context.Context, botID, token string) (string, error) {
+func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.ClientNet) (string, error) {
 	f.Creates.Add(1)
 	if f.CreateErr != nil {
 		return "", f.CreateErr
@@ -102,6 +114,7 @@ func (f *FakeHost) Create(_ context.Context, botID, token string) (string, error
 	id := "cid-" + botID
 	f.mu.Lock()
 	f.tokens[botID] = token
+	f.botNet[botID] = net
 	// Mirror Docker: the container carries SILO_BOT_TOKEN, so EnvTokenHash
 	// reports the hash of the token it was created with.
 	f.envHash[id] = ids.Hash(token)
@@ -110,6 +123,13 @@ func (f *FakeHost) Create(_ context.Context, botID, token string) (string, error
 	f.inspect[dockerx.Name(botID)] = st
 	f.mu.Unlock()
 	return id, nil
+}
+
+// BotNet returns the network spec a Bot's box was created with, or nil.
+func (f *FakeHost) BotNet(botID string) *dockerx.ClientNet {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.botNet[botID]
 }
 
 // Token returns the container token passed to Create for a bot. Feature tests
@@ -393,4 +413,156 @@ func (f *FakeHost) HasDriveBind(context.Context, string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.drives().prepErr == nil, nil
+}
+
+type fakeNetwork struct {
+	subnet   string
+	clientID string
+	attached map[string]bool
+}
+
+type egressState struct {
+	containerID string
+	env         []string
+	networks    map[string]*fakeNetwork
+}
+
+func (f *FakeHost) egressState() *egressState {
+	if f.egress == nil {
+		f.egress = &egressState{networks: map[string]*fakeNetwork{}}
+	}
+	return f.egress
+}
+
+func (f *FakeHost) EgressUp(_ context.Context, spec dockerx.EgressSpec) (string, error) {
+	f.EgressUps.Add(1)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e := f.egressState()
+	if e.containerID == "" {
+		e.containerID = "egress"
+		f.inspect[e.containerID] = dockerx.State{ID: e.containerID, Running: true}
+	}
+	e.env = spec.Env
+	return e.containerID, nil
+}
+
+func (f *FakeHost) EgressID(context.Context) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.egressState().containerID, nil
+}
+
+func (f *FakeHost) DropEgress(context.Context, string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if e := f.egressState(); e.containerID != "" {
+		delete(f.inspect, e.containerID)
+		e.containerID = ""
+	}
+}
+
+func (f *FakeHost) EnsureNetwork(_ context.Context, name, subnet, clientID string) error {
+	f.NetworkMade.Add(1)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e := f.egressState()
+	if _, ok := e.networks[name]; !ok {
+		e.networks[name] = &fakeNetwork{subnet: subnet, clientID: clientID, attached: map[string]bool{}}
+	}
+	return nil
+}
+
+func (f *FakeHost) DropNetwork(_ context.Context, name string) error {
+	f.NetworkDrops.Add(1)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.egressState().networks, name)
+	return nil
+}
+
+func (f *FakeHost) NetworkConnect(_ context.Context, networkName, containerID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if n := f.egressState().networks[networkName]; n != nil {
+		n.attached[containerID] = true
+	}
+	return nil
+}
+
+func (f *FakeHost) NetworkDisconnect(_ context.Context, networkName, containerID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if n := f.egressState().networks[networkName]; n != nil {
+		delete(n.attached, containerID)
+	}
+	return nil
+}
+
+func (f *FakeHost) NetworkAddr(_ context.Context, containerID, networkName string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e := f.egressState()
+	n := e.networks[networkName]
+	if n == nil || containerID == "" || !n.attached[containerID] || containerID != e.containerID {
+		return "", nil
+	}
+	p, err := netip.ParsePrefix(n.subnet)
+	if err != nil {
+		return "", nil
+	}
+	return p.Masked().Addr().Next().String(), nil
+}
+
+func (f *FakeHost) ListClientNetworks(context.Context) ([]dockerx.NetworkInfo, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []dockerx.NetworkInfo
+	for name, n := range f.egressState().networks {
+		out = append(out, dockerx.NetworkInfo{Name: name, Subnet: n.subnet, ClientID: n.clientID})
+	}
+	return out, nil
+}
+
+func (f *FakeHost) Runtime(context.Context) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.runtimeS != "" {
+		return f.runtimeS, nil
+	}
+	return "podman", nil
+}
+
+// SetRuntime makes Runtime report a specific engine (a test point for the
+// Docker refusal).
+func (f *FakeHost) SetRuntime(name string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.runtimeS = name
+}
+
+// EgressAttached reports whether the gateway is attached to a client network.
+func (f *FakeHost) EgressAttached(networkName string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e := f.egressState()
+	n := e.networks[networkName]
+	return n != nil && e.containerID != "" && n.attached[e.containerID]
+}
+
+// EgressEnv returns the env the gateway was started with.
+func (f *FakeHost) EgressEnv() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.egressState().env...)
+}
+
+// NetworkSubnet returns the subnet a client network was carved with.
+func (f *FakeHost) NetworkSubnet(name string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if n := f.egressState().networks[name]; n != nil {
+		return n.subnet
+	}
+	return ""
 }

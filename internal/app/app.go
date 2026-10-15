@@ -28,6 +28,7 @@ import (
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/drive"
+	"silo.agent/internal/app/egress"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/filter"
 	"silo.agent/internal/app/knowledge"
@@ -197,6 +198,7 @@ type App struct {
 	Admin       *admin.Service
 	Accounts    *account.Service
 	Drives      *drive.Service
+	Egress      *egress.Service
 	Automations *automation.Service
 	Channels    *channel.Service
 	Skills      *skill.Service
@@ -232,6 +234,11 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Drives.OnChange = a.Changes.RecordDrive
+	a.Egress = egress.New(a.DB, a.Docker, a.Store, a.cfg)
+	a.Connectors.ClientNet = func(ctx context.Context, botID, connectorID, name string) (*dockerx.ClientNet, error) {
+		return a.Egress.ClientNetwork(ctx, "stdio", botID, connectorID, name)
+	}
+	a.Connectors.ClientNetDrop = a.Egress.DropConnector
 	a.Feed = feed.New(a.DB, a)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
@@ -242,6 +249,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors.Init()
 	a.Connectors.ReconcileStdio()
 	a.Drives.Reconcile()
+	a.Egress.Reconcile(context.Background())
 	a.Connectors.Resume()
 	a.migrateSettings()
 	a.Channels.Reconcile()
@@ -252,6 +260,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.SweepDigests(context.Background(), now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
+		go tickLoop(a.stopAutomations, egress.Tick, func(now time.Time) { a.Egress.Reconcile(context.Background()) })
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
@@ -501,10 +510,12 @@ func (a *App) Handler() http.Handler {
 	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
 	brPath, brH := silov1connect.NewMCPHostHandler(a.Connectors, connect.WithInterceptors(rpcx.Handler{Stream: a.Connectors.InterceptBridge}))
 	drPath, drH := silov1connect.NewDriveHostHandler(a.Drives, connect.WithInterceptors(rpcx.Handler{Stream: a.Drives.Intercept}))
+	egPath, egH := silov1connect.NewEgressHostHandler(a.Egress, connect.WithInterceptors(rpcx.Handler{Stream: a.Egress.Intercept}))
 	mux.Handle(uiPath, uiH)
 	mux.Handle(wkPath, wkH)
 	mux.Handle(brPath, brH)
 	mux.Handle(drPath, drH)
+	mux.Handle(egPath, egH)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("/vnc", a.handleVNC)
 	mux.HandleFunc("/console", a.handleConsole)

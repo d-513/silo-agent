@@ -84,6 +84,21 @@ type Service struct {
 	// bridges are the live reverse tunnels from STDIO sidecars.
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel
+
+	// ClientNet, when set, gives a STDIO sidecar its own internal network and
+	// the gateway it reaches the internet through (the network filter).
+	ClientNet func(ctx context.Context, botID, connectorID, name string) (*dockerx.ClientNet, error)
+
+	// ClientNetDrop reclaims a detached STDIO sidecar's egress network.
+	ClientNetDrop func(ctx context.Context, connectorID string)
+}
+
+// clientNet is the sidecar's egress network, or nil when the filter is off.
+func (s *Service) clientNet(ctx context.Context, botID, connectorID, name string) (*dockerx.ClientNet, error) {
+	if s.ClientNet == nil {
+		return nil, nil
+	}
+	return s.ClientNet(ctx, botID, connectorID, name)
 }
 
 func New(gdb *gorm.DB, d dockerx.Host, h *hub.Hub, store *config.Store, cfg func() config.Config, ws *workspace.Service, mask func(botID string) *masker.Masker, host Host) *Service {
@@ -485,13 +500,18 @@ func (s *Service) DetachConnector(ctx context.Context, req *connect.Request[v1.D
 	s.DropMCP(row.ID)
 	s.DropStdio(&row)
 	var c db.Connector
+	stdio := false
 	if s.db.First(&c, "id = ?", row.ConnectorID).Error == nil {
+		stdio = c.Transport == TransportSTDIO
 		s.host.PruneRules(row.BotID, toolsgen.Slug(c.Name), nil)
 		if c.Kind == catalog.KindCustom {
 			s.db.Delete(&c)
 		}
 	}
 	s.db.Delete(&row)
+	if stdio && s.ClientNetDrop != nil {
+		s.ClientNetDrop(ctx, row.ID)
+	}
 	go s.PushTools(row.BotID)
 	return connect.NewResponse(&v1.DetachConnectorResponse{}), nil
 }

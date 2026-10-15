@@ -295,6 +295,7 @@ type Config struct {
 	Providers      map[string]Provider `koanf:"providers"`
 	Search         Search              `koanf:"search"`
 	Drives         Drives              `koanf:"drives"`
+	Egress         Egress              `koanf:"egress"`
 	Tunnels        Tunnels             `koanf:"tunnels"`
 	Mail           Mail                `koanf:"mail"`
 	Outbound       Outbound            `koanf:"outbound"`
@@ -475,6 +476,13 @@ var fieldDefs = []fieldMeta{
 	{Key: "drives.image"},
 	{Key: "drives.mount_root"},
 	{Key: "drives.cache_max_size"},
+	{Key: "egress.enabled", Type: "bool"},
+	{Key: "egress.image"},
+	{Key: "egress.subnet_pool"},
+	{Key: "egress.block"},
+	{Key: "egress.trust"},
+	{Key: "egress.pass"},
+	{Key: "egress.feeds"},
 	{Key: "tunnels.enabled", Type: "bool"},
 	{Key: "tunnels.host"},
 	{Key: "tunnels.scheme"},
