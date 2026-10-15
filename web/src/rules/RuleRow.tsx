@@ -1,10 +1,13 @@
+import { Lock } from "lucide-react";
 import type { Rule } from "../gen/silo/v1/ui_pb";
 import type { Side } from "./model";
-import { RuleDecisionSegment } from "./RuleDecisionSegment";
+import { modeLabel, RuleDecisionSegment } from "./RuleDecisionSegment";
 import { t } from "../i18n.ts";
 
 // One action and the switch for the side of its rule the page is showing.
 export function RuleRow({ rule: r, side, onChange }: { rule: Rule; side: Side; onChange: (decision: string) => void }) {
+  // A locked operator row is a floor: the switch will not offer a looser mode.
+  const floor = r.locked ? (side === "output" ? r.operatorOutput : r.operatorDecision) : "";
   return (
     <div className="group/row -mx-2.5 flex flex-col gap-2 rounded-sm border-t border-line px-2.5 py-2.5 transition-colors hover:bg-well wide:flex-row wide:items-center wide:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -17,11 +20,17 @@ export function RuleRow({ rule: r, side, onChange }: { rule: Rule; side: Side; o
               <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">{r.action}</span>
             )}
             {r.connector === "secrets" && <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-3">{t("Secret")}</span>}
+            {floor && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-2">
+                <Lock size={10} />
+                {t("Operator: {{mode}}", { mode: modeLabel(floor, side) })}
+              </span>
+            )}
           </div>
         </div>
       </div>
       <div className="w-full wide:w-[260px] wide:shrink-0">
-        <RuleDecisionSegment side={side} value={r[side]} onChange={onChange} />
+        <RuleDecisionSegment side={side} value={r[side]} floor={floor} onChange={onChange} />
       </div>
     </div>
   );

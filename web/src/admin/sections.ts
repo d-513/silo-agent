@@ -8,6 +8,7 @@ export const SECTIONS = [
   { id: "search", label: msg("Search") },
   { id: "memory", label: msg("Memory & knowledge") },
   { id: "runs", label: msg("Context & runs") },
+  { id: "rules", label: msg("Rules") },
   { id: "connectors", label: msg("Connector options") },
   { id: "tunnels", label: msg("Tunnels") },
   { id: "mail", label: msg("Mail") },

@@ -157,7 +157,7 @@ func TestLiveFilter(t *testing.T) {
 				Model: text,
 				System: []llm.SystemBlock{
 					{Text: prompts.Filter},
-					{Text: "The owner's output policy:\n" + r.Policy},
+					{Text: "The output policy:\n" + r.Policy},
 				},
 				Messages:  []llm.Message{{Role: llm.RoleUser, Text: r.text(boundary())}},
 				MaxTokens: 8,

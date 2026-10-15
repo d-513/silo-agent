@@ -34,7 +34,7 @@ func (j textJudge) Judge(ctx context.Context, modelID, botID string, r Request) 
 		Model: model,
 		System: []llm.SystemBlock{
 			{Text: prompts.Filter},
-			{Text: "The owner's output policy:\n" + r.Policy},
+			{Text: "The output policy:\n" + r.Policy},
 		},
 		Messages:  []llm.Message{{Role: llm.RoleUser, Text: r.text(boundary())}},
 		Cache:     models.CachePolicy(j.cfg().ProviderSettings(provider), botID),

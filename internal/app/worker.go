@@ -354,25 +354,13 @@ func (a *App) Tunnel(ctx context.Context, stream *connect.BidiStream[v1.TunnelFr
 	return nil
 }
 
+// ruleDecision is the call rule in effect for an action: the owner's row (the
+// action's, then the connector's *) layered with the operator's, then the
+// catalog's default, then fallback (what the tool's definition says). Nothing
+// is unanswered: an unknown action asks.
 func (a *App) ruleDecision(botID, conn, action, fallback string) string {
-	actions := []string{action}
-	if action != security.Star {
-		actions = append(actions, security.Star)
-	}
-	var rows []db.Rule
-	a.DB.Where("bot_id = ? AND connector = ? AND action IN ?", botID, conn, actions).Find(&rows)
-	var star string
-	for _, r := range rows {
-		if r.Decision == "" {
-			continue
-		}
-		if r.Action == action {
-			return r.Decision
-		}
-		star = r.Decision
-	}
-	if star != "" {
-		return star
+	if d, ok := a.layeredDecision(botID, conn, action); ok {
+		return d
 	}
 	if d, ok := security.Default(conn, action); ok {
 		return d
@@ -383,25 +371,13 @@ func (a *App) ruleDecision(botID, conn, action, fallback string) string {
 	return security.Ask
 }
 
-// ruleOutput is the output rule in effect for an action: the Bot's rule for
-// it, then its rule for the connector's every action, then the catalog's
-// default, then fallback (what the tool's definition says). Nothing passes.
+// ruleOutput is the output rule in effect for an action: the owner's, layered
+// with the operator's, then the catalog's default, then fallback (what the
+// tool's definition says). Nothing is left unchecked by accident: an action
+// the catalog does not know is checked.
 func (a *App) ruleOutput(botID, conn, action, fallback string) string {
-	actions := []string{action}
-	if action != security.Star {
-		actions = append(actions, security.Star)
-	}
-	var rows []db.Rule
-	a.DB.Where("bot_id = ? AND connector = ? AND action IN ? AND output <> ''", botID, conn, actions).Find(&rows)
-	var star string
-	for _, r := range rows {
-		if r.Action == action {
-			return security.Output(r.Output)
-		}
-		star = r.Output
-	}
-	if star != "" {
-		return security.Output(star)
+	if o, ok := a.layeredOutput(botID, conn, action); ok {
+		return security.Output(o)
 	}
 	if d, ok := security.DefaultOutput(conn, action); ok {
 		return d

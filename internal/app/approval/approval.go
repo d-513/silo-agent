@@ -79,7 +79,7 @@ type Request struct {
 // outside any run. A Bot with no policy, a model that fails or an answer that
 // is not clear all ask.
 func (s *Service) Judge(ctx context.Context, bot *db.Bot, chatID, conn, action, argsJSON string) string {
-	policy := strings.TrimSpace(bot.AutoApprove)
+	policy := JoinPolicies(s.cfg().Rules.ApprovalPolicy, bot.AutoApprove)
 	if policy == "" {
 		return security.Ask
 	}
@@ -98,6 +98,21 @@ func (s *Service) Judge(ctx context.Context, bot *db.Bot, chatID, conn, action, 
 		return security.Ask
 	}
 	return verdict
+}
+
+// JoinPolicies puts the operator's policy text before the Bot owner's, when
+// there is any: the gate and the output filter read both, and the operator's
+// word stands first. Each part is named, so a reader knows who said what.
+func JoinPolicies(operator, owner string) string {
+	op, own := strings.TrimSpace(operator), strings.TrimSpace(owner)
+	switch {
+	case op == "":
+		return own
+	case own == "":
+		return "The operator's policy:\n" + op
+	default:
+		return "The operator's policy:\n" + op + "\n\nThe owner's policy:\n" + own
+	}
 }
 
 // request gathers what the gate is shown about one action.
@@ -200,7 +215,7 @@ func (s *Service) read(ctx context.Context, modelID, botID string, r Request) (s
 		Model: model,
 		System: []llm.SystemBlock{
 			{Text: prompts.Approval},
-			{Text: "The operator's auto-approval policy:\n" + r.Policy},
+			{Text: "The auto-approval policy:\n" + r.Policy},
 		},
 		Messages:  []llm.Message{{Role: llm.RoleUser, Text: r.text()}},
 		Cache:     models.CachePolicy(s.cfg().ProviderSettings(provider), botID),

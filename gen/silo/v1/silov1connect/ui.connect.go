@@ -210,6 +210,12 @@ const (
 	UIListRulesProcedure = "/silo.v1.UI/ListRules"
 	// UISetRuleProcedure is the fully-qualified name of the UI's SetRule RPC.
 	UISetRuleProcedure = "/silo.v1.UI/SetRule"
+	// UIListOperatorRulesProcedure is the fully-qualified name of the UI's ListOperatorRules RPC.
+	UIListOperatorRulesProcedure = "/silo.v1.UI/ListOperatorRules"
+	// UISetOperatorRuleProcedure is the fully-qualified name of the UI's SetOperatorRule RPC.
+	UISetOperatorRuleProcedure = "/silo.v1.UI/SetOperatorRule"
+	// UIDeleteOperatorRuleProcedure is the fully-qualified name of the UI's DeleteOperatorRule RPC.
+	UIDeleteOperatorRuleProcedure = "/silo.v1.UI/DeleteOperatorRule"
 	// UIListChangesProcedure is the fully-qualified name of the UI's ListChanges RPC.
 	UIListChangesProcedure = "/silo.v1.UI/ListChanges"
 	// UIListChangeFilesProcedure is the fully-qualified name of the UI's ListChangeFiles RPC.
@@ -430,6 +436,12 @@ type UIClient interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
 	ListRules(context.Context, *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error)
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
+	// The operator's layer of the rules engine. Admin only: these rows are the
+	// installation's, not one Bot's, and an owner may tighten a locked one but
+	// not loosen it.
+	ListOperatorRules(context.Context, *connect.Request[v1.ListOperatorRulesRequest]) (*connect.Response[v1.ListOperatorRulesResponse], error)
+	SetOperatorRule(context.Context, *connect.Request[v1.SetOperatorRuleRequest]) (*connect.Response[v1.OperatorRule], error)
+	DeleteOperatorRule(context.Context, *connect.Request[v1.DeleteOperatorRuleRequest]) (*connect.Response[v1.DeleteOperatorRuleResponse], error)
 	// Changes: what changed in the Bot's workspace, as diffs between snapshots
 	// its worker takes around every run.
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
@@ -1033,6 +1045,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SetRule")),
 			connect.WithClientOptions(opts...),
 		),
+		listOperatorRules: connect.NewClient[v1.ListOperatorRulesRequest, v1.ListOperatorRulesResponse](
+			httpClient,
+			baseURL+UIListOperatorRulesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListOperatorRules")),
+			connect.WithClientOptions(opts...),
+		),
+		setOperatorRule: connect.NewClient[v1.SetOperatorRuleRequest, v1.OperatorRule](
+			httpClient,
+			baseURL+UISetOperatorRuleProcedure,
+			connect.WithSchema(uIMethods.ByName("SetOperatorRule")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteOperatorRule: connect.NewClient[v1.DeleteOperatorRuleRequest, v1.DeleteOperatorRuleResponse](
+			httpClient,
+			baseURL+UIDeleteOperatorRuleProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteOperatorRule")),
+			connect.WithClientOptions(opts...),
+		),
 		listChanges: connect.NewClient[v1.ListChangesRequest, v1.ListChangesResponse](
 			httpClient,
 			baseURL+UIListChangesProcedure,
@@ -1444,6 +1474,9 @@ type uIClient struct {
 	decideApproval          *connect.Client[v1.DecideApprovalRequest, v1.Approval]
 	listRules               *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
 	setRule                 *connect.Client[v1.SetRuleRequest, v1.Rule]
+	listOperatorRules       *connect.Client[v1.ListOperatorRulesRequest, v1.ListOperatorRulesResponse]
+	setOperatorRule         *connect.Client[v1.SetOperatorRuleRequest, v1.OperatorRule]
+	deleteOperatorRule      *connect.Client[v1.DeleteOperatorRuleRequest, v1.DeleteOperatorRuleResponse]
 	listChanges             *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
 	listChangeFiles         *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
 	getChangePatch          *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
@@ -1939,6 +1972,21 @@ func (c *uIClient) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleR
 	return c.setRule.CallUnary(ctx, req)
 }
 
+// ListOperatorRules calls silo.v1.UI.ListOperatorRules.
+func (c *uIClient) ListOperatorRules(ctx context.Context, req *connect.Request[v1.ListOperatorRulesRequest]) (*connect.Response[v1.ListOperatorRulesResponse], error) {
+	return c.listOperatorRules.CallUnary(ctx, req)
+}
+
+// SetOperatorRule calls silo.v1.UI.SetOperatorRule.
+func (c *uIClient) SetOperatorRule(ctx context.Context, req *connect.Request[v1.SetOperatorRuleRequest]) (*connect.Response[v1.OperatorRule], error) {
+	return c.setOperatorRule.CallUnary(ctx, req)
+}
+
+// DeleteOperatorRule calls silo.v1.UI.DeleteOperatorRule.
+func (c *uIClient) DeleteOperatorRule(ctx context.Context, req *connect.Request[v1.DeleteOperatorRuleRequest]) (*connect.Response[v1.DeleteOperatorRuleResponse], error) {
+	return c.deleteOperatorRule.CallUnary(ctx, req)
+}
+
 // ListChanges calls silo.v1.UI.ListChanges.
 func (c *uIClient) ListChanges(ctx context.Context, req *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {
 	return c.listChanges.CallUnary(ctx, req)
@@ -2315,6 +2363,12 @@ type UIHandler interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.Approval], error)
 	ListRules(context.Context, *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error)
 	SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error)
+	// The operator's layer of the rules engine. Admin only: these rows are the
+	// installation's, not one Bot's, and an owner may tighten a locked one but
+	// not loosen it.
+	ListOperatorRules(context.Context, *connect.Request[v1.ListOperatorRulesRequest]) (*connect.Response[v1.ListOperatorRulesResponse], error)
+	SetOperatorRule(context.Context, *connect.Request[v1.SetOperatorRuleRequest]) (*connect.Response[v1.OperatorRule], error)
+	DeleteOperatorRule(context.Context, *connect.Request[v1.DeleteOperatorRuleRequest]) (*connect.Response[v1.DeleteOperatorRuleResponse], error)
 	// Changes: what changed in the Bot's workspace, as diffs between snapshots
 	// its worker takes around every run.
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
@@ -2914,6 +2968,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SetRule")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListOperatorRulesHandler := connect.NewUnaryHandler(
+		UIListOperatorRulesProcedure,
+		svc.ListOperatorRules,
+		connect.WithSchema(uIMethods.ByName("ListOperatorRules")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetOperatorRuleHandler := connect.NewUnaryHandler(
+		UISetOperatorRuleProcedure,
+		svc.SetOperatorRule,
+		connect.WithSchema(uIMethods.ByName("SetOperatorRule")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteOperatorRuleHandler := connect.NewUnaryHandler(
+		UIDeleteOperatorRuleProcedure,
+		svc.DeleteOperatorRule,
+		connect.WithSchema(uIMethods.ByName("DeleteOperatorRule")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListChangesHandler := connect.NewUnaryHandler(
 		UIListChangesProcedure,
 		svc.ListChanges,
@@ -3410,6 +3482,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListRulesHandler.ServeHTTP(w, r)
 		case UISetRuleProcedure:
 			uISetRuleHandler.ServeHTTP(w, r)
+		case UIListOperatorRulesProcedure:
+			uIListOperatorRulesHandler.ServeHTTP(w, r)
+		case UISetOperatorRuleProcedure:
+			uISetOperatorRuleHandler.ServeHTTP(w, r)
+		case UIDeleteOperatorRuleProcedure:
+			uIDeleteOperatorRuleHandler.ServeHTTP(w, r)
 		case UIListChangesProcedure:
 			uIListChangesHandler.ServeHTTP(w, r)
 		case UIListChangeFilesProcedure:
@@ -3875,6 +3953,18 @@ func (UnimplementedUIHandler) ListRules(context.Context, *connect.Request[v1.Lis
 
 func (UnimplementedUIHandler) SetRule(context.Context, *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetRule is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListOperatorRules(context.Context, *connect.Request[v1.ListOperatorRulesRequest]) (*connect.Response[v1.ListOperatorRulesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListOperatorRules is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetOperatorRule(context.Context, *connect.Request[v1.SetOperatorRuleRequest]) (*connect.Response[v1.OperatorRule], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetOperatorRule is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteOperatorRule(context.Context, *connect.Request[v1.DeleteOperatorRuleRequest]) (*connect.Response[v1.DeleteOperatorRuleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteOperatorRule is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {

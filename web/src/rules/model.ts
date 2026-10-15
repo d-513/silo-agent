@@ -48,6 +48,29 @@ export function countRules(sections: RuleSection[]): number {
   return sections.reduce((sum, s) => sum + s.rules.length, 0);
 }
 
+// How much a mode holds a call back (allow, auto, ask, deny) and how much an
+// output mode hides (pass, flag, check, withhold). The operator's locked value
+// is a floor: a looser mode is not offered. An unknown mode ranks as ask or
+// check, so a bad value can never loosen a lock.
+const callRank: Record<string, number> = { allow: 0, auto: 1, ask: 2, deny: 3 };
+const outputRank: Record<string, number> = { pass: 0, flag: 1, check: 2, withhold: 3 };
+
+export function strictness(mode: string, side: Side = "decision"): number {
+  return (side === "output" ? outputRank : callRank)[mode] ?? 2;
+}
+
+// floorOf is the operator's locked value for a side of a section: the strictest
+// one among its rules, or "" when the operator holds none of them.
+export function floorOf(s: RuleSection, side: Side): string {
+  let floor = "";
+  for (const r of s.rules) {
+    if (!r.locked) continue;
+    const v = side === "output" ? r.operatorOutput : r.operatorDecision;
+    if (v && (floor === "" || strictness(v, side) > strictness(floor, side))) floor = v;
+  }
+  return floor;
+}
+
 // The sections with one side of one rule changed (shown before the server agrees).
 export function withDecision(sections: RuleSection[], connector: string, action: string, decision: string, side: Side = "decision"): RuleSection[] {
   return sections.map((s) => ({

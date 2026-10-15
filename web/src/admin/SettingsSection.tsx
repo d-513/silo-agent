@@ -7,11 +7,12 @@ import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { AuditTable } from "./AuditTable";
 import { AutoenablePanel } from "./AutoenablePanel";
 import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
+import { OperatorRulesPanel } from "./OperatorRulesPanel";
 import { FieldGroup } from "./FieldGroup";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
 import { OidcSettings } from "./OidcSettings";
-import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
@@ -45,6 +46,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
     </>
   ),
   connectors: () => <ConnectorOptions />,
+  rules: () => <OperatorRules />,
   tunnels: () => <Tunnels />,
   mail: () => <Group title={t("Mail")} note={t(MAIL_NOTE)} id="mail" />,
   signin: () => (
@@ -104,6 +106,17 @@ function ConnectorOptions() {
       <Group title={t("Outbound connections")} note={t(OUTBOUND_NOTE)} id="outbound" />
       <ConnectorVarsPanel vars={connVars} onSave={saveConnVars} />
       <AutoenablePanel list={autoenable} onSave={saveAutoenable} />
+    </>
+  );
+}
+
+// The operator's layer: the rule rows (their own RPCs) and the policy text
+// its models read before a Bot's own.
+function OperatorRules() {
+  return (
+    <>
+      <Group title={t("Rules")} note={t(RULES_NOTE)} id="rules" />
+      <OperatorRulesPanel />
     </>
   );
 }

@@ -33,6 +33,8 @@ export const LABELS: Record<string, string> = {
   "changes.keep_days": msg("Keep history for (days)"),
   "filter.enabled": msg("Filter tool results"),
   "filter.max_chars": msg("Longest result checked (characters)"),
+  "rules.approval_policy": msg("Operator approval policy"),
+  "rules.output_policy": msg("Operator output policy"),
   debug: msg("Debug logging"),
   "search.engine": msg("Engine"),
   http_addr: msg("Listen address"),
@@ -70,6 +72,8 @@ export const HINTS: Record<string, string> = {
   "changes.max_file_mb": msg("A bigger file is recorded by its size only, never its content. 1 to 100."),
   "changes.keep_days": msg("Older snapshots are forgotten. 1 to 365."),
   "filter.max_chars": msg("A longer result is passed on marked as unchecked. 1000 to 400000."),
+  "rules.approval_policy": msg("Read before a Bot's own auto-approval policy, whenever a rule is set to Auto. Says what may run without a human. Empty means the Bot's own policy stands alone."),
+  "rules.output_policy": msg("Read before a Bot's own output policy, whenever a result is set to Check. Says what makes a result suspicious (flagged) or malicious (withheld). Empty means the Bot's own policy stands alone."),
   "runs.max_duration": msg("How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this."),
   embedding_model: msg("For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
   "knowledge.sync_interval": msg("A Go duration such as 15m or 1h (minimum 1m)."),
@@ -132,6 +136,9 @@ export const FILTER_NOTE =
 
 export const CONTAINERS_NOTE = msg("The container engine and the images a Bot's machine and its sidecars start from. A running Bot keeps its old image until its container is reset.");
 
+export const RULES_NOTE =
+  msg("The operator's layer of the rules engine. A rule here applies to every Bot; while it is locked an owner may make it stricter but not looser. The policy text below is read before a Bot's own, by the auto-approval model and the output filter.");
+
 export const MEMORY_NOTE =
   msg("Memories in the prompt shows the Bot every long-term memory while they are few, and a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.");
 
@@ -165,6 +172,7 @@ export function groupOf(key: string) {
   if (key.startsWith("runs.")) return "runs";
   if (key.startsWith("changes.")) return "changes";
   if (key.startsWith("filter.")) return "filter";
+  if (key.startsWith("rules.")) return "rules";
   if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";

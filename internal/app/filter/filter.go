@@ -142,6 +142,12 @@ func Policy(bot *db.Bot) string {
 	return strings.TrimSpace(prompts.FilterPolicy)
 }
 
+// policy is what a result is judged by: the operator's text before the Bot's
+// own policy (or the built-in one).
+func (s *Service) policy(bot *db.Bot) string {
+	return approval.JoinPolicies(s.cfg().Rules.OutputPolicy, Policy(bot))
+}
+
 // Check judges one result. It never fails: whatever keeps a model from giving
 // a verdict makes the result Unchecked.
 func (s *Service) Check(ctx context.Context, c Call, content string) Verdict {
@@ -156,7 +162,7 @@ func (s *Service) Check(ctx context.Context, c Call, content string) Verdict {
 		return Unchecked
 	}
 	base := Request{
-		Policy: Policy(c.Bot), Source: s.source(c.ChatID),
+		Policy: s.policy(c.Bot), Source: s.source(c.ChatID),
 		Key:    security.Key(c.Connector, c.Action),
 		Action: security.Describe(c.Connector, c.Action, security.Redact(c.Connector, c.Action, c.ArgsJSON)),
 		Parts:  len(parts),

@@ -144,6 +144,22 @@ type Rule struct {
 	Output string `gorm:"not null;default:''"`
 }
 
+// OperatorRule is one row of the operator's rule layer: the installation's
+// rule for a connector.action (or connector.*), which every Bot obeys. A
+// locked row is a floor: an owner may tighten it but not loosen it.
+type OperatorRule struct {
+	ID        string `gorm:"primaryKey"`
+	Connector string `gorm:"uniqueIndex:operator_rule"`
+	Action    string `gorm:"uniqueIndex:operator_rule"`
+	// Decision is the call rule (allow, ask, deny, auto); empty means the row
+	// sets only the output side.
+	Decision string `gorm:"not null;default:''"`
+	// Output is the output rule, empty for an action with no result side.
+	Output    string `gorm:"not null;default:''"`
+	Locked    bool   `gorm:"not null;default:false"`
+	UpdatedAt time.Time
+}
+
 type Chat struct {
 	ID string `gorm:"primaryKey"`
 	// ChannelID is empty for a Web UI chat. Non-empty binds the thread to a
@@ -619,7 +635,7 @@ type MailBody struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &Audit{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},

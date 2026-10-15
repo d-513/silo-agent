@@ -121,6 +121,12 @@ service UI {
 
   rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
   rpc SetRule(SetRuleRequest) returns (Rule);
+  // The operator's layer of the rules engine. Admin only: these rows are the
+  // installation's, not one Bot's, and an owner may tighten a locked one but
+  // not loosen it.
+  rpc ListOperatorRules(ListOperatorRulesRequest) returns (ListOperatorRulesResponse);
+  rpc SetOperatorRule(SetOperatorRuleRequest) returns (OperatorRule);
+  rpc DeleteOperatorRule(DeleteOperatorRuleRequest) returns (DeleteOperatorRuleResponse);
 
   // Changes: what changed in the Bot's workspace, as diffs between snapshots
   // its worker takes around every run.
@@ -1384,6 +1390,11 @@ message Rule {
   // the Bot reads it. "pass", "flag", "check" or "withhold"; empty for an
   // action whose result is not filtered (a secret, a channel send).
   string output = 7;
+  // The operator's layer for this action, when the installation has a row
+  // for it: the value the owner cannot loosen while locked.
+  string operator_decision = 8;
+  string operator_output = 9;
+  bool locked = 10;
 }
 
 message RuleSection {
@@ -1421,6 +1432,45 @@ message SetRuleRequest {
   string decision = 4;
   optional string output = 5;
 }
+
+// OperatorRule is one row of the operator's rule layer: a connector.action
+// (or connector.*) every Bot obeys. A locked row is the operator's floor: an
+// owner may tighten it but not loosen it.
+message OperatorRule {
+  string connector = 1;
+  string action = 2;
+  string decision = 3;
+  // The output side, empty for an action whose result is not filtered.
+  string output = 4;
+  bool locked = 5;
+}
+
+message ListOperatorRulesRequest {}
+
+message ListOperatorRulesResponse {
+  repeated OperatorRule rules = 1;
+  // The operator's policy text: read before the Bot's own by the
+  // auto-approval gate and the output filter.
+  string approval_policy = 2;
+  string output_policy = 3;
+}
+
+// The row is replaced as a whole: an empty decision or output clears that
+// side, and both empty removes the row.
+message SetOperatorRuleRequest {
+  string connector = 1;
+  string action = 2;
+  string decision = 3;
+  optional string output = 4;
+  bool locked = 5;
+}
+
+message DeleteOperatorRuleRequest {
+  string connector = 1;
+  string action = 2;
+}
+
+message DeleteOperatorRuleResponse {}
 
 message FileEntry {
   string name = 1;

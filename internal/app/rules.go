@@ -118,6 +118,18 @@ func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleReques
 	// A request that names an output and no decision is about the output
 	// rule alone; the call rule stays as it is.
 	setDecision := m.Output == nil || m.GetDecision() != ""
+	// A locked operator row is the floor: the owner may tighten it, never
+	// loosen it. Refused here, so the UI cannot be talked around.
+	if op, ok := a.operatorRule(m.GetConnector(), m.GetAction()); ok && op.Locked {
+		if setDecision && op.Decision != "" && security.Looser(security.Rule(m.GetDecision()), op.Decision) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+				"your operator holds %s.%s at %s", m.GetConnector(), m.GetAction(), modeWord(op.Decision)))
+		}
+		if m.Output != nil && op.Output != "" && security.LooserOutput(security.Output(m.GetOutput()), op.Output) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+				"your operator holds %s.%s results at %s", m.GetConnector(), m.GetAction(), outputWord(op.Output)))
+		}
+	}
 	var rule db.Rule
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", m.GetBotId(), m.GetConnector(), m.GetAction()).Limit(1).Find(&rule)
 	fresh := rule.ID == ""
@@ -242,8 +254,11 @@ func (a *App) effectiveRule(botID, conn, action, title string, stored map[string
 	if outputApplies(conn, action) {
 		r.Output = a.ruleOutput(botID, conn, action, outputFallback(conn))
 	}
-	if row, ok := stored[security.Key(conn, action)]; ok {
-		r.Id = row.ID
+	if mine, ok := stored[security.Key(conn, action)]; ok {
+		r.Id = mine.ID
+	}
+	if op, ok := a.operatorRule(conn, action); ok {
+		r.OperatorDecision, r.OperatorOutput, r.Locked = op.Decision, op.Output, op.Locked
 	}
 	return r
 }
@@ -258,6 +273,19 @@ func modeWord(s string) string {
 		return "Auto"
 	default:
 		return "Ask"
+	}
+}
+
+func outputWord(s string) string {
+	switch security.Output(s) {
+	case security.OutPass:
+		return "Pass"
+	case security.OutFlag:
+		return "Flag"
+	case security.OutWithhold:
+		return "Withhold"
+	default:
+		return "Check"
 	}
 }
 

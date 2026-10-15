@@ -303,6 +303,19 @@ type Config struct {
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
+	// Rules is the operator's layer of the rules engine.
+	Rules Rules `koanf:"rules"`
+}
+
+// Rules holds the operator's policy text, read before a Bot's own by the
+// auto-approval gate and the output filter. The operator's rule rows
+// themselves live in the database (an admin edits them on Admin → Settings →
+// Rules), so a change needs no restart.
+type Rules struct {
+	// ApprovalPolicy is read before the Bot's own auto-approval policy.
+	ApprovalPolicy string `koanf:"approval_policy"`
+	// OutputPolicy is read before the Bot's own output policy.
+	OutputPolicy string `koanf:"output_policy"`
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
@@ -460,6 +473,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "changes.keep_days"},
 	{Key: "filter.enabled", Type: "bool"},
 	{Key: "filter.max_chars"},
+	{Key: "rules.approval_policy", Type: "text"},
+	{Key: "rules.output_policy", Type: "text"},
 	{Key: "context.window"},
 	{Key: "context.compact_at"},
 	{Key: "runs.max_duration"},

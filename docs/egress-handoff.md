@@ -122,6 +122,23 @@ Done:
   never in a connector's prompt text. The Secrets tab sets the mode and the
   hosts and edits a stored secret.
 
+- The operator rule layer. `operator_rules` (`db.OperatorRule`, one row per
+  connector.action or connector.`*`) is the installation's layer over the
+  owner's. `internal/app/operator.go` looks a row up the owner's way (the
+  action's, then the connector's `*`) and layers it: a **locked** row is a
+  floor (the engine takes the stricter mode, by the ranks in
+  `internal/security/layers.go`; an unknown value ranks as ask/check, so it can
+  never loosen a lock) and an **unlocked** one is only a default the owner
+  overrides either way. `SetRule` refuses a request that would loosen a locked
+  row (`PermissionDenied`, naming the operator's value); `ListRules` carries
+  the operator's value and the lock on each row so the owner's Rules page shows
+  the lock chip and stops offering a looser mode. The operator's policy text
+  (`rules.approval_policy` / `rules.output_policy`, a new silo.yaml group,
+  joined before the Bot's own by `approval.JoinPolicies`) is read by the
+  auto-approval gate and the output filter. Admin: `ListOperatorRules` /
+  `SetOperatorRule` / `DeleteOperatorRule` (admin-only) behind Admin → Settings
+  → Rules, which holds the rows editor and the two policy texts.
+
 A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
 user-defined network (the container's resolver becomes the network's own gateway
 address, `dns.podman`), so the box does not learn the gateway that way. The box
@@ -132,7 +149,6 @@ variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
 proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
 Next, in order:
-5. The operator rule layer.
 6. Audit storage, RPCs and the owner and admin UI (the gateway's `OnEvents` /
    `OnTraffic` sinks, currently nil, are filled here), and the proxy environment
    variables where they do not catch the CP link.

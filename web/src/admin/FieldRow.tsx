@@ -1,6 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { type ReactNode } from "react";
-import { Field, inputClass } from "../Field";
+import { Field, inputClass, textareaClass } from "../Field";
 import { Select } from "../Select";
 import { ToggleRow } from "../Switch";
 import { ConfigSource, type ConfigField, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
@@ -73,6 +73,17 @@ export function FieldRow({
     const m = /^providers\.(.+)\.cache_ttl$/.exec(field.key);
     const ttls = (m && providers.find((p) => p.id === m[1])?.cacheTtls) || [];
     control = <Select value={value} onChange={onChange} disabled={locked} options={ttls.map((t) => ({ value: t, label: t }))} />;
+  } else if (field.type === "text") {
+    control = (
+      <textarea
+        className={`${textareaClass} h-[140px]`}
+        autoComplete="off"
+        placeholder={placeholder ?? placeholderOf(field.key)}
+        value={value}
+        disabled={locked}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
   } else {
     control = (
       <input

@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { Rule, RuleSection } from "../gen/silo/v1/ui_pb";
-import { sectionDecision, type Side } from "./model";
+import { sectionDecision, floorOf, type Side } from "./model";
 import { RuleDecisionSegment } from "./RuleDecisionSegment";
 import { RuleRow } from "./RuleRow";
 import { t } from "../i18n.ts";
@@ -26,6 +26,9 @@ export function SectionCard({
   onRule: (rule: Rule, decision: string) => void;
 }) {
   const shared = sectionDecision(s, side);
+  // The strictest operator lock in the section: a section-wide value looser
+  // than it would be refused row by row anyway.
+  const floor = floorOf(s, side);
   return (
     <details
       className="group mb-5 rounded-card shadow-card bg-surface"
@@ -62,7 +65,7 @@ export function SectionCard({
               className="w-full wide:w-[260px] wide:shrink-0"
               title={shared === "" ? t("Mixed. Pick one to apply to every action below.") : t("Apply to every action below.")}
             >
-              <RuleDecisionSegment size="sm" side={side} value={shared} onChange={onSection} />
+              <RuleDecisionSegment size="sm" side={side} value={shared} floor={floor} onChange={onSection} />
             </div>
           </div>
         )}
