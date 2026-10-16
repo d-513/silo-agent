@@ -244,6 +244,9 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		return a.Egress.ClientNetwork(ctx, "stdio", botID, connectorID, name)
 	}
 	a.Connectors.ClientNetDrop = a.Egress.DropConnector
+	a.Connectors.StaleCA = func(st dockerx.State, botID, connectorID string) bool {
+		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
+	}
 	a.Feed = feed.New(a.DB, a)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)

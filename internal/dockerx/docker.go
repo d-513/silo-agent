@@ -38,6 +38,9 @@ type State struct {
 	StartedAt time.Time
 	// Networks names the networks the container is attached to.
 	Networks []string
+	// CAHash is the hash of the network filter's certificate the container was
+	// created with (SILO_EGRESS_CA); "" when it was given none.
+	CAHash string
 }
 
 type Stats struct {
@@ -126,6 +129,11 @@ func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
 	st := State{ID: c.ID, Running: run}
 	if c.Config != nil {
 		st.Image = c.Config.Image
+		for _, e := range c.Config.Env {
+			if v, ok := strings.CutPrefix(e, "SILO_EGRESS_CA="); ok && v != "" {
+				st.CAHash = ids.Hash(v)
+			}
+		}
 	}
 	if c.State != nil {
 		if t, err := time.Parse(time.RFC3339Nano, c.State.StartedAt); err == nil && t.Year() > 1 {

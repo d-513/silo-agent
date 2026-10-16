@@ -334,6 +334,25 @@ func (s *Service) Filters(ctx context.Context, botID, containerID string) bool {
 	return slices.Contains(st.Networks, networkName("bot", botID, ""))
 }
 
+// StaleCA reports whether a client container sits behind the gateway but was
+// created trusting a certificate the gateway no longer signs with: the CA was
+// rotated (or the box predates being given one), so every HTTPS call it makes
+// fails until it is made again. kind is "bot" or "stdio". A container off its
+// client network is not stale here: it never went through the gateway.
+func (s *Service) StaleCA(st dockerx.State, kind, botID, connectorID string) bool {
+	if !s.Enabled() || !slices.Contains(st.Networks, networkName(kind, botID, connectorID)) {
+		return false
+	}
+	var row db.EgressCA
+	s.db.Where("id = ?", caID).Limit(1).Find(&row)
+	if row.ID == "" {
+		// No CA yet: the next ClientNetwork makes one, and this box was made
+		// with none to trust.
+		return true
+	}
+	return st.CAHash != ids.Hash(string(row.CertPEM))
+}
+
 // networkName is a client's internal network name.
 func networkName(kind, botID, connectorID string) string {
 	if kind == "stdio" {

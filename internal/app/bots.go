@@ -96,6 +96,24 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 	return true
 }
 
+// dropStaleCA removes a box that trusts a network filter certificate the
+// gateway no longer signs with (the CA was rotated since it was made), so the
+// rest of ensureRunning makes it again with the current one, as a Container
+// reset would: the workspace, drives and caches live outside the box. Runs are
+// left alone; their worker-backed tools wait for the new box. Callers hold
+// lockBot.
+func (a *App) dropStaleCA(ctx context.Context, b *db.Bot) {
+	st, err := a.inspectBot(ctx, b)
+	if err != nil || !a.Egress.StaleCA(st, "bot", b.ID, "") {
+		return
+	}
+	log.Printf("bot=%s: the network filter's certificate changed; recreating its box", b.ID)
+	a.Hub.Drop(b.ID)
+	a.Docker.Drop(ctx, b.ID, st.ID)
+	b.ContainerID = ""
+	a.DB.Save(b)
+}
+
 func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) {
 	st, err := a.Docker.Inspect(ctx, b.ContainerID)
 	if err == nil {
@@ -122,6 +140,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	// Another ensure/start may have created a box since this row was loaded;
 	// reload so the token-hash check and the writes below do not undo it.
 	a.reloadBot(b)
+	a.dropStaleCA(ctx, b)
 	if a.Hub.Connected(b.ID) {
 		// A worker session can outlive its container (removed out of band, a
 		// daemon restart, a failed recreate). Confirm the box with Docker

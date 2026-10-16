@@ -418,3 +418,52 @@ func TestEgressSwapBodyIsPerSecret(t *testing.T) {
 		t.Fatalf("a rename dropped the switch: %v %+v", err, up.Msg)
 	}
 }
+
+// Rotating the CA strands a box that trusts the old one (the gateway signs
+// with the new one at once), so the next start makes the box again with the
+// new certificate, as a Container reset would; the token is fresh too.
+func TestEgressRotateRecreatesTheBoxOnStart(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Rotated")
+	startBot(t, h, bot.Id)
+	before := h.Fake.BotNet(bot.Id)
+	if before == nil || before.CA == "" {
+		t.Fatal("box was created without the gateway's certificate")
+	}
+	oldToken := h.Fake.Token(bot.Id)
+
+	// An unchanged CA leaves the running box alone.
+	startBot(t, h, bot.Id)
+	if n := h.Fake.Creates.Load(); n != 1 {
+		t.Fatalf("creates = %d before rotation, want 1", n)
+	}
+
+	if _, err := h.Client.RotateEgressCA(h.Ctx(), connect.NewRequest(&v1.RotateEgressCARequest{})); err != nil {
+		t.Fatalf("RotateEgressCA: %v", err)
+	}
+	startBot(t, h, bot.Id)
+
+	if n := h.Fake.Creates.Load(); n != 2 {
+		t.Fatalf("creates = %d after rotation, want 2", n)
+	}
+	after := h.Fake.BotNet(bot.Id)
+	var ca db.EgressCA
+	h.DB.First(&ca)
+	if after == nil || after.CA != string(ca.CertPEM) || after.CA == before.CA {
+		t.Fatal("the recreated box does not trust the rotated certificate")
+	}
+	if h.Fake.Token(bot.Id) == oldToken {
+		t.Fatal("the recreated box kept the old token")
+	}
+	var row db.Bot
+	h.DB.First(&row, "id = ?", bot.Id)
+	if row.TokenHash != ids.Hash(h.Fake.Token(bot.Id)) || row.ContainerID == "" {
+		t.Fatalf("bot row = token %q container %q", row.TokenHash, row.ContainerID)
+	}
+
+	// And once made again, it is not made a third time.
+	startBot(t, h, bot.Id)
+	if n := h.Fake.Creates.Load(); n != 2 {
+		t.Fatalf("creates = %d after a second start, want 2", n)
+	}
+}

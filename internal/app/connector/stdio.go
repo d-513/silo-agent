@@ -39,6 +39,14 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 	if strings.TrimSpace(s.cfg().DataDir) == "" {
 		return errors.New("data_dir required for stdio")
 	}
+	if row.ContainerID != "" && s.StaleCA != nil {
+		// The network filter's certificate was rotated since this sidecar was
+		// made: its HTTPS fails until it is made again with the current one.
+		if st, err := s.docker.Inspect(ctx, row.ContainerID); err == nil && s.StaleCA(st, row.BotID, row.ID) {
+			log.Printf("connector=%s: the network filter's certificate changed; recreating its sidecar", row.ID)
+			s.DropStdio(row)
+		}
+	}
 	if b := s.lookupBridge(row.ID); b != nil {
 		select {
 		case <-b.done:

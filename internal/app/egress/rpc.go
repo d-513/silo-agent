@@ -113,13 +113,13 @@ func (s *Service) GetEgressStatus(ctx context.Context, _ *connect.Request[v1.Get
 	return connect.NewResponse(s.status()), nil
 }
 
-// RotateEgressCA makes a new certificate authority. Boxes are affected: each
-// Bot box and STDIO sidecar trusts the CA it was given when it was created (it
-// is in the container's env), and the gateway signs every intercepted
-// connection with the new one at once, so HTTPS through the gateway fails in
-// every existing box until it is recreated (Containers → Remove all
-// containers, which makes the machine and its sidecars again on next use). A
-// restart is not enough.
+// RotateEgressCA makes a new certificate authority. The gateway signs every
+// intercepted connection with the new one at once, while each Bot box and
+// STDIO sidecar trusts the CA it was given when it was created (it is in the
+// container's env), so HTTPS through the gateway fails in a running one until
+// its next start: ensureRunning and ensureStdio compare the container's CA
+// with the current one (Service.StaleCA) and recreate it on a mismatch, keeping
+// the workspace, drives and caches as a Container reset does.
 func (s *Service) RotateEgressCA(ctx context.Context, _ *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err

@@ -206,8 +206,15 @@ The CA reaches its clients in the container env (`dockerx.ClientNet.CA` →
 (`~/.pki/nssdb`, `certutil` from `libnss3-tools`), which is what Chromium reads;
 a STDIO sidecar's bridge does the same system install as root before the child
 starts (`mcpbridge.InstallCA`). `TestContainerEgressBoxTrustsTheGateway` proves
-it on the real engine. Because the env is fixed at create, a rotated CA reaches
-a box only when it is recreated (Containers → Remove all containers); Admin's
+it on the real engine. The env is fixed at create, so a rotated CA reaches
+a box when it is recreated, and the next start does that by itself:
+`dockerx.State.CAHash` is the hash of the `SILO_EGRESS_CA` a container carries,
+and `egress.Service.StaleCA` (a container on its client network whose hash is
+not the current certificate's) makes `App.ensureRunning` drop the Bot's box and
+`connector.ensureStdio` drop the sidecar, which the rest of each path then
+creates again, keeping the workspace, drives and caches as a Container reset
+does. A box that is already running keeps failing HTTPS until it is next
+started or a run ensures it (`TestEgressRotateRecreatesTheBoxOnStart`); Admin's
 Rotate text says so.
 
 That closes this handoff: the gateway, the CP side, the operator's rule layer,

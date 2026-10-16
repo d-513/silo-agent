@@ -89,6 +89,10 @@ type Service struct {
 	// the gateway it reaches the internet through (the network filter).
 	ClientNet func(ctx context.Context, botID, connectorID, name string) (*dockerx.ClientNet, error)
 
+	// StaleCA, when set, reports whether a sidecar was made trusting a
+	// network filter certificate the gateway no longer signs with.
+	StaleCA func(st dockerx.State, botID, connectorID string) bool
+
 	// ClientNetDrop reclaims a detached STDIO sidecar's egress network.
 	ClientNetDrop func(ctx context.Context, connectorID string)
 }

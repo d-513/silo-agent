@@ -121,11 +121,20 @@ func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.C
 	st := dockerx.State{ID: id, Running: true}
 	if net != nil {
 		st.Networks = []string{net.Network}
+		st.CAHash = caHash(net.CA)
 	}
 	f.inspect[id] = st
 	f.inspect[dockerx.Name(botID)] = st
 	f.mu.Unlock()
 	return id, nil
+}
+
+// caHash mirrors Docker's Inspect: the hash of SILO_EGRESS_CA, "" without one.
+func caHash(pem string) string {
+	if pem == "" {
+		return ""
+	}
+	return ids.Hash(pem)
 }
 
 // BotNet returns the network spec a Bot's box was created with, or nil.
@@ -195,6 +204,10 @@ func (f *FakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (strin
 	id := "mcp-" + spec.ID
 	f.mu.Lock()
 	st := dockerx.State{ID: id, Running: true}
+	if spec.Net != nil {
+		st.Networks = []string{spec.Net.Network}
+		st.CAHash = caHash(spec.Net.CA)
+	}
 	f.inspect[id] = st
 	f.inspect[dockerx.StdioName(spec.ID)] = st
 	f.specs[spec.ID] = spec
