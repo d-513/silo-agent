@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/egress"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -465,5 +466,33 @@ func TestEgressRotateRecreatesTheBoxOnStart(t *testing.T) {
 	startBot(t, h, bot.Id)
 	if n := h.Fake.Creates.Load(); n != 2 {
 		t.Fatalf("creates = %d after a second start, want 2", n)
+	}
+}
+
+// A box is told the gateway's address once, at create. A gateway made again
+// (removed by hand, a cleanup, a lost row) must come back at that address on
+// every client network, or every existing box loses DNS and its way out.
+func TestEgressGatewayKeepsItsAddressWhenRecreated(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Pinned")
+	startBot(t, h, bot.Id)
+	net := h.Fake.BotNet(bot.Id)
+	var row db.EgressClient
+	h.DB.Where("kind = ? AND bot_id = ?", "bot", bot.Id).First(&row)
+	if want := egress.GatewayAddr(row.Subnet); net.DNS != want {
+		t.Fatalf("gateway at %q, want the fixed %q", net.DNS, want)
+	}
+
+	var host db.EgressHost
+	h.DB.First(&host)
+	h.Fake.DropEgress(context.Background(), host.ContainerID)
+	if err := h.App.Egress.Ensure(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var gw db.EgressHost
+	h.DB.First(&gw)
+	addr, err := h.Fake.NetworkAddr(context.Background(), gw.ContainerID, net.Network)
+	if err != nil || addr != net.DNS {
+		t.Fatalf("recreated gateway at %q (%v), the box still uses %q", addr, err, net.DNS)
 	}
 }

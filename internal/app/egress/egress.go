@@ -225,11 +225,23 @@ func (s *Service) ensureGateway(ctx context.Context) (string, error) {
 		if err := s.docker.EnsureNetwork(ctx, c.Network, c.Subnet, c.ID); err != nil {
 			return "", err
 		}
-		if err := s.docker.NetworkConnect(ctx, c.Network, id); err != nil {
+		if err := s.docker.NetworkConnect(ctx, c.Network, id, GatewayAddr(c.Subnet)); err != nil {
 			return "", err
 		}
 	}
 	return id, nil
+}
+
+// GatewayAddr is the gateway's fixed address on a client subnet: the first
+// after the engine's bridge (.1). A client is told it once, at create (its DNS
+// and its control-plane link), so a gateway made again must come back at the
+// same address or every existing client loses its way out.
+func GatewayAddr(subnet string) string {
+	p, err := netip.ParsePrefix(subnet)
+	if err != nil || !p.Addr().Is4() {
+		return ""
+	}
+	return p.Masked().Addr().Next().Next().String()
 }
 
 // ClientNetwork gives a client container its own internal network and the

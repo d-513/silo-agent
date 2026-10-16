@@ -448,6 +448,11 @@ type fakeNetwork struct {
 	subnet   string
 	clientID string
 	attached map[string]bool
+	// addr is the gateway's address; next is how far the engine's own
+	// allocation has got, so an unpinned reconnect lands somewhere new, as
+	// on a real engine.
+	addr string
+	next int
 }
 
 type egressState struct {
@@ -487,6 +492,10 @@ func (f *FakeHost) DropEgress(context.Context, string) {
 	defer f.mu.Unlock()
 	if e := f.egressState(); e.containerID != "" {
 		delete(f.inspect, e.containerID)
+		// A removed container leaves every network it was on.
+		for _, n := range e.networks {
+			delete(n.attached, e.containerID)
+		}
 		e.containerID = ""
 	}
 }
@@ -510,12 +519,28 @@ func (f *FakeHost) DropNetwork(_ context.Context, name string) error {
 	return nil
 }
 
-func (f *FakeHost) NetworkConnect(_ context.Context, networkName, containerID string) error {
+func (f *FakeHost) NetworkConnect(_ context.Context, networkName, containerID, addr string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if n := f.egressState().networks[networkName]; n != nil {
-		n.attached[containerID] = true
+	n := f.egressState().networks[networkName]
+	if n == nil || n.attached[containerID] {
+		return nil
 	}
+	n.attached[containerID] = true
+	if containerID != f.egressState().containerID {
+		return nil
+	}
+	if addr == "" {
+		n.next++
+		if p, err := netip.ParsePrefix(n.subnet); err == nil {
+			a := p.Masked().Addr()
+			for i := 0; i < 10+n.next; i++ {
+				a = a.Next()
+			}
+			addr = a.String()
+		}
+	}
+	n.addr = addr
 	return nil
 }
 
@@ -536,11 +561,7 @@ func (f *FakeHost) NetworkAddr(_ context.Context, containerID, networkName strin
 	if n == nil || containerID == "" || !n.attached[containerID] || containerID != e.containerID {
 		return "", nil
 	}
-	p, err := netip.ParsePrefix(n.subnet)
-	if err != nil {
-		return "", nil
-	}
-	return p.Masked().Addr().Next().String(), nil
+	return n.addr, nil
 }
 
 func (f *FakeHost) ListClientNetworks(context.Context) ([]dockerx.NetworkInfo, error) {

@@ -72,7 +72,7 @@ type Host interface {
 	DropEgress(ctx context.Context, containerID string)
 	EnsureNetwork(ctx context.Context, name, subnet, clientID string) error
 	DropNetwork(ctx context.Context, name string) error
-	NetworkConnect(ctx context.Context, networkName, containerID string) error
+	NetworkConnect(ctx context.Context, networkName, containerID, addr string) error
 	NetworkDisconnect(ctx context.Context, networkName, containerID string) error
 	NetworkAddr(ctx context.Context, containerID, networkName string) (string, error)
 	ListClientNetworks(ctx context.Context) ([]NetworkInfo, error)

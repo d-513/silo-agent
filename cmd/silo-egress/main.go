@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,6 +28,9 @@ func main() {
 		SOCKSAddr:  env("SILO_EGRESS_SOCKS", egress.DefaultSOCKSAddr),
 		CPLinkAddr: env("SILO_EGRESS_CP_LINK", egress.DefaultCPLinkAddr),
 	})
+	// Every lookup the gateway makes (the verdict's and the origin dial's)
+	// skips the client networks' own DNS.
+	net.DefaultResolver = gw.Resolver()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

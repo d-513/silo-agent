@@ -144,3 +144,11 @@ func TestFeedsAnswerForEveryConfiguredList(t *testing.T) {
 		t.Fatalf("spamhaus = %+v", f)
 	}
 }
+
+func TestGatewayAddrIsTheSecondHost(t *testing.T) {
+	for subnet, want := range map[string]string{"10.213.0.0/24": "10.213.0.2", "10.213.7.9/24": "10.213.7.2", "fd00::/64": "", "nonsense": ""} {
+		if got := GatewayAddr(subnet); got != want {
+			t.Errorf("GatewayAddr(%q) = %q, want %q", subnet, got, want)
+		}
+	}
+}

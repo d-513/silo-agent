@@ -3,6 +3,7 @@ package dockerx
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -191,19 +192,35 @@ func (e *Engine) DropNetwork(ctx context.Context, name string) error {
 	return err
 }
 
-// NetworkConnect attaches a container to a network.
-func (e *Engine) NetworkConnect(ctx context.Context, networkName, containerID string) error {
+// NetworkConnect attaches a container to a network, at addr when one is
+// given. An address the engine will not hand out (something else holds it)
+// falls back to one the engine picks rather than leave the container off the
+// network.
+func (e *Engine) NetworkConnect(ctx context.Context, networkName, containerID, addr string) error {
 	if networkName == "" || containerID == "" {
 		return nil
 	}
-	err := e.cli.NetworkConnect(ctx, networkName, containerID, nil)
-	if err != nil {
-		m := strings.ToLower(err.Error())
-		if strings.Contains(m, "already exists") || strings.Contains(m, "already connected") {
+	var ep *network.EndpointSettings
+	if addr != "" {
+		ep = &network.EndpointSettings{IPAMConfig: &network.EndpointIPAMConfig{IPv4Address: addr}}
+	}
+	err := e.cli.NetworkConnect(ctx, networkName, containerID, ep)
+	if err != nil && alreadyConnected(err) {
+		return nil
+	}
+	if err != nil && ep != nil {
+		log.Printf("network connect %s at %s: %v; letting the engine pick", networkName, addr, err)
+		err = e.cli.NetworkConnect(ctx, networkName, containerID, nil)
+		if err != nil && alreadyConnected(err) {
 			return nil
 		}
 	}
 	return err
+}
+
+func alreadyConnected(err error) bool {
+	m := strings.ToLower(err.Error())
+	return strings.Contains(m, "already exists") || strings.Contains(m, "already connected")
 }
 
 // NetworkDisconnect detaches a container from a network.

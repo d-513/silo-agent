@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -188,6 +189,7 @@ func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, out io.Write
 	// Forward.
 	origin, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
+		log.Printf("egress: dial %s:%d: %v", host, port, err)
 		writeStatusCode(out, http.StatusBadGateway, "the filter could not reach "+host)
 		return true, nil
 	}
@@ -405,6 +407,7 @@ func (p *Proxy) httpsRequest(ctx context.Context, out io.Writer, c *Client, host
 	}
 	raw, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
+		log.Printf("egress: dial %s:%d: %v", host, port, err)
 		writeStatusCode(out, http.StatusBadGateway, "the filter could not reach "+host)
 		return true, nil
 	}
