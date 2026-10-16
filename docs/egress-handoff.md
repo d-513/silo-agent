@@ -198,6 +198,18 @@ writes it into `/etc/resolv.conf`; the gateway answers every name with itself
 variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
 proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
+The CA reaches its clients in the container env (`dockerx.ClientNet.CA` →
+`SILO_EGRESS_CA`, plus `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`,
+`REQUESTS_CA_BUNDLE` and `PIP_CERT`, set only behind the filter). A Bot's
+`start.sh` writes it to `/usr/local/share/ca-certificates/silo-egress.crt`, runs
+`update-ca-certificates` and adds it to the `silo` user's NSS store
+(`~/.pki/nssdb`, `certutil` from `libnss3-tools`), which is what Chromium reads;
+a STDIO sidecar's bridge does the same system install as root before the child
+starts (`mcpbridge.InstallCA`). `TestContainerEgressBoxTrustsTheGateway` proves
+it on the real engine. Because the env is fixed at create, a rotated CA reaches
+a box only when it is recreated (Containers → Remove all containers); Admin's
+Rotate text says so.
+
 That closes this handoff: the gateway, the CP side, the operator's rule layer,
 the secrets and the audit — storage, RPCs and the owner and admin UI — are all
 in place.

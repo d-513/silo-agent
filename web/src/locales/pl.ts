@@ -1439,7 +1439,7 @@ const pl: Record<string, string> = {
   "Threat list": "Lista zagrożeń",
   "Entries": "Wpisy",
   "Last loaded": "Ostatnio wczytano",
-  "Rotating makes a new certificate for the gateway. Running machines pick it up on their next start, and their old trust in the previous one is dropped.": "Odnowienie tworzy nowy certyfikat bramy. Działające maszyny pobiorą go przy następnym starcie, a zaufanie do poprzedniego zostanie odrzucone.",
+  "Rotating makes a new certificate for the gateway. Existing machines and connector sidecars trust only the old one: HTTPS through the gateway fails there until each is recreated (Containers → Remove all containers).": "Odnowienie tworzy nowy certyfikat bramy. Istniejące maszyny i kontenery konektorów ufają tylko staremu: HTTPS przez bramę nie działa w nich, dopóki każdy nie zostanie utworzony od nowa (Kontenery → Usuń wszystkie kontenery).",
   "Rotate certificate": "Odnów certyfikat",
   "Block": "Blokuj",
   "The Bot cannot reach these at all.": "Bot nie może się do nich dostać.",

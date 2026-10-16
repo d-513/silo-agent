@@ -27,6 +27,12 @@ func main() {
 	if cp == "" || token == "" {
 		log.Fatal("SILO_CP_URL and SILO_BRIDGE_TOKEN required")
 	}
+	// Behind the network filter: trust its certificate before the child
+	// starts. A failure is logged, not fatal: HTTPS through the gateway fails
+	// then, and the gateway still filters.
+	if err := mcpbridge.InstallCA(os.Getenv("SILO_EGRESS_CA")); err != nil {
+		log.Printf("mcp bridge: the network filter's certificate: %v", err)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := mcpbridge.Serve(ctx, mcpbridge.Config{

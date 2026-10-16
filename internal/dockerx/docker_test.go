@@ -3,6 +3,7 @@ package dockerx
 import (
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -58,7 +59,7 @@ func TestStdioName(t *testing.T) {
 // A Bot's machine runs on UTC whatever the host is set to: the human's zone is
 // the Bot's (it follows them), never the box's.
 func TestBotMachineIsUTC(t *testing.T) {
-	env := botEnv("http://cp", "bot1", "tok", "")
+	env := botEnv("http://cp", "bot1", "tok", "", "")
 	if !slices.Contains(env, "TZ=UTC") {
 		t.Fatalf("env %v has no TZ=UTC", env)
 	}
@@ -68,9 +69,19 @@ func TestBotMachineIsUTC(t *testing.T) {
 	if slices.Contains(env, "SILO_EGRESS_DNS=") {
 		t.Fatalf("env %v sets an egress resolver with the filter off", env)
 	}
-	on := botEnv("http://cp", "bot1", "tok", "10.0.0.2")
+	on := botEnv("http://cp", "bot1", "tok", "10.0.0.2", "PEM")
 	if !slices.Contains(on, "SILO_EGRESS_DNS=10.0.0.2") {
 		t.Fatalf("env %v has no egress resolver", on)
+	}
+	for _, want := range []string{"SILO_EGRESS_CA=PEM", "NODE_EXTRA_CA_CERTS=" + EgressCAFile, "REQUESTS_CA_BUNDLE=" + systemBundle} {
+		if !slices.Contains(on, want) {
+			t.Fatalf("env %v has no %s: the box would not trust the gateway", on, want)
+		}
+	}
+	for _, e := range env {
+		if strings.HasPrefix(e, "SILO_EGRESS_CA=") || strings.HasPrefix(e, "NODE_EXTRA_CA_CERTS=") {
+			t.Fatalf("env %v points at a gateway certificate with the filter off", env)
+		}
 	}
 }
 

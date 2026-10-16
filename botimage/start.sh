@@ -28,6 +28,26 @@ if [ -n "$SILO_EGRESS_DNS" ]; then
   printf 'nameserver %s\noptions ndots:1 timeout:2 attempts:2\n' "$SILO_EGRESS_DNS" > /etc/resolv.conf
 fi
 
+# The gateway decrypts HTTPS and signs what it hands back with its own CA, so
+# the box trusts that CA: in the system bundle (OpenSSL, curl, git, Go,
+# Python's ssl; the CP's env points requests, httpx, pip and Node at it too)
+# and in the silo user's NSS store, which is what Chromium reads. The env is
+# fixed when the box is created, so a rotated CA needs a Container reset.
+if [ -n "$SILO_EGRESS_CA" ]; then
+  ca=/usr/local/share/ca-certificates/silo-egress.crt
+  printf '%s\n' "$SILO_EGRESS_CA" > "$ca"
+  chmod 644 "$ca"
+  update-ca-certificates >/dev/null 2>&1 || echo "silo: update-ca-certificates failed" >&2
+  nss=/home/silo/.pki/nssdb
+  runuser -u silo -- mkdir -p "$nss"
+  if [ ! -f "$nss/cert9.db" ]; then
+    runuser -u silo -- certutil -N -d "sql:$nss" --empty-password
+  fi
+  runuser -u silo -- certutil -D -d "sql:$nss" -n "Silo network filter" >/dev/null 2>&1
+  runuser -u silo -- certutil -A -d "sql:$nss" -n "Silo network filter" -t "C,," -i "$ca" \
+    || echo "silo: could not add the gateway certificate for Chromium" >&2
+fi
+
 children=()
 
 kill_children() {

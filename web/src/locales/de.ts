@@ -1385,7 +1385,7 @@ const de: Record<string, string> = {
   "Threat list": "Bedrohungsliste",
   "Entries": "Einträge",
   "Last loaded": "Zuletzt geladen",
-  "Rotating makes a new certificate for the gateway. Running machines pick it up on their next start, and their old trust in the previous one is dropped.": "Ein Wechsel erzeugt ein neues Zertifikat für das Gateway. Laufende Rechner übernehmen es beim nächsten Start, und ihr Vertrauen in das vorige wird verworfen.",
+  "Rotating makes a new certificate for the gateway. Existing machines and connector sidecars trust only the old one: HTTPS through the gateway fails there until each is recreated (Containers → Remove all containers).": "Ein Wechsel erzeugt ein neues Zertifikat für das Gateway. Bestehende Rechner und Connector-Container vertrauen nur dem alten: HTTPS über das Gateway schlägt dort fehl, bis jeder neu erstellt wird (Container → Alle Container entfernen).",
   "Rotate certificate": "Zertifikat erneuern",
   "Block": "Blockieren",
   "The Bot cannot reach these at all.": "Der Bot erreicht sie überhaupt nicht.",

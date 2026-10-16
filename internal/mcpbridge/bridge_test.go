@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -297,5 +298,30 @@ func TestParseArgs(t *testing.T) {
 		if string(r1) != string(r2) {
 			t.Errorf("ParseArgs(%q) = %s, want %s", c.raw, r1, r2)
 		}
+	}
+}
+
+// The filter's certificate is written to the local store and the system
+// bundle rebuilt; no certificate is no filter and nothing is touched.
+func TestInstallCA(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ca", "silo-egress.crt")
+	updated := 0
+	update := func() error { updated++; return nil }
+	if err := installCA("", path, update); err != nil || updated != 0 {
+		t.Fatalf("empty: err %v, updated %d", err, updated)
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("a certificate was written with no filter")
+	}
+	if err := installCA("not a cert", path, update); err == nil {
+		t.Fatal("garbage was installed as a certificate")
+	}
+	pem := "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"
+	if err := installCA(pem, path, update); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != pem+"\n" || updated != 1 {
+		t.Fatalf("wrote %q, updated %d", got, updated)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -246,13 +247,13 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 	} else {
 		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
 	}
-	dns := ""
+	dns, ca := "", ""
 	if net != nil {
-		dns = net.DNS
+		dns, ca = net.DNS, net.CA
 	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image:    cfg.BotImage,
-		Env:      botEnv(cpURL, botID, token, dns),
+		Env:      botEnv(cpURL, botID, token, dns, ca),
 		Hostname: "bot",
 	}, host, clientNetworkConfig(net), nil, Name(botID))
 	if err != nil {
@@ -262,7 +263,7 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 }
 
 // botEnv is the environment a Bot's machine starts with.
-func botEnv(cpURL, botID, token, dns string) []string {
+func botEnv(cpURL, botID, token, dns, ca string) []string {
 	env := []string{
 		"SILO_CP_URL=" + cpURL,
 		"SILO_BOT_TOKEN=" + token,
@@ -278,7 +279,8 @@ func botEnv(cpURL, botID, token, dns string) []string {
 	if dns != "" {
 		env = append(env, "SILO_EGRESS_DNS="+dns)
 	}
-	return env
+	// And it decrypts HTTPS: start.sh installs its certificate.
+	return append(env, caEnv(ca)...)
 }
 
 func (e *Engine) Start(ctx context.Context, id string) error {
@@ -330,9 +332,15 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 	} else {
 		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
 	}
+	env := spec.Env
+	if spec.Net != nil {
+		// The bridge installs the gateway's certificate before the child
+		// starts.
+		env = append(slices.Clone(env), caEnv(spec.Net.CA)...)
+	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image:    image,
-		Env:      spec.Env,
+		Env:      env,
 		Hostname: "mcp",
 		Labels: map[string]string{
 			"silo.role":         "mcp-stdio",

@@ -21,6 +21,36 @@ type ClientNet struct {
 	Network string
 	DNS     string
 	CPURL   string
+	// CA is the gateway's certificate (PEM). The gateway decrypts HTTPS and
+	// signs what it hands the client with it, so the client must trust it.
+	CA string
+}
+
+// EgressCAFile is where a client installs the gateway's certificate. It is
+// in the Debian local store, so update-ca-certificates adds it to the system
+// bundle that OpenSSL, curl, git, Go and Python's ssl read.
+const EgressCAFile = "/usr/local/share/ca-certificates/silo-egress.crt"
+
+// systemBundle is the system store update-ca-certificates writes.
+const systemBundle = "/etc/ssl/certs/ca-certificates.crt"
+
+// caEnv is what a client behind the gateway is given to trust it:
+// SILO_EGRESS_CA carries the certificate for the container to install as
+// root before anything runs, and the rest points the runtimes that keep
+// their own store at the system bundle (requests and httpx use certifi, pip
+// its own) or at the certificate itself (Node reads only its bundled list
+// plus NODE_EXTRA_CA_CERTS).
+func caEnv(pem string) []string {
+	if pem == "" {
+		return nil
+	}
+	return []string{
+		"SILO_EGRESS_CA=" + pem,
+		"NODE_EXTRA_CA_CERTS=" + EgressCAFile,
+		"SSL_CERT_FILE=" + systemBundle,
+		"REQUESTS_CA_BUNDLE=" + systemBundle,
+		"PIP_CERT=" + systemBundle,
+	}
 }
 
 // EgressSpec describes the gateway container.

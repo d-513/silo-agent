@@ -247,10 +247,16 @@ func (s *Service) ClientNetwork(ctx context.Context, kind, botID, connectorID, n
 	}
 	s.setProblem(nil)
 	s.Apply()
+	cert, _, err := s.caPEM()
+	if err != nil {
+		s.setProblem(err)
+		return nil, err
+	}
 	return &dockerx.ClientNet{
 		Network: row.Network,
 		DNS:     addr,
 		CPURL:   "http://" + addr + ":" + cpLinkPort(),
+		CA:      string(cert),
 	}, nil
 }
 

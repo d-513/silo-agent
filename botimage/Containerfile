@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-p
 # same reason.
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
+# certutil: start.sh adds the network filter's CA to the NSS store Chromium
+# reads. Its own layer, like git.
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools \
+    && rm -rf /var/lib/apt/lists/*
 # Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
 # bump does not rebuild the big apt layer above.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node

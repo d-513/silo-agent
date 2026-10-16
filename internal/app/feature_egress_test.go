@@ -44,6 +44,12 @@ func TestEgressBoxGetsItsOwnNetwork(t *testing.T) {
 	if !strings.HasPrefix(net.CPURL, "http://"+net.DNS+":") {
 		t.Fatalf("CPURL = %q, want the gateway at %s", net.CPURL, net.DNS)
 	}
+	// The gateway decrypts HTTPS: the box is given its CA to trust.
+	var ca db.EgressCA
+	h.DB.First(&ca)
+	if net.CA == "" || net.CA != string(ca.CertPEM) {
+		t.Fatal("the box was not given the gateway's certificate")
+	}
 	if !h.Fake.EgressAttached(net.Network) {
 		t.Fatal("the gateway is not attached to the client network")
 	}

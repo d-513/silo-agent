@@ -102,7 +102,7 @@ function EgressHealth() {
 
       <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
         <p className="text-[12.5px] leading-[18px] text-ink-3">
-          {t("Rotating makes a new certificate for the gateway. Running machines pick it up on their next start, and their old trust in the previous one is dropped.")}
+          {t("Rotating makes a new certificate for the gateway. Existing machines and connector sidecars trust only the old one: HTTPS through the gateway fails there until each is recreated (Containers → Remove all containers).")}
         </p>
         <SaveButton kind="secondary" state={saver.state} onClick={() => void rotate()}>
           {t("Rotate certificate")}

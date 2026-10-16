@@ -54,3 +54,42 @@ func TestContainerEgressBoxIsIsolated(t *testing.T) {
 		t.Fatalf("the box sees a host route):\n%s", global)
 	}
 }
+
+// TestContainerEgressBoxTrustsTheGateway proves the CA install against a real
+// engine: the gateway decrypts HTTPS, and the system store (Python's ssl, as
+// OpenSSL, git and Go read it), Python requests and Node all accept what it
+// signs, while Chromium's NSS store holds the same CA. It needs
+// the gateway to reach the internet.
+func TestContainerEgressBoxTrustsTheGateway(t *testing.T) {
+	if !apptest.ContainersEnabled(t) {
+		return
+	}
+	h := newContainerHarness(t)
+	id := h.SeedBot("Trust")
+	h.StartSeededBot(id)
+
+	script := strings.Join([]string{
+		`python3 -c 'import socket, ssl; s = ssl.create_default_context().wrap_socket(socket.create_connection(("example.com", 443), 20), server_hostname="example.com"); print("issuer", s.getpeercert()["issuer"])'`,
+		`python3 -c 'import requests; print("requests", requests.get("https://example.com/", timeout=20).status_code)'`,
+		`node -e 'fetch("https://example.com/").then(r => console.log("node", r.status)).catch(e => { console.log("node error", e.cause || e); })'`,
+		`certutil -L -d sql:$HOME/.pki/nssdb`,
+	}, "; echo ---; ")
+	cmd := &v1.Cmd{Id: ids.New(), Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: script}}}
+	out, err := h.App.Hub.Exec(h.Ctx(), id, cmd)
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	for _, want := range []string{"requests 200", "node 200"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q: HTTPS through the gateway is not trusted:\n%s", want, out)
+		}
+	}
+	// The certificate the box saw is the gateway's, not the site's: the
+	// connection really was decrypted.
+	if !strings.Contains(out, "('commonName', 'Silo network filter')") {
+		t.Fatalf("the box did not see the gateway's certificate:\n%s", out)
+	}
+	if !strings.Contains(out, "Silo network filter                                          C,,") {
+		t.Fatalf("the CA is not in Chromium's NSS store:\n%s", out)
+	}
+}
