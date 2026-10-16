@@ -73,12 +73,6 @@ func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 		}
 		defer release()
 	}
-	g := s.Guard()
-	if g == nil || !g.State.OtherProtocols(c) {
-		// The switch is off: this Bot has no non-HTTP door.
-		_, _ = conn.Write([]byte{5, socksNotAllowed})
-		return
-	}
 	if err := socksGreet(conn); err != nil {
 		return
 	}
@@ -86,7 +80,19 @@ func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 	if err != nil {
 		return
 	}
-	g = s.Guard()
+	g := s.Guard()
+	if g == nil || g.State == nil || !g.State.OtherProtocols(c) {
+		// The switch is off: this Bot has no non-HTTP door. The refusal is an
+		// answer to the CONNECT, so the client names it ("not allowed by
+		// ruleset") rather than failing the greeting, and the owner sees what
+		// the Bot tried to reach.
+		if s.report != nil {
+			s.report(c, host, Verdict{Block: true, Reason: "other_protocols",
+				Detail: fmt.Sprintf("port %d needs Other protocols, which the Bot's owner can turn on", port)})
+		}
+		socksReply(conn, socksNotAllowed)
+		return
+	}
 	v := g.Check(ctx, Request{Client: c, Host: host, Port: port, Proto: "tcp"})
 	if v.Flag && s.report != nil {
 		s.report(c, host, v)

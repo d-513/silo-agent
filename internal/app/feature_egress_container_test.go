@@ -3,6 +3,7 @@ package app_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
@@ -92,4 +93,56 @@ func TestContainerEgressBoxTrustsTheGateway(t *testing.T) {
 	if !strings.Contains(out, "Silo network filter                                          C,,") {
 		t.Fatalf("the CA is not in Chromium's NSS store:\n%s", out)
 	}
+}
+
+// TestContainerEgressOtherProtocols proves the SOCKS5 door end to end: ssh and
+// proxychains4 in the box point at the gateway, a port that is not web traffic
+// is refused while the Bot's Other protocols switch is off, and the same
+// command reaches it once the owner turns the switch on (no restart). It needs
+// the gateway to reach github.com:22.
+func TestContainerEgressOtherProtocols(t *testing.T) {
+	if !apptest.ContainersEnabled(t) {
+		return
+	}
+	h := newContainerHarness(t)
+	id := h.SeedBot("Socks")
+	h.StartSeededBot(id)
+
+	exec := func(command string) string {
+		t.Helper()
+		cmd := &v1.Cmd{Id: ids.New(), Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: command}}}
+		out, err := h.App.Hub.Exec(h.Ctx(), id, cmd)
+		if err != nil {
+			t.Fatalf("exec: %v", err)
+		}
+		return out
+	}
+
+	setup := exec(`echo "proxy=$SILO_SOCKS_PROXY"; ssh -G github.com | grep -i '^proxycommand'`)
+	if !strings.Contains(setup, "proxy=socks5h://") || !strings.Contains(setup, "nc -X 5 -x") {
+		t.Fatalf("the box is not pointed at the SOCKS door:\n%s", setup)
+	}
+
+	// An ssh banner through proxychains: python is dynamically linked, so the
+	// connect is the proxy's, and the name goes to the gateway unresolved.
+	probe := `proxychains4 python3 -c 'import socket; s = socket.create_connection(("github.com", 22), 15); print("banner", s.recv(64).decode(errors="replace").strip())' 2>&1`
+
+	off := exec(probe)
+	t.Logf("with the switch off the Bot reads:\n%s", off)
+	if strings.Contains(off, "banner SSH-") {
+		t.Fatalf("port 22 connected with Other protocols off:\n%s", off)
+	}
+
+	if err := h.DB.Model(&db.Bot{}).Where("id = ?", id).Update("other_protocols", true).Error; err != nil {
+		t.Fatal(err)
+	}
+	h.App.Egress.Apply()
+	var out string
+	for i := 0; i < 10; i++ {
+		if out = exec(probe); strings.Contains(out, "banner SSH-") {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+	t.Fatalf("port 22 did not connect with Other protocols on:\n%s", out)
 }

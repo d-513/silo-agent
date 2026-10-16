@@ -34,6 +34,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 # reads. Its own layer, like git.
 RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools \
     && rm -rf /var/lib/apt/lists/*
+# The network filter's SOCKS5 door (Other protocols): proxychains4 puts any
+# dynamically linked program through it, netcat-openbsd is ssh's ProxyCommand,
+# and ssh itself (git over ssh too). start.sh points all three at the gateway.
+# Its own layer, like git.
+RUN apt-get update && apt-get install -y --no-install-recommends proxychains4 netcat-openbsd openssh-client \
+    && rm -rf /var/lib/apt/lists/*
 # Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
 # bump does not rebuild the big apt layer above.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node

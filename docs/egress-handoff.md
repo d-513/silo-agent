@@ -189,6 +189,20 @@ resolves every name through it, so HTTP, HTTPS and DNS all go through the
 gateway without a `HTTP_PROXY`/`HTTPS_PROXY` pair (which would also drag the H2C
 CP link through the proxy).
 
+Other protocols reach the SOCKS5 door (`:1080`) from inside the box without
+proxy variables either: the image ships `proxychains4`, `netcat-openbsd` and
+`openssh-client`, and `botimage/start.sh` writes `/etc/proxychains4.conf`
+(`proxy_dns`, so names go to the gateway unresolved; loopback and the gateway
+itself stay local) and `/etc/ssh/ssh_config.d/silo-egress.conf` (`ProxyCommand
+nc -X 5 -x <gateway>:1080`, so ssh and git over ssh need nothing) and exports
+`SILO_SOCKS_PROXY=socks5h://<gateway>:1080` for clients with their own proxy
+setting. They are written whatever the switch says: the gateway decides per
+connection, so turning Other protocols on needs no restart. With it off the
+gateway completes the SOCKS greeting and refuses the CONNECT ("not allowed by
+ruleset"), and records an `other_protocols` block so the owner sees the attempt.
+SYSTEM.md tells the model the same. `TestContainerEgressOtherProtocols` proves
+it against the real engine (port 22 refused, then reached after the switch).
+
 A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
 user-defined network (the container's resolver becomes the network's own gateway
 address, `dns.podman`), so the box does not learn the gateway that way. The box

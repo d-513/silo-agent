@@ -32,6 +32,17 @@ func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
 	}
 }
 
+// Behind the network filter only 80 and 443 connect directly; the box's
+// start.sh points proxychains4, ssh and $SILO_SOCKS_PROXY at the SOCKS5 door.
+// The model only finds that door if the prompt names it and the switch.
+func TestSystemPromptNamesTheSOCKSDoor(t *testing.T) {
+	for _, want := range []string{"SILO_SOCKS_PROXY", "proxychains4", "Other protocols"} {
+		if !strings.Contains(System, want) {
+			t.Fatalf("SYSTEM.md does not mention %s", want)
+		}
+	}
+}
+
 func TestChannelPromptTeachesSections(t *testing.T) {
 	if !strings.Contains(Channel, "<section_send />") {
 		t.Fatal("CHANNEL.md no longer teaches the section sentinel")

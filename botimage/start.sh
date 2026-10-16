@@ -28,6 +28,37 @@ if [ -n "$SILO_EGRESS_DNS" ]; then
   printf 'nameserver %s\noptions ndots:1 timeout:2 attempts:2\n' "$SILO_EGRESS_DNS" > /etc/resolv.conf
 fi
 
+# Ports other than 80 and 443 have no transparent door: the gateway answers
+# every name with itself and listens only for web traffic there. They go
+# through its SOCKS5 door (port 1080, egress.DefaultSOCKSAddr), which is open
+# only while the Bot's owner has Other protocols on; the gateway decides, so
+# the files below are written either way and a switch flip needs no restart.
+# proxychains4 sends names to the proxy (proxy_dns), never to the local
+# resolver, whose answer would be the gateway itself. ssh (and git over ssh)
+# goes through it by default; a user's own ~/.ssh/config wins.
+if [ -n "$SILO_EGRESS_DNS" ]; then
+  socks_port=1080
+  cat > /etc/proxychains4.conf <<EOF
+strict_chain
+proxy_dns
+remote_dns_subnet 224
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+localnet 127.0.0.0/255.0.0.0
+localnet $SILO_EGRESS_DNS/255.255.255.255
+[ProxyList]
+socks5 $SILO_EGRESS_DNS $socks_port
+EOF
+  chmod 644 /etc/proxychains4.conf
+  mkdir -p /etc/ssh/ssh_config.d
+  cat > /etc/ssh/ssh_config.d/silo-egress.conf <<EOF
+Match host *,!localhost,!127.0.0.1,!::1
+    ProxyCommand nc -X 5 -x $SILO_EGRESS_DNS:$socks_port %h %p
+EOF
+  chmod 644 /etc/ssh/ssh_config.d/silo-egress.conf
+  export SILO_SOCKS_PROXY="socks5h://$SILO_EGRESS_DNS:$socks_port"
+fi
+
 # The gateway decrypts HTTPS and signs what it hands back with its own CA, so
 # the box trusts that CA: in the system bundle (OpenSSL, curl, git, Go,
 # Python's ssl; the CP's env points requests, httpx, pip and Node at it too)

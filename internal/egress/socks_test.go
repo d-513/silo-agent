@@ -93,14 +93,22 @@ func TestSOCKSConnect(t *testing.T) {
 	}
 }
 
+// With the switch off the refusal is a proper SOCKS5 answer to the CONNECT
+// ("not allowed by ruleset"), so proxychains, ssh and curl name the reason,
+// and the owner sees the attempt.
 func TestSOCKSBlockedWhenSwitchOff(t *testing.T) {
 	s, _ := NewState(testApply(t))
 	b2 := s.Client(netip.MustParseAddr("10.213.3.1"))
 	g := NewGuard(s, nil, nil)
+	var reported []Verdict
 	socks := &SOCKS{
 		Client: func(_, _ netip.Addr) *Client { return b2 },
 		Guard:  func() *Guard { return g },
-		Dial:   func(context.Context, string, string) (net.Conn, error) { return nil, io.EOF },
+		Dial: func(context.Context, string, string) (net.Conn, error) {
+			t.Error("dialed with Other protocols off")
+			return nil, io.EOF
+		},
+		report: func(_ *Client, _ string, v Verdict) { reported = append(reported, v) },
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -117,11 +125,29 @@ func TestSOCKSBlockedWhenSwitchOff(t *testing.T) {
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-	var reply [2]byte
+	if _, err := conn.Write([]byte{5, 1, 0}); err != nil {
+		t.Fatal(err)
+	}
+	var greet [2]byte
+	if _, err := io.ReadFull(conn, greet[:]); err != nil {
+		t.Fatal(err)
+	}
+	if greet != [2]byte{5, 0} {
+		t.Fatalf("method reply = %v, want no authentication", greet)
+	}
+	req := append([]byte{5, 1, 0, 3, byte(len("db.test"))}, []byte("db.test")...)
+	req = append(req, 0x15, 0x38) // 5432
+	if _, err := conn.Write(req); err != nil {
+		t.Fatal(err)
+	}
+	var reply [10]byte
 	if _, err := io.ReadFull(conn, reply[:]); err != nil {
 		t.Fatal(err)
 	}
-	if reply != [2]byte{5, socksNotAllowed} {
+	if reply[0] != 5 || reply[1] != socksNotAllowed {
 		t.Fatalf("a Bot with Other protocols off got %v", reply)
+	}
+	if len(reported) != 1 || reported[0].Reason != "other_protocols" || !reported[0].Block {
+		t.Fatalf("reported %+v, want one other_protocols block", reported)
 	}
 }
