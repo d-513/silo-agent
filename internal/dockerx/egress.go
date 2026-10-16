@@ -67,7 +67,7 @@ func (e *Engine) EgressUp(ctx context.Context, spec EgressSpec) (string, error) 
 	}
 	host := &container.HostConfig{
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-		CapAdd:        []string{"NET_ADMIN"},
+		Sysctls:       egressSysctls(),
 	}
 	if spec.Primary != "" {
 		host.NetworkMode = container.NetworkMode(spec.Primary)
@@ -85,6 +85,25 @@ func (e *Engine) EgressUp(ctx context.Context, spec EgressSpec) (string, error) 
 		return "", err
 	}
 	return resp.ID, nil
+}
+
+// egressSysctls are the gateway's network namespace settings. The gateway sits
+// on every client network, so it must never route between them or out: a box
+// whose root adds a route through the gateway would otherwise reach the
+// internet, or another client, unfiltered. Forwarding is pinned off rather than
+// trusted to the engine's default, and the gateway has no NET_ADMIN to turn it
+// back on. Strict reverse-path filtering drops a packet whose source belongs to
+// another interface's network, so a box cannot pass a spoofed DNS query off as
+// another client's (TCP cannot be spoofed that way: the reply goes to the real
+// owner of the address and the handshake never completes).
+func egressSysctls() map[string]string {
+	return map[string]string{
+		"net.ipv4.ip_forward":                "0",
+		"net.ipv6.conf.all.forwarding":       "0",
+		"net.ipv4.conf.all.rp_filter":        "1",
+		"net.ipv4.conf.default.rp_filter":    "1",
+		"net.ipv4.conf.all.accept_redirects": "0",
+	}
 }
 
 // EgressID finds the gateway container, or "" when there is none.

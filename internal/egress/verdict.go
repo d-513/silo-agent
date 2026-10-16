@@ -7,6 +7,8 @@ import (
 	"net/netip"
 	"strings"
 	"time"
+
+	"silo.agent/internal/netguard"
 )
 
 // Request is one flow the filter is asked about. Payload is the text it reads
@@ -85,7 +87,9 @@ func (g *Guard) Check(ctx context.Context, req Request) Verdict {
 	}
 	host := NormHost(req.Host)
 	if host == "" {
-		return Allow
+		// Nothing to judge is nothing to let through: an empty host dials
+		// the gateway's own loopback.
+		return Verdict{Block: true, Reason: "blocked_host", Detail: "no host to reach"}
 	}
 	c := req.Client
 
@@ -183,19 +187,13 @@ func (g *Guard) privateDest(ctx context.Context, host string) (netip.Addr, bool)
 	return netip.Addr{}, false
 }
 
-// cgnat is carrier-grade NAT space that also fronts cloud metadata
-// (100.100.100.200); it is inside as far as the box is concerned.
-var cgnat = netip.MustParsePrefix("100.64.0.0/10")
-
 // internalAddr reports whether a is loopback, private, link-local, multicast,
-// unspecified or metadata: never a place a Bot's traffic should reach.
+// unspecified, metadata (169.254.169.254, and 100.100.100.200 in carrier-grade
+// NAT space) or reserved: never a place a Bot's traffic should reach. It is
+// netguard's list, so an IPv4 address carried in IPv6 (mapped, NAT64, 6to4) is
+// judged by the one inside, the same as the dial guard judges it.
 func internalAddr(a netip.Addr) bool {
-	if !a.IsValid() {
-		return false
-	}
-	a = a.Unmap()
-	return a.IsLoopback() || a.IsPrivate() || a.IsLinkLocalUnicast() || a.IsLinkLocalMulticast() ||
-		a.IsMulticast() || a.IsUnspecified() || cgnat.Contains(a)
+	return a.IsValid() && netguard.Internal(a)
 }
 
 // queryOf returns the query string of a path, without the "?".

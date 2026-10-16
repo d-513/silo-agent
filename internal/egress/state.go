@@ -140,10 +140,19 @@ func (s *State) bot(c *Client) *botState {
 	if s == nil || c == nil {
 		return &botState{}
 	}
-	if b := s.bots[c.BotID]; b != nil {
-		return b
+	b := s.bots[c.BotID]
+	if b == nil {
+		return &botState{}
 	}
-	return &botState{}
+	if c.Kind == "stdio" {
+		// A STDIO sidecar is given the real values (a connector's
+		// ${secrets.NAME} resolves to them), never stand-ins: swapping would
+		// only corrupt what it holds, and watching for its own secrets would
+		// raise an alert on every call it is there to make. It keeps the Bot's
+		// lists and switch.
+		return &botState{block: b.block, trust: b.trust, pass: b.pass, otherProtocols: b.otherProtocols}
+	}
+	return b
 }
 
 // blocked reports whether host is on a block list, the operator's first.

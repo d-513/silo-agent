@@ -62,8 +62,7 @@ func (p *Proxy) dial(ctx context.Context, network, addr string) (net.Conn, error
 	if p.Dial != nil {
 		return p.Dial(ctx, network, addr)
 	}
-	var d net.Dialer
-	return d.DialContext(ctx, network, addr)
+	return originDial(ctx, network, addr)
 }
 
 func (p *Proxy) dialTLS(raw net.Conn, host string, spec *utls.ClientHelloSpec) (net.Conn, error) {
@@ -103,6 +102,12 @@ const (
 
 func (p *Proxy) conn(ctx context.Context, conn net.Conn, mode string) error {
 	c := p.Client(addrOf(conn.RemoteAddr()))
+	if c == nil {
+		// Not from a client network: the gateway's own ordinary network (any
+		// container on it) or a stray route. DNS and SOCKS refuse these too;
+		// the filter is nobody's open proxy.
+		return nil
+	}
 	switch mode {
 	case ModeTLS:
 		return p.transparentTLS(ctx, conn, c)
@@ -267,6 +272,10 @@ func (p *Proxy) handleConnect(ctx context.Context, client net.Conn, br *bufio.Re
 	}
 	g := p.Guard()
 	if g.State != nil && g.State.passThrough(c, host) {
+		if v := p.passVerdict(ctx, g, c, host, port); v.Block {
+			writeBlock(client, v.Detail)
+			return true, nil
+		}
 		_, _ = io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
 		up, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
@@ -296,6 +305,10 @@ func (p *Proxy) transparentTLS(ctx context.Context, conn net.Conn, c *Client) er
 	}
 	g := p.Guard()
 	if g.State != nil && g.State.passThrough(c, host) {
+		if v := p.passVerdict(ctx, g, c, host, 443); v.Block {
+			// No TLS to answer in: the box sees the connection end.
+			return nil
+		}
 		up, err := p.dial(ctx, "tcp", net.JoinHostPort(host, "443"))
 		if err != nil {
 			return err
@@ -446,6 +459,28 @@ func swapBody(b *botState, s, host string) string {
 
 // swapBackBody writes each surrogate over its real value.
 func swapBackBody(b *botState, s string) string { return b.swapBack(s) }
+
+// passVerdict judges a connection that will be spliced rather than decrypted:
+// a host on the Pass-through list, or every host while no CA is loaded. Nothing
+// inside it can be read, but the lists, the threat feeds and the
+// internal-address check hold for it as for any request, so neither an owner's
+// Pass entry nor a CA that failed to load turns the filter off. A spliced
+// stream to a port other than 443 is a raw TCP tunnel, which only the
+// Other-protocols switch opens.
+func (p *Proxy) passVerdict(ctx context.Context, g *Guard, c *Client, host string, port int) Verdict {
+	v := g.Check(ctx, Request{Client: c, Host: host, Port: port, Proto: "https"})
+	if !v.Block && port != 443 && !g.State.OtherProtocols(c) {
+		v = Verdict{Block: true, Reason: "other_protocols",
+			Detail: fmt.Sprintf("port %d is not HTTPS here; the Bot's owner can turn on Other protocols", port)}
+	}
+	if v.Block || v.Flag {
+		p.reportVerdict(c, host, v, 0, 0)
+	}
+	if v.Block {
+		p.traffic(c, host, 0, 0, "block")
+	}
+	return v
+}
 
 func (p *Proxy) reportVerdict(c *Client, host string, v Verdict, up, down int64) {
 	if p.report != nil {

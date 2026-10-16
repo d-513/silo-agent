@@ -28,9 +28,18 @@ const (
 type SOCKS struct {
 	Client func(netip.Addr) *Client
 	Guard  func() *Guard
-	// Dial reaches the destination; the real one is a plain net.Dialer.
+	// Dial reaches the destination; nil is the guarded origin dial.
 	Dial   func(ctx context.Context, network, addr string) (net.Conn, error)
 	report func(c *Client, host string, v Verdict)
+}
+
+// dial reaches the destination. With no Dial set it is the guarded origin
+// dial, which refuses an internal address however the name resolved.
+func (s *SOCKS) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	if s.Dial != nil {
+		return s.Dial(ctx, network, addr)
+	}
+	return originDial(ctx, network, addr)
 }
 
 // Serve accepts connections until ctx ends. It answers one CONNECT per
@@ -82,7 +91,7 @@ func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 		return
 	}
 	target := net.JoinHostPort(host, fmt.Sprint(port))
-	up, err := s.Dial(ctx, "tcp", target)
+	up, err := s.dial(ctx, "tcp", target)
 	if err != nil {
 		socksReply(conn, socksHostUnreach)
 		return

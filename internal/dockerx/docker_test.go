@@ -93,3 +93,18 @@ func TestStdioCacheDirIsPerBot(t *testing.T) {
 		t.Fatalf("no data dir, yet %q", got)
 	}
 }
+
+// The gateway sits on every client network and must never route between them
+// or out; it is given no capability that could turn that back on.
+func TestEgressGatewayNeverForwards(t *testing.T) {
+	s := egressSysctls()
+	for k, want := range map[string]string{
+		"net.ipv4.ip_forward":          "0",
+		"net.ipv6.conf.all.forwarding": "0",
+		"net.ipv4.conf.all.rp_filter":  "1",
+	} {
+		if s[k] != want {
+			t.Errorf("%s = %q, want %q", k, s[k], want)
+		}
+	}
+}
