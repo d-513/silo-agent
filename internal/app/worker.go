@@ -122,9 +122,12 @@ func (a *App) GetSecret(ctx context.Context, req *connect.Request[v1.SecretReq])
 	a.DB.Save(&sec)
 	// A surrogate secret never leaves the real value: the box gets the
 	// stand-in, which the network filter swaps for the real one only on the
-	// way to the allowed hosts. Mask both so neither shows up in the log.
+	// way to the allowed hosts. A box the filter does not stand in front of
+	// (the filter off, or a box made before it was on) gets the real value:
+	// nothing would swap the stand-in back. Mask both so neither shows up in
+	// the log.
 	val := sec.Value
-	if sec.Mode == "surrogate" && sec.Surrogate != "" {
+	if sec.Mode == "surrogate" && sec.Surrogate != "" && a.Egress.Filters(ctx, bot.ID, bot.ContainerID) {
 		val = sec.Surrogate
 	}
 	a.Mask(bot.ID).Add(sec.Value)

@@ -35,6 +35,8 @@ type State struct {
 	Image   string
 	// StartedAt is when the container last started; zero if never.
 	StartedAt time.Time
+	// Networks names the networks the container is attached to.
+	Networks []string
 }
 
 type Stats struct {
@@ -127,6 +129,11 @@ func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
 	if c.State != nil {
 		if t, err := time.Parse(time.RFC3339Nano, c.State.StartedAt); err == nil && t.Year() > 1 {
 			st.StartedAt = t
+		}
+	}
+	if c.NetworkSettings != nil {
+		for name := range c.NetworkSettings.Networks {
+			st.Networks = append(st.Networks, name)
 		}
 	}
 	return st, nil

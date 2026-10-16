@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -65,7 +66,14 @@ type Service struct {
 
 	mu      sync.Mutex
 	problem string
-	locks   sync.Map
+	runtime string // the engine type, asked once (rt guards it)
+	rt      sync.Mutex
+
+	// build serializes everything that creates or removes the gateway and the
+	// client networks: two clients starting at once would each create a
+	// gateway, and Reconcile would drop a network another client is still
+	// setting up.
+	build sync.Mutex
 }
 
 func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Config) *Service {
@@ -81,10 +89,21 @@ func (s *Service) Enabled() bool {
 	if !s.cfg().Egress.Enabled {
 		return false
 	}
-	if rt, err := s.docker.Runtime(context.Background()); err == nil && rt == "docker" {
-		return false
+	return s.engine() != "docker"
+}
+
+// engine is the container engine's type. The answer is kept once the API has
+// given one: the engine behind a running CP does not change, and Enabled is
+// asked on every container start. A failed ask is not kept.
+func (s *Service) engine() string {
+	s.rt.Lock()
+	defer s.rt.Unlock()
+	if s.runtime == "" {
+		if rt, err := s.docker.Runtime(context.Background()); err == nil {
+			s.runtime = rt
+		}
 	}
-	return true
+	return s.runtime
 }
 
 // Problem is the last gateway failure, shown to admins. Empty when healthy.
@@ -135,7 +154,10 @@ func (s *Service) Ensure(ctx context.Context) error {
 	if !s.Enabled() {
 		return nil
 	}
-	if _, err := s.ensureGateway(ctx); err != nil {
+	s.build.Lock()
+	_, err := s.ensureGateway(ctx)
+	s.build.Unlock()
+	if err != nil {
 		s.setProblem(err)
 		return err
 	}
@@ -145,7 +167,7 @@ func (s *Service) Ensure(ctx context.Context) error {
 }
 
 // ensureGateway makes sure the gateway container exists and is attached to
-// every client network.
+// every client network. The caller holds build.
 func (s *Service) ensureGateway(ctx context.Context) (string, error) {
 	var host db.EgressHost
 	s.db.Where("id = ?", gatewayID).Limit(1).Find(&host)
@@ -167,9 +189,16 @@ func (s *Service) ensureGateway(ctx context.Context) (string, error) {
 			return "", err
 		}
 	}
-	token := ""
 	if id == "" {
-		token = ids.New() + ids.New()
+		// A container with no row behind it (a fresh database, a lost row)
+		// holds a token nobody knows the hash of: reusing it would leave the
+		// gateway refused for good. Remove it and start one with a new token.
+		if old, err := s.docker.EgressID(ctx); err != nil {
+			return "", err
+		} else if old != "" {
+			s.docker.DropEgress(ctx, old)
+		}
+		token := ids.New() + ids.New()
 		cid, err := s.docker.EgressUp(ctx, dockerx.EgressSpec{
 			Image: s.cfg().EgressImage(),
 			Env: []string{
@@ -225,18 +254,11 @@ func (s *Service) ClientNetwork(ctx context.Context, kind, botID, connectorID, n
 	}, nil
 }
 
-func (s *Service) lockClient(key string) func() {
-	v, _ := s.locks.LoadOrStore(key, &sync.Mutex{})
-	mu := v.(*sync.Mutex)
-	mu.Lock()
-	return mu.Unlock
-}
-
 // ensureClient finds or creates a client row, carves its subnet, makes its
 // network and returns the gateway's address on it.
 func (s *Service) ensureClient(ctx context.Context, kind, botID, connectorID, name string) (*db.EgressClient, string, error) {
-	unlock := s.lockClient(kind + ":" + botID + ":" + connectorID)
-	defer unlock()
+	s.build.Lock()
+	defer s.build.Unlock()
 
 	var row db.EgressClient
 	q := s.db.Where("kind = ? AND bot_id = ? AND connector_id = ?", kind, botID, connectorID)
@@ -289,6 +311,21 @@ func (s *Service) ensureClient(ctx context.Context, kind, botID, connectorID, na
 		return nil, "", errors.New("the gateway has no address on the client network")
 	}
 	return &row, addr, nil
+}
+
+// Filters reports whether a Bot's box reaches the internet through the
+// gateway: the filter is on and the container sits on the Bot's client
+// network. A box made before the filter was turned on, or while it was off,
+// does not, and a stand-in secret would reach the internet unswapped there.
+func (s *Service) Filters(ctx context.Context, botID, containerID string) bool {
+	if !s.Enabled() || containerID == "" {
+		return false
+	}
+	st, err := s.docker.Inspect(ctx, containerID)
+	if err != nil {
+		return false
+	}
+	return slices.Contains(st.Networks, networkName("bot", botID, ""))
 }
 
 // networkName is a client's internal network name.
@@ -496,11 +533,13 @@ func (s *Service) Drop(ctx context.Context, botID string) {
 	if s == nil {
 		return
 	}
+	s.build.Lock()
 	var rows []db.EgressClient
 	s.db.Where("bot_id = ?", botID).Find(&rows)
 	for _, r := range rows {
 		s.dropClient(ctx, &r)
 	}
+	s.build.Unlock()
 	s.Apply()
 }
 
@@ -509,14 +548,17 @@ func (s *Service) DropConnector(ctx context.Context, connectorID string) {
 	if s == nil {
 		return
 	}
+	s.build.Lock()
 	var rows []db.EgressClient
 	s.db.Where("connector_id = ?", connectorID).Find(&rows)
 	for _, r := range rows {
 		s.dropClient(ctx, &r)
 	}
+	s.build.Unlock()
 	s.Apply()
 }
 
+// dropClient removes one client's network and row. The caller holds build.
 func (s *Service) dropClient(ctx context.Context, r *db.EgressClient) {
 	if s.docker != nil {
 		if gid, _ := s.docker.EgressID(ctx); gid != "" {
@@ -533,6 +575,19 @@ func (s *Service) Reconcile(ctx context.Context) {
 	if !s.Enabled() || s.db == nil {
 		return
 	}
+	s.build.Lock()
+	gateway := s.reconcile(ctx)
+	s.build.Unlock()
+	if gateway {
+		if err := s.Ensure(ctx); err != nil {
+			log.Printf("egress: %v", err)
+		}
+	}
+}
+
+// reconcile is Reconcile under build; it reports whether a gateway is still
+// needed.
+func (s *Service) reconcile(ctx context.Context) bool {
 	rows := s.clientRows()
 	live := map[string]bool{}
 	for i := range rows {
@@ -568,11 +623,9 @@ func (s *Service) Reconcile(ctx context.Context) {
 		if gid != "" {
 			s.docker.DropEgress(ctx, gid)
 		}
-		return
+		return false
 	}
-	if err := s.Ensure(ctx); err != nil {
-		log.Printf("egress: %v", err)
-	}
+	return true
 }
 
 func (s *Service) listNetworks(ctx context.Context) []dockerx.NetworkInfo {

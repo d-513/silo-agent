@@ -119,6 +119,9 @@ func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.C
 	// reports the hash of the token it was created with.
 	f.envHash[id] = ids.Hash(token)
 	st := dockerx.State{ID: id, Running: true}
+	if net != nil {
+		st.Networks = []string{net.Network}
+	}
 	f.inspect[id] = st
 	f.inspect[dockerx.Name(botID)] = st
 	f.mu.Unlock()
@@ -274,6 +277,19 @@ func (f *FakeHost) SetRunning(botID string, running bool) {
 	for k, v := range f.inspect {
 		if v.ID == "cid-"+botID {
 			v.Running = running
+			f.inspect[k] = v
+		}
+	}
+}
+
+// SetBoxNetworks replaces the networks a bot's fake container reports, as a
+// box made before the network filter was turned on would.
+func (f *FakeHost) SetBoxNetworks(botID string, nets []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, v := range f.inspect {
+		if v.ID == "cid-"+botID {
+			v.Networks = nets
 			f.inspect[k] = v
 		}
 	}

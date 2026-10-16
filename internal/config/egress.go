@@ -49,9 +49,10 @@ const (
 // names none.
 var DefaultEgressFeeds = []EgressFeed{
 	{ID: "urlhaus", URL: "https://urlhaus.abuse.ch/downloads/hostfile/", Format: egress.FormatHosts},
-	{ID: "spamhaus_drop", URL: "https://www.spamhaus.org/drop/drop.json", Format: egress.FormatCIDRJSON},
+	{ID: "threatfox", URL: "https://threatfox.abuse.ch/downloads/hostfile/", Format: egress.FormatHosts},
+	{ID: "spamhaus_drop", URL: "https://www.spamhaus.org/drop/drop_v4.json", Format: egress.FormatCIDRJSON},
 	{ID: "et_open", URL: "https://rules.emergingthreats.net/blockrules/compromised-ips.txt", Format: egress.FormatIPs},
-	{ID: "hagezi_tif", URL: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/tif.mini.txt", Format: egress.FormatDomains},
+	{ID: "hagezi_tif", URL: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.mini-onlydomains.txt", Format: egress.FormatDomains},
 }
 
 // EgressImage is the gateway image to run.

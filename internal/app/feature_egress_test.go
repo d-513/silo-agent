@@ -1,8 +1,10 @@
 package app_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -10,6 +12,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
 )
 
 // startBot starts a bot through the public API (no worker needed to inspect the
@@ -106,11 +109,12 @@ func strptr(s string) *string { return &s }
 func TestEgressSurrogateSecretIsWhatTheBoxSees(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Surrogates")
+	startBot(t, h, bot.Id)
 	const real = "ghp_REALVALUE11111111111111"
 
 	add, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
 		BotId: bot.GetId(), Name: "GITHUB_TOKEN", Value: real,
-		Mode: "surrogate", Hosts: []string{"api.github.com", "*.githubusercontent.com"},
+		Mode: "surrogate", Hosts: []string{"api.github.com", "raw.githubusercontent.com"},
 	}))
 	if err != nil {
 		t.Fatalf("AddSecret: %v", err)
@@ -221,5 +225,161 @@ func TestEgressDeleteBotDropsNetwork(t *testing.T) {
 	h.DB.Model(&db.EgressClient{}).Where("bot_id = ?", bot.Id).Count(&n)
 	if n != 0 {
 		t.Fatalf("%d egress client rows survive the Bot", n)
+	}
+}
+
+// A surrogate is only a stand-in where the gateway swaps it back. A box the
+// filter does not stand in front of gets the real value: with the filter off,
+// or a box created before it was turned on.
+func TestEgressUnfilteredBoxGetsTheRealValue(t *testing.T) {
+	const real = "ghp_REALVALUE11111111111111"
+	for _, tc := range []struct {
+		name string
+		yaml string
+	}{
+		{"filter off", "\negress:\n  enabled: false\n"},
+		{"box not on its network", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(t.TempDir())+tc.yaml))
+			bot := h.CreateBot("Plainly")
+			startBot(t, h, bot.Id)
+			if tc.yaml == "" {
+				// A box made the old way: running, but on no client network.
+				h.Fake.SetBoxNetworks(bot.Id, nil)
+			}
+			if _, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+				BotId: bot.GetId(), Name: "GITHUB_TOKEN", Value: real,
+				Mode: "surrogate", Hosts: []string{"api.github.com"},
+			})); err != nil {
+				t.Fatal(err)
+			}
+			h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+				BotId: bot.GetId(), Connector: "secrets", Action: "GITHUB_TOKEN", Decision: "allow",
+			}))
+			got, err := h.WorkerClient(bot.GetId()).GetSecret(h.Ctx(), connect.NewRequest(&v1.SecretReq{Name: "GITHUB_TOKEN"}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Msg.GetValue() != real {
+				t.Fatalf("value = %q, want the real one: nothing would swap a stand-in back", got.Msg.GetValue())
+			}
+		})
+	}
+}
+
+// An allowed host must be a host pattern, and never a public suffix: the real
+// value would go to every site below it.
+func TestEgressSurrogateHostsAreChecked(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Hosts")
+	for i, host := range []string{"com", "co.uk", "*.github.io", "github.io", "*.githubusercontent.com", "not a host", "*.com"} {
+		_, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+			BotId: bot.GetId(), Name: "BAD_" + string(rune('A'+i)), Value: "ghp_REALVALUE11111111111111",
+			Mode: "surrogate", Hosts: []string{"api.github.com", host},
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("host %q: err = %v, want refused", host, err)
+		}
+	}
+	for i, host := range []string{"api.github.com", "*.api.example.com", "someone.github.io", "10.0.0.5"} {
+		if _, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+			BotId: bot.GetId(), Name: "GOOD_" + string(rune('A'+i)), Value: "ghp_REALVALUE11111111111111",
+			Mode: "surrogate", Hosts: []string{host},
+		})); err != nil {
+			t.Errorf("host %q refused: %v", host, err)
+		}
+	}
+}
+
+// Renaming a secret moves its rule with it.
+func TestEgressRenameSecretMovesItsRule(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Rename")
+	add, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "OLD", Value: "value",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{
+		BotId: bot.GetId(), Connector: "secrets", Action: "OLD", Decision: "allow",
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.UpdateSecret(h.Ctx(), connect.NewRequest(&v1.UpdateSecretRequest{
+		BotId: bot.GetId(), Id: add.Msg.GetId(), Name: strptr("NEW"),
+	})); err != nil {
+		t.Fatal(err)
+	}
+	var rules []db.Rule
+	h.DB.Where("bot_id = ? AND connector = ?", bot.GetId(), "secrets").Find(&rules)
+	if len(rules) != 1 || rules[0].Action != "NEW" || rules[0].Decision != "allow" {
+		t.Fatalf("rules = %+v, want one allow rule on NEW", rules)
+	}
+}
+
+// A gateway container left behind with no row (a fresh database) holds a
+// token nobody knows: it is replaced, never reused.
+func TestEgressLeftoverGatewayIsReplaced(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Leftover")
+	startBot(t, h, bot.Id)
+	h.DB.Where("1 = 1").Delete(&db.EgressHost{})
+
+	if err := h.App.Egress.Ensure(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var row db.EgressHost
+	if err := h.DB.First(&row).Error; err != nil {
+		t.Fatalf("no gateway row: %v", err)
+	}
+	token := ""
+	for _, e := range h.Fake.EgressEnv() {
+		if v, ok := strings.CutPrefix(e, "SILO_EGRESS_TOKEN="); ok {
+			token = v
+		}
+	}
+	if token == "" || ids.Hash(token) != row.TokenHash {
+		t.Fatal("the gateway runs with a token the row does not know")
+	}
+	if h.Fake.EgressUps.Load() != 2 {
+		t.Fatalf("gateway started %d times, want a second, fresh one", h.Fake.EgressUps.Load())
+	}
+	if !h.Fake.EgressAttached(h.Fake.BotNet(bot.Id).Network) {
+		t.Fatal("the new gateway is not attached to the client network")
+	}
+}
+
+// Clients starting at once make one gateway, and a reconcile running
+// alongside never drops a network that is being set up.
+func TestEgressConcurrentClientsShareOneGateway(t *testing.T) {
+	h := apptest.New(t)
+	var bots []string
+	for i := 0; i < 6; i++ {
+		bots = append(bots, h.CreateBot("Racer").Id)
+	}
+	var wg sync.WaitGroup
+	for _, id := range bots {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			if _, err := h.App.Egress.ClientNetwork(context.Background(), "bot", id, "", "Racer"); err != nil {
+				t.Error(err)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			h.App.Egress.Reconcile(context.Background())
+		}()
+	}
+	wg.Wait()
+	if n := h.Fake.EgressUps.Load(); n != 1 {
+		t.Fatalf("gateway started %d times, want once", n)
+	}
+	for _, id := range bots {
+		if !h.Fake.EgressAttached("silo-egress-bot-" + id) {
+			t.Fatalf("bot %s lost its network", id)
+		}
 	}
 }

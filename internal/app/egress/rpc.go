@@ -113,9 +113,11 @@ func (s *Service) GetEgressStatus(ctx context.Context, _ *connect.Request[v1.Get
 	return connect.NewResponse(s.status()), nil
 }
 
-// RotateEgressCA makes a new certificate authority. Every box that the gateway
-// decrypted for is unaffected (the gateway does the decrypting); connections
-// through it are re-keyed, and nothing else has to change.
+// RotateEgressCA makes a new certificate authority. Boxes are affected: each
+// Bot box and STDIO sidecar trusts the CA it was given when it started, and the
+// gateway signs every intercepted connection with the new one at once, so HTTPS
+// through the gateway fails in a running box until it is restarted and picks up
+// the new certificate.
 func (s *Service) RotateEgressCA(ctx context.Context, _ *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error) {
 	if err := access.RequireAdmin(ctx); err != nil {
 		return nil, err

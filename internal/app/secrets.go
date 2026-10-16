@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/netip"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
+	"golang.org/x/net/publicsuffix"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -74,6 +78,7 @@ func (a *App) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSe
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	regenerate := false
+	oldName := s.Name
 	if req.Msg.Name != nil {
 		if *req.Msg.Name == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
@@ -101,8 +106,25 @@ func (a *App) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSe
 	if err := applySecretMode(&s, mode, hosts, regenerate); err != nil {
 		return nil, err
 	}
-	if err := a.DB.Save(&s).Error; err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a secret with that name already exists"))
+	err := a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&s).Error; err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("a secret with that name already exists"))
+		}
+		// The secret's rule (secrets.<name>) follows it to its new name, so
+		// a renamed secret keeps the owner's choice and leaves no ghost.
+		if s.Name != oldName {
+			// A row under the new name can only be a ghost: no secret had it.
+			if err := tx.Where("bot_id = ? AND connector = ? AND action = ?", s.BotID, security.Secrets, s.Name).Delete(&db.Rule{}).Error; err != nil {
+				return err
+			}
+			return tx.Model(&db.Rule{}).
+				Where("bot_id = ? AND connector = ? AND action = ?", s.BotID, security.Secrets, oldName).
+				Update("action", s.Name).Error
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	a.forgetMask(s.BotID)
 	a.Egress.Apply()
@@ -129,12 +151,34 @@ func applySecretMode(s *db.Secret, mode string, hosts []string, regen bool) erro
 		if len(hosts) == 0 {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("a surrogate secret needs at least one allowed host"))
 		}
+		for _, h := range normalizeHosts(hosts) {
+			if err := checkSecretHost(h); err != nil {
+				return connect.NewError(connect.CodeInvalidArgument, err)
+			}
+		}
 		if egress.NewSurrogate(s.Value) == "" {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("the value is too short for a surrogate; use plain mode"))
 		}
 	}
 	if regen || s.Surrogate == "" {
 		s.Surrogate = makeSurrogate(s)
+	}
+	return nil
+}
+
+// checkSecretHost refuses an allowed host the real value must not be sent to:
+// anything that is not a host pattern, and a public suffix ("com", "co.uk",
+// "github.io"), which would let every site below it receive the real value.
+func checkSecretHost(h string) error {
+	if !egress.ValidPattern(h) {
+		return fmt.Errorf("%q is not a host pattern", h)
+	}
+	bare := strings.TrimPrefix(egress.NormHost(h), "*.")
+	if _, err := netip.ParseAddr(bare); err == nil {
+		return nil
+	}
+	if suffix, _ := publicsuffix.PublicSuffix(bare); suffix == bare {
+		return fmt.Errorf("%q is a public suffix: name the site the value is for", h)
 	}
 	return nil
 }
