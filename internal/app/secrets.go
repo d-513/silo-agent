@@ -161,7 +161,7 @@ func applySecretMode(s *db.Secret, mode string, hosts []string, regen bool) erro
 			}
 		}
 		if egress.NewSurrogate(s.Value) == "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("the value is too short for a surrogate; use plain mode"))
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("the value is too short, or has too few letters and digits, for a surrogate; use plain mode"))
 		}
 	}
 	if regen || s.Surrogate == "" {
@@ -174,7 +174,8 @@ func applySecretMode(s *db.Secret, mode string, hosts []string, regen bool) erro
 // anything that is not a host pattern, and a public suffix ("com", "co.uk",
 // "github.io"), which would let every site below it receive the real value.
 func checkSecretHost(h string) error {
-	if !egress.ValidPattern(h) {
+	// A range is many hosts nobody named; 0.0.0.0/0 would be every address.
+	if _, err := netip.ParsePrefix(h); err == nil || !egress.ValidPattern(h) {
 		return fmt.Errorf("%q is not a host pattern", h)
 	}
 	bare := strings.TrimPrefix(egress.NormHost(h), "*.")

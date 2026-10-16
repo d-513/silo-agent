@@ -55,15 +55,31 @@ func TestSurrogatePrefixEndsAtSeparator(t *testing.T) {
 	if p := surrogatePrefix("ghp_ABCDEFGH"); p != 4 {
 		t.Errorf("ghp_ prefix = %d, want 4", p)
 	}
-	if p := surrogatePrefix("sk-proj-xyz"); p != 3 {
+	if p := surrogatePrefix("sk-proj-xyz"); p != 8 {
+		t.Errorf("sk-proj- prefix = %d, want 8", p)
+	}
+	if p := surrogatePrefix("sk-abcdefgh"); p != 3 {
 		t.Errorf("sk- prefix = %d, want 3", p)
 	}
-	if p := surrogatePrefix("AKIAIOSFODNN7EXAMPLE"); p != 0 {
-		t.Errorf("no separator: prefix = %d, want 0", p)
+	if p := surrogatePrefix("AKIAIOSFODNN7EXAMPLE"); p != 4 {
+		t.Errorf("AKIA prefix = %d, want 4", p)
 	}
-	// A separator past the first eight bytes is not a prefix.
-	if p := surrogatePrefix("abcdefghij_klm"); p != 0 {
-		t.Errorf("late separator: prefix = %d, want 0", p)
+	// A late separator is not a marker: those first characters may be the
+	// secret's own.
+	for _, v := range []string{"abcdefghij_klm", "abcdefg_xyz12345", "pass-word1234", "Hunter-2abcdefgh"} {
+		if p := surrogatePrefix(v); p != 0 {
+			t.Errorf("%q: prefix = %d, want 0", v, p)
+		}
+	}
+}
+
+// A value with too few letters and digits to draw would leave a stand-in that
+// is mostly, or entirely, the secret.
+func TestSurrogateRefusesAPlainValue(t *testing.T) {
+	for _, v := range []string{"!!!!!!!!!!!!", "ghp_abc!!!!!!!!", "--------a1"} {
+		if got := NewSurrogate(v); got != "" {
+			t.Errorf("NewSurrogate(%q) = %q, want empty", v, got)
+		}
 	}
 }
 

@@ -33,6 +33,9 @@ func main() {
 	if err := mcpbridge.InstallCA(os.Getenv("SILO_EGRESS_CA")); err != nil {
 		log.Printf("mcp bridge: the network filter's certificate: %v", err)
 	}
+	if err := mcpbridge.InstallDNS(os.Getenv("SILO_EGRESS_DNS")); err != nil {
+		log.Printf("mcp bridge: the network filter's resolver: %v", err)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := mcpbridge.Serve(ctx, mcpbridge.Config{

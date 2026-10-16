@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net"
 	"net/netip"
 	"net/url"
 	"slices"
@@ -143,7 +144,15 @@ func (s *Service) cpAddr() string {
 		return ""
 	}
 	if u, err := url.Parse(raw); err == nil && u.Host != "" {
-		return u.Host
+		if u.Port() != "" {
+			return u.Host
+		}
+		// A URL with no port means the scheme's; the gateway dials host:port.
+		port := "80"
+		if u.Scheme == "https" {
+			port = "443"
+		}
+		return net.JoinHostPort(u.Hostname(), port)
 	}
 	return raw
 }
@@ -488,7 +497,7 @@ func (s *Service) feeds() []*v1.EgressFeed {
 // Bot's, so they are left out.
 func (s *Service) renderBot(botID string) *v1.EgressBot {
 	var row db.Bot
-	s.db.First(&row, "id = ?", botID)
+	s.db.Where("id = ?", botID).Limit(1).Find(&row)
 	var secrets []db.Secret
 	s.db.Where("bot_id = ? AND name NOT LIKE ?", botID, "channel.%").Find(&secrets)
 	bot := &v1.EgressBot{
@@ -546,22 +555,18 @@ func secretHosts(raw string) []string {
 	return out
 }
 
-// Apply pushes a fresh apply to a connected gateway; a gateway that is away
-// gets one on its next connect.
+// Apply tells a connected gateway its state changed; a gateway that is away
+// gets the whole state on its next connect. It never waits: the session's
+// sender renders the state itself when it is next free, so changes made in a
+// burst cost one apply, and the gateway always gets the newest state — two
+// callers rendering their own could push the older one last.
 func (s *Service) Apply() {
 	if s == nil {
 		return
 	}
-	sess := s.hub.get()
-	if sess == nil {
-		return
+	if sess := s.hub.get(); sess != nil {
+		sess.poke()
 	}
-	apply, err := s.renderApply()
-	if err != nil {
-		s.setProblem(err)
-		return
-	}
-	sess.push(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}})
 }
 
 // Drop removes a Bot's client network (DeleteBot). The container must be gone
@@ -728,19 +733,19 @@ func (h *hub) remove(s *session) {
 }
 
 type session struct {
-	send chan *v1.EgressDown
-	done chan struct{}
-	once sync.Once
+	// dirty holds at most one "the state changed" for the sender.
+	dirty chan struct{}
+	done  chan struct{}
+	once  sync.Once
 }
 
 func (s *session) close() { s.once.Do(func() { close(s.done) }) }
 
-func (s *session) push(m *v1.EgressDown) bool {
+// poke marks the state changed; one already waiting covers this one too.
+func (s *session) poke() {
 	select {
-	case s.send <- m:
-		return true
-	case <-s.done:
-		return false
+	case s.dirty <- struct{}{}:
+	default:
 	}
 }
 
@@ -749,14 +754,11 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 	if _, ok := ctx.Value(hostKey).(*db.EgressHost); !ok {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
 	}
-	sess := &session{send: make(chan *v1.EgressDown, 8), done: make(chan struct{})}
+	sess := &session{dirty: make(chan struct{}, 1), done: make(chan struct{})}
 	h := s.hub
 	h.put(sess)
 	defer h.remove(sess)
-
-	if apply, err := s.renderApply(); err == nil {
-		sess.send <- &v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}}
-	}
+	sess.poke()
 	s.setProblem(nil)
 
 	errc := make(chan error, 2)
@@ -769,8 +771,13 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 			case <-sess.done:
 				errc <- nil
 				return
-			case m := <-sess.send:
-				if err := stream.Send(m); err != nil {
+			case <-sess.dirty:
+				apply, err := s.renderApply()
+				if err != nil {
+					s.setProblem(err)
+					continue
+				}
+				if err := stream.Send(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}}); err != nil {
 					errc <- err
 					return
 				}

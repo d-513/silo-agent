@@ -6,6 +6,7 @@ require (
 	blitiri.com.ar/go/spf v1.6.0
 	connectrpc.com/connect v1.20.0
 	github.com/PuerkitoBio/goquery v1.13.0
+	github.com/andybalholm/brotli v1.2.2
 	github.com/anthropics/anthropic-sdk-go v1.73.0
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/coder/websocket v1.8.15
@@ -24,6 +25,7 @@ require (
 	github.com/gotd/td v0.161.0
 	github.com/imroc/req/v3 v3.61.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/klauspost/compress v1.19.2
 	github.com/knadh/koanf/parsers/yaml v1.1.1
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
@@ -48,7 +50,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beeper/argo-go v1.1.2 // indirect
@@ -87,7 +88,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect

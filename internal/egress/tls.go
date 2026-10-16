@@ -2,6 +2,7 @@ package egress
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -44,6 +45,9 @@ func readClientHello(r io.Reader) (raw []byte, sni string, err error) {
 		raw = append(raw, hdr[:]...)
 		raw = append(raw, rec...)
 		hs = append(hs, rec...)
+		if len(hs) > maxClientHelloSize {
+			return nil, "", errors.New("the TLS hello is too large")
+		}
 		if len(hs) < 4 {
 			continue
 		}
@@ -51,6 +55,9 @@ func readClientHello(r io.Reader) (raw []byte, sni string, err error) {
 			return nil, "", errors.New("not a ClientHello")
 		}
 		hlen := int(hs[1])<<16 | int(hs[2])<<8 | int(hs[3])
+		if hlen > maxClientHelloSize {
+			return nil, "", errors.New("the TLS hello is too large")
+		}
 		if len(hs) >= 4+hlen {
 			return raw, sniFromClientHello(hs[4 : 4+hlen]), nil
 		}
@@ -128,9 +135,13 @@ func mirrorSpec(raw []byte, host string) *utls.ClientHelloSpec {
 	return &out
 }
 
-// dialTLS opens a TLS connection to addr that mirrors the client's hello.
-func dialTLS(conn net.Conn, host string, spec *utls.ClientHelloSpec) (*utls.UConn, error) {
-	cfg := &utls.Config{ServerName: host, InsecureSkipVerify: true, NextProtos: []string{"http/1.1"}}
+// dialTLS opens a TLS connection to host that mirrors the client's hello, and
+// verifies the origin's certificate against roots (nil: the system's). The
+// box only ever sees the gateway's certificate, so this is the one place the
+// origin is checked at all; skipping it would hand the real value of every
+// surrogate to whoever answers on the way.
+func dialTLS(conn net.Conn, host string, spec *utls.ClientHelloSpec, roots *x509.CertPool) (*utls.UConn, error) {
+	cfg := &utls.Config{ServerName: host, RootCAs: roots, NextProtos: []string{"http/1.1"}}
 	uconn := utls.UClient(conn, cfg, utls.HelloCustom)
 	if spec == nil {
 		uconn = utls.UClient(conn, cfg, utls.HelloChrome_Auto)
@@ -141,6 +152,11 @@ func dialTLS(conn net.Conn, host string, spec *utls.ClientHelloSpec) (*utls.UCon
 	}
 	if err := uconn.Handshake(); err != nil {
 		return nil, err
+	}
+	// A mirrored hello can name an ALPN or a version the gateway does not
+	// speak; HTTP/1.1 is all it relays.
+	if p := uconn.ConnectionState().NegotiatedProtocol; p != "" && p != "http/1.1" {
+		return nil, fmt.Errorf("the origin chose %s", p)
 	}
 	return uconn, nil
 }

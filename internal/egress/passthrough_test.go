@@ -53,7 +53,7 @@ func passProxy(t *testing.T, client netip.Addr, origin net.Listener, mode string
 	g.Resolve = noResolve
 	log := &eventLog{}
 	p := &Proxy{
-		Client: func(netip.Addr) *Client { return c },
+		Client: func(_, _ netip.Addr) *Client { return c },
 		Guard:  func() *Guard { return g },
 		Dial: func(context.Context, string, string) (net.Conn, error) {
 			return net.Dial("tcp", origin.Addr().String())
@@ -176,7 +176,7 @@ func TestProxyRefusesUnknownClient(t *testing.T) {
 	origin := originPlain(t)
 	defer origin.Close()
 	p, _, _ := testProxy(t, origin)
-	p.Client = func(netip.Addr) *Client { return nil }
+	p.Client = func(_, _ netip.Addr) *Client { return nil }
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -214,7 +214,7 @@ func TestSidecarGetsNoSurrogates(t *testing.T) {
 	if len(b.surrogates) != 0 || b.plainSecret("hunter2hunter2") {
 		t.Error("a STDIO sidecar was given the Bot's surrogates or plain-secret watch")
 	}
-	if _, leaked := b.swapOut("Bearer ghp_SURROGATE0000000000", "pastebin.com"); leaked != "" {
+	if leaked, _ := b.leak("Bearer ghp_SURROGATE0000000000", "pastebin.com", true); leaked != "" {
 		t.Error("a sidecar's request was read for the Bot's surrogates")
 	}
 	if !b.otherProtocols {

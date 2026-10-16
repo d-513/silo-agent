@@ -26,8 +26,10 @@ const (
 // it and the gateway dials it; nothing is decrypted because nothing here is TLS
 // to us.
 type SOCKS struct {
-	Client func(netip.Addr) *Client
+	Client func(remote, local netip.Addr) *Client
 	Guard  func() *Guard
+	// Admit takes one of the client's connection slots; nil admits all.
+	Admit func(c *Client) (release func(), ok bool)
 	// Dial reaches the destination; nil is the guarded origin dial.
 	Dial   func(ctx context.Context, network, addr string) (net.Conn, error)
 	report func(c *Client, host string, v Verdict)
@@ -35,11 +37,11 @@ type SOCKS struct {
 
 // dial reaches the destination. With no Dial set it is the guarded origin
 // dial, which refuses an internal address however the name resolved.
-func (s *SOCKS) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+func (s *SOCKS) dial(ctx context.Context, g *Guard, network, addr string) (net.Conn, error) {
 	if s.Dial != nil {
 		return s.Dial(ctx, network, addr)
 	}
-	return originDial(ctx, network, addr)
+	return g.Dial(ctx, network, addr)
 }
 
 // Serve accepts connections until ctx ends. It answers one CONNECT per
@@ -60,10 +62,16 @@ func (s *SOCKS) Serve(ctx context.Context, ln net.Listener) error {
 func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
-	src := addrOf(conn.RemoteAddr())
-	c := s.Client(src)
+	c := s.Client(addrOf(conn.RemoteAddr()), addrOf(conn.LocalAddr()))
 	if c == nil {
 		return
+	}
+	if s.Admit != nil {
+		release, ok := s.Admit(c)
+		if !ok {
+			return
+		}
+		defer release()
 	}
 	g := s.Guard()
 	if g == nil || !g.State.OtherProtocols(c) {
@@ -91,7 +99,7 @@ func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 		return
 	}
 	target := net.JoinHostPort(host, fmt.Sprint(port))
-	up, err := s.dial(ctx, "tcp", target)
+	up, err := s.dial(ctx, g, "tcp", target)
 	if err != nil {
 		socksReply(conn, socksHostUnreach)
 		return

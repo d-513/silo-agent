@@ -36,7 +36,7 @@ func TestSOCKSConnect(t *testing.T) {
 	g := NewGuard(s, nil, nil)
 	g.Resolve = noResolve
 	socks := &SOCKS{
-		Client: func(netip.Addr) *Client { return b1 },
+		Client: func(_, _ netip.Addr) *Client { return b1 },
 		Guard:  func() *Guard { return g },
 		Dial: func(context.Context, string, string) (net.Conn, error) {
 			return net.Dial("tcp", origin.Addr().String())
@@ -98,7 +98,7 @@ func TestSOCKSBlockedWhenSwitchOff(t *testing.T) {
 	b2 := s.Client(netip.MustParseAddr("10.213.3.1"))
 	g := NewGuard(s, nil, nil)
 	socks := &SOCKS{
-		Client: func(netip.Addr) *Client { return b2 },
+		Client: func(_, _ netip.Addr) *Client { return b2 },
 		Guard:  func() *Guard { return g },
 		Dial:   func(context.Context, string, string) (net.Conn, error) { return nil, io.EOF },
 	}

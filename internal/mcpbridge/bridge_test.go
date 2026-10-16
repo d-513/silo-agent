@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -323,5 +324,27 @@ func TestInstallCA(t *testing.T) {
 	got, _ := os.ReadFile(path)
 	if string(got) != pem+"\n" || updated != 1 {
 		t.Fatalf("wrote %q, updated %d", got, updated)
+	}
+}
+
+// Behind the filter the child resolves through the gateway; no address is no
+// filter and the resolver is left alone.
+func TestInstallDNS(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "resolv.conf")
+	if err := installDNS("", path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("a resolver was written with no filter")
+	}
+	if err := installDNS("10.213.0.2\nnameserver 8.8.8.8", path); err == nil {
+		t.Fatal("a line was smuggled into resolv.conf")
+	}
+	if err := installDNS("10.213.0.2", path); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.HasPrefix(string(got), "nameserver 10.213.0.2\n") {
+		t.Fatalf("wrote %q", got)
 	}
 }

@@ -15,7 +15,7 @@ import (
 const originTimeout = 30 * time.Second
 
 // originDial reaches what a client asked for, and is where the
-// internal-address rule holds. The verdict's own check (privateDest) resolves
+// internal-address rule holds. The verdict's own check (checkAddrs) resolves
 // the name once to give the box a readable 403, but the dial resolves it again:
 // a name that answers outside first and inside second (DNS rebinding), or that
 // did not resolve for the verdict at all, would reach the operator's network
@@ -39,4 +39,28 @@ func refuseInternal(_, address string, _ syscall.RawConn) error {
 		return fmt.Errorf("egress: %s is an internal address", ap.Addr())
 	}
 	return nil
+}
+
+// Dial is the origin dial with the threat lists' addresses refused as well as
+// the internal ones: the verdict judged the name's addresses when it looked,
+// and this judges the one actually connected to.
+func (g *Guard) Dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	var feeds *Feeds
+	if g != nil {
+		feeds = g.Feeds
+	}
+	d := net.Dialer{Timeout: originTimeout, Control: func(network, address string, c syscall.RawConn) error {
+		if err := refuseInternal(network, address, c); err != nil {
+			return err
+		}
+		if feeds == nil {
+			return nil
+		}
+		ap, _ := netip.ParseAddrPort(address)
+		if id, ok := feeds.Addr(ap.Addr()); ok {
+			return fmt.Errorf("egress: %s is on threat list %s", ap.Addr(), id)
+		}
+		return nil
+	}}
+	return d.DialContext(ctx, network, addr)
 }

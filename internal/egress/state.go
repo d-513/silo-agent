@@ -93,7 +93,10 @@ func NewState(a *v1.EgressApply) (*State, error) {
 			otherProtocols: b.GetOtherProtocols(),
 		}
 		for _, sg := range b.GetSurrogates() {
-			if len(sg.GetSurrogate()) < 8 || sg.GetReal() == "" {
+			// A stand-in is the real value's length (NewSurrogate keeps it), so
+			// a body swapped as it streams keeps its Content-Length. One that is
+			// not, or that is the value itself, is no stand-in.
+			if len(sg.GetSurrogate()) < MinSurrogate || len(sg.GetSurrogate()) != len(sg.GetReal()) || sg.GetSurrogate() == sg.GetReal() {
 				continue
 			}
 			bs.surrogates = append(bs.surrogates, surrogate{name: sg.GetName(), surrogate: sg.GetSurrogate(), real: sg.GetReal(), hosts: newHostSet(sg.GetHosts()), body: sg.GetBody()})
@@ -125,18 +128,31 @@ func variants(v string) []string {
 	return out
 }
 
-// Client finds who a connection that arrived on local belongs to.
-func (s *State) Client(local netip.Addr) *Client {
+// Client finds who a source address belongs to.
+func (s *State) Client(remote netip.Addr) *Client {
 	if s == nil {
 		return nil
 	}
-	local = local.Unmap()
+	remote = remote.Unmap()
 	for _, c := range s.clients {
-		if c.Net.Contains(local) {
+		if c.Net.Contains(remote) {
 			return c
 		}
 	}
 	return nil
+}
+
+// ClientOf finds who a connection belongs to from both its ends: the source
+// must be on a client's network and the connection must have arrived at the
+// gateway's own address on that same network. A box whose root gives itself
+// another client's address, or aims at the gateway's address on another
+// network, is nobody.
+func (s *State) ClientOf(remote, local netip.Addr) *Client {
+	c := s.Client(remote)
+	if c == nil || !c.Net.Contains(local.Unmap()) {
+		return nil
+	}
+	return c
 }
 
 func (s *State) bot(c *Client) *botState {
@@ -194,56 +210,110 @@ func (s *State) passThrough(c *Client, host string) bool {
 // protocols that are not HTTP.
 func (s *State) OtherProtocols(c *Client) bool { return s.bot(c).otherProtocols }
 
-// swapOut writes the real value over every surrogate in s that may go to
-// host. A surrogate headed anywhere else is a leak: its name comes back.
-func (b *botState) swapOut(s, host string) (out, leaked string) {
-	out = s
+// leak reports a surrogate in s that must not go to host: one whose hosts do
+// not cover it (insecure false), or one that would go to its own host over
+// plain HTTP (insecure true), where the real value would cross the internet
+// readable by anyone on the way. Either way the stand-in is not swapped and
+// the request is refused.
+func (b *botState) leak(s, host string, secure bool) (name string, insecure bool) {
 	for _, sg := range b.surrogates {
-		if !strings.Contains(out, sg.surrogate) {
+		if !strings.Contains(s, sg.surrogate) {
 			continue
 		}
 		if _, ok := sg.hosts.match(host); !ok {
-			return s, sg.name
+			return sg.name, false
 		}
-		out = strings.ReplaceAll(out, sg.surrogate, sg.real)
+		if !secure {
+			return sg.name, true
+		}
 	}
-	return out, ""
+	return "", false
 }
 
 // swapHeaders writes the real value over every surrogate in the request's
 // headers that may go to host. Headers are where a credential belongs, and
-// the one place it is swapped by default.
+// the one place it is swapped by default. The verdict has already refused a
+// request carrying any other.
 func (b *botState) swapHeaders(h http.Header, host string) {
 	for k, vs := range h {
 		for i, v := range vs {
-			vs[i], _ = b.swapOut(v, host)
+			for _, sg := range b.surrogates {
+				if _, ok := sg.hosts.match(host); ok && strings.Contains(v, sg.surrogate) {
+					v = strings.ReplaceAll(v, sg.surrogate, sg.real)
+				}
+			}
+			vs[i] = v
 		}
 		h[k] = vs
 	}
 }
 
-// swapBody writes the real value over the surrogates in a request body that
-// may go to host and whose owner allowed it in a body. Any other stand-in in
-// the body goes out as it is: the stand-in is worthless outside the box.
-func (b *botState) swapBody(s, host string) string {
+// bodySwaps is how a request body to host is rewritten on its way out: a
+// surrogate whose owner allowed bodies becomes the real value, one that may
+// not go to host at all (or not unencrypted) ends the upload, and one that may
+// go there but not in a body goes out as the stand-in, which is worthless
+// outside the box.
+func (b *botState) bodySwaps(host string, secure bool) []swap {
+	var out []swap
 	for _, sg := range b.surrogates {
-		if !sg.body || !strings.Contains(s, sg.surrogate) {
-			continue
-		}
-		if _, ok := sg.hosts.match(host); ok {
-			s = strings.ReplaceAll(s, sg.surrogate, sg.real)
+		_, ok := sg.hosts.match(host)
+		switch {
+		case !ok || !secure:
+			out = append(out, swap{old: sg.surrogate, name: sg.name, forbid: true})
+		case sg.body:
+			out = append(out, swap{old: sg.surrogate, new: sg.real, name: sg.name})
 		}
 	}
-	return s
+	return out
 }
 
-// swapBack writes each surrogate over its real value, so an answer that
-// echoes a key never teaches the box what it is.
+// backSwaps writes each surrogate over its real value in an answer, so one
+// that echoes a key never teaches the box what it is.
+func (b *botState) backSwaps() []swap {
+	out := make([]swap, 0, len(b.surrogates))
+	for _, sg := range b.surrogates {
+		out = append(out, swap{old: sg.real, new: sg.surrogate, name: sg.name})
+	}
+	return out
+}
+
+// allowedTo reports whether the named surrogate may go to host.
+func (b *botState) allowedTo(name, host string) bool {
+	for _, sg := range b.surrogates {
+		if sg.name == name {
+			_, ok := sg.hosts.match(host)
+			return ok
+		}
+	}
+	return false
+}
+
+// swapBackHeader writes each surrogate over its real value in an answer's
+// headers.
+func (b *botState) swapBackHeader(h http.Header) {
+	for _, vs := range h {
+		for i, v := range vs {
+			vs[i] = b.swapBack(v)
+		}
+	}
+}
+
+// swapBack writes each surrogate over its real value in s.
 func (b *botState) swapBack(s string) string {
 	for _, sg := range b.surrogates {
 		if strings.Contains(s, sg.real) {
 			s = strings.ReplaceAll(s, sg.real, sg.surrogate)
 		}
+	}
+	return s
+}
+
+// withoutSurrogates is s with the Bot's stand-ins cut out, for the shape
+// checks: a stand-in is made to look like the token it stands for, and one on
+// its way to its own host is expected there, not a credential leaving.
+func (b *botState) withoutSurrogates(s string) string {
+	for _, sg := range b.surrogates {
+		s = strings.ReplaceAll(s, sg.surrogate, "")
 	}
 	return s
 }

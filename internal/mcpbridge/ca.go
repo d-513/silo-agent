@@ -3,6 +3,7 @@ package mcpbridge
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,4 +45,24 @@ func installCA(pem, path string, update func() error) error {
 		return err
 	}
 	return update()
+}
+
+// ResolvFile is the sidecar's resolver configuration.
+const ResolvFile = "/etc/resolv.conf"
+
+// InstallDNS points the sidecar's resolver at the network filter gateway, as
+// a Bot's start.sh does: podman ignores a container's --dns on a user-defined
+// network, and the network's own DNS knows no outside names, so without this
+// the child behind the filter resolves nothing. An empty addr is no filter.
+func InstallDNS(addr string) error { return installDNS(addr, ResolvFile) }
+
+func installDNS(addr, path string) error {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return nil
+	}
+	if net.ParseIP(addr) == nil {
+		return fmt.Errorf("SILO_EGRESS_DNS %q is not an address", addr)
+	}
+	return os.WriteFile(path, []byte("nameserver "+addr+"\noptions ndots:1 timeout:2 attempts:2\n"), 0o644)
 }

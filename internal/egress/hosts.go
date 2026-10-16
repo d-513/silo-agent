@@ -23,8 +23,11 @@ func NormHost(h string) string {
 
 // ValidPattern reports whether p is a host pattern the lists take:
 // "example.com" (that host and everything below it), "*.example.com" (only
-// below it), or an IP address.
+// below it), an IP address, or a CIDR (every address in it).
 func ValidPattern(p string) bool {
+	if _, err := netip.ParsePrefix(strings.TrimSpace(p)); err == nil {
+		return true
+	}
 	p = strings.TrimPrefix(NormHost(p), "*.")
 	if p == "" || len(p) > 253 {
 		return false
@@ -54,10 +57,12 @@ type hostSet struct {
 	self map[string]struct{}
 	// below holds "*.example.com" patterns, stored without the "*.".
 	below map[string]struct{}
+	// nets holds CIDR patterns; they cover addresses only.
+	nets *[]netip.Prefix
 }
 
 func newHostSet(patterns ...[]string) hostSet {
-	s := hostSet{self: map[string]struct{}{}, below: map[string]struct{}{}}
+	s := hostSet{self: map[string]struct{}{}, below: map[string]struct{}{}, nets: &[]netip.Prefix{}}
 	for _, list := range patterns {
 		for _, p := range list {
 			s.add(p)
@@ -67,6 +72,10 @@ func newHostSet(patterns ...[]string) hostSet {
 }
 
 func (s hostSet) add(p string) {
+	if pre, err := netip.ParsePrefix(strings.TrimSpace(p)); err == nil {
+		*s.nets = append(*s.nets, pre.Masked())
+		return
+	}
 	p = NormHost(p)
 	if rest, ok := strings.CutPrefix(p, "*."); ok {
 		if rest != "" {
@@ -79,7 +88,9 @@ func (s hostSet) add(p string) {
 	}
 }
 
-func (s hostSet) empty() bool { return len(s.self) == 0 && len(s.below) == 0 }
+func (s hostSet) empty() bool {
+	return len(s.self) == 0 && len(s.below) == 0 && (s.nets == nil || len(*s.nets) == 0)
+}
 
 // match reports whether host is covered, and by which pattern.
 func (s hostSet) match(host string) (string, bool) {
@@ -88,9 +99,18 @@ func (s hostSet) match(host string) (string, bool) {
 		return "", false
 	}
 	// An address is matched whole: "1.1" must not cover 1.1.1.1.
-	if _, err := netip.ParseAddr(host); err == nil {
-		_, ok := s.self[host]
-		return host, ok
+	if a, err := netip.ParseAddr(host); err == nil {
+		if _, ok := s.self[host]; ok {
+			return host, true
+		}
+		if s.nets != nil {
+			for _, p := range *s.nets {
+				if p.Contains(a.Unmap()) {
+					return p.String(), true
+				}
+			}
+		}
+		return host, false
 	}
 	for h := host; ; {
 		if _, ok := s.self[h]; ok {

@@ -3,6 +3,7 @@ package egress
 import (
 	"context"
 	"net"
+	"net/netip"
 	"time"
 )
 
@@ -17,6 +18,10 @@ type CPLink struct {
 	Target func() string
 	// Dial reaches the control plane; the real one is a plain net.Dialer.
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
+	// Client, when set, finds who a connection belongs to; one from nobody
+	// (the gateway's own ordinary network, a stray route) is closed. The CP
+	// authenticates what comes through, but its link is its clients' only.
+	Client func(remote, local netip.Addr) *Client
 }
 
 func (l *CPLink) dial(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -43,6 +48,9 @@ func (l *CPLink) Serve(ctx context.Context, ln net.Listener) error {
 
 func (l *CPLink) forward(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
+	if l.Client != nil && l.Client(addrOf(conn.RemoteAddr()), addrOf(conn.LocalAddr())) == nil {
+		return
+	}
 	target := ""
 	if l.Target != nil {
 		target = l.Target()

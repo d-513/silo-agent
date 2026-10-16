@@ -134,6 +134,11 @@ func egressSysctls() map[string]string {
 		"net.ipv4.conf.all.rp_filter":        "1",
 		"net.ipv4.conf.default.rp_filter":    "1",
 		"net.ipv4.conf.all.accept_redirects": "0",
+		// Answer ARP for an address only on its own interface, so a box
+		// cannot reach the gateway's address on another client's network
+		// through its own link.
+		"net.ipv4.conf.all.arp_ignore":   "1",
+		"net.ipv4.conf.all.arp_announce": "2",
 	}
 }
 

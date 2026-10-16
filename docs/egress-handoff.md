@@ -48,7 +48,7 @@ old boxes).
 - Surrogate secrets: surrogate mode is a per-secret setting (the default) and
   needs allowed hosts (host patterns, never a public suffix such as `com` or
   `github.io`). Surrogates are format-preserving, swapped out to allowed hosts
-  only — in request headers, and in request bodies only for a secret whose
+  only and only over HTTPS to a verified origin — in request headers, and in request bodies only for a secret whose
   owner turned on **Also swap in request bodies** (`secrets.swap_body`; a body
   to an allowed host can publish what it carries) — and swapped back in
   responses. A box the filter does not stand in front of (filter off, or a box
@@ -220,3 +220,59 @@ Rotate text says so.
 That closes this handoff: the gateway, the CP side, the operator's rule layer,
 the secrets and the audit — storage, RPCs and the owner and admin UI — are all
 in place.
+
+## Hardening (after the first build)
+
+A review of the gateway closed these; each has a test in `internal/egress`
+(`hardening_test.go`, `proxy_test.go`, `stream_test.go`) unless noted.
+
+- **The origin is verified.** The box only ever sees the gateway's
+  certificate, so `dialTLS` checks the origin against the system roots
+  (`Proxy.Roots` in tests); an origin that does not verify gets a 502 and is
+  never sent the request. A host that must be reached despite its certificate
+  goes on the Pass-through list (spliced, so the box checks it itself).
+- **Real values only travel encrypted.** A surrogate to its own host over plain
+  HTTP is refused (`surrogate_insecure`), never swapped.
+- **Bodies stream.** Nothing is held whole: the verdict reads the first
+  `payloadCap` bytes, the rest passes through a `replacer` (`stream.go`) that
+  swaps stand-ins (same length, so Content-Length holds; `NewState` drops a
+  pair that is not) and ends an upload when a stand-in turns up where it must
+  not go, however deep in the body. Answers stream the same way, so SSE is not
+  held, nothing is cut at 64 MB, and HEAD keeps its Content-Length.
+- **Swap-back sees through compression and headers.** To a surrogate host the
+  request drops `Accept-Encoding`; a compressed answer anyway is decoded (gzip,
+  deflate, br, zstd) or refused, and response headers are swapped back too.
+- **Shape flags ignore the Bot's own stand-ins** (they are made to look like
+  tokens), so a GitHub surrogate no longer raises `secret_shape` on every call.
+- **Address lists apply to names.** IP threat lists and block-list
+  addresses/CIDRs are checked against what a name resolves to, and again at the
+  dial (`Guard.Dial`). Block lists take CIDRs; a secret's hosts never do.
+- **The upload budget counts what was sent**, not the 256 KB the checks read.
+- **Ports browsers refuse** (the Fetch "bad ports": 25, 22, 6667, ...) are
+  closed to the HTTP doors unless Other protocols is on.
+- **Upgrades are spliced** after a 101, so WebSockets work.
+- **Identity takes both ends** (`State.ClientOf`): the source must be on a
+  client network and the connection must arrive at the gateway's address on
+  that same network; the gateway also sets `arp_ignore`/`arp_announce`. DNS
+  over UDP still reads the source only (rp_filter holds it).
+- **One Bot cannot starve the rest:** at most 512 connections per client
+  (`Gateway.admit`), a 2-minute idle and 30-second hello/handshake deadline,
+  and a ClientHello capped at 64 KB.
+- **The CP link serves clients only.**
+- **Surrogates keep only a vendor marker** (`vendorMarkers`, or up to three
+  lower-case letters and a separator), never the secret's own first
+  characters, and need at least 8 random positions.
+- **STDIO sidecars resolve through the gateway.** Podman ignores `--dns` on a
+  user-defined network, so the bridge writes `/etc/resolv.conf` from
+  `SILO_EGRESS_DNS` (`mcpbridge.InstallDNS`); before this a sidecar behind the
+  filter resolved no outside name at all.
+- **Applies coalesce on the CP.** `Service.Apply` only marks the session dirty;
+  its sender renders the newest state when free, so callers never block on a
+  slow gateway and two renders can no longer land in the wrong order.
+
+Known and left: on a **rootful** engine a client network's bridge address
+(`.1`) is the host itself, so a service the host binds on `0.0.0.0` is
+reachable from a box without the gateway; bind host services to loopback or
+firewall the client bridges. Rootless Podman (the supported setup) keeps `.1`
+in its own namespace. The Other-protocols SOCKS door splices whatever it is
+given, TLS included, without decrypting it.

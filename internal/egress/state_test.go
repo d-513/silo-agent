@@ -2,6 +2,7 @@ package egress
 
 import (
 	"encoding/base64"
+	"net/http"
 	"net/netip"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func testApply(t *testing.T) *v1.EgressApply {
 				BotId: "b1",
 				Lists: &v1.EgressHostLists{Block: []string{"ads.example"}, Trust: []string{"pastebin.com"}, Pass: []string{"bank.example"}},
 				Surrogates: []*v1.EgressSurrogate{
-					{Name: "GITHUB_TOKEN", Surrogate: "ghp_SURROGATE0000000000", Real: "ghp_REALVALUE11111111111", Hosts: []string{"api.github.com", "*.githubusercontent.com"}},
+					{Name: "GITHUB_TOKEN", Surrogate: "ghp_SURROGATE0000000000", Real: "ghp_REALVALUE1111111111", Hosts: []string{"api.github.com", "*.githubusercontent.com"}},
 					{Name: "SHORT", Surrogate: "short", Real: "x"},
 				},
 				PlainSecrets:   []string{"hunter2hunter2", "tiny"},
@@ -132,22 +133,28 @@ func TestSurrogates(t *testing.T) {
 	}
 
 	req := "Authorization: Bearer ghp_SURROGATE0000000000"
-	out, leaked := b.swapOut(req, "api.github.com")
-	if leaked != "" || out != "Authorization: Bearer ghp_REALVALUE11111111111" {
-		t.Errorf("to an allowed host: %q, leak %q", out, leaked)
+	if name, _ := b.leak(req, "api.github.com", true); name != "" {
+		t.Errorf("to an allowed host over HTTPS: leak %q", name)
 	}
-	if out, leaked = b.swapOut(req, "raw.githubusercontent.com"); leaked != "" || !strings.Contains(out, "REALVALUE") {
+	if name, _ := b.leak(req, "raw.githubusercontent.com", true); name != "" {
 		t.Error("a wildcard host was not allowed")
 	}
-	out, leaked = b.swapOut(req, "pastebin.com")
-	if leaked != "GITHUB_TOKEN" || out != req {
-		t.Errorf("to another host: %q, leak %q; the request must stay as it was", out, leaked)
+	if name, insecure := b.leak(req, "pastebin.com", true); name != "GITHUB_TOKEN" || insecure {
+		t.Errorf("to another host: leak %q insecure %v", name, insecure)
 	}
-	if out, leaked = b.swapOut("nothing here", "pastebin.com"); leaked != "" || out != "nothing here" {
-		t.Error("a request with no surrogate was touched")
+	if name, insecure := b.leak(req, "api.github.com", false); name != "GITHUB_TOKEN" || !insecure {
+		t.Errorf("to its own host over plain HTTP: leak %q insecure %v", name, insecure)
+	}
+	if name, _ := b.leak("nothing here", "pastebin.com", false); name != "" {
+		t.Error("a request with no surrogate was judged a leak")
+	}
+	h := http.Header{"Authorization": {"Bearer ghp_SURROGATE0000000000"}}
+	b.swapHeaders(h, "api.github.com")
+	if h.Get("Authorization") != "Bearer ghp_REALVALUE1111111111" {
+		t.Errorf("header swap: %q", h.Get("Authorization"))
 	}
 
-	if got := b.swapBack(`{"token":"ghp_REALVALUE11111111111"}`); got != `{"token":"ghp_SURROGATE0000000000"}` {
+	if got := b.swapBack(`{"token":"ghp_REALVALUE1111111111"}`); got != `{"token":"ghp_SURROGATE0000000000"}` {
 		t.Errorf("swapBack = %q", got)
 	}
 	if !b.surrogateHost("api.github.com") || b.surrogateHost("example.com") {

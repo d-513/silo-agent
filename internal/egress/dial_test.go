@@ -57,7 +57,7 @@ func TestSOCKSRebindIsRefusedAtTheDial(t *testing.T) {
 	defer inside.Close()
 	_, port, _ := net.SplitHostPort(inside.Addr().String())
 
-	socks := &SOCKS{Client: func(netip.Addr) *Client { return b1 }, Guard: func() *Guard { return g }}
+	socks := &SOCKS{Client: func(_, _ netip.Addr) *Client { return b1 }, Guard: func() *Guard { return g }}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

@@ -342,9 +342,14 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 	}
 	env := spec.Env
 	if spec.Net != nil {
-		// The bridge installs the gateway's certificate before the child
-		// starts.
+		// The bridge installs the gateway's certificate and points the
+		// resolver at the gateway before the child starts: podman ignores
+		// --dns on a user-defined network, so without it the child asks the
+		// network's own DNS, which knows no outside name.
 		env = append(slices.Clone(env), caEnv(spec.Net.CA)...)
+		if spec.Net.DNS != "" {
+			env = append(env, "SILO_EGRESS_DNS="+spec.Net.DNS)
+		}
 	}
 	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
 		Image:    image,

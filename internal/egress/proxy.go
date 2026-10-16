@@ -3,8 +3,11 @@ package egress
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -16,17 +19,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 	utls "github.com/refraction-networking/utls"
 )
 
 const (
-	// maxBody is how much of one request or response body the gateway holds in
-	// memory. A request past it is refused; a response past it is streamed on.
-	maxBody = 64 << 20
-	// payloadCap bounds what the shape checks read of one request.
+	// payloadCap bounds what the shape checks read of one request. The rest
+	// of a body streams on, read only for surrogates.
 	payloadCap = 256 << 10
 	// headPeek is how much of a response is read to spot an executable.
 	headPeek = 512
+	// idleTimeout is how long a connection may sit between requests, and
+	// helloTimeout how long a TLS hello and handshake may take: a box must
+	// not hold the gateway's connections open by saying nothing.
+	idleTimeout  = 2 * time.Minute
+	helloTimeout = 30 * time.Second
 )
 
 // Proxy is the HTTP door: an explicit HTTP proxy (absolute-URI and CONNECT), a
@@ -34,13 +42,22 @@ const (
 // judged, surrogates are swapped, and the origin is re-originated with a hello
 // that mirrors the client's.
 type Proxy struct {
-	Client func(netip.Addr) *Client
+	// Client finds who a connection belongs to from its two ends.
+	Client func(remote, local netip.Addr) *Client
 	Guard  func() *Guard
-	// Dial opens a plain TCP connection to the origin.
+	// Admit takes one of the client's connection slots; nil admits all. A
+	// box past its share is refused, so one Bot cannot use up the gateway
+	// every other Bot goes through.
+	Admit func(c *Client) (release func(), ok bool)
+	// Dial opens a plain TCP connection to the origin; nil is the guarded
+	// dial.
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
 	// DialTLS wraps a raw connection in TLS for a decrypted origin. Tests
-	// replace it with a stdlib client; the default mirrors the client's hello.
+	// replace it with a stdlib client; the default mirrors the client's hello
+	// and verifies the origin against Roots.
 	DialTLS func(raw net.Conn, host string, spec *utls.ClientHelloSpec) (net.Conn, error)
+	// Roots verify the origins; nil is the system's.
+	Roots *x509.CertPool
 	// report records a block or a flag; Traffic sums every request (pass
 	// included) into the per-minute rows.
 	report  func(c *Client, host string, v Verdict, up, down int64)
@@ -59,18 +76,20 @@ func verdictName(v Verdict) string {
 	return ""
 }
 
-func (p *Proxy) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+func (p *Proxy) dial(ctx context.Context, g *Guard, network, addr string) (net.Conn, error) {
 	if p.Dial != nil {
 		return p.Dial(ctx, network, addr)
 	}
-	return originDial(ctx, network, addr)
+	return g.Dial(ctx, network, addr)
 }
 
 func (p *Proxy) dialTLS(raw net.Conn, host string, spec *utls.ClientHelloSpec) (net.Conn, error) {
+	_ = raw.SetDeadline(time.Now().Add(helloTimeout))
+	defer func() { _ = raw.SetDeadline(time.Time{}) }()
 	if p.DialTLS != nil {
 		return p.DialTLS(raw, host, spec)
 	}
-	return dialTLS(raw, host, spec)
+	return dialTLS(raw, host, spec, p.Roots)
 }
 
 // Serve accepts connections until ctx ends, running each through one of the
@@ -93,7 +112,7 @@ func (p *Proxy) Serve(ctx context.Context, ln net.Listener, mode string) error {
 
 // Modes a listener runs in.
 const (
-	// ModeProxy is an explicit HTTP proxy (proxy env vars, Chromium's flag).
+	// ModeProxy is an explicit HTTP proxy (absolute-URI and CONNECT).
 	ModeProxy = "proxy"
 	// ModeHTTP is a transparent listener on 80: origin-form requests.
 	ModeHTTP = "http"
@@ -102,142 +121,235 @@ const (
 )
 
 func (p *Proxy) conn(ctx context.Context, conn net.Conn, mode string) error {
-	c := p.Client(addrOf(conn.RemoteAddr()))
+	c := p.Client(addrOf(conn.RemoteAddr()), addrOf(conn.LocalAddr()))
 	if c == nil {
 		// Not from a client network: the gateway's own ordinary network (any
 		// container on it) or a stray route. DNS and SOCKS refuse these too;
 		// the filter is nobody's open proxy.
 		return nil
 	}
-	switch mode {
-	case ModeTLS:
-		return p.transparentTLS(ctx, conn, c)
-	default:
-		br := bufio.NewReader(conn)
-		transparent := mode == ModeHTTP
-		// A transparent listener only ever sees origin-form requests, but the
-		// same loop handles a proxy's absolute-URI ones.
-		return p.httpLoop(ctx, conn, conn, br, c, transparent, nil)
+	if p.Admit != nil {
+		release, ok := p.Admit(c)
+		if !ok {
+			if mode != ModeTLS {
+				writeStatusCode(conn, http.StatusServiceUnavailable, "too many connections through the Silo network filter at once")
+			}
+			return nil
+		}
+		defer release()
 	}
+	if mode == ModeTLS {
+		return p.transparentTLS(ctx, conn, c)
+	}
+	// A transparent listener only ever sees origin-form requests, but the
+	// same loop handles a proxy's absolute-URI ones.
+	return p.serveHTTP(ctx, conn, bufio.NewReader(conn), c, "", 0, nil)
 }
 
-// httpLoop serves requests off br, writing them to the same conn. origin, when
-// set, is a fixed upstream (used inside a MITM session where the TLS conn to
-// the client is separate from the socket).
-func (p *Proxy) httpLoop(ctx context.Context, client net.Conn, out io.Writer, br *bufio.Reader, c *Client, transparent bool, _ net.Conn) error {
+// serveHTTP serves requests off br, answering on client. tlsHost, when set, is
+// the decrypted origin every request goes to (a MITM session); otherwise each
+// request names its own.
+func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, tlsHost string, port int, spec *utls.ClientHelloSpec) error {
 	for {
+		_ = client.SetReadDeadline(time.Now().Add(idleTimeout))
 		req, err := http.ReadRequest(br)
 		if err != nil {
 			return err
 		}
-		done, err := p.handleRequest(ctx, client, out, br, c, req)
-		if err != nil {
+		// A body may take as long as it takes; the slot cap bounds how many.
+		_ = client.SetReadDeadline(time.Time{})
+		done, err := p.handleRequest(ctx, client, br, c, req, tlsHost, port, spec)
+		if err != nil || done {
 			return err
-		}
-		if done {
-			return nil
 		}
 	}
 }
 
 // handleRequest judges and forwards one request. It reports whether the
 // connection must end.
-func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, out io.Writer, br *bufio.Reader, c *Client, req *http.Request) (bool, error) {
+func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, tlsHost string, tlsPort int, spec *utls.ClientHelloSpec) (bool, error) {
 	if req.Method == http.MethodConnect {
+		if tlsHost != "" {
+			writeBlock(client, "CONNECT inside a decrypted connection is not served")
+			return true, nil
+		}
 		return p.handleConnect(ctx, client, br, c, req)
 	}
-	scheme := "http"
-	host, port := hostPort(req.URL.Host, 80)
-	if req.URL.Host == "" { // transparent: origin-form
-		host, port = hostPort(req.Host, 80)
-	} else if req.URL.Scheme != "" {
-		scheme = req.URL.Scheme
+	host, port, secure := tlsHost, tlsPort, tlsHost != ""
+	if !secure {
+		switch {
+		case req.URL.Host == "": // transparent: origin-form
+			host, port = hostPort(req.Host, 80)
+		case req.URL.Scheme == "https":
+			// An absolute https URI (rare in a plain proxy): fetch it over TLS.
+			host, port = hostPort(req.URL.Host, 443)
+			secure = true
+		default:
+			host, port = hostPort(req.URL.Host, 80)
+		}
 	}
 	if host == "" {
-		writeBlock(out, "no host in the request")
+		writeBlock(client, "no host in the request")
 		return true, nil
 	}
-	if scheme == "https" {
-		// An absolute https URI (rare in a plain proxy): fetch it over TLS.
-		return p.httpsRequest(ctx, out, c, host, port, nil, req)
-	}
-	// Read the body (capped) so surrogates and the shape checks see it whole.
+	return p.forward(ctx, client, br, c, req, host, port, secure, spec)
+}
+
+// forward sends one request on to host and its answer back. The body is never
+// held whole: its first payloadCap bytes are read for the verdict, and the
+// rest streams through the surrogate swaps, which end the upload if a stand-in
+// turns up where it must not go.
+func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, host string, port int, secure bool, spec *utls.ClientHelloSpec) (bool, error) {
 	if req.Header.Get("Expect") == "100-continue" {
 		_, _ = io.WriteString(client, "HTTP/1.1 100 Continue\r\n\r\n")
 		req.Header.Del("Expect")
 	}
-	body, err := readCapped(req.Body, maxBody)
+	head, err := io.ReadAll(io.LimitReader(req.Body, payloadCap))
 	if err != nil {
-		writeStatusCode(out, http.StatusRequestEntityTooLarge, "this request is larger than the filter allows")
+		writeStatusCode(client, http.StatusBadRequest, "the filter could not read the request body")
 		return true, nil
 	}
 	g := p.Guard()
-	path := req.URL.RequestURI()
-	verdict := g.Check(ctx, Request{Client: c, Host: host, Port: port, Proto: "http", Method: req.Method, Path: path, Payload: payloadOf(req, body)})
-	if verdict.Block {
-		p.reportVerdict(c, host, verdict, 0, 0)
+	proto := "http"
+	if secure {
+		proto = "https"
+	}
+	size := req.ContentLength
+	if size < 0 {
+		size = int64(len(head))
+	}
+	v := g.Check(ctx, Request{Client: c, Host: host, Port: port, Proto: proto, Method: req.Method,
+		Path: req.URL.RequestURI(), Payload: payloadOf(req, head), Size: size, Secure: secure})
+	if v.Block {
+		p.reportVerdict(c, host, v, 0, 0)
 		p.traffic(c, host, 0, 0, "block")
-		writeBlock(out, verdict.Detail)
+		writeBlock(client, v.Detail)
 		return true, nil
 	}
-	if verdict.Flag {
-		p.reportVerdict(c, host, verdict, int64(len(body)), 0)
+	if v.Flag {
+		p.reportVerdict(c, host, v, size, 0)
 	}
-	if g.State != nil && c != nil && g.State.bot(c).surrogateHost(host) {
-		body = swapRequest(g.State.bot(c), req, body, host)
+	b := g.State.bot(c)
+	swapHost := secure && b.surrogateHost(host)
+	if swapHost {
+		b.swapHeaders(req.Header, host)
+		// The answer is read for the real value, which a compressed body
+		// would hide; ask for it plain.
+		req.Header.Del("Accept-Encoding")
 	}
-	// Forward.
-	origin, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	for _, h := range []string{"Proxy-Connection", "Proxy-Authorization", "Keep-Alive"} {
+		req.Header.Del(h)
+	}
+
+	origin, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		log.Printf("egress: dial %s:%d: %v", host, port, err)
-		writeStatusCode(out, http.StatusBadGateway, "the filter could not reach "+host)
+		writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
 		return true, nil
 	}
+	if secure {
+		tc, err := p.dialTLS(origin, host, spec)
+		if err != nil {
+			origin.Close()
+			writeStatusCode(client, http.StatusBadGateway, "the filter could not make a verified TLS connection to "+host+": "+err.Error())
+			return true, nil
+		}
+		origin = tc
+	}
 	defer origin.Close()
-	req.Body = io.NopCloser(bytes.NewReader(body))
-	req.ContentLength = int64(len(body))
-	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
+
+	body := newReplacer(io.MultiReader(bytes.NewReader(head), req.Body), b.bodySwaps(host, secure))
+	sent := &countReader{r: body}
+	if req.ContentLength == 0 && len(req.TransferEncoding) == 0 {
+		req.Body = http.NoBody
+	} else {
+		req.Body = io.NopCloser(sent)
+	}
 	req.RequestURI = ""
 	req.URL.Scheme = ""
 	req.URL.Host = ""
-	req.Host = net.JoinHostPort(host, strconv.Itoa(port))
-	if req.Host == host+":80" {
-		req.Host = host
+	req.Host = host
+	if (secure && port != 443) || (!secure && port != 80) {
+		req.Host = net.JoinHostPort(host, strconv.Itoa(port))
 	}
 	if err := req.Write(origin); err != nil {
-		writeStatusCode(out, http.StatusBadGateway, "the filter lost the origin")
+		if name := leakedFrom(body); name != "" {
+			lv := Verdict{Block: true, Reason: "surrogate_leak", Detail: "secret " + name + " tried to leave to " + host}
+			if !secure && b.allowedTo(name, host) {
+				lv = Verdict{Block: true, Reason: "surrogate_insecure", Detail: "secret " + name + " is only sent over HTTPS"}
+			}
+			p.reportVerdict(c, host, lv, sent.n, 0)
+			p.traffic(c, host, sent.n, 0, "block")
+			writeBlock(client, lv.Detail)
+			return true, nil
+		}
+		writeStatusCode(client, http.StatusBadGateway, "the filter lost the origin")
 		return true, nil
 	}
-	done, down, err := p.relayResponse(ctx, out, origin, req, c, host)
-	p.traffic(c, host, int64(len(body)), down, verdictName(verdict))
+	if req.ContentLength < 0 {
+		if fv := g.Uploaded(c, host, sent.n-int64(len(head))); fv.Flag {
+			p.reportVerdict(c, host, fv, sent.n, 0)
+		}
+	}
+	done, down, err := p.relayResponse(client, br, origin, req, c, host, swapHost)
+	p.traffic(c, host, sent.n, down, verdictName(v))
 	return done, err
 }
 
-// relayResponse streams the origin's response back, checking its head and
-// swapping a surrogate's real value back to the stand-in.
-func (p *Proxy) relayResponse(ctx context.Context, out io.Writer, origin net.Conn, req *http.Request, c *Client, host string) (bool, int64, error) {
-	resp, err := http.ReadResponse(bufio.NewReader(origin), req)
+// relayResponse streams the origin's answer back. For a host a surrogate goes
+// to, the real value is written back to the stand-in in its headers and body
+// (decoded first if the origin compressed it anyway). An upgrade (WebSocket)
+// becomes a splice once the 101 is through.
+func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn, req *http.Request, c *Client, host string, swapHost bool) (bool, int64, error) {
+	obr := bufio.NewReader(origin)
+	resp, err := http.ReadResponse(obr, req)
 	if err != nil {
-		writeStatusCode(out, http.StatusBadGateway, "the filter got no answer from "+host)
+		writeStatusCode(client, http.StatusBadGateway, "the filter got no answer from "+host)
 		return true, 0, nil
 	}
 	defer resp.Body.Close()
 	g := p.Guard()
-	body := resp.Body
-	if c != nil && g.State != nil && g.State.bot(c).surrogateHost(host) {
-		raw, err := readCapped(body, maxBody)
-		if err != nil {
-			raw = []byte{}
-		}
-		swapped := swapBackBody(g.State.bot(c), string(raw))
-		body = io.NopCloser(strings.NewReader(swapped))
-		resp.ContentLength = int64(len(swapped))
-		resp.Header.Set("Content-Length", strconv.Itoa(len(swapped)))
-		resp.TransferEncoding = nil
+	b := g.State.bot(c)
+	if swapHost {
+		b.swapBackHeader(resp.Header)
 	}
-	// Peek the head for an executable, then put it back.
-	head, pre, err := peek(body, headPeek)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	cw := &countWriter{w: client}
+
+	if resp.StatusCode == http.StatusSwitchingProtocols {
+		if err := resp.Write(cw); err != nil {
+			return true, cw.n, err
+		}
+		var down io.Reader = obr
+		if swapHost {
+			down = newReplacer(obr, b.backSwaps())
+		}
+		spliceRW(br, client, down, origin)
+		return true, cw.n, nil
+	}
+
+	if swapHost && hasBody(req, resp) {
+		if enc := strings.TrimSpace(resp.Header.Get("Content-Encoding")); enc != "" && !strings.EqualFold(enc, "identity") {
+			dec, err := decoder(enc, resp.Body)
+			if err != nil {
+				writeStatusCode(client, http.StatusBadGateway, "the filter cannot read this answer's encoding ("+enc+")")
+				return true, 0, nil
+			}
+			resp.Body = io.NopCloser(dec)
+			resp.Header.Del("Content-Encoding")
+			resp.Header.Del("Content-Length")
+			resp.ContentLength = -1
+			if resp.ProtoAtLeast(1, 1) {
+				resp.TransferEncoding = []string{"chunked"}
+			} else {
+				resp.Close = true
+			}
+		}
+		resp.Body = io.NopCloser(newReplacer(resp.Body, b.backSwaps()))
+	}
+
+	head, pre, err := peekHead(resp.Body)
+	if err != nil && err != io.EOF {
+		writeStatusCode(client, http.StatusBadGateway, "the filter lost the answer from "+host)
 		return true, 0, nil
 	}
 	if v := g.CheckResponse(c, host, head, resp.Header.Get("Content-Type")); v.Flag {
@@ -245,11 +357,38 @@ func (p *Proxy) relayResponse(ctx context.Context, out io.Writer, origin net.Con
 	}
 	resp.Body = io.NopCloser(pre)
 	resp.Close = resp.Close || req.Close
-	cw := &countWriter{w: out}
 	if err := resp.Write(cw); err != nil {
 		return true, cw.n, err
 	}
-	return resp.Close || req.Close, cw.n, nil
+	return resp.Close, cw.n, nil
+}
+
+// hasBody reports whether an answer to req carries a body at all.
+func hasBody(req *http.Request, resp *http.Response) bool {
+	if req.Method == http.MethodHead {
+		return false
+	}
+	s := resp.StatusCode
+	return !(s >= 100 && s < 200 || s == http.StatusNoContent || s == http.StatusNotModified)
+}
+
+// decoder reads a body in the encoding the origin chose.
+func decoder(enc string, r io.Reader) (io.Reader, error) {
+	switch strings.ToLower(enc) {
+	case "gzip", "x-gzip":
+		return gzip.NewReader(r)
+	case "deflate":
+		return zlib.NewReader(r)
+	case "br":
+		return brotli.NewReader(r), nil
+	case "zstd":
+		d, err := zstd.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return d.IOReadCloser(), nil
+	}
+	return nil, fmt.Errorf("unknown encoding %q", enc)
 }
 
 // countWriter counts what went back to the client, for the traffic rows.
@@ -264,6 +403,18 @@ func (c *countWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
+// countReader counts what went to the origin.
+type countReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countReader) Read(b []byte) (int, error) {
+	n, err := c.r.Read(b)
+	c.n += int64(n)
+	return n, err
+}
+
 // handleConnect answers a proxy CONNECT: a plain TLS splice for a pass-through
 // host, a MITM otherwise.
 func (p *Proxy) handleConnect(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request) (bool, error) {
@@ -273,30 +424,34 @@ func (p *Proxy) handleConnect(ctx context.Context, client net.Conn, br *bufio.Re
 		return true, nil
 	}
 	g := p.Guard()
-	if g.State != nil && g.State.passThrough(c, host) {
+	if g.State.passThrough(c, host) {
 		if v := p.passVerdict(ctx, g, c, host, port); v.Block {
 			writeBlock(client, v.Detail)
 			return true, nil
 		}
-		_, _ = io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
-		up, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		up, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
+			writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
 			return true, nil
 		}
 		defer up.Close()
-		splice(io.MultiReader(br, client), client, up)
+		if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+			return true, err
+		}
+		splice(br, client, up)
 		return true, nil
 	}
 	if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
 		return true, err
 	}
 	// The client's hello follows; read it, then decrypt both sides.
-	return true, p.mitmStream(ctx, client, c, host, port, br, nil)
+	return true, p.mitm(ctx, client, br, nil, c, host, port)
 }
 
 // transparentTLS handles a raw TLS connection on 443: it reads the hello to
 // learn the host, then splices or MITMs.
 func (p *Proxy) transparentTLS(ctx context.Context, conn net.Conn, c *Client) error {
+	_ = conn.SetReadDeadline(time.Now().Add(helloTimeout))
 	raw, sni, err := readClientHello(conn)
 	if err != nil {
 		return err
@@ -306,12 +461,13 @@ func (p *Proxy) transparentTLS(ctx context.Context, conn net.Conn, c *Client) er
 		return errors.New("no SNI in the hello")
 	}
 	g := p.Guard()
-	if g.State != nil && g.State.passThrough(c, host) {
+	if g.State.passThrough(c, host) {
+		_ = conn.SetReadDeadline(time.Time{})
 		if v := p.passVerdict(ctx, g, c, host, 443); v.Block {
 			// No TLS to answer in: the box sees the connection end.
 			return nil
 		}
-		up, err := p.dial(ctx, "tcp", net.JoinHostPort(host, "443"))
+		up, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, "443"))
 		if err != nil {
 			return err
 		}
@@ -319,28 +475,28 @@ func (p *Proxy) transparentTLS(ctx context.Context, conn net.Conn, c *Client) er
 		splice(io.MultiReader(bytes.NewReader(raw), conn), conn, up)
 		return nil
 	}
-	return p.mitmStream(ctx, conn, c, host, 443, nil, raw)
+	return p.mitm(ctx, conn, conn, raw, c, host, 443)
 }
 
-// mitmStream decrypts the client (replaying raw first when the hello was
-// already read), judges each request, and re-originates over a mirrored TLS
-// connection. br, when set, is the client reader (a proxy CONNECT); raw is the
-// already-read hello.
-func (p *Proxy) mitmStream(ctx context.Context, client net.Conn, c *Client, host string, port int, br *bufio.Reader, raw []byte) error {
+// mitm decrypts the client and serves its requests to host. src reads the
+// client (a CONNECT's buffered reader, or the conn); raw is the hello when it
+// was already read off it.
+func (p *Proxy) mitm(ctx context.Context, client net.Conn, src io.Reader, raw []byte, c *Client, host string, port int) error {
 	g := p.Guard()
 	if g.State == nil || g.State.ca == nil {
-		// No CA: pass through on SNI only.
-		up, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		// The CA went away under this connection: splice, judged as one.
+		if v := p.passVerdict(ctx, g, c, host, port); v.Block {
+			return nil
+		}
+		up, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			return err
 		}
 		defer up.Close()
-		src := clientReader(client, br, raw)
-		splice(src, client, up)
+		splice(clientReader(src, raw), client, up)
 		return nil
 	}
-	src := clientReader(client, br, raw)
-	// If the hello was not read yet, read it now to fingerprint.
+	_ = client.SetReadDeadline(time.Now().Add(helloTimeout))
 	if raw == nil {
 		r, sni, err := readClientHello(src)
 		if err != nil {
@@ -350,88 +506,17 @@ func (p *Proxy) mitmStream(ctx context.Context, client net.Conn, c *Client, host
 		if hello := NormHost(sni); hello != "" {
 			host = hello
 		}
-		src = io.MultiReader(bytes.NewReader(raw), src)
 	}
-	tlsConn := tls.Server(&prefixConn{Conn: client, r: src}, serverTLSConfig(g.State.ca))
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
+	tlsConn := tls.Server(&prefixConn{Conn: client, r: clientReader(src, raw)}, serverTLSConfig(g.State.ca))
+	hctx, cancel := context.WithTimeout(ctx, helloTimeout)
+	err := tlsConn.HandshakeContext(hctx)
+	cancel()
+	if err != nil {
 		return err
 	}
+	_ = client.SetReadDeadline(time.Time{})
 	spec := mirrorSpec(raw, host)
-	return p.httpsLoop(ctx, tlsConn, c, host, port, spec)
-}
-
-// httpsLoop reads requests off the decrypted client connection and forwards
-// them, minting a fresh mirrored origin connection per request.
-func (p *Proxy) httpsLoop(ctx context.Context, client net.Conn, c *Client, host string, port int, spec *utls.ClientHelloSpec) error {
-	br := bufio.NewReader(client)
-	for {
-		req, err := http.ReadRequest(br)
-		if err != nil {
-			return err
-		}
-		req.URL.Scheme = "https"
-		if req.URL.Host == "" {
-			req.URL.Host = net.JoinHostPort(host, strconv.Itoa(port))
-		}
-		done, err := p.httpsRequest(ctx, client, c, host, port, spec, req)
-		if err != nil || done {
-			return err
-		}
-	}
-}
-
-func (p *Proxy) httpsRequest(ctx context.Context, out io.Writer, c *Client, host string, port int, spec *utls.ClientHelloSpec, req *http.Request) (bool, error) {
-	if req.Header.Get("Expect") == "100-continue" {
-		_, _ = io.WriteString(out, "HTTP/1.1 100 Continue\r\n\r\n")
-		req.Header.Del("Expect")
-	}
-	body, err := readCapped(req.Body, maxBody)
-	if err != nil {
-		writeStatusCode(out, http.StatusRequestEntityTooLarge, "this request is larger than the filter allows")
-		return true, nil
-	}
-	g := p.Guard()
-	path := req.URL.RequestURI()
-	v := g.Check(ctx, Request{Client: c, Host: host, Port: port, Proto: "https", Method: req.Method, Path: path, Payload: payloadOf(req, body)})
-	if v.Block {
-		p.reportVerdict(c, host, v, 0, 0)
-		p.traffic(c, host, 0, 0, "block")
-		writeBlock(out, v.Detail)
-		return true, nil
-	}
-	if v.Flag {
-		p.reportVerdict(c, host, v, int64(len(body)), 0)
-	}
-	if c != nil && g.State != nil && g.State.bot(c).surrogateHost(host) {
-		body = swapRequest(g.State.bot(c), req, body, host)
-	}
-	raw, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-	if err != nil {
-		log.Printf("egress: dial %s:%d: %v", host, port, err)
-		writeStatusCode(out, http.StatusBadGateway, "the filter could not reach "+host)
-		return true, nil
-	}
-	origin, err := p.dialTLS(raw, host, spec)
-	if err != nil {
-		raw.Close()
-		writeStatusCode(out, http.StatusBadGateway, "the filter could not secure the origin")
-		return true, nil
-	}
-	defer origin.Close()
-	req.Body = io.NopCloser(bytes.NewReader(body))
-	req.ContentLength = int64(len(body))
-	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
-	req.RequestURI = ""
-	req.URL.Scheme = ""
-	req.URL.Host = ""
-	req.Host = host
-	if err := req.Write(origin); err != nil {
-		writeStatusCode(out, http.StatusBadGateway, "the filter lost the origin")
-		return true, nil
-	}
-	done, down, err := p.relayResponse(ctx, out, origin, req, c, host)
-	p.traffic(c, host, int64(len(body)), down, verdictName(v))
-	return done, err
+	return p.serveHTTP(ctx, tlsConn, bufio.NewReader(tlsConn), c, host, port, spec)
 }
 
 // payloadOf is the text the shape checks read: the request line, its headers
@@ -453,21 +538,6 @@ func payloadOf(req *http.Request, body []byte) string {
 	}
 	return b.String()
 }
-
-// swapRequest writes the real value over the in-host surrogates of a request:
-// always in its headers, and in its body only for a secret whose owner
-// allowed that. The verdict has already blocked a surrogate headed anywhere
-// else.
-func swapRequest(b *botState, req *http.Request, body []byte, host string) []byte {
-	b.swapHeaders(req.Header, host)
-	if len(body) == 0 {
-		return body
-	}
-	return []byte(b.swapBody(string(body), host))
-}
-
-// swapBackBody writes each surrogate over its real value.
-func swapBackBody(b *botState, s string) string { return b.swapBack(s) }
 
 // passVerdict judges a connection that will be spliced rather than decrypted:
 // a host on the Pass-through list, or every host while no CA is loaded. Nothing
@@ -503,16 +573,12 @@ func (p *Proxy) traffic(c *Client, host string, up, down int64, verdict string) 
 	}
 }
 
-// clientReader replays raw (an already-read hello) then reads from br or conn.
-func clientReader(conn net.Conn, br *bufio.Reader, raw []byte) io.Reader {
-	base := io.Reader(conn)
-	if br != nil {
-		base = br
-	}
+// clientReader replays raw (an already-read hello) then reads from src.
+func clientReader(src io.Reader, raw []byte) io.Reader {
 	if raw == nil {
-		return base
+		return src
 	}
-	return io.MultiReader(bytes.NewReader(raw), base)
+	return io.MultiReader(bytes.NewReader(raw), src)
 }
 
 // prefixConn reads through r but writes and reports the address of the real
@@ -540,26 +606,20 @@ func hostPort(hostport string, def int) (string, int) {
 	return NormHost(host), n
 }
 
-func readCapped(r io.Reader, max int64) ([]byte, error) {
-	if r == nil {
-		return nil, nil
+// peekHead reads the start of a body, enough to know a program by its magic,
+// and returns it with a reader that replays it before the rest. It never waits
+// for more than the first few bytes: a stream of small events goes on as each
+// arrives.
+func peekHead(r io.Reader) ([]byte, io.Reader, error) {
+	buf := make([]byte, headPeek)
+	n := 0
+	var err error
+	for n < 4 && err == nil {
+		var m int
+		m, err = r.Read(buf[n:])
+		n += m
 	}
-	b, err := io.ReadAll(io.LimitReader(r, max+1))
-	if err != nil {
-		return b, err
-	}
-	if int64(len(b)) > max {
-		return b, errors.New("too large")
-	}
-	return b, nil
-}
-
-// peek reads up to n bytes and returns them with a reader that replays them
-// before the rest.
-func peek(r io.Reader, n int) ([]byte, io.Reader, error) {
-	buf := make([]byte, n)
-	got, err := io.ReadFull(r, buf)
-	head := buf[:got]
+	head := buf[:n]
 	return head, io.MultiReader(bytes.NewReader(head), r), err
 }
 
@@ -580,10 +640,14 @@ func writeStatusCode(w io.Writer, code int, msg string) {
 }
 
 // splice copies both ways until either side ends, half-closing as it goes.
-func splice(src io.Reader, client net.Conn, up net.Conn) {
+func splice(src io.Reader, client net.Conn, up net.Conn) { spliceRW(src, client, up, up) }
+
+// spliceRW is splice with each side's reader given: what a buffered reader
+// already holds must not be lost.
+func spliceRW(clientR io.Reader, client net.Conn, upR io.Reader, up net.Conn) {
 	done := make(chan struct{}, 2)
-	go func() { _, _ = io.Copy(up, src); closeWrite(up); done <- struct{}{} }()
-	go func() { _, _ = io.Copy(client, up); closeWrite(client); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(up, clientR); closeWrite(up); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(client, upR); closeWrite(client); done <- struct{}{} }()
 	<-done
 	<-done
 }
