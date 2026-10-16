@@ -383,3 +383,32 @@ func TestEgressConcurrentClientsShareOneGateway(t *testing.T) {
 		}
 	}
 }
+
+// Swapping into bodies is the owner's per-secret choice: off unless asked for,
+// and an unrelated edit keeps it.
+func TestEgressSwapBodyIsPerSecret(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Bodies")
+	add, err := h.Client.AddSecret(h.Ctx(), connect.NewRequest(&v1.AddSecretRequest{
+		BotId: bot.GetId(), Name: "TOKEN", Value: "ghp_REALVALUE11111111111111", Hosts: []string{"api.github.com"},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if add.Msg.GetSwapBody() {
+		t.Fatal("a new secret swaps into bodies without being asked")
+	}
+	on := true
+	up, err := h.Client.UpdateSecret(h.Ctx(), connect.NewRequest(&v1.UpdateSecretRequest{
+		BotId: bot.GetId(), Id: add.Msg.GetId(), SwapBody: &on,
+	}))
+	if err != nil || !up.Msg.GetSwapBody() {
+		t.Fatalf("turning it on: %v %+v", err, up.Msg)
+	}
+	up, err = h.Client.UpdateSecret(h.Ctx(), connect.NewRequest(&v1.UpdateSecretRequest{
+		BotId: bot.GetId(), Id: add.Msg.GetId(), Name: strptr("TOKEN2"),
+	}))
+	if err != nil || !up.Msg.GetSwapBody() {
+		t.Fatalf("a rename dropped the switch: %v %+v", err, up.Msg)
+	}
+}

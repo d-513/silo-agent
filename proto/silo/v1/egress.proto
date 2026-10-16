@@ -81,6 +81,9 @@ message EgressSurrogate {
   string surrogate = 2;
   string real = 3;
   repeated string hosts = 4;
+  // The real value is swapped in the request headers only, unless this is
+  // set: then the body too (a body can publish what it carries).
+  bool body = 5;
 }
 
 message EgressLimits {

@@ -3,6 +3,7 @@ package egress
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"strings"
@@ -34,6 +35,8 @@ type surrogate struct {
 	surrogate string
 	real      string
 	hosts     hostSet
+	// body: the owner allowed the real value in request bodies too.
+	body bool
 }
 
 type botState struct {
@@ -93,7 +96,7 @@ func NewState(a *v1.EgressApply) (*State, error) {
 			if len(sg.GetSurrogate()) < 8 || sg.GetReal() == "" {
 				continue
 			}
-			bs.surrogates = append(bs.surrogates, surrogate{name: sg.GetName(), surrogate: sg.GetSurrogate(), real: sg.GetReal(), hosts: newHostSet(sg.GetHosts())})
+			bs.surrogates = append(bs.surrogates, surrogate{name: sg.GetName(), surrogate: sg.GetSurrogate(), real: sg.GetReal(), hosts: newHostSet(sg.GetHosts()), body: sg.GetBody()})
 		}
 		for _, v := range b.GetPlainSecrets() {
 			bs.plain = append(bs.plain, variants(v)...)
@@ -205,6 +208,33 @@ func (b *botState) swapOut(s, host string) (out, leaked string) {
 		out = strings.ReplaceAll(out, sg.surrogate, sg.real)
 	}
 	return out, ""
+}
+
+// swapHeaders writes the real value over every surrogate in the request's
+// headers that may go to host. Headers are where a credential belongs, and
+// the one place it is swapped by default.
+func (b *botState) swapHeaders(h http.Header, host string) {
+	for k, vs := range h {
+		for i, v := range vs {
+			vs[i], _ = b.swapOut(v, host)
+		}
+		h[k] = vs
+	}
+}
+
+// swapBody writes the real value over the surrogates in a request body that
+// may go to host and whose owner allowed it in a body. Any other stand-in in
+// the body goes out as it is: the stand-in is worthless outside the box.
+func (b *botState) swapBody(s, host string) string {
+	for _, sg := range b.surrogates {
+		if !sg.body || !strings.Contains(s, sg.surrogate) {
+			continue
+		}
+		if _, ok := sg.hosts.match(host); ok {
+			s = strings.ReplaceAll(s, sg.surrogate, sg.real)
+		}
+	}
+	return s
 }
 
 // swapBack writes each surrogate over its real value, so an answer that

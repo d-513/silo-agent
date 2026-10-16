@@ -276,6 +276,11 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `addSecret`(request: Silo_V1_AddSecretRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SecretMeta>
 
+    /// UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
+    /// the fields set are touched; a value re-writes the stand-in.
+    @available(iOS 13, *)
+    func `updateSecret`(request: Silo_V1_UpdateSecretRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SecretMeta>
+
     @available(iOS 13, *)
     func `deleteSecret`(request: Silo_V1_DeleteSecretRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteSecretResponse>
 
@@ -290,6 +295,18 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `setRule`(request: Silo_V1_SetRuleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Rule>
+
+    /// The operator's layer of the rules engine. Admin only: these rows are the
+    /// installation's, not one Bot's, and an owner may tighten a locked one but
+    /// not loosen it.
+    @available(iOS 13, *)
+    func `listOperatorRules`(request: Silo_V1_ListOperatorRulesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListOperatorRulesResponse>
+
+    @available(iOS 13, *)
+    func `setOperatorRule`(request: Silo_V1_SetOperatorRuleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_OperatorRule>
+
+    @available(iOS 13, *)
+    func `deleteOperatorRule`(request: Silo_V1_DeleteOperatorRuleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteOperatorRuleResponse>
 
     /// Changes: what changed in the Bot's workspace, as diffs between snapshots
     /// its worker takes around every run.
@@ -346,8 +363,46 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `setAutoenableConnectors`(request: Silo_V1_SetAutoenableConnectorsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Settings>
 
+    /// The audit timeline: tool calls and their decisions, tool results the output
+    /// filter did not pass, and what the network filter blocked or flagged. With a
+    /// bot_id an owner sees their Bot's; with none an admin sees the whole
+    /// installation's.
     @available(iOS 13, *)
-    func `listAudit`(request: Silo_V1_ListAuditRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListAuditResponse>
+    func `listAuditEvents`(request: Silo_V1_ListAuditEventsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListAuditEventsResponse>
+
+    /// AuditSummary is the counts behind the page and the attention badge.
+    @available(iOS 13, *)
+    func `auditSummary`(request: Silo_V1_AuditSummaryRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AuditSummaryResponse>
+
+    /// MarkAuditRead clears one Bot's attention badge.
+    @available(iOS 13, *)
+    func `markAuditRead`(request: Silo_V1_MarkAuditReadRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AuditSummaryResponse>
+
+    /// ListTraffic is the network filter's sums: per Bot, per host.
+    @available(iOS 13, *)
+    func `listTraffic`(request: Silo_V1_ListTrafficRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListTrafficResponse>
+
+    /// The Bot's own network lists (on top of the operator's) and whether it may
+    /// talk to something that is not HTTP.
+    @available(iOS 13, *)
+    func `getBotNetwork`(request: Silo_V1_GetBotNetworkRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotNetwork>
+
+    @available(iOS 13, *)
+    func `addHostPattern`(request: Silo_V1_AddHostPatternRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotNetwork>
+
+    @available(iOS 13, *)
+    func `removeHostPattern`(request: Silo_V1_RemoveHostPatternRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotNetwork>
+
+    @available(iOS 13, *)
+    func `setOtherProtocols`(request: Silo_V1_SetOtherProtocolsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotNetwork>
+
+    /// The filter itself, for admins: whether it is on, how it is doing, and the
+    /// key it decrypts with.
+    @available(iOS 13, *)
+    func `getEgressStatus`(request: Silo_V1_GetEgressStatusRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_EgressStatus>
+
+    @available(iOS 13, *)
+    func `rotateEgressCa`(request: Silo_V1_RotateEgressCARequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_EgressStatus>
 
     @available(iOS 13, *)
     func `listLlmlogs`(request: Silo_V1_ListLLMLogsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListLLMLogsResponse>
@@ -879,6 +934,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `updateSecret`(request: Silo_V1_UpdateSecretRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SecretMeta> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateSecret", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `deleteSecret`(request: Silo_V1_DeleteSecretRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteSecretResponse> {
         return await self.client.unary(path: "/silo.v1.UI/DeleteSecret", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -901,6 +961,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `setRule`(request: Silo_V1_SetRuleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Rule> {
         return await self.client.unary(path: "/silo.v1.UI/SetRule", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listOperatorRules`(request: Silo_V1_ListOperatorRulesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListOperatorRulesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListOperatorRules", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setOperatorRule`(request: Silo_V1_SetOperatorRuleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_OperatorRule> {
+        return await self.client.unary(path: "/silo.v1.UI/SetOperatorRule", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteOperatorRule`(request: Silo_V1_DeleteOperatorRuleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteOperatorRuleResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteOperatorRule", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -984,8 +1059,53 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
-    public func `listAudit`(request: Silo_V1_ListAuditRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListAuditResponse> {
-        return await self.client.unary(path: "/silo.v1.UI/ListAudit", idempotencyLevel: .unknown, request: request, headers: headers)
+    public func `listAuditEvents`(request: Silo_V1_ListAuditEventsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListAuditEventsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListAuditEvents", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `auditSummary`(request: Silo_V1_AuditSummaryRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AuditSummaryResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AuditSummary", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `markAuditRead`(request: Silo_V1_MarkAuditReadRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AuditSummaryResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/MarkAuditRead", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listTraffic`(request: Silo_V1_ListTrafficRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListTrafficResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListTraffic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getBotNetwork`(request: Silo_V1_GetBotNetworkRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotNetwork> {
+        return await self.client.unary(path: "/silo.v1.UI/GetBotNetwork", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `addHostPattern`(request: Silo_V1_AddHostPatternRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotNetwork> {
+        return await self.client.unary(path: "/silo.v1.UI/AddHostPattern", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeHostPattern`(request: Silo_V1_RemoveHostPatternRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotNetwork> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveHostPattern", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setOtherProtocols`(request: Silo_V1_SetOtherProtocolsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotNetwork> {
+        return await self.client.unary(path: "/silo.v1.UI/SetOtherProtocols", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getEgressStatus`(request: Silo_V1_GetEgressStatusRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_EgressStatus> {
+        return await self.client.unary(path: "/silo.v1.UI/GetEgressStatus", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `rotateEgressCa`(request: Silo_V1_RotateEgressCARequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_EgressStatus> {
+        return await self.client.unary(path: "/silo.v1.UI/RotateEgressCA", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1252,11 +1372,15 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let clearTaskboard = Connect.MethodSpec(name: "ClearTaskboard", service: "silo.v1.UI", type: .unary)
             public static let listSecrets = Connect.MethodSpec(name: "ListSecrets", service: "silo.v1.UI", type: .unary)
             public static let addSecret = Connect.MethodSpec(name: "AddSecret", service: "silo.v1.UI", type: .unary)
+            public static let updateSecret = Connect.MethodSpec(name: "UpdateSecret", service: "silo.v1.UI", type: .unary)
             public static let deleteSecret = Connect.MethodSpec(name: "DeleteSecret", service: "silo.v1.UI", type: .unary)
             public static let listApprovals = Connect.MethodSpec(name: "ListApprovals", service: "silo.v1.UI", type: .unary)
             public static let decideApproval = Connect.MethodSpec(name: "DecideApproval", service: "silo.v1.UI", type: .unary)
             public static let listRules = Connect.MethodSpec(name: "ListRules", service: "silo.v1.UI", type: .unary)
             public static let setRule = Connect.MethodSpec(name: "SetRule", service: "silo.v1.UI", type: .unary)
+            public static let listOperatorRules = Connect.MethodSpec(name: "ListOperatorRules", service: "silo.v1.UI", type: .unary)
+            public static let setOperatorRule = Connect.MethodSpec(name: "SetOperatorRule", service: "silo.v1.UI", type: .unary)
+            public static let deleteOperatorRule = Connect.MethodSpec(name: "DeleteOperatorRule", service: "silo.v1.UI", type: .unary)
             public static let listChanges = Connect.MethodSpec(name: "ListChanges", service: "silo.v1.UI", type: .unary)
             public static let listChangeFiles = Connect.MethodSpec(name: "ListChangeFiles", service: "silo.v1.UI", type: .unary)
             public static let getChangePatch = Connect.MethodSpec(name: "GetChangePatch", service: "silo.v1.UI", type: .unary)
@@ -1273,7 +1397,16 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listProviderModels = Connect.MethodSpec(name: "ListProviderModels", service: "silo.v1.UI", type: .unary)
             public static let setConnectorVars = Connect.MethodSpec(name: "SetConnectorVars", service: "silo.v1.UI", type: .unary)
             public static let setAutoenableConnectors = Connect.MethodSpec(name: "SetAutoenableConnectors", service: "silo.v1.UI", type: .unary)
-            public static let listAudit = Connect.MethodSpec(name: "ListAudit", service: "silo.v1.UI", type: .unary)
+            public static let listAuditEvents = Connect.MethodSpec(name: "ListAuditEvents", service: "silo.v1.UI", type: .unary)
+            public static let auditSummary = Connect.MethodSpec(name: "AuditSummary", service: "silo.v1.UI", type: .unary)
+            public static let markAuditRead = Connect.MethodSpec(name: "MarkAuditRead", service: "silo.v1.UI", type: .unary)
+            public static let listTraffic = Connect.MethodSpec(name: "ListTraffic", service: "silo.v1.UI", type: .unary)
+            public static let getBotNetwork = Connect.MethodSpec(name: "GetBotNetwork", service: "silo.v1.UI", type: .unary)
+            public static let addHostPattern = Connect.MethodSpec(name: "AddHostPattern", service: "silo.v1.UI", type: .unary)
+            public static let removeHostPattern = Connect.MethodSpec(name: "RemoveHostPattern", service: "silo.v1.UI", type: .unary)
+            public static let setOtherProtocols = Connect.MethodSpec(name: "SetOtherProtocols", service: "silo.v1.UI", type: .unary)
+            public static let getEgressStatus = Connect.MethodSpec(name: "GetEgressStatus", service: "silo.v1.UI", type: .unary)
+            public static let rotateEgressCa = Connect.MethodSpec(name: "RotateEgressCA", service: "silo.v1.UI", type: .unary)
             public static let listLlmlogs = Connect.MethodSpec(name: "ListLLMLogs", service: "silo.v1.UI", type: .unary)
             public static let listConnectors = Connect.MethodSpec(name: "ListConnectors", service: "silo.v1.UI", type: .unary)
             public static let createConnector = Connect.MethodSpec(name: "CreateConnector", service: "silo.v1.UI", type: .unary)

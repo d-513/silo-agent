@@ -1330,6 +1330,9 @@ message SecretMeta {
   repeated string hosts = 6;
   // Whether a stand-in exists: false for a plain secret or one too short.
   bool surrogate = 7;
+  // The filter also swaps the real value into request bodies, not only
+  // headers. See db.Secret.SwapBody.
+  bool swap_body = 8;
 }
 
 message ListSecretsRequest {
@@ -1347,6 +1350,7 @@ message AddSecretRequest {
   // "surrogate" (the default when empty) or "plain".
   string mode = 4;
   repeated string hosts = 5;
+  bool swap_body = 6;
 }
 
 message UpdateSecretRequest {
@@ -1356,6 +1360,7 @@ message UpdateSecretRequest {
   optional string value = 4;
   optional string mode = 5;
   repeated string hosts = 6;
+  optional bool swap_body = 7;
 }
 
 message DeleteSecretRequest {

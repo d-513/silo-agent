@@ -2,6 +2,7 @@ import { ui } from "../api";
 import { fail } from "../errors";
 import { ArmedButton, SaveButton } from "../Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "../Field";
+import { ToggleRow } from "../Switch";
 import { TabPill, TabPills } from "../TabPills";
 import { parseHosts, type SecretsState } from "./useSecrets";
 import { t } from "../i18n.ts";
@@ -9,11 +10,12 @@ import { t } from "../i18n.ts";
 // The Secrets tab: names and last use only; values go to the Bot after you
 // allow it and are masked before the model sees output. A surrogate secret is
 // one the Bot may hold a stand-in for, with the real value sent only from the
-// network filter to the hosts you list.
+// network filter to the hosts you list: in request headers, and in bodies too
+// only when you allow it.
 export function SecretsPane({ botId, state, onError }: { botId: string; state: SecretsState; onError: (message: string) => void }) {
   const {
     secrets, removed, reload, saver,
-    name, setName, value, setValue, mode, setMode, hosts, setHosts, reset,
+    name, setName, value, setValue, mode, setMode, hosts, setHosts, swapBody, setSwapBody, reset,
     editing, startEdit, stopEdit, editField,
   } = state;
 
@@ -62,6 +64,9 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                       />
                     </Field>
                   </div>
+                  {editing.mode === "surrogate" ? (
+                    <BodySwap on={editing.swapBody} onChange={(v) => editField({ swapBody: v })} />
+                  ) : null}
                   <div className="flex items-center gap-2">
                     <SaveButton
                       type="button"
@@ -77,6 +82,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                               value: editing.value || undefined,
                               mode: editing.mode,
                               hosts: parseHosts(editing.hosts),
+                              swapBody: editing.swapBody,
                             }),
                           );
                           stopEdit();
@@ -102,6 +108,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                         <span title={t("A stand-in the Bot holds; the network filter swaps in the real value for these hosts.")}>
                           {t("Surrogate")}
                           {s.hosts.length > 0 ? ` · ${s.hosts.join(", ")}` : ""}
+                          {s.swapBody ? ` · ${t("also in bodies")}` : ""}
                         </span>
                       ) : (
                         <span title={t("The Bot holds the real value. For keys and passwords nothing can stand in for it.")}>{t("Plain")}</span>
@@ -113,7 +120,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                     <button
                       type="button"
                       className="rounded-md px-2.5 py-1 text-[12.5px] font-medium text-ink-3 hover:bg-pressed hover:text-ink"
-                      onClick={() => startEdit({ id: s.id, name: s.name, mode: s.mode || "plain", hosts: s.hosts })}
+                      onClick={() => startEdit({ id: s.id, name: s.name, mode: s.mode || "plain", hosts: s.hosts, swapBody: s.swapBody })}
                     >
                       {t("Edit")}
                     </button>
@@ -140,7 +147,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
           onSubmit={async (e) => {
             e.preventDefault();
             try {
-              await saver.run(() => ui.addSecret({ botId, name, value, mode, hosts: parseHosts(hosts) }));
+              await saver.run(() => ui.addSecret({ botId, name, value, mode, hosts: parseHosts(hosts), swapBody: mode === "surrogate" && swapBody }));
               reset();
               await reload();
             } catch (ex) {
@@ -182,6 +189,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
               </p>
             )}
           </div>
+          {mode === "surrogate" ? <BodySwap on={swapBody} onChange={setSwapBody} /> : null}
           <div className="flex items-end justify-between gap-3">
             <p className="text-[12.5px] text-ink-3">
               {mode === "surrogate"
@@ -200,5 +208,19 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
         </form>
       </Panel>
     </div>
+  );
+}
+
+// The filter swaps the real value into request headers only, unless the owner
+// allows bodies for this secret: a body to an allowed host can still publish
+// what it carries (an issue comment, a gist).
+function BodySwap({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <ToggleRow
+      label={t("Also swap in request bodies")}
+      hint={t("Off, the real value goes only in headers such as Authorization. Turn on for an API that wants the key in the body; a body can publish what it carries.")}
+      on={on}
+      onChange={onChange}
+    />
   );
 }

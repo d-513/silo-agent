@@ -129,6 +129,11 @@ type Secret struct {
 	// Hosts is the JSON list of host patterns a surrogate's real value may be
 	// sent to. A surrogate with no hosts is not made.
 	Hosts string `gorm:"not null;default:''"`
+	// SwapBody lets the filter swap the real value into request bodies too.
+	// Off, only headers carry it (Authorization, an API-key header): a body
+	// to an allowed host can still publish what it holds, as an issue
+	// comment or a paste does, so the owner opts in per secret.
+	SwapBody bool `gorm:"not null;default:false"`
 	// Surrogate is the stable stand-in the box knows, generated when a secret
 	// is saved in surrogate mode. Empty for a plain secret, for a value too
 	// short to stand in for, and for a channel's own secret.

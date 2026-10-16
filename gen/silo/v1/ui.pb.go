@@ -9578,7 +9578,10 @@ type SecretMeta struct {
 	// Host patterns a surrogate's real value may be sent to.
 	Hosts []string `protobuf:"bytes,6,rep,name=hosts,proto3" json:"hosts,omitempty"`
 	// Whether a stand-in exists: false for a plain secret or one too short.
-	Surrogate     bool `protobuf:"varint,7,opt,name=surrogate,proto3" json:"surrogate,omitempty"`
+	Surrogate bool `protobuf:"varint,7,opt,name=surrogate,proto3" json:"surrogate,omitempty"`
+	// The filter also swaps the real value into request bodies, not only
+	// headers. See db.Secret.SwapBody.
+	SwapBody      bool `protobuf:"varint,8,opt,name=swap_body,json=swapBody,proto3" json:"swap_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9658,6 +9661,13 @@ func (x *SecretMeta) GetHosts() []string {
 func (x *SecretMeta) GetSurrogate() bool {
 	if x != nil {
 		return x.Surrogate
+	}
+	return false
+}
+
+func (x *SecretMeta) GetSwapBody() bool {
+	if x != nil {
+		return x.SwapBody
 	}
 	return false
 }
@@ -9758,6 +9768,7 @@ type AddSecretRequest struct {
 	// "surrogate" (the default when empty) or "plain".
 	Mode          string   `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
 	Hosts         []string `protobuf:"bytes,5,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	SwapBody      bool     `protobuf:"varint,6,opt,name=swap_body,json=swapBody,proto3" json:"swap_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9827,6 +9838,13 @@ func (x *AddSecretRequest) GetHosts() []string {
 	return nil
 }
 
+func (x *AddSecretRequest) GetSwapBody() bool {
+	if x != nil {
+		return x.SwapBody
+	}
+	return false
+}
+
 type UpdateSecretRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
@@ -9835,6 +9853,7 @@ type UpdateSecretRequest struct {
 	Value         *string                `protobuf:"bytes,4,opt,name=value,proto3,oneof" json:"value,omitempty"`
 	Mode          *string                `protobuf:"bytes,5,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
 	Hosts         []string               `protobuf:"bytes,6,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	SwapBody      *bool                  `protobuf:"varint,7,opt,name=swap_body,json=swapBody,proto3,oneof" json:"swap_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9909,6 +9928,13 @@ func (x *UpdateSecretRequest) GetHosts() []string {
 		return x.Hosts
 	}
 	return nil
+}
+
+func (x *UpdateSecretRequest) GetSwapBody() bool {
+	if x != nil && x.SwapBody != nil {
+		return *x.SwapBody
+	}
+	return false
 }
 
 type DeleteSecretRequest struct {
@@ -20388,7 +20414,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\"G\n" +
 	"\x15ClearTaskboardRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
-	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\xb9\x01\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\xd6\x01\n" +
 	"\n" +
 	"SecretMeta\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -20399,27 +20425,32 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"lastUsedAt\x12\x12\n" +
 	"\x04mode\x18\x05 \x01(\tR\x04mode\x12\x14\n" +
 	"\x05hosts\x18\x06 \x03(\tR\x05hosts\x12\x1c\n" +
-	"\tsurrogate\x18\a \x01(\bR\tsurrogate\"+\n" +
+	"\tsurrogate\x18\a \x01(\bR\tsurrogate\x12\x1b\n" +
+	"\tswap_body\x18\b \x01(\bR\bswapBody\"+\n" +
 	"\x12ListSecretsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"D\n" +
 	"\x13ListSecretsResponse\x12-\n" +
-	"\asecrets\x18\x01 \x03(\v2\x13.silo.v1.SecretMetaR\asecrets\"}\n" +
+	"\asecrets\x18\x01 \x03(\v2\x13.silo.v1.SecretMetaR\asecrets\"\x9a\x01\n" +
 	"\x10AddSecretRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\tR\x05value\x12\x12\n" +
 	"\x04mode\x18\x04 \x01(\tR\x04mode\x12\x14\n" +
-	"\x05hosts\x18\x05 \x03(\tR\x05hosts\"\xbb\x01\n" +
+	"\x05hosts\x18\x05 \x03(\tR\x05hosts\x12\x1b\n" +
+	"\tswap_body\x18\x06 \x01(\bR\bswapBody\"\xeb\x01\n" +
 	"\x13UpdateSecretRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x17\n" +
 	"\x04name\x18\x03 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
 	"\x05value\x18\x04 \x01(\tH\x01R\x05value\x88\x01\x01\x12\x17\n" +
 	"\x04mode\x18\x05 \x01(\tH\x02R\x04mode\x88\x01\x01\x12\x14\n" +
-	"\x05hosts\x18\x06 \x03(\tR\x05hostsB\a\n" +
+	"\x05hosts\x18\x06 \x03(\tR\x05hosts\x12 \n" +
+	"\tswap_body\x18\a \x01(\bH\x03R\bswapBody\x88\x01\x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_valueB\a\n" +
-	"\x05_mode\"<\n" +
+	"\x05_modeB\f\n" +
+	"\n" +
+	"_swap_body\"<\n" +
 	"\x13DeleteSecretRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\x16\n" +

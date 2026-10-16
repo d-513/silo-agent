@@ -182,8 +182,8 @@ func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, out io.Write
 	if verdict.Flag {
 		p.reportVerdict(c, host, verdict, int64(len(body)), 0)
 	}
-	if g.State != nil && c != nil && g.State.bot(c).surrogateHost(host) && len(body) > 0 {
-		body = []byte(swapBody(g.State.bot(c), string(body), host))
+	if g.State != nil && c != nil && g.State.bot(c).surrogateHost(host) {
+		body = swapRequest(g.State.bot(c), req, body, host)
 	}
 	// Forward.
 	origin, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
@@ -400,8 +400,8 @@ func (p *Proxy) httpsRequest(ctx context.Context, out io.Writer, c *Client, host
 	if v.Flag {
 		p.reportVerdict(c, host, v, int64(len(body)), 0)
 	}
-	if c != nil && g.State != nil && g.State.bot(c).surrogateHost(host) && len(body) > 0 {
-		body = []byte(swapBody(g.State.bot(c), string(body), host))
+	if c != nil && g.State != nil && g.State.bot(c).surrogateHost(host) {
+		body = swapRequest(g.State.bot(c), req, body, host)
 	}
 	raw, err := p.dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
@@ -451,10 +451,16 @@ func payloadOf(req *http.Request, body []byte) string {
 	return b.String()
 }
 
-// swapBody writes the real value over each in-host surrogate.
-func swapBody(b *botState, s, host string) string {
-	out, _ := b.swapOut(s, host)
-	return out
+// swapRequest writes the real value over the in-host surrogates of a request:
+// always in its headers, and in its body only for a secret whose owner
+// allowed that. The verdict has already blocked a surrogate headed anywhere
+// else.
+func swapRequest(b *botState, req *http.Request, body []byte, host string) []byte {
+	b.swapHeaders(req.Header, host)
+	if len(body) == 0 {
+		return body
+	}
+	return []byte(b.swapBody(string(body), host))
 }
 
 // swapBackBody writes each surrogate over its real value.

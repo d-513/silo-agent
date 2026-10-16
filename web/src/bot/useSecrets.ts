@@ -18,7 +18,7 @@ export function parseHosts(text: string): string[] {
     .filter((h) => h.length > 0);
 }
 
-export type SecretEdit = { id: string; name: string; mode: string; hosts: string; value: string };
+export type SecretEdit = { id: string; name: string; mode: string; hosts: string; value: string; swapBody: boolean };
 
 // The Secrets tab's list and add form. The list reloads each time the tab
 // opens; a half-typed secret survives leaving the tab.
@@ -29,6 +29,7 @@ export function useSecrets(botId: string | undefined, open: boolean, onError: (m
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<SecretMode>("surrogate");
   const [hosts, setHosts] = useState("");
+  const [swapBody, setSwapBody] = useState(false);
   const [editing, setEditing] = useState<SecretEdit | null>(null);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export function useSecrets(botId: string | undefined, open: boolean, onError: (m
     setValue("");
     setMode("surrogate");
     setHosts("");
+    setSwapBody(false);
   };
 
   return {
@@ -58,10 +60,12 @@ export function useSecrets(botId: string | undefined, open: boolean, onError: (m
     setMode,
     hosts,
     setHosts,
+    swapBody,
+    setSwapBody,
     reset,
     editing,
-    startEdit: (s: { id: string; name: string; mode: string; hosts: string[] }) =>
-      setEditing({ id: s.id, name: s.name, mode: s.mode, hosts: s.hosts.join(", "), value: "" }),
+    startEdit: (s: { id: string; name: string; mode: string; hosts: string[]; swapBody: boolean }) =>
+      setEditing({ id: s.id, name: s.name, mode: s.mode, hosts: s.hosts.join(", "), value: "", swapBody: s.swapBody }),
     stopEdit: () => setEditing(null),
     editField: (patch: Partial<SecretEdit>) => setEditing((e) => (e ? { ...e, ...patch } : e)),
   };

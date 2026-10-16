@@ -53,7 +53,7 @@ func TestRenderApplyCarriesClientsListsAndCA(t *testing.T) {
 	gdb.Create(&db.Secret{ID: "s1", BotID: "b1", Name: "API", Value: "sekret", Mode: "plain"})
 	gdb.Create(&db.Secret{
 		ID: "s2", BotID: "b1", Name: "GITHUB_TOKEN", Value: "ghp_REALVALUE1111111111",
-		Mode: "surrogate", Surrogate: "ghp_SURROGATE000000000", Hosts: `["api.github.com"]`,
+		Mode: "surrogate", Surrogate: "ghp_SURROGATE000000000", Hosts: `["api.github.com"]`, SwapBody: true,
 	})
 	// A channel's own secret is the CP's, never the Bot's.
 	gdb.Create(&db.Secret{ID: "ch1", BotID: "b1", Name: "channel.tg.token", Value: "bot-token", Mode: "plain"})
@@ -74,7 +74,7 @@ func TestRenderApplyCarriesClientsListsAndCA(t *testing.T) {
 	if got := apply.Bots[0].Surrogates; len(got) != 1 {
 		t.Fatalf("surrogates = %+v", got)
 	} else if got[0].GetName() != "GITHUB_TOKEN" || got[0].GetReal() != "ghp_REALVALUE1111111111" ||
-		got[0].GetSurrogate() != "ghp_SURROGATE000000000" || got[0].GetHosts()[0] != "api.github.com" {
+		got[0].GetSurrogate() != "ghp_SURROGATE000000000" || got[0].GetHosts()[0] != "api.github.com" || !got[0].GetBody() {
 		t.Fatalf("surrogate = %+v", got[0])
 	}
 	if apply.CpAddr != "silo.example:8080" {

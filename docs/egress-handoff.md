@@ -46,8 +46,13 @@ old boxes).
   certificate goes into the box's stores and Chromium's NSS database. Admin
   has a Rotate button.
 - Surrogate secrets: surrogate mode is a per-secret setting (the default) and
-  needs allowed hosts. Surrogates are format-preserving, swapped out to
-  allowed hosts only and swapped back in responses. Sending one anywhere else
+  needs allowed hosts (host patterns, never a public suffix such as `com` or
+  `github.io`). Surrogates are format-preserving, swapped out to allowed hosts
+  only — in request headers, and in request bodies only for a secret whose
+  owner turned on **Also swap in request bodies** (`secrets.swap_body`; a body
+  to an allowed host can publish what it carries) — and swapped back in
+  responses. A box the filter does not stand in front of (filter off, or a box
+  made before it was on) gets the real value from `GetSecret`. Sending one anywhere else
   is blocked and raises an alert. `plain` mode stays for SSH keys and database
   passwords. STDIO sidecars get no surrogates.
 - Side item: `${secrets.NAME}` references in a Bot's connectors.

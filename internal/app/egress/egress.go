@@ -469,7 +469,7 @@ func (s *Service) renderBot(botID string) *v1.EgressBot {
 				continue
 			}
 			bot.Surrogates = append(bot.Surrogates, &v1.EgressSurrogate{
-				Name: sec.Name, Surrogate: sec.Surrogate, Real: sec.Value, Hosts: hosts,
+				Name: sec.Name, Surrogate: sec.Surrogate, Real: sec.Value, Hosts: hosts, Body: sec.SwapBody,
 			})
 			continue
 		}

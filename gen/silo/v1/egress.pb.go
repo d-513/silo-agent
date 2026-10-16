@@ -423,11 +423,14 @@ func (x *EgressHostLists) GetPass() []string {
 // writes the real value into requests to the allowed hosts, and writes the
 // stand-in back over the real value in their answers.
 type EgressSurrogate struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Surrogate     string                 `protobuf:"bytes,2,opt,name=surrogate,proto3" json:"surrogate,omitempty"`
-	Real          string                 `protobuf:"bytes,3,opt,name=real,proto3" json:"real,omitempty"`
-	Hosts         []string               `protobuf:"bytes,4,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Name      string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Surrogate string                 `protobuf:"bytes,2,opt,name=surrogate,proto3" json:"surrogate,omitempty"`
+	Real      string                 `protobuf:"bytes,3,opt,name=real,proto3" json:"real,omitempty"`
+	Hosts     []string               `protobuf:"bytes,4,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	// The real value is swapped in the request headers only, unless this is
+	// set: then the body too (a body can publish what it carries).
+	Body          bool `protobuf:"varint,5,opt,name=body,proto3" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -488,6 +491,13 @@ func (x *EgressSurrogate) GetHosts() []string {
 		return x.Hosts
 	}
 	return nil
+}
+
+func (x *EgressSurrogate) GetBody() bool {
+	if x != nil {
+		return x.Body
+	}
+	return false
 }
 
 type EgressLimits struct {
@@ -1271,12 +1281,13 @@ const file_silo_v1_egress_proto_rawDesc = "" +
 	"\x0fEgressHostLists\x12\x14\n" +
 	"\x05block\x18\x01 \x03(\tR\x05block\x12\x14\n" +
 	"\x05trust\x18\x02 \x03(\tR\x05trust\x12\x12\n" +
-	"\x04pass\x18\x03 \x03(\tR\x04pass\"m\n" +
+	"\x04pass\x18\x03 \x03(\tR\x04pass\"\x81\x01\n" +
 	"\x0fEgressSurrogate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tsurrogate\x18\x02 \x01(\tR\tsurrogate\x12\x12\n" +
 	"\x04real\x18\x03 \x01(\tR\x04real\x12\x14\n" +
-	"\x05hosts\x18\x04 \x03(\tR\x05hosts\"P\n" +
+	"\x05hosts\x18\x04 \x03(\tR\x05hosts\x12\x12\n" +
+	"\x04body\x18\x05 \x01(\bR\x04body\"P\n" +
 	"\fEgressLimits\x12#\n" +
 	"\rupload_budget\x18\x01 \x01(\x03R\fuploadBudget\x12\x1b\n" +
 	"\tquery_min\x18\x02 \x01(\x05R\bqueryMin\"F\n" +
