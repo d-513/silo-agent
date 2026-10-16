@@ -185,6 +185,72 @@ export function ApprovalSlip({
   );
 }
 
+// Inline approval card for the Dashboard pane so pending approvals can be
+// reviewed and decided directly alongside Dashboard cards.
+export function ApprovalCard({
+  bot,
+  approval,
+  onDecide,
+  onAutoApprove,
+}: {
+  bot: Bot;
+  approval: Approval;
+  onDecide: (decision: "allow_once" | "always" | "deny") => void;
+  onAutoApprove?: () => void;
+}) {
+  const d = describeApproval(approval);
+  const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
+  return (
+    <article className="flex flex-col justify-between rounded-card bg-surface px-5 py-4 shadow-card ring-1 ring-vermilion/25">
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <Lamp status="needs_you" />
+          <StatusWord status="needs_you" />
+          {approval.source ? <span className="ml-auto truncate text-[12px] font-medium text-ink-3">{approval.source}</span> : null}
+        </div>
+        <h3 className="text-card-title leading-5 text-ink">{d.title}</h3>
+        <p className="mt-1 text-[13.5px] leading-5 text-ink-2">{d.summary}</p>
+        {d.fields && d.fields.length > 0 ? (
+          <dl className="mt-3 overflow-hidden rounded-control bg-well">
+            {d.fields.map((f) => (
+              <div key={f.label} className="flex gap-4 px-3 py-2 shadow-[inset_0_-1px_0_var(--color-line-strong)] last:shadow-none">
+                <dt className="w-24 shrink-0 text-[12px] leading-5 font-medium text-ink-3">{f.label}</dt>
+                <dd className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-ink">{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </div>
+      <div className="mt-4 pt-3 shadow-[inset_0_1px_0_var(--color-line)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <Btn kind="primary" size="sm" onClick={() => onDecide("allow_once")}>
+            {approval.auto ? t("Allow") : t("Allow once")}
+          </Btn>
+          {!approval.auto ? (
+            <Btn kind="secondary" size="sm" onClick={() => onDecide("always")}>
+              {t("Always allow this action")}
+            </Btn>
+          ) : null}
+          {!approval.auto && onAutoApprove ? (
+            <Btn
+              kind="secondary"
+              size="sm"
+              title={t("Set this action to Auto and let the approval model decide from now on. This run is allowed once.")}
+              onClick={onAutoApprove}
+            >
+              {t("Auto-approve this action")}
+            </Btn>
+          ) : null}
+          <Btn kind="deny" size="sm" onClick={() => onDecide("deny")}>
+            {t("Deny")}
+          </Btn>
+          <span className="ml-auto text-[12px] text-ink-3">{waiting}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export function ConnectorAuthSlip({
   bot,
   name,

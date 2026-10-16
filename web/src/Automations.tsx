@@ -20,6 +20,10 @@ import { fail } from "./errors";
 import { nextWhen } from "./format";
 import { msg, t } from "./i18n.ts";
 
+function isPinned(kind: string) {
+  return kind === "heartbeat" || kind === "dashboard";
+}
+
 function nextLine(a: Automation) {
   if (a.running) return t("Running now");
   if (!a.enabled) return t("Paused");
@@ -120,7 +124,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
   const [schedule, setSchedule] = useState(auto?.schedule ?? "0 9 * * *");
   const [enabled, setEnabled] = useState(auto?.enabled ?? true);
   const saver = useSave();
-  const heartbeat = auto?.kind === "heartbeat";
+  const pinned = auto ? isPinned(auto.kind) : false;
   async function save(e: FormEvent) {
     e.preventDefault();
     onError("");
@@ -138,7 +142,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
   return (
     <form onSubmit={save} className="grid gap-4">
       <Field label={t("Name")}>
-        <input className={inputClass} value={name} disabled={heartbeat} placeholder={t("Morning digest")} onChange={(e) => setName(e.target.value)} />
+        <input className={inputClass} value={name} disabled={pinned} placeholder={t("Morning digest")} onChange={(e) => setName(e.target.value)} />
       </Field>
       <ScheduleField value={schedule} onChange={setSchedule} zone={bot.timeZone} />
       <PromptWell label={t("Prompt")} hint={t("Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state.")} value={prompt} onChange={setPrompt} />
@@ -150,7 +154,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
         <SaveButton type="submit" state={saver.state} disabled={!name.trim() || !prompt.trim()}>
           {auto ? t("Save") : t("Create automation")}
         </SaveButton>
-        {auto && !heartbeat && onDeleted && (
+        {auto && !pinned && onDeleted && (
           <ArmedButton
             kind="ghost"
             onConfirm={async () => {
@@ -171,8 +175,8 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
 }
 
 function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boolean) => void }) {
-  // The Heartbeat leads: the only row on a `well` band, its mark lifted off it.
-  const lead = a.kind === "heartbeat";
+  // The pinned automations lead: on a `well` band, their mark lifted off it.
+  const lead = isPinned(a.kind);
   return (
     <div className={`flex items-center gap-3 px-5 py-3.5 shadow-[inset_0_-1px_0_var(--color-line)] transition-colors duration-[160ms] last:shadow-none ${lead ? "bg-well" : "hover:bg-well"}`}>
       {/* The switch is a sibling, not a child, of the Link: a control nested in
@@ -332,7 +336,7 @@ export function AutomationLog({
   );
 }
 
-// /bots/$botId/automations: the pinned Heartbeat and the scheduled ones.
+// /bots/$botId/automations: the pinned Heartbeat & Dashboard and the scheduled ones.
 export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   const nav = useNavigate();
   const { list, upsert } = useAutomations(bot, onError);
@@ -345,8 +349,8 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
     }
   }
 
-  const heartbeat = list?.filter((a) => a.kind === "heartbeat") ?? [];
-  const custom = list?.filter((a) => a.kind !== "heartbeat") ?? [];
+  const pinned = list?.filter((a) => isPinned(a.kind)) ?? [];
+  const custom = list?.filter((a) => !isPinned(a.kind)) ?? [];
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="silo-page">
@@ -364,7 +368,7 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
         ) : (
           <>
             <Panel padded={false}>
-              {heartbeat.map((a) => (
+              {pinned.map((a) => (
                 <Row key={a.id} bot={bot} a={a} onToggle={(on) => void toggle(a, on)} />
               ))}
               <p className="px-5 py-3 text-[12.5px] leading-[18px] text-ink-3">{t("Every Bot has one, and it cannot be deleted. It does not run until you give it a schedule.")}</p>

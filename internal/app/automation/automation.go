@@ -1,8 +1,8 @@
 // Package automation is scheduled background prompts: a name, a prompt, a cron
 // schedule and an on/off switch per Bot. The scheduler fires due rows once into
 // the same run engine as chat, from a fresh context each time; every Bot also
-// has one pinned Heartbeat. This package owns the rows, their RPCs and Bot
-// tools, and the scheduler.
+// has one pinned Heartbeat and one pinned Dashboard. This package owns the
+// rows, their RPCs and Bot tools, and the scheduler.
 package automation
 
 import (
@@ -37,6 +37,7 @@ const Tick = 20 * time.Second
 
 const (
 	automationHeartbeat = "heartbeat"
+	automationDashboard = "dashboard"
 	automationCustom    = "custom"
 
 	// automationMinGap is the shortest allowed interval between two firings,
@@ -127,23 +128,38 @@ func (s *Service) Rezone(botID string) {
 
 // --- store ---
 
+func isPinned(kind string) bool {
+	return kind == automationHeartbeat || kind == automationDashboard
+}
+
 // EnsureHeartbeat creates the pinned Heartbeat for a Bot if it has none. It is
 // created without a schedule, so it never fires until someone sets one.
 func (s *Service) EnsureHeartbeat(botID string) {
+	s.ensurePinned(botID, automationHeartbeat, "Heartbeat", prompts.Heartbeat)
+}
+
+// EnsureDashboard creates the pinned Dashboard automation for a Bot if it has
+// none. Like Heartbeat, it starts without a schedule until the owner or Bot
+// sets one (or clicks Run now).
+func (s *Service) EnsureDashboard(botID string) {
+	s.ensurePinned(botID, automationDashboard, "Dashboard", prompts.Dashboard)
+}
+
+func (s *Service) ensurePinned(botID, kind, name, prompt string) {
 	var n int64
-	s.db.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, automationHeartbeat).Count(&n)
+	s.db.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, kind).Count(&n)
 	if n > 0 {
 		return
 	}
 	now := time.Now()
 	au := db.Automation{
-		ID: ids.New(), BotID: botID, Kind: automationHeartbeat, Name: "Heartbeat",
-		Prompt: strings.TrimSpace(prompts.Heartbeat), Enabled: true, CreatedBy: "user",
+		ID: ids.New(), BotID: botID, Kind: kind, Name: name,
+		Prompt: strings.TrimSpace(prompt), Enabled: true, CreatedBy: "user",
 		CreatedAt: now, UpdatedAt: now,
 	}
 	s.ensureAutomationChat(&au)
 	if err := s.db.Create(&au).Error; err != nil {
-		log.Printf("heartbeat %s: %v", botID, err)
+		log.Printf("%s %s: %v", kind, botID, err)
 	}
 }
 
@@ -171,16 +187,19 @@ func (s *Service) ensureAutomationChat(au *db.Automation) {
 
 func (s *Service) listAutomations(botID string) []db.Automation {
 	s.EnsureHeartbeat(botID)
+	s.EnsureDashboard(botID)
 	var rows []db.Automation
-	// Heartbeat is pinned first; the rest newest first.
+	// Heartbeat and Dashboard are pinned first; the rest newest first.
 	s.db.Where("bot_id = ?", botID).
-		Order("CASE WHEN kind = 'heartbeat' THEN 0 ELSE 1 END").
+		Order("CASE WHEN kind = 'heartbeat' THEN 0 WHEN kind = 'dashboard' THEN 1 ELSE 2 END").
 		Order("created_at desc").Find(&rows)
 	return rows
 }
 
 // findAutomation resolves an id or a (case-insensitive) name within a Bot.
 func (s *Service) findAutomation(botID, ref string) (*db.Automation, error) {
+	s.EnsureHeartbeat(botID)
+	s.EnsureDashboard(botID)
 	ref = strings.TrimSpace(ref)
 	if ref == "" {
 		return nil, errors.New("automation required")
@@ -227,8 +246,11 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 	if p.enabled != nil {
 		au.Enabled = *p.enabled
 	}
-	if au.Kind == automationHeartbeat {
+	switch au.Kind {
+	case automationHeartbeat:
 		au.Name = "Heartbeat"
+	case automationDashboard:
+		au.Name = "Dashboard"
 	}
 	if au.Name == "" {
 		return nil, errors.New("name required")
@@ -266,8 +288,8 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 }
 
 func (s *Service) deleteAutomation(au *db.Automation) error {
-	if au.Kind == automationHeartbeat {
-		return errors.New("the Heartbeat is pinned; clear its schedule or pause it instead")
+	if isPinned(au.Kind) {
+		return fmt.Errorf("the %s is pinned; clear its schedule or pause it instead", au.Name)
 	}
 	if au.ChatID != "" {
 		s.engine.StopChatLive(au.BotID, au.ChatID)
@@ -429,8 +451,8 @@ func (s *Service) RunAutomation(ctx context.Context, req *connect.Request[v1.Run
 func (s *Service) automationLine(au *db.Automation, loc *time.Location) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "- %s  %s", au.ID, au.Name)
-	if au.Kind == automationHeartbeat {
-		b.WriteString(" [heartbeat, pinned]")
+	if isPinned(au.Kind) {
+		fmt.Fprintf(&b, " [%s, pinned]", au.Kind)
 	}
 	sched := au.Schedule
 	if sched == "" {
@@ -515,7 +537,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		}
 		return "created\n" + s.automationLine(au, loc), nil
 	case "update":
-		if target.Kind == automationHeartbeat {
+		if isPinned(target.Kind) {
 			p.name = nil
 		}
 		au, err := s.saveAutomation(bot.ID, target, p, "")

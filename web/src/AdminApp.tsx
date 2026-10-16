@@ -7,6 +7,7 @@ export { CatalogList, LibraryForm } from "./AdminConnectors";
 export { AdminAudit } from "./AdminAudit";
 export { AdminDebug } from "./AdminDebug";
 export { AdminDrives } from "./AdminDrives";
+export { AdminContainers } from "./AdminContainers";
 export { AdminSkills } from "./Skills";
 export { UsersList } from "./admin/users/UsersList";
 export { UserPage } from "./admin/users/UserPage";

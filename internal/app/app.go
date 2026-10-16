@@ -247,7 +247,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors.StaleCA = func(st dockerx.State, botID, connectorID string) bool {
 		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
 	}
-	a.Feed = feed.New(a.DB, a)
+	a.Feed = feed.New(a.DB, a, a.Memory)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)

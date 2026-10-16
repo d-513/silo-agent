@@ -234,6 +234,7 @@ export function BotPage() {
           chatId={chatId}
           chats={chats}
           rename={rename}
+          pendingCount={pending.length}
           busy={{ waiting, sending: run.sending }}
           onNewChat={onNewChat}
           onDeleteChat={onDeleteChat}
@@ -249,6 +250,7 @@ export function BotPage() {
               chatId={chatId}
               chats={chats}
               rename={rename}
+              pendingCount={pending.length}
               live={{ waiting, sending: run.sending, agentsBusy }}
               onNewChat={onNewChat}
               onDeleteChat={onDeleteChat}
@@ -272,7 +274,7 @@ export function BotPage() {
             onError={setActErr}
           />
           <MachineRail bot={bot} open={pane} onPick={pickPane} onStart={start} onStop={stop} />
-          <BotSlip bot={bot} pending={pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
+          <BotSlip bot={bot} pending={tab === "dashboard" ? [] : pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
           {inspect ? (
             <Suspense fallback={null}>
               <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} />

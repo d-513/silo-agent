@@ -56,10 +56,17 @@ type Host interface {
 	Create(ctx context.Context, botID, token string, net *ClientNet) (string, error)
 	Start(ctx context.Context, id string) error
 	Stop(ctx context.Context, id string) error
+	// Remove force-removes a container by id or name; ErrNotFound when gone.
+	Remove(ctx context.Context, id string) error
 	Drop(ctx context.Context, botID, containerID string)
 	CreateStdio(ctx context.Context, spec StdioSpec) (string, error)
 	DropStdio(ctx context.Context, id, containerID string)
 	ListStdio(ctx context.Context) ([]StdioContainer, error)
+	// ListSilo and ListSiloNetworks are the Admin Containers tab's view of
+	// the engine: what Silo created, and which containers sit on which carved
+	// network. Nothing else on the engine is listed or touched.
+	ListSilo(ctx context.Context) ([]SiloContainer, error)
+	ListSiloNetworks(ctx context.Context) ([]SiloNetwork, error)
 	PrepareDriveDir(ctx context.Context, image, root, botID string) error
 	RemoveDriveDir(ctx context.Context, image, root, botID string) error
 	CreateDrive(ctx context.Context, spec DriveSpec) (string, error)

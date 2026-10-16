@@ -38,6 +38,11 @@ var Automation string
 //go:embed HEARTBEAT.md
 var Heartbeat string
 
+// Dashboard is the default prompt of the pinned Dashboard automation.
+//
+//go:embed DASHBOARD.md
+var Dashboard string
+
 // Compact is the system prompt for summarizing a conversation that no longer
 // fits the model's context window.
 //

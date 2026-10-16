@@ -51,6 +51,20 @@ service UI {
   // Stop and remove all of them. Files, drives, and connectors stay; each
   // container is made again when it is next needed.
   rpc RemoveBotContainers(GetBotRequest) returns (Bot);
+  // Admin: everything Silo has on the container engine — every user's Bots
+  // with their machines, drive and MCP sidecars, the egress gateway, and any
+  // Silo container left over that the database no longer claims — plus each
+  // client network and the containers it carries. Nothing the engine hosts
+  // for anyone else is listed or touched.
+  rpc ListAdminContainers(ListAdminContainersRequest) returns (AdminContainers);
+  // Start, stop, or remove one container by the engine name the list named.
+  // Bot machines go through the Bot's own lifecycle; everything else is one
+  // engine action on that container. The server refuses a name the list did
+  // not carry.
+  rpc AdminContainerAction(AdminContainerActionRequest) returns (AdminActionResponse);
+  // Remove one Bot's containers, the owner's Remove all without the
+  // ownership check.
+  rpc RemoveAdminBotContainers(GetBotRequest) returns (AdminActionResponse);
   rpc DeleteBot(GetBotRequest) returns (DeleteBotResponse);
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
@@ -67,6 +81,12 @@ service UI {
   rpc MarkFeedRead(MarkFeedReadRequest) returns (MarkFeedReadResponse);
   rpc DeleteFeedPost(DeleteFeedPostRequest) returns (DeleteFeedPostResponse);
   rpc QuoteFeedPost(QuoteFeedPostRequest) returns (QuoteFeedPostResponse);
+  // Dashboard: declarative modular form cards curated by the Bot.
+  rpc ListDashboard(ListDashboardRequest) returns (ListDashboardResponse);
+  rpc MarkDashboardRead(MarkDashboardReadRequest) returns (MarkDashboardReadResponse);
+  rpc DismissDashboardCard(DismissDashboardCardRequest) returns (DismissDashboardCardResponse);
+  rpc SubmitDashboardCard(SubmitDashboardCardRequest) returns (SubmitDashboardCardResponse);
+  rpc HydrateDashboardCard(HydrateDashboardCardRequest) returns (DashboardCard);
   // Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
   rpc ListTunnels(ListTunnelsRequest) returns (ListTunnelsResponse);
   rpc CreateTunnel(CreateTunnelRequest) returns (Tunnel);
@@ -534,6 +554,80 @@ message BotContainers {
   repeated BotContainer containers = 1;
 }
 
+// AdminContainer is one container on the Admin Containers tab.
+message AdminContainer {
+  // bot | drive | mcp | egress | stray
+  string kind = 1;
+  // Engine container name (silo-…).
+  string name = 2;
+  // What it is for a human: "Machine", "Egress gateway", the connector's
+  // name, or the bot name of a box whose bot row is gone.
+  string label = 3;
+  string state = 4; // running | stopped | absent
+  string image = 5;
+  // RFC 3339; empty unless running.
+  string started_at = 6;
+  double cpu_percent = 7;
+  int64 mem_used = 8;
+  int64 mem_limit = 9;
+  // One line of context: "3 drives", "stdio · npx …", "leftover sidecar".
+  string detail = 10;
+  // The networks the container is attached to, by name.
+  repeated string networks = 11;
+}
+
+// AdminNetwork is one network the CP carved for an egress client.
+message AdminNetwork {
+  string name = 1;
+  string subnet = 2;
+  // The containers the engine shows on the network, by name.
+  repeated string containers = 3;
+  // The Bot the network serves; empty on one nobody claims any more.
+  string bot_id = 4;
+}
+
+// AdminBotGroup is one Bot's containers and networks under the Admin tab.
+message AdminBotGroup {
+  string bot_id = 1;
+  string bot_name = 2;
+  string status = 3;
+  repeated AdminContainer containers = 4;
+  repeated AdminNetwork networks = 5;
+}
+
+// AdminUserGroup is one user's Bots on the Admin Containers tab.
+message AdminUserGroup {
+  string user_id = 1;
+  string email = 2;
+  repeated AdminBotGroup bots = 3;
+}
+
+// AdminSystemGroup is what the Admin tab cannot pin on a live Bot: the egress
+// gateway, leftover containers, and networks nobody claims any more.
+message AdminSystemGroup {
+  repeated AdminContainer containers = 1;
+  repeated AdminNetwork networks = 2;
+}
+
+message AdminContainers {
+  // podman | docker, from the engine itself.
+  string runtime = 1;
+  repeated AdminUserGroup users = 2;
+  AdminSystemGroup system = 3;
+}
+
+message ListAdminContainersRequest {}
+
+// AdminContainerActionRequest names a container by the engine name
+// ListAdminContainers returned.
+message AdminContainerActionRequest {
+  string name = 1;
+  // start | stop | remove
+  string action = 2;
+}
+
+message AdminActionResponse {}
+
 message DeleteBotResponse {}
 
 // Memory is one long-term (pgvector) memory a Bot saved with `remember`.
@@ -840,6 +934,76 @@ message QuoteFeedPostRequest {
 
 message QuoteFeedPostResponse {
   Chat chat = 1;
+}
+
+// DashboardCard is one modular card on a Bot's Dashboard.
+message DashboardCard {
+  string id = 1;
+  string bot_id = 2;
+  // Optional stable slug per topic (e.g. "workspace-hygiene") for gradual updates.
+  string key = 3;
+  string title = 4;
+  string summary = 5;
+  // 1 = high priority (expanded by default), 2 = normal, 3 = low.
+  int32 priority = 6;
+  // JSON array of display blocks and interactive form controls.
+  string blocks_json = 7;
+  // Primary submit button label (e.g. "Send", "Run cleanup").
+  string submit_label = 8;
+  // "ready", "lazy", or "hydrating".
+  string draft_state = 9;
+  string draft_context = 10;
+  // "open", "submitted", or "dismissed".
+  string status = 11;
+  string source_kind = 12;
+  string source_name = 13;
+  string chat_id = 14;
+  string created_at = 15;
+  string updated_at = 16;
+  bool read = 17;
+}
+
+message ListDashboardRequest {
+  string bot_id = 1;
+}
+
+message ListDashboardResponse {
+  repeated DashboardCard cards = 1;
+  repeated FeedPost posts = 2;
+}
+
+message MarkDashboardReadRequest {
+  string bot_id = 1;
+}
+
+message MarkDashboardReadResponse {}
+
+message DismissDashboardCardRequest {
+  string bot_id = 1;
+  string id = 2;
+  // When true, also records a durable lesson in memory not to propose this kind again.
+  bool suppress_kind = 3;
+}
+
+message DismissDashboardCardResponse {}
+
+message SubmitDashboardCardRequest {
+  string bot_id = 1;
+  string id = 2;
+  // JSON object mapping form field names to user-selected values.
+  string values_json = 3;
+  // Optional free-text note accompanying the form submission.
+  string note = 4;
+}
+
+message SubmitDashboardCardResponse {
+  Chat chat = 1;
+  string run_id = 2;
+}
+
+message HydrateDashboardCardRequest {
+  string bot_id = 1;
+  string id = 2;
 }
 
 // Tunnel is one declared route into a service on a Bot's localhost: a generated

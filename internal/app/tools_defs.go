@@ -39,6 +39,9 @@ func (a *App) toolDefs() []tool.Def {
 		})
 	}
 	tunnel, mail, task := byName(a.Tunnels.Tool), byName(a.Mail.Tool), byName(a.taskTool)
+	dashboard := text(func(ctx context.Context, c *tool.Call) (string, error) {
+		return a.Feed.DashboardTool(ctx, c.Bot, c.RunID, c.Def.Name, c.Args)
+	})
 	automation := text(func(ctx context.Context, c *tool.Call) (string, error) {
 		return a.Automations.Tool(ctx, c.Bot, c.RunID, c.Def.Name, c.Args)
 	})
@@ -428,6 +431,44 @@ func (a *App) toolDefs() []tool.Def {
 			}),
 		},
 		{
+			Name:        "list_dashboard",
+			Description: "List this Bot's open Dashboard cards with their ids, keys, priorities, bodies, blocks, and current state. Call this before editing the Dashboard.",
+			Params:      tool.Object(nil),
+			Connector:   security.Bot, Action: "dashboard_list",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
+			Name:        "upsert_dashboard_card",
+			Description: "Create or gradually update an open Dashboard card by id or key. Pass only the fields to change when updating an existing card.",
+			Params: tool.Object(map[string]any{
+				"id":           map[string]any{"type": "string", "description": "card id to update"},
+				"key":          map[string]any{"type": "string", "description": "stable dedupe key to create or update in place"},
+				"kind":         map[string]any{"type": "string", "description": "card category, e.g. hygiene, tasks, changes, custom"},
+				"title":        map[string]any{"type": "string", "description": "card headline"},
+				"summary":      map[string]any{"type": "string", "description": "short subtitle or context"},
+				"body":         map[string]any{"type": "string", "description": "optional markdown body"},
+				"priority":     map[string]any{"type": "integer", "description": "1 (info), 2 (normal), 3 (important), 4 (urgent)"},
+				"col_span":     map[string]any{"type": "integer", "description": "preferred grid width: 0 (auto), 1, 2, or 3"},
+				"blocks":       map[string]any{"type": "array", "description": "modular display and form blocks"},
+				"submit_label": map[string]any{"type": "string", "description": "label for the card's primary submit button (default Send)"},
+			}),
+			Connector: security.Bot, Action: "dashboard_upsert",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
+			Name:        "remove_dashboard_card",
+			Description: "Remove an open Dashboard card by id or key once the underlying item is resolved.",
+			Params: tool.Object(map[string]any{
+				"id":  map[string]any{"type": "string", "description": "card id or key"},
+				"key": map[string]any{"type": "string", "description": "card key"},
+			}),
+			Connector: security.Bot, Action: "dashboard_remove",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
 			Name:        "transcribe",
 			Description: "Transcribe a speech recording in the workspace (mp3, wav, m4a, ogg, opus, webm, flac; up to 25 MB) to text with the operator's speech-to-text model. Python: silo_runtime.transcribe(path).",
 			Params: tool.Object(map[string]any{
@@ -515,7 +556,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "list_automations",
-			Description: "List this Bot's automations (scheduled background prompts), including the pinned Heartbeat, with ids, schedules, next and last runs.",
+			Description: "List this Bot's automations (scheduled background prompts), including the pinned Heartbeat and Dashboard, with ids, schedules, next and last runs.",
 			Params:      tool.Object(nil),
 			Connector:   security.Automations, Action: "list",
 			ExposePython: true, SelfGated: true, LeadOnly: true,
@@ -536,7 +577,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "update_automation",
-			Description: "Change an automation by id or name. Pass only the fields to change. Use this to set the pinned Heartbeat's schedule or prompt. schedule \"\" stops it firing.",
+			Description: "Change an automation by id or name. Pass only the fields to change. Use this to set the pinned Heartbeat's or Dashboard's schedule or prompt. schedule \"\" stops it firing.",
 			Params: tool.Object(map[string]any{
 				"automation": map[string]any{"type": "string", "description": "id or name"},
 				"name":       map[string]any{"type": "string"},
@@ -550,7 +591,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "delete_automation",
-			Description: "Delete an automation and its run log, by id or name. The Heartbeat cannot be deleted — clear its schedule instead.",
+			Description: "Delete an automation and its run log, by id or name. The Heartbeat and Dashboard cannot be deleted — clear their schedule instead.",
 			Params: tool.Object(map[string]any{
 				"automation": map[string]any{"type": "string", "description": "id or name"},
 			}, "automation"),

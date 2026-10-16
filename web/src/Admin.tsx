@@ -31,6 +31,7 @@ export function AdminLayout() {
         <AdminTab to="/admin/connectors">{t("Connectors Library")}</AdminTab>
         <AdminTab to="/admin/skills">{t("Skills Library")}</AdminTab>
         <AdminTab to="/admin/drives">{t("Drives")}</AdminTab>
+        <AdminTab to="/admin/containers">{t("Containers")}</AdminTab>
         <AdminTab to="/admin/audit">{t("Audit")}</AdminTab>
         {debug && <AdminTab to="/admin/debug">{t("Debug")}</AdminTab>}
       </nav>

@@ -97,6 +97,13 @@ const (
 	UIListBotContainersProcedure = "/silo.v1.UI/ListBotContainers"
 	// UIRemoveBotContainersProcedure is the fully-qualified name of the UI's RemoveBotContainers RPC.
 	UIRemoveBotContainersProcedure = "/silo.v1.UI/RemoveBotContainers"
+	// UIListAdminContainersProcedure is the fully-qualified name of the UI's ListAdminContainers RPC.
+	UIListAdminContainersProcedure = "/silo.v1.UI/ListAdminContainers"
+	// UIAdminContainerActionProcedure is the fully-qualified name of the UI's AdminContainerAction RPC.
+	UIAdminContainerActionProcedure = "/silo.v1.UI/AdminContainerAction"
+	// UIRemoveAdminBotContainersProcedure is the fully-qualified name of the UI's
+	// RemoveAdminBotContainers RPC.
+	UIRemoveAdminBotContainersProcedure = "/silo.v1.UI/RemoveAdminBotContainers"
 	// UIDeleteBotProcedure is the fully-qualified name of the UI's DeleteBot RPC.
 	UIDeleteBotProcedure = "/silo.v1.UI/DeleteBot"
 	// UIListMemoriesProcedure is the fully-qualified name of the UI's ListMemories RPC.
@@ -124,6 +131,16 @@ const (
 	UIDeleteFeedPostProcedure = "/silo.v1.UI/DeleteFeedPost"
 	// UIQuoteFeedPostProcedure is the fully-qualified name of the UI's QuoteFeedPost RPC.
 	UIQuoteFeedPostProcedure = "/silo.v1.UI/QuoteFeedPost"
+	// UIListDashboardProcedure is the fully-qualified name of the UI's ListDashboard RPC.
+	UIListDashboardProcedure = "/silo.v1.UI/ListDashboard"
+	// UIMarkDashboardReadProcedure is the fully-qualified name of the UI's MarkDashboardRead RPC.
+	UIMarkDashboardReadProcedure = "/silo.v1.UI/MarkDashboardRead"
+	// UIDismissDashboardCardProcedure is the fully-qualified name of the UI's DismissDashboardCard RPC.
+	UIDismissDashboardCardProcedure = "/silo.v1.UI/DismissDashboardCard"
+	// UISubmitDashboardCardProcedure is the fully-qualified name of the UI's SubmitDashboardCard RPC.
+	UISubmitDashboardCardProcedure = "/silo.v1.UI/SubmitDashboardCard"
+	// UIHydrateDashboardCardProcedure is the fully-qualified name of the UI's HydrateDashboardCard RPC.
+	UIHydrateDashboardCardProcedure = "/silo.v1.UI/HydrateDashboardCard"
 	// UIListTunnelsProcedure is the fully-qualified name of the UI's ListTunnels RPC.
 	UIListTunnelsProcedure = "/silo.v1.UI/ListTunnels"
 	// UICreateTunnelProcedure is the fully-qualified name of the UI's CreateTunnel RPC.
@@ -390,6 +407,20 @@ type UIClient interface {
 	// Stop and remove all of them. Files, drives, and connectors stay; each
 	// container is made again when it is next needed.
 	RemoveBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// Admin: everything Silo has on the container engine — every user's Bots
+	// with their machines, drive and MCP sidecars, the egress gateway, and any
+	// Silo container left over that the database no longer claims — plus each
+	// client network and the containers it carries. Nothing the engine hosts
+	// for anyone else is listed or touched.
+	ListAdminContainers(context.Context, *connect.Request[v1.ListAdminContainersRequest]) (*connect.Response[v1.AdminContainers], error)
+	// Start, stop, or remove one container by the engine name the list named.
+	// Bot machines go through the Bot's own lifecycle; everything else is one
+	// engine action on that container. The server refuses a name the list did
+	// not carry.
+	AdminContainerAction(context.Context, *connect.Request[v1.AdminContainerActionRequest]) (*connect.Response[v1.AdminActionResponse], error)
+	// Remove one Bot's containers, the owner's Remove all without the
+	// ownership check.
+	RemoveAdminBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.AdminActionResponse], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
@@ -406,6 +437,12 @@ type UIClient interface {
 	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
 	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
 	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
+	// Dashboard: declarative modular form cards curated by the Bot.
+	ListDashboard(context.Context, *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error)
+	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
+	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
+	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
+	HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error)
 	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
 	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
@@ -747,6 +784,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("RemoveBotContainers")),
 			connect.WithClientOptions(opts...),
 		),
+		listAdminContainers: connect.NewClient[v1.ListAdminContainersRequest, v1.AdminContainers](
+			httpClient,
+			baseURL+UIListAdminContainersProcedure,
+			connect.WithSchema(uIMethods.ByName("ListAdminContainers")),
+			connect.WithClientOptions(opts...),
+		),
+		adminContainerAction: connect.NewClient[v1.AdminContainerActionRequest, v1.AdminActionResponse](
+			httpClient,
+			baseURL+UIAdminContainerActionProcedure,
+			connect.WithSchema(uIMethods.ByName("AdminContainerAction")),
+			connect.WithClientOptions(opts...),
+		),
+		removeAdminBotContainers: connect.NewClient[v1.GetBotRequest, v1.AdminActionResponse](
+			httpClient,
+			baseURL+UIRemoveAdminBotContainersProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveAdminBotContainers")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteBot: connect.NewClient[v1.GetBotRequest, v1.DeleteBotResponse](
 			httpClient,
 			baseURL+UIDeleteBotProcedure,
@@ -823,6 +878,36 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIQuoteFeedPostProcedure,
 			connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
+			connect.WithClientOptions(opts...),
+		),
+		listDashboard: connect.NewClient[v1.ListDashboardRequest, v1.ListDashboardResponse](
+			httpClient,
+			baseURL+UIListDashboardProcedure,
+			connect.WithSchema(uIMethods.ByName("ListDashboard")),
+			connect.WithClientOptions(opts...),
+		),
+		markDashboardRead: connect.NewClient[v1.MarkDashboardReadRequest, v1.MarkDashboardReadResponse](
+			httpClient,
+			baseURL+UIMarkDashboardReadProcedure,
+			connect.WithSchema(uIMethods.ByName("MarkDashboardRead")),
+			connect.WithClientOptions(opts...),
+		),
+		dismissDashboardCard: connect.NewClient[v1.DismissDashboardCardRequest, v1.DismissDashboardCardResponse](
+			httpClient,
+			baseURL+UIDismissDashboardCardProcedure,
+			connect.WithSchema(uIMethods.ByName("DismissDashboardCard")),
+			connect.WithClientOptions(opts...),
+		),
+		submitDashboardCard: connect.NewClient[v1.SubmitDashboardCardRequest, v1.SubmitDashboardCardResponse](
+			httpClient,
+			baseURL+UISubmitDashboardCardProcedure,
+			connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
+			connect.WithClientOptions(opts...),
+		),
+		hydrateDashboardCard: connect.NewClient[v1.HydrateDashboardCardRequest, v1.DashboardCard](
+			httpClient,
+			baseURL+UIHydrateDashboardCardProcedure,
+			connect.WithSchema(uIMethods.ByName("HydrateDashboardCard")),
 			connect.WithClientOptions(opts...),
 		),
 		listTunnels: connect.NewClient[v1.ListTunnelsRequest, v1.ListTunnelsResponse](
@@ -1478,159 +1563,167 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 
 // uIClient implements UIClient.
 type uIClient struct {
-	signIn                  *connect.Client[v1.SignInRequest, v1.SignInResponse]
-	signOut                 *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
-	me                      *connect.Client[v1.MeRequest, v1.MeResponse]
-	authOptions             *connect.Client[v1.AuthOptionsRequest, v1.AuthOptionsResponse]
-	getInvite               *connect.Client[v1.GetInviteRequest, v1.InviteInfo]
-	acceptInvite            *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
-	changeEmail             *connect.Client[v1.ChangeEmailRequest, v1.User]
-	setLanguage             *connect.Client[v1.SetLanguageRequest, v1.User]
-	changePassword          *connect.Client[v1.ChangePasswordRequest, v1.User]
-	listSessions            *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	revokeSession           *connect.Client[v1.RevokeSessionRequest, v1.ListSessionsResponse]
-	revokeOtherSessions     *connect.Client[v1.RevokeOtherSessionsRequest, v1.ListSessionsResponse]
-	startTOTP               *connect.Client[v1.StartTOTPRequest, v1.StartTOTPResponse]
-	confirmTOTP             *connect.Client[v1.ConfirmTOTPRequest, v1.RecoveryCodes]
-	disableTOTP             *connect.Client[v1.DisableTOTPRequest, v1.User]
-	newRecoveryCodes        *connect.Client[v1.NewRecoveryCodesRequest, v1.RecoveryCodes]
-	listUsers               *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
-	updateUser              *connect.Client[v1.UpdateUserRequest, v1.User]
-	deleteUser              *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
-	createInvite            *connect.Client[v1.CreateInviteRequest, v1.Invite]
-	deleteInvite            *connect.Client[v1.DeleteInviteRequest, v1.DeleteInviteResponse]
-	checkOIDC               *connect.Client[v1.CheckOIDCRequest, v1.CheckOIDCResponse]
-	listBots                *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
-	createBot               *connect.Client[v1.CreateBotRequest, v1.Bot]
-	updateBot               *connect.Client[v1.UpdateBotRequest, v1.Bot]
-	getBot                  *connect.Client[v1.GetBotRequest, v1.Bot]
-	getContainer            *connect.Client[v1.GetBotRequest, v1.Container]
-	startBot                *connect.Client[v1.GetBotRequest, v1.Bot]
-	stopBot                 *connect.Client[v1.GetBotRequest, v1.Bot]
-	resetContainer          *connect.Client[v1.GetBotRequest, v1.Bot]
-	listBotContainers       *connect.Client[v1.GetBotRequest, v1.BotContainers]
-	removeBotContainers     *connect.Client[v1.GetBotRequest, v1.Bot]
-	deleteBot               *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
-	listMemories            *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
-	searchMemories          *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
-	deleteMemory            *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
-	listKnowledge           *connect.Client[v1.ListKnowledgeRequest, v1.ListKnowledgeResponse]
-	addKnowledgeFolder      *connect.Client[v1.AddKnowledgeFolderRequest, v1.KnowledgeFolder]
-	removeKnowledgeFolder   *connect.Client[v1.RemoveKnowledgeFolderRequest, v1.RemoveKnowledgeFolderResponse]
-	syncKnowledge           *connect.Client[v1.SyncKnowledgeRequest, v1.KnowledgeFolder]
-	searchKnowledge         *connect.Client[v1.SearchKnowledgeRequest, v1.SearchKnowledgeResponse]
-	listFeed                *connect.Client[v1.ListFeedRequest, v1.ListFeedResponse]
-	markFeedRead            *connect.Client[v1.MarkFeedReadRequest, v1.MarkFeedReadResponse]
-	deleteFeedPost          *connect.Client[v1.DeleteFeedPostRequest, v1.DeleteFeedPostResponse]
-	quoteFeedPost           *connect.Client[v1.QuoteFeedPostRequest, v1.QuoteFeedPostResponse]
-	listTunnels             *connect.Client[v1.ListTunnelsRequest, v1.ListTunnelsResponse]
-	createTunnel            *connect.Client[v1.CreateTunnelRequest, v1.Tunnel]
-	updateTunnel            *connect.Client[v1.UpdateTunnelRequest, v1.Tunnel]
-	deleteTunnel            *connect.Client[v1.DeleteTunnelRequest, v1.DeleteTunnelResponse]
-	listMail                *connect.Client[v1.ListMailRequest, v1.ListMailResponse]
-	getMail                 *connect.Client[v1.GetMailRequest, v1.Mail]
-	deleteMail              *connect.Client[v1.DeleteMailRequest, v1.DeleteMailResponse]
-	updateMailbox           *connect.Client[v1.UpdateMailboxRequest, v1.Mailbox]
-	rotateMailbox           *connect.Client[v1.RotateMailboxRequest, v1.Mailbox]
-	listAutomations         *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
-	createAutomation        *connect.Client[v1.CreateAutomationRequest, v1.Automation]
-	updateAutomation        *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
-	deleteAutomation        *connect.Client[v1.DeleteAutomationRequest, v1.DeleteAutomationResponse]
-	runAutomation           *connect.Client[v1.RunAutomationRequest, v1.RunAutomationResponse]
-	listChats               *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
-	createChat              *connect.Client[v1.CreateChatRequest, v1.Chat]
-	renameChat              *connect.Client[v1.RenameChatRequest, v1.Chat]
-	deleteChat              *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
-	setChatModel            *connect.Client[v1.SetChatModelRequest, v1.Chat]
-	setChatThinking         *connect.Client[v1.SetChatThinkingRequest, v1.Chat]
-	listModels              *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
-	transcribe              *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
-	send                    *connect.Client[v1.SendRequest, v1.SendResponse]
-	stopRun                 *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
-	streamRun               *connect.Client[v1.StreamRunRequest, v1.RunEvent]
-	editMessage             *connect.Client[v1.EditMessageRequest, v1.SendResponse]
-	deleteMessage           *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
-	divergeChat             *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
-	compactChat             *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
-	collectMemories         *connect.Client[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse]
-	listSubagents           *connect.Client[v1.ListSubagentsRequest, v1.ListSubagentsResponse]
-	getSubagent             *connect.Client[v1.GetSubagentRequest, v1.Subagent]
-	stopSubagent            *connect.Client[v1.StopSubagentRequest, v1.StopSubagentResponse]
-	getTaskboard            *connect.Client[v1.GetTaskboardRequest, v1.Taskboard]
-	clearTaskboard          *connect.Client[v1.ClearTaskboardRequest, v1.Taskboard]
-	listSecrets             *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
-	addSecret               *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
-	updateSecret            *connect.Client[v1.UpdateSecretRequest, v1.SecretMeta]
-	deleteSecret            *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
-	listApprovals           *connect.Client[v1.ListApprovalsRequest, v1.ListApprovalsResponse]
-	decideApproval          *connect.Client[v1.DecideApprovalRequest, v1.Approval]
-	listRules               *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
-	setRule                 *connect.Client[v1.SetRuleRequest, v1.Rule]
-	listOperatorRules       *connect.Client[v1.ListOperatorRulesRequest, v1.ListOperatorRulesResponse]
-	setOperatorRule         *connect.Client[v1.SetOperatorRuleRequest, v1.OperatorRule]
-	deleteOperatorRule      *connect.Client[v1.DeleteOperatorRuleRequest, v1.DeleteOperatorRuleResponse]
-	listChanges             *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
-	listChangeFiles         *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
-	getChangePatch          *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
-	restoreChange           *connect.Client[v1.RestoreChangeRequest, v1.RestoreChangeResponse]
-	listDriveChanges        *connect.Client[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse]
-	listFiles               *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
-	readFile                *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
-	mkdir                   *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
-	removeFile              *connect.Client[v1.RemoveFileRequest, v1.FileOpResponse]
-	putFile                 *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
-	getSettings             *connect.Client[v1.GetSettingsRequest, v1.Settings]
-	putSettings             *connect.Client[v1.PutSettingsRequest, v1.Settings]
-	setModels               *connect.Client[v1.SetModelsRequest, v1.Settings]
-	listProviderModels      *connect.Client[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse]
-	setConnectorVars        *connect.Client[v1.SetConnectorVarsRequest, v1.Settings]
-	setAutoenableConnectors *connect.Client[v1.SetAutoenableConnectorsRequest, v1.Settings]
-	listAuditEvents         *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
-	auditSummary            *connect.Client[v1.AuditSummaryRequest, v1.AuditSummaryResponse]
-	markAuditRead           *connect.Client[v1.MarkAuditReadRequest, v1.AuditSummaryResponse]
-	listTraffic             *connect.Client[v1.ListTrafficRequest, v1.ListTrafficResponse]
-	getBotNetwork           *connect.Client[v1.GetBotNetworkRequest, v1.BotNetwork]
-	addHostPattern          *connect.Client[v1.AddHostPatternRequest, v1.BotNetwork]
-	removeHostPattern       *connect.Client[v1.RemoveHostPatternRequest, v1.BotNetwork]
-	setOtherProtocols       *connect.Client[v1.SetOtherProtocolsRequest, v1.BotNetwork]
-	getEgressStatus         *connect.Client[v1.GetEgressStatusRequest, v1.EgressStatus]
-	rotateEgressCA          *connect.Client[v1.RotateEgressCARequest, v1.EgressStatus]
-	listLLMLogs             *connect.Client[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse]
-	listConnectors          *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
-	createConnector         *connect.Client[v1.CreateConnectorRequest, v1.Connector]
-	updateConnector         *connect.Client[v1.UpdateConnectorRequest, v1.Connector]
-	deleteConnector         *connect.Client[v1.DeleteConnectorRequest, v1.DeleteConnectorResponse]
-	listBotConnectors       *connect.Client[v1.ListBotConnectorsRequest, v1.ListBotConnectorsResponse]
-	attachConnector         *connect.Client[v1.AttachConnectorRequest, v1.BotConnector]
-	createBotConnector      *connect.Client[v1.CreateBotConnectorRequest, v1.BotConnector]
-	detachConnector         *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
-	refreshBotConnector     *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
-	startConnectorAuth      *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
-	seedConnectors          *connect.Client[v1.SeedConnectorsRequest, v1.SeedConnectorsResponse]
-	seedSkills              *connect.Client[v1.SeedSkillsRequest, v1.SeedSkillsResponse]
-	listSkills              *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
-	installSkill            *connect.Client[v1.InstallSkillRequest, v1.InstallSkillResponse]
-	deleteSkill             *connect.Client[v1.DeleteSkillRequest, v1.DeleteSkillResponse]
-	listBotSkills           *connect.Client[v1.ListBotSkillsRequest, v1.ListBotSkillsResponse]
-	setBotSkill             *connect.Client[v1.SetBotSkillRequest, v1.BotSkill]
-	listSkillFiles          *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
-	readSkillFile           *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
-	saveSkill               *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
-	listChannelAdapters     *connect.Client[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse]
-	listBotChannels         *connect.Client[v1.ListBotChannelsRequest, v1.ListBotChannelsResponse]
-	createChannel           *connect.Client[v1.CreateChannelRequest, v1.Channel]
-	updateChannel           *connect.Client[v1.UpdateChannelRequest, v1.Channel]
-	deleteChannel           *connect.Client[v1.DeleteChannelRequest, v1.DeleteChannelResponse]
-	channelAction           *connect.Client[v1.ChannelActionRequest, v1.ChannelActionResponse]
-	listDriveTemplates      *connect.Client[v1.ListDriveTemplatesRequest, v1.ListDriveTemplatesResponse]
-	listDrives              *connect.Client[v1.ListDrivesRequest, v1.ListDrivesResponse]
-	saveDrive               *connect.Client[v1.SaveDriveRequest, v1.Drive]
-	deleteDrive             *connect.Client[v1.DeleteDriveRequest, v1.DeleteDriveResponse]
-	beginDriveAuth          *connect.Client[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse]
-	pickDriveOptions        *connect.Client[v1.PickDriveOptionsRequest, v1.PickDriveOptionsResponse]
-	browseDrive             *connect.Client[v1.BrowseDriveRequest, v1.BrowseDriveResponse]
-	getDriveSettings        *connect.Client[v1.GetDriveSettingsRequest, v1.DriveSettings]
-	putDriveSettings        *connect.Client[v1.PutDriveSettingsRequest, v1.DriveSettings]
+	signIn                   *connect.Client[v1.SignInRequest, v1.SignInResponse]
+	signOut                  *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	me                       *connect.Client[v1.MeRequest, v1.MeResponse]
+	authOptions              *connect.Client[v1.AuthOptionsRequest, v1.AuthOptionsResponse]
+	getInvite                *connect.Client[v1.GetInviteRequest, v1.InviteInfo]
+	acceptInvite             *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	changeEmail              *connect.Client[v1.ChangeEmailRequest, v1.User]
+	setLanguage              *connect.Client[v1.SetLanguageRequest, v1.User]
+	changePassword           *connect.Client[v1.ChangePasswordRequest, v1.User]
+	listSessions             *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	revokeSession            *connect.Client[v1.RevokeSessionRequest, v1.ListSessionsResponse]
+	revokeOtherSessions      *connect.Client[v1.RevokeOtherSessionsRequest, v1.ListSessionsResponse]
+	startTOTP                *connect.Client[v1.StartTOTPRequest, v1.StartTOTPResponse]
+	confirmTOTP              *connect.Client[v1.ConfirmTOTPRequest, v1.RecoveryCodes]
+	disableTOTP              *connect.Client[v1.DisableTOTPRequest, v1.User]
+	newRecoveryCodes         *connect.Client[v1.NewRecoveryCodesRequest, v1.RecoveryCodes]
+	listUsers                *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	updateUser               *connect.Client[v1.UpdateUserRequest, v1.User]
+	deleteUser               *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	createInvite             *connect.Client[v1.CreateInviteRequest, v1.Invite]
+	deleteInvite             *connect.Client[v1.DeleteInviteRequest, v1.DeleteInviteResponse]
+	checkOIDC                *connect.Client[v1.CheckOIDCRequest, v1.CheckOIDCResponse]
+	listBots                 *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
+	createBot                *connect.Client[v1.CreateBotRequest, v1.Bot]
+	updateBot                *connect.Client[v1.UpdateBotRequest, v1.Bot]
+	getBot                   *connect.Client[v1.GetBotRequest, v1.Bot]
+	getContainer             *connect.Client[v1.GetBotRequest, v1.Container]
+	startBot                 *connect.Client[v1.GetBotRequest, v1.Bot]
+	stopBot                  *connect.Client[v1.GetBotRequest, v1.Bot]
+	resetContainer           *connect.Client[v1.GetBotRequest, v1.Bot]
+	listBotContainers        *connect.Client[v1.GetBotRequest, v1.BotContainers]
+	removeBotContainers      *connect.Client[v1.GetBotRequest, v1.Bot]
+	listAdminContainers      *connect.Client[v1.ListAdminContainersRequest, v1.AdminContainers]
+	adminContainerAction     *connect.Client[v1.AdminContainerActionRequest, v1.AdminActionResponse]
+	removeAdminBotContainers *connect.Client[v1.GetBotRequest, v1.AdminActionResponse]
+	deleteBot                *connect.Client[v1.GetBotRequest, v1.DeleteBotResponse]
+	listMemories             *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
+	searchMemories           *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
+	deleteMemory             *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
+	listKnowledge            *connect.Client[v1.ListKnowledgeRequest, v1.ListKnowledgeResponse]
+	addKnowledgeFolder       *connect.Client[v1.AddKnowledgeFolderRequest, v1.KnowledgeFolder]
+	removeKnowledgeFolder    *connect.Client[v1.RemoveKnowledgeFolderRequest, v1.RemoveKnowledgeFolderResponse]
+	syncKnowledge            *connect.Client[v1.SyncKnowledgeRequest, v1.KnowledgeFolder]
+	searchKnowledge          *connect.Client[v1.SearchKnowledgeRequest, v1.SearchKnowledgeResponse]
+	listFeed                 *connect.Client[v1.ListFeedRequest, v1.ListFeedResponse]
+	markFeedRead             *connect.Client[v1.MarkFeedReadRequest, v1.MarkFeedReadResponse]
+	deleteFeedPost           *connect.Client[v1.DeleteFeedPostRequest, v1.DeleteFeedPostResponse]
+	quoteFeedPost            *connect.Client[v1.QuoteFeedPostRequest, v1.QuoteFeedPostResponse]
+	listDashboard            *connect.Client[v1.ListDashboardRequest, v1.ListDashboardResponse]
+	markDashboardRead        *connect.Client[v1.MarkDashboardReadRequest, v1.MarkDashboardReadResponse]
+	dismissDashboardCard     *connect.Client[v1.DismissDashboardCardRequest, v1.DismissDashboardCardResponse]
+	submitDashboardCard      *connect.Client[v1.SubmitDashboardCardRequest, v1.SubmitDashboardCardResponse]
+	hydrateDashboardCard     *connect.Client[v1.HydrateDashboardCardRequest, v1.DashboardCard]
+	listTunnels              *connect.Client[v1.ListTunnelsRequest, v1.ListTunnelsResponse]
+	createTunnel             *connect.Client[v1.CreateTunnelRequest, v1.Tunnel]
+	updateTunnel             *connect.Client[v1.UpdateTunnelRequest, v1.Tunnel]
+	deleteTunnel             *connect.Client[v1.DeleteTunnelRequest, v1.DeleteTunnelResponse]
+	listMail                 *connect.Client[v1.ListMailRequest, v1.ListMailResponse]
+	getMail                  *connect.Client[v1.GetMailRequest, v1.Mail]
+	deleteMail               *connect.Client[v1.DeleteMailRequest, v1.DeleteMailResponse]
+	updateMailbox            *connect.Client[v1.UpdateMailboxRequest, v1.Mailbox]
+	rotateMailbox            *connect.Client[v1.RotateMailboxRequest, v1.Mailbox]
+	listAutomations          *connect.Client[v1.ListAutomationsRequest, v1.ListAutomationsResponse]
+	createAutomation         *connect.Client[v1.CreateAutomationRequest, v1.Automation]
+	updateAutomation         *connect.Client[v1.UpdateAutomationRequest, v1.Automation]
+	deleteAutomation         *connect.Client[v1.DeleteAutomationRequest, v1.DeleteAutomationResponse]
+	runAutomation            *connect.Client[v1.RunAutomationRequest, v1.RunAutomationResponse]
+	listChats                *connect.Client[v1.ListChatsRequest, v1.ListChatsResponse]
+	createChat               *connect.Client[v1.CreateChatRequest, v1.Chat]
+	renameChat               *connect.Client[v1.RenameChatRequest, v1.Chat]
+	deleteChat               *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
+	setChatModel             *connect.Client[v1.SetChatModelRequest, v1.Chat]
+	setChatThinking          *connect.Client[v1.SetChatThinkingRequest, v1.Chat]
+	listModels               *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
+	transcribe               *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	send                     *connect.Client[v1.SendRequest, v1.SendResponse]
+	stopRun                  *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
+	streamRun                *connect.Client[v1.StreamRunRequest, v1.RunEvent]
+	editMessage              *connect.Client[v1.EditMessageRequest, v1.SendResponse]
+	deleteMessage            *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
+	divergeChat              *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
+	compactChat              *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
+	collectMemories          *connect.Client[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse]
+	listSubagents            *connect.Client[v1.ListSubagentsRequest, v1.ListSubagentsResponse]
+	getSubagent              *connect.Client[v1.GetSubagentRequest, v1.Subagent]
+	stopSubagent             *connect.Client[v1.StopSubagentRequest, v1.StopSubagentResponse]
+	getTaskboard             *connect.Client[v1.GetTaskboardRequest, v1.Taskboard]
+	clearTaskboard           *connect.Client[v1.ClearTaskboardRequest, v1.Taskboard]
+	listSecrets              *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
+	addSecret                *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
+	updateSecret             *connect.Client[v1.UpdateSecretRequest, v1.SecretMeta]
+	deleteSecret             *connect.Client[v1.DeleteSecretRequest, v1.DeleteSecretResponse]
+	listApprovals            *connect.Client[v1.ListApprovalsRequest, v1.ListApprovalsResponse]
+	decideApproval           *connect.Client[v1.DecideApprovalRequest, v1.Approval]
+	listRules                *connect.Client[v1.ListRulesRequest, v1.ListRulesResponse]
+	setRule                  *connect.Client[v1.SetRuleRequest, v1.Rule]
+	listOperatorRules        *connect.Client[v1.ListOperatorRulesRequest, v1.ListOperatorRulesResponse]
+	setOperatorRule          *connect.Client[v1.SetOperatorRuleRequest, v1.OperatorRule]
+	deleteOperatorRule       *connect.Client[v1.DeleteOperatorRuleRequest, v1.DeleteOperatorRuleResponse]
+	listChanges              *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
+	listChangeFiles          *connect.Client[v1.ListChangeFilesRequest, v1.ListChangeFilesResponse]
+	getChangePatch           *connect.Client[v1.GetChangePatchRequest, v1.GetChangePatchResponse]
+	restoreChange            *connect.Client[v1.RestoreChangeRequest, v1.RestoreChangeResponse]
+	listDriveChanges         *connect.Client[v1.ListDriveChangesRequest, v1.ListDriveChangesResponse]
+	listFiles                *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
+	readFile                 *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
+	mkdir                    *connect.Client[v1.MkdirRequest, v1.FileOpResponse]
+	removeFile               *connect.Client[v1.RemoveFileRequest, v1.FileOpResponse]
+	putFile                  *connect.Client[v1.PutFileRequest, v1.FileOpResponse]
+	getSettings              *connect.Client[v1.GetSettingsRequest, v1.Settings]
+	putSettings              *connect.Client[v1.PutSettingsRequest, v1.Settings]
+	setModels                *connect.Client[v1.SetModelsRequest, v1.Settings]
+	listProviderModels       *connect.Client[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse]
+	setConnectorVars         *connect.Client[v1.SetConnectorVarsRequest, v1.Settings]
+	setAutoenableConnectors  *connect.Client[v1.SetAutoenableConnectorsRequest, v1.Settings]
+	listAuditEvents          *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
+	auditSummary             *connect.Client[v1.AuditSummaryRequest, v1.AuditSummaryResponse]
+	markAuditRead            *connect.Client[v1.MarkAuditReadRequest, v1.AuditSummaryResponse]
+	listTraffic              *connect.Client[v1.ListTrafficRequest, v1.ListTrafficResponse]
+	getBotNetwork            *connect.Client[v1.GetBotNetworkRequest, v1.BotNetwork]
+	addHostPattern           *connect.Client[v1.AddHostPatternRequest, v1.BotNetwork]
+	removeHostPattern        *connect.Client[v1.RemoveHostPatternRequest, v1.BotNetwork]
+	setOtherProtocols        *connect.Client[v1.SetOtherProtocolsRequest, v1.BotNetwork]
+	getEgressStatus          *connect.Client[v1.GetEgressStatusRequest, v1.EgressStatus]
+	rotateEgressCA           *connect.Client[v1.RotateEgressCARequest, v1.EgressStatus]
+	listLLMLogs              *connect.Client[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse]
+	listConnectors           *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
+	createConnector          *connect.Client[v1.CreateConnectorRequest, v1.Connector]
+	updateConnector          *connect.Client[v1.UpdateConnectorRequest, v1.Connector]
+	deleteConnector          *connect.Client[v1.DeleteConnectorRequest, v1.DeleteConnectorResponse]
+	listBotConnectors        *connect.Client[v1.ListBotConnectorsRequest, v1.ListBotConnectorsResponse]
+	attachConnector          *connect.Client[v1.AttachConnectorRequest, v1.BotConnector]
+	createBotConnector       *connect.Client[v1.CreateBotConnectorRequest, v1.BotConnector]
+	detachConnector          *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
+	refreshBotConnector      *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
+	startConnectorAuth       *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
+	seedConnectors           *connect.Client[v1.SeedConnectorsRequest, v1.SeedConnectorsResponse]
+	seedSkills               *connect.Client[v1.SeedSkillsRequest, v1.SeedSkillsResponse]
+	listSkills               *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
+	installSkill             *connect.Client[v1.InstallSkillRequest, v1.InstallSkillResponse]
+	deleteSkill              *connect.Client[v1.DeleteSkillRequest, v1.DeleteSkillResponse]
+	listBotSkills            *connect.Client[v1.ListBotSkillsRequest, v1.ListBotSkillsResponse]
+	setBotSkill              *connect.Client[v1.SetBotSkillRequest, v1.BotSkill]
+	listSkillFiles           *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
+	readSkillFile            *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
+	saveSkill                *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
+	listChannelAdapters      *connect.Client[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse]
+	listBotChannels          *connect.Client[v1.ListBotChannelsRequest, v1.ListBotChannelsResponse]
+	createChannel            *connect.Client[v1.CreateChannelRequest, v1.Channel]
+	updateChannel            *connect.Client[v1.UpdateChannelRequest, v1.Channel]
+	deleteChannel            *connect.Client[v1.DeleteChannelRequest, v1.DeleteChannelResponse]
+	channelAction            *connect.Client[v1.ChannelActionRequest, v1.ChannelActionResponse]
+	listDriveTemplates       *connect.Client[v1.ListDriveTemplatesRequest, v1.ListDriveTemplatesResponse]
+	listDrives               *connect.Client[v1.ListDrivesRequest, v1.ListDrivesResponse]
+	saveDrive                *connect.Client[v1.SaveDriveRequest, v1.Drive]
+	deleteDrive              *connect.Client[v1.DeleteDriveRequest, v1.DeleteDriveResponse]
+	beginDriveAuth           *connect.Client[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse]
+	pickDriveOptions         *connect.Client[v1.PickDriveOptionsRequest, v1.PickDriveOptionsResponse]
+	browseDrive              *connect.Client[v1.BrowseDriveRequest, v1.BrowseDriveResponse]
+	getDriveSettings         *connect.Client[v1.GetDriveSettingsRequest, v1.DriveSettings]
+	putDriveSettings         *connect.Client[v1.PutDriveSettingsRequest, v1.DriveSettings]
 }
 
 // SignIn calls silo.v1.UI.SignIn.
@@ -1793,6 +1886,21 @@ func (c *uIClient) RemoveBotContainers(ctx context.Context, req *connect.Request
 	return c.removeBotContainers.CallUnary(ctx, req)
 }
 
+// ListAdminContainers calls silo.v1.UI.ListAdminContainers.
+func (c *uIClient) ListAdminContainers(ctx context.Context, req *connect.Request[v1.ListAdminContainersRequest]) (*connect.Response[v1.AdminContainers], error) {
+	return c.listAdminContainers.CallUnary(ctx, req)
+}
+
+// AdminContainerAction calls silo.v1.UI.AdminContainerAction.
+func (c *uIClient) AdminContainerAction(ctx context.Context, req *connect.Request[v1.AdminContainerActionRequest]) (*connect.Response[v1.AdminActionResponse], error) {
+	return c.adminContainerAction.CallUnary(ctx, req)
+}
+
+// RemoveAdminBotContainers calls silo.v1.UI.RemoveAdminBotContainers.
+func (c *uIClient) RemoveAdminBotContainers(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.AdminActionResponse], error) {
+	return c.removeAdminBotContainers.CallUnary(ctx, req)
+}
+
 // DeleteBot calls silo.v1.UI.DeleteBot.
 func (c *uIClient) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
 	return c.deleteBot.CallUnary(ctx, req)
@@ -1856,6 +1964,31 @@ func (c *uIClient) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.D
 // QuoteFeedPost calls silo.v1.UI.QuoteFeedPost.
 func (c *uIClient) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
 	return c.quoteFeedPost.CallUnary(ctx, req)
+}
+
+// ListDashboard calls silo.v1.UI.ListDashboard.
+func (c *uIClient) ListDashboard(ctx context.Context, req *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error) {
+	return c.listDashboard.CallUnary(ctx, req)
+}
+
+// MarkDashboardRead calls silo.v1.UI.MarkDashboardRead.
+func (c *uIClient) MarkDashboardRead(ctx context.Context, req *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error) {
+	return c.markDashboardRead.CallUnary(ctx, req)
+}
+
+// DismissDashboardCard calls silo.v1.UI.DismissDashboardCard.
+func (c *uIClient) DismissDashboardCard(ctx context.Context, req *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error) {
+	return c.dismissDashboardCard.CallUnary(ctx, req)
+}
+
+// SubmitDashboardCard calls silo.v1.UI.SubmitDashboardCard.
+func (c *uIClient) SubmitDashboardCard(ctx context.Context, req *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error) {
+	return c.submitDashboardCard.CallUnary(ctx, req)
+}
+
+// HydrateDashboardCard calls silo.v1.UI.HydrateDashboardCard.
+func (c *uIClient) HydrateDashboardCard(ctx context.Context, req *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error) {
+	return c.hydrateDashboardCard.CallUnary(ctx, req)
 }
 
 // ListTunnels calls silo.v1.UI.ListTunnels.
@@ -2445,6 +2578,20 @@ type UIHandler interface {
 	// Stop and remove all of them. Files, drives, and connectors stay; each
 	// container is made again when it is next needed.
 	RemoveBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// Admin: everything Silo has on the container engine — every user's Bots
+	// with their machines, drive and MCP sidecars, the egress gateway, and any
+	// Silo container left over that the database no longer claims — plus each
+	// client network and the containers it carries. Nothing the engine hosts
+	// for anyone else is listed or touched.
+	ListAdminContainers(context.Context, *connect.Request[v1.ListAdminContainersRequest]) (*connect.Response[v1.AdminContainers], error)
+	// Start, stop, or remove one container by the engine name the list named.
+	// Bot machines go through the Bot's own lifecycle; everything else is one
+	// engine action on that container. The server refuses a name the list did
+	// not carry.
+	AdminContainerAction(context.Context, *connect.Request[v1.AdminContainerActionRequest]) (*connect.Response[v1.AdminActionResponse], error)
+	// Remove one Bot's containers, the owner's Remove all without the
+	// ownership check.
+	RemoveAdminBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.AdminActionResponse], error)
 	DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
@@ -2461,6 +2608,12 @@ type UIHandler interface {
 	MarkFeedRead(context.Context, *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error)
 	DeleteFeedPost(context.Context, *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error)
 	QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error)
+	// Dashboard: declarative modular form cards curated by the Bot.
+	ListDashboard(context.Context, *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error)
+	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
+	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
+	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
+	HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error)
 	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
 	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
@@ -2798,6 +2951,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("RemoveBotContainers")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListAdminContainersHandler := connect.NewUnaryHandler(
+		UIListAdminContainersProcedure,
+		svc.ListAdminContainers,
+		connect.WithSchema(uIMethods.ByName("ListAdminContainers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAdminContainerActionHandler := connect.NewUnaryHandler(
+		UIAdminContainerActionProcedure,
+		svc.AdminContainerAction,
+		connect.WithSchema(uIMethods.ByName("AdminContainerAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveAdminBotContainersHandler := connect.NewUnaryHandler(
+		UIRemoveAdminBotContainersProcedure,
+		svc.RemoveAdminBotContainers,
+		connect.WithSchema(uIMethods.ByName("RemoveAdminBotContainers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIDeleteBotHandler := connect.NewUnaryHandler(
 		UIDeleteBotProcedure,
 		svc.DeleteBot,
@@ -2874,6 +3045,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIQuoteFeedPostProcedure,
 		svc.QuoteFeedPost,
 		connect.WithSchema(uIMethods.ByName("QuoteFeedPost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListDashboardHandler := connect.NewUnaryHandler(
+		UIListDashboardProcedure,
+		svc.ListDashboard,
+		connect.WithSchema(uIMethods.ByName("ListDashboard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIMarkDashboardReadHandler := connect.NewUnaryHandler(
+		UIMarkDashboardReadProcedure,
+		svc.MarkDashboardRead,
+		connect.WithSchema(uIMethods.ByName("MarkDashboardRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDismissDashboardCardHandler := connect.NewUnaryHandler(
+		UIDismissDashboardCardProcedure,
+		svc.DismissDashboardCard,
+		connect.WithSchema(uIMethods.ByName("DismissDashboardCard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISubmitDashboardCardHandler := connect.NewUnaryHandler(
+		UISubmitDashboardCardProcedure,
+		svc.SubmitDashboardCard,
+		connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIHydrateDashboardCardHandler := connect.NewUnaryHandler(
+		UIHydrateDashboardCardProcedure,
+		svc.HydrateDashboardCard,
+		connect.WithSchema(uIMethods.ByName("HydrateDashboardCard")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListTunnelsHandler := connect.NewUnaryHandler(
@@ -3590,6 +3791,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListBotContainersHandler.ServeHTTP(w, r)
 		case UIRemoveBotContainersProcedure:
 			uIRemoveBotContainersHandler.ServeHTTP(w, r)
+		case UIListAdminContainersProcedure:
+			uIListAdminContainersHandler.ServeHTTP(w, r)
+		case UIAdminContainerActionProcedure:
+			uIAdminContainerActionHandler.ServeHTTP(w, r)
+		case UIRemoveAdminBotContainersProcedure:
+			uIRemoveAdminBotContainersHandler.ServeHTTP(w, r)
 		case UIDeleteBotProcedure:
 			uIDeleteBotHandler.ServeHTTP(w, r)
 		case UIListMemoriesProcedure:
@@ -3616,6 +3823,16 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteFeedPostHandler.ServeHTTP(w, r)
 		case UIQuoteFeedPostProcedure:
 			uIQuoteFeedPostHandler.ServeHTTP(w, r)
+		case UIListDashboardProcedure:
+			uIListDashboardHandler.ServeHTTP(w, r)
+		case UIMarkDashboardReadProcedure:
+			uIMarkDashboardReadHandler.ServeHTTP(w, r)
+		case UIDismissDashboardCardProcedure:
+			uIDismissDashboardCardHandler.ServeHTTP(w, r)
+		case UISubmitDashboardCardProcedure:
+			uISubmitDashboardCardHandler.ServeHTTP(w, r)
+		case UIHydrateDashboardCardProcedure:
+			uIHydrateDashboardCardHandler.ServeHTTP(w, r)
 		case UIListTunnelsProcedure:
 			uIListTunnelsHandler.ServeHTTP(w, r)
 		case UICreateTunnelProcedure:
@@ -3969,6 +4186,18 @@ func (UnimplementedUIHandler) RemoveBotContainers(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveBotContainers is not implemented"))
 }
 
+func (UnimplementedUIHandler) ListAdminContainers(context.Context, *connect.Request[v1.ListAdminContainersRequest]) (*connect.Response[v1.AdminContainers], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAdminContainers is not implemented"))
+}
+
+func (UnimplementedUIHandler) AdminContainerAction(context.Context, *connect.Request[v1.AdminContainerActionRequest]) (*connect.Response[v1.AdminActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AdminContainerAction is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveAdminBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.AdminActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveAdminBotContainers is not implemented"))
+}
+
 func (UnimplementedUIHandler) DeleteBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteBot is not implemented"))
 }
@@ -4019,6 +4248,26 @@ func (UnimplementedUIHandler) DeleteFeedPost(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) QuoteFeedPost(context.Context, *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.QuoteFeedPost is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListDashboard(context.Context, *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListDashboard is not implemented"))
+}
+
+func (UnimplementedUIHandler) MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.MarkDashboardRead is not implemented"))
+}
+
+func (UnimplementedUIHandler) DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DismissDashboardCard is not implemented"))
+}
+
+func (UnimplementedUIHandler) SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SubmitDashboardCard is not implemented"))
+}
+
+func (UnimplementedUIHandler) HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.HydrateDashboardCard is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error) {

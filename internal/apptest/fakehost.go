@@ -12,6 +12,7 @@ package apptest
 import (
 	"context"
 	"net/netip"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -31,6 +32,7 @@ type FakeHost struct {
 	sidecars   []dockerx.StdioContainer
 	orphans    []dockerx.StdioContainer
 	stdioStops map[string]func()
+	siloExtra  []dockerx.SiloContainer
 	InspectErr error
 	CreateErr  error
 	StartErr   error
@@ -182,6 +184,22 @@ func (f *FakeHost) Stop(_ context.Context, id string) error {
 				v.Running = false
 				f.inspect[k] = v
 			}
+		}
+	}
+	return nil
+}
+
+// Remove force-removes a container by id or name.
+func (f *FakeHost) Remove(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	st, ok := f.inspect[id]
+	if !ok {
+		return dockerx.ErrNotFound
+	}
+	for k, v := range f.inspect {
+		if v.ID == st.ID || id == "" {
+			delete(f.inspect, k)
 		}
 	}
 	return nil
@@ -572,6 +590,39 @@ func (f *FakeHost) ListClientNetworks(context.Context) ([]dockerx.NetworkInfo, e
 		out = append(out, dockerx.NetworkInfo{Name: name, Subnet: n.subnet, ClientID: n.clientID})
 	}
 	return out, nil
+}
+
+func (f *FakeHost) ListSiloNetworks(context.Context) ([]dockerx.SiloNetwork, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []dockerx.SiloNetwork
+	for name, n := range f.egressState().networks {
+		sn := dockerx.SiloNetwork{NetworkInfo: dockerx.NetworkInfo{Name: name, Subnet: n.subnet, ClientID: n.clientID}}
+		for id := range n.attached {
+			sn.Containers = append(sn.Containers, id)
+		}
+		out = append(out, sn)
+	}
+	return out, nil
+}
+
+func (f *FakeHost) ListSilo(_ context.Context) ([]dockerx.SiloContainer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := slices.Clone(f.siloExtra)
+	// The gateway is one of ours whatever a test has added.
+	e := f.egressState()
+	if e.containerID != "" {
+		out = append(out, dockerx.SiloContainer{ID: e.containerID, Name: "silo-egress", Role: "egress", Running: true})
+	}
+	return out, nil
+}
+
+// AddSiloContainer puts a container on the Admin tab's engine listing.
+func (f *FakeHost) AddSiloContainer(c dockerx.SiloContainer) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.siloExtra = append(f.siloExtra, c)
 }
 
 func (f *FakeHost) Runtime(context.Context) (string, error) {

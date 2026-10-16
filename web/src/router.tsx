@@ -17,6 +17,7 @@ import {
   ChatLayout,
   ConnectorsRoute,
   ContainerRoute,
+  DashboardRoute,
   DriveAddRoute,
   DriveNewRoute,
   DriveRoute,
@@ -56,7 +57,7 @@ import { SignIn } from "./SignIn";
 //       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
-//         run[/new|/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
+//         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  memories  knowledge  feed
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
@@ -123,7 +124,7 @@ const account = createRoute({ getParentRoute: () => authed, path: "account", com
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
 const adminPage = (
-  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
+  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminContainers" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
 ) =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
@@ -172,6 +173,7 @@ const adminSearch = createRoute({
   },
 });
 const adminDrives = createRoute({ getParentRoute: () => admin, path: "drives", component: adminPage("AdminDrives") });
+const adminContainers = createRoute({ getParentRoute: () => admin, path: "containers", component: adminPage("AdminContainers") });
 const adminAudit = createRoute({ getParentRoute: () => admin, path: "audit", component: adminPage("AdminAudit") });
 const adminDebug = createRoute({ getParentRoute: () => admin, path: "debug", component: adminPage("AdminDebug") });
 const adminElse = createRoute({
@@ -195,6 +197,7 @@ const run = createRoute({ getParentRoute: () => chat, path: "run", staticData: {
 const runNew = createRoute({ getParentRoute: () => chat, path: "run/new", staticData: { tab: "run", fresh: true }, component: RunRoute });
 const runChat = createRoute({ getParentRoute: () => chat, path: "run/$chatId", staticData: { tab: "run" }, component: RunRoute });
 const runAgent = createRoute({ getParentRoute: () => chat, path: "run/$chatId/agent/$agentId", staticData: { tab: "run" }, component: AgentRoute });
+const dashboard = createRoute({ getParentRoute: () => chat, path: "dashboard", staticData: { tab: "dashboard" }, component: DashboardRoute });
 const automations = createRoute({ getParentRoute: () => chat, path: "automations", staticData: { tab: "automations" }, component: AutomationsLayout });
 const automationsIndex = createRoute({ getParentRoute: () => automations, path: "/", component: AutomationsRoute });
 const automationNew = createRoute({ getParentRoute: () => automations, path: "new", component: AutomationNewRoute });
@@ -258,10 +261,10 @@ const routeTree = root.addChildren([
     newBot,
     skills,
     account,
-    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminAudit, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runNew, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
+      chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
       customize.addChildren([
         connectors,
         botSkills,

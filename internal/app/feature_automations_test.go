@@ -39,29 +39,31 @@ func TestAutomationHeartbeatIsPinnedAndIdle(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Pulse")
 	list := listAutomations(t, h, bot.GetId())
-	if len(list) != 1 || list[0].GetKind() != "heartbeat" {
-		t.Fatalf("new bot should have exactly the heartbeat, got %v", list)
+	if len(list) != 2 || list[0].GetKind() != "heartbeat" || list[1].GetKind() != "dashboard" {
+		t.Fatalf("new bot should have heartbeat and dashboard pinned, got %v", list)
+	}
+	for _, au := range list {
+		if au.GetSchedule() != "" || au.GetNextRunAt() != "" || au.GetPrompt() == "" {
+			t.Fatalf("pinned automation %s should start with a prompt and no timer: %v", au.GetKind(), au)
+		}
+		if _, err := h.Client.DeleteAutomation(h.Ctx(), connect.NewRequest(&v1.DeleteAutomationRequest{BotId: bot.GetId(), Id: au.GetId()})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("%s delete should be refused, got %v", au.GetKind(), err)
+		}
 	}
 	hb := list[0]
-	if hb.GetSchedule() != "" || hb.GetNextRunAt() != "" || hb.GetPrompt() == "" {
-		t.Fatalf("heartbeat should start with a prompt and no timer: %v", hb)
-	}
-	if _, err := h.Client.DeleteAutomation(h.Ctx(), connect.NewRequest(&v1.DeleteAutomationRequest{BotId: bot.GetId(), Id: hb.GetId()})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("heartbeat delete should be refused, got %v", err)
-	}
 	// Its log chat is not a web chat.
 	chats, _ := h.Client.ListChats(h.Ctx(), connect.NewRequest(&v1.ListChatsRequest{BotId: bot.GetId()}))
 	for _, c := range chats.Msg.GetChats() {
-		if c.GetId() == hb.GetChatId() {
+		if c.GetId() == hb.GetChatId() || c.GetId() == list[1].GetChatId() {
 			t.Fatal("automation log leaked into the chat list")
 		}
 	}
 	if _, err := h.Client.Send(h.Ctx(), connect.NewRequest(&v1.SendRequest{BotId: bot.GetId(), ChatId: hb.GetChatId(), Text: "hi"})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("sending into an automation log should be refused, got %v", err)
 	}
-	// A second list does not duplicate it.
-	if n := len(listAutomations(t, h, bot.GetId())); n != 1 {
-		t.Fatalf("heartbeat duplicated: %d", n)
+	// A second list does not duplicate them.
+	if n := len(listAutomations(t, h, bot.GetId())); n != 2 {
+		t.Fatalf("pinned automations duplicated: %d", n)
 	}
 }
 
@@ -205,14 +207,14 @@ func TestAutomationToolsCreateListUpdateDelete(t *testing.T) {
 	if !strings.HasPrefix(res[0], "created") || !strings.HasPrefix(res[1], "updated") {
 		t.Fatalf("create/update: %q", res[:2])
 	}
-	if !strings.Contains(res[2], "Inbox sweep") || !strings.Contains(res[2], "0 */6 * * *") {
-		t.Fatalf("list should show both:\n%s", res[2])
+	if !strings.Contains(res[2], "Inbox sweep") || !strings.Contains(res[2], "0 */6 * * *") || !strings.Contains(res[2], "Dashboard") {
+		t.Fatalf("list should show all automations:\n%s", res[2])
 	}
 	if !strings.HasPrefix(res[3], "deleted") || !strings.Contains(res[4], "pinned") {
 		t.Fatalf("delete results %q", res[3:])
 	}
 	list := listAutomations(t, h, bot.GetId())
-	if len(list) != 1 || list[0].GetSchedule() != "0 */6 * * *" || list[0].GetNextRunAt() == "" {
+	if len(list) != 2 || list[0].GetSchedule() != "0 */6 * * *" || list[0].GetNextRunAt() == "" {
 		t.Fatalf("after tools: %v", list)
 	}
 }

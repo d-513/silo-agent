@@ -105,6 +105,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
 	a.Skills.EnsureDefaults(id)
 	a.Automations.EnsureHeartbeat(id)
+	a.Automations.EnsureDashboard(id)
 	a.Connectors.AttachDefaults(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
@@ -258,6 +259,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
+	a.DB.Where("bot_id = ?", b.ID).Delete(&db.DashboardCard{})
 	a.Tunnels.Drop(b.ID)
 	a.Mail.Drop(b.ID)
 	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})

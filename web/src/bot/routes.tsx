@@ -17,6 +17,7 @@ const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew")
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
+const DashboardPane = lazyNamed(() => import("../Dashboard"), "DashboardPane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
@@ -150,6 +151,23 @@ export function KnowledgeRoute() {
   return (
     <ScrollPane>
       <KnowledgePane bot={p.bot} onError={p.onError} onStart={p.start} />
+    </ScrollPane>
+  );
+}
+
+export function DashboardRoute() {
+  const p = useBotPage();
+  const navigate = useNavigate();
+  return (
+    <ScrollPane>
+      <DashboardPane
+        bot={p.bot}
+        onError={p.onError}
+        onQuoted={(c) => {
+          patchChats(p.id, (xs) => [c, ...xs.filter((x) => x.id !== c.id)]);
+          void navigate(chatLink(p.id, c.id));
+        }}
+      />
     </ScrollPane>
   );
 }

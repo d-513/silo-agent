@@ -5,6 +5,7 @@ import { t } from "../i18n.ts";
 // The pages a Bot's sidebar opens: the conversation-side ones, the first page
 // of Customize and of Settings, and (in the narrow strip) the machine panes.
 type SideTo =
+  | "/bots/$botId/dashboard"
   | "/bots/$botId/automations"
   | "/bots/$botId/memories"
   | "/bots/$botId/knowledge"

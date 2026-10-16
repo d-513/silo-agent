@@ -72,7 +72,7 @@ func TestPythonAutomationAndModelPaths(t *testing.T) {
 	if res := pyCall(t, h, id, "", "automations", "create", `{"name":"Digest","prompt":"summarize","schedule":"0 9 * * *"}`); res.GetError() != "" || !strings.Contains(res.GetResultJson(), "created") {
 		t.Fatalf("create: %+v", res)
 	}
-	if res := pyCall(t, h, id, "", "automations", "list", `{}`); !strings.Contains(res.GetResultJson(), "Digest") || !strings.Contains(res.GetResultJson(), "Heartbeat") {
+	if res := pyCall(t, h, id, "", "automations", "list", `{}`); !strings.Contains(res.GetResultJson(), "Digest") || !strings.Contains(res.GetResultJson(), "Heartbeat") || !strings.Contains(res.GetResultJson(), "Dashboard") {
 		t.Fatalf("list: %+v", res)
 	}
 	// update asks by default: deny it so the call returns instead of waiting.
@@ -85,8 +85,8 @@ func TestPythonAutomationAndModelPaths(t *testing.T) {
 	if res := pyCall(t, h, id, "", "automations", "delete", `{"automation":"Digest"}`); res.GetError() != "" {
 		t.Fatalf("delete: %+v", res)
 	}
-	if len(listAutomations(t, h, id)) != 1 {
-		t.Fatal("only the Heartbeat should remain")
+	if len(listAutomations(t, h, id)) != 2 {
+		t.Fatal("only the pinned Heartbeat and Dashboard automations should remain")
 	}
 
 	res := pyCall(t, h, id, "", "model", "list", `{}`)

@@ -213,6 +213,60 @@ def feed(text: str, title: str | None = None) -> dict:
     return call("bot", "feed", args)
 
 
+def list_dashboard() -> dict:
+    """List this Bot's open Dashboard cards.
+
+    Returns {cards: [{id, key, kind, title, summary, body, priority, col_span,
+    blocks, submit_label, status, updated_at}, ...]}. Read this before updating
+    the Dashboard so you edit cards gradually in place instead of recreating them.
+    """
+    return call("bot", "dashboard_list", {})
+
+
+def upsert_dashboard_card(
+    id: str | None = None,
+    key: str | None = None,
+    kind: str | None = None,
+    title: str | None = None,
+    summary: str | None = None,
+    body: str | None = None,
+    priority: int | None = None,
+    col_span: int | None = None,
+    blocks: list[dict] | None = None,
+    submit_label: str | None = None,
+) -> dict:
+    """Create or gradually update an open Dashboard card in place.
+
+    Pass `id` or a stable `key` (e.g. "hygiene:tmp") to patch an existing open
+    card; omitted fields keep their existing values. `blocks` is a list of
+    modular display/form blocks (markdown, kv, metrics, diff, switch, select,
+    segmented, checkboxes, input, textarea). When the human clicks the card's
+    submit button (`submit_label`, default "Send"), Silo starts a chat with you
+    containing their chosen form values.
+    """
+    return call(
+        "bot",
+        "dashboard_upsert",
+        {
+            "id": id,
+            "key": key,
+            "kind": kind,
+            "title": title,
+            "summary": summary,
+            "body": body,
+            "priority": priority,
+            "col_span": col_span,
+            "blocks": blocks,
+            "submit_label": submit_label,
+        },
+    )
+
+
+def remove_dashboard_card(id_or_key: str) -> dict:
+    """Remove an open Dashboard card by its id or key once resolved."""
+    return call("bot", "dashboard_remove", {"id": id_or_key})
+
+
 def open_tunnel(port: int, public: bool | None = None) -> dict:
     """Give the human an address for a service listening on this machine.
 
@@ -302,7 +356,7 @@ def set_timezone(time_zone: str) -> dict:
 
 
 def list_automations() -> dict:
-    """List this Bot's automations, including the pinned Heartbeat."""
+    """List this Bot's automations, including the pinned Heartbeat and Dashboard."""
     return call("automations", "list", {})
 
 
@@ -324,7 +378,7 @@ def update_automation(
 ) -> dict:
     """Change an automation by id or name; pass only what changes.
 
-    schedule="" stops it firing. Use it to set the Heartbeat's schedule.
+    schedule="" stops it firing. Use it to set the Heartbeat's or Dashboard's schedule.
     """
     return call(
         "automations",
@@ -334,7 +388,7 @@ def update_automation(
 
 
 def delete_automation(automation: str) -> dict:
-    """Delete an automation and its run log, by id or name (not the Heartbeat)."""
+    """Delete an automation and its run log, by id or name (not the Heartbeat or Dashboard)."""
     return call("automations", "delete", {"automation": automation})
 
 

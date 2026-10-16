@@ -210,3 +210,108 @@ func TestFeedPostFromPython(t *testing.T) {
 		t.Fatalf("deny rule: %+v", res)
 	}
 }
+
+func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_94", dummy.Turn{Text: "I received your dashboard form submission"})
+	h := apptest.New(t)
+	bot := h.CreateBot("Steward")
+	chat := h.FirstChat(bot.GetId())
+	run, _ := h.Send(bot.GetId(), chat, "hello")
+	h.WaitRun(run)
+	h.LiveRun(run)
+
+	wc := h.WorkerClient(bot.GetId())
+	callTool := func(action, args string) *v1.ToolRes {
+		t.Helper()
+		res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{Connector: "bot", Action: action, ArgsJson: args, RunId: run}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+
+	// 1. Create a card with key "hygiene:tmp" and modular form blocks.
+	r1 := callTool("dashboard_upsert", `{
+		"key": "hygiene:tmp",
+		"kind": "hygiene",
+		"title": "Workspace cleanup",
+		"summary": "3 stale files in bot/",
+		"priority": 1,
+		"submit_label": "Apply cleanup",
+		"blocks": [
+			{"type": "switch", "name": "delete_tmp", "label": "Delete temp files", "default": true},
+			{"type": "select", "name": "mode", "label": "Archive mode", "options": ["zip", "delete"], "default": "zip"}
+		]
+	}`)
+	if r1.GetError() != "" || !strings.Contains(r1.GetResultJson(), `"created":true`) {
+		t.Fatalf("dashboard_upsert create: %+v", r1)
+	}
+
+	// 2. Gradual update in place by key without wiping existing blocks or submit_label.
+	r2 := callTool("dashboard_upsert", `{
+		"key": "hygiene:tmp",
+		"summary": "4 stale files in bot/ (Test_94_Input)"
+	}`)
+	if r2.GetError() != "" || !strings.Contains(r2.GetResultJson(), `"updated":true`) {
+		t.Fatalf("dashboard_upsert update: %+v", r2)
+	}
+
+	// 3. List from Python and via UI RPC.
+	rList := callTool("dashboard_list", `{}`)
+	if rList.GetError() != "" || !strings.Contains(rList.GetResultJson(), "4 stale files in bot/") || !strings.Contains(rList.GetResultJson(), "Apply cleanup") {
+		t.Fatalf("dashboard_list: %+v", rList)
+	}
+
+	uiList, err := h.Client.ListDashboard(h.Ctx(), connect.NewRequest(&v1.ListDashboardRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(uiList.Msg.GetCards()) != 1 || feedUnread(t, h, bot.GetId()) != 1 {
+		t.Fatalf("ListDashboard: %+v", uiList.Msg)
+	}
+	card := uiList.Msg.GetCards()[0]
+	if card.GetTitle() != "Workspace cleanup" || card.GetSubmitLabel() != "Apply cleanup" || !strings.Contains(card.GetBlocksJson(), "delete_tmp") {
+		t.Fatalf("card: %+v", card)
+	}
+
+	// 4. Submit card with form values -> opens chat with quote and starts run with serialized values.
+	subRes, err := h.Client.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{
+		BotId:      bot.GetId(),
+		Id:         card.GetId(),
+		ValuesJson: `{"delete_tmp":true,"mode":"zip"}`,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.WaitRun(subRes.Msg.GetRunId())
+	if body := h.RunBody(subRes.Msg.GetRunId()); !strings.Contains(body, "I received your dashboard form submission") {
+		t.Fatalf("submitted run body: %q", body)
+	}
+
+	// Submitted card is no longer open.
+	uiAfter, _ := h.Client.ListDashboard(h.Ctx(), connect.NewRequest(&v1.ListDashboardRequest{BotId: bot.GetId()}))
+	if len(uiAfter.Msg.GetCards()) != 0 {
+		t.Fatalf("cards after submit: %+v", uiAfter.Msg.GetCards())
+	}
+
+	// 5. Create another card and dismiss with suppress_kind = true -> records a lesson in memory.
+	callTool("dashboard_upsert", `{"key":"tasks:1","title":"Unfinished spec","summary":"spec.md"}`)
+	uiList2, _ := h.Client.ListDashboard(h.Ctx(), connect.NewRequest(&v1.ListDashboardRequest{BotId: bot.GetId()}))
+	if len(uiList2.Msg.GetCards()) != 1 {
+		t.Fatalf("expected 1 card, got %d", len(uiList2.Msg.GetCards()))
+	}
+	_, err = h.Client.DismissDashboardCard(h.Ctx(), connect.NewRequest(&v1.DismissDashboardCardRequest{
+		BotId:        bot.GetId(),
+		Id:           uiList2.Msg.GetCards()[0].GetId(),
+		SuppressKind: true,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lessons []db.Memory
+	h.DB.Where("bot_id = ? AND kind = ?", bot.GetId(), "lesson").Find(&lessons)
+	if len(lessons) != 1 || !strings.Contains(lessons[0].Content, "tasks:1") {
+		t.Fatalf("expected lesson from suppress_kind, got %+v", lessons)
+	}
+}

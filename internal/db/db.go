@@ -559,6 +559,32 @@ type FeedPost struct {
 	CreatedAt  time.Time `gorm:"index"`
 }
 
+// DashboardCard is one modular card on a Bot's Dashboard: display blocks and
+// generic form controls curated by the Bot (from its Dashboard automation or a
+// chat). Key is an optional per-Bot slug for gradual updates in place.
+type DashboardCard struct {
+	ID           string `gorm:"primaryKey"`
+	BotID        string `gorm:"index"`
+	Key          string `gorm:"index"`
+	Title        string
+	Summary      string
+	Priority     int    `gorm:"not null;default:2"`
+	BlocksJSON   string `gorm:"not null;default:'[]'"`
+	SubmitLabel  string `gorm:"not null;default:''"`
+	DraftState   string `gorm:"not null;default:'ready'"`
+	DraftContext string `gorm:"not null;default:''"`
+	Status       string `gorm:"index;not null;default:'open'"`
+	Suppressed   bool   `gorm:"not null;default:false"`
+	SourceKind   string
+	SourceName   string
+	ChatID       string
+	RunID        string
+	ReadAt       *time.Time
+	DismissedAt  *time.Time
+	CreatedAt    time.Time `gorm:"index"`
+	UpdatedAt    time.Time `gorm:"index"`
+}
+
 // Subagent is a background agent loop a chat's lead started with spawn_agent.
 // Its work lands in ChatID (a hidden Chat) and starts from a fresh context
 // (the goal and context the lead passed). ParentChatID is the lead's chat.
@@ -683,7 +709,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
