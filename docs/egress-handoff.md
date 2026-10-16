@@ -77,8 +77,11 @@ old boxes).
   days for summaries and 7 for detail.
 - Owner: Bot Settings → Audit tab (timeline plus a Traffic view, Block host /
   Trust host on an entry); lists and the Other-protocols switch in Rules →
-  Network; an alert badge on the Settings row and the Audit tab; blocks shown
-  on the chat's tool row.
+  Network; an alert badge on the Settings row and the Audit tab. In the chat a
+  block needs no row of its own: the Bot gets the gateway's plain `403` as the
+  result of the call that tried, so the thread shows it where it happened
+  (an egress event carries no tool call, only the run it is put down to, so a
+  mark on one row would be a guess).
 - Admin: `/admin/audit` ("Needs attention" by default, collapsed repeats,
   filters in the URL, cursor paging, a summary strip, a Traffic view with
   hosts and counts only); gateway health and switches in Settings → Network.
@@ -154,6 +157,33 @@ Done:
   Bot; otherwise it is "outside a run". The searchable column set has a
   `pg_trgm` GIN index (`db.Migrate` creates the extension).
 
+- The audit and network RPCs. `ListAudit` is gone, replaced by `ListAuditEvents`
+  (filters, an attention view, trigram search, keyset paging), `AuditSummary`
+  (what the badge shows), `MarkAuditRead` and `ListTraffic` (the sums, per
+  host). The owner's own layer of the lists is `GetBotNetwork` (the operator's
+  entries come back marked and are not removable), `AddHostPattern` /
+  `RemoveHostPattern` and `SetOtherProtocols`, each applied to the gateway at
+  once; admin-only `GetEgressStatus` and `RotateEgressCA` report the gateway's
+  health and rotate the CA. `IngestEvents` raises `bots.audit_unseen` once per
+  Bot for the lines that need a human. The gateway's health report is recorded
+  as feed state, so a list that never reported is shown as such and the last
+  good load time is kept.
+
+- The UI. `AuditPane` (Needs attention | Everything | Traffic, a search box,
+  "Load older", Block host / Trust host on a flagged line, a verdict chip and a
+  human sentence for the actor) is shared by the Bot's new Audit tab — whose
+  Settings row and narrow-strip chip carry the unread badge — and Admin's
+  `/admin/audit`. Admin → Settings → Network holds the gateway switches, its
+  health (addresses, last word, certificate with a rotation) and the threat
+  lists. The owner's lists and the Other-protocols switch are on the Bot's
+  Rules page (`rules/NetworkCard`), where an operator entry shows a lock.
+
+The proxy environment variables the design first called for turned out to be
+unneeded: the box is told the gateway's own address (`SILO_EGRESS_DNS`) and
+resolves every name through it, so HTTP, HTTPS and DNS all go through the
+gateway without a `HTTP_PROXY`/`HTTPS_PROXY` pair (which would also drag the H2C
+CP link through the proxy).
+
 A podman note that shaped the DNS: podman **ignores** a container's `--dns` on a
 user-defined network (the container's resolver becomes the network's own gateway
 address, `dns.podman`), so the box does not learn the gateway that way. The box
@@ -163,11 +193,6 @@ writes it into `/etc/resolv.conf`; the gateway answers every name with itself
 variables are set (a global `HTTP_PROXY` would drag the H2C CP link through the
 proxy). `TestContainerEgressBoxIsIsolated` proves it against the real engine.
 
-Next, in order:
-6. The owner and admin UI over the audit tables, and the rest of the network
-   settings the owner needs: the lists (Block / Trust / Pass-through), the
-   per-Bot "Other protocols" switch, the gateway health shown to admins, the
-   Audit tab (timeline and Traffic view, Block host / Trust host on an entry)
-   and `AuditTable`'s replacement on the admin side ("Needs attention" first,
-   filters, paging). Plus the proxy environment variables where they do not
-   catch the CP link.
+That closes this handoff: the gateway, the CP side, the operator's rule layer,
+the secrets and the audit — storage, RPCs and the owner and admin UI — are all
+in place.

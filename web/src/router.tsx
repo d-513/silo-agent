@@ -4,6 +4,7 @@ import { getSession, onSession } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
   AgentRoute,
+  AuditRoute,
   AutomationNewRoute,
   AutomationRoute,
   AutomationsLayout,
@@ -52,14 +53,14 @@ import { SignIn } from "./SignIn";
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
 //       users[/invite|/$userId]
-//       connectors[/new|/$id]  skills  drives  debug
+//       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
 //         run[/new|/$chatId[/agent/$agentId]]  automations[/new|/$id]  memories  knowledge  feed
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
-//         settings  rules  secrets  tunnels  container
+//         settings  rules  secrets  tunnels  container  audit
 //       files desktop console changes mail   a right-rail pane as a page of its own
 //
 // `staticData.tab` is the page a route lights (a sub-page lights its parent's).
@@ -122,7 +123,7 @@ const account = createRoute({ getParentRoute: () => authed, path: "account", com
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
 const adminPage = (
-  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
+  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
 ) =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
@@ -171,6 +172,7 @@ const adminSearch = createRoute({
   },
 });
 const adminDrives = createRoute({ getParentRoute: () => admin, path: "drives", component: adminPage("AdminDrives") });
+const adminAudit = createRoute({ getParentRoute: () => admin, path: "audit", component: adminPage("AdminAudit") });
 const adminDebug = createRoute({ getParentRoute: () => admin, path: "debug", component: adminPage("AdminDebug") });
 const adminElse = createRoute({
   getParentRoute: () => admin,
@@ -237,6 +239,7 @@ const secrets = createRoute({ getParentRoute: () => settingsSection, path: "secr
 const rules = createRoute({ getParentRoute: () => settingsSection, path: "rules", staticData: { tab: "rules" }, component: RulesRoute });
 const container = createRoute({ getParentRoute: () => settingsSection, path: "container", staticData: { tab: "container" }, component: ContainerRoute });
 const settings = createRoute({ getParentRoute: () => settingsSection, path: "settings", staticData: { tab: "settings" }, component: SettingsRoute });
+const botAudit = createRoute({ getParentRoute: () => settingsSection, path: "audit", staticData: { tab: "audit" }, component: AuditRoute });
 
 // Any other address goes home (and from there to Sign in when signed out).
 const elsewhere = createRoute({
@@ -255,7 +258,7 @@ const routeTree = root.addChildren([
     newBot,
     skills,
     account,
-    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runNew, runChat, runAgent, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
@@ -265,7 +268,7 @@ const routeTree = root.addChildren([
         drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
         channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
       ]),
-      settingsSection.addChildren([settings, rules, secrets, tunnels, container]),
+      settingsSection.addChildren([settings, rules, secrets, tunnels, container, botAudit]),
       files,
       desktop,
       consoleTab,

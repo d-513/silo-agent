@@ -406,15 +406,22 @@ func (s *Service) feeds() []*v1.EgressFeed {
 	return out
 }
 
-// renderBot is what the gateway needs about one Bot: its surrogate secrets
-// (the box holds the stand-in; the gateway swaps in the real value for the
-// allowed hosts and the stand-in back in their answers) and the values of its
-// plain secrets (seeing one leave is a flag). A channel's own secrets are the
-// CP's, never the Bot's, so they are left out.
+// renderBot is what the gateway needs about one Bot: its own network lists and
+// the switch for anything that is not HTTP, its surrogate secrets (the box
+// holds the stand-in; the gateway swaps in the real value for the allowed hosts
+// and the stand-in back in their answers) and the values of its plain secrets
+// (seeing one leave is a flag). A channel's own secrets are the CP's, never the
+// Bot's, so they are left out.
 func (s *Service) renderBot(botID string) *v1.EgressBot {
+	var row db.Bot
+	s.db.First(&row, "id = ?", botID)
 	var secrets []db.Secret
 	s.db.Where("bot_id = ? AND name NOT LIKE ?", botID, "channel.%").Find(&secrets)
-	bot := &v1.EgressBot{BotId: botID}
+	bot := &v1.EgressBot{
+		BotId:          botID,
+		Lists:          s.botLists(botID),
+		OtherProtocols: row.OtherProtocols,
+	}
 	for _, sec := range secrets {
 		if sec.Value == "" {
 			continue
@@ -432,6 +439,25 @@ func (s *Service) renderBot(botID string) *v1.EgressBot {
 		bot.PlainSecrets = append(bot.PlainSecrets, sec.Value)
 	}
 	return bot
+}
+
+// botLists is a Bot's own entries, laid over the operator's floor by the
+// gateway. The operator's lists are sent separately and always win.
+func (s *Service) botLists(botID string) *v1.EgressHostLists {
+	var rows []db.EgressPattern
+	s.db.Where("bot_id = ?", botID).Order("created_at").Find(&rows)
+	out := &v1.EgressHostLists{}
+	for _, r := range rows {
+		switch r.Kind {
+		case "block":
+			out.Block = append(out.Block, r.Pattern)
+		case "trust":
+			out.Trust = append(out.Trust, r.Pattern)
+		case "pass":
+			out.Pass = append(out.Pass, r.Pattern)
+		}
+	}
+	return out
 }
 
 // secretHosts reads a secret's stored JSON host list, or nil.
@@ -689,6 +715,7 @@ func (s *Service) egressUp(up *v1.EgressUp) {
 		h := b.Health
 		s.db.Model(&db.EgressHost{}).Where("id = ?", gatewayID).
 			Updates(map[string]any{"networks": h.GetNetworks(), "healthy_at": time.Now()})
+		s.recordFeeds(h.GetFeeds())
 	}
 }
 

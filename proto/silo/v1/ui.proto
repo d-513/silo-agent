@@ -154,7 +154,29 @@ service UI {
   rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
   rpc SetAutoenableConnectors(SetAutoenableConnectorsRequest) returns (Settings);
 
-  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse);
+  // The audit timeline: tool calls and their decisions, tool results the output
+  // filter did not pass, and what the network filter blocked or flagged. With a
+  // bot_id an owner sees their Bot's; with none an admin sees the whole
+  // installation's.
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+  // AuditSummary is the counts behind the page and the attention badge.
+  rpc AuditSummary(AuditSummaryRequest) returns (AuditSummaryResponse);
+  // MarkAuditRead clears one Bot's attention badge.
+  rpc MarkAuditRead(MarkAuditReadRequest) returns (AuditSummaryResponse);
+  // ListTraffic is the network filter's sums: per Bot, per host.
+  rpc ListTraffic(ListTrafficRequest) returns (ListTrafficResponse);
+
+  // The Bot's own network lists (on top of the operator's) and whether it may
+  // talk to something that is not HTTP.
+  rpc GetBotNetwork(GetBotNetworkRequest) returns (BotNetwork);
+  rpc AddHostPattern(AddHostPatternRequest) returns (BotNetwork);
+  rpc RemoveHostPattern(RemoveHostPatternRequest) returns (BotNetwork);
+  rpc SetOtherProtocols(SetOtherProtocolsRequest) returns (BotNetwork);
+
+  // The filter itself, for admins: whether it is on, how it is doing, and the
+  // key it decrypts with.
+  rpc GetEgressStatus(GetEgressStatusRequest) returns (EgressStatus);
+  rpc RotateEgressCA(RotateEgressCARequest) returns (EgressStatus);
 
   rpc ListLLMLogs(ListLLMLogsRequest) returns (ListLLMLogsResponse);
 
@@ -441,6 +463,9 @@ message Bot {
   // model judges tool results by, for actions whose output rule is "check".
   // Empty means the built-in policy.
   string output_policy = 17;
+  // AuditUnseen counts audit lines flagged for a human that the owner has not
+  // opened the Bot's Audit tab over yet.
+  int32 audit_unseen = 18;
 }
 
 message ListBotsRequest {}
@@ -1657,22 +1682,185 @@ message PutSettingsRequest {
   string yaml = 2;
 }
 
-message AuditRow {
+// AuditEvent is one line of a Bot's timeline. Calls and their decisions, tool
+// results the output filter did not pass, and what the network filter blocked
+// or flagged all land here, with the run they belong to when there was one.
+message AuditEvent {
   string id = 1;
+  // RFC 3339, in the Bot's zone at the time.
   string at = 2;
   string bot_id = 3;
   string bot_name = 4;
   int32 crest = 5;
+  // Who decided: a person's email, the auto-approval gate, the output filter,
+  // the network filter, or the Bot and its worker.
   string actor = 6;
+  // connector.action, e.g. "web.search" or "github.create_issue".
   string action = 7;
+  // allow, deny, auto_allow, auto_deny, output_flag, output_withhold,
+  // output_unchecked, block or flag.
   string decision = 8;
+  // A short code for a block or a flag: threat_list, private, blocked_host,
+  // exfil_sink, surrogate_leak, secret_shape, upload_budget, ...
+  string reason = 9;
+  // Human words: which list, which secret, which host.
+  string detail = 10;
+  string host = 11;
+  int32 port = 12;
+  // http, https, tcp or dns.
+  string proto = 13;
+  string method = 14;
+  // The path, masked of the Bot's secrets and capped.
+  string path = 15;
+  int64 bytes_up = 16;
+  int64 bytes_down = 17;
+  // Needs a human: a block, or a leak, secret or exfil flag.
+  bool attention = 18;
+  string connector_id = 19;
+  string run_id = 20;
+  string chat_id = 21;
+  // The conversation's title, when it had one.
+  string chat_title = 22;
 }
 
-message ListAuditRequest {}
-
-message ListAuditResponse {
-  repeated AuditRow rows = 1;
+message ListAuditEventsRequest {
+  // Empty asks for the whole installation (admins only).
+  string bot_id = 1;
+  // all (default) or attention.
+  string view = 2;
+  // Free text over the searchable columns.
+  string query = 3;
+  // Exact filters; empty is any. Actor, decision and action narrow the list,
+  // connector narrows to one attached connector's rows.
+  string actor = 4;
+  string decision = 5;
+  string action = 6;
+  string connector_id = 7;
+  // next_cursor of the previous page; empty starts at the newest.
+  string cursor = 8;
+  int32 limit = 9;
 }
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  // Pass back to read on; empty when this is the last page.
+  string next_cursor = 2;
+  bool more = 3;
+}
+
+message AuditSummaryRequest {
+  // Empty sums every Bot (admins only).
+  string bot_id = 1;
+}
+
+message AuditSummaryResponse {
+  // Lines kept (detail retention).
+  int32 total = 1;
+  int32 attention = 2;
+  // Attention lines the owner has not opened yet: the badge.
+  int32 unread = 3;
+  // Summed over the traffic window.
+  int32 requests = 4;
+  int32 blocked = 5;
+  int32 flagged = 6;
+  // How long each is kept, in days.
+  int32 detail_days = 7;
+  int32 traffic_days = 8;
+}
+
+message MarkAuditReadRequest {
+  string bot_id = 1;
+}
+
+message TrafficRow {
+  string bot_id = 1;
+  string bot_name = 2;
+  // Empty is the Bot's own machine.
+  string host = 4;
+  int32 requests = 5;
+  int32 blocked = 6;
+  int32 flagged = 7;
+  int64 bytes_up = 8;
+  int64 bytes_down = 9;
+  // RFC 3339 of the newest minute summed into the row.
+  string last_at = 10;
+}
+
+message ListTrafficRequest {
+  string bot_id = 1;
+  string query = 2;
+  // 0 uses the server's default; the top of the list is returned.
+  int32 limit = 3;
+}
+
+message ListTrafficResponse {
+  repeated TrafficRow rows = 1;
+}
+
+// HostPattern is one entry of a network list.
+message HostPattern {
+  // block, trust or pass.
+  string kind = 1;
+  // example.com, *.example.com, an IP or a CIDR.
+  string pattern = 2;
+  // The operator's shared entry: shown with the Bot's own, not editable.
+  bool from_operator = 3;
+}
+
+message BotNetwork {
+  repeated HostPattern patterns = 1;
+  // The Bot may open anything that is not HTTP, over SOCKS5.
+  bool other_protocols = 2;
+  // False while the operator has the network filter off.
+  bool enabled = 3;
+}
+
+message GetBotNetworkRequest {
+  string bot_id = 1;
+}
+
+message AddHostPatternRequest {
+  string bot_id = 1;
+  // block, trust or pass.
+  string kind = 2;
+  string pattern = 3;
+}
+
+message RemoveHostPatternRequest {
+  string bot_id = 1;
+  string kind = 2;
+  string pattern = 3;
+}
+
+message SetOtherProtocolsRequest {
+  string bot_id = 1;
+  bool on = 2;
+}
+
+// FeedStatus is one threat list as the gateway last loaded it.
+message FeedStatus {
+  string id = 1;
+  string url = 2;
+  int32 entries = 3;
+  // RFC 3339 of its last good download; empty when never.
+  string updated_at = 4;
+  string error = 5;
+}
+
+message EgressStatus {
+  bool enabled = 1;
+  // Why the gateway is not serving, if it is not.
+  string problem = 2;
+  // RFC 3339 of the last word from the gateway; empty when it never spoke.
+  string healthy_at = 3;
+  int32 networks = 4;
+  string ca_fingerprint = 5;
+  repeated FeedStatus feeds = 6;
+}
+
+message GetEgressStatusRequest {}
+
+message RotateEgressCARequest {}
 
 message LLMLog {
   string id = 1;

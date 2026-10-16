@@ -52,8 +52,9 @@ export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SidePr
   );
 }
 
-// UnreadBadge counts unseen Feed posts: a small cobalt pill.
-function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
+// UnreadBadge counts unseen Feed posts (and a Bot's audit lines): a small
+// cobalt pill. Every sidebar row that can carry a count uses it.
+export function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
   const label = t("{{count}} unread", { count: n });
   if (dot) {
     return <span aria-label={label} title={label} className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" />;

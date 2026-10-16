@@ -52,7 +52,7 @@ export function BotStrip({
       <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
       <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={bot.feedUnread} />
       <SideChip to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label={t("Customize")} />
-      <SideChip to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label={t("Settings")} />
+      <SideChip to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label={t("Settings")} badge={bot.auditUnseen} />
       {rule}
       <SideChip to="/bots/$botId/files" botId={id} on={tab === "files"} icon={Folder} label={t("Files")} />
       <SideChip to="/bots/$botId/desktop" botId={id} on={tab === "desktop"} icon={Monitor} label={t("Desktop")} />

@@ -101,6 +101,12 @@ type Bot struct {
 	// Language is what this Bot writes to people in: a language code or
 	// "mixed". Empty (a Bot from before languages) reads as mixed: lang.Bot.
 	Language    string `gorm:"not null;default:''"`
+	// OtherProtocols lets this Bot's box open connections that are not HTTP
+	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
+	OtherProtocols bool `gorm:"not null;default:false"`
+	// AuditUnseen counts lines the network filter or the output filter flagged
+	// for a human that the owner has not opened the Audit tab over yet.
+	AuditUnseen int `gorm:"not null;default:0"`
 	TokenHash   string `gorm:"uniqueIndex"`
 	ContainerID string
 	Status      string
@@ -677,7 +683,7 @@ func Models() []any {
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},
-		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{},
+		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{}, &EgressPattern{}, &EgressFeedState{},
 	}
 }
 

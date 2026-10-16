@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { ui } from "../api";
 import { fail } from "../errors";
 import { useSave } from "../Feedback";
-import { ConfigSource, UI, type AuditRow, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
+import { ConfigSource, UI, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
 import { peek, put, reload } from "../query";
 import { withModel, type ModelKind } from "./providerModels";
 
@@ -12,7 +12,6 @@ const noEngines: SearchEngine[] = [];
 const noProviders: Provider[] = [];
 const noModels: ModelOption[] = [];
 const noVars: ConnectorVar[] = [];
-const noAudit: AuditRow[] = [];
 
 // useAdminSettings is the operator settings form. What the server holds is the
 // cached getSettings answer; the form keeps only what the human changed on top
@@ -24,7 +23,6 @@ const noAudit: AuditRow[] = [];
 // section is still there after a look at another.
 export function useAdminSettings() {
   const settingsQ = useQuery(UI.method.getSettings, {});
-  const auditQ = useQuery(UI.method.listAudit, {});
   const server = settingsQ.data;
   const fields = server?.fields ?? noFields;
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -35,7 +33,7 @@ export function useAdminSettings() {
   const [actErr, setErr] = useState("");
   // Models whose add or remove is on its way to the server.
   const [busyModels, setBusy] = useState<ReadonlySet<string>>(new Set());
-  const failed = settingsQ.error ?? auditQ.error;
+  const failed = settingsQ.error;
 
   const values = useMemo(() => ({ ...Object.fromEntries(fields.map((f) => [f.key, f.value])), ...edits }), [fields, edits]);
 
@@ -45,7 +43,6 @@ export function useAdminSettings() {
     put(UI.method.getSettings, {}, x);
     setEdits({});
     setYamlText(null);
-    void reload(UI.method.listAudit);
   };
 
   function setValue(key: string, v: string) {
@@ -169,7 +166,6 @@ export function useAdminSettings() {
     yamlText: yamlDraft ?? server?.yaml ?? "",
     setYamlText,
     yamlPath: server?.yamlPath ?? "",
-    audit: auditQ.data?.rows ?? noAudit,
     // The effective tunnels.host (explicit or derived), shown where it is unset.
     tunnelsHost: server?.tunnelsHost ?? "",
     // The callback address to register at the OIDC provider.

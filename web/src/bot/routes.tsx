@@ -34,6 +34,7 @@ const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
 const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
 const SettingsPane = lazyNamed(() => import("../Settings"), "SettingsPane");
 const RulesPane = lazyNamed(() => import("../rules/RulesPane"), "RulesPane");
+const AuditPane = lazyNamed(() => import("../AuditPane"), "AuditPane");
 
 // A tab page that scrolls inside the Bot page's body.
 function ScrollPane({ children }: { children: ReactNode }) {
@@ -270,6 +271,14 @@ export function RulesRoute() {
   return (
     <ScrollPane>
       <RulesPane botId={useBotPage().id} />
+    </ScrollPane>
+  );
+}
+
+export function AuditRoute() {
+  return (
+    <ScrollPane>
+      <AuditPane botId={useBotPage().id} />
     </ScrollPane>
   );
 }

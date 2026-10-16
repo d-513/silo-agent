@@ -6,9 +6,9 @@ Competitor facts come from their public docs and press as of this date (links at
 
 ## TL;DR
 
-- **Of the 20 gaps in the old list: 2 are done, 11 are partly done, 6 are still open, 1 we chose to skip.** The #1 gap (scheduling and proactivity) now has cron automations, a Heartbeat, a feed and "run now". Subagents and compaction, #3 and #6, are done.
+- **Of the 20 gaps in the old list: 3 are done, 10 are partly done, 6 are still open, 1 we chose to skip.** The #1 gap (scheduling and proactivity) now has cron automations, a Heartbeat, a feed and "run now". Subagents and compaction, #3 and #6, are done.
 - **Silo's edge is the architecture, not the feature count.** It is the only one of the four that is self-hosted, multi-user, isolated by default, and lets a human step into the agent's real desktop. Provider keys, OAuth tokens and secrets never enter the box.
-- **What is still behind:** reach (Telegram, WhatsApp and Discord against Hermes' 20+ and OpenClaw's ~24 channels), voice output and phone calls, event/webhook triggers, push notifications, and an egress firewall like Muse's Sentinel.
+- **What is still behind:** reach (Telegram, WhatsApp and Discord against Hermes' 20+ and OpenClaw's ~24 channels), voice output and phone calls, event/webhook triggers, push notifications. Sentinel's story is now mostly covered: a per-Bot network filter with an operator floor, surrogate credential tokens and output filtering that labels untrusted results (#20).
 - **Built in about a month:** 178 commits across 17 working days since 2026-09-05.
 
 ## 1. Snapshot
@@ -35,7 +35,7 @@ Competitor facts come from their public docs and press as of this date (links at
 | Where tools run | Seven backends: local, Docker, SSH, Modal, Daytona, Singularity, Vercel Sandbox | On the host for the main session; per-session Docker sandbox is opt-in | Dedicated "Secure VM" per user | Hosted | One container per Bot, always |
 | Interface | TUI + messaging gateway | Local gateway to chat apps | iOS/Android apps, web, WhatsApp | iMessage, WhatsApp, calls, web settings | Web console + native iOS app, Telegram, WhatsApp, Discord |
 | Channels | 20+ platforms through one gateway | ~24 (WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix, LINE, WeChat, …) | App, web, WhatsApp | iMessage, WhatsApp, phone | Telegram, WhatsApp, Discord |
-| Security story | Command approval, container backends | Optional sandbox; exec reviewer and DM pairing† | Sentinel: separate agent as sole authority for connector actions and network egress; `authd` swaps surrogate tokens for real credentials at the network edge | Terms let the agent "bind you as if you had signed"; trains on your data by default (opt-out) | One authorization gate, per-action rules, approvals, masker, keys never in the box |
+| Security story | Command approval, container backends | Optional sandbox; exec reviewer and DM pairing† | Sentinel: separate agent as sole authority for connector actions and network egress; `authd` swaps surrogate tokens for real credentials at the network edge | Terms let the agent "bind you as if you had signed"; trains on your data by default (opt-out) | One authorization gate, per-action rules, approvals, masker, per-Bot network filter with an operator floor, surrogate tokens swapped at the gateway, keys never in the box |
 
 ## 3. What only Silo has
 
@@ -94,12 +94,12 @@ Status: **Done** / **Partial** / **Missing** / **Skip** (chosen not to do).
 | 17 | Checkpoints and rollback | **Missing** | Workspace is a durable bind mount, but nothing snapshots before `write` / `patch` / `delete` |
 | 18 | Workspace context files and `@` references | **Partial** | Knowledge folders and composer attachments cover "know my files". No `AGENTS.md` / `CLAUDE.md` autoload, no `@file` expansion |
 | 19 | Personality presets and skins | **Skip** | Per-Bot SOUL is editable and enough |
-| 20 | Independent permission authority, credential surrogation | **Partial** | The gate, masker, auto-approval policy and audit exist. No egress allowlist, no surrogate tokens, no untrusted-input labelling |
+| 20 | Independent permission authority, credential surrogation | **Done** | The gate with per-action and operator-locked rules, the masker, the auto-approval policy and the audit; a per-Bot network filter (Block / Trust / Pass-through, a threat-list set, raw-SOCKS behind one switch) whose gateway swaps a surrogate for the real secret only on an allowed host; results that do not pass cleanly are framed as untrusted before the Bot reads them. Left (nice to have): taint tracking of what came from outside across later steps |
 
 ## 6. New gaps the research turned up
 
 - **Execution backends.** Hermes runs on seven (local, Docker, SSH, Singularity, Modal, Daytona, Vercel Sandbox), with serverless hibernation. Silo is Docker/Podman only, on any host the Docker API reaches.
-- **Network egress control.** Muse routes all egress through Sentinel and tracks tainted data flow. Silo has no firewall on the Bot box.
+- **Network egress control.** Muse routes all egress through Sentinel and tracks tainted data flow. Silo now puts every Bot box and STDIO sidecar on a network of its own behind one gateway per engine (see #20); what Sentinel has and Silo does not is taint tracking across a run.
 - **Unprompted contact.** Instinct texts and calls first. Silo can post to the Feed or a channel from a heartbeat, but only when a heartbeat is scheduled.
 - **Batch processing.** Hermes runs one prompt over hundreds of inputs. Silo has no batch mode.
 - **OpenClaw's skill library.** 100+ preconfigured skills† against our 6.
@@ -116,7 +116,6 @@ Ordered by leverage, with the engine seams that already exist in brackets.
 5. **Text to speech** (finishes #2; speech to text already shares the `models` path).
 6. **Workspace checkpoints** before mutating file tools (#17).
 7. **Provider fallback** (#16; the provider registry is neutral already).
-8. **An egress allowlist on the Bot box**, the cheap half of Sentinel (#20).
 
 ## 8. Show and tell
 

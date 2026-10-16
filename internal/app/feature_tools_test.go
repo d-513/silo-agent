@@ -423,8 +423,17 @@ func TestSettingsAdminGateAndAudit(t *testing.T) {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	audit, err := h.Client.ListAudit(h.Ctx(), connect.NewRequest(&v1.ListAuditRequest{}))
-	if err != nil || len(audit.Msg.GetRows()) == 0 {
-		t.Fatalf("ListAudit: %v %+v", err, audit)
+	audit, err := h.Client.ListAuditEvents(h.Ctx(), connect.NewRequest(&v1.ListAuditEventsRequest{BotId: bot.GetId()}))
+	if err != nil || len(audit.Msg.GetEvents()) == 0 {
+		t.Fatalf("ListAuditEvents: %v %+v", err, audit)
+	}
+	found := false
+	for _, e := range audit.Msg.GetEvents() {
+		if e.GetActor() != "" && e.GetDecision() == "deny" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the decision is not on the timeline: %+v", audit.Msg.GetEvents())
 	}
 }

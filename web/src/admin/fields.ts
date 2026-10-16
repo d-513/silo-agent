@@ -48,6 +48,13 @@ export const LABELS: Record<string, string> = {
   "drives.image": msg("Drive sidecar image"),
   "drives.mount_root": msg("Drive mount root"),
   "drives.cache_max_size": msg("Drive cache limit"),
+  "egress.enabled": msg("Network filter"),
+  "egress.image": msg("Gateway image"),
+  "egress.subnet_pool": msg("Address pool"),
+  "egress.block": msg("Blocked hosts"),
+  "egress.trust": msg("Trusted hosts"),
+  "egress.pass": msg("Hosts without inspection"),
+  "egress.feeds": msg("Threat lists"),
   "outbound.block_private": msg("Block private addresses"),
   "outbound.allow": msg("Exceptions"),
   "auth.password": msg("Password sign-in"),
@@ -91,6 +98,14 @@ export const HINTS: Record<string, string> = {
   "drives.cache_max_size": msg("The most one drive may cache on disk, such as 10G."),
   "outbound.block_private":
     msg("Refuses loopback, private (10.x, 172.16-31.x, 192.168.x), link-local and other internal addresses, and names that resolve to one, for everything Silo itself connects to because a user typed it: a connector's URL and sign-in, an Email or Calendar account, a skill's download address."),
+  "egress.image": msg("The image every Bot's gateway runs as. Changing it takes effect the next time a Bot's machine starts."),
+  "egress.subnet_pool": msg("One /24 is carved from this pool for each Bot's own network. Enough addresses for 256 Bots without overlap."),
+  "egress.block":
+    msg("Hosts no Bot may reach, one per line or comma-separated: example.com, *.example.com, an IP or a CIDR. A Bot's owner can add to this list from the Bot's Rules page, but never remove it."),
+  "egress.trust": msg("Hosts reached without inspection even where a rule would check them, such as an internal package registry."),
+  "egress.pass": msg("Hosts forwarded without being looked at, for a service the gateway would otherwise break (websockets, unusual TLS)."),
+  "egress.feeds":
+    msg("Threat lists the gateway downloads and keeps current on its own. Four are built in, none needing a key: abuse.ch's URLhaus and Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains. A host on one is blocked and recorded on the Bot's timeline."),
   "outbound.allow":
     msg("Internal addresses that stay reachable, comma-separated: an IP or a CIDR, optionally with one port (10.0.4.20, 10.0.5.0/24, 127.0.0.1:9223). Names are not taken."),
   "auth.password": msg("Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out."),
@@ -151,6 +166,9 @@ export const TUNNELS_NOTE =
 export const MAIL_NOTE =
   msg("Gives every Bot a receive-only address. The control plane runs its own small SMTP listener and files what arrives in the Bot's inbox, where the Bot reads it with list_mail and read_mail. Nothing is ever sent, so there is no relay or sender reputation to look after. On as soon as a domain is set; changes here apply within a few seconds, without a restart.");
 
+export const NETWORK_NOTE =
+  msg("Every Bot's machine has its own network with this gateway as its only way out, so a Bot cannot reach another Bot or your network. The gateway sees the host and the bytes, never the content of a connection it lets through. Each Bot's owner may tighten these lists from that Bot's Rules page, and may ask for a host to be allowed; nothing an owner does can loosen what is set here.");
+
 export const OUTBOUND_NOTE =
   msg("Silo makes these connections itself, so without this a user can point a connector at 127.0.0.1 or at a machine on your network and read what answers. Turn it on when people you do not fully trust have accounts. A library connector you pointed at an internal address (the Lightpanda preset) keeps working for as long as a Bot's copy still points where yours does. This does not cover the models, search or sign-in providers you set up here, and it does not limit what a Bot's own machine can reach.");
 
@@ -177,6 +195,7 @@ export function groupOf(key: string) {
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("bootstrap.")) return "bootstrap";
+  if (key.startsWith("egress.")) return "network";
   if (key.startsWith("outbound.")) return "outbound";
   if (key.startsWith("auth.")) return "auth";
   if (key.startsWith("oidc.")) return "oidc";

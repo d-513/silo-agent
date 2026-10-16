@@ -16,8 +16,8 @@ import (
 type Egress struct {
 	Enabled bool   `koanf:"enabled"`
 	Image   string `koanf:"image"`
-	// SubnetPool is the hidden built-in pool the CP carves each client's own
-	// /24 from. It is overridable in silo.yaml only.
+	// SubnetPool is the pool the CP carves each client's own /24 from. It is
+	// rarely changed (a collision with a real network is the reason to).
 	SubnetPool string `koanf:"subnet_pool"`
 	// The operator's lists: the floor every Bot stands on. An owner may add
 	// their own on top (the owner layer) but never below this.

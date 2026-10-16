@@ -12,11 +12,11 @@ export const SECTIONS = [
   { id: "connectors", label: msg("Connector options") },
   { id: "tunnels", label: msg("Tunnels") },
   { id: "mail", label: msg("Mail") },
+  { id: "network", label: msg("Network") },
   { id: "signin", label: msg("Sign-in") },
   { id: "server", label: msg("Server") },
-  // The two below are not the form: the file itself, and the decision log.
+  // The file itself is not the form.
   { id: "yaml", label: "silo.yaml" },
-  { id: "audit", label: msg("Audit") },
 ] as const;
 
 export type SectionId = (typeof SECTIONS)[number]["id"];
@@ -30,5 +30,5 @@ export function isSection(s: string | undefined): s is SectionId {
 
 /** The sections the form's Save bar covers: every one that edits fields. */
 export function isFormSection(s: SectionId): boolean {
-  return s !== "yaml" && s !== "audit";
+  return s !== "yaml";
 }

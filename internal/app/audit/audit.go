@@ -133,6 +133,24 @@ func (s *Service) IngestEvents(events []*v1.EgressEvent) {
 	if err := s.db.CreateInBatches(&rows, 200).Error; err != nil {
 		log.Printf("audit: ingest %d network events: %v", len(rows), err)
 	}
+	s.bumpUnseen(rows)
+}
+
+// bumpUnseen raises the owner's badge for the lines of a batch that need a
+// human, once per Bot. The Audit tab clears it.
+func (s *Service) bumpUnseen(rows []db.AuditEvent) {
+	counts := map[string]int{}
+	for _, r := range rows {
+		if r.Attention {
+			counts[r.BotID]++
+		}
+	}
+	for botID, n := range counts {
+		if err := s.db.Model(&db.Bot{}).Where("id = ?", botID).
+			UpdateColumn("audit_unseen", gorm.Expr("audit_unseen + ?", n)).Error; err != nil {
+			log.Printf("audit: bump unseen for %s: %v", botID, err)
+		}
+	}
 }
 
 // IngestTraffic sums what the gateway reported into the per-minute table. It is

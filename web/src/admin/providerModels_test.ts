@@ -50,4 +50,4 @@ eq(
 eq(isSection(FIRST_SECTION), true, "the first section is a section");
 eq(isSection("nope"), false, "unknown section");
 eq(isSection(undefined), false, "no section");
-eq(SECTIONS.filter((s) => !isFormSection(s.id)).map((s) => s.id), ["yaml", "audit"], "the file and the log are not the form");
+eq(SECTIONS.filter((s) => !isFormSection(s.id)).map((s) => s.id), ["yaml"], "the file is not the form");

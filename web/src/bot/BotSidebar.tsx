@@ -97,7 +97,14 @@ export function BotSidebar({
         ))}
       </div>
       <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label={t("Bot")}>
-        <SideLink to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label={t("Settings")} />
+        <SideLink
+          to="/bots/$botId/settings"
+          botId={id}
+          on={onSettings(tab)}
+          icon={Settings}
+          label={t("Settings")}
+          badge={onSettings(tab) ? 0 : bot.auditUnseen}
+        />
       </nav>
     </aside>
   );

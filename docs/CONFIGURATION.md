@@ -190,6 +190,26 @@ What it leaves alone:
 - **What a Bot's own machine, a STDIO connector's sidecar or a drive's sidecar can reach.** Those are containers; limit them with your container engine's network or a firewall.
 - **Requests through `HTTP_PROXY`/`HTTPS_PROXY`.** With a proxy set in the control plane's environment, the proxy does the resolving and the connecting: filter there.
 
+## Network filter
+
+Every Bot's machine sits on a network of its own, with a small **gateway** as its only way out. So one Bot cannot reach another, and no Bot can reach your LAN. The gateway watches DNS, HTTP, HTTPS and raw SOCKS connections; it sees the host, the method and the number of bytes, never the content of a connection it lets through. What it blocks, flags, or thinks a human should look at lands on the Bot's **Audit** tab and at `/admin/audit`.
+
+```yaml
+egress:
+  # enabled: true
+  # image: localhost/silo-egress:v1
+  # block: bad.example.com, *.tracker.example.com, 203.0.113.7, 203.0.113.0/24
+  # trust: registry.npmjs.org     # reached even where a rule would check it
+  # pass: chat.example.com        # forwarded untouched (websockets, odd TLS)
+  # feeds: []                    # a threat list set of your own
+```
+
+- **`block`** is a floor: no Bot may reach it, and an owner may add to it from the Bot's Rules page but never remove it. `trust` and `pass` are yours too, and shown locked; the Bot's Rules page says "from the operator" on them. Patterns are hosts, `*.` prefixes, IPs and CIDRs, matched case-insensitively; an owner may add at most 200 of their own.
+- **What the lists mean.** `block` refuses the connection (the Bot gets a plain `403` saying it was blocked, and nothing for a flag). `trust` reaches the host without inspection even where an owner's rule would check it — an internal package registry is the case. `pass` forwards it untouched, for a service the gateway would otherwise break (websockets, unusual TLS).
+- **Threat lists** (`feeds`) are downloaded and refreshed by the gateway itself; four are built in and none needs a key (URLhaus and Spamhaus DROP from abuse.ch, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains). A host on one is blocked and recorded. Naming any feed replaces the built-in set; each is `id`, `url` and `format` (`hosts`, `domains`, `ips`, `cidrjson`).
+- **Turning it off** (`enabled: false`) leaves Bot machines on today's unfiltered network; Admin warns that nothing is being watched. The lists are kept and take effect again when it is back on.
+- **The gateway** is one container per container engine. Each client's `/24` is carved from `subnet_pool` (`10.213.0.0/16`, enough for 256 Bots without overlap); change it only if it collides with a network you really use. Admin → Settings → Network shows the gateway's certificate and the state of each threat list, and rotates the certificate (running machines pick up a new one on their next start).
+
 ## Tunnels
 
 A Bot can run a web service on its own localhost (a dev server, a dashboard, a notebook); a **tunnel** gives the owner an address for it, served by this control plane at `<name>.<tunnels.host>` (the name is generated, like `quiet-amber-heron`). Private tunnels open for the Bot's owner, signed in to Silo; public ones for anyone with the link. Make one on the Bot's **Tunnels** tab, or the Bot opens one with `open_tunnel` (making one public asks the owner first).

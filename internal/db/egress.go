@@ -30,6 +30,36 @@ type EgressClient struct {
 	CreatedAt   time.Time
 }
 
+// EgressPattern is one entry of a Bot's own network list, laid over the
+// operator's floor. A block entry always refuses, a trust entry silences
+// flags, a pass entry splices TLS on SNI alone: none can loosen what the
+// operator set (a threat list and a private address still win).
+type EgressPattern struct {
+	ID      string `gorm:"primaryKey"`
+	BotID   string `gorm:"index:egress_pattern,unique"`
+	Kind    string `gorm:"index:egress_pattern,unique"` // block | trust | pass
+	Pattern string `gorm:"index:egress_pattern,unique"`
+	// CreatedAt is what the list shows newest first.
+	CreatedAt time.Time
+}
+
+// EgressFeedState is one threat list as the gateway last reported it, so the
+// admin's Network page can show what each list holds and when it last loaded.
+// The gateway owns the feed contents (and refreshes them itself); this only
+// mirrors its word.
+type EgressFeedState struct {
+	ID string `gorm:"primaryKey"`
+	// Entries is the count the gateway last loaded; 0 with no error means the
+	// list is empty.
+	Entries int32
+	// Err is why the last download failed, empty when it was fine.
+	Err string
+	// DownloadedAt is the last good download; zero when never.
+	DownloadedAt time.Time
+	// ReportedAt is the last time the gateway mentioned the feed at all.
+	ReportedAt time.Time
+}
+
 // EgressCA is the installation's certificate authority: the certificate and
 // key stay with the CP and the gateway. One row; rotating replaces it.
 type EgressCA struct {

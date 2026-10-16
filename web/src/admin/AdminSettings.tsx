@@ -1,4 +1,4 @@
-import { Braces, Cpu, Database, History, KeyRound, Mail, Plug, Scale, Search, Server, Timer, Variable, Waypoints, type LucideIcon } from "lucide-react";
+import { Braces, Cpu, Database, KeyRound, Mail, Plug, Scale, Search, Server, ShieldCheck, Timer, Variable, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { ActiveBar } from "../bot/SideNav";
@@ -21,7 +21,7 @@ const ICONS: Record<SectionId, LucideIcon> = {
   signin: KeyRound,
   server: Server,
   yaml: Braces,
-  audit: History,
+  network: ShieldCheck,
 };
 
 // AdminSettings is the frame of Admin → Settings: the categories on the left

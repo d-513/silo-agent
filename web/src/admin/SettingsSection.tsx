@@ -4,11 +4,11 @@ import { useParams } from "@tanstack/react-router";
 import { SaveButton } from "../Feedback";
 import { Panel } from "../Field";
 import { ConfigSource } from "../gen/silo/v1/ui_pb";
-import { AuditTable } from "./AuditTable";
 import { AutoenablePanel } from "./AutoenablePanel";
 import { ConnectorVarsPanel } from "./ConnectorVarsPanel";
 import { OperatorRulesPanel } from "./OperatorRulesPanel";
 import { FieldGroup } from "./FieldGroup";
+import { NetworkSettings } from "./NetworkSettings";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
 import { OidcSettings } from "./OidcSettings";
@@ -49,6 +49,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
   rules: () => <OperatorRules />,
   tunnels: () => <Tunnels />,
   mail: () => <Group title={t("Mail")} note={t(MAIL_NOTE)} id="mail" />,
+  network: () => <NetworkSettings />,
   signin: () => (
     <>
       <Group title={t("Password sign-in")} note={t(AUTH_NOTE)} id="auth" />
@@ -63,7 +64,6 @@ const pages: Record<SectionId, () => React.ReactNode> = {
     </>
   ),
   yaml: () => <Yaml />,
-  audit: () => <Audit />,
 };
 
 function Group({ title, note, id }: { title: string; note?: string; id: string }) {
@@ -145,15 +145,6 @@ function Yaml() {
       <Suspense fallback={<div className="h-80 rounded-sm bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]" />}>
         <YamlEditor value={yamlText} onChange={(v) => setYamlText(v)} />
       </Suspense>
-    </Panel>
-  );
-}
-
-function Audit() {
-  const { audit } = useSettingsForm();
-  return (
-    <Panel title={t("Audit")} note={t("The last 100 approval decisions on every Bot, newest first.")}>
-      <AuditTable audit={audit} />
     </Panel>
   );
 }

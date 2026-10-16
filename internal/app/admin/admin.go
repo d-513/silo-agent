@@ -4,15 +4,13 @@
 package admin
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"net/http"
 	"strings"
-	"time"
-
-	"connectrpc.com/connect"
-	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -20,7 +18,6 @@ import (
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
-	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
 )
@@ -386,21 +383,4 @@ func searchEngineProtos() []*v1.SearchEngine {
 		out = append(out, e)
 	}
 	return out
-}
-
-func (s *Service) ListAudit(ctx context.Context, _ *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
-	if err := access.RequireAdmin(ctx); err != nil {
-		return nil, err
-	}
-	var rows []db.AuditEvent
-	s.db.Order("created_at desc").Limit(100).Find(&rows)
-	out := &v1.ListAuditResponse{}
-	for _, r := range rows {
-		out.Rows = append(out.Rows, &v1.AuditRow{
-			Id: r.ID, At: r.CreatedAt.Format(time.RFC3339),
-			BotId: r.BotID, BotName: r.BotName, Crest: int32(r.Crest),
-			Actor: r.Actor, Action: r.Action, Decision: r.Decision,
-		})
-	}
-	return connect.NewResponse(out), nil
 }

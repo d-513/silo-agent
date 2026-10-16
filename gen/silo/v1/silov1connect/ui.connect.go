@@ -249,8 +249,26 @@ const (
 	// UISetAutoenableConnectorsProcedure is the fully-qualified name of the UI's
 	// SetAutoenableConnectors RPC.
 	UISetAutoenableConnectorsProcedure = "/silo.v1.UI/SetAutoenableConnectors"
-	// UIListAuditProcedure is the fully-qualified name of the UI's ListAudit RPC.
-	UIListAuditProcedure = "/silo.v1.UI/ListAudit"
+	// UIListAuditEventsProcedure is the fully-qualified name of the UI's ListAuditEvents RPC.
+	UIListAuditEventsProcedure = "/silo.v1.UI/ListAuditEvents"
+	// UIAuditSummaryProcedure is the fully-qualified name of the UI's AuditSummary RPC.
+	UIAuditSummaryProcedure = "/silo.v1.UI/AuditSummary"
+	// UIMarkAuditReadProcedure is the fully-qualified name of the UI's MarkAuditRead RPC.
+	UIMarkAuditReadProcedure = "/silo.v1.UI/MarkAuditRead"
+	// UIListTrafficProcedure is the fully-qualified name of the UI's ListTraffic RPC.
+	UIListTrafficProcedure = "/silo.v1.UI/ListTraffic"
+	// UIGetBotNetworkProcedure is the fully-qualified name of the UI's GetBotNetwork RPC.
+	UIGetBotNetworkProcedure = "/silo.v1.UI/GetBotNetwork"
+	// UIAddHostPatternProcedure is the fully-qualified name of the UI's AddHostPattern RPC.
+	UIAddHostPatternProcedure = "/silo.v1.UI/AddHostPattern"
+	// UIRemoveHostPatternProcedure is the fully-qualified name of the UI's RemoveHostPattern RPC.
+	UIRemoveHostPatternProcedure = "/silo.v1.UI/RemoveHostPattern"
+	// UISetOtherProtocolsProcedure is the fully-qualified name of the UI's SetOtherProtocols RPC.
+	UISetOtherProtocolsProcedure = "/silo.v1.UI/SetOtherProtocols"
+	// UIGetEgressStatusProcedure is the fully-qualified name of the UI's GetEgressStatus RPC.
+	UIGetEgressStatusProcedure = "/silo.v1.UI/GetEgressStatus"
+	// UIRotateEgressCAProcedure is the fully-qualified name of the UI's RotateEgressCA RPC.
+	UIRotateEgressCAProcedure = "/silo.v1.UI/RotateEgressCA"
 	// UIListLLMLogsProcedure is the fully-qualified name of the UI's ListLLMLogs RPC.
 	UIListLLMLogsProcedure = "/silo.v1.UI/ListLLMLogs"
 	// UIListConnectorsProcedure is the fully-qualified name of the UI's ListConnectors RPC.
@@ -465,7 +483,27 @@ type UIClient interface {
 	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
-	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// The audit timeline: tool calls and their decisions, tool results the output
+	// filter did not pass, and what the network filter blocked or flagged. With a
+	// bot_id an owner sees their Bot's; with none an admin sees the whole
+	// installation's.
+	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
+	// AuditSummary is the counts behind the page and the attention badge.
+	AuditSummary(context.Context, *connect.Request[v1.AuditSummaryRequest]) (*connect.Response[v1.AuditSummaryResponse], error)
+	// MarkAuditRead clears one Bot's attention badge.
+	MarkAuditRead(context.Context, *connect.Request[v1.MarkAuditReadRequest]) (*connect.Response[v1.AuditSummaryResponse], error)
+	// ListTraffic is the network filter's sums: per Bot, per host.
+	ListTraffic(context.Context, *connect.Request[v1.ListTrafficRequest]) (*connect.Response[v1.ListTrafficResponse], error)
+	// The Bot's own network lists (on top of the operator's) and whether it may
+	// talk to something that is not HTTP.
+	GetBotNetwork(context.Context, *connect.Request[v1.GetBotNetworkRequest]) (*connect.Response[v1.BotNetwork], error)
+	AddHostPattern(context.Context, *connect.Request[v1.AddHostPatternRequest]) (*connect.Response[v1.BotNetwork], error)
+	RemoveHostPattern(context.Context, *connect.Request[v1.RemoveHostPatternRequest]) (*connect.Response[v1.BotNetwork], error)
+	SetOtherProtocols(context.Context, *connect.Request[v1.SetOtherProtocolsRequest]) (*connect.Response[v1.BotNetwork], error)
+	// The filter itself, for admins: whether it is on, how it is doing, and the
+	// key it decrypts with.
+	GetEgressStatus(context.Context, *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error)
+	RotateEgressCA(context.Context, *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error)
 	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -1159,10 +1197,64 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SetAutoenableConnectors")),
 			connect.WithClientOptions(opts...),
 		),
-		listAudit: connect.NewClient[v1.ListAuditRequest, v1.ListAuditResponse](
+		listAuditEvents: connect.NewClient[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse](
 			httpClient,
-			baseURL+UIListAuditProcedure,
-			connect.WithSchema(uIMethods.ByName("ListAudit")),
+			baseURL+UIListAuditEventsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListAuditEvents")),
+			connect.WithClientOptions(opts...),
+		),
+		auditSummary: connect.NewClient[v1.AuditSummaryRequest, v1.AuditSummaryResponse](
+			httpClient,
+			baseURL+UIAuditSummaryProcedure,
+			connect.WithSchema(uIMethods.ByName("AuditSummary")),
+			connect.WithClientOptions(opts...),
+		),
+		markAuditRead: connect.NewClient[v1.MarkAuditReadRequest, v1.AuditSummaryResponse](
+			httpClient,
+			baseURL+UIMarkAuditReadProcedure,
+			connect.WithSchema(uIMethods.ByName("MarkAuditRead")),
+			connect.WithClientOptions(opts...),
+		),
+		listTraffic: connect.NewClient[v1.ListTrafficRequest, v1.ListTrafficResponse](
+			httpClient,
+			baseURL+UIListTrafficProcedure,
+			connect.WithSchema(uIMethods.ByName("ListTraffic")),
+			connect.WithClientOptions(opts...),
+		),
+		getBotNetwork: connect.NewClient[v1.GetBotNetworkRequest, v1.BotNetwork](
+			httpClient,
+			baseURL+UIGetBotNetworkProcedure,
+			connect.WithSchema(uIMethods.ByName("GetBotNetwork")),
+			connect.WithClientOptions(opts...),
+		),
+		addHostPattern: connect.NewClient[v1.AddHostPatternRequest, v1.BotNetwork](
+			httpClient,
+			baseURL+UIAddHostPatternProcedure,
+			connect.WithSchema(uIMethods.ByName("AddHostPattern")),
+			connect.WithClientOptions(opts...),
+		),
+		removeHostPattern: connect.NewClient[v1.RemoveHostPatternRequest, v1.BotNetwork](
+			httpClient,
+			baseURL+UIRemoveHostPatternProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveHostPattern")),
+			connect.WithClientOptions(opts...),
+		),
+		setOtherProtocols: connect.NewClient[v1.SetOtherProtocolsRequest, v1.BotNetwork](
+			httpClient,
+			baseURL+UISetOtherProtocolsProcedure,
+			connect.WithSchema(uIMethods.ByName("SetOtherProtocols")),
+			connect.WithClientOptions(opts...),
+		),
+		getEgressStatus: connect.NewClient[v1.GetEgressStatusRequest, v1.EgressStatus](
+			httpClient,
+			baseURL+UIGetEgressStatusProcedure,
+			connect.WithSchema(uIMethods.ByName("GetEgressStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		rotateEgressCA: connect.NewClient[v1.RotateEgressCARequest, v1.EgressStatus](
+			httpClient,
+			baseURL+UIRotateEgressCAProcedure,
+			connect.WithSchema(uIMethods.ByName("RotateEgressCA")),
 			connect.WithClientOptions(opts...),
 		),
 		listLLMLogs: connect.NewClient[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse](
@@ -1493,7 +1585,16 @@ type uIClient struct {
 	listProviderModels      *connect.Client[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse]
 	setConnectorVars        *connect.Client[v1.SetConnectorVarsRequest, v1.Settings]
 	setAutoenableConnectors *connect.Client[v1.SetAutoenableConnectorsRequest, v1.Settings]
-	listAudit               *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	listAuditEvents         *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
+	auditSummary            *connect.Client[v1.AuditSummaryRequest, v1.AuditSummaryResponse]
+	markAuditRead           *connect.Client[v1.MarkAuditReadRequest, v1.AuditSummaryResponse]
+	listTraffic             *connect.Client[v1.ListTrafficRequest, v1.ListTrafficResponse]
+	getBotNetwork           *connect.Client[v1.GetBotNetworkRequest, v1.BotNetwork]
+	addHostPattern          *connect.Client[v1.AddHostPatternRequest, v1.BotNetwork]
+	removeHostPattern       *connect.Client[v1.RemoveHostPatternRequest, v1.BotNetwork]
+	setOtherProtocols       *connect.Client[v1.SetOtherProtocolsRequest, v1.BotNetwork]
+	getEgressStatus         *connect.Client[v1.GetEgressStatusRequest, v1.EgressStatus]
+	rotateEgressCA          *connect.Client[v1.RotateEgressCARequest, v1.EgressStatus]
 	listLLMLogs             *connect.Client[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse]
 	listConnectors          *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
 	createConnector         *connect.Client[v1.CreateConnectorRequest, v1.Connector]
@@ -2067,9 +2168,54 @@ func (c *uIClient) SetAutoenableConnectors(ctx context.Context, req *connect.Req
 	return c.setAutoenableConnectors.CallUnary(ctx, req)
 }
 
-// ListAudit calls silo.v1.UI.ListAudit.
-func (c *uIClient) ListAudit(ctx context.Context, req *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
-	return c.listAudit.CallUnary(ctx, req)
+// ListAuditEvents calls silo.v1.UI.ListAuditEvents.
+func (c *uIClient) ListAuditEvents(ctx context.Context, req *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error) {
+	return c.listAuditEvents.CallUnary(ctx, req)
+}
+
+// AuditSummary calls silo.v1.UI.AuditSummary.
+func (c *uIClient) AuditSummary(ctx context.Context, req *connect.Request[v1.AuditSummaryRequest]) (*connect.Response[v1.AuditSummaryResponse], error) {
+	return c.auditSummary.CallUnary(ctx, req)
+}
+
+// MarkAuditRead calls silo.v1.UI.MarkAuditRead.
+func (c *uIClient) MarkAuditRead(ctx context.Context, req *connect.Request[v1.MarkAuditReadRequest]) (*connect.Response[v1.AuditSummaryResponse], error) {
+	return c.markAuditRead.CallUnary(ctx, req)
+}
+
+// ListTraffic calls silo.v1.UI.ListTraffic.
+func (c *uIClient) ListTraffic(ctx context.Context, req *connect.Request[v1.ListTrafficRequest]) (*connect.Response[v1.ListTrafficResponse], error) {
+	return c.listTraffic.CallUnary(ctx, req)
+}
+
+// GetBotNetwork calls silo.v1.UI.GetBotNetwork.
+func (c *uIClient) GetBotNetwork(ctx context.Context, req *connect.Request[v1.GetBotNetworkRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return c.getBotNetwork.CallUnary(ctx, req)
+}
+
+// AddHostPattern calls silo.v1.UI.AddHostPattern.
+func (c *uIClient) AddHostPattern(ctx context.Context, req *connect.Request[v1.AddHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return c.addHostPattern.CallUnary(ctx, req)
+}
+
+// RemoveHostPattern calls silo.v1.UI.RemoveHostPattern.
+func (c *uIClient) RemoveHostPattern(ctx context.Context, req *connect.Request[v1.RemoveHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return c.removeHostPattern.CallUnary(ctx, req)
+}
+
+// SetOtherProtocols calls silo.v1.UI.SetOtherProtocols.
+func (c *uIClient) SetOtherProtocols(ctx context.Context, req *connect.Request[v1.SetOtherProtocolsRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return c.setOtherProtocols.CallUnary(ctx, req)
+}
+
+// GetEgressStatus calls silo.v1.UI.GetEgressStatus.
+func (c *uIClient) GetEgressStatus(ctx context.Context, req *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error) {
+	return c.getEgressStatus.CallUnary(ctx, req)
+}
+
+// RotateEgressCA calls silo.v1.UI.RotateEgressCA.
+func (c *uIClient) RotateEgressCA(ctx context.Context, req *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error) {
+	return c.rotateEgressCA.CallUnary(ctx, req)
 }
 
 // ListLLMLogs calls silo.v1.UI.ListLLMLogs.
@@ -2392,7 +2538,27 @@ type UIHandler interface {
 	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
-	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// The audit timeline: tool calls and their decisions, tool results the output
+	// filter did not pass, and what the network filter blocked or flagged. With a
+	// bot_id an owner sees their Bot's; with none an admin sees the whole
+	// installation's.
+	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
+	// AuditSummary is the counts behind the page and the attention badge.
+	AuditSummary(context.Context, *connect.Request[v1.AuditSummaryRequest]) (*connect.Response[v1.AuditSummaryResponse], error)
+	// MarkAuditRead clears one Bot's attention badge.
+	MarkAuditRead(context.Context, *connect.Request[v1.MarkAuditReadRequest]) (*connect.Response[v1.AuditSummaryResponse], error)
+	// ListTraffic is the network filter's sums: per Bot, per host.
+	ListTraffic(context.Context, *connect.Request[v1.ListTrafficRequest]) (*connect.Response[v1.ListTrafficResponse], error)
+	// The Bot's own network lists (on top of the operator's) and whether it may
+	// talk to something that is not HTTP.
+	GetBotNetwork(context.Context, *connect.Request[v1.GetBotNetworkRequest]) (*connect.Response[v1.BotNetwork], error)
+	AddHostPattern(context.Context, *connect.Request[v1.AddHostPatternRequest]) (*connect.Response[v1.BotNetwork], error)
+	RemoveHostPattern(context.Context, *connect.Request[v1.RemoveHostPatternRequest]) (*connect.Response[v1.BotNetwork], error)
+	SetOtherProtocols(context.Context, *connect.Request[v1.SetOtherProtocolsRequest]) (*connect.Response[v1.BotNetwork], error)
+	// The filter itself, for admins: whether it is on, how it is doing, and the
+	// key it decrypts with.
+	GetEgressStatus(context.Context, *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error)
+	RotateEgressCA(context.Context, *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error)
 	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -3082,10 +3248,64 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SetAutoenableConnectors")),
 		connect.WithHandlerOptions(opts...),
 	)
-	uIListAuditHandler := connect.NewUnaryHandler(
-		UIListAuditProcedure,
-		svc.ListAudit,
-		connect.WithSchema(uIMethods.ByName("ListAudit")),
+	uIListAuditEventsHandler := connect.NewUnaryHandler(
+		UIListAuditEventsProcedure,
+		svc.ListAuditEvents,
+		connect.WithSchema(uIMethods.ByName("ListAuditEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAuditSummaryHandler := connect.NewUnaryHandler(
+		UIAuditSummaryProcedure,
+		svc.AuditSummary,
+		connect.WithSchema(uIMethods.ByName("AuditSummary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIMarkAuditReadHandler := connect.NewUnaryHandler(
+		UIMarkAuditReadProcedure,
+		svc.MarkAuditRead,
+		connect.WithSchema(uIMethods.ByName("MarkAuditRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListTrafficHandler := connect.NewUnaryHandler(
+		UIListTrafficProcedure,
+		svc.ListTraffic,
+		connect.WithSchema(uIMethods.ByName("ListTraffic")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetBotNetworkHandler := connect.NewUnaryHandler(
+		UIGetBotNetworkProcedure,
+		svc.GetBotNetwork,
+		connect.WithSchema(uIMethods.ByName("GetBotNetwork")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAddHostPatternHandler := connect.NewUnaryHandler(
+		UIAddHostPatternProcedure,
+		svc.AddHostPattern,
+		connect.WithSchema(uIMethods.ByName("AddHostPattern")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveHostPatternHandler := connect.NewUnaryHandler(
+		UIRemoveHostPatternProcedure,
+		svc.RemoveHostPattern,
+		connect.WithSchema(uIMethods.ByName("RemoveHostPattern")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetOtherProtocolsHandler := connect.NewUnaryHandler(
+		UISetOtherProtocolsProcedure,
+		svc.SetOtherProtocols,
+		connect.WithSchema(uIMethods.ByName("SetOtherProtocols")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetEgressStatusHandler := connect.NewUnaryHandler(
+		UIGetEgressStatusProcedure,
+		svc.GetEgressStatus,
+		connect.WithSchema(uIMethods.ByName("GetEgressStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRotateEgressCAHandler := connect.NewUnaryHandler(
+		UIRotateEgressCAProcedure,
+		svc.RotateEgressCA,
+		connect.WithSchema(uIMethods.ByName("RotateEgressCA")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListLLMLogsHandler := connect.NewUnaryHandler(
@@ -3520,8 +3740,26 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISetConnectorVarsHandler.ServeHTTP(w, r)
 		case UISetAutoenableConnectorsProcedure:
 			uISetAutoenableConnectorsHandler.ServeHTTP(w, r)
-		case UIListAuditProcedure:
-			uIListAuditHandler.ServeHTTP(w, r)
+		case UIListAuditEventsProcedure:
+			uIListAuditEventsHandler.ServeHTTP(w, r)
+		case UIAuditSummaryProcedure:
+			uIAuditSummaryHandler.ServeHTTP(w, r)
+		case UIMarkAuditReadProcedure:
+			uIMarkAuditReadHandler.ServeHTTP(w, r)
+		case UIListTrafficProcedure:
+			uIListTrafficHandler.ServeHTTP(w, r)
+		case UIGetBotNetworkProcedure:
+			uIGetBotNetworkHandler.ServeHTTP(w, r)
+		case UIAddHostPatternProcedure:
+			uIAddHostPatternHandler.ServeHTTP(w, r)
+		case UIRemoveHostPatternProcedure:
+			uIRemoveHostPatternHandler.ServeHTTP(w, r)
+		case UISetOtherProtocolsProcedure:
+			uISetOtherProtocolsHandler.ServeHTTP(w, r)
+		case UIGetEgressStatusProcedure:
+			uIGetEgressStatusHandler.ServeHTTP(w, r)
+		case UIRotateEgressCAProcedure:
+			uIRotateEgressCAHandler.ServeHTTP(w, r)
 		case UIListLLMLogsProcedure:
 			uIListLLMLogsHandler.ServeHTTP(w, r)
 		case UIListConnectorsProcedure:
@@ -4031,8 +4269,44 @@ func (UnimplementedUIHandler) SetAutoenableConnectors(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetAutoenableConnectors is not implemented"))
 }
 
-func (UnimplementedUIHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAudit is not implemented"))
+func (UnimplementedUIHandler) ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListAuditEvents is not implemented"))
+}
+
+func (UnimplementedUIHandler) AuditSummary(context.Context, *connect.Request[v1.AuditSummaryRequest]) (*connect.Response[v1.AuditSummaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AuditSummary is not implemented"))
+}
+
+func (UnimplementedUIHandler) MarkAuditRead(context.Context, *connect.Request[v1.MarkAuditReadRequest]) (*connect.Response[v1.AuditSummaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.MarkAuditRead is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListTraffic(context.Context, *connect.Request[v1.ListTrafficRequest]) (*connect.Response[v1.ListTrafficResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListTraffic is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetBotNetwork(context.Context, *connect.Request[v1.GetBotNetworkRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetBotNetwork is not implemented"))
+}
+
+func (UnimplementedUIHandler) AddHostPattern(context.Context, *connect.Request[v1.AddHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AddHostPattern is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveHostPattern(context.Context, *connect.Request[v1.RemoveHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveHostPattern is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetOtherProtocols(context.Context, *connect.Request[v1.SetOtherProtocolsRequest]) (*connect.Response[v1.BotNetwork], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetOtherProtocols is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetEgressStatus(context.Context, *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetEgressStatus is not implemented"))
+}
+
+func (UnimplementedUIHandler) RotateEgressCA(context.Context, *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RotateEgressCA is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {

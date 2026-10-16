@@ -40,6 +40,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		OutputPolicy:    b.OutputPolicy,
 		Model:           b.Model,
 		FeedUnread:      a.Feed.Unread(b.ID),
+		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
 		TimeZonePinned:  b.TimeZonePinned,

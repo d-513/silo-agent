@@ -1,8 +1,9 @@
-import { Book, Box, HardDrive, Key, ListChecks, Plug, Radio, SlidersHorizontal, Waypoints, type LucideIcon } from "lucide-react";
+import { Book, Box, HardDrive, History, Key, ListChecks, Plug, Radio, SlidersHorizontal, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useBotPage } from "./context";
 import { FadeScroll } from "./FadeScroll";
+import { UnreadBadge } from "./SideNav";
 import type { CustomizeTab, SettingsTab } from "./tabs";
 import { msg, t } from "../i18n.ts";
 
@@ -66,19 +67,20 @@ function TabStrip({ children, tab }: { children: ReactNode; tab: string }) {
 }
 
 type SectionTab = CustomizeTab | SettingsTab;
-type Item = { [T in SectionTab]: { tab: T; to: `/bots/$botId/${T}`; label: string; icon: LucideIcon } }[SectionTab];
+type Item = { [T in SectionTab]: { tab: T; to: `/bots/$botId/${T}`; label: string; icon: LucideIcon; attention?: boolean } }[SectionTab];
 
 // A section of a Bot with a few pages of its own: its name, one tab per page,
 // and the open page under them.
 function Section({ title, items }: { title: string; items: readonly Item[] }) {
-  const { id, tab } = useBotPage();
+  const { id, tab, bot } = useBotPage();
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-4 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:px-5">
         <h1 className="hidden shrink-0 text-card-title leading-5 wide:block">{title}</h1>
         <TabStrip tab={tab}>
-          {items.map(({ tab: item, to, label, icon: Icon }) => {
+          {items.map(({ tab: item, to, label, icon: Icon, attention }) => {
             const on = tab === item;
+            const notice = attention ? bot.auditUnseen : 0;
             return (
               <Link
                 key={item}
@@ -91,6 +93,7 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
               >
                 <Icon size={15} />
                 {t(label)}
+                {notice > 0 ? <UnreadBadge n={notice} /> : null}
               </Link>
             );
           })}
@@ -116,6 +119,7 @@ const settings: readonly Item[] = [
   { tab: "secrets", to: "/bots/$botId/secrets", label: msg("Secrets"), icon: Key },
   { tab: "tunnels", to: "/bots/$botId/tunnels", label: msg("Tunnels"), icon: Waypoints },
   { tab: "container", to: "/bots/$botId/container", label: msg("Containers"), icon: Box },
+  { tab: "audit", to: "/bots/$botId/audit", label: msg("Audit"), icon: History, attention: true },
 ];
 
 /** Customize: what the Bot can reach and use. */

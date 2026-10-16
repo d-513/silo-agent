@@ -3,6 +3,7 @@ import { btnClass } from "../Btn";
 import { SkeletonRows } from "../Field";
 import { TabPill, TabPills } from "../TabPills";
 import { DecisionLegend } from "./DecisionLegend";
+import { NetworkCard } from "./NetworkCard";
 import { countRules, filterSections, sideSections, type Side } from "./model";
 import { PolicyPanel } from "./PolicyPanel";
 import { RulesFilter } from "./RulesFilter";
@@ -77,16 +78,19 @@ export function RulesPane({ botId }: { botId: string }) {
           />
         </>
       ) : (
-        <PolicyPanel
-          title={t("Auto-approve policy")}
-          note={t("Read by the auto-approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Write the actions this Bot may run without a human. Empty means every Auto rule asks.")}
-          placeholder={t("e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret.")}
-          policy={rules.policy}
-          saved={rules.savedPolicy}
-          state={rules.saver.state}
-          onChange={rules.setPolicy}
-          onSave={() => void rules.savePolicy()}
-        />
+        <>
+          <PolicyPanel
+            title={t("Auto-approve policy")}
+            note={t("Read by the auto-approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Write the actions this Bot may run without a human. Empty means every Auto rule asks.")}
+            placeholder={t("e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret.")}
+            policy={rules.policy}
+            saved={rules.savedPolicy}
+            state={rules.saver.state}
+            onChange={rules.setPolicy}
+            onSave={() => void rules.savePolicy()}
+          />
+          <NetworkCard botId={botId} />
+        </>
       )}
 
       {err && <p className="mb-3 text-vermilion">{err}</p>}

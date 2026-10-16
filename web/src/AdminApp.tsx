@@ -4,6 +4,7 @@ export { AdminLayout } from "./Admin";
 export { AdminSettings } from "./admin/AdminSettings";
 export { SettingsSection } from "./admin/SettingsSection";
 export { CatalogList, LibraryForm } from "./AdminConnectors";
+export { AdminAudit } from "./AdminAudit";
 export { AdminDebug } from "./AdminDebug";
 export { AdminDrives } from "./AdminDrives";
 export { AdminSkills } from "./Skills";
