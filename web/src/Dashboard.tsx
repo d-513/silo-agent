@@ -237,8 +237,8 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
 
   if (!data) {
     return (
-      <div ref={ref} className="silo-page max-w-[1120px]">
-        <div className="grid grid-cols-2 gap-3">
+      <div ref={ref} className={board}>
+        <div className="grid grid-cols-2 gap-2.5">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="skeleton h-36 rounded-card" />
           ))}
@@ -279,8 +279,8 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   }
 
   return (
-    <div ref={ref} className="silo-page relative max-w-[1120px] pb-0">
-      <div className="mb-3.5 flex h-8 min-w-0 items-center gap-2.5 text-[12.5px] text-ink-3">
+    <div ref={ref} className={`relative ${board}`}>
+      <div className="mb-2 flex h-8 min-w-0 items-center gap-2.5 text-[12.5px] text-ink-3">
         {working ? (
           <span className="flex min-w-0 items-center gap-2">
             <Lamp status="working" />
@@ -338,7 +338,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       </div>
 
       {approvals.length || data.cards.length ? (
-        <section aria-label={t("Needs you")} className={`mb-3 grid gap-3 ${cols > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        <section aria-label={t("Needs you")} className={`mb-2.5 grid gap-2.5 ${cols > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
           {approvals.map((ap) => (
             <ApprovalCard key={ap.id} approval={ap} onDecide={(d) => void decideApproval(ap, d)} onAutoApprove={() => void autoApprove(ap)} />
           ))}
@@ -349,13 +349,13 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       ) : null}
 
       {visitPosts.length ? (
-        <div className="mb-3">
+        <div className="mb-2.5">
           <SinceLooked botId={bot.id} posts={visitPosts} onQuote={quotePost} />
         </div>
       ) : null}
 
       {widgets.length ? (
-        <div className="grid grid-flow-row-dense gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        <div className="grid grid-flow-row-dense gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
           {widgets.map((w) => {
             const drag = arranging
               ? {
@@ -418,7 +418,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
         </div>
       ) : null}
 
-      <div className="sticky bottom-0 z-10 -mx-1 mt-4 bg-gradient-to-b from-transparent to-canvas to-30% px-1 pt-4 pb-5">
+      <div className="sticky bottom-0 z-10 -mx-1 mt-3 bg-gradient-to-b from-transparent to-canvas to-30% px-1 pt-3 pb-3">
         <AskBar
           botName={bot.name}
           picked={pickedWidget ? { id: pickedWidget.id, title: pickedWidget.title } : undefined}
@@ -431,6 +431,10 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
     </div>
   );
 }
+
+// The board takes the whole page: widgets are the content, so it keeps only a
+// thin edge instead of the reading column the other pages use.
+const board = "w-full px-3 pt-2 min-[960px]:px-4 min-[960px]:pt-3";
 
 // ArrangeTools replace a widget's corner while arranging: one chip for its
 // width (a quarter, half, the row; a press moves to the next), one for one or

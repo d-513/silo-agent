@@ -89,9 +89,9 @@ export function Widget({
     <article
       {...drag}
       style={style}
-      className={`rise group/w relative flex min-w-0 flex-col rounded-card bg-surface px-4 pt-3 pb-3.5 transition-shadow duration-[160ms] ${ring} ${drag ? "cursor-grab" : ""}`}
+      className={`rise group/w @container relative flex min-w-0 flex-col rounded-card bg-surface px-3.5 pt-2.5 pb-3 transition-shadow duration-[160ms] ${ring} ${drag ? "cursor-grab" : ""}`}
     >
-      <header className="mb-2.5 flex h-6 min-w-0 items-center gap-2">
+      <header className="mb-2 flex h-6 min-w-0 items-center gap-2">
         {fresh ? <span aria-label={t("Changed")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
         <h3 className="min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium text-ink">{w.title}</h3>
         {arranging ? (
@@ -234,8 +234,10 @@ function Stat({ data }: { data: Record<string, unknown> }) {
   const series = Array.isArray(data.series) ? data.series.map(num).filter((x): x is number => x !== null) : [];
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[34px] leading-[38px] font-medium tracking-[-0.025em] text-ink tabular-nums">{fmtNum(data.value)}</span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <span className="min-w-0 text-[clamp(18px,14cqi,34px)] leading-[1.12] font-medium tracking-[-0.025em] [overflow-wrap:anywhere] text-ink tabular-nums">
+          {fmtNum(data.value)}
+        </span>
         {text(data.unit) ? <span className="font-mono text-[13px] text-ink-3">{text(data.unit)}</span> : null}
       </div>
       {text(data.caption) ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{text(data.caption)}</p> : null}
@@ -491,7 +493,7 @@ function StatusList({ data }: { data: Record<string, unknown> }) {
             <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dot}`} />
             <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{text(r.label)}</span>
             <span className={`shrink-0 text-[12px] font-medium ${word}`}>{text(r.word) || statusWords[tn]()}</span>
-            {text(r.meta) ? <span className="w-14 shrink-0 text-right font-mono text-[11.5px] text-ink-3">{text(r.meta)}</span> : null}
+            {text(r.meta) ? <span className="min-w-14 shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap text-ink-3">{text(r.meta)}</span> : null}
           </li>
         );
       })}
