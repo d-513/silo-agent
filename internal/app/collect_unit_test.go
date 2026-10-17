@@ -37,8 +37,8 @@ func TestChunkEntriesKeepsNewestAndCaps(t *testing.T) {
 }
 
 func TestParseCollectReplyTolerant(t *testing.T) {
-	r, ok := parseCollectReply("Sure!\n```json\n{\"save\":[{\"kind\":\"lesson\",\"text\":\"x\"}]}\n```")
-	if !ok || len(r.Save) != 1 || r.Save[0].Kind != "lesson" {
+	r, ok := parseCollectReply("Sure!\n```json\n{\"save\":[{\"text\":\"x\"}]}\n```")
+	if !ok || len(r.Save) != 1 || r.Save[0].Text != "x" {
 		t.Fatalf("fenced reply: %+v %v", r, ok)
 	}
 	if _, ok := parseCollectReply("nothing to add"); ok {

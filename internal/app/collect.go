@@ -23,7 +23,7 @@ import (
 
 // The memory collector reads what a conversation said since it was last
 // collected (chats.memory_seq) and asks a cheap model, in one call with no
-// tools, for the facts and lessons worth keeping. Each event is read at most
+// tools, for the facts worth keeping. Each event is read at most
 // once: the watermark moves past everything a collection read, including a
 // reply it could not parse, and stays put only on a provider error.
 const (
@@ -51,8 +51,7 @@ const (
 	collectMaxForget = 5
 )
 
-// collectCaps keep tool noise short; failures keep more because that is where
-// the lessons are.
+// collectCaps keep tool noise short while retaining enough detail on errors.
 var collectCaps = transcriptCaps{Args: 300, Result: 400, ErrorResult: 800}
 
 var errCollecting = errors.New("memories are already being collected for this chat")
@@ -67,7 +66,6 @@ type collectResult struct {
 // collectReply is the JSON the collector model answers with.
 type collectReply struct {
 	Save []struct {
-		Kind string `json:"kind"`
 		Text string `json:"text"`
 	} `json:"save"`
 	Update []struct {
@@ -109,8 +107,6 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	entries, _ := transcriptEntries(msgs, collectCaps)
 	chunks, dropped := chunkEntries(entries, collectBudget, collectChunks)
 
-	var bot db.Bot
-	a.DB.Select("id, memory").Where("id = ?", ch.BotID).Limit(1).Find(&bot)
 	modelID := a.cfg().MemoryModel()
 	client, provider, model, err := a.Models.Observed(modelID, ch.BotID, "memory")
 	if err != nil {
@@ -135,7 +131,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		out, err := client.Complete(ctx, llm.Request{
 			Model:     model,
 			System:    []llm.SystemBlock{{Text: prompts.Memory, CacheAfter: true}},
-			Messages:  []llm.Message{{Role: llm.RoleUser, Text: collectInput(bot.Memory, shown, chunk, note)}},
+			Messages:  []llm.Message{{Role: llm.RoleUser, Text: collectInput(shown, chunk, note)}},
 			Cache:     cache,
 			MaxTokens: 1500,
 		})
@@ -171,11 +167,7 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []memory.Reca
 		if text == "" || len(text) > memory.RememberMax {
 			continue
 		}
-		kind := memory.Fact
-		if strings.EqualFold(strings.TrimSpace(s.Kind), memory.Lesson) {
-			kind = memory.Lesson
-		}
-		saved, err := a.Memory.Save(ctx, memory.Entry{BotID: ch.BotID, ChatID: ch.ID, Kind: kind, Content: text})
+		saved, err := a.Memory.Save(ctx, memory.Entry{BotID: ch.BotID, ChatID: ch.ID, Content: text})
 		if err != nil {
 			return models.ProviderError{Err: err}
 		}
@@ -270,24 +262,14 @@ func chunkEntries(entries []string, budget, max int) (chunks []string, dropped i
 
 // collectInput is the one user message of a collection: what the Bot already
 // knows, then the excerpt, last.
-func collectInput(core string, shown []memory.Recalled, excerpt, note string) string {
+func collectInput(shown []memory.Recalled, excerpt, note string) string {
 	var b strings.Builder
-	b.WriteString("CORE MEMORY:\n")
-	if c := strings.TrimSpace(core); c != "" {
-		b.WriteString(c)
-	} else {
-		b.WriteString("(empty)")
-	}
-	b.WriteString("\n\nAlready saved (closest to this excerpt):\n")
+	b.WriteString("Already saved (closest to this excerpt):\n")
 	if len(shown) == 0 {
 		b.WriteString("(none)\n")
 	}
 	for _, m := range shown {
-		kind := m.Kind
-		if kind == "" {
-			kind = memory.Fact
-		}
-		fmt.Fprintf(&b, "- [%s] %s: %s\n", m.ID, kind, m.Content)
+		fmt.Fprintf(&b, "- [%s] %s\n", m.ID, m.Content)
 	}
 	fmt.Fprintf(&b, "\nConversation excerpt%s:\n\n%s", note, excerpt)
 	return b.String()
@@ -390,7 +372,7 @@ func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.Colle
 	}
 	if len(res.IDs) > 0 {
 		var rows []db.Memory
-		a.DB.Select("id, kind, chat_id, content, created_at, last_used_at").Where("id IN ?", res.IDs).Order("created_at").Find(&rows)
+		a.DB.Select("id, chat_id, content, created_at, last_used_at").Where("id IN ?", res.IDs).Order("created_at").Find(&rows)
 		for _, r := range rows {
 			out.Memories = append(out.Memories, memory.Proto(r))
 		}

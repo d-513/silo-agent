@@ -59,7 +59,7 @@ func TestBotCRUDAndLifecycle(t *testing.T) {
 	}
 
 	upd, err := h.Client.UpdateBot(h.Ctx(), connect.NewRequest(&v1.UpdateBotRequest{
-		Id: id, Name: "Beta", Description: "desc", Soul: "be kind", Memory: "likes tea",
+		Id: id, Name: "Beta", Description: "desc", Soul: "be kind",
 	}))
 	if err != nil || upd.Msg.GetName() != "Beta" || upd.Msg.GetSoul() != "be kind" {
 		t.Fatalf("UpdateBot: %v %+v", err, upd)

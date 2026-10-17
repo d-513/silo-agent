@@ -62,7 +62,7 @@ func TestMemoryPromptKeepsMarkerAndShape(t *testing.T) {
 	if !strings.HasPrefix(Memory, "# MEMORY COLLECTOR") {
 		t.Fatal("MEMORY.md must start with the MEMORY COLLECTOR heading")
 	}
-	for _, want := range []string{`"save"`, `"update"`, `"forget"`, "lesson"} {
+	for _, want := range []string{`"save"`, `"update"`, `"forget"`} {
 		if !strings.Contains(Memory, want) {
 			t.Fatalf("MEMORY.md no longer mentions %s", want)
 		}

@@ -35,7 +35,6 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
           name: bot.name,
           description: bot.description,
           soul: bot.soul,
-          memory: bot.memory,
           autoApprove: bot.autoApprove,
           model: bot.model,
           ...change,

@@ -39,11 +39,11 @@ func ageChat(h *apptest.H, chatID string) {
 		WHERE run_id IN (SELECT id FROM runs WHERE chat_id = ?)`, chatID)
 }
 
-func TestCollectMemoriesSavesFactsAndLessonsOnce(t *testing.T) {
+func TestCollectMemoriesSavesFactsOnce(t *testing.T) {
 	dummy.Reset()
 	dummy.Collect("Test_C1", `Here you go:
 `+"```json"+`
-{"save":[{"kind":"fact","text":"The human's dog is called Rex"},{"kind":"lesson","text":"On example.com, log in before searching; the search form fails signed out"}]}
+{"save":[{"text":"The human's dog is called Rex"},{"text":"Deploys happen on Fridays"}]}
 `+"```")
 	h := apptest.New(t)
 	bot := h.CreateBot("Collector")
@@ -57,15 +57,13 @@ func TestCollectMemoriesSavesFactsAndLessonsOnce(t *testing.T) {
 	}
 	var rows []db.Memory
 	h.DB.Where("bot_id = ?", bot.GetId()).Order("content").Find(&rows)
-	kinds := map[string]string{}
 	for _, r := range rows {
-		kinds[r.Content] = r.Kind
 		if r.ChatID != chat {
 			t.Fatalf("memory %q chat %q, want %q", r.Content, r.ChatID, chat)
 		}
 	}
-	if kinds["The human's dog is called Rex"] != "fact" || !strings.HasPrefix(rows[0].Content, "On example.com") || rows[0].Kind != "lesson" {
-		t.Fatalf("kinds %v", kinds)
+	if len(rows) != 2 || rows[0].Content != "Deploys happen on Fridays" || rows[1].Content != "The human's dog is called Rex" {
+		t.Fatalf("rows %+v", rows)
 	}
 	if memorySeq(h, chat) == 0 {
 		t.Fatal("watermark did not move")
@@ -99,7 +97,7 @@ func TestCollectMemoriesUpdateForgetOnlyShownIDs(t *testing.T) {
 	chat := h.FirstChat(bot.GetId())
 	other := h.CreateBot("Other")
 
-	dummy.Collect("Test_C3", `{"save":[{"kind":"fact","text":"The human lives in Oslo"},{"kind":"fact","text":"The human drinks tea"}]}`)
+	dummy.Collect("Test_C3", `{"save":[{"text":"The human lives in Oslo"},{"text":"The human drinks tea"}]}`)
 	run, _ := h.Send(bot.GetId(), chat, "Test_C3_Input")
 	h.WaitRun(run)
 	collect(t, h, bot.GetId(), chat)

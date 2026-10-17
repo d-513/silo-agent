@@ -18,7 +18,7 @@ import (
 	"silo.agent/internal/textx"
 )
 
-// Long-term memory reaches the model through its prompt, never through a
+// Memories reach the model through its prompt, never through a
 // search made while the human waits. While a Bot's memories are few they are
 // all there. Once they outgrow InjectMax a digest stands in for them: a
 // summary the sweep writes in the background and rewrites when the memories
@@ -39,7 +39,7 @@ const (
 	digestPerTick = 3
 )
 
-// Prompt is the system prompt's long-term memory section for one Bot. It
+// Prompt is the system prompt's memories section for one Bot. It
 // reads the database only and changes only when the memories (or their
 // digest) do, so the prompt before it stays cached.
 func (s *Service) Prompt(botID string) string {
@@ -56,7 +56,7 @@ func (s *Service) Prompt(botID string) string {
 		return ""
 	}
 	if st.Size <= InjectMax {
-		return "Everything in long-term memory, oldest first. Use an id with `forget` when one is wrong.\n" +
+		return "Everything in memory, oldest first. Use an id with `forget` when one is wrong.\n" +
 			formatRecalled(s.listed(botID, 0))
 	}
 	var d db.MemoryDigest
@@ -74,7 +74,7 @@ func (s *Service) Prompt(botID string) string {
 // ones whose text fits it.
 func (s *Service) listed(botID string, budget int) []Recalled {
 	var rows []Recalled
-	q := s.db.Model(&db.Memory{}).Select("id, kind, content, created_at").Where("bot_id = ?", botID)
+	q := s.db.Model(&db.Memory{}).Select("id, content, created_at").Where("bot_id = ?", botID)
 	if budget <= 0 {
 		q.Order("created_at, id").Scan(&rows)
 		return rows
@@ -152,7 +152,7 @@ func (s *Service) digest(ctx context.Context, botID string) (string, error) {
 	}
 	var b strings.Builder
 	for _, r := range rows {
-		fmt.Fprintf(&b, "- (%s, %s) %s\n", r.CreatedAt.UTC().Format("2006-01-02"), r.Kind, r.Content)
+		fmt.Fprintf(&b, "- (%s) %s\n", r.CreatedAt.UTC().Format("2006-01-02"), r.Content)
 	}
 	client, _, model, err := s.models.Observed(s.cfg().MemoryModel(), botID, "memory")
 	if err != nil {

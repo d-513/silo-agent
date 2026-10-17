@@ -41,7 +41,7 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
     /* stream */
   }
   const out: Record<string, unknown> = {};
-  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "append", "text", "query", "channel", "to", "chat", "name"]) {
+  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "text", "query", "channel", "to", "chat", "name"]) {
     const v = extractStringField(raw, key);
     if (v !== undefined) out[key] = v;
   }
@@ -119,9 +119,6 @@ export function toolMeta(name: string): { app: string } {
       return { app: t("Desktop") };
     case "soul":
       return { app: "SOUL" };
-    case "memory":
-    case "core_memory":
-      return { app: t("CORE MEMORY") };
     case "skill":
       return { app: t("Skills") };
     case "artifact":

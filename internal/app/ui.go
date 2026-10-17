@@ -36,7 +36,6 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		WorkerConnected: connected,
 		Description:     b.Description,
 		Soul:            b.Soul,
-		Memory:          b.Memory,
 		AutoApprove:     b.AutoApprove,
 		OutputPolicy:    b.OutputPolicy,
 		Model:           b.Model,
@@ -67,7 +66,6 @@ func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsReques
 	for i := range bots {
 		p := a.viewBot(ctx, &bots[i])
 		p.Soul = ""
-		p.Memory = ""
 		p.OutputPolicy = ""
 		out.Bots = append(out.Bots, p)
 	}
@@ -124,7 +122,6 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	}
 	b.Description = clipDesc(req.Msg.GetDescription())
 	b.Soul = req.Msg.GetSoul()
-	b.Memory = req.Msg.GetMemory()
 	b.AutoApprove = req.Msg.GetAutoApprove()
 	if req.Msg.OutputPolicy != nil {
 		b.OutputPolicy = textx.CapRunes(strings.TrimSpace(req.Msg.GetOutputPolicy()), outputPolicyMax)

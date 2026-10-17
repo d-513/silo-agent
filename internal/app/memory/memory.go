@@ -1,5 +1,5 @@
-// Package memory is a Bot's long-term memory: facts and lessons it saves with
-// remember, ranked back by embedding with recall, and shown to its owner on the
+// Package memory is a Bot's memories: facts it saves with remember,
+// ranked back by embedding with recall, and shown to its owner on the
 // Memories page. Rows are pgvector embeddings in Postgres, per Bot.
 package memory
 
@@ -51,7 +51,6 @@ func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service) *Service {
 // Recalled is one memory with its distance from the query.
 type Recalled struct {
 	ID        string
-	Kind      string
 	Content   string
 	CreatedAt time.Time
 	Distance  float64
@@ -62,7 +61,7 @@ type Recalled struct {
 func (s *Service) nearest(botID string, vec pgvector.Vector, k int, maxDist float64) ([]Recalled, error) {
 	var rows []Recalled
 	q := s.db.Model(&db.Memory{}).
-		Select("id, kind, content, created_at, embedding <=> ? AS distance", vec).
+		Select("id, content, created_at, embedding <=> ? AS distance", vec).
 		Where("bot_id = ?", botID)
 	if maxDist > 0 {
 		q = q.Where("embedding <=> ? < ?", vec, maxDist)
@@ -85,15 +84,10 @@ func (s *Service) Remember(ctx context.Context, botID, runID, content string) (s
 	return "remembered " + res.ID, nil
 }
 
-const (
-	Fact   = "fact"
-	Lesson = "lesson"
-)
-
 // Entry is one memory to save: from the Bot's remember (runID) or from the
 // memory collector (chatID).
 type Entry struct {
-	BotID, RunID, ChatID, Kind, Content string
+	BotID, RunID, ChatID, Content string
 }
 
 // Saved says which row an Entry became and whether it replaced a near-copy.
@@ -112,10 +106,6 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 	if len(content) > RememberMax {
 		return Saved{}, fmt.Errorf("memory is %d characters; cap is %d. Save one short fact per call.", len(content), RememberMax)
 	}
-	kind := m.Kind
-	if kind != Lesson {
-		kind = Fact
-	}
 	vecs, model, err := s.models.Embed(ctx, []string{content})
 	if err != nil {
 		return Saved{}, err
@@ -129,16 +119,13 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 		if m.RunID != "" {
 			up["run_id"] = m.RunID
 		}
-		if m.Kind != "" {
-			up["kind"] = kind
-		}
 		err := s.db.Model(&db.Memory{}).Where("id = ?", near[0].ID).Updates(up).Error
 		if err != nil {
 			return Saved{}, err
 		}
 		return Saved{ID: near[0].ID, Updated: true}, nil
 	}
-	row := db.Memory{ID: ids.New(), BotID: m.BotID, Kind: kind, Content: content, Embedding: vecs[0], EmbedModel: model, RunID: m.RunID, ChatID: m.ChatID, CreatedAt: time.Now()}
+	row := db.Memory{ID: ids.New(), BotID: m.BotID, Content: content, Embedding: vecs[0], EmbedModel: model, RunID: m.RunID, ChatID: m.ChatID, CreatedAt: time.Now()}
 	if err := s.db.Create(&row).Error; err != nil {
 		return Saved{}, err
 	}
@@ -205,13 +192,9 @@ func (s *Service) Forget(botID, id string) (string, error) {
 func formatRecalled(rows []Recalled) string {
 	var b strings.Builder
 	for _, r := range rows {
-		kind := ""
-		if r.Kind == Lesson {
-			kind = " lesson:"
-		}
 		// UTC dates: this list sits in the prompt ahead of the conversation,
 		// so it must read the same wherever the Bot or the server is.
-		fmt.Fprintf(&b, "- [%s] (%s)%s %s\n", r.ID, r.CreatedAt.UTC().Format("2006-01-02"), kind, r.Content)
+		fmt.Fprintf(&b, "- [%s] (%s) %s\n", r.ID, r.CreatedAt.UTC().Format("2006-01-02"), r.Content)
 	}
 	return b.String()
 }
@@ -233,7 +216,7 @@ func (s *Service) ListMemories(ctx context.Context, req *connect.Request[v1.List
 		return nil, err
 	}
 	var rows []db.Memory
-	s.db.Select("id, kind, chat_id, content, created_at, last_used_at").
+	s.db.Select("id, chat_id, content, created_at, last_used_at").
 		Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
 	out := &v1.ListMemoriesResponse{}
 	for _, r := range rows {
@@ -245,7 +228,7 @@ func (s *Service) ListMemories(ctx context.Context, req *connect.Request[v1.List
 // Proto is the wire form of a memory.
 func Proto(m db.Memory) *v1.Memory {
 	return &v1.Memory{
-		Id: m.ID, Kind: m.Kind, ChatId: m.ChatID, Content: m.Content,
+		Id: m.ID, ChatId: m.ChatID, Content: m.Content,
 		CreatedAt: m.CreatedAt.Format(time.RFC3339), LastUsedAt: textx.RFC3339(m.LastUsedAt),
 	}
 }
@@ -280,7 +263,7 @@ func (s *Service) SearchMemories(ctx context.Context, req *connect.Request[v1.Se
 	out := &v1.SearchMemoriesResponse{}
 	for _, r := range rows {
 		x := full[r.ID]
-		m := Proto(db.Memory{ID: r.ID, Kind: r.Kind, ChatID: x.ChatID, Content: r.Content, CreatedAt: r.CreatedAt, LastUsedAt: x.LastUsedAt})
+		m := Proto(db.Memory{ID: r.ID, ChatID: x.ChatID, Content: r.Content, CreatedAt: r.CreatedAt, LastUsedAt: x.LastUsedAt})
 		m.Distance = r.Distance
 		out.Memories = append(out.Memories, m)
 	}

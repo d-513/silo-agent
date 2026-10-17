@@ -49,7 +49,7 @@ type promptContext struct {
 	channels []db.Channel
 	// automation is set when a scheduled automation started this run.
 	automation *db.Automation
-	// memories is the Bot's long-term memory section (all of them, or their
+	// memories is the Bot's memory section (all of them, or their
 	// digest); it changes whenever one is saved, so it trails the cached tiers.
 	memories string
 	// subagent is set when this run is a subagent's.
@@ -81,10 +81,10 @@ func (a *App) promptProviders() []promptProvider {
 	}
 }
 
-// memorySections is the Bot's long-term memory, first among the trailing
+// memorySections is the Bot's memories, first among the trailing
 // sections: the ones after it belong to a single conversation.
 func (a *App) memorySections(pc promptContext) []promptSection {
-	return []promptSection{{title: "Long-term memories", body: pc.memories, trailing: true}}
+	return []promptSection{{title: "Memories", body: pc.memories, trailing: true}}
 }
 
 // channelSections tells the model what channels exist and, when the run came
@@ -129,10 +129,10 @@ func (a *App) driveSections(pc promptContext) []promptSection {
 //  1. the base prompt — the same bytes for every Bot, so with the tool list
 //     it is one cache entry shared by all of them;
 //  2. this Bot's session: its name, connectors, skills, channels, drives;
-//  3. SOUL and CORE MEMORY, which the Bot edits now and then.
+//  3. SOUL, which the Bot edits now and then.
 //
 // What follows has no breakpoint of its own (a provider allows four, and the
-// last belongs to the conversation): long-term memories, then the notes of
+// last belongs to the conversation): memories, then the notes of
 // this one conversation. A run builds the prompt once and never rebuilds it.
 type systemPromptBuilder struct {
 	base     string
@@ -168,23 +168,12 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 		trailing.WriteString(sec.render())
 	}
 
-	// mem continues the SOUL tier.
 	var soul strings.Builder
 	soul.WriteString("\n\n## SOUL\n")
 	if t := strings.TrimSpace(b.bot.Soul); t != "" {
 		soul.WriteString(t)
 	} else {
 		soul.WriteString("(empty — write it with the soul tool.)")
-	}
-	mem := &soul
-	mem.WriteString("\n\n## CORE MEMORY\n")
-	if t := strings.TrimSpace(b.bot.Memory); t != "" {
-		mem.WriteString(t)
-	} else {
-		mem.WriteString("(empty)")
-	}
-	if len(b.bot.Memory) > coreMemoryMax {
-		fmt.Fprintf(mem, "\n\nCORE MEMORY is over the %d-character cap (now %d). Compact it with `core_memory` (replace redundant facts with a shorter summary) before adding more.", coreMemoryMax, len(b.bot.Memory))
 	}
 
 	raw := []llm.SystemBlock{

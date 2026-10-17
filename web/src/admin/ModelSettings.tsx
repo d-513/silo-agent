@@ -34,7 +34,7 @@ const ROLES: { key: string; takes?: ModelKind | "either"; unset?: string; hint?:
     hint: msg("Judges tool results for rules set to Check, once per result. A decision model is the fast, cheap choice; a text model is asked for one word."),
   },
   { key: "model_subagent", unset: msg("Same as the lead"), hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.") },
-  { key: "model_memory", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts and lessons the Bot missed. A cheap model is enough.") },
+  { key: "model_memory", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts the Bot missed. A cheap model is enough.") },
   { key: "model_decision", takes: "decision", hint: msg("What the Bot's decide tool asks unless it names another allowed decision model.") },
 ];
 

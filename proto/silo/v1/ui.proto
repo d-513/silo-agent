@@ -476,7 +476,7 @@ message Bot {
   bool worker_connected = 6;
   string description = 7;
   string soul = 8;
-  string memory = 9;
+  reserved 9;
   // AutoApprove is this Bot's free-text auto-approval policy. Rules set to
   // "auto" consult the approval model with this text.
   string auto_approve = 10;
@@ -525,7 +525,7 @@ message UpdateBotRequest {
   string name = 2;
   string description = 3;
   string soul = 4;
-  string memory = 5;
+  reserved 5;
   string auto_approve = 6;
   string model = 7;
   // Optional, so a save of the other fields leaves the zone alone.
@@ -657,8 +657,7 @@ message Memory {
   string last_used_at = 4;
   // Cosine distance to the query; set only by SearchMemories.
   double distance = 5;
-  // "fact" or "lesson" (a pitfall and what worked).
-  string kind = 6;
+  reserved 6;
   // Set when the memory collector saved it from this chat.
   string chat_id = 7;
 }
@@ -1108,7 +1107,7 @@ message MarkDashboardReadResponse {}
 message DismissDashboardCardRequest {
   string bot_id = 1;
   string id = 2;
-  // When true, also records a durable lesson in memory not to propose this kind again.
+  // When true, also records a durable memory not to propose this kind again.
   bool suppress_kind = 3;
 }
 
@@ -1534,7 +1533,7 @@ message CompactChatResponse {
 }
 
 // CollectMemories runs the memory collector over a chat's messages since its
-// last collection: one cheap model call that saves missed facts and lessons.
+// last collection: one cheap model call that saves missed facts.
 message CollectMemoriesRequest {
   string bot_id = 1;
   string chat_id = 2;

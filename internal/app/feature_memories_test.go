@@ -146,7 +146,7 @@ func TestFewMemoriesAreAllInThePrompt(t *testing.T) {
 	run2, _ := h.Send(bot.GetId(), chat.Msg.GetId(), "an unrelated question Test_72_Input")
 	h.WaitRun(run2)
 	sys := systemOf(t)
-	if !strings.Contains(sys, "## Long-term memories") || !strings.Contains(sys, "Miso") || !strings.Contains(sys, "Fridays") {
+	if !strings.Contains(sys, "## Memories") || !strings.Contains(sys, "Miso") || !strings.Contains(sys, "Fridays") {
 		t.Fatalf("the memories are not in the prompt:\n%s", sys[max(0, len(sys)-1500):])
 	}
 	// The memories sit after the last cache breakpoint: saving one must not
@@ -208,7 +208,7 @@ func TestManyMemoriesBecomeADigest(t *testing.T) {
 	}
 }
 
-// memory.in_prompt off keeps long-term memory out of the prompt entirely.
+// memory.in_prompt off keeps memories out of the prompt entirely.
 func TestMemoriesOutOfThePromptWhenOff(t *testing.T) {
 	dummy.Reset()
 	dir := t.TempDir()
@@ -249,38 +249,6 @@ func TestMemoriesListAndDeleteRPC(t *testing.T) {
 	if _, err := h.NewClient().ListMemories(h.Ctx(), connect.NewRequest(&v1.ListMemoriesRequest{BotId: bot.GetId()})); err == nil {
 		t.Fatal("unauthenticated ListMemories should fail")
 	}
-}
-
-func TestCoreMemoryTool(t *testing.T) {
-	dummy.Reset()
-	dummy.Script("Test_74", memCall("core_memory", `{"append":"Name is Ada"}`), dummy.Turn{Text: "ok"})
-	dir := t.TempDir()
-	h := apptest.New(t, apptest.WithYAML(strings.Replace(apptest.DefaultYAML(dir), "search:", "debug: true\nsearch:", 1)))
-	bot := h.CreateBot("Core")
-	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_74_Input")
-	if res := memResults(h.WaitRun(run)); len(res) != 1 || !strings.HasPrefix(res[0], "ok") {
-		t.Fatalf("core_memory result %q\n%s", res, h.RunBody(run))
-	}
-	var b db.Bot
-	h.DB.First(&b, "id = ?", bot.GetId())
-	if b.Memory != "Name is Ada" {
-		t.Fatalf("bots.memory %q", b.Memory)
-	}
-	logs, err := h.Client.ListLLMLogs(h.Ctx(), connect.NewRequest(&v1.ListLLMLogsRequest{BotId: bot.GetId()}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, l := range logs.Msg.GetLogs() {
-		if l.GetLabel() != "chat" {
-			continue
-		}
-		req := l.GetRequest()
-		if !strings.Contains(req, "## CORE MEMORY") || strings.Contains(req, "## MEMORY") {
-			t.Fatalf("prompt lacks CORE MEMORY:\n%s", req)
-		}
-		return
-	}
-	t.Fatal("no chat log")
 }
 
 func TestSearchMemoriesRPC(t *testing.T) {

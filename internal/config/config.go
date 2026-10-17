@@ -77,7 +77,7 @@ type Tools struct {
 
 // Memory configures long-term (pgvector) memories.
 type Memory struct {
-	// InPrompt puts long-term memory in the system prompt: every memory
+	// InPrompt puts memories in the system prompt: every memory
 	// while they are few, a summary written in the background once they are
 	// many. Nothing is embedded when a message arrives; `recall` searches.
 	InPrompt bool `koanf:"in_prompt"`
@@ -235,7 +235,7 @@ const DefaultModel = "openrouter/openai/gpt-5.6-luna"
 
 const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
 
-// DefaultEmbeddingModel embeds long-term memories. Its vectors must be
+// DefaultEmbeddingModel embeds memories. Its vectors must be
 // llm.EmbedDims wide (text-embedding-3 honours the dimensions parameter).
 const DefaultEmbeddingModel = "openrouter/openai/text-embedding-3-small"
 

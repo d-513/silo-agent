@@ -62,7 +62,7 @@ Competitor facts come from their public docs and press as of this date (links at
 | Cron and proactive runs | Automations (5-field cron, fresh context per run, once-only claim, no backfill), Heartbeat, Bot-created automations (Ask) |
 | Subagents | `spawn_agent`, status, message, stop; taskboard; push-based wake of the lead; per-agent model; 8 at once |
 | Context compaction | Auto and manual, mid-run, persisted as events, never deletes history; context meter |
-| Memory | Core memory + pgvector long-term memories, auto-recall, a collector that saves what the Bot forgot, a Memories page |
+| Memory | pgvector memories, auto-recall, a collector that saves what the Bot forgot, a Memories page |
 | Skills | Agent Skills format, GitHub or zip install, progressive disclosure, library + personal |
 | MCP | HTTP, legacy SSE and STDIO |
 | Models | OpenRouter / OpenAI / Anthropic native / local, thinking ladder, per-chat model, window discovery, prompt-cache breakpoints |

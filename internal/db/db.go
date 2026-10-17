@@ -82,7 +82,6 @@ type Bot struct {
 	Name        string
 	Description string
 	Soul        string
-	Memory      string
 	// Model is the per-bot provider/model default; empty falls back to the
 	// operator default. A chat override still wins for its conversation.
 	Model string
@@ -442,14 +441,11 @@ type CatalogSeed struct {
 	SeededAt time.Time
 }
 
-// Memory is one long-term fact a Bot saved with `remember`. MEMORY (bots.memory)
-// stays the small always-in-prompt set; these are searched by embedding.
-// Kind is "fact" or "lesson" (a pitfall and what worked). ChatID is set when
-// the memory collector saved it from that conversation.
+// Memory is one long-term fact a Bot saved with `remember` or that the memory
+// collector saved from a conversation (ChatID). Searched by embedding.
 type Memory struct {
 	ID         string `gorm:"primaryKey"`
 	BotID      string `gorm:"index"`
-	Kind       string `gorm:"default:'fact'"`
 	Content    string
 	Embedding  pgvector.Vector `gorm:"type:vector(1536)"`
 	EmbedModel string
@@ -459,7 +455,7 @@ type Memory struct {
 	LastUsedAt *time.Time
 }
 
-// MemoryDigest is the summary that stands in for a Bot's long-term memories in
+// MemoryDigest is the summary that stands in for a Bot's memories in
 // the system prompt once they are too many to list. Key is a hash of the
 // memories it was written from, so an unchanged store is not summarized again.
 // It is a table of its own: the bots row is saved whole in places, and a
@@ -877,8 +873,10 @@ func Migrate(gdb *gorm.DB) error {
 			return err
 		}
 	}
-	// The always-in-prompt MEMORY tool is now core_memory; keep the owner's rule.
-	if err := gdb.Exec("UPDATE rules SET action = 'core_memory' WHERE connector = 'bot' AND action = 'memory'").Error; err != nil {
+	if err := gdb.Exec("DELETE FROM rules WHERE connector = 'bot' AND action IN ('memory', 'core_memory')").Error; err != nil {
+		return err
+	}
+	if err := gdb.Exec("DELETE FROM operator_rules WHERE connector = 'bot' AND action IN ('memory', 'core_memory')").Error; err != nil {
 		return err
 	}
 	if err := dedupePinnedAutomations(gdb); err != nil {

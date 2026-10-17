@@ -18,7 +18,7 @@ func TestScrubsNULAndInvalidUTF8(t *testing.T) {
 	}
 	var got db.RunEvent
 	gdb.First(&got, "id = ?", "e1")
-	if got.Body != "ab�c" {
+	if got.Body != "ab\ufffdc" {
 		t.Fatalf("body %q", got.Body)
 	}
 	if err := gdb.Model(&db.RunEvent{}).Where("id = ?", "e1").Update("body", "x\x00y").Error; err != nil {
@@ -54,16 +54,18 @@ func TestRunEventSeqKeepsInsertOrder(t *testing.T) {
 	}
 }
 
-func TestMigrateRenamesMemoryRule(t *testing.T) {
+func TestMigrateDropsCoreMemoryRules(t *testing.T) {
 	gdb := dbtest.New(t)
 	gdb.Create(&db.Rule{ID: "r1", BotID: "b1", Connector: "bot", Action: "memory", Decision: "deny"})
+	gdb.Create(&db.Rule{ID: "r2", BotID: "b1", Connector: "bot", Action: "core_memory", Decision: "deny"})
+	gdb.Create(&db.Rule{ID: "r3", BotID: "b1", Connector: "bot", Action: "soul", Decision: "deny"})
 	if err := db.Migrate(gdb); err != nil {
 		t.Fatal(err)
 	}
-	var got db.Rule
-	gdb.First(&got, "id = ?", "r1")
-	if got.Action != "core_memory" || got.Decision != "deny" {
-		t.Fatalf("rule %+v", got)
+	var got []db.Rule
+	gdb.Find(&got)
+	if len(got) != 1 || got[0].Action != "soul" {
+		t.Fatalf("rules %+v", got)
 	}
 }
 

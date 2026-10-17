@@ -50,7 +50,7 @@ var Dashboard string
 var Compact string
 
 // Memory is the system prompt of the memory collector, which reads a chat's
-// new messages and answers with the facts and lessons to save as JSON.
+// new messages and answers with the facts to save as JSON.
 //
 //go:embed MEMORY.md
 var Memory string

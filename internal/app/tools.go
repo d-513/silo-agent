@@ -163,7 +163,7 @@ func (a *App) artifactTool(ctx context.Context, c *tool.Call) (tool.Result, erro
 	return res, nil
 }
 
-// recallTool searches long-term memory: lines for the model, rows for Python.
+// recallTool searches memories: lines for the model, rows for Python.
 func (a *App) recallTool(ctx context.Context, c *tool.Call) (string, error) {
 	if !c.Structured() {
 		return a.Memory.RecallTool(ctx, c.Bot.ID, c.Str("query"), c.Int("limit"))

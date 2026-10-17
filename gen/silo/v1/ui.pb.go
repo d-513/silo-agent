@@ -2064,7 +2064,6 @@ type Bot struct {
 	WorkerConnected bool                   `protobuf:"varint,6,opt,name=worker_connected,json=workerConnected,proto3" json:"worker_connected,omitempty"`
 	Description     string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	Soul            string                 `protobuf:"bytes,8,opt,name=soul,proto3" json:"soul,omitempty"`
-	Memory          string                 `protobuf:"bytes,9,opt,name=memory,proto3" json:"memory,omitempty"`
 	// AutoApprove is this Bot's free-text auto-approval policy. Rules set to
 	// "auto" consult the approval model with this text.
 	AutoApprove string `protobuf:"bytes,10,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
@@ -2178,13 +2177,6 @@ func (x *Bot) GetDescription() string {
 func (x *Bot) GetSoul() string {
 	if x != nil {
 		return x.Soul
-	}
-	return ""
-}
-
-func (x *Bot) GetMemory() string {
-	if x != nil {
-		return x.Memory
 	}
 	return ""
 }
@@ -2407,7 +2399,6 @@ type UpdateBotRequest struct {
 	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Soul        string                 `protobuf:"bytes,4,opt,name=soul,proto3" json:"soul,omitempty"`
-	Memory      string                 `protobuf:"bytes,5,opt,name=memory,proto3" json:"memory,omitempty"`
 	AutoApprove string                 `protobuf:"bytes,6,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
 	Model       string                 `protobuf:"bytes,7,opt,name=model,proto3" json:"model,omitempty"`
 	// Optional, so a save of the other fields leaves the zone alone.
@@ -2475,13 +2466,6 @@ func (x *UpdateBotRequest) GetDescription() string {
 func (x *UpdateBotRequest) GetSoul() string {
 	if x != nil {
 		return x.Soul
-	}
-	return ""
-}
-
-func (x *UpdateBotRequest) GetMemory() string {
-	if x != nil {
-		return x.Memory
 	}
 	return ""
 }
@@ -3436,8 +3420,6 @@ type Memory struct {
 	LastUsedAt string `protobuf:"bytes,4,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
 	// Cosine distance to the query; set only by SearchMemories.
 	Distance float64 `protobuf:"fixed64,5,opt,name=distance,proto3" json:"distance,omitempty"`
-	// "fact" or "lesson" (a pitfall and what worked).
-	Kind string `protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Set when the memory collector saved it from this chat.
 	ChatId        string `protobuf:"bytes,7,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -3507,13 +3489,6 @@ func (x *Memory) GetDistance() float64 {
 		return x.Distance
 	}
 	return 0
-}
-
-func (x *Memory) GetKind() string {
-	if x != nil {
-		return x.Kind
-	}
-	return ""
 }
 
 func (x *Memory) GetChatId() string {
@@ -7226,7 +7201,7 @@ type DismissDashboardCardRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	BotId string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
 	Id    string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	// When true, also records a durable lesson in memory not to propose this kind again.
+	// When true, also records a durable memory not to propose this kind again.
 	SuppressKind  bool `protobuf:"varint,3,opt,name=suppress_kind,json=suppressKind,proto3" json:"suppress_kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -10914,7 +10889,7 @@ func (x *CompactChatResponse) GetRunId() string {
 }
 
 // CollectMemories runs the memory collector over a chat's messages since its
-// last collection: one cheap model call that saves missed facts and lessons.
+// last collection: one cheap model call that saves missed facts.
 type CollectMemoriesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
@@ -23272,7 +23247,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x95\x04\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x83\x04\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -23281,8 +23256,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x05crest\x18\x05 \x01(\x05R\x05crest\x12)\n" +
 	"\x10worker_connected\x18\x06 \x01(\bR\x0fworkerConnected\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12\x12\n" +
-	"\x04soul\x18\b \x01(\tR\x04soul\x12\x16\n" +
-	"\x06memory\x18\t \x01(\tR\x06memory\x12!\n" +
+	"\x04soul\x18\b \x01(\tR\x04soul\x12!\n" +
 	"\fauto_approve\x18\n" +
 	" \x01(\tR\vautoApprove\x12\x14\n" +
 	"\x05model\x18\v \x01(\tR\x05model\x12\x1f\n" +
@@ -23293,7 +23267,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10time_zone_pinned\x18\x0f \x01(\bR\x0etimeZonePinned\x12\x1a\n" +
 	"\blanguage\x18\x10 \x01(\tR\blanguage\x12#\n" +
 	"\routput_policy\x18\x11 \x01(\tR\foutputPolicy\x12!\n" +
-	"\faudit_unseen\x18\x12 \x01(\x05R\vauditUnseen\"\x11\n" +
+	"\faudit_unseen\x18\x12 \x01(\x05R\vauditUnseenJ\x04\b\t\x10\n" +
+	"\"\x11\n" +
 	"\x0fListBotsRequest\"4\n" +
 	"\x10ListBotsResponse\x12 \n" +
 	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"{\n" +
@@ -23301,13 +23276,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x02 \x01(\x05R\x05crest\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
-	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\x9b\x03\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\x89\x03\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
-	"\x04soul\x18\x04 \x01(\tR\x04soul\x12\x16\n" +
-	"\x06memory\x18\x05 \x01(\tR\x06memory\x12!\n" +
+	"\x04soul\x18\x04 \x01(\tR\x04soul\x12!\n" +
 	"\fauto_approve\x18\x06 \x01(\tR\vautoApprove\x12\x14\n" +
 	"\x05model\x18\a \x01(\tR\x05model\x12 \n" +
 	"\ttime_zone\x18\b \x01(\tH\x00R\btimeZone\x88\x01\x01\x12-\n" +
@@ -23319,7 +23293,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"_time_zoneB\x13\n" +
 	"\x11_time_zone_pinnedB\v\n" +
 	"\t_languageB\x10\n" +
-	"\x0e_output_policy\"\x1f\n" +
+	"\x0e_output_policyJ\x04\b\x05\x10\x06\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +
@@ -23394,7 +23368,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\"\x15\n" +
 	"\x13AdminActionResponse\"\x13\n" +
-	"\x11DeleteBotResponse\"\xbc\x01\n" +
+	"\x11DeleteBotResponse\"\xae\x01\n" +
 	"\x06Memory\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1d\n" +
@@ -23402,9 +23376,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12 \n" +
 	"\flast_used_at\x18\x04 \x01(\tR\n" +
 	"lastUsedAt\x12\x1a\n" +
-	"\bdistance\x18\x05 \x01(\x01R\bdistance\x12\x12\n" +
-	"\x04kind\x18\x06 \x01(\tR\x04kind\x12\x17\n" +
-	"\achat_id\x18\a \x01(\tR\x06chatId\",\n" +
+	"\bdistance\x18\x05 \x01(\x01R\bdistance\x12\x17\n" +
+	"\achat_id\x18\a \x01(\tR\x06chatIdJ\x04\b\x06\x10\a\",\n" +
 	"\x13ListMemoriesRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"C\n" +
 	"\x14ListMemoriesResponse\x12+\n" +

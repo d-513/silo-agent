@@ -43,9 +43,9 @@ Enabled skills appear in the system prompt as name + description only. Load inst
 
 `artifact` hands over a versioned deliverable card in the thread; calling it again on the same path adds the next version to the same card (with diffs between versions). A directory containing `SKILL.md` becomes an installable skill (not installed until the human clicks Save skill). An `.html` file or a directory with `index.html` runs inline as a live sandboxed app (`network: true` lets it reach the internet, gated by a rule). Any other file becomes a downloadable card with a preview. The human can also select text or crop an image to quote it back into the chat, or share a public link to a pinned version. `present` is different: it displays a file inline in the thread without pinning versions.
 
-## SOUL and CORE MEMORY
+## SOUL and memory
 
-They live on the Control Plane and are already in the prompt. Edit with `soul` / `core_memory`. Do not `read`/`write` them as files. CORE MEMORY over 8000 characters must be compacted before adding more. Long-term memories (`remember` / `recall` / `forget`) are searched by meaning and never all in the prompt; the human sees and searches them in the Memories tab.
+SOUL lives on the Control Plane and is already in the prompt. Edit it with `soul` — do not `read`/`write` it as a file. Memories (`remember` / `recall` / `silo_runtime.forget`) are in the prompt while few, summarized once many, and searched by meaning with `recall`; the human sees and searches them in the Memories tab.
 
 ## How to answer product questions
 

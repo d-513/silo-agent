@@ -83,7 +83,7 @@ export const HINTS: Record<string, string> = {
   "rules.approval_policy": msg("Read before a Bot's own auto-approval policy, whenever a rule is set to Auto. Says what may run without a human. Empty means the Bot's own policy stands alone."),
   "rules.output_policy": msg("Read before a Bot's own output policy, whenever a result is set to Check. Says what makes a result suspicious (flagged) or malicious (withheld). Empty means the Bot's own policy stands alone."),
   "runs.max_duration": msg("How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this."),
-  embedding_model: msg("For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
+  embedding_model: msg("For memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
   "knowledge.sync_interval": msg("A Go duration such as 15m or 1h (minimum 1m)."),
   "knowledge.ocr": msg("Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those."),
   "content.host": msg("Tunnels, live apps and public links are served at <kind>-<name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port."),
@@ -157,7 +157,7 @@ export const RULES_NOTE =
   msg("The operator's layer of the rules engine. A rule here applies to every Bot; while it is locked an owner may make it stricter but not looser. The policy text below is read before a Bot's own, by the auto-approval model and the output filter.");
 
 export const MEMORY_NOTE =
-  msg("Memories in the prompt shows the Bot every long-term memory while they are few, and a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts and lessons the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.");
+  msg("Memories in the prompt shows the Bot every memory while they are few, and a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.");
 
 export const KNOWLEDGE_NOTE =
   msg("Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.");

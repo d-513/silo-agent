@@ -20,7 +20,7 @@ export function collectSummary(res: Pick<CollectMemoriesResponse, "saved" | "upd
 
 /**
  * MemoryCollectButton reads the chat since its last collection and saves the
- * facts and lessons the Bot missed. It breathes while the model reads, then
+ * facts the Bot missed. It breathes while the model reads, then
  * shows a count badge for a moment; the tip keeps the last result.
  */
 export function MemoryCollectButton({ chatId, onCollect }: { chatId?: string; onCollect: () => Promise<CollectMemoriesResponse> }) {
@@ -65,14 +65,13 @@ export function MemoryCollectButton({ chatId, onCollect }: { chatId?: string; on
           <TipTitle aside={aside}>{t("Save memories")}</TipTitle>
           <p className="mt-1">
             {running
-              ? t("Reading this chat for facts and lessons worth keeping.")
-              : t("Reads what was said since the last save and keeps the facts and lessons the Bot missed. Chats are also read on their own once they have been quiet for 10 minutes.")}
+              ? t("Reading this chat for facts worth keeping.")
+              : t("Reads what was said since the last save and keeps the facts the Bot missed. Chats are also read on their own once they have been quiet for 10 minutes.")}
           </p>
           {state.kind === "done" && state.res.memories.length > 0 ? (
             <ul className="mt-2 grid gap-1">
               {state.res.memories.slice(0, 4).map((m) => (
                 <li key={m.id} className="line-clamp-2 text-[12.5px]">
-                  {m.kind === "lesson" ? <span className="mr-1 font-medium">{t("Lesson:")}</span> : null}
                   {m.content}
                 </li>
               ))}

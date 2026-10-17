@@ -45,7 +45,6 @@ export function useRules(botId: string) {
           name: b.name,
           description: b.description,
           soul: b.soul,
-          memory: b.memory,
           autoApprove: output ? b.autoApprove : (draft ?? savedPolicy),
           model: b.model,
           outputPolicy: output ? (outputDraft ?? savedOutputPolicy) : undefined,

@@ -102,7 +102,6 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
   const include = asStr(a.include);
   const oldText = asStr(a.old_text);
   const newText = asStr(a.new_text);
-  const append = asStr(a.append);
   const offset = a.offset;
   const limit = a.limit;
   const x = a.x;
@@ -143,7 +142,7 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
         {limit != null ? <div className="text-ink-3">limit {asStr(limit)}</div> : null}
       </div>
     );
-  } else if ((name === "soul" || name === "memory" || name === "core_memory") && (content || append || oldText || newText)) {
+  } else if (name === "soul" && (content || oldText || newText)) {
     if (oldText || newText) {
       const lines = [
         ...(oldText ? oldText.split("\n").map((l) => `-${l}`) : []),
@@ -151,7 +150,7 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
       ].join("\n");
       body = <CodeBlock code={lines} lang="diff" />;
     } else {
-      body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{content || append}</div>;
+      body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{content}</div>;
     }
   } else if (name === "skill") {
     const skillName = asStr(a.name);

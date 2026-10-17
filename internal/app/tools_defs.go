@@ -165,20 +165,8 @@ func (a *App) toolDefs() []tool.Def {
 			Run:              doc,
 		},
 		{
-			Name:        "core_memory",
-			Description: "Update this Bot's CORE MEMORY (small, always-needed facts). Already in the system prompt. Pass append to add a line, or old_text/new_text to edit or compact. If over the cap, compact first — do not append.",
-			Params: tool.Object(map[string]any{
-				"append":   map[string]any{"type": "string"},
-				"old_text": map[string]any{"type": "string"},
-				"new_text": map[string]any{"type": "string"},
-			}),
-			Connector: security.Bot, Action: "core_memory",
-			ExposeCompletion: true,
-			Run:              doc,
-		},
-		{
 			Name:        "remember",
-			Description: "Save one durable fact to this Bot's long-term memory (searched by meaning, not always in the prompt). One fact per call; a near-duplicate updates the existing memory.",
+			Description: "Save one durable fact to this Bot's memory (searched by meaning, not always in the prompt). One fact per call; a near-duplicate updates the existing memory.",
 			Params: tool.Object(map[string]any{
 				"content": map[string]any{"type": "string", "description": "the fact, self-contained"},
 			}, "content"),
@@ -190,7 +178,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "recall",
-			Description: "Search this Bot's long-term memories by meaning. Returns the closest ones with ids and dates.",
+			Description: "Search this Bot's memories by meaning. Returns the closest ones with ids and dates.",
 			Params: tool.Object(map[string]any{
 				"query": map[string]any{"type": "string"},
 				"limit": map[string]any{"type": "integer", "description": "max memories (default 5, max 20)"},
@@ -216,7 +204,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "forget",
-			Description: "Delete one long-term memory by id (from recall).",
+			Description: "Delete one memory by id (from recall).",
 			Params: tool.Object(map[string]any{
 				"id": map[string]any{"type": "string"},
 			}, "id"),

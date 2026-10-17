@@ -720,11 +720,6 @@ public nonisolated struct Silo_V1_Bot: @unchecked Sendable {
     set {_uniqueStorage()._soul = newValue}
   }
 
-  public var memory: String {
-    get {_storage._memory}
-    set {_uniqueStorage()._memory = newValue}
-  }
-
   /// AutoApprove is this Bot's free-text auto-approval policy. Rules set to
   /// "auto" consult the approval model with this text.
   public var autoApprove: String {
@@ -848,8 +843,6 @@ public nonisolated struct Silo_V1_UpdateBotRequest: Sendable {
   public var description_p: String = String()
 
   public var soul: String = String()
-
-  public var memory: String = String()
 
   public var autoApprove: String = String()
 
@@ -1010,9 +1003,6 @@ public nonisolated struct Silo_V1_Memory: Sendable {
 
   /// Cosine distance to the query; set only by SearchMemories.
   public var distance: Double = 0
-
-  /// "fact" or "lesson" (a pitfall and what worked).
-  public var kind: String = String()
 
   /// Set when the memory collector saved it from this chat.
   public var chatID: String = String()
@@ -2704,7 +2694,7 @@ public nonisolated struct Silo_V1_CompactChatResponse: Sendable {
 }
 
 /// CollectMemories runs the memory collector over a chat's messages since its
-/// last collection: one cheap model call that saves missed facts and lessons.
+/// last collection: one cheap model call that saves missed facts.
 public nonisolated struct Silo_V1_CollectMemoriesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -7504,7 +7494,7 @@ nonisolated extension Silo_V1_CheckOIDCResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Bot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{2}\u{2}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0\u{c}\u{9}\u{1}")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -7515,7 +7505,6 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _workerConnected: Bool = false
     var _description_p: String = String()
     var _soul: String = String()
-    var _memory: String = String()
     var _autoApprove: String = String()
     var _model: String = String()
     var _feedUnread: Int32 = 0
@@ -7543,7 +7532,6 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       _workerConnected = source._workerConnected
       _description_p = source._description_p
       _soul = source._soul
-      _memory = source._memory
       _autoApprove = source._autoApprove
       _model = source._model
       _feedUnread = source._feedUnread
@@ -7579,7 +7567,6 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 6: try { try decoder.decodeSingularBoolField(value: &_storage._workerConnected) }()
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._description_p) }()
         case 8: try { try decoder.decodeSingularStringField(value: &_storage._soul) }()
-        case 9: try { try decoder.decodeSingularStringField(value: &_storage._memory) }()
         case 10: try { try decoder.decodeSingularStringField(value: &_storage._autoApprove) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._model) }()
         case 12: try { try decoder.decodeSingularInt32Field(value: &_storage._feedUnread) }()
@@ -7620,9 +7607,6 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       }
       if !_storage._soul.isEmpty {
         try visitor.visitSingularStringField(value: _storage._soul, fieldNumber: 8)
-      }
-      if !_storage._memory.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._memory, fieldNumber: 9)
       }
       if !_storage._autoApprove.isEmpty {
         try visitor.visitSingularStringField(value: _storage._autoApprove, fieldNumber: 10)
@@ -7668,7 +7652,6 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._workerConnected != rhs_storage._workerConnected {return false}
         if _storage._description_p != rhs_storage._description_p {return false}
         if _storage._soul != rhs_storage._soul {return false}
-        if _storage._memory != rhs_storage._memory {return false}
         if _storage._autoApprove != rhs_storage._autoApprove {return false}
         if _storage._model != rhs_storage._model {return false}
         if _storage._feedUnread != rhs_storage._feedUnread {return false}
@@ -7783,7 +7766,7 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateBotRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{1}memory\0\u{3}auto_approve\0\u{1}model\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{2}\u{2}auto_approve\0\u{1}model\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{c}\u{5}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7795,7 +7778,6 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.soul) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.memory) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.autoApprove) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.model) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self._timeZone) }()
@@ -7824,9 +7806,6 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     if !self.soul.isEmpty {
       try visitor.visitSingularStringField(value: self.soul, fieldNumber: 4)
     }
-    if !self.memory.isEmpty {
-      try visitor.visitSingularStringField(value: self.memory, fieldNumber: 5)
-    }
     if !self.autoApprove.isEmpty {
       try visitor.visitSingularStringField(value: self.autoApprove, fieldNumber: 6)
     }
@@ -7853,7 +7832,6 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     if lhs.name != rhs.name {return false}
     if lhs.description_p != rhs.description_p {return false}
     if lhs.soul != rhs.soul {return false}
-    if lhs.memory != rhs.memory {return false}
     if lhs.autoApprove != rhs.autoApprove {return false}
     if lhs.model != rhs.model {return false}
     if lhs._timeZone != rhs._timeZone {return false}
@@ -8000,9 +7978,9 @@ nonisolated extension Silo_V1_BotContainer: SwiftProtobuf.Message, SwiftProtobuf
   }
 
   public static func ==(lhs: Silo_V1_BotContainer, rhs: Silo_V1_BotContainer) -> Bool {
-    if lhs.kind != rhs.kind {return false}
     if lhs.name != rhs.name {return false}
     if lhs.label != rhs.label {return false}
+    if lhs.kind != rhs.kind {return false}
     if lhs.state != rhs.state {return false}
     if lhs.image != rhs.image {return false}
     if lhs.startedAt != rhs.startedAt {return false}
@@ -8066,7 +8044,7 @@ nonisolated extension Silo_V1_DeleteBotResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Memory"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}content\0\u{3}created_at\0\u{3}last_used_at\0\u{1}distance\0\u{1}kind\0\u{3}chat_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}content\0\u{3}created_at\0\u{3}last_used_at\0\u{1}distance\0\u{2}\u{2}chat_id\0\u{c}\u{6}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8079,7 +8057,6 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 3: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.lastUsedAt) }()
       case 5: try { try decoder.decodeSingularDoubleField(value: &self.distance) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.kind) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
       default: break
       }
@@ -8102,9 +8079,6 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.distance.bitPattern != 0 {
       try visitor.visitSingularDoubleField(value: self.distance, fieldNumber: 5)
     }
-    if !self.kind.isEmpty {
-      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 6)
-    }
     if !self.chatID.isEmpty {
       try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 7)
     }
@@ -8117,7 +8091,6 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.createdAt != rhs.createdAt {return false}
     if lhs.lastUsedAt != rhs.lastUsedAt {return false}
     if lhs.distance != rhs.distance {return false}
-    if lhs.kind != rhs.kind {return false}
     if lhs.chatID != rhs.chatID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

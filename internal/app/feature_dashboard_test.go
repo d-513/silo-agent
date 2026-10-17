@@ -325,7 +325,7 @@ func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
 		t.Fatalf("cards after submit: %+v", uiAfter.Msg.GetCards())
 	}
 
-	// 5. Create another card and dismiss with suppress_kind = true -> records a lesson in memory.
+	// 5. Create another card and dismiss with suppress_kind = true -> records a memory.
 	callTool("dashboard_upsert", `{"key":"tasks:1","title":"Unfinished spec","summary":"spec.md"}`)
 	uiList2, _ := h.Client.ListDashboard(h.Ctx(), connect.NewRequest(&v1.ListDashboardRequest{BotId: bot.GetId()}))
 	if len(uiList2.Msg.GetCards()) != 1 {
@@ -339,9 +339,9 @@ func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var lessons []db.Memory
-	h.DB.Where("bot_id = ? AND kind = ?", bot.GetId(), "lesson").Find(&lessons)
-	if len(lessons) != 1 || !strings.Contains(lessons[0].Content, "tasks:1") {
-		t.Fatalf("expected lesson from suppress_kind, got %+v", lessons)
+	var notes []db.Memory
+	h.DB.Where("bot_id = ?", bot.GetId()).Find(&notes)
+	if len(notes) != 1 || !strings.Contains(notes[0].Content, "tasks:1") {
+		t.Fatalf("expected memory from suppress_kind, got %+v", notes)
 	}
 }

@@ -174,7 +174,7 @@ func (s *Service) ownCard(ctx context.Context, botID, id string) (*db.DashboardC
 	return access.OwnBotRow[db.DashboardCard](ctx, s.db, botID, id, "dashboard card")
 }
 
-// DismissDashboardCard puts an ask away; suppress_kind also saves a lesson so
+// DismissDashboardCard puts an ask away; suppress_kind also saves a memory so
 // the Bot does not propose that topic again.
 func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error) {
 	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId())
@@ -193,8 +193,8 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 		if c.Key != "" {
 			topic = fmt.Sprintf("%s (%s)", c.Title, c.Key)
 		}
-		lesson := fmt.Sprintf("Owner dismissed Dashboard card %q with 'Don't show this kind'. Do not propose Dashboard cards for this topic again unless explicitly asked.", topic)
-		_, _ = s.memory.Save(ctx, memory.Entry{BotID: c.BotID, Kind: memory.Lesson, Content: textx.ClipRunes(lesson, memory.RememberMax)})
+		note := fmt.Sprintf("Owner dismissed Dashboard card %q with 'Don't show this kind'. Do not propose Dashboard cards for this topic again unless explicitly asked.", topic)
+		_, _ = s.memory.Save(ctx, memory.Entry{BotID: c.BotID, Content: textx.ClipRunes(note, memory.RememberMax)})
 	}
 	return connect.NewResponse(&v1.DismissDashboardCardResponse{}), nil
 }

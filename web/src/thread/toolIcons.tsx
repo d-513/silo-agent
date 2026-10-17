@@ -56,8 +56,6 @@ const toolIcons: Record<string, LucideIcon> = {
   key: Keyboard,
   scroll: Mouse,
   soul: Feather,
-  memory: Brain,
-  core_memory: Brain,
   remember: Brain,
   recall: Brain,
   forget: Brain,
