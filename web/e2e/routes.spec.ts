@@ -45,6 +45,7 @@ const pages: [path: string, lit: string[]][] = [
   ["container", ["Settings", "Containers"]],
   // The pages beside the chat light their own row.
   ["automations", ["Automations"]],
+  ["artifacts", ["Artifacts"]],
   ["memories", ["Memories"]],
   ["knowledge", ["Knowledge"]],
   ["feed", ["Feed"]],

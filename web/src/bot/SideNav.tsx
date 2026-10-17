@@ -7,6 +7,7 @@ import { t } from "../i18n.ts";
 type SideTo =
   | "/bots/$botId/dashboard"
   | "/bots/$botId/automations"
+  | "/bots/$botId/artifacts"
   | "/bots/$botId/memories"
   | "/bots/$botId/knowledge"
   | "/bots/$botId/feed"

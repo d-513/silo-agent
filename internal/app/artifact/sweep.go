@@ -12,6 +12,32 @@ import (
 // SweepTick is how often the artifact sweep runs.
 const SweepTick = 10 * time.Minute
 
+// liveState scans a Bot's artifact events for which artifacts still appear in a
+// thread (and which version of a skill card was saved).
+func (s *Service) liveState(botID string) (map[string]bool, map[string]int) {
+	live := map[string]bool{}
+	saved := map[string]int{}
+	var bodies []string
+	s.db.Model(&db.RunEvent{}).
+		Where("kind = ? AND run_id IN (?)", "artifact", s.db.Model(&db.Run{}).Select("id").Where("bot_id = ?", botID)).
+		Order("seq").
+		Pluck("body", &bodies)
+	for _, b := range bodies {
+		var v struct {
+			ArtifactID string `json:"artifact_id"`
+			Version    int    `json:"version"`
+			Status     string `json:"status"`
+		}
+		if json.Unmarshal([]byte(b), &v) == nil && v.ArtifactID != "" {
+			live[v.ArtifactID] = true
+			if v.Status == "saved" && v.Version > 0 {
+				saved[v.ArtifactID] = v.Version
+			}
+		}
+	}
+	return live, saved
+}
+
 // Sweep forgets the artifacts no thread shows any more: a deleted chat, an
 // automation's or a subagent's dropped log, a truncated message. An artifact
 // lives while any artifact event of its Bot names it (a diverged chat's copy
@@ -27,19 +53,7 @@ func (s *Service) Sweep(ctx context.Context) {
 
 // SweepBot is Sweep for one Bot.
 func (s *Service) SweepBot(ctx context.Context, botID string) {
-	live := map[string]bool{}
-	var bodies []string
-	s.db.Model(&db.RunEvent{}).
-		Where("kind = ? AND run_id IN (?)", "artifact", s.db.Model(&db.Run{}).Select("id").Where("bot_id = ?", botID)).
-		Pluck("body", &bodies)
-	for _, b := range bodies {
-		var v struct {
-			ArtifactID string `json:"artifact_id"`
-		}
-		if json.Unmarshal([]byte(b), &v) == nil && v.ArtifactID != "" {
-			live[v.ArtifactID] = true
-		}
-	}
+	live, _ := s.liveState(botID)
 	var arts []db.Artifact
 	s.db.Where("bot_id = ?", botID).Find(&arts)
 	var dead []string

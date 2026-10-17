@@ -4,7 +4,7 @@
 // panes the right rail docks beside the chat — the machine's Files, Desktop,
 // Console and Changes (what changed in the workspace), and Mail (the Bot's
 // inbox, which needs no machine).
-export const sideTabs = ["dashboard", "automations", "memories", "knowledge", "feed"] as const;
+export const sideTabs = ["dashboard", "automations", "artifacts", "memories", "knowledge", "feed"] as const;
 export type SideTab = (typeof sideTabs)[number];
 export const customizeTabs = ["connectors", "skills", "drives", "channels"] as const;
 export type CustomizeTab = (typeof customizeTabs)[number];

@@ -224,6 +224,8 @@ service UI {
   rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
   // Artifacts: a card's versions and pinned files, a live app's address, and
   // the owner's public links.
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc DeleteArtifact(DeleteArtifactRequest) returns (DeleteArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
   rpc ReadArtifactFile(ReadArtifactFileRequest) returns (ReadArtifactFileResponse);
   rpc OpenArtifactApp(OpenArtifactAppRequest) returns (OpenArtifactAppResponse);
@@ -2392,7 +2394,41 @@ message ArtifactVersion {
   bool network = 7;
   string entry = 8;
   string created_at = 9;
+  string preview_text = 10;
+  string preview_image = 11;
+  bool preview_more = 12;
+  string run_id = 13;
 }
+
+message ArtifactItem {
+  string id = 1;
+  string type = 2;
+  string title = 3;
+  string path = 4;
+  string chat_id = 5;
+  string automation_id = 6;
+  string source_kind = 7;
+  string source_name = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  repeated ArtifactVersion versions = 11;
+  int32 saved = 12;
+}
+
+message ListArtifactsRequest {
+  string bot_id = 1;
+}
+
+message ListArtifactsResponse {
+  repeated ArtifactItem artifacts = 1;
+}
+
+message DeleteArtifactRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteArtifactResponse {}
 
 message ArtifactEntry {
   string path = 1;

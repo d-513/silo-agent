@@ -4,6 +4,7 @@ import { getSession, onSession } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
   AgentRoute,
+  ArtifactsRoute,
   AuditRoute,
   AutomationNewRoute,
   AutomationRoute,
@@ -57,7 +58,7 @@ import { SignIn } from "./SignIn";
 //       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
-//         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  memories  knowledge  feed
+//         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed
 //       _customize                 Customize and its tabs
 //         connectors  skills  drives/…  channels/…
 //       _settings                  Settings and its tabs
@@ -202,6 +203,7 @@ const automations = createRoute({ getParentRoute: () => chat, path: "automations
 const automationsIndex = createRoute({ getParentRoute: () => automations, path: "/", component: AutomationsRoute });
 const automationNew = createRoute({ getParentRoute: () => automations, path: "new", component: AutomationNewRoute });
 const automation = createRoute({ getParentRoute: () => automations, path: "$automationId", component: AutomationRoute });
+const artifacts = createRoute({ getParentRoute: () => chat, path: "artifacts", staticData: { tab: "artifacts" }, component: ArtifactsRoute });
 const memories = createRoute({ getParentRoute: () => chat, path: "memories", staticData: { tab: "memories" }, component: MemoriesRoute });
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
@@ -264,7 +266,7 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), memories, knowledge, feed]),
+      chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed]),
       customize.addChildren([
         connectors,
         botSkills,

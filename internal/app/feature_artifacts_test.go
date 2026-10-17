@@ -373,6 +373,78 @@ func TestArtifactShareOutlivesTheMachine(t *testing.T) {
 	}
 }
 
+// ListArtifacts returns the Bot's artifacts newest-first with their versions
+// and chat metadata, and DeleteArtifact removes the artifact, its chat cards,
+// its public links, and its pinned bytes on the worker.
+func TestListAndDeleteArtifacts(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_artlist",
+		dummy.Turn{ToolCalls: []llm.ToolCall{
+			writeCall("first.md", "# First\n\nhello\n"),
+			artifactCall(`{"path":"first.md","title":"First doc"}`),
+			writeCall("second.md", "# Second\n\nworld\n"),
+			artifactCall(`{"path":"second.md","title":"Second doc"}`),
+		}},
+		dummy.Turn{Text: "done"},
+	)
+	h := artifactHarness(t)
+	bot := h.CreateBot("ListDelete")
+	w := h.StartWorker(bot.GetId())
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_artlist_Input")
+	h.WaitRun(runID)
+
+	got := cards(t, h, runID)
+	if len(got) != 2 {
+		t.Fatalf("cards = %+v", got)
+	}
+	// Make timestamps deterministic so chronological order is unambiguous.
+	now := time.Now()
+	h.DB.Model(&db.Artifact{}).Where("id = ?", got[0].ArtifactID).Update("updated_at", now.Add(-2*time.Minute))
+	h.DB.Model(&db.Artifact{}).Where("id = ?", got[1].ArtifactID).Update("updated_at", now.Add(-1*time.Minute))
+
+	list, err := h.Client.ListArtifacts(h.Ctx(), connect.NewRequest(&v1.ListArtifactsRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := list.Msg.GetArtifacts()
+	if len(items) != 2 || items[0].GetId() != got[1].ArtifactID || items[1].GetId() != got[0].ArtifactID {
+		t.Fatalf("ListArtifacts = %+v", items)
+	}
+	if items[0].GetChatId() != chat || items[0].GetTitle() != "Second doc" || len(items[0].GetVersions()) != 1 || !strings.Contains(items[0].GetVersions()[0].GetPreviewText(), "world") {
+		t.Fatalf("item[0] = %+v", items[0])
+	}
+
+	sh, err := h.Client.ShareArtifact(h.Ctx(), connect.NewRequest(&v1.ShareArtifactRequest{BotId: bot.GetId(), ArtifactId: got[1].ArtifactID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(sh.Msg.GetUrl())
+
+	if _, err := h.Client.DeleteArtifact(h.Ctx(), connect.NewRequest(&v1.DeleteArtifactRequest{BotId: bot.GetId(), Id: got[1].ArtifactID})); err != nil {
+		t.Fatal(err)
+	}
+	list, err = h.Client.ListArtifacts(h.Ctx(), connect.NewRequest(&v1.ListArtifactsRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Msg.GetArtifacts()) != 1 || list.Msg.GetArtifacts()[0].GetId() != got[0].ArtifactID {
+		t.Fatalf("after delete ListArtifacts = %+v", list.Msg.GetArtifacts())
+	}
+	if _, err := h.Client.GetArtifact(h.Ctx(), connect.NewRequest(&v1.GetArtifactRequest{BotId: bot.GetId(), ArtifactId: got[1].ArtifactID})); code(err) != connect.CodeNotFound {
+		t.Fatalf("GetArtifact after delete = %v", err)
+	}
+	if res, _ := contentGet(t, h, u.Host, "/"); res.StatusCode != 404 {
+		t.Fatalf("share after delete: %d", res.StatusCode)
+	}
+	if rem := cards(t, h, runID); len(rem) != 1 || rem[0].ArtifactID != got[0].ArtifactID {
+		t.Fatalf("cards after delete = %+v", rem)
+	}
+	if pins, _ := os.ReadDir(filepath.Join(w.Artifacts, "pins")); len(pins) != 1 {
+		t.Fatalf("%d pins after delete", len(pins))
+	}
+}
+
 // Deleting the chat forgets its artifacts on the Bot's machine.
 func TestDeleteChatForgetsItsArtifacts(t *testing.T) {
 	dummy.Reset()

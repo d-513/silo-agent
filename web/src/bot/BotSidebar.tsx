@@ -1,4 +1,4 @@
-import { Blocks, Brain, ChevronDown, Inbox, LayoutGrid, Library, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, ChevronDown, Inbox, LayoutGrid, Library, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
@@ -81,6 +81,7 @@ export function BotSidebar({
       </div>
       <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
+        <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
         <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
         <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={tab === "feed" ? 0 : bot.feedUnread} />

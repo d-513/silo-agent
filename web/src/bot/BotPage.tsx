@@ -97,6 +97,7 @@ export function BotPage() {
     onTitle: (title) => patchChats(id, (xs) => xs.map((c) => (c.id === chatId ? { ...c, title } : c))),
     onDone: () => {
       void reload(UI.method.listChats, { botId: id });
+      void reload(UI.method.listArtifacts, { botId: id });
       subs.refresh();
     },
     onPing: () => subs.refresh(),
@@ -164,6 +165,7 @@ export function BotPage() {
     try {
       await ui.saveSkill({ botId: id, artifactId: a.artifactId, version: a.version, path: a.path, runId: v?.runId ?? a.runId ?? "" });
       setInspect((cur) => (cur && cur.artifactId === a.artifactId ? { ...cur, saved: a.version } : cur));
+      void reload(UI.method.listArtifacts, { botId: id });
     } catch (e) {
       setActErr(fail(e));
     }

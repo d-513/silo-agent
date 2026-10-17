@@ -1516,6 +1516,10 @@ const de: Record<string, string> = {
   "Your message": "Deine Nachricht",
   "Reply": "Antwort",
   "Tunnels need a domain: the operator sets content.host, the suffix tunnels are served under.": "Tunnel brauchen eine Domain: Der Betreiber setzt content.host, das Suffix, unter dem Tunnel bereitgestellt werden.",
+  "Delete artifact": "Artefakt löschen",
+  "Files, skills, and apps this Bot has handed you across conversations, newest first.": "Dateien, Skills und Apps, die dieser Bot dir über Unterhaltungen hinweg übergeben hat, neueste zuerst.",
+  "No artifacts yet.": "Noch keine Artefakte.",
+  "When the Bot hands you a file, a skill, or an app with the artifact tool, it is kept here across versions.": "Wenn der Bot dir mit dem Artefakt-Werkzeug eine Datei, einen Skill oder eine App übergibt, wird sie hier über alle Versionen hinweg aufbewahrt.",
 };
 
 export default de;

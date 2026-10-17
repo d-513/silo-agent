@@ -12,15 +12,23 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
 	"silo.agent/internal/skills"
 )
 
 func versionProto(v *db.ArtifactVersion) *v1.ArtifactVersion {
-	return &v1.ArtifactVersion{
+	out := &v1.ArtifactVersion{
 		N: int32(v.N), Kind: v.Kind, Name: v.Name, Size: v.Size, Pinned: v.Blob != "", Gone: v.Gone,
-		Network: v.Network, Entry: v.Entry, CreatedAt: v.CreatedAt.Format(time.RFC3339),
+		Network: v.Network, Entry: v.Entry, CreatedAt: v.CreatedAt.Format(time.RFC3339), RunId: v.RunID,
 	}
+	if v.Preview != "" {
+		var p Preview
+		if json.Unmarshal([]byte(v.Preview), &p) == nil {
+			out.PreviewText, out.PreviewImage, out.PreviewMore = p.Text, p.Image, p.More
+		}
+	}
+	return out
 }
 
 func rpcErr(err error) error {
@@ -33,6 +41,110 @@ func rpcErr(err error) error {
 		return connect.NewError(connect.CodeDataLoss, err)
 	}
 	return err
+}
+
+// ListArtifacts returns a Bot's live artifacts, newest update first, with all
+// of their versions and where each card came from.
+func (s *Service) ListArtifacts(ctx context.Context, req *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	live, saved := s.liveState(b.ID)
+	var rows []db.Artifact
+	s.db.Where("bot_id = ?", b.ID).Order("updated_at desc, created_at desc").Find(&rows)
+	kept := make([]db.Artifact, 0, len(rows))
+	ids := make([]string, 0, len(rows))
+	for _, a := range rows {
+		if live[a.ID] && a.UpdatedAt.Year() > 1970 {
+			kept = append(kept, a)
+			ids = append(ids, a.ID)
+		}
+	}
+	out := &v1.ListArtifactsResponse{}
+	if len(kept) == 0 {
+		return connect.NewResponse(out), nil
+	}
+	var allVers []db.ArtifactVersion
+	s.db.Where("artifact_id IN ?", ids).Order("n").Find(&allVers)
+	byArt := make(map[string][]*v1.ArtifactVersion, len(kept))
+	for i := range allVers {
+		v := &allVers[i]
+		byArt[v.ArtifactID] = append(byArt[v.ArtifactID], versionProto(v))
+	}
+	type srcInfo struct {
+		kind, name, autoID string
+	}
+	sources := map[string]srcInfo{}
+	for _, a := range kept {
+		vers := byArt[a.ID]
+		if len(vers) == 0 {
+			continue
+		}
+		src, ok := sources[a.ChatID]
+		if !ok && a.ChatID != "" {
+			kind, name := chats.Source(s.db, a.ChatID)
+			var c db.Chat
+			s.db.Select("automation_id").Where("id = ?", a.ChatID).Limit(1).Find(&c)
+			src = srcInfo{kind: kind, name: name, autoID: c.AutomationID}
+			sources[a.ChatID] = src
+		}
+		out.Artifacts = append(out.Artifacts, &v1.ArtifactItem{
+			Id:           a.ID,
+			Type:         a.Type,
+			Title:        a.Title,
+			Path:         a.Path,
+			ChatId:       a.ChatID,
+			AutomationId: src.autoID,
+			SourceKind:   src.kind,
+			SourceName:   src.name,
+			CreatedAt:    a.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:    a.UpdatedAt.Format(time.RFC3339),
+			Versions:     vers,
+			Saved:        int32(saved[a.ID]),
+		})
+	}
+	return connect.NewResponse(out), nil
+}
+
+// DeleteArtifact removes an artifact card, its versions, any public links to
+// it, and its pinned bytes on the Bot's machine.
+func (s *Service) DeleteArtifact(ctx context.Context, req *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error) {
+	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	var art db.Artifact
+	if res := s.db.Where("id = ? AND bot_id = ?", req.Msg.GetId(), b.ID).Limit(1).Find(&art); res.Error != nil {
+		return nil, res.Error
+	} else if res.RowsAffected == 0 || art.UpdatedAt.Year() <= 1970 {
+		return nil, connect.NewError(connect.CodeNotFound, errNotFound)
+	}
+	var shares []db.ArtifactShare
+	s.db.Where("bot_id = ? AND artifact_id = ?", b.ID, art.ID).Find(&shares)
+	for i := range shares {
+		s.removeShareFiles(shares[i].ID)
+	}
+	s.db.Where("bot_id = ? AND artifact_id = ?", b.ID, art.ID).Delete(&db.ArtifactShare{})
+	s.db.Where("bot_id = ? AND version_id IN (?)", b.ID, s.db.Model(&db.ArtifactVersion{}).Select("id").Where("artifact_id = ?", art.ID)).Delete(&db.ArtifactView{})
+
+	var evs []db.RunEvent
+	s.db.Where("kind = ? AND run_id IN (?)", "artifact", s.db.Model(&db.Run{}).Select("id").Where("bot_id = ?", b.ID)).Find(&evs)
+	var dropEvs []string
+	for _, ev := range evs {
+		var info struct {
+			ArtifactID string `json:"artifact_id"`
+		}
+		if json.Unmarshal([]byte(ev.Body), &info) == nil && info.ArtifactID == art.ID {
+			dropEvs = append(dropEvs, ev.ID)
+		}
+	}
+	if len(dropEvs) > 0 {
+		s.db.Where("id IN ?", dropEvs).Delete(&db.RunEvent{})
+	}
+	s.db.Model(&art).Updates(map[string]any{"path": "deleted:" + art.ID, "updated_at": time.Unix(0, 0)})
+	s.SweepBot(ctx, b.ID)
+	return connect.NewResponse(&v1.DeleteArtifactResponse{}), nil
 }
 
 // GetArtifact is a card's versions and, for the asked one, its files.
@@ -231,7 +343,11 @@ func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSki
 	if _, err := s.skills.InstallFiles(b, files); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if runID := strings.TrimSpace(req.Msg.GetRunId()); runID != "" {
+	runID := strings.TrimSpace(req.Msg.GetRunId())
+	if runID == "" {
+		runID = v.RunID
+	}
+	if runID != "" {
 		info := Info{
 			Type: TypeSkill, ArtifactID: art.ID, Version: v.N, Name: m.Name, Title: titleOr(art.Title, m.Name), Path: art.Path,
 			Scope: skills.KindPersonal, Status: "saved", Size: v.Size, Kind: v.Kind, Pinned: v.Blob != "", Files: len(files),

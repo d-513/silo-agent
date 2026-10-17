@@ -342,7 +342,7 @@ func (s *Service) version(botID, artifactID string, n int) (*db.Artifact, *db.Ar
 	var art db.Artifact
 	if res := s.db.Where("id = ? AND bot_id = ?", artifactID, botID).Limit(1).Find(&art); res.Error != nil {
 		return nil, nil, res.Error
-	} else if res.RowsAffected == 0 {
+	} else if res.RowsAffected == 0 || art.UpdatedAt.Year() <= 1970 {
 		return nil, nil, errNotFound
 	}
 	if n <= 0 {

@@ -15,6 +15,7 @@ import { patchChats } from "./useChatList";
 const AutomationsList = lazyNamed(() => import("../Automations"), "AutomationsList");
 const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew");
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
+const ArtifactsPane = lazyNamed(() => import("../Artifacts"), "ArtifactsPane");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const DashboardPane = lazyNamed(() => import("../Dashboard"), "DashboardPane");
@@ -135,6 +136,15 @@ export function AutomationRoute() {
   const p = useBotPage();
   const { automationId } = useParams({ from: "/_authed/bots/$botId/_chat/automations/$automationId" });
   return <AutomationLog key={automationId} bot={p.bot} automationId={automationId} onError={p.onError} onApprovals={p.reloadApprovals} onInspectArtifact={p.inspectArtifact} onSaveSkill={p.saveSkill} />;
+}
+
+export function ArtifactsRoute() {
+  const p = useBotPage();
+  return (
+    <ScrollPane>
+      <ArtifactsPane botId={p.id} onInspectArtifact={p.inspectArtifact} onSaveSkill={p.saveSkill} onError={p.onError} />
+    </ScrollPane>
+  );
 }
 
 export function MemoriesRoute() {

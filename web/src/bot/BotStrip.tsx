@@ -1,4 +1,4 @@
-import { Blocks, Brain, Folder, GitCompareArrows, Inbox, LayoutGrid, Library, Mail, Monitor, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, Folder, GitCompareArrows, Inbox, LayoutGrid, Library, Mail, Monitor, Package, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
@@ -44,13 +44,14 @@ export function BotStrip({
 }) {
   const { waiting, sending } = busy;
   const starting = bot.status === "starting";
-  const power = bot.workerConnected ? t("Stop Bot") : starting ? t("Starting…") : t("Start Bot");
+  const power = bot.workerConnected ? t("Stop Bot") : starting ? t("Starting\u2026") : t("Start Bot");
   const rule = <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-strong" />;
   return (
     <FadeScroll className="shrink-0 bg-well shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden" innerClass="flex items-center gap-1 px-2 py-1.5" fade="from-well">
       <SideChip to="/bots/$botId/dashboard" botId={id} on={tab === "dashboard"} icon={LayoutGrid} label={t("Dashboard")} badge={pendingCount + bot.feedUnread} />
       <Btn kind="primary" size="sm" iconOnly title={t("New chat")} aria-label={t("New chat")} className="h-10 w-10" icon={<Plus size={17} />} onClick={onNewChat} />
       <SideChip to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
+      <SideChip to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
       <SideChip to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
       <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
       <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={bot.feedUnread} />

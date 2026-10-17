@@ -328,6 +328,10 @@ const (
 	UIReadSkillFileProcedure = "/silo.v1.UI/ReadSkillFile"
 	// UISaveSkillProcedure is the fully-qualified name of the UI's SaveSkill RPC.
 	UISaveSkillProcedure = "/silo.v1.UI/SaveSkill"
+	// UIListArtifactsProcedure is the fully-qualified name of the UI's ListArtifacts RPC.
+	UIListArtifactsProcedure = "/silo.v1.UI/ListArtifacts"
+	// UIDeleteArtifactProcedure is the fully-qualified name of the UI's DeleteArtifact RPC.
+	UIDeleteArtifactProcedure = "/silo.v1.UI/DeleteArtifact"
 	// UIGetArtifactProcedure is the fully-qualified name of the UI's GetArtifact RPC.
 	UIGetArtifactProcedure = "/silo.v1.UI/GetArtifact"
 	// UIReadArtifactFileProcedure is the fully-qualified name of the UI's ReadArtifactFile RPC.
@@ -576,6 +580,8 @@ type UIClient interface {
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
 	// Artifacts: a card's versions and pinned files, a live app's address, and
 	// the owner's public links.
+	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
+	DeleteArtifact(context.Context, *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error)
 	GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error)
 	ReadArtifactFile(context.Context, *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error)
 	OpenArtifactApp(context.Context, *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error)
@@ -1488,6 +1494,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SaveSkill")),
 			connect.WithClientOptions(opts...),
 		),
+		listArtifacts: connect.NewClient[v1.ListArtifactsRequest, v1.ListArtifactsResponse](
+			httpClient,
+			baseURL+UIListArtifactsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListArtifacts")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteArtifact: connect.NewClient[v1.DeleteArtifactRequest, v1.DeleteArtifactResponse](
+			httpClient,
+			baseURL+UIDeleteArtifactProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteArtifact")),
+			connect.WithClientOptions(opts...),
+		),
 		getArtifact: connect.NewClient[v1.GetArtifactRequest, v1.GetArtifactResponse](
 			httpClient,
 			baseURL+UIGetArtifactProcedure,
@@ -1765,6 +1783,8 @@ type uIClient struct {
 	listSkillFiles           *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
 	readSkillFile            *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
 	saveSkill                *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
+	listArtifacts            *connect.Client[v1.ListArtifactsRequest, v1.ListArtifactsResponse]
+	deleteArtifact           *connect.Client[v1.DeleteArtifactRequest, v1.DeleteArtifactResponse]
 	getArtifact              *connect.Client[v1.GetArtifactRequest, v1.GetArtifactResponse]
 	readArtifactFile         *connect.Client[v1.ReadArtifactFileRequest, v1.ReadArtifactFileResponse]
 	openArtifactApp          *connect.Client[v1.OpenArtifactAppRequest, v1.OpenArtifactAppResponse]
@@ -2518,6 +2538,16 @@ func (c *uIClient) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSk
 	return c.saveSkill.CallUnary(ctx, req)
 }
 
+// ListArtifacts calls silo.v1.UI.ListArtifacts.
+func (c *uIClient) ListArtifacts(ctx context.Context, req *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
+	return c.listArtifacts.CallUnary(ctx, req)
+}
+
+// DeleteArtifact calls silo.v1.UI.DeleteArtifact.
+func (c *uIClient) DeleteArtifact(ctx context.Context, req *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error) {
+	return c.deleteArtifact.CallUnary(ctx, req)
+}
+
 // GetArtifact calls silo.v1.UI.GetArtifact.
 func (c *uIClient) GetArtifact(ctx context.Context, req *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error) {
 	return c.getArtifact.CallUnary(ctx, req)
@@ -2827,6 +2857,8 @@ type UIHandler interface {
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
 	// Artifacts: a card's versions and pinned files, a live app's address, and
 	// the owner's public links.
+	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
+	DeleteArtifact(context.Context, *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error)
 	GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error)
 	ReadArtifactFile(context.Context, *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error)
 	OpenArtifactApp(context.Context, *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error)
@@ -3735,6 +3767,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SaveSkill")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListArtifactsHandler := connect.NewUnaryHandler(
+		UIListArtifactsProcedure,
+		svc.ListArtifacts,
+		connect.WithSchema(uIMethods.ByName("ListArtifacts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteArtifactHandler := connect.NewUnaryHandler(
+		UIDeleteArtifactProcedure,
+		svc.DeleteArtifact,
+		connect.WithSchema(uIMethods.ByName("DeleteArtifact")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIGetArtifactHandler := connect.NewUnaryHandler(
 		UIGetArtifactProcedure,
 		svc.GetArtifact,
@@ -4155,6 +4199,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIReadSkillFileHandler.ServeHTTP(w, r)
 		case UISaveSkillProcedure:
 			uISaveSkillHandler.ServeHTTP(w, r)
+		case UIListArtifactsProcedure:
+			uIListArtifactsHandler.ServeHTTP(w, r)
+		case UIDeleteArtifactProcedure:
+			uIDeleteArtifactHandler.ServeHTTP(w, r)
 		case UIGetArtifactProcedure:
 			uIGetArtifactHandler.ServeHTTP(w, r)
 		case UIReadArtifactFileProcedure:
@@ -4788,6 +4836,14 @@ func (UnimplementedUIHandler) ReadSkillFile(context.Context, *connect.Request[v1
 
 func (UnimplementedUIHandler) SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SaveSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListArtifacts is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteArtifact(context.Context, *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteArtifact is not implemented"))
 }
 
 func (UnimplementedUIHandler) GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error) {

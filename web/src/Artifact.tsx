@@ -1,12 +1,13 @@
-import { AppWindow, Check, ChevronLeft, ChevronRight, Download, Globe, History, Link2, Maximize2, Play, ScrollText } from "lucide-react";
+import { AppWindow, Check, ChevronLeft, ChevronRight, Download, Globe, History, Link2, Maximize2, Play, ScrollText, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ui } from "./api";
 import { btnClass } from "./Btn";
 import { fail } from "./errors";
-import { CopyButton, useArmed } from "./Feedback";
+import { ArmedButton, CopyButton, useArmed } from "./Feedback";
 import { extOf, kindLabel } from "./fileKind";
 import type { ArtifactBlock, ArtifactType, ArtifactVersion } from "./fold";
 import { fmtBytes } from "./format";
+import type { ArtifactItem } from "./gen/silo/v1/ui_pb";
 import { t } from "./i18n.ts";
 import { Tip } from "./Tip";
 
@@ -21,6 +22,37 @@ export function latestOf(versions: ArtifactVersion[]): ArtifactVersion {
 
 export function versionOf(a: Pick<Artifact, "versions">, n: number): ArtifactVersion {
   return a.versions.find((v) => v.n === n) ?? latestOf(a.versions);
+}
+
+// itemToBlock turns a listed ArtifactItem into the card block the thread and
+// inspector use.
+export function itemToBlock(item: ArtifactItem): ArtifactBlock {
+  const kind: ArtifactType = item.type === "app" ? "app" : item.type === "skill" ? "skill" : "file";
+  const versions: ArtifactVersion[] = item.versions.map((v) => ({
+    n: v.n,
+    name: v.name,
+    kind: v.kind || (kind === "file" ? "file" : "tree"),
+    size: Number(v.size) || undefined,
+    pinned: v.pinned && !v.gone,
+    network: v.network,
+    entry: v.entry || undefined,
+    runId: v.runId || undefined,
+    preview:
+      v.previewText || v.previewImage
+        ? { text: v.previewText || undefined, image: v.previewImage || undefined, more: v.previewMore }
+        : undefined,
+  }));
+  return {
+    key: `artifact-${item.id}`,
+    type: "artifact",
+    artifactId: item.id,
+    artifactType: kind,
+    title: item.title || versions[versions.length - 1]?.name || item.path,
+    path: item.path,
+    versions,
+    saved: item.saved > 0 ? item.saved : undefined,
+    runId: versions[versions.length - 1]?.runId,
+  };
 }
 
 // A card from before versions has no id the server knows.
@@ -104,12 +136,12 @@ export function VersionSwitch({ versions, n, onPick, hatch }: { versions: Artifa
 // The subtitle under a card's title: what it is, how big, which version.
 function subtitle(a: Artifact, v: ArtifactVersion): string {
   const parts: string[] = [];
-  if (a.artifactType === "skill") parts.push(a.saved === v.n ? t("Skill · saved to your skills") : t("Skill"));
+  if (a.artifactType === "skill") parts.push(a.saved === v.n ? t("Skill \u00b7 saved to your skills") : t("Skill"));
   else if (a.artifactType === "app") parts.push(t("App"));
   else parts.push(kindLabel(v.name || a.path));
   if (v.size) parts.push(fmtBytes(v.size));
   if (a.versions.length < 2 && v.n > 1) parts.push(`v${v.n}`);
-  return parts.join(" · ");
+  return parts.join(" \u00b7 ");
 }
 
 // useShownVersion is the version a card shows: the newest until the human
@@ -124,28 +156,32 @@ export function ArtifactCard({
   botId,
   block,
   autoRun,
+  fullWidth,
   onOpen,
   onSave,
+  onDelete,
 }: {
   botId: string;
   block: ArtifactBlock;
   // The newest app in the thread runs without a click.
   autoRun?: boolean;
+  fullWidth?: boolean;
   onOpen: (a: Artifact) => void;
   onSave?: (a: Artifact) => void;
+  onDelete?: () => void;
 }) {
   const [n, setN] = useShownVersion(block.versions);
   const v = versionOf(block, n);
   const a: Artifact = { ...block, version: v.n };
   const [err, setErr] = useState("");
   const [sharing, setSharing] = useState(false);
-  if (block.artifactType === "app") return <AppCard botId={botId} a={a} v={v} autoRun={autoRun} onPick={setN} onOpen={onOpen} />;
+  if (block.artifactType === "app") return <AppCard botId={botId} a={a} v={v} autoRun={autoRun} onPick={setN} onOpen={onOpen} onDelete={onDelete} />;
 
   const skill = block.artifactType === "skill";
   const saved = skill && block.saved === v.n;
   const legacy = isLegacy(block.artifactId);
   return (
-    <div className="group w-full max-w-[420px] overflow-hidden rounded-card bg-surface shadow-card transition-[box-shadow,transform] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float motion-reduce:hover:translate-y-0">
+    <div className={`group w-full ${fullWidth ? "" : "max-w-[420px] "}overflow-hidden rounded-card bg-surface shadow-card transition-[box-shadow,transform] duration-[200ms] ease-quiet hover:-translate-y-px hover:shadow-float motion-reduce:hover:translate-y-0`}>
       <div className="flex items-center gap-3 p-3">
         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => onOpen(a)} disabled={legacy}>
           <TypeBadge name={v.name || block.path} kind={block.artifactType} />
@@ -182,6 +218,11 @@ export function ArtifactCard({
             <Check size={17} strokeWidth={2.25} />
           </span>
         ) : null}
+        {onDelete ? (
+          <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete artifact")} icon={<Trash2 size={14} />} onConfirm={onDelete}>
+            {t("Delete")}
+          </ArmedButton>
+        ) : null}
       </div>
       {v.preview?.image || v.preview?.text ? (
         <button type="button" className="block w-full text-left" onClick={() => onOpen(a)} disabled={legacy}>
@@ -207,7 +248,7 @@ function Preview({ v, skill }: { v: ArtifactVersion; skill: boolean }) {
   return (
     <pre className="mx-3 mb-3 max-h-36 overflow-hidden rounded-sm bg-well px-3 py-2 font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap break-words text-ink-2">
       {p.text}
-      {p.more ? "\n…" : ""}
+      {p.more ? "\n\u2026" : ""}
     </pre>
   );
 }
@@ -254,6 +295,7 @@ function AppCard({
   autoRun,
   onPick,
   onOpen,
+  onDelete,
 }: {
   botId: string;
   a: Artifact;
@@ -261,6 +303,7 @@ function AppCard({
   autoRun?: boolean;
   onPick: (n: number) => void;
   onOpen: (a: Artifact) => void;
+  onDelete?: () => void;
 }) {
   const [run, setRun] = useState(!!autoRun);
   const [err, setErr] = useState("");
@@ -293,6 +336,11 @@ function AppCard({
         <button type="button" className={iconBtn} title={t("Open full screen")} aria-label={t("Open full screen")} disabled={legacy} onClick={() => onOpen(a)}>
           <Maximize2 size={15} />
         </button>
+        {onDelete ? (
+          <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete artifact")} icon={<Trash2 size={14} />} onConfirm={onDelete}>
+            {t("Delete")}
+          </ArmedButton>
+        ) : null}
       </div>
       {sharing ? <SharePanel botId={botId} artifactId={a.artifactId} n={v.n} /> : null}
       {!v.pinned || legacy ? (
