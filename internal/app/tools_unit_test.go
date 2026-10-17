@@ -69,8 +69,8 @@ func TestBuiltinToolExposure(t *testing.T) {
 	}
 	want := map[string]string{
 		"chat": "agent_status delete exec_python grep message_agent patch present read skill sleep soul core_memory spawn_agent stop_agent switch_model terminal write",
-		"python": "channel chats close_tunnel delete_automation feed forget list_automations list_dashboard list_mail list_models list_tunnels read_mail remove_dashboard_card search_docs " +
-			"set_timezone task_add task_done task_list task_reset transcribe upsert_dashboard_card web_search",
+		"python": "channel chats close_tunnel delete_automation feed forget list_automations list_dashboard list_mail list_models list_tunnels put_widget read_mail remove_dashboard_card remove_widget search_docs " +
+			"set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_search",
 		"both": "artifact click create_automation decide key look open_tunnel recall remember scroll type update_automation",
 	}
 	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both} {

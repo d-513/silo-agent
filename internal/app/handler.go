@@ -9,6 +9,7 @@ import (
 	"silo.agent/internal/app/changes"
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/connector"
+	"silo.agent/internal/app/dashboard"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/egress"
 	"silo.agent/internal/app/feed"
@@ -27,6 +28,7 @@ import (
 // service keeps the embedded fields of uiHandler distinct.
 type (
 	feedRPC   = feed.Service
+	dashRPC   = dashboard.Service
 	modelsRPC = models.Service
 	filesRPC  = workspace.Service
 	voiceRPC  = voice.Service
@@ -52,6 +54,7 @@ type (
 type uiHandler struct {
 	*App
 	*feedRPC
+	*dashRPC
 	*modelsRPC
 	*filesRPC
 	*voiceRPC
@@ -73,7 +76,7 @@ type uiHandler struct {
 }
 
 func (a *App) uiHandler() *uiHandler {
-	return &uiHandler{App: a, feedRPC: a.Feed, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, chgRPC: a.Changes, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, mailRPC: a.Mail, acctRPC: a.Accounts, auditRPC: a.Audit, egressRPC: a.Egress}
+	return &uiHandler{App: a, feedRPC: a.Feed, dashRPC: a.Dashboard, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, chgRPC: a.Changes, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, mailRPC: a.Mail, acctRPC: a.Accounts, auditRPC: a.Audit, egressRPC: a.Egress}
 }
 
 // The App is the engine the satellite domains drive.

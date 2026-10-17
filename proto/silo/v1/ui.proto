@@ -86,7 +86,15 @@ service UI {
   rpc MarkDashboardRead(MarkDashboardReadRequest) returns (MarkDashboardReadResponse);
   rpc DismissDashboardCard(DismissDashboardCardRequest) returns (DismissDashboardCardResponse);
   rpc SubmitDashboardCard(SubmitDashboardCardRequest) returns (SubmitDashboardCardResponse);
-  rpc HydrateDashboardCard(HydrateDashboardCardRequest) returns (DashboardCard);
+  // Widgets: what the Bot keeps on the Dashboard and code keeps current.
+  rpc RefreshWidget(RefreshWidgetRequest) returns (DashboardWidget);
+  rpc SetWidgetState(SetWidgetStateRequest) returns (DashboardWidget);
+  rpc RunWidgetAction(RunWidgetActionRequest) returns (RunWidgetActionResponse);
+  rpc ArrangeDashboard(ArrangeDashboardRequest) returns (ArrangeDashboardResponse);
+  rpc RemoveWidget(RemoveWidgetRequest) returns (RemoveWidgetResponse);
+  // AskDashboard hands the owner's words about the Dashboard to the Bot in
+  // the Dashboard automation's log, with the widget they picked.
+  rpc AskDashboard(AskDashboardRequest) returns (AskDashboardResponse);
   // Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
   rpc ListTunnels(ListTunnelsRequest) returns (ListTunnelsResponse);
   rpc CreateTunnel(CreateTunnelRequest) returns (Tunnel);
@@ -946,7 +954,8 @@ message QuoteFeedPostResponse {
   Chat chat = 1;
 }
 
-// DashboardCard is one modular card on a Bot's Dashboard.
+// DashboardCard is one ask on a Bot's Dashboard: something the Bot needs the
+// owner to decide, with optional form controls and a submit button.
 message DashboardCard {
   string id = 1;
   string bot_id = 2;
@@ -960,9 +969,7 @@ message DashboardCard {
   string blocks_json = 7;
   // Primary submit button label (e.g. "Send", "Run cleanup").
   string submit_label = 8;
-  // "ready", "lazy", or "hydrating".
-  string draft_state = 9;
-  string draft_context = 10;
+  reserved 9, 10;
   // "open", "submitted", or "dismissed".
   string status = 11;
   string source_kind = 12;
@@ -979,7 +986,117 @@ message ListDashboardRequest {
 
 message ListDashboardResponse {
   repeated DashboardCard cards = 1;
+  // posts are the Feed posts the owner has not read yet.
   repeated FeedPost posts = 2;
+  repeated DashboardWidget widgets = 3;
+  // The pinned Dashboard automation: its last run, next firing, whether it
+  // runs now, and its log chat.
+  string automation_id = 4;
+  string curated_at = 5;
+  string next_at = 6;
+  bool curating = 7;
+  string chat_id = 8;
+  string schedule = 9;
+}
+
+// DashboardWidget is one view the Bot keeps on its Dashboard. The Bot writes
+// the spec once; its data comes from a probe (Python the CP runs on the box on
+// a schedule, no model involved) or from code that pushes it.
+message DashboardWidget {
+  string id = 1;
+  string key = 2;
+  // note, stat, chart, list, table, timeline, status, checklist, progress, app.
+  string kind = 3;
+  string title = 4;
+  // Kind-specific settings plus actions: JSON object.
+  string spec_json = 5;
+  // The latest data: JSON object in the kind's shape.
+  string data_json = 6;
+  // What the owner set in place (checked items): JSON object.
+  string state_json = 7;
+  // s (one column), m (two), l (the row).
+  string size = 8;
+  // 1 or 2 rows tall.
+  int32 rows = 9;
+  int32 position = 10;
+  bool has_probe = 11;
+  // Probe interval in seconds; 0 refreshes only when asked.
+  int32 every = 12;
+  string data_at = 13;
+  // Why the last refresh failed, empty when it did not.
+  string error = 14;
+  string updated_at = 15;
+  // The data changed since the owner last looked.
+  bool fresh = 16;
+  // The last action's receipt: JSON {verb, detail, ok, at, by}.
+  string receipt_json = 17;
+  // A probe or action is running now.
+  bool busy = 18;
+  // The artifact an app widget shows.
+  string artifact_id = 19;
+  // Where the data came from, shown small: "Calendar", "/workspace".
+  string source = 20;
+}
+
+message RefreshWidgetRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message SetWidgetStateRequest {
+  string bot_id = 1;
+  string id = 2;
+  // The whole new state object.
+  string state_json = 3;
+}
+
+message RunWidgetActionRequest {
+  string bot_id = 1;
+  string id = 2;
+  // An action id from the widget's spec.
+  string action = 3;
+  // The item or form values the action is for: JSON object.
+  string args_json = 4;
+}
+
+message RunWidgetActionResponse {
+  DashboardWidget widget = 1;
+  // Set when the action hands the widget to the Bot in a new chat.
+  Chat chat = 2;
+  string run_id = 3;
+}
+
+message WidgetPlace {
+  string id = 1;
+  string size = 2;
+  int32 rows = 3;
+  int32 position = 4;
+}
+
+message ArrangeDashboardRequest {
+  string bot_id = 1;
+  repeated WidgetPlace places = 2;
+}
+
+message ArrangeDashboardResponse {}
+
+message RemoveWidgetRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message RemoveWidgetResponse {}
+
+message AskDashboardRequest {
+  string bot_id = 1;
+  string text = 2;
+  // The widget the owner picked, if any.
+  string widget_id = 3;
+}
+
+message AskDashboardResponse {
+  string run_id = 1;
+  string chat_id = 2;
 }
 
 message MarkDashboardReadRequest {
@@ -1009,11 +1126,6 @@ message SubmitDashboardCardRequest {
 message SubmitDashboardCardResponse {
   Chat chat = 1;
   string run_id = 2;
-}
-
-message HydrateDashboardCardRequest {
-  string bot_id = 1;
-  string id = 2;
 }
 
 // Tunnel is one declared route into a service on a Bot's localhost: a generated

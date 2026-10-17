@@ -36,6 +36,9 @@ import (
 // Tick is how often the scheduler looks for due automations.
 const Tick = 20 * time.Second
 
+// KindDashboard is the pinned automation that curates a Bot's Dashboard.
+const KindDashboard = automationDashboard
+
 const (
 	automationHeartbeat = "heartbeat"
 	automationDashboard = "dashboard"
@@ -364,6 +367,45 @@ func (s *Service) fireAutomation(au *db.Automation) (string, error) {
 	}
 	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": now, "last_status": ""})
 	return runID, nil
+}
+
+// UpgradeDashboardPrompt moves Dashboard automations still on the first
+// prompt (which had the model rewrite every card on each run) to the current
+// one. A prompt the owner edited is theirs and stays.
+func (s *Service) UpgradeDashboardPrompt() {
+	s.db.Model(&db.Automation{}).Where("kind = ? AND prompt LIKE ?", automationDashboard, "Dashboard sweep.%").
+		Update("prompt", strings.TrimSpace(prompts.Dashboard))
+}
+
+// Pinned is a Bot's pinned automation of a kind (made if missing), or nil.
+func (s *Service) Pinned(botID, kind string) *db.Automation {
+	switch kind {
+	case automationHeartbeat:
+		s.EnsureHeartbeat(botID)
+	case automationDashboard:
+		s.EnsureDashboard(botID)
+	}
+	var au db.Automation
+	if s.db.Where("bot_id = ? AND kind = ?", botID, kind).Limit(1).Find(&au).RowsAffected == 0 {
+		return nil
+	}
+	return &au
+}
+
+// Ask hands the owner's words to a pinned automation: they join its live run,
+// or start one in its log from a fresh context like any firing.
+func (s *Service) Ask(botID, kind, text string) (runID, chatID string, err error) {
+	au := s.Pinned(botID, kind)
+	if au == nil {
+		return "", "", errors.New("this Bot has no " + kind + " automation")
+	}
+	s.ensureAutomationChat(au)
+	runID, err = s.engine.StartOrInject(botID, au.ChatID, text, run.Extra{}, &run.Origin{Automation: au})
+	if err != nil {
+		return "", "", err
+	}
+	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": time.Now(), "last_status": ""})
+	return runID, au.ChatID, nil
 }
 
 // --- proto / RPC ---

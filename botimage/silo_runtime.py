@@ -225,56 +225,92 @@ def feed(text: str, title: str | None = None) -> dict:
 
 
 def list_dashboard() -> dict:
-    """List this Bot's open Dashboard cards.
+    """Read this Bot's Dashboard.
 
-    Returns {cards: [{id, key, kind, title, summary, body, priority, col_span,
-    blocks, submit_label, status, updated_at}, ...]}. Read this before updating
-    the Dashboard so you edit cards gradually in place instead of recreating them.
+    Returns {widgets: [{key, kind, title, size, rows, spec, data, state, probe,
+    every, data_at, error, last_receipt}], asks: [...], recent_dismissals:
+    [...]}. `state` is what the owner set in place (checked items);
+    `last_receipt` is the last action they ran. Read it before changing the
+    Dashboard, and respect recent_dismissals.
     """
     return call("bot", "dashboard_list", {})
+
+
+def put_widget(
+    key: str,
+    kind: str | None = None,
+    title: str | None = None,
+    *,
+    source: str | None = None,
+    size: str | None = None,
+    rows: int | None = None,
+    spec: dict | None = None,
+    data: dict | None = None,
+    probe: str | None = None,
+    every: str | int | None = None,
+    artifact: str | None = None,
+) -> dict:
+    """Create or update a Dashboard widget by `key`; omitted fields keep their values.
+
+    `kind` and `title` are required for a new one. `probe` is Python that sets
+    `result` to the widget's data (it sees ARGS, STATE and DATA); the control
+    plane runs it every `every` ("15m", "2h", "1d") on this machine with no
+    model, and once now: the answer has `data` or `probe_error`. `probe=""`
+    removes it. Without a probe, push data with set_widget. `spec["actions"]`
+    lists buttons: {id, label, kind: "run" (code runs with ARGS = the row or
+    {}; may set result = {"receipt": "...", "data": {...}}) | "hand" (opens a
+    chat with you), row: True to put it on each list/table row}. App widgets
+    take `artifact`, the app artifact's id or path.
+    """
+    args: dict = {"key": key}
+    for k, v in (
+        ("kind", kind), ("title", title), ("source", source), ("size", size), ("rows", rows),
+        ("spec", spec), ("data", data), ("probe", probe), ("every", every), ("artifact", artifact),
+    ):
+        if v is not None:
+            args[k] = v
+    return call("bot", "widget_put", args)
+
+
+def set_widget(key: str, data: dict, merge: bool = False) -> dict:
+    """Replace a widget's data (merge=True merges top-level keys). No model, no approval."""
+    return call("bot", "widget_set", {"key": key, "data": data, "merge": merge})
+
+
+def remove_widget(key: str) -> dict:
+    """Take a widget off the Dashboard."""
+    return call("bot", "widget_remove", {"key": key})
 
 
 def upsert_dashboard_card(
     id: str | None = None,
     key: str | None = None,
-    kind: str | None = None,
     title: str | None = None,
     summary: str | None = None,
-    body: str | None = None,
     priority: int | None = None,
-    col_span: int | None = None,
     blocks: list[dict] | None = None,
     submit_label: str | None = None,
 ) -> dict:
-    """Create or gradually update an open Dashboard card in place.
+    """Create or update an ask on the Dashboard: something the owner must decide.
 
-    Pass `id` or a stable `key` (e.g. "hygiene:tmp") to patch an existing open
-    card; omitted fields keep their existing values. `blocks` is a list of
-    modular display/form blocks (markdown, kv, metrics, diff, switch, select,
-    segmented, checkboxes, input, textarea). When the human clicks the card's
-    submit button (`submit_label`, default "Send"), Silo starts a chat with you
-    containing their chosen form values.
+    Match by `id` or a stable `key`; omitted fields keep their values.
+    `blocks` are display blocks (markdown, kv, metrics, diff) and form controls
+    (switch, select, segmented, checkboxes, input, textarea), each with a
+    `name` for controls. Submit (`submit_label`, default "Send") opens a chat
+    with you holding the chosen values.
     """
-    return call(
-        "bot",
-        "dashboard_upsert",
-        {
-            "id": id,
-            "key": key,
-            "kind": kind,
-            "title": title,
-            "summary": summary,
-            "body": body,
-            "priority": priority,
-            "col_span": col_span,
-            "blocks": blocks,
-            "submit_label": submit_label,
-        },
-    )
+    args: dict = {}
+    for k, v in (
+        ("id", id), ("key", key), ("title", title), ("summary", summary),
+        ("priority", priority), ("blocks", blocks), ("submit_label", submit_label),
+    ):
+        if v is not None:
+            args[k] = v
+    return call("bot", "dashboard_upsert", args)
 
 
 def remove_dashboard_card(id_or_key: str) -> dict:
-    """Remove an open Dashboard card by its id or key once resolved."""
+    """Remove an open ask by its id or key once resolved."""
     return call("bot", "dashboard_remove", {"id": id_or_key})
 
 

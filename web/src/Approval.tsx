@@ -185,15 +185,13 @@ export function ApprovalSlip({
   );
 }
 
-// Inline approval card for the Dashboard pane so pending approvals can be
-// reviewed and decided directly alongside Dashboard cards.
+// ApprovalCard is a pending approval on the Dashboard, beside the Bot's asks:
+// the same slip with the vermilion ribbon, decided in place.
 export function ApprovalCard({
-  bot,
   approval,
   onDecide,
   onAutoApprove,
 }: {
-  bot: Bot;
   approval: Approval;
   onDecide: (decision: "allow_once" | "always" | "deny") => void;
   onAutoApprove?: () => void;
@@ -201,15 +199,16 @@ export function ApprovalCard({
   const d = describeApproval(approval);
   const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
   return (
-    <article className="flex flex-col justify-between rounded-card bg-surface px-5 py-4 shadow-card ring-1 ring-vermilion/25">
+    <article className="rise relative flex flex-col justify-between overflow-hidden rounded-card bg-surface py-4 pr-4 pl-5 shadow-card">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-vermilion" />
       <div>
-        <div className="mb-2 flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 text-[12px]">
           <Lamp status="needs_you" />
           <StatusWord status="needs_you" />
-          {approval.source ? <span className="ml-auto truncate text-[12px] font-medium text-ink-3">{approval.source}</span> : null}
+          {approval.source ? <span className="min-w-0 truncate text-ink-3">· {approval.source}</span> : null}
         </div>
-        <h3 className="text-card-title leading-5 text-ink">{d.title}</h3>
-        <p className="mt-1 text-[13.5px] leading-5 text-ink-2">{d.summary}</p>
+        <h3 className="mt-1.5 text-[15px] leading-5 font-medium tracking-[-0.01em] text-ink">{d.title}</h3>
+        <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{d.summary}</p>
         {d.fields && d.fields.length > 0 ? (
           <dl className="mt-3 overflow-hidden rounded-control bg-well">
             {d.fields.map((f) => (
@@ -221,8 +220,8 @@ export function ApprovalCard({
           </dl>
         ) : null}
       </div>
-      <div className="mt-4 pt-3 shadow-[inset_0_1px_0_var(--color-line)]">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-4">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Btn kind="primary" size="sm" onClick={() => onDecide("allow_once")}>
             {approval.auto ? t("Allow") : t("Allow once")}
           </Btn>

@@ -17,7 +17,7 @@ export function fmtBytes(n: bigint | number) {
   return i === 0 ? `${Math.round(x)} B` : `${x.toFixed(1)} ${units[i]}`;
 }
 
-const clockTime = (d: Date) => d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+export const clockTime = (d: Date) => d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 const weekdayShort = (d: Date) => d.toLocaleDateString(locale(), { weekday: "short" });
 const monthDay = (d: Date) => d.toLocaleDateString(locale(), { month: "short", day: "numeric" });
 

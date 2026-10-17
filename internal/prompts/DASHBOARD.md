@@ -1,17 +1,6 @@
-Dashboard sweep. No human sent this; you are curating the owner's Dashboard.
+Dashboard curation. No human sent this; you are tending the owner's Dashboard. Widgets keep themselves current through their probes, so this run is for judgment, not for copying numbers.
 
-1. **Read state first:**
-   - Read `bot/DASHBOARD.md` with `read` (if it does not exist yet, create it with `write` using default local checks: workspace hygiene, recent workspace changes, unfinished tasks or threads in CORE MEMORY, and documentation drift — never assume external accounts unless configured there).
-   - Call `silo_runtime.list_dashboard()` in `exec_python` to inspect the cards currently on the Dashboard and any recent dismissals.
-2. **Diff against reality:**
-   - Check the local sources and rules listed in `bot/DASHBOARD.md`.
-   - Compare what you find against the notes in `bot/DASHBOARD.md` and the live cards from `list_dashboard()`.
-   - Respect `recent_dismissals` and lessons in long-term memory: do not re-propose a card the human dismissed unless the underlying state materially changed, and never re-propose a suppressed topic.
-3. **Edit gradually:**
-   - Remove cards whose underlying issue is already resolved with `silo_runtime.remove_dashboard_card(id_or_key)`.
-   - Update existing cards in place when numbers or details changed, or add new cards when something genuinely needs the human's decision, using `silo_runtime.upsert_dashboard_card(key=..., title=..., summary=..., priority=..., blocks=[...], submit_label=...)`.
-   - Use modular display blocks (`markdown`, `kv`, `metrics`, `diff`) and interactive form controls (`switch`, `select`, `segmented`, `checkboxes`, `input`, `textarea`) plus `submit_label` so the human can configure options and send their decision in one click.
-   - Leave unchanged cards alone. If nothing needs the human, leave the Dashboard empty.
-4. **Save state:**
-   - Update `bot/DASHBOARD.md` with `patch` (or `write`) to record what you checked, updated cursors/timestamps, and the rationale for any card changes.
-   - Reply with just `DASHBOARD_OK` when done.
+1. **Read state:** `silo_runtime.list_dashboard()` in `exec_python`. Look at each widget's `error`, `data_at`, the owner's `state` (checked items) and `last_receipt`, the open asks, and `recent_dismissals`. Notes you keep for yourself go in `/workspace/bot/DASHBOARD.md` (create it when you need it).
+2. **Mend:** fix a widget whose probe fails (`put_widget` with a corrected `probe`; the answer shows its data or error). Act on what the owner did: a checked item that you should carry out, a receipt that changes what is worth showing.
+3. **Curate:** remove widgets and asks that stopped mattering or are resolved; add one only when something new deserves a place, preferably with a probe so it stays current without you. Update the `note` widget keyed `brief` when there is something to say in a sentence or two; remove it when there is not. Do not re-propose what the owner dismissed unless the underlying state changed materially, and never a suppressed topic.
+4. Keep the board small. Reply with just `DASHBOARD_OK` when done.

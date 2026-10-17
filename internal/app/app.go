@@ -28,6 +28,7 @@ import (
 	"silo.agent/internal/app/changes"
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/connector"
+	"silo.agent/internal/app/dashboard"
 	"silo.agent/internal/app/drive"
 	"silo.agent/internal/app/egress"
 	"silo.agent/internal/app/feed"
@@ -182,6 +183,7 @@ type App struct {
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
 	Feed       *feed.Service
+	Dashboard  *dashboard.Service
 	Tunnels    *tunnels.Service
 	Mail       *mailbox.Service
 	Models     *models.Service
@@ -247,7 +249,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Connectors.StaleCA = func(st dockerx.State, botID, connectorID string) bool {
 		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
 	}
-	a.Feed = feed.New(a.DB, a, a.Memory)
+	a.Feed = feed.New(a.DB, a)
+	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)
@@ -263,11 +266,13 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Channels.Reconcile()
 	if a.DB != nil {
 		a.Automations.Reschedule()
+		a.Automations.UpgradeDashboardPrompt()
 		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.SweepDigests(context.Background(), now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
+		go tickLoop(a.stopAutomations, dashboard.Tick, func(now time.Time) { a.Dashboard.Sweep(now) })
 		go tickLoop(a.stopAutomations, egress.Tick, func(now time.Time) { a.Egress.Reconcile(context.Background()) })
 		go tickLoop(a.stopAutomations, audit.Tick, func(now time.Time) { a.Audit.Trim(now) })
 		go tickLoop(a.stopAutomations, artifact.SweepTick, func(time.Time) { a.Artifacts.Sweep(context.Background()) })

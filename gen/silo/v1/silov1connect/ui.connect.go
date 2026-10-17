@@ -139,8 +139,18 @@ const (
 	UIDismissDashboardCardProcedure = "/silo.v1.UI/DismissDashboardCard"
 	// UISubmitDashboardCardProcedure is the fully-qualified name of the UI's SubmitDashboardCard RPC.
 	UISubmitDashboardCardProcedure = "/silo.v1.UI/SubmitDashboardCard"
-	// UIHydrateDashboardCardProcedure is the fully-qualified name of the UI's HydrateDashboardCard RPC.
-	UIHydrateDashboardCardProcedure = "/silo.v1.UI/HydrateDashboardCard"
+	// UIRefreshWidgetProcedure is the fully-qualified name of the UI's RefreshWidget RPC.
+	UIRefreshWidgetProcedure = "/silo.v1.UI/RefreshWidget"
+	// UISetWidgetStateProcedure is the fully-qualified name of the UI's SetWidgetState RPC.
+	UISetWidgetStateProcedure = "/silo.v1.UI/SetWidgetState"
+	// UIRunWidgetActionProcedure is the fully-qualified name of the UI's RunWidgetAction RPC.
+	UIRunWidgetActionProcedure = "/silo.v1.UI/RunWidgetAction"
+	// UIArrangeDashboardProcedure is the fully-qualified name of the UI's ArrangeDashboard RPC.
+	UIArrangeDashboardProcedure = "/silo.v1.UI/ArrangeDashboard"
+	// UIRemoveWidgetProcedure is the fully-qualified name of the UI's RemoveWidget RPC.
+	UIRemoveWidgetProcedure = "/silo.v1.UI/RemoveWidget"
+	// UIAskDashboardProcedure is the fully-qualified name of the UI's AskDashboard RPC.
+	UIAskDashboardProcedure = "/silo.v1.UI/AskDashboard"
 	// UIListTunnelsProcedure is the fully-qualified name of the UI's ListTunnels RPC.
 	UIListTunnelsProcedure = "/silo.v1.UI/ListTunnels"
 	// UICreateTunnelProcedure is the fully-qualified name of the UI's CreateTunnel RPC.
@@ -458,7 +468,15 @@ type UIClient interface {
 	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
 	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
 	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
-	HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error)
+	// Widgets: what the Bot keeps on the Dashboard and code keeps current.
+	RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error)
+	SetWidgetState(context.Context, *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error)
+	RunWidgetAction(context.Context, *connect.Request[v1.RunWidgetActionRequest]) (*connect.Response[v1.RunWidgetActionResponse], error)
+	ArrangeDashboard(context.Context, *connect.Request[v1.ArrangeDashboardRequest]) (*connect.Response[v1.ArrangeDashboardResponse], error)
+	RemoveWidget(context.Context, *connect.Request[v1.RemoveWidgetRequest]) (*connect.Response[v1.RemoveWidgetResponse], error)
+	// AskDashboard hands the owner's words about the Dashboard to the Bot in
+	// the Dashboard automation's log, with the widget they picked.
+	AskDashboard(context.Context, *connect.Request[v1.AskDashboardRequest]) (*connect.Response[v1.AskDashboardResponse], error)
 	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
 	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
@@ -930,10 +948,40 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
 			connect.WithClientOptions(opts...),
 		),
-		hydrateDashboardCard: connect.NewClient[v1.HydrateDashboardCardRequest, v1.DashboardCard](
+		refreshWidget: connect.NewClient[v1.RefreshWidgetRequest, v1.DashboardWidget](
 			httpClient,
-			baseURL+UIHydrateDashboardCardProcedure,
-			connect.WithSchema(uIMethods.ByName("HydrateDashboardCard")),
+			baseURL+UIRefreshWidgetProcedure,
+			connect.WithSchema(uIMethods.ByName("RefreshWidget")),
+			connect.WithClientOptions(opts...),
+		),
+		setWidgetState: connect.NewClient[v1.SetWidgetStateRequest, v1.DashboardWidget](
+			httpClient,
+			baseURL+UISetWidgetStateProcedure,
+			connect.WithSchema(uIMethods.ByName("SetWidgetState")),
+			connect.WithClientOptions(opts...),
+		),
+		runWidgetAction: connect.NewClient[v1.RunWidgetActionRequest, v1.RunWidgetActionResponse](
+			httpClient,
+			baseURL+UIRunWidgetActionProcedure,
+			connect.WithSchema(uIMethods.ByName("RunWidgetAction")),
+			connect.WithClientOptions(opts...),
+		),
+		arrangeDashboard: connect.NewClient[v1.ArrangeDashboardRequest, v1.ArrangeDashboardResponse](
+			httpClient,
+			baseURL+UIArrangeDashboardProcedure,
+			connect.WithSchema(uIMethods.ByName("ArrangeDashboard")),
+			connect.WithClientOptions(opts...),
+		),
+		removeWidget: connect.NewClient[v1.RemoveWidgetRequest, v1.RemoveWidgetResponse](
+			httpClient,
+			baseURL+UIRemoveWidgetProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveWidget")),
+			connect.WithClientOptions(opts...),
+		),
+		askDashboard: connect.NewClient[v1.AskDashboardRequest, v1.AskDashboardResponse](
+			httpClient,
+			baseURL+UIAskDashboardProcedure,
+			connect.WithSchema(uIMethods.ByName("AskDashboard")),
 			connect.WithClientOptions(opts...),
 		),
 		listTunnels: connect.NewClient[v1.ListTunnelsRequest, v1.ListTunnelsResponse](
@@ -1689,7 +1737,12 @@ type uIClient struct {
 	markDashboardRead        *connect.Client[v1.MarkDashboardReadRequest, v1.MarkDashboardReadResponse]
 	dismissDashboardCard     *connect.Client[v1.DismissDashboardCardRequest, v1.DismissDashboardCardResponse]
 	submitDashboardCard      *connect.Client[v1.SubmitDashboardCardRequest, v1.SubmitDashboardCardResponse]
-	hydrateDashboardCard     *connect.Client[v1.HydrateDashboardCardRequest, v1.DashboardCard]
+	refreshWidget            *connect.Client[v1.RefreshWidgetRequest, v1.DashboardWidget]
+	setWidgetState           *connect.Client[v1.SetWidgetStateRequest, v1.DashboardWidget]
+	runWidgetAction          *connect.Client[v1.RunWidgetActionRequest, v1.RunWidgetActionResponse]
+	arrangeDashboard         *connect.Client[v1.ArrangeDashboardRequest, v1.ArrangeDashboardResponse]
+	removeWidget             *connect.Client[v1.RemoveWidgetRequest, v1.RemoveWidgetResponse]
+	askDashboard             *connect.Client[v1.AskDashboardRequest, v1.AskDashboardResponse]
 	listTunnels              *connect.Client[v1.ListTunnelsRequest, v1.ListTunnelsResponse]
 	createTunnel             *connect.Client[v1.CreateTunnelRequest, v1.Tunnel]
 	updateTunnel             *connect.Client[v1.UpdateTunnelRequest, v1.Tunnel]
@@ -2068,9 +2121,34 @@ func (c *uIClient) SubmitDashboardCard(ctx context.Context, req *connect.Request
 	return c.submitDashboardCard.CallUnary(ctx, req)
 }
 
-// HydrateDashboardCard calls silo.v1.UI.HydrateDashboardCard.
-func (c *uIClient) HydrateDashboardCard(ctx context.Context, req *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error) {
-	return c.hydrateDashboardCard.CallUnary(ctx, req)
+// RefreshWidget calls silo.v1.UI.RefreshWidget.
+func (c *uIClient) RefreshWidget(ctx context.Context, req *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error) {
+	return c.refreshWidget.CallUnary(ctx, req)
+}
+
+// SetWidgetState calls silo.v1.UI.SetWidgetState.
+func (c *uIClient) SetWidgetState(ctx context.Context, req *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error) {
+	return c.setWidgetState.CallUnary(ctx, req)
+}
+
+// RunWidgetAction calls silo.v1.UI.RunWidgetAction.
+func (c *uIClient) RunWidgetAction(ctx context.Context, req *connect.Request[v1.RunWidgetActionRequest]) (*connect.Response[v1.RunWidgetActionResponse], error) {
+	return c.runWidgetAction.CallUnary(ctx, req)
+}
+
+// ArrangeDashboard calls silo.v1.UI.ArrangeDashboard.
+func (c *uIClient) ArrangeDashboard(ctx context.Context, req *connect.Request[v1.ArrangeDashboardRequest]) (*connect.Response[v1.ArrangeDashboardResponse], error) {
+	return c.arrangeDashboard.CallUnary(ctx, req)
+}
+
+// RemoveWidget calls silo.v1.UI.RemoveWidget.
+func (c *uIClient) RemoveWidget(ctx context.Context, req *connect.Request[v1.RemoveWidgetRequest]) (*connect.Response[v1.RemoveWidgetResponse], error) {
+	return c.removeWidget.CallUnary(ctx, req)
+}
+
+// AskDashboard calls silo.v1.UI.AskDashboard.
+func (c *uIClient) AskDashboard(ctx context.Context, req *connect.Request[v1.AskDashboardRequest]) (*connect.Response[v1.AskDashboardResponse], error) {
+	return c.askDashboard.CallUnary(ctx, req)
 }
 
 // ListTunnels calls silo.v1.UI.ListTunnels.
@@ -2735,7 +2813,15 @@ type UIHandler interface {
 	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
 	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
 	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
-	HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error)
+	// Widgets: what the Bot keeps on the Dashboard and code keeps current.
+	RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error)
+	SetWidgetState(context.Context, *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error)
+	RunWidgetAction(context.Context, *connect.Request[v1.RunWidgetActionRequest]) (*connect.Response[v1.RunWidgetActionResponse], error)
+	ArrangeDashboard(context.Context, *connect.Request[v1.ArrangeDashboardRequest]) (*connect.Response[v1.ArrangeDashboardResponse], error)
+	RemoveWidget(context.Context, *connect.Request[v1.RemoveWidgetRequest]) (*connect.Response[v1.RemoveWidgetResponse], error)
+	// AskDashboard hands the owner's words about the Dashboard to the Bot in
+	// the Dashboard automation's log, with the widget they picked.
+	AskDashboard(context.Context, *connect.Request[v1.AskDashboardRequest]) (*connect.Response[v1.AskDashboardResponse], error)
 	// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
 	ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error)
 	CreateTunnel(context.Context, *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error)
@@ -3203,10 +3289,40 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
 		connect.WithHandlerOptions(opts...),
 	)
-	uIHydrateDashboardCardHandler := connect.NewUnaryHandler(
-		UIHydrateDashboardCardProcedure,
-		svc.HydrateDashboardCard,
-		connect.WithSchema(uIMethods.ByName("HydrateDashboardCard")),
+	uIRefreshWidgetHandler := connect.NewUnaryHandler(
+		UIRefreshWidgetProcedure,
+		svc.RefreshWidget,
+		connect.WithSchema(uIMethods.ByName("RefreshWidget")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetWidgetStateHandler := connect.NewUnaryHandler(
+		UISetWidgetStateProcedure,
+		svc.SetWidgetState,
+		connect.WithSchema(uIMethods.ByName("SetWidgetState")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRunWidgetActionHandler := connect.NewUnaryHandler(
+		UIRunWidgetActionProcedure,
+		svc.RunWidgetAction,
+		connect.WithSchema(uIMethods.ByName("RunWidgetAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIArrangeDashboardHandler := connect.NewUnaryHandler(
+		UIArrangeDashboardProcedure,
+		svc.ArrangeDashboard,
+		connect.WithSchema(uIMethods.ByName("ArrangeDashboard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveWidgetHandler := connect.NewUnaryHandler(
+		UIRemoveWidgetProcedure,
+		svc.RemoveWidget,
+		connect.WithSchema(uIMethods.ByName("RemoveWidget")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAskDashboardHandler := connect.NewUnaryHandler(
+		UIAskDashboardProcedure,
+		svc.AskDashboard,
+		connect.WithSchema(uIMethods.ByName("AskDashboard")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListTunnelsHandler := connect.NewUnaryHandler(
@@ -4011,8 +4127,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDismissDashboardCardHandler.ServeHTTP(w, r)
 		case UISubmitDashboardCardProcedure:
 			uISubmitDashboardCardHandler.ServeHTTP(w, r)
-		case UIHydrateDashboardCardProcedure:
-			uIHydrateDashboardCardHandler.ServeHTTP(w, r)
+		case UIRefreshWidgetProcedure:
+			uIRefreshWidgetHandler.ServeHTTP(w, r)
+		case UISetWidgetStateProcedure:
+			uISetWidgetStateHandler.ServeHTTP(w, r)
+		case UIRunWidgetActionProcedure:
+			uIRunWidgetActionHandler.ServeHTTP(w, r)
+		case UIArrangeDashboardProcedure:
+			uIArrangeDashboardHandler.ServeHTTP(w, r)
+		case UIRemoveWidgetProcedure:
+			uIRemoveWidgetHandler.ServeHTTP(w, r)
+		case UIAskDashboardProcedure:
+			uIAskDashboardHandler.ServeHTTP(w, r)
 		case UIListTunnelsProcedure:
 			uIListTunnelsHandler.ServeHTTP(w, r)
 		case UICreateTunnelProcedure:
@@ -4462,8 +4588,28 @@ func (UnimplementedUIHandler) SubmitDashboardCard(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SubmitDashboardCard is not implemented"))
 }
 
-func (UnimplementedUIHandler) HydrateDashboardCard(context.Context, *connect.Request[v1.HydrateDashboardCardRequest]) (*connect.Response[v1.DashboardCard], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.HydrateDashboardCard is not implemented"))
+func (UnimplementedUIHandler) RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RefreshWidget is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetWidgetState(context.Context, *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetWidgetState is not implemented"))
+}
+
+func (UnimplementedUIHandler) RunWidgetAction(context.Context, *connect.Request[v1.RunWidgetActionRequest]) (*connect.Response[v1.RunWidgetActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RunWidgetAction is not implemented"))
+}
+
+func (UnimplementedUIHandler) ArrangeDashboard(context.Context, *connect.Request[v1.ArrangeDashboardRequest]) (*connect.Response[v1.ArrangeDashboardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ArrangeDashboard is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveWidget(context.Context, *connect.Request[v1.RemoveWidgetRequest]) (*connect.Response[v1.RemoveWidgetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveWidget is not implemented"))
+}
+
+func (UnimplementedUIHandler) AskDashboard(context.Context, *connect.Request[v1.AskDashboardRequest]) (*connect.Response[v1.AskDashboardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AskDashboard is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListTunnels(context.Context, *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error) {

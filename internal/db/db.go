@@ -559,30 +559,69 @@ type FeedPost struct {
 	CreatedAt  time.Time `gorm:"index"`
 }
 
-// DashboardCard is one modular card on a Bot's Dashboard: display blocks and
-// generic form controls curated by the Bot (from its Dashboard automation or a
-// chat). Key is an optional per-Bot slug for gradual updates in place.
+// DashboardCard is one ask on a Bot's Dashboard: something the Bot needs the
+// owner to decide, with display blocks and form controls and a submit button
+// that opens a chat. Key is an optional per-Bot slug for updates in place.
 type DashboardCard struct {
-	ID           string `gorm:"primaryKey"`
-	BotID        string `gorm:"index"`
-	Key          string `gorm:"index"`
-	Title        string
-	Summary      string
-	Priority     int    `gorm:"not null;default:2"`
-	BlocksJSON   string `gorm:"not null;default:'[]'"`
-	SubmitLabel  string `gorm:"not null;default:''"`
-	DraftState   string `gorm:"not null;default:'ready'"`
-	DraftContext string `gorm:"not null;default:''"`
-	Status       string `gorm:"index;not null;default:'open'"`
-	Suppressed   bool   `gorm:"not null;default:false"`
-	SourceKind   string
-	SourceName   string
-	ChatID       string
-	RunID        string
-	ReadAt       *time.Time
-	DismissedAt  *time.Time
-	CreatedAt    time.Time `gorm:"index"`
-	UpdatedAt    time.Time `gorm:"index"`
+	ID          string `gorm:"primaryKey"`
+	BotID       string `gorm:"index"`
+	Key         string `gorm:"index"`
+	Title       string
+	Summary     string
+	Priority    int    `gorm:"not null;default:2"`
+	BlocksJSON  string `gorm:"not null;default:'[]'"`
+	SubmitLabel string `gorm:"not null;default:''"`
+	Status      string `gorm:"index;not null;default:'open'"`
+	Suppressed  bool   `gorm:"not null;default:false"`
+	SourceKind  string
+	SourceName  string
+	ChatID      string
+	RunID       string
+	ReadAt      *time.Time
+	DismissedAt *time.Time
+	CreatedAt   time.Time `gorm:"index"`
+	UpdatedAt   time.Time `gorm:"index"`
+}
+
+// DashboardWidget is one view a Bot keeps on its Dashboard. The Bot writes the
+// spec once (kind, title, settings, actions, an optional probe); the data comes
+// from the probe, which the CP runs on the box on a schedule without a model,
+// or from code that pushes it. Key is unique per Bot so a put updates in place.
+// Size/Rows/Position are the Bot's suggestion until the owner arranges the
+// board (OwnerPlaced), after which only the owner moves it.
+type DashboardWidget struct {
+	ID        string `gorm:"primaryKey"`
+	BotID     string `gorm:"not null;uniqueIndex:idx_dash_widget_key,priority:1"`
+	Key       string `gorm:"not null;uniqueIndex:idx_dash_widget_key,priority:2"`
+	Kind      string `gorm:"not null;default:''"`
+	Title     string `gorm:"not null;default:''"`
+	Source    string `gorm:"not null;default:''"`
+	SpecJSON  string `gorm:"not null;default:'{}'"`
+	DataJSON  string `gorm:"not null;default:'{}'"`
+	StateJSON string `gorm:"not null;default:'{}'"`
+	// Probe is Python that sets `result` (or prints JSON) to the widget's
+	// data; Every is its interval in seconds (0: only when asked).
+	Probe string `gorm:"not null;default:''"`
+	Every int    `gorm:"not null;default:0"`
+	// ApprovedHash is the hash of the probe and actions the python.run rule
+	// let through when the Bot put them; only that code ever runs unattended.
+	ApprovedHash string `gorm:"not null;default:''"`
+	Size         string `gorm:"not null;default:'m'"`
+	Rows         int    `gorm:"not null;default:1"`
+	Position     int    `gorm:"not null;default:0"`
+	OwnerPlaced  bool   `gorm:"not null;default:false"`
+	Error        string `gorm:"not null;default:''"`
+	ReceiptJSON  string `gorm:"not null;default:''"`
+	ArtifactID   string `gorm:"not null;default:''"`
+	ChatID       string `gorm:"not null;default:''"`
+	RunID        string `gorm:"not null;default:''"`
+	DataAt       *time.Time
+	// ChangedAt is when the data last differed; SeenAt when the owner looked.
+	ChangedAt *time.Time
+	SeenAt    *time.Time
+	NextAt    *time.Time `gorm:"index"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Subagent is a background agent loop a chat's lead started with spawn_agent.
@@ -782,7 +821,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

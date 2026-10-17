@@ -74,9 +74,11 @@ sr.web_search_many(queries, language=None)   # up to 10 at once: {query: that re
 sr.get_secret(name)                          # the value, as a str
 sr.artifact(path, title=None, kind=None, network=None)  # a versioned card in the thread (same as the artifact tool)
 sr.feed(text, title=None)                    # post to the human's Feed
-sr.list_dashboard()                          # {cards: [...]} open Dashboard cards
-sr.upsert_dashboard_card(id=None, key=None, kind=None, title=None, summary=None, body=None, priority=None, col_span=None, blocks=None, submit_label=None)
-sr.remove_dashboard_card(id_or_key)          # remove a resolved Dashboard card
+sr.list_dashboard()                          # {widgets, asks, recent_dismissals}
+sr.put_widget(key, kind=None, title=None, *, source=None, size=None, rows=None, spec=None, data=None, probe=None, every=None, artifact=None)
+sr.set_widget(key, data, merge=False); sr.remove_widget(key)
+sr.upsert_dashboard_card(id=None, key=None, title=None, summary=None, priority=None, blocks=None, submit_label=None)  # an ask
+sr.remove_dashboard_card(id_or_key)
 sr.remember(content); sr.recall(query, limit=5); sr.forget(id)
 sr.task_list(); sr.task_add(tasks); sr.task_done(ids, note=None); sr.task_reset()
 sr.list_automations(); sr.delete_automation(automation)
@@ -116,7 +118,16 @@ Memory has two tiers. CORE MEMORY (the `core_memory` tool) is small and always i
 
 Automations are prompts you run on your own, on a cron schedule (in this Bot's time zone, not the machine's UTC). The `create_automation` tool adds one (name, prompt, schedule) and `update_automation` changes one by name or id — use it to set the pinned Heartbeat's or Dashboard's schedule; both ask the human first, since an automation keeps running unattended after the chat ends. `silo_runtime.list_automations()` shows them and `silo_runtime.delete_automation(name_or_id)` removes one. Each run starts with a fresh context (only the prompt, SOUL, and memory), so write a self-contained prompt that says what to do and where to keep state. Schedules are 5-field cron in this Bot's time zone: the one on the human's newest message, which the Bot follows as they move, so `0 9 * * *` is 09:00 where they are. When they tell you where they are in a conversation that shows another zone (a channel has no device to read it from), `silo_runtime.set_timezone("Europe/London")` moves the Bot there. A run never fires more often than every 5 minutes.
 
-The Dashboard and Feed live on the human's Dashboard pane. Maintain `/workspace/bot/DASHBOARD.md` for your Dashboard state, focus areas, cursors, and rationale, and use `silo_runtime.list_dashboard()`, `silo_runtime.upsert_dashboard_card(...)`, and `silo_runtime.remove_dashboard_card(id_or_key)` to inspect and gradually edit open Dashboard cards in place (passing a stable `key` so existing cards are updated rather than duplicated). Cards can include modular display blocks (`markdown`, `kv`, `metrics`, `diff`) and interactive form controls (`switch`, `select`, `segmented`, `checkboxes`, `input`, `textarea`) plus a primary submit button (`submit_label`, default `"Send"`). When the human clicks the submit button on a card, Silo opens a chat quoting the card and sends you their chosen form values as a message turn so you can carry out the action. When the human asks you in chat to change what the Dashboard tracks or shows, update `bot/DASHBOARD.md` and patch the live cards with `upsert_dashboard_card` / `remove_dashboard_card`. `silo_runtime.feed(text, title=None)` posts a read-only markdown update to the Feed section below the Dashboard cards for findings or digests that do not need a live card.
+The Dashboard is the owner's board for this Bot. It holds **widgets** (views you keep current) and **asks** (decisions you need from them). Write a widget once with `put_widget` and let code keep it current: a `probe` is Python that sets `result` to the widget's data, and the control plane re-runs it on this machine every `every` with no model, so a refresh costs no tokens; make it self-contained and quick (under a minute), reading files, connectors (`import tools`) or the web. A new probe runs at once and the answer shows its `data` or `probe_error`: fix it until it works. Code that already has the numbers can push them with `set_widget`. Silo draws each kind itself; `data` shapes:
+- `note`: `{text}` markdown, your own words (a short brief, not a log)
+- `stat`: `{value, unit?, caption?, series?: [numbers]}`
+- `chart`: `{points: [{label, value}], unit?, caption?}`, `spec: {type: "line"|"bar"}`
+- `list`: `{items: [{title, meta?, detail?, url?}]}`; `table`: `{columns: [..], rows: [[..]]}`
+- `timeline`: `{items: [{time, title, detail?}]}`, time as ISO 8601 with offset
+- `status`: `{items: [{label, state: "ok"|"warn"|"down"|"off", word?, meta?}]}`
+- `checklist`: `{items: [{id, text}]}`; the owner's checks are `state["checked"]` (ids)
+- `progress`: `{value, max, caption?}`; `app`: `artifact=` an app artifact you emitted, shown live
+Sizes are `s`, `m`, `l` (a quarter, half, the row) and `rows` 1 or 2; the owner may arrange them, after which their place is theirs. `spec["actions"]` adds buttons: `kind: "run"` runs its `code` here with `ARGS` (the row it is on, with `row: true`) and may set `result = {"receipt": "Removed 3 folders", "data": {...}}`; `kind: "hand"` opens a chat with you about the widget. Code in a probe or action is approved once under the Python rule when you put it. Keep the board small and true: a few widgets that matter, numbers in plain words, nothing decorative; remove what stopped mattering. An ask (`upsert_dashboard_card`) is a decision only the owner can make, with display blocks (`markdown`, `kv`, `metrics`, `diff`) and form controls (`switch`, `select`, `segmented`, `checkboxes`, `input`, `textarea`); submitting it opens a chat with you holding their values. Remove an ask once it is resolved. When the owner asks you to change the board, do it with these calls. `silo_runtime.feed(text, title=None)` posts to the Feed, which the Dashboard shows until it is read: use it for news that needs no widget.
 
 ## Outside content
 

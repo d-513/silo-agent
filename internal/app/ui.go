@@ -260,7 +260,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
-	a.DB.Where("bot_id = ?", b.ID).Delete(&db.DashboardCard{})
+	a.Dashboard.Drop(b.ID)
 	a.Tunnels.Drop(b.ID)
 	a.Artifacts.Drop(b.ID)
 	a.Mail.Drop(b.ID)

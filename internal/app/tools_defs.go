@@ -40,7 +40,7 @@ func (a *App) toolDefs() []tool.Def {
 	}
 	tunnel, mail, task := byName(a.Tunnels.Tool), byName(a.Mail.Tool), byName(a.taskTool)
 	dashboard := text(func(ctx context.Context, c *tool.Call) (string, error) {
-		return a.Feed.DashboardTool(ctx, c.Bot, c.RunID, c.Def.Name, c.Args)
+		return a.Dashboard.Tool(ctx, c.Bot, c.RunID, c.Def.Name, c.Args)
 	})
 	automation := text(func(ctx context.Context, c *tool.Call) (string, error) {
 		return a.Automations.Tool(ctx, c.Bot, c.RunID, c.Def.Name, c.Args)
@@ -433,7 +433,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "list_dashboard",
-			Description: "List this Bot's open Dashboard cards with their ids, keys, priorities, bodies, blocks, and current state. Call this before editing the Dashboard.",
+			Description: "Read this Bot's Dashboard: its widgets (spec, data, the owner's state such as checked items, probe, last error and last action receipt), the open asks, and recent dismissals to respect. Read it before changing the Dashboard.",
 			Params:      tool.Object(nil),
 			Connector:   security.Bot, Action: "dashboard_list",
 			ExposePython: true, SelfGated: true,
@@ -441,18 +441,15 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "upsert_dashboard_card",
-			Description: "Create or gradually update an open Dashboard card by id or key. Pass only the fields to change when updating an existing card.",
+			Description: "Create or update an ask on the Dashboard: something the owner must decide, shown as a slip with optional form controls and a submit button that opens a chat with their choice. Match by id or key; pass only the fields to change.",
 			Params: tool.Object(map[string]any{
-				"id":           map[string]any{"type": "string", "description": "card id to update"},
-				"key":          map[string]any{"type": "string", "description": "stable dedupe key to create or update in place"},
-				"kind":         map[string]any{"type": "string", "description": "card category, e.g. hygiene, tasks, changes, custom"},
-				"title":        map[string]any{"type": "string", "description": "card headline"},
-				"summary":      map[string]any{"type": "string", "description": "short subtitle or context"},
-				"body":         map[string]any{"type": "string", "description": "optional markdown body"},
-				"priority":     map[string]any{"type": "integer", "description": "1 (info), 2 (normal), 3 (important), 4 (urgent)"},
-				"col_span":     map[string]any{"type": "integer", "description": "preferred grid width: 0 (auto), 1, 2, or 3"},
-				"blocks":       map[string]any{"type": "array", "description": "modular display and form blocks"},
-				"submit_label": map[string]any{"type": "string", "description": "label for the card's primary submit button (default Send)"},
+				"id":           map[string]any{"type": "string", "description": "ask id to update"},
+				"key":          map[string]any{"type": "string", "description": "stable key to create or update in place"},
+				"title":        map[string]any{"type": "string", "description": "the question, short"},
+				"summary":      map[string]any{"type": "string", "description": "one sentence of context"},
+				"priority":     map[string]any{"type": "integer", "description": "1 high, 2 normal, 3 low"},
+				"blocks":       map[string]any{"type": "array", "description": "display blocks (markdown, kv, metrics, diff) and form controls (switch, select, segmented, checkboxes, input, textarea)"},
+				"submit_label": map[string]any{"type": "string", "description": "the submit button's label (default Send)"},
 			}),
 			Connector: security.Bot, Action: "dashboard_upsert",
 			ExposePython: true, SelfGated: true,
@@ -460,12 +457,54 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "remove_dashboard_card",
-			Description: "Remove an open Dashboard card by id or key once the underlying item is resolved.",
+			Description: "Remove an open ask by id or key once it is resolved.",
 			Params: tool.Object(map[string]any{
-				"id":  map[string]any{"type": "string", "description": "card id or key"},
-				"key": map[string]any{"type": "string", "description": "card key"},
+				"id":  map[string]any{"type": "string", "description": "ask id or key"},
+				"key": map[string]any{"type": "string", "description": "ask key"},
 			}),
 			Connector: security.Bot, Action: "dashboard_remove",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
+			Name:        "put_widget",
+			Description: "Create or update a Dashboard widget by key: kind, title, size, spec, and either a probe (Python that sets `result` to the widget's data; the control plane re-runs it every `every` with no model) or data you push with set_widget. A new probe runs at once and its data or error is returned. Code in a probe or a run action goes through the python.run rule once, here.",
+			Params: tool.Object(map[string]any{
+				"key":      map[string]any{"type": "string", "description": "stable key, lowercase"},
+				"kind":     map[string]any{"type": "string", "description": "note, stat, chart, list, table, timeline, status, checklist, progress or app"},
+				"title":    map[string]any{"type": "string"},
+				"source":   map[string]any{"type": "string", "description": "where the data comes from, a word or two"},
+				"size":     map[string]any{"type": "string", "description": "s, m or l"},
+				"rows":     map[string]any{"type": "integer", "description": "1 or 2"},
+				"spec":     map[string]any{"type": "object", "description": "kind settings and actions"},
+				"data":     map[string]any{"type": "object", "description": "data in the kind's shape"},
+				"probe":    map[string]any{"type": "string", "description": "Python that sets result; \"\" removes it"},
+				"every":    map[string]any{"type": "string", "description": "probe interval: 15m, 2h, 1d; 0 only when asked"},
+				"artifact": map[string]any{"type": "string", "description": "app widget: the app artifact's id or path"},
+			}, "key"),
+			Connector: security.Bot, Action: "widget_put",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
+			Name:        "set_widget",
+			Description: "Replace a widget's data (merge=true merges top-level keys). For code that already has the numbers: no model, no approval.",
+			Params: tool.Object(map[string]any{
+				"key":   map[string]any{"type": "string"},
+				"data":  map[string]any{"type": "object"},
+				"merge": map[string]any{"type": "boolean"},
+			}, "key", "data"),
+			Connector: security.Bot, Action: "widget_set",
+			ExposePython: true, SelfGated: true,
+			Run: dashboard,
+		},
+		{
+			Name:        "remove_widget",
+			Description: "Take a widget off the Dashboard by key.",
+			Params: tool.Object(map[string]any{
+				"key": map[string]any{"type": "string"},
+			}, "key"),
+			Connector: security.Bot, Action: "widget_remove",
 			ExposePython: true, SelfGated: true,
 			Run: dashboard,
 		},
