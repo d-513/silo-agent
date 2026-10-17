@@ -95,18 +95,29 @@ def scroll(x: int, y: int, dy: int) -> dict:
     return call("desktop", "scroll", {"x": x, "y": y, "dy": dy})
 
 
-def artifact(path: str, title: str | None = None, kind: str | None = None) -> dict:
-    """Show a deliverable as a card in the thread.
+def artifact(
+    path: str,
+    title: str | None = None,
+    kind: str | None = None,
+    network: bool | None = None,
+) -> dict:
+    """Hand over a deliverable as a versioned card in the thread.
 
-    A directory that contains SKILL.md becomes an installable skill (the human
-    clicks Save skill). Any other file becomes a downloadable card with a
-    preview. `path` is relative to /workspace. This is not `present`.
+    Calling `artifact` again on the same path adds the next version to the
+    same card. A directory that contains SKILL.md becomes an installable skill
+    (the human clicks Save skill). An .html file, or a directory with
+    index.html, becomes a live sandboxed app in the thread (`network=True`
+    lets it reach the internet, asking the owner by default). Any other file
+    becomes a downloadable card with a preview. `path` is relative to
+    /workspace. This is not `present`.
     """
     args: dict = {"path": path}
     if title is not None:
         args["title"] = title
     if kind is not None:
         args["kind"] = kind
+    if network is not None:
+        args["network"] = bool(network)
     return call("artifact", "emit", args)
 
 

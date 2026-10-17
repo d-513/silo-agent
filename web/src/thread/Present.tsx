@@ -40,13 +40,13 @@ function fileSize(f: LoadedFile) {
 }
 
 // What a workspace file shows while it loads, after it fails, and once it is read.
-function PreviewBody({ file, err, className = "" }: { file: LoadedFile | null; err: string; className?: string }) {
+function PreviewBody({ file, err, path, className = "" }: { file: LoadedFile | null; err: string; path: string; className?: string }) {
   return (
     <div className={`space-y-2 ${className}`.trim()}>
       {file?.truncated ? <p className="text-[12.5px] text-ink-3">{t("Showing the first 2 MB.")}</p> : null}
       {err ? <p className="text-[13px] text-vermilion">{err}</p> : null}
       {!file && !err ? <div className="skeleton h-40 rounded-sm" /> : null}
-      {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
+      {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} quote={{ source: "file", ref: path, label: path }} /> : null}
     </div>
   );
 }
@@ -54,7 +54,7 @@ function PreviewBody({ file, err, className = "" }: { file: LoadedFile | null; e
 // `present` of a bot/… path or a `look` screenshot: the preview inside a folded row.
 export function QuietPreview({ botId, path }: { botId: string; path: string }) {
   const { file, err } = useWorkspaceFile(botId, path);
-  return <PreviewBody file={file} err={err} />;
+  return <PreviewBody file={file} err={err} path={path} />;
 }
 
 // `present` of a user-facing path shows the file itself in a card.
@@ -83,7 +83,7 @@ export function PresentFile({ botId, path }: { botId: string; path: string }) {
           />
         ) : null}
       </div>
-      <PreviewBody file={file} err={err} className="px-3 pb-3" />
+      <PreviewBody file={file} err={err} path={path} className="px-3 pb-3" />
     </div>
   );
 }

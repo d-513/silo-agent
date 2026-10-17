@@ -2,7 +2,7 @@ import { ArrowDown } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Artifact } from "./Artifact";
 import type { AgentLink } from "./links";
-import { foldEvents, type Attachment, type Block, type Ev } from "./fold";
+import { foldEvents, type Attachment, type Block, type Ev, type Quote } from "./fold";
 import { EmptyThread } from "./thread/EmptyThread";
 import { isBotScratch } from "./thread/Present";
 import { renderBlock, type BlockCtx } from "./thread/renderBlock";
@@ -13,7 +13,7 @@ import { t } from "./i18n.ts";
 
 // One-line rows (as opposed to bubbles, replies and cards).
 function isActivity(b: Block) {
-  if (b.type === "thinking" || b.type === "receipt") return true;
+  if (b.type === "thinking" || b.type === "receipt" || b.type === "artifact_update") return true;
   if (b.type !== "tool") return false;
   const path = asStr(parseToolArgs(b.args).path);
   const card = b.name === "present" && !b.running && !!b.result && !b.result.startsWith("error:") && !!path && !isBotScratch(path);
@@ -54,7 +54,7 @@ export function Thread({
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
   onSelectPrompt?: (prompt: string) => void;
-  onEditMessage?: (eventId: string, text: string, attachments?: Attachment[]) => void;
+  onEditMessage?: (eventId: string, text: string, attachments?: Attachment[], quotes?: Quote[]) => void;
   onDeleteMessage?: (eventId: string) => void;
   onDivergeChat?: (eventId: string) => void;
   // Replaces the "Ready for your prompt" empty state.
@@ -92,7 +92,7 @@ export function Thread({
 
   const retry =
     onEditMessage && lastUser?.id && !sending
-      ? () => onEditMessage(lastUser!.id!, lastUser!.text, lastUser!.attachments)
+      ? () => onEditMessage(lastUser!.id!, lastUser!.text, lastUser!.attachments, lastUser!.quotes)
       : undefined;
 
   const ctx: BlockCtx = {

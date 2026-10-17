@@ -47,6 +47,9 @@ message Cmd {
     ChangeFilesCmd change_files = 28;
     ChangePatchCmd change_patch = 29;
     RestoreCmd restore = 30;
+    ArtifactPinCmd artifact_pin = 31;
+    ArtifactReadCmd artifact_read = 32;
+    ArtifactForgetCmd artifact_forget = 33;
   }
 }
 
@@ -209,6 +212,39 @@ message RestoreCmd {
   HistoryLimits limits = 4;
   string note_before = 5;
   string note = 6;
+}
+
+// ArtifactPinCmd copies a workspace file or folder into the Bot's artifact
+// store (/var/lib/silo/artifacts, outside the workspace): content-addressed
+// blobs, a folder as a manifest of them. The pin id is the sha256 of the file
+// or of the manifest, so the control plane can check every read. It answers
+// JSON: the id, what was pinned, a card preview, and any ids the store's
+// budget evicted. A file or folder over the caps is not pinned (too_large).
+message ArtifactPinCmd {
+  string path = 1;
+  // Pin a single file as a one-entry folder (a one-file app).
+  bool as_tree = 2;
+  // A folder must hold one of these at its root (SKILL.md, index.html).
+  repeated string tree_requires = 3;
+  int64 max_file_bytes = 4;
+  int32 max_tree_files = 5;
+  int64 max_tree_bytes = 6;
+  // The store's budget: past it the oldest pins go (never this one).
+  int64 max_store_bytes = 7;
+  // Make the card preview: a text excerpt or a small JPEG.
+  bool preview = 8;
+}
+
+// ArtifactReadCmd reads one blob of the artifact store by its sha256. The
+// answer is JSON with the bytes base64-encoded, never masked: the control
+// plane hashes them against the id it asked for.
+message ArtifactReadCmd {
+  string id = 1;
+}
+
+// ArtifactForgetCmd removes pins; blobs no remaining pin uses go with them.
+message ArtifactForgetCmd {
+  repeated string ids = 1;
 }
 
 // OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open

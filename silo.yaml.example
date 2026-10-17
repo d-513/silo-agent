@@ -64,15 +64,17 @@ providers:
     # cache: false          # on by default: cache_control breakpoints
     # cache_ttl: 5m         # 5m or 1h
 
-# Tunnels: addresses for services a Bot runs on its own localhost, served by
-# this control plane at <name>.<host>. Needs wildcard DNS + TLS for *.<host>,
-# on a domain separate from the control plane's. With a local public_url (as
-# above) the host defaults to localhost:<http_addr port>, so nothing is needed
-# in development. Env: SILO_TUNNELS__HOST, SILO_TUNNELS__ENABLED, SILO_TUNNELS__SCHEME
-# tunnels:
-#   host: tunnels.example.com
-#   enabled: true
+# Content host & tunnels: Bot-made content is served by this control plane on a
+# domain separate from the console's — tunnels at tunnel-<name>.<host>, live app
+# artifacts at app-<name>.<host>, and public shared links at share-<name>.<host>.
+# Needs wildcard DNS + TLS for *.<host>. With a local public_url (as above) the
+# host defaults to localhost:<http_addr port>, so nothing is needed in
+# development. Env: SILO_CONTENT__HOST, SILO_CONTENT__SCHEME, SILO_TUNNELS__ENABLED
+# content:
+#   host: content.example.com
 #   scheme: https           # default: follows public_url
+# tunnels:
+#   enabled: true
 
 # Mail: every Bot gets a receive-only address <name>@<domain>, served by an
 # SMTP listener in this control plane. Point the domain's MX record here and

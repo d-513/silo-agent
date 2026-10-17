@@ -212,42 +212,83 @@
  {
   "key": "artifact-45",
   "type": "artifact",
+  "artifactId": "s1",
   "artifactType": "skill",
-  "name": "pdf",
   "title": "PDF",
   "path": "skills/pdf",
-  "scope": "personal",
-  "approvalId": "",
-  "status": "saved",
+  "versions": [
+   {
+    "n": 1,
+    "name": "pdf",
+    "kind": "tree",
+    "pinned": true,
+    "network": false,
+    "runId": "r2"
+   }
+  ],
+  "saved": 1,
   "runId": "r2"
  },
  {
   "key": "artifact-47",
   "type": "artifact",
+  "artifactId": "f1",
   "artifactType": "file",
-  "name": "r.pdf",
   "title": "r.pdf",
   "path": "r.pdf",
-  "scope": "workspace",
-  "approvalId": "ap9",
-  "status": "ready",
-  "size": 99,
+  "versions": [
+   {
+    "n": 1,
+    "name": "r.pdf",
+    "kind": "file",
+    "size": 12,
+    "pinned": true,
+    "network": false,
+    "runId": "r2"
+   },
+   {
+    "n": 2,
+    "name": "r.pdf",
+    "kind": "file",
+    "size": 99,
+    "pinned": false,
+    "note": "the file is over 32 MB",
+    "network": false,
+    "runId": "r2"
+   }
+  ],
+  "runId": "r2"
+ },
+ {
+  "key": "artifact-48",
+  "type": "artifact_update",
+  "artifactId": "f1",
+  "title": "r.pdf",
+  "version": 2,
   "runId": "r2"
  },
  {
   "key": "artifact-49",
   "type": "artifact",
-  "artifactType": "skill",
-  "name": "",
-  "title": "",
-  "path": "",
-  "scope": "",
-  "approvalId": "",
-  "status": "",
+  "artifactId": "a1",
+  "artifactType": "app",
+  "title": "game",
+  "path": "game",
+  "versions": [
+   {
+    "n": 1,
+    "name": "game",
+    "kind": "tree",
+    "pinned": true,
+    "network": true,
+    "entry": "index.html",
+    "runId": "r2"
+   }
+  ],
   "runId": "r2"
  },
  {
-  "key": "call-51",
+  "key": "call-52",
   "type": "tool",
   "name": "exec_python",
   "args": "{\"code\":\"slow\"}",
@@ -255,7 +296,7 @@
   "runId": "r2",
   "calls": [
    {
-    "key": "call-51",
+    "key": "call-52",
     "title": "Bare call",
     "name": "python.thing",
     "running": false,
@@ -263,7 +304,7 @@
     "waiting": false
    },
    {
-    "key": "call-55",
+    "key": "call-56",
     "title": "Nested",
     "name": "a.b",
     "running": false,
@@ -275,21 +316,21 @@
   "waiting": false
  },
  {
-  "key": "thinking_chunk-53",
+  "key": "thinking_chunk-54",
   "type": "thinking",
   "text": "pondering",
   "streaming": false,
-  "startAt": 3850,
+  "startAt": 3900,
   "ms": 50
  },
  {
-  "key": "chunk-56",
+  "key": "chunk-57",
   "type": "assistant",
   "text": "partial reply",
   "streaming": false
  },
  {
-  "key": "done-57",
+  "key": "done-58",
   "type": "receipt",
   "decision": "stopped",
   "title": "this run",
@@ -297,7 +338,7 @@
   "runId": "r2"
  },
  {
-  "key": "tool-58",
+  "key": "tool-59",
   "type": "tool",
   "name": "other",
   "args": "{\"x\":1}",
@@ -307,7 +348,7 @@
   "waiting": false
  },
  {
-  "key": "tool-61",
+  "key": "tool-62",
   "type": "tool",
   "name": "after",
   "args": "{\"y\":2}",
@@ -317,7 +358,7 @@
   "waiting": false
  },
  {
-  "key": "compacting-62",
+  "key": "compacting-63",
   "type": "compaction",
   "text": "",
   "reason": "auto",

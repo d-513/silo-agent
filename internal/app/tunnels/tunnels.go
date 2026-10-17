@@ -1,7 +1,7 @@
 // Package tunnels gives a Bot's localhost services public addresses: a
-// declared tunnel is a name (a subdomain of tunnels.host), a port in the box,
-// and who may open it. The Control Plane answers <name>.<tunnels.host> by
-// reverse-proxying over a connection the worker opens into the box.
+// declared tunnel is a name, a port in the box, and who may open it. The
+// Control Plane answers tunnel-<name>.<content.host> by reverse-proxying over a
+// connection the worker opens into the box.
 package tunnels
 
 import (
@@ -56,7 +56,7 @@ func New(gdb *gorm.DB, h *hub.Hub, cfg func() config.Config, host Host) *Service
 
 // State reports whether tunnels can be used, and the domain they live under.
 func State(c config.Config) (state, domain string) {
-	domain = c.TunnelHost()
+	domain = c.ContentHost()
 	switch {
 	case !c.Tunnels.Enabled:
 		return StateOff, domain
@@ -72,7 +72,7 @@ func (s *Service) usable() error {
 	case StateOff:
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("tunnels are turned off by the operator (tunnels.enabled)"))
 	case StateNoHost:
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("tunnels have no domain yet: the operator sets tunnels.host"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("tunnels have no domain yet: the operator sets content.host"))
 	}
 	return nil
 }
@@ -174,7 +174,7 @@ func (s *Service) proto(t *db.Tunnel) *v1.Tunnel {
 		Id: t.ID, Name: t.Name, Port: int32(t.Port), Public: t.Public, CreatedBy: t.CreatedBy,
 		CreatedAt: t.CreatedAt.Format(time.RFC3339),
 	}
-	if c := s.cfg(); c.TunnelHost() != "" {
+	if c := s.cfg(); c.ContentHost() != "" {
 		out.Url = c.TunnelURL(t.Name)
 	}
 	if t.LastUsedAt != nil {

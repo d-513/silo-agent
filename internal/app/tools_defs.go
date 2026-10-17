@@ -292,7 +292,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "present",
-			Description: "Show a workspace file that is already on disk. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Only previewable types render inline in the thread (images, PDF, Markdown, CSV, JSON, code/text, DOCX, video, audio) — for anything else such as decks, workbooks, or archives use artifact so the human gets a downloadable card. Do not retype the contents.",
+			Description: "Show a workspace file that is already on disk. Path is relative to /workspace — notes.md or bot/page.png, not /workspace/notes.md. bot/ is your scratch (you get the pixels; the human sees a collapsed row). Other paths are for the human as a folio. Images are sent to you as pixels. Previewable types render inline in the thread (images, PDF, Markdown, CSV, JSON, code/text, DOCX, .xlsx workbooks, .pptx decks, .vl.json charts, .mmd diagrams, .ipynb notebooks, .geojson maps, .glb 3D models, video, audio); for deliverables the human keeps, live .html apps, or archives use artifact. Do not retype the contents.",
 			Params: tool.Object(map[string]any{
 				"path": map[string]any{"type": "string"},
 			}, "path"),
@@ -390,14 +390,15 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "artifact",
-			Description: "Show a deliverable as a card in the thread. Path is relative to /workspace. A directory that contains SKILL.md becomes an installable skill (the human clicks Save skill); any other file becomes a downloadable card with a preview. Use this for things the human keeps or downloads. This is not present — present merely displays a file inline.",
+			Description: "Hand the human a deliverable as a card in the thread; each call keeps that version, and calling it again on the same path adds the next version to the same card. Path is relative to /workspace. A directory holding SKILL.md becomes an installable skill (the human clicks Save skill). An .html file, or a directory holding index.html, becomes a live app the human uses in the thread: it runs sandboxed and loads only its own files, so inline or bundle every script and style and use relative paths; set network to let it reach the internet (the owner may be asked). Any other file becomes a downloadable card with a preview. This is not present — present merely displays a file inline.",
 			Params: tool.Object(map[string]any{
-				"path":  map[string]any{"type": "string"},
-				"title": map[string]any{"type": "string", "description": "display title (defaults to the file or skill name)"},
-				"kind":  map[string]any{"type": "string", "enum": []string{"skill", "file"}, "description": "override the auto-detected type"},
+				"path":    map[string]any{"type": "string"},
+				"title":   map[string]any{"type": "string", "description": "display title (defaults to the file, skill or folder name)"},
+				"kind":    map[string]any{"type": "string", "enum": []string{"file", "skill", "app"}, "description": "override the auto-detected type"},
+				"network": map[string]any{"type": "boolean", "description": "an app only: let it load from and talk to the internet"},
 			}, "path"),
 			Connector: security.Artifact, Action: "emit",
-			ExposeCompletion: true, ExposePython: true,
+			ExposeCompletion: true, ExposePython: true, SelfGated: true,
 			Check: needPath,
 			Run:   a.artifactTool,
 		},

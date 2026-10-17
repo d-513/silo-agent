@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,8 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/llm"
+	"silo.agent/internal/llm/dummy"
 )
 
 // A page on another origin must not be able to open a Bot's console or
@@ -66,9 +69,17 @@ func TestBotSocketsRefuseForeignOrigin(t *testing.T) {
 	}
 }
 
-// A file the Bot wrote is a stranger's bytes. Asked for inline, an HTML or SVG
-// one must still never run as a page in the control plane's own origin.
+// A file the Bot wrote is a stranger's bytes: a download of one, HTML and SVG
+// included, must never run as a page in the control plane's own origin.
 func TestArtifactFileIsNeverAPage(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_hardart",
+		dummy.Turn{ToolCalls: []llm.ToolCall{
+			{Name: "artifact", Arguments: `{"path":"page.html","kind":"file"}`},
+			{Name: "artifact", Arguments: `{"path":"pic.svg"}`},
+		}},
+		dummy.Turn{Text: "done"},
+	)
 	h := apptest.New(t)
 	bot := h.CreateBot("Files")
 	w := h.StartWorker(bot.GetId())
@@ -76,41 +87,46 @@ func TestArtifactFileIsNeverAPage(t *testing.T) {
 	for name, body := range map[string]string{
 		"page.html": "<script>alert(1)</script>",
 		"pic.svg":   `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`,
-		"shot.png":  "\x89PNG\r\n\x1a\n",
 	} {
 		if err := os.WriteFile(filepath.Join(w.Workspace, name), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	get := func(name string) *http.Response {
-		t.Helper()
-		q := url.Values{"bot_id": {bot.GetId()}, "path": {name}, "inline": {"1"}}
-		res, err := h.HTTP.Get(h.URL + "/artifacts/file?" + q.Encode())
+	runID, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_hardart_Input")
+	h.WaitRun(runID)
+	var ids []string
+	for _, ev := range h.Events(runID) {
+		if ev.Kind == "artifact" {
+			var c struct {
+				ArtifactID string `json:"artifact_id"`
+			}
+			_ = json.Unmarshal([]byte(ev.Body), &c)
+			ids = append(ids, c.ArtifactID)
+		}
+	}
+	if len(ids) != 2 {
+		t.Fatalf("cards %v", ids)
+	}
+	for _, id := range ids {
+		q := url.Values{"bot_id": {bot.GetId()}, "artifact_id": {id}, "inline": {"1"}}
+		res, err := h.HTTP.Get(h.URL + "/artifacts/download?" + q.Encode())
 		if err != nil {
 			t.Fatal(err)
 		}
 		io.Copy(io.Discard, res.Body)
 		res.Body.Close()
 		if res.StatusCode != http.StatusOK {
-			t.Fatalf("%s: status %d", name, res.StatusCode)
+			t.Fatalf("%s: status %d", id, res.StatusCode)
 		}
-		return res
-	}
-	for _, name := range []string{"page.html", "pic.svg"} {
-		res := get(name)
 		if !strings.HasPrefix(res.Header.Get("Content-Disposition"), "attachment") {
-			t.Fatalf("%s served inline: %q", name, res.Header.Get("Content-Disposition"))
+			t.Fatalf("%s served inline: %q", id, res.Header.Get("Content-Disposition"))
 		}
 		if !strings.Contains(res.Header.Get("Content-Security-Policy"), "sandbox") {
-			t.Fatalf("%s has no sandbox policy: %q", name, res.Header.Get("Content-Security-Policy"))
+			t.Fatalf("%s has no sandbox policy: %q", id, res.Header.Get("Content-Security-Policy"))
 		}
 		if res.Header.Get("X-Content-Type-Options") != "nosniff" {
-			t.Fatalf("%s may be sniffed", name)
+			t.Fatalf("%s may be sniffed", id)
 		}
-	}
-	// A plain image still opens in place.
-	if res := get("shot.png"); !strings.HasPrefix(res.Header.Get("Content-Disposition"), "inline") {
-		t.Fatalf("png not inline: %q", res.Header.Get("Content-Disposition"))
 	}
 }
 
@@ -374,7 +390,7 @@ func TestHostCookieSetting(t *testing.T) {
 		t.Fatalf("the plain name is still a session: status %d", got)
 	}
 	// And the plain routes agree with the RPCs.
-	raw, _ := http.NewRequest(http.MethodGet, h.URL+"/artifacts/file?bot_id=x&path=y", nil)
+	raw, _ := http.NewRequest(http.MethodGet, h.URL+"/artifacts/download?bot_id=x&artifact_id=y", nil)
 	raw.AddCookie(&http.Cookie{Name: "silo_session", Value: session.Value})
 	res, err = http.DefaultClient.Do(raw)
 	if err != nil {
@@ -382,7 +398,7 @@ func TestHostCookieSetting(t *testing.T) {
 	}
 	res.Body.Close()
 	if res.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("/artifacts/file took the plain name: status %d", res.StatusCode)
+		t.Fatalf("/artifacts/download took the plain name: status %d", res.StatusCode)
 	}
 }
 

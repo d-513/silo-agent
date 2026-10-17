@@ -305,14 +305,17 @@ func EndUserSessions(gdb *gorm.DB, userID, keep string) error {
 	return endSessions(gdb, sel)
 }
 
-// endSessions deletes sessions by row id, and with each the tunnel grants made
-// from it.
+// endSessions deletes sessions by row id, and with each the tunnel grants and
+// app views made from it.
 func endSessions(gdb *gorm.DB, sel []string) error {
 	if len(sel) == 0 {
 		return nil
 	}
 	return gdb.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("session_id IN ?", sel).Delete(&db.TunnelGrant{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("session_id IN ?", sel).Delete(&db.ArtifactView{}).Error; err != nil {
 			return err
 		}
 		return tx.Where("id IN ?", sel).Delete(&db.Session{}).Error

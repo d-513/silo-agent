@@ -328,6 +328,18 @@ const (
 	UIReadSkillFileProcedure = "/silo.v1.UI/ReadSkillFile"
 	// UISaveSkillProcedure is the fully-qualified name of the UI's SaveSkill RPC.
 	UISaveSkillProcedure = "/silo.v1.UI/SaveSkill"
+	// UIGetArtifactProcedure is the fully-qualified name of the UI's GetArtifact RPC.
+	UIGetArtifactProcedure = "/silo.v1.UI/GetArtifact"
+	// UIReadArtifactFileProcedure is the fully-qualified name of the UI's ReadArtifactFile RPC.
+	UIReadArtifactFileProcedure = "/silo.v1.UI/ReadArtifactFile"
+	// UIOpenArtifactAppProcedure is the fully-qualified name of the UI's OpenArtifactApp RPC.
+	UIOpenArtifactAppProcedure = "/silo.v1.UI/OpenArtifactApp"
+	// UIShareArtifactProcedure is the fully-qualified name of the UI's ShareArtifact RPC.
+	UIShareArtifactProcedure = "/silo.v1.UI/ShareArtifact"
+	// UIListArtifactSharesProcedure is the fully-qualified name of the UI's ListArtifactShares RPC.
+	UIListArtifactSharesProcedure = "/silo.v1.UI/ListArtifactShares"
+	// UIDeleteArtifactShareProcedure is the fully-qualified name of the UI's DeleteArtifactShare RPC.
+	UIDeleteArtifactShareProcedure = "/silo.v1.UI/DeleteArtifactShare"
 	// UIListChannelAdaptersProcedure is the fully-qualified name of the UI's ListChannelAdapters RPC.
 	UIListChannelAdaptersProcedure = "/silo.v1.UI/ListChannelAdapters"
 	// UIListBotChannelsProcedure is the fully-qualified name of the UI's ListBotChannels RPC.
@@ -562,6 +574,14 @@ type UIClient interface {
 	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
+	// Artifacts: a card's versions and pinned files, a live app's address, and
+	// the owner's public links.
+	GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error)
+	ReadArtifactFile(context.Context, *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error)
+	OpenArtifactApp(context.Context, *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error)
+	ShareArtifact(context.Context, *connect.Request[v1.ShareArtifactRequest]) (*connect.Response[v1.ArtifactShare], error)
+	ListArtifactShares(context.Context, *connect.Request[v1.ListArtifactSharesRequest]) (*connect.Response[v1.ListArtifactSharesResponse], error)
+	DeleteArtifactShare(context.Context, *connect.Request[v1.DeleteArtifactShareRequest]) (*connect.Response[v1.DeleteArtifactShareResponse], error)
 	ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error)
 	ListBotChannels(context.Context, *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error)
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error)
@@ -1468,6 +1488,42 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SaveSkill")),
 			connect.WithClientOptions(opts...),
 		),
+		getArtifact: connect.NewClient[v1.GetArtifactRequest, v1.GetArtifactResponse](
+			httpClient,
+			baseURL+UIGetArtifactProcedure,
+			connect.WithSchema(uIMethods.ByName("GetArtifact")),
+			connect.WithClientOptions(opts...),
+		),
+		readArtifactFile: connect.NewClient[v1.ReadArtifactFileRequest, v1.ReadArtifactFileResponse](
+			httpClient,
+			baseURL+UIReadArtifactFileProcedure,
+			connect.WithSchema(uIMethods.ByName("ReadArtifactFile")),
+			connect.WithClientOptions(opts...),
+		),
+		openArtifactApp: connect.NewClient[v1.OpenArtifactAppRequest, v1.OpenArtifactAppResponse](
+			httpClient,
+			baseURL+UIOpenArtifactAppProcedure,
+			connect.WithSchema(uIMethods.ByName("OpenArtifactApp")),
+			connect.WithClientOptions(opts...),
+		),
+		shareArtifact: connect.NewClient[v1.ShareArtifactRequest, v1.ArtifactShare](
+			httpClient,
+			baseURL+UIShareArtifactProcedure,
+			connect.WithSchema(uIMethods.ByName("ShareArtifact")),
+			connect.WithClientOptions(opts...),
+		),
+		listArtifactShares: connect.NewClient[v1.ListArtifactSharesRequest, v1.ListArtifactSharesResponse](
+			httpClient,
+			baseURL+UIListArtifactSharesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListArtifactShares")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteArtifactShare: connect.NewClient[v1.DeleteArtifactShareRequest, v1.DeleteArtifactShareResponse](
+			httpClient,
+			baseURL+UIDeleteArtifactShareProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteArtifactShare")),
+			connect.WithClientOptions(opts...),
+		),
 		listChannelAdapters: connect.NewClient[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse](
 			httpClient,
 			baseURL+UIListChannelAdaptersProcedure,
@@ -1709,6 +1765,12 @@ type uIClient struct {
 	listSkillFiles           *connect.Client[v1.ListSkillFilesRequest, v1.ListFilesResponse]
 	readSkillFile            *connect.Client[v1.ReadSkillFileRequest, v1.ReadFileResponse]
 	saveSkill                *connect.Client[v1.SaveSkillRequest, v1.SaveSkillResponse]
+	getArtifact              *connect.Client[v1.GetArtifactRequest, v1.GetArtifactResponse]
+	readArtifactFile         *connect.Client[v1.ReadArtifactFileRequest, v1.ReadArtifactFileResponse]
+	openArtifactApp          *connect.Client[v1.OpenArtifactAppRequest, v1.OpenArtifactAppResponse]
+	shareArtifact            *connect.Client[v1.ShareArtifactRequest, v1.ArtifactShare]
+	listArtifactShares       *connect.Client[v1.ListArtifactSharesRequest, v1.ListArtifactSharesResponse]
+	deleteArtifactShare      *connect.Client[v1.DeleteArtifactShareRequest, v1.DeleteArtifactShareResponse]
 	listChannelAdapters      *connect.Client[v1.ListChannelAdaptersRequest, v1.ListChannelAdaptersResponse]
 	listBotChannels          *connect.Client[v1.ListBotChannelsRequest, v1.ListBotChannelsResponse]
 	createChannel            *connect.Client[v1.CreateChannelRequest, v1.Channel]
@@ -2456,6 +2518,36 @@ func (c *uIClient) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSk
 	return c.saveSkill.CallUnary(ctx, req)
 }
 
+// GetArtifact calls silo.v1.UI.GetArtifact.
+func (c *uIClient) GetArtifact(ctx context.Context, req *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error) {
+	return c.getArtifact.CallUnary(ctx, req)
+}
+
+// ReadArtifactFile calls silo.v1.UI.ReadArtifactFile.
+func (c *uIClient) ReadArtifactFile(ctx context.Context, req *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error) {
+	return c.readArtifactFile.CallUnary(ctx, req)
+}
+
+// OpenArtifactApp calls silo.v1.UI.OpenArtifactApp.
+func (c *uIClient) OpenArtifactApp(ctx context.Context, req *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error) {
+	return c.openArtifactApp.CallUnary(ctx, req)
+}
+
+// ShareArtifact calls silo.v1.UI.ShareArtifact.
+func (c *uIClient) ShareArtifact(ctx context.Context, req *connect.Request[v1.ShareArtifactRequest]) (*connect.Response[v1.ArtifactShare], error) {
+	return c.shareArtifact.CallUnary(ctx, req)
+}
+
+// ListArtifactShares calls silo.v1.UI.ListArtifactShares.
+func (c *uIClient) ListArtifactShares(ctx context.Context, req *connect.Request[v1.ListArtifactSharesRequest]) (*connect.Response[v1.ListArtifactSharesResponse], error) {
+	return c.listArtifactShares.CallUnary(ctx, req)
+}
+
+// DeleteArtifactShare calls silo.v1.UI.DeleteArtifactShare.
+func (c *uIClient) DeleteArtifactShare(ctx context.Context, req *connect.Request[v1.DeleteArtifactShareRequest]) (*connect.Response[v1.DeleteArtifactShareResponse], error) {
+	return c.deleteArtifactShare.CallUnary(ctx, req)
+}
+
 // ListChannelAdapters calls silo.v1.UI.ListChannelAdapters.
 func (c *uIClient) ListChannelAdapters(ctx context.Context, req *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {
 	return c.listChannelAdapters.CallUnary(ctx, req)
@@ -2733,6 +2825,14 @@ type UIHandler interface {
 	ListSkillFiles(context.Context, *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
 	ReadSkillFile(context.Context, *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
 	SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error)
+	// Artifacts: a card's versions and pinned files, a live app's address, and
+	// the owner's public links.
+	GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error)
+	ReadArtifactFile(context.Context, *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error)
+	OpenArtifactApp(context.Context, *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error)
+	ShareArtifact(context.Context, *connect.Request[v1.ShareArtifactRequest]) (*connect.Response[v1.ArtifactShare], error)
+	ListArtifactShares(context.Context, *connect.Request[v1.ListArtifactSharesRequest]) (*connect.Response[v1.ListArtifactSharesResponse], error)
+	DeleteArtifactShare(context.Context, *connect.Request[v1.DeleteArtifactShareRequest]) (*connect.Response[v1.DeleteArtifactShareResponse], error)
 	ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error)
 	ListBotChannels(context.Context, *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error)
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error)
@@ -3635,6 +3735,42 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SaveSkill")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIGetArtifactHandler := connect.NewUnaryHandler(
+		UIGetArtifactProcedure,
+		svc.GetArtifact,
+		connect.WithSchema(uIMethods.ByName("GetArtifact")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIReadArtifactFileHandler := connect.NewUnaryHandler(
+		UIReadArtifactFileProcedure,
+		svc.ReadArtifactFile,
+		connect.WithSchema(uIMethods.ByName("ReadArtifactFile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIOpenArtifactAppHandler := connect.NewUnaryHandler(
+		UIOpenArtifactAppProcedure,
+		svc.OpenArtifactApp,
+		connect.WithSchema(uIMethods.ByName("OpenArtifactApp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIShareArtifactHandler := connect.NewUnaryHandler(
+		UIShareArtifactProcedure,
+		svc.ShareArtifact,
+		connect.WithSchema(uIMethods.ByName("ShareArtifact")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListArtifactSharesHandler := connect.NewUnaryHandler(
+		UIListArtifactSharesProcedure,
+		svc.ListArtifactShares,
+		connect.WithSchema(uIMethods.ByName("ListArtifactShares")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteArtifactShareHandler := connect.NewUnaryHandler(
+		UIDeleteArtifactShareProcedure,
+		svc.DeleteArtifactShare,
+		connect.WithSchema(uIMethods.ByName("DeleteArtifactShare")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListChannelAdaptersHandler := connect.NewUnaryHandler(
 		UIListChannelAdaptersProcedure,
 		svc.ListChannelAdapters,
@@ -4019,6 +4155,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIReadSkillFileHandler.ServeHTTP(w, r)
 		case UISaveSkillProcedure:
 			uISaveSkillHandler.ServeHTTP(w, r)
+		case UIGetArtifactProcedure:
+			uIGetArtifactHandler.ServeHTTP(w, r)
+		case UIReadArtifactFileProcedure:
+			uIReadArtifactFileHandler.ServeHTTP(w, r)
+		case UIOpenArtifactAppProcedure:
+			uIOpenArtifactAppHandler.ServeHTTP(w, r)
+		case UIShareArtifactProcedure:
+			uIShareArtifactHandler.ServeHTTP(w, r)
+		case UIListArtifactSharesProcedure:
+			uIListArtifactSharesHandler.ServeHTTP(w, r)
+		case UIDeleteArtifactShareProcedure:
+			uIDeleteArtifactShareHandler.ServeHTTP(w, r)
 		case UIListChannelAdaptersProcedure:
 			uIListChannelAdaptersHandler.ServeHTTP(w, r)
 		case UIListBotChannelsProcedure:
@@ -4640,6 +4788,30 @@ func (UnimplementedUIHandler) ReadSkillFile(context.Context, *connect.Request[v1
 
 func (UnimplementedUIHandler) SaveSkill(context.Context, *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SaveSkill is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetArtifact(context.Context, *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetArtifact is not implemented"))
+}
+
+func (UnimplementedUIHandler) ReadArtifactFile(context.Context, *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ReadArtifactFile is not implemented"))
+}
+
+func (UnimplementedUIHandler) OpenArtifactApp(context.Context, *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.OpenArtifactApp is not implemented"))
+}
+
+func (UnimplementedUIHandler) ShareArtifact(context.Context, *connect.Request[v1.ShareArtifactRequest]) (*connect.Response[v1.ArtifactShare], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ShareArtifact is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListArtifactShares(context.Context, *connect.Request[v1.ListArtifactSharesRequest]) (*connect.Response[v1.ListArtifactSharesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListArtifactShares is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteArtifactShare(context.Context, *connect.Request[v1.DeleteArtifactShareRequest]) (*connect.Response[v1.DeleteArtifactShareResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteArtifactShare is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListChannelAdapters(context.Context, *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {

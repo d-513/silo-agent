@@ -27,7 +27,7 @@ const allChatTools = "tools:\n  expose_completion: [all]\n"
 // rest is reached from Python, and the operator can bring any of it back.
 func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 	a := newToolApp()
-	a.Store, _ = config.FromYAML([]byte("tunnels:\n  host: t.example.com\n"))
+	a.Store, _ = config.FromYAML([]byte("content:\n  host: t.example.com\n"))
 	for _, name := range []string{"exec_python", "read", "remember", "recall", "open_tunnel", "create_automation", "spawn_agent"} {
 		if !offered(a, name) {
 			t.Errorf("%s is not offered by default", name)
@@ -95,7 +95,7 @@ func TestRunToolsOffersTunnelToolsOnlyWithADomain(t *testing.T) {
 		}
 	}
 	for name, yaml := range map[string]string{
-		"explicit host": "tunnels:\n  host: t.example.com\n",
+		"explicit host": "content:\n  host: t.example.com\n",
 		"local dev":     "public_url: http://localhost:5173\n",
 	} {
 		a := newToolApp()

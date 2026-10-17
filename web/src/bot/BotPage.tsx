@@ -25,6 +25,7 @@ import { onChatSide, paneOf, type PaneKind } from "./tabs";
 import { useBotLive } from "./useBotLive";
 import { patchChats, useChatList } from "./useChatList";
 import { useComposerDraft } from "./useComposerDraft";
+import { QuoteProvider, type QuoteSink } from "../quote/QuoteContext";
 import { useSecrets } from "./useSecrets";
 import { t } from "../i18n.ts";
 
@@ -156,10 +157,13 @@ export function BotPage() {
     }
   }
 
+  // Save skill installs the version the card shows; the card then reads saved
+  // from the event the server emits for it.
   async function saveSkill(a: Artifact) {
+    const v = a.versions.find((x) => x.n === a.version);
     try {
-      await ui.saveSkill({ botId: id, path: a.path, runId: a.runId ?? "" });
-      setInspect((cur) => (cur && cur.path === a.path ? { ...cur, status: "saved", scope: "personal" } : cur));
+      await ui.saveSkill({ botId: id, artifactId: a.artifactId, version: a.version, path: a.path, runId: v?.runId ?? a.runId ?? "" });
+      setInspect((cur) => (cur && cur.artifactId === a.artifactId ? { ...cur, saved: a.version } : cur));
     } catch (e) {
       setActErr(fail(e));
     }
@@ -181,7 +185,10 @@ export function BotPage() {
     void navigate(lastChat.current === "" ? newChatLink(id) : chatLink(id, lastChat.current));
   }
 
+  const quotes: QuoteSink = { add: draft.quote, upload: draft.upload, canUpload: !!bot.workerConnected };
+
   return (
+    <QuoteProvider value={quotes}>
     <BotPageCtx.Provider
       value={{
         id,
@@ -283,5 +290,6 @@ export function BotPage() {
         </div>
       </div>
     </BotPageCtx.Provider>
+    </QuoteProvider>
   );
 }

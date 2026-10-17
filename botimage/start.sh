@@ -8,15 +8,16 @@ export SILO_WORKSPACE=/workspace
 export SILO_WORKER_SOCK=/var/run/silo/worker.sock
 export PYTHONPATH=/opt/silo
 
-mkdir -p /var/run/silo /run/user/1000 /workspace /workspace/bot /opt/silo/tools /opt/silo/skills /var/lib/silo/history
+mkdir -p /var/run/silo /run/user/1000 /workspace /workspace/bot /opt/silo/tools /opt/silo/skills /var/lib/silo/history /var/lib/silo/artifacts
 # Chat uploads land in /workspace/tmp. Clear it every start so it cannot accumulate.
 rm -rf /workspace/tmp
 mkdir -p /workspace/tmp
 # /var/lib/silo/history is the workspace history (change tracking): the worker's
 # shadow git store, bound from beside the workspace. Only the mount point needs
-# the chown; the worker makes everything inside it.
-chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/skills /workspace /workspace/bot /workspace/tmp /var/lib/silo/history
-chmod 700 /var/lib/silo/history
+# the chown; the worker makes everything inside it. /var/lib/silo/artifacts is
+# the artifact store (what the Bot handed the human, pinned), the same way.
+chown silo:silo /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/skills /workspace /workspace/bot /workspace/tmp /var/lib/silo/history /var/lib/silo/artifacts
+chmod 700 /var/lib/silo/history /var/lib/silo/artifacts
 chmod 1777 /workspace /workspace/bot /workspace/tmp
 chmod 700 /run/user/1000
 

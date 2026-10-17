@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 
@@ -97,45 +96,23 @@ func (s *Service) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFile
 	if path == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
 	}
-	raw, err := s.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: path}}})
+	f, err := s.Read(ctx, b.ID, path, 0)
 	if err != nil {
 		return nil, err
 	}
-	var row struct {
-		Name      string `json:"name"`
-		Content   string `json:"content"`
-		Data      string `json:"data"`
-		Binary    bool   `json:"binary"`
-		Truncated bool   `json:"truncated"`
-		Size      int64  `json:"size"`
-	}
-	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		return nil, err
-	}
-	data, err := DecodeData(row.Data)
-	if err != nil {
-		return nil, err
-	}
-	content := s.mask(b.ID).Apply(row.Content)
-	if !row.Binary && len(data) > 0 {
-		data = []byte(s.mask(b.ID).Apply(string(data)))
+	content, data := "", f.Data
+	if !f.Binary {
+		content = s.mask(b.ID).Apply(string(f.Data))
+		data = []byte(content)
 	}
 	return connect.NewResponse(&v1.ReadFileResponse{
-		Name:      row.Name,
+		Name:      f.Name,
 		Content:   content,
-		Binary:    row.Binary,
-		Truncated: row.Truncated,
-		Size:      row.Size,
+		Binary:    f.Binary,
+		Truncated: f.Truncated,
+		Size:      f.Size,
 		Data:      data,
 	}), nil
-}
-
-// DecodeData decodes the base64 body a browse_file reply carries.
-func DecodeData(s string) ([]byte, error) {
-	if s == "" {
-		return nil, nil
-	}
-	return base64.StdEncoding.DecodeString(s)
 }
 
 func (s *Service) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error) {

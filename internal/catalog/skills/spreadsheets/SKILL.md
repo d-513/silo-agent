@@ -87,14 +87,6 @@ df.to_excel("/workspace/scores.xlsx", index=False)
 df.to_csv("/workspace/scores.csv", index=False)
 ```
 
-## Write a user-facing summary
+## Output
 
-Markdown reads best in the thread:
-
-```python
-open("/workspace/book.md", "w").write(df.to_markdown(index=False))
-```
-
-Then `present book.md` — Markdown previews inline. For a large or wide sheet, summarize in markdown and `artifact` the full workbook at `/workspace` (the thread cannot preview `.xlsx`).
-
-Never paste thousands of rows into chat.
+Both `.csv` (sortable/filterable) and `.xlsx` (with sheet tabs) preview directly in the console. Call `artifact` on a deliverable workbook at `/workspace` so the human gets a versioned card they can inspect and download, or `present` to show it inline. Never paste thousands of rows into chat.

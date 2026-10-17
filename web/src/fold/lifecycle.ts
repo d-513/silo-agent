@@ -1,5 +1,6 @@
 import { closeThinking, runOk, runningCompaction } from "./find.ts";
 import type { Handler } from "./text.ts";
+import type { ArtifactPreview, ArtifactVersion } from "./types.ts";
 import { t } from "../i18n.ts";
 
 // Handlers for what happens to the run itself: compaction, its end, artifact
@@ -50,8 +51,10 @@ export const done: Handler = (out, e, key) => {
   if (e.body === "stopped") out.push({ key, type: "receipt", decision: "stopped", title: t("this run"), target: "", runId: e.runId });
 };
 
-// An artifact card: a later event for the same approval, or the same file or
-// skill, updates the card in place.
+// An artifact card. Every emit of a path is a version of the same card
+// (artifact_id): the card stays where it first appeared and gains the
+// version, and a quiet row marks where the update happened. The same version
+// again (Save skill) updates it in place.
 export const artifact: Handler = (out, e, key) => {
   closeThinking(out, e.at);
   let body: Record<string, unknown> = {};
@@ -60,30 +63,46 @@ export const artifact: Handler = (out, e, key) => {
   } catch {
     /* ignore */
   }
-  const name = String(body.name || "");
-  const approvalId = String(body.approval_id || "");
-  const next = {
-    key,
-    type: "artifact" as const,
-    artifactType: String(body.type || "skill"),
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const path = str(body.path);
+  const name = str(body.name);
+  if (!path && !name && !str(body.artifact_id)) return;
+  const kind = body.type === "app" ? "app" : body.type === "skill" ? "skill" : "file";
+  // A card from before versions: one version, keyed by its path.
+  const artifactId = str(body.artifact_id) || `path:${path || name}`;
+  const n = typeof body.version === "number" && body.version > 0 ? body.version : 1;
+  const preview = body.preview && typeof body.preview === "object" ? (body.preview as ArtifactPreview) : undefined;
+  const version: ArtifactVersion = {
+    n,
     name,
-    title: String(body.title || name),
-    path: String(body.path || ""),
-    scope: String(body.scope || ""),
-    approvalId,
-    status: String(body.status || ""),
+    kind: str(body.kind) || (kind === "file" ? "file" : "tree"),
     size: typeof body.size === "number" ? body.size : undefined,
+    pinned: body.pinned === true,
+    note: str(body.note) || undefined,
+    network: body.network === true,
+    entry: str(body.entry) || undefined,
+    files: typeof body.files === "number" ? body.files : undefined,
+    preview,
     runId: e.runId,
   };
+  const title = str(body.title) || name || path;
+  const saved = body.status === "saved" ? n : undefined;
   for (let j = out.length - 1; j >= 0; j--) {
     const b = out[j];
-    if (b.type !== "artifact") continue;
-    if ((approvalId && b.approvalId === approvalId) || (name && b.name === name && b.path === next.path)) {
-      Object.assign(b, next, { key: b.key });
-      return;
+    if (b.type !== "artifact" || b.artifactId !== artifactId) continue;
+    const at = b.versions.findIndex((v) => v.n === n);
+    if (at >= 0) {
+      b.versions[at] = { ...b.versions[at], ...version, preview: version.preview ?? b.versions[at].preview };
+    } else {
+      b.versions = [...b.versions, version].sort((x, y) => x.n - y.n);
+      out.push({ key, type: "artifact_update", artifactId, title, version: n, runId: e.runId });
     }
+    b.title = title;
+    b.artifactType = kind;
+    if (saved) b.saved = saved;
+    return;
   }
-  out.push(next);
+  out.push({ key, type: "artifact", artifactId, artifactType: kind, title, path, versions: [version], saved, runId: e.runId });
 };
 
 export const error: Handler = (out, e, key) => {

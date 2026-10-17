@@ -3,6 +3,8 @@ import { useRef } from "react";
 import type { CollectMemoriesResponse, ModelOption } from "../gen/silo/v1/ui_pb";
 import type { Usage } from "../useRunStream";
 import { AttachmentChips, type Attachment } from "./AttachmentChips";
+import { QuoteChips } from "../quote/QuoteChips";
+import type { DraftQuote } from "../quote/model";
 import { DictationStrip } from "./DictationStrip";
 import { placeholderFor } from "./model";
 import { Notice } from "./Notice";
@@ -18,6 +20,8 @@ export interface ComposerProps {
   setText: (val: string | ((prev: string) => string)) => void;
   atts: Attachment[];
   onRemoveAtt: (path: string) => void;
+  quotes?: DraftQuote[];
+  onRemoveQuote?: (id: string) => void;
   attachErr?: string;
   onAttach: (files: FileList | null) => Promise<void> | void;
   onSend: () => void;
@@ -52,6 +56,8 @@ export function Composer({
   setText,
   atts,
   onRemoveAtt,
+  quotes = [],
+  onRemoveQuote,
   attachErr,
   onAttach,
   onSend,
@@ -79,7 +85,7 @@ export function Composer({
   const input = useComposerInput({
     textareaRef,
     text,
-    attCount: atts.length,
+    attCount: atts.length + quotes.length,
     ready,
     workerConnected,
     sending,
@@ -107,6 +113,8 @@ export function Composer({
               <span>{t("Drop files to attach to /workspace/tmp")}</span>
             </div>
           )}
+
+          {quotes.length > 0 && <QuoteChips quotes={quotes} onRemove={(id) => onRemoveQuote?.(id)} />}
 
           {atts.length > 0 && <AttachmentChips atts={atts} onRemove={onRemoveAtt} />}
 

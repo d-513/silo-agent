@@ -75,6 +75,10 @@ type worker struct {
 	histMu  sync.Mutex
 	// kernels are the persistent Python sessions exec_python runs in.
 	kernels kernels
+	// artifacts is the artifact store (artifacts.go), opened on first use;
+	// artMu makes its commands take turns.
+	artifacts *artifactStore
+	artMu     sync.Mutex
 }
 
 // screenDataURL reads the latest model-facing screenshot as a data: URL.
@@ -166,11 +170,20 @@ func (w *worker) run(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], cmd *
 		send(&v1.CmdEvent{Body: &v1.CmdEvent_Error{Error: &v1.CmdError{Message: validUTF8(err.Error())}}})
 		return
 	}
-	done := &v1.CmdDone{Result: validUTF8(w.mask.Apply(out))}
+	done := &v1.CmdDone{Result: w.cmdResult(cmd, out)}
 	if w.shotSeq.Load() != shots && cmdTakesShot(cmd) {
 		done.Image = w.screenDataURL()
 	}
 	send(&v1.CmdEvent{Body: &v1.CmdEvent_Done{Done: done}})
+}
+
+// cmdResult is what a command answers: masked, except an artifact read,
+// whose bytes the control plane hashes against the id it asked for.
+func (w *worker) cmdResult(cmd *v1.Cmd, out string) string {
+	if _, raw := cmd.GetBody().(*v1.Cmd_ArtifactRead); raw {
+		return out
+	}
+	return validUTF8(w.mask.Apply(out))
 }
 
 // cmdTakesShot reports whether a command can take a desktop look as a side
@@ -253,6 +266,12 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.changePatch(ctx, b.ChangePatch)
 	case *v1.Cmd_Restore:
 		return w.restore(ctx, b.Restore)
+	case *v1.Cmd_ArtifactPin:
+		return w.artifactPin(ctx, b.ArtifactPin)
+	case *v1.Cmd_ArtifactRead:
+		return w.artifactRead(b.ArtifactRead)
+	case *v1.Cmd_ArtifactForget:
+		return w.artifactForget(b.ArtifactForget)
 	case *v1.Cmd_Mkdir:
 		return w.mkdir(b.Mkdir.GetPath())
 	case *v1.Cmd_Remove:

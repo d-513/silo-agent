@@ -18,13 +18,22 @@ import (
 const tunnelTestHost = "tunnels.test"
 
 // tunnelHarness is a CP whose tunnels live under tunnels.test (plus any extra
-// YAML), so a request with Host <name>.tunnels.test reaches the proxy.
+// YAML), so a request with Host tunnel-<name>.tunnels.test reaches the proxy.
 func tunnelHarness(t *testing.T, extraYAML string) *apptest.H {
 	t.Helper()
 	dummy.Reset()
 	dir := t.TempDir()
 	return apptest.New(t, apptest.WithDataDir(dir),
-		apptest.WithYAML(apptest.DefaultYAML(dir)+"tunnels:\n  host: "+tunnelTestHost+"\n"+extraYAML), apptest.WithChatTools())
+		apptest.WithYAML(apptest.DefaultYAML(dir)+"content:\n  host: "+tunnelTestHost+"\n"+tunnelsYAML(extraYAML)), apptest.WithChatTools())
+}
+
+// tunnelsYAML is a tunnels: block holding extra, or nothing: an empty block
+// would null the defaults.
+func tunnelsYAML(extra string) string {
+	if extra == "" {
+		return ""
+	}
+	return "tunnels:\n" + extra
 }
 
 var nameRe = regexp.MustCompile(`^[a-z]+-[a-z]+-[a-z]+$`)
@@ -48,7 +57,7 @@ func tunnelList(t *testing.T, h *apptest.H, botID string) *v1.ListTunnelsRespons
 }
 
 func TestTunnelsListReportsStateAndDomain(t *testing.T) {
-	// No tunnels.host and no public_url to derive one from.
+	// No content.host and no public_url to derive one from.
 	dummy.Reset()
 	bare := apptest.New(t)
 	id := bare.CreateBot("Bare").GetId()
@@ -87,7 +96,7 @@ func TestTunnelCreateNamesAndUrls(t *testing.T) {
 	if tun.GetPort() != 8000 || tun.GetPublic() || tun.GetCreatedBy() != "owner" || tun.GetId() == "" {
 		t.Fatalf("tunnel = %+v", tun)
 	}
-	if want := "http://" + tun.GetName() + "." + tunnelTestHost; tun.GetUrl() != want {
+	if want := "http://tunnel-" + tun.GetName() + "." + tunnelTestHost; tun.GetUrl() != want {
 		t.Fatalf("url %q, want %q", tun.GetUrl(), want)
 	}
 	other := createTunnel(t, h, id, 8001, true)
@@ -190,13 +199,13 @@ func TestTunnelRPCsAreOwnerOnly(t *testing.T) {
 }
 
 // Rows keep only the name: the URL follows the configured domain, so changing
-// tunnels.host re-points every tunnel at once, with no restart.
+// content.host re-points every tunnel at once, with no restart.
 func TestTunnelURLFollowsTheConfiguredDomain(t *testing.T) {
 	// Settings edits need a silo.yaml to write.
 	dummy.Reset()
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "silo.yaml")
-	if err := os.WriteFile(cfgPath, []byte(apptest.DefaultYAML(dir)+"tunnels:\n  host: "+tunnelTestHost+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(cfgPath, []byte(apptest.DefaultYAML(dir)+"content:\n  host: "+tunnelTestHost+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithConfigPath(cfgPath))
@@ -204,21 +213,21 @@ func TestTunnelURLFollowsTheConfiguredDomain(t *testing.T) {
 	tun := createTunnel(t, h, id, 8000, false)
 
 	if _, err := h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{
-		Fields: map[string]string{"tunnels.host": "Other.Example.com", "tunnels.scheme": "https"},
+		Fields: map[string]string{"content.host": "Other.Example.com", "content.scheme": "https"},
 	})); err != nil {
 		t.Fatal(err)
 	}
 	got := tunnelList(t, h, id)
-	if got.GetHost() != "other.example.com" || got.GetTunnels()[0].GetUrl() != "https://"+tun.GetName()+".other.example.com" {
+	if got.GetHost() != "other.example.com" || got.GetTunnels()[0].GetUrl() != "https://tunnel-"+tun.GetName()+".other.example.com" {
 		t.Fatalf("after PutSettings: host=%q url=%q", got.GetHost(), got.GetTunnels()[0].GetUrl())
 	}
 	settings, err := h.Client.GetSettings(h.Ctx(), connect.NewRequest(&v1.GetSettingsRequest{}))
-	if err != nil || settings.Msg.GetTunnelsHost() != "other.example.com" {
-		t.Fatalf("Settings.tunnels_host = %q, %v", settings.Msg.GetTunnelsHost(), err)
+	if err != nil || settings.Msg.GetContentHost() != "other.example.com" {
+		t.Fatalf("Settings.content_host = %q, %v", settings.Msg.GetContentHost(), err)
 	}
 	// A bad suffix is refused and leaves the good one in place.
-	_, err = h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{Fields: map[string]string{"tunnels.host": "https://x.example.com"}}))
-	if code(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "tunnels.host") {
+	_, err = h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{Fields: map[string]string{"content.host": "https://x.example.com"}}))
+	if code(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "content.host") {
 		t.Fatalf("bad host: %v", err)
 	}
 	if tunnelList(t, h, id).GetHost() != "other.example.com" {

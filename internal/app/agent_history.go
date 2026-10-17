@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
@@ -30,17 +29,6 @@ func messageTimeStamp(t time.Time, zoneName string) string {
 // hold) and the newest message carries the current time where the human is.
 func stampUserText(text string, t time.Time, zoneName string) string {
 	return messageTimeStamp(t, zoneName) + text
-}
-
-func userTextWithAttachments(text string, atts []*v1.Attachment) string {
-	if len(atts) == 0 {
-		return text
-	}
-	paths := make([]string, 0, len(atts))
-	for _, at := range atts {
-		paths = append(paths, at.GetPath())
-	}
-	return text + "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
 }
 
 func (a *App) historyFromDB(chatID string) []llm.Message {
@@ -194,15 +182,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 			continue
 		case "user":
 			flushTools()
-			text := ev.Body
-			if atts := attachmentsFromMeta(ev.Meta); len(atts) > 0 {
-				paths := make([]string, 0, len(atts))
-				for _, at := range atts {
-					paths = append(paths, at.Path)
-				}
-				text += "\n\n[Attached files in the workspace: " + strings.Join(paths, ", ") + "]"
-			}
-			text = stampUserText(text, ev.CreatedAt, ev.Zone)
+			text := stampUserText(userTurnText(ev.Body, decodeUserMeta(ev.Meta)), ev.CreatedAt, ev.Zone)
 			if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
 			} else {

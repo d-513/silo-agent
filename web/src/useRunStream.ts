@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
 import { isTransient } from "./errors";
 import type { Ev } from "./fold";
+import { quoteFromProto } from "./quote/model";
 
 // window is the model's context size in tokens (0 when the server did not say).
 export type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number; window: number };
@@ -120,6 +121,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
                 at: Date.now(),
                 createdAt: ev.createdAt || undefined,
                 attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
+                quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
               });
             }
           }

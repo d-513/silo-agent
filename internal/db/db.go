@@ -100,13 +100,13 @@ type Bot struct {
 	TimeZonePinned bool   `gorm:"not null;default:false"`
 	// Language is what this Bot writes to people in: a language code or
 	// "mixed". Empty (a Bot from before languages) reads as mixed: lang.Bot.
-	Language    string `gorm:"not null;default:''"`
+	Language string `gorm:"not null;default:''"`
 	// OtherProtocols lets this Bot's box open connections that are not HTTP
 	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
 	OtherProtocols bool `gorm:"not null;default:false"`
 	// AuditUnseen counts lines the network filter or the output filter flagged
 	// for a human that the owner has not opened the Audit tab over yet.
-	AuditUnseen int `gorm:"not null;default:0"`
+	AuditUnseen int    `gorm:"not null;default:0"`
 	TokenHash   string `gorm:"uniqueIndex"`
 	ContainerID string
 	Status      string
@@ -652,6 +652,79 @@ type TunnelGrant struct {
 	ExpiresAt time.Time `gorm:"index"`
 }
 
+// Artifact is one card in a chat: what the Bot handed the human at a path.
+// Each emit of the same path in the same chat is a new ArtifactVersion of it.
+// Label names it on the content host (app-<label>, share links have their
+// own).
+type Artifact struct {
+	ID     string `gorm:"primaryKey"`
+	BotID  string `gorm:"index"`
+	ChatID string `gorm:"uniqueIndex:idx_artifact_chat_path,priority:1"`
+	Path   string `gorm:"uniqueIndex:idx_artifact_chat_path,priority:2"`
+	// Type is file, skill or app.
+	Type      string
+	Title     string
+	Label     string `gorm:"uniqueIndex"`
+	Latest    int    `gorm:"not null;default:0"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// ArtifactVersion is one emit of an artifact. Blob is its id in the Bot's
+// artifact store (the sha256 of the file, or of a folder's manifest); empty
+// when it was over the size caps and only the live file is there. Gone: the
+// store's budget evicted it.
+type ArtifactVersion struct {
+	ID         string `gorm:"primaryKey"`
+	ArtifactID string `gorm:"uniqueIndex:idx_artifact_version,priority:1"`
+	N          int    `gorm:"uniqueIndex:idx_artifact_version,priority:2"`
+	BotID      string `gorm:"index"`
+	RunID      string
+	// Kind is file or tree; Entry is an app's page within its tree.
+	Kind  string
+	Name  string
+	Size  int64
+	Blob  string `gorm:"index"`
+	Entry string
+	// Network: an app allowed to reach the internet (artifact.app_network).
+	Network bool `gorm:"not null;default:false"`
+	Gone    bool `gorm:"not null;default:false"`
+	// Preview is the card's JSON look: a text excerpt or a small image.
+	Preview   string
+	CreatedAt time.Time
+}
+
+// ArtifactShare is an owner's public link to one version: a copy of its bytes
+// on the control plane (data/shares/<id>), served at share-<label> with no
+// sign-in, so it works while the Bot is stopped.
+type ArtifactShare struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index"`
+	ArtifactID string `gorm:"index"`
+	VersionID  string
+	Label      string `gorm:"uniqueIndex"`
+	Title      string
+	Type       string
+	Kind       string
+	Name       string
+	Entry      string
+	Network    bool `gorm:"not null;default:false"`
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+}
+
+// ArtifactView is the owner's pass to one app version on the content host:
+// the token is in the app's path (its hash is the id), bound to the Silo
+// session that opened it like a tunnel grant, so signing out ends it.
+type ArtifactView struct {
+	ID        string `gorm:"primaryKey"`
+	VersionID string
+	BotID     string `gorm:"index"`
+	UserID    string
+	SessionID string    `gorm:"index"`
+	ExpiresAt time.Time `gorm:"index"`
+}
+
 // Mailbox is a Bot's receive-only address: Name is the part before the @ of
 // mail.domain, so a change of the domain moves every address at once. One per
 // Bot, made the first time it is needed.
@@ -713,6 +786,7 @@ func Models() []any {
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
+		&Artifact{}, &ArtifactVersion{}, &ArtifactShare{}, &ArtifactView{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},
 		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{}, &EgressPattern{}, &EgressFeedState{},
 	}

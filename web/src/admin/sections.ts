@@ -10,7 +10,7 @@ export const SECTIONS = [
   { id: "runs", label: msg("Context & runs") },
   { id: "rules", label: msg("Rules") },
   { id: "connectors", label: msg("Connector options") },
-  { id: "tunnels", label: msg("Tunnels") },
+  { id: "tunnels", label: msg("Tunnels & apps") },
   { id: "mail", label: msg("Mail") },
   { id: "network", label: msg("Network") },
   { id: "signin", label: msg("Sign-in") },

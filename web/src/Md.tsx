@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useMdModules } from "./mdPlugins";
 import { classNames, isDisplayMath, mathTex, normalizeLatex, rehypeMathCopy, type HastNode } from "./latex";
+import Mermaid from "./previewers/Mermaid";
 import { t } from "./i18n.ts";
 
 function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode }) {
@@ -99,6 +100,18 @@ function rehypeChunks(bounds: number[]) {
   };
 }
 
+function hastText(n?: HastNode): string {
+  if (!n) return "";
+  if (n.type === "text") return n.value ?? "";
+  return (n.children ?? []).map(hastText).join("");
+}
+
+function mermaidSource(node?: HastNode): string | null {
+  const code = node?.children?.find((c) => c.type === "element" && c.tagName === "code");
+  if (!code || !classNames(code.properties).includes("language-mermaid")) return null;
+  return hastText(code).trim();
+}
+
 // Module-level on purpose: a fresh object each render gives React new component
 // types, which remounts every span in the reply (and replays its fade) per token.
 const mdComponents: NonNullable<Parameters<typeof Markdown>[0]["components"]> = {
@@ -107,6 +120,11 @@ const mdComponents: NonNullable<Parameters<typeof Markdown>[0]["components"]> = 
       <table>{children}</table>
     </div>
   ),
+  pre: ({ node, children, ...rest }) => {
+    const mmd = mermaidSource(node);
+    if (mmd) return <Mermaid source={mmd} />;
+    return <pre {...rest}>{children}</pre>;
+  },
   span: ({ node, children, ...rest }) => {
     if (classNames(node?.properties).includes("silo-math")) {
       return <MathCopy node={node}>{children}</MathCopy>;
@@ -135,4 +153,3 @@ export function Md({ text, bounds }: { text: string; bounds?: number[] }) {
     </div>
   );
 }
-

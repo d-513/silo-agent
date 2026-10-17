@@ -51,29 +51,18 @@ type proxyState struct {
 	used    map[string]time.Time
 }
 
-// Route sends a request for <name>.<tunnels.host> to the tunnel and passes
-// everything else on. It matches nothing while tunnels are off or have no
-// domain, so the domain then belongs to whatever else answers it.
-func (s *Service) Route(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if name, ok := s.cfg().TunnelNameFromHost(r.Host); ok {
-			s.serve(w, r, name)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Service) serve(w http.ResponseWriter, r *http.Request, name string) {
+// Serve answers a request for tunnel-<name>.<content.host>: the content
+// router hands it here while tunnels are on.
+func (s *Service) Serve(w http.ResponseWriter, r *http.Request, name string) {
 	t, err := s.ByName(name)
 	if err != nil {
 		log.Printf("tunnel %s: lookup: %v", name, err)
-		page(w, http.StatusInternalServerError, "Something went wrong", "The control plane could not look this tunnel up.")
+		Page(w, http.StatusInternalServerError, "Something went wrong", "The control plane could not look this tunnel up.")
 		return
 	}
 	// A disabled user's tunnels are closed to everyone, public ones included.
 	if t == nil || s.ownerDisabled(t) {
-		page(w, http.StatusNotFound, "No tunnel here", "There is no tunnel with this name. It may have been deleted.")
+		Page(w, http.StatusNotFound, "No tunnel here", "There is no tunnel with this name. It may have been deleted.")
 		return
 	}
 	if r.URL.Path == authPath {
@@ -85,7 +74,7 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, name string) {
 		return
 	}
 	if s.hub.Get(t.BotID) == nil {
-		page(w, http.StatusServiceUnavailable, "The Bot is offline", "This Bot's machine is not running, so nothing can answer. Start the Bot in Silo and reload.")
+		Page(w, http.StatusServiceUnavailable, "The Bot is offline", "This Bot's machine is not running, so nothing can answer. Start the Bot in Silo and reload.")
 		return
 	}
 	s.touch(t)
@@ -127,7 +116,7 @@ func (s *Service) askToSignIn(w http.ResponseWriter, r *http.Request, t *db.Tunn
 		return
 	}
 	if pub == "" {
-		page(w, http.StatusUnauthorized, "This tunnel is private", "Sign in to Silo, then open this address again. (The operator has not set public_url, so Silo cannot send you there automatically.)")
+		Page(w, http.StatusUnauthorized, "This tunnel is private", "Sign in to Silo, then open this address again. (The operator has not set public_url, so Silo cannot send you there automatically.)")
 		return
 	}
 	q := url.Values{"name": {t.Name}, "rd": {r.URL.RequestURI()}}
@@ -148,12 +137,12 @@ func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("tunnel auth: session lookup: %v", err)
-		page(w, http.StatusServiceUnavailable, "Try again", "Silo could not check your session just now.")
+		Page(w, http.StatusServiceUnavailable, "Try again", "Silo could not check your session just now.")
 		return
 	}
 	t, err := s.ByName(r.URL.Query().Get("name"))
 	if err != nil || t == nil || !s.owns(u.ID, t) || s.usable() != nil {
-		page(w, http.StatusNotFound, "No such tunnel", "This tunnel does not exist, or it is not on one of your Bots.")
+		Page(w, http.StatusNotFound, "No such tunnel", "This tunnel does not exist, or it is not on one of your Bots.")
 		return
 	}
 	tk := s.mintTicket(t.ID, u.ID, sess.ID)
@@ -177,7 +166,7 @@ func (s *Service) owns(userID string, t *db.Tunnel) bool {
 func (s *Service) redeem(w http.ResponseWriter, r *http.Request, t *db.Tunnel) {
 	tk, ok := s.takeTicket(r.URL.Query().Get("ticket"))
 	if !ok || tk.tunnelID != t.ID {
-		page(w, http.StatusForbidden, "Link expired", "This sign-in link is no longer valid. Open the tunnel from Silo again.")
+		Page(w, http.StatusForbidden, "Link expired", "This sign-in link is no longer valid. Open the tunnel from Silo again.")
 		return
 	}
 	raw := make([]byte, 32)
@@ -195,7 +184,7 @@ func (s *Service) redeem(w http.ResponseWriter, r *http.Request, t *db.Tunnel) {
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: cookieName, Value: value, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		Secure: s.cfg().TunnelScheme() == "https", Expires: now.Add(grantTTL),
+		Secure: s.cfg().ContentScheme() == "https", Expires: now.Add(grantTTL),
 	})
 	http.Redirect(w, r, access.SafeReturn(r.URL.Query().Get("rd")), http.StatusFound)
 }
@@ -273,7 +262,7 @@ func (s *Service) reverseProxy() *httputil.ReverseProxy {
 				pr.Out.URL.Host = t.ID + dialHostTLD
 				pr.Out.Host = pr.In.Host // dev servers check Host; keep the one the browser used
 				pr.SetXForwarded()
-				pr.Out.Header.Set("X-Forwarded-Proto", s.cfg().TunnelScheme())
+				pr.Out.Header.Set("X-Forwarded-Proto", s.cfg().ContentScheme())
 				stripCookie(pr.Out.Header, cookieName)
 			},
 			ErrorHandler: s.proxyError,
@@ -304,15 +293,15 @@ func (s *Service) proxyError(w http.ResponseWriter, r *http.Request, err error) 
 	case errors.Is(err, context.Canceled):
 		// The browser went away; there is nobody to tell.
 	case errors.Is(err, hub.ErrNoWorker), errors.Is(err, hub.ErrClosed):
-		page(w, http.StatusServiceUnavailable, "The Bot is offline", "This Bot's machine stopped while the request was open. Start the Bot in Silo and reload.")
+		Page(w, http.StatusServiceUnavailable, "The Bot is offline", "This Bot's machine stopped while the request was open. Start the Bot in Silo and reload.")
 	case errors.Is(err, hub.ErrTunnelTimeout):
-		page(w, http.StatusGatewayTimeout, "The Bot did not answer", "The Bot's machine did not respond in time. Try again in a moment.")
+		Page(w, http.StatusGatewayTimeout, "The Bot did not answer", "The Bot's machine did not respond in time. Try again in a moment.")
 	default:
 		port := 0
 		if t != nil {
 			port = t.Port
 		}
-		page(w, http.StatusBadGateway, fmt.Sprintf("Nothing is answering on port %d", port),
+		Page(w, http.StatusBadGateway, fmt.Sprintf("Nothing is answering on port %d", port),
 			fmt.Sprintf("The Bot's machine is running, but port %d did not accept the connection (%s). Start the service, and make it listen on 127.0.0.1 or 0.0.0.0.", port, err))
 	}
 }
@@ -336,8 +325,9 @@ func stripCookie(h http.Header, name string) {
 	}
 }
 
-// page writes a small self-contained HTML message in the status's place.
-func page(w http.ResponseWriter, status int, title, msg string) {
+// Page writes a small self-contained HTML message in the status's place: what
+// every content-host error looks like.
+func Page(w http.ResponseWriter, status int, title, msg string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)

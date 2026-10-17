@@ -23,7 +23,7 @@ export function parsePort(raw: string): { port: number } | { error: string } {
 // The ListTunnels state, as words. admin says whether to offer the settings link.
 export function tunnelNotice(state: string, isAdmin: boolean): { text: string; admin: boolean } | null {
   if (state === "off") return { text: t("Tunnels are turned off by the operator (tunnels.enabled)."), admin: isAdmin };
-  if (state === "no_host") return { text: t("Tunnels need a domain: the operator sets tunnels.host, the suffix tunnels are served under."), admin: isAdmin };
+  if (state === "no_host") return { text: t("Tunnels need a domain: the operator sets content.host, the suffix tunnels are served under."), admin: isAdmin };
   return null;
 }
 

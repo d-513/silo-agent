@@ -296,7 +296,7 @@ func outputApplies(conn, action string) bool {
 	switch {
 	case conn == security.Secrets, conn == security.Channels:
 		return false
-	case conn == security.Tunnels && action == "public":
+	case conn == security.Tunnels && action == "public", conn == security.Artifact && action == "app_network":
 		return false
 	}
 	return true

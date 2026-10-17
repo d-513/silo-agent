@@ -17,8 +17,9 @@ export const LABELS: Record<string, string> = {
   "knowledge.sync_interval": msg("Re-check folders every"),
   "knowledge.ocr": msg("Read scans and images (OCR)"),
   "tunnels.enabled": msg("Tunnels"),
-  "tunnels.host": msg("Domain suffix"),
-  "tunnels.scheme": msg("Link scheme"),
+  "content.host": msg("Domain suffix"),
+  "content.scheme": msg("Link scheme"),
+  "artifacts.max_mb": msg("Artifact store per Bot (MB)"),
   "mail.enabled": msg("Mail"),
   "mail.domain": msg("Mail domain"),
   "mail.addr": msg("SMTP listen address"),
@@ -85,8 +86,9 @@ export const HINTS: Record<string, string> = {
   embedding_model: msg("For long-term memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
   "knowledge.sync_interval": msg("A Go duration such as 15m or 1h (minimum 1m)."),
   "knowledge.ocr": msg("Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those."),
-  "tunnels.host": msg("A tunnel is served at <name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port."),
-  "tunnels.scheme": msg("http or https. Leave empty to follow the Public URL; set it when TLS ends at a proxy and the Public URL is an internal address."),
+  "content.host": msg("Tunnels, live apps and public links are served at <kind>-<name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port."),
+  "content.scheme": msg("http or https. Leave empty to follow the Public URL; set it when TLS ends at a proxy and the Public URL is an internal address."),
+  "artifacts.max_mb": msg("Every version of what a Bot hands over is kept on its machine; past this the oldest versions go. 1 to 102400."),
   "mail.domain":
     msg("Every Bot's address is <name>@<this domain>. Point the domain's MX record at this server; until one does, nothing arrives. Changing it moves every address at once."),
   "mail.addr":
@@ -126,8 +128,8 @@ export const HINTS: Record<string, string> = {
 export const PLACEHOLDERS: Record<string, string> = {
   embedding_model: "openrouter/openai/text-embedding-3-small",
   transcribe_model: "openrouter/openai/whisper-1",
-  "tunnels.host": "tunnels.example.com",
-  "tunnels.scheme": msg("follows Public URL"),
+  "content.host": "content.example.com",
+  "content.scheme": msg("follows Public URL"),
   "mail.domain": "bots.example.com",
   "mail.addr": ":2525",
   "mail.tls_cert": "self-signed",
@@ -160,8 +162,14 @@ export const MEMORY_NOTE =
 export const KNOWLEDGE_NOTE =
   msg("Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.");
 
+export const CONTENT_NOTE =
+  msg("What Bots make is served on a domain of its own, never the console's: tunnels into a Bot's machine at tunnel-<name>, live app artifacts at app-<name>, and public links at share-<name>. Changing the suffix moves all of them at once; private tunnels and apps ask their owner to sign in again.");
+
 export const TUNNELS_NOTE =
-  msg("Tunnels give the owner addresses for services running on a Bot's machine, served by this control plane at <name>.<domain suffix>. Changing the suffix moves every existing tunnel at once; private tunnels ask their owner to sign in again.");
+  msg("Tunnels give the owner addresses for services running on a Bot's machine, at tunnel-<name>.<domain suffix>.");
+
+export const ARTIFACTS_NOTE =
+  msg("Each artifact a Bot hands over is pinned as it was, on the Bot's own disk beside the workspace, so a card never changes under the human. Deleting a chat forgets its artifacts.");
 
 export const MAIL_NOTE =
   msg("Gives every Bot a receive-only address. The control plane runs its own small SMTP listener and files what arrives in the Bot's inbox, where the Bot reads it with list_mail and read_mail. Nothing is ever sent, so there is no relay or sender reputation to look after. On as soon as a domain is set; changes here apply within a few seconds, without a restart.");
@@ -185,6 +193,8 @@ export function groupOf(key: string) {
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("tunnels.")) return "tunnels";
+  if (key.startsWith("content.")) return "content";
+  if (key.startsWith("artifacts.")) return "artifacts";
   if (key.startsWith("mail.")) return "mail";
   if (key.startsWith("context.")) return "context";
   if (key.startsWith("runs.")) return "runs";

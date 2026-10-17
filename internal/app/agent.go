@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/run"
@@ -26,7 +25,7 @@ import (
 // stamps the message with the time and zone replay will stamp it with.
 type inboxMsg struct {
 	text string
-	atts []*v1.Attachment
+	ex   run.Extra
 	id   string
 	at   time.Time
 	zone string
@@ -113,7 +112,7 @@ func (a *App) LiveRunID(botID, chatID string) string {
 // inject hands a new user message to a live run for a conversation, so it is
 // seen on the model's next turn instead of starting a parallel run. It reports
 // whether the message was queued.
-func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment, from string) bool {
+func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from string) bool {
 	a.mu.Lock()
 	lr := a.runs[runID]
 	a.mu.Unlock()
@@ -124,8 +123,8 @@ func (a *App) inject(botID, chatID, runID, text string, atts []*v1.Attachment, f
 	defer lr.injecting.Unlock()
 	id, at, zn := ids.New(), time.Now(), a.botZone(botID)
 	select {
-	case lr.inbox <- inboxMsg{text: text, atts: atts, id: id, at: at, zone: zn}:
-		a.emitUserAt(botID, chatID, runID, id, at, zn, text, atts, from)
+	case lr.inbox <- inboxMsg{text: text, ex: ex, id: id, at: at, zone: zn}:
+		a.emitUserAt(botID, chatID, runID, id, at, zn, text, ex, from)
 		a.dbSaveBotWorking(botID, text)
 		lr.signal("message")
 		return true
@@ -155,7 +154,7 @@ func (a *App) drainInbox(lr *liveRun, msgs []llm.Message) []llm.Message {
 	lr.injecting.Unlock()
 	for _, m := range got {
 		a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
-		text := userTextWithAttachments(a.kept(lr.botID, m.text), m.atts)
+		text := userTurnText(a.kept(lr.botID, m.text), a.userMeta(lr.botID, m.ex))
 		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, m.at, m.zone)})
 	}
 	return msgs
@@ -272,7 +271,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 }
 
 func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done chan struct{}) {
-	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Atts, req.Origin
+	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Extra.Files, req.Origin
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
 	defer cancel()
 	lr := a.trackRun(botID, chatID, runID, cancel, inbox, done)
@@ -299,7 +298,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		a.emitReport(botID, chatID, runID, req.Report)
 		a.bumpChat(chatID)
 	case !req.Compact:
-		a.emitUser(botID, chatID, runID, userText, atts, req.From)
+		a.emitUser(botID, chatID, runID, userText, req.Extra, req.From)
 		a.bumpChat(chatID)
 		title := userText
 		if strings.TrimSpace(title) == "" && len(atts) > 0 {
@@ -607,19 +606,19 @@ func (a *App) finish(botID, chatID, runID, st string) {
 
 // StartOrInject serializes the decision to either steer a live run or start a
 // new one. This is the single entry point for chats and channels.
-func (a *App) StartOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
+func (a *App) StartOrInject(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	return a.startOrInjectLocked(botID, chatID, text, atts, origin)
+	return a.startOrInjectLocked(botID, chatID, text, ex, origin)
 }
 
 // startOrInjectLocked is startOrInject with convMu already held, so callers can
 // truncate history and start the replacement run atomically.
-func (a *App) startOrInjectLocked(botID, chatID, text string, atts []*v1.Attachment, origin *run.Origin) (string, error) {
+func (a *App) startOrInjectLocked(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error) {
 	if runID := a.LiveRunID(botID, chatID); runID != "" {
-		if a.inject(botID, chatID, runID, text, atts, "") {
+		if a.inject(botID, chatID, runID, text, ex, "") {
 			return runID, nil
 		}
 	}
-	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Atts: atts, Origin: origin})
+	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Extra: ex, Origin: origin})
 }

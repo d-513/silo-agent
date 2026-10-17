@@ -238,7 +238,7 @@ func TestPythonTunnelPaths(t *testing.T) {
 	if err := json.Unmarshal([]byte(res.GetResultJson()), &opened); err != nil {
 		t.Fatalf("open json %q: %v", res.GetResultJson(), err)
 	}
-	if opened.Port != 8000 || !opened.Public || !opened.Created || opened.URL != "http://"+opened.Name+"."+tunnelTestHost {
+	if opened.Port != 8000 || !opened.Public || !opened.Created || opened.URL != "http://tunnel-"+opened.Name+"."+tunnelTestHost {
 		t.Fatalf("opened = %+v", opened)
 	}
 	again := pyCall(t, h, id, "", "tunnels", "open", `{"port":8000}`)

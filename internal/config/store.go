@@ -50,6 +50,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("changes.enabled", true)
 	_ = k.Set("changes.max_file_mb", DefaultChangesFileMB)
 	_ = k.Set("changes.keep_days", DefaultChangesKeepDays)
+	_ = k.Set("artifacts.max_mb", DefaultArtifactsMB)
 	_ = k.Set("filter.enabled", true)
 	_ = k.Set("filter.max_chars", DefaultFilterMaxChars)
 	_ = k.Set("context.window", DefaultContextWindow)
@@ -351,7 +352,10 @@ func validateYAML(raw []byte) error {
 	if e := strings.TrimSpace(k.String("search.engine")); e != "" && !search.Known(e) {
 		return fmt.Errorf("unknown search engine %q", e)
 	}
-	if err := validateTunnels(k.String("tunnels.host"), k.String("tunnels.scheme"), k.String("public_url")); err != nil {
+	if err := validateContent(k.String("content.host"), k.String("content.scheme"), k.String("public_url")); err != nil {
+		return err
+	}
+	if err := validateArtifacts(k); err != nil {
 		return err
 	}
 	if err := validateChanges(k); err != nil {

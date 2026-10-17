@@ -27,7 +27,7 @@ bad("9222", "Chromium");
 // only sends admins to the settings page.
 eq(tunnelNotice("ok", false), null, "ok has no notice");
 eq(tunnelNotice("off", false)?.admin, false, "off for a member");
-eq(tunnelNotice("no_host", false)?.text.includes("tunnels.host"), true, "no_host names the key");
+eq(tunnelNotice("no_host", false)?.text.includes("content.host"), true, "no_host names the key");
 eq(tunnelNotice("no_host", true)?.admin, true, "no_host links admins to settings");
 eq(tunnelNotice("off", true)?.text.includes("tunnels.enabled"), true, "off names the switch");
 eq(tunnelNotice("", true), null, "unknown state is not a notice");

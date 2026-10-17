@@ -1,7 +1,7 @@
 import type { AgentLink } from "../links";
 import type { ReactNode } from "react";
-import { ArtifactCard, downloadArtifact, type Artifact } from "../Artifact";
-import type { Attachment, Block } from "../fold";
+import { ArtifactCard, ArtifactUpdateRow, type Artifact } from "../Artifact";
+import type { Attachment, Block, Quote } from "../fold";
 import { Compaction, Receipt, Thinking } from "./ActivityRows";
 import { FeedQuote, LeadNote, Reply, RunMark, SubagentReport, UserBubble } from "./Bubbles";
 import { rowState, rowVerb } from "./FoldRow";
@@ -26,7 +26,7 @@ export type BlockCtx = {
   agentHref?: (name: string) => AgentLink | undefined;
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
-  onEditMessage?: (eventId: string, text: string, attachments?: Attachment[]) => void;
+  onEditMessage?: (eventId: string, text: string, attachments?: Attachment[], quotes?: Quote[]) => void;
   onDeleteMessage?: (eventId: string) => void;
   onDivergeChat?: (eventId: string) => void;
 };
@@ -37,13 +37,12 @@ type ToolBlock = Extract<Block, { type: "tool" }>;
 // with the connector calls it made stacked above it.
 function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
   const { blocks, sending, botId, marks } = c;
-  if (b.name === "artifact" && blocks.some((x) => x.type === "artifact" && (!x.runId || !b.runId || x.runId === b.runId))) {
-    return null;
-  }
   const state = rowState(b);
   const live = sending && !!b.running;
   const path = asStr(parseToolArgs(b.args).path);
   const failed = !b.running && b.result?.startsWith("error:");
+  // An artifact call that worked is its card: the row would only repeat it.
+  if (b.name === "artifact" && !failed && path && cardFor(blocks, path, b.runId)) return null;
   if (b.name === "look" || (b.name === "present" && path && isBotScratch(path))) {
     const what = b.name === "look" ? t("screen") : path.split("/").filter(Boolean).pop() || path;
     return (
@@ -100,6 +99,18 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
   );
 }
 
+const cleanPath = (p: string) => p.replace(/^\/+/, "").replace(/^(workspace\/)+/, "").replace(/\/+$/, "");
+
+// cardFor is the artifact card (or update row) a run made for path.
+function cardFor(blocks: Block[], path: string, runId?: string) {
+  const want = cleanPath(path);
+  return blocks.some(
+    (x) =>
+      (x.type === "artifact" && cleanPath(x.path) === want && x.versions.some((v) => !runId || !v.runId || v.runId === runId)) ||
+      (x.type === "artifact_update" && (!runId || !x.runId || x.runId === runId) && blocks.some((y) => y.type === "artifact" && y.artifactId === x.artifactId && cleanPath(y.path) === want)),
+  );
+}
+
 // renderBlock turns one folded block into its row, bubble or card.
 export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "user" && c.userAs === "run") {
@@ -115,10 +126,11 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
       <UserBubble
         text={b.text}
         attachments={b.attachments}
+        quotes={b.quotes}
         isLast={b.key === c.lastUserKey}
         busy={c.sending}
         fresh={!!id && !!c.fresh?.has(id)}
-        onEdit={onEditMessage && id ? (t, a) => onEditMessage(id, t, a) : undefined}
+        onEdit={onEditMessage && id ? (t, a, q) => onEditMessage(id, t, a, q) : undefined}
         onDelete={onDeleteMessage && id ? () => onDeleteMessage(id) : undefined}
         onDiverge={onDivergeChat && id ? () => onDivergeChat(id) : undefined}
       />
@@ -133,25 +145,19 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && c.sending} />;
   if (b.type === "tool") return renderTool(b, c);
   if (b.type === "artifact") {
-    const a: Artifact = {
-      type: b.artifactType === "file" ? "file" : "skill",
-      name: b.name,
-      title: b.title,
-      path: b.path,
-      scope: b.scope,
-      approvalId: b.approvalId,
-      status: b.status,
-      size: b.size,
-      runId: b.runId,
-    };
+    const newestApp = [...c.blocks].reverse().find((x) => x.type === "artifact" && x.artifactType === "app");
     return (
       <ArtifactCard
-        artifact={a}
-        onOpen={() => c.onInspectArtifact?.(a)}
-        onSave={a.status === "pending" ? () => c.onSaveSkill?.(a) : undefined}
-        onDownload={() => void downloadArtifact(c.botId, a)}
+        botId={c.botId}
+        block={b}
+        autoRun={newestApp?.key === b.key}
+        onOpen={(a) => c.onInspectArtifact?.(a)}
+        onSave={c.onSaveSkill ? (a) => c.onSaveSkill?.(a) : undefined}
       />
     );
+  }
+  if (b.type === "artifact_update") {
+    return <ArtifactUpdateRow title={b.title} version={b.version} />;
   }
   if (b.type === "assistant") {
     return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} />;

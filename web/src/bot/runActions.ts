@@ -6,6 +6,7 @@ import { reload, reloadBot } from "../query";
 import { deviceZone } from "../zones";
 import { putChat } from "./useChatList";
 import type { ComposerDraft } from "./useComposerDraft";
+import { quoteToProto, type Quote } from "../quote/model";
 
 // The model and thinking level chosen for a chat that does not exist yet.
 export type ChatPick = { model: string; thinking: string };
@@ -33,8 +34,8 @@ export function runActions(c: Ctx) {
 
   async function send(e?: FormEvent) {
     e?.preventDefault();
-    const { text, atts } = draft;
-    if (!text.trim() && atts.length === 0) return;
+    const { text, atts, quotes } = draft;
+    if (!text.trim() && atts.length === 0 && quotes.length === 0) return;
     const msg = text.trim();
     draft.setText("");
     run.markSent();
@@ -49,10 +50,12 @@ export function runActions(c: Ctx) {
         thinking: fresh ? c.pick.thinking : "",
         text: msg,
         attachments: atts.map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+        quotes: quotes.map(quoteToProto),
         // Where the human is now: an unpinned Bot follows it.
         timeZone: deviceZone(),
       });
       draft.setAtts([]);
+      draft.setQuotes([]);
       reloadBot(id);
       // The new chat is in the list before its page opens, so the sidebar
       // lights it and the composer shows its model.
@@ -66,7 +69,7 @@ export function runActions(c: Ctx) {
     }
   }
 
-  async function editMessage(eventId: string, text: string, attachments?: { name: string; path: string; size: number }[]) {
+  async function editMessage(eventId: string, text: string, attachments?: { name: string; path: string; size: number }[], quotes?: Quote[]) {
     if (!chatId) return;
     onError("");
     try {
@@ -76,6 +79,7 @@ export function runActions(c: Ctx) {
         eventId,
         text,
         attachments: (attachments ?? []).map((a) => ({ name: a.name, path: a.path, size: BigInt(a.size), mime: "" })),
+        quotes: (quotes ?? []).map(quoteToProto),
         timeZone: deviceZone(),
       });
       run.resync();

@@ -31,21 +31,32 @@ if (py.calls[0].title !== "Twilio Docs · retrieve" || py.calls[0].running) thro
 
 const arts = foldEvents([
   ev("tool", '{"path":"bot/demo"}', "artifact"),
-  { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "workspace", approval_id: "a1", status: "pending" }), tool: "" },
-  { kind: "artifact", body: JSON.stringify({ type: "skill", name: "demo", title: "demo", path: "bot/demo", scope: "personal", approval_id: "a1", status: "saved" }), tool: "" },
+  { kind: "artifact", body: JSON.stringify({ type: "skill", artifact_id: "a1", version: 1, name: "demo", title: "demo", path: "bot/demo", status: "pending", pinned: true }), tool: "" },
+  { kind: "artifact", body: JSON.stringify({ type: "skill", artifact_id: "a1", version: 1, name: "demo", title: "demo", path: "bot/demo", status: "saved", pinned: true }), tool: "" },
 ]);
 const art = arts.filter((b) => b.type === "artifact");
-if (art.length !== 1 || art[0].type !== "artifact" || art[0].artifactType !== "skill" || art[0].status !== "saved" || art[0].approvalId !== "a1") {
+if (art.length !== 1 || art[0].type !== "artifact" || art[0].artifactType !== "skill" || art[0].saved !== 1 || art[0].versions.length !== 1) {
   throw new Error("artifact fold");
 }
+if (arts.some((b) => b.type === "artifact_update")) throw new Error("saving a skill is not a new version");
 
-const files = foldEvents([
-  { kind: "artifact", body: JSON.stringify({ type: "file", name: "q3.pdf", title: "Q3 report", path: "reports/q3.pdf", scope: "workspace", status: "ready", size: 2048 }), tool: "" },
+// Emitting the same path again is the next version of the one card, and a row
+// marks where it happened.
+const versions = foldEvents([
+  { kind: "artifact", body: JSON.stringify({ type: "file", artifact_id: "f1", version: 1, name: "q3.pdf", title: "Q3 report", path: "reports/q3.pdf", size: 2048, pinned: true, preview: { image: "data:image/jpeg;base64,AA" } }), tool: "" },
+  ev("assistant", "here it is"),
+  { kind: "artifact", body: JSON.stringify({ type: "file", artifact_id: "f1", version: 2, name: "q3.pdf", title: "Q3 report v2", path: "reports/q3.pdf", size: 4096, pinned: true }), tool: "" },
 ]);
-const file = files.filter((b) => b.type === "artifact");
-if (file.length !== 1 || file[0].type !== "artifact" || file[0].artifactType !== "file" || file[0].size !== 2048) {
-  throw new Error("file artifact fold");
+const card = versions[0];
+if (card.type !== "artifact" || card.versions.length !== 2 || card.versions[1].size !== 4096 || card.title !== "Q3 report v2" || card.versions[0].preview?.image === undefined) {
+  throw new Error("file versions fold");
 }
+const upd = versions[versions.length - 1];
+if (upd.type !== "artifact_update" || upd.version !== 2 || upd.artifactId !== "f1") throw new Error("update row");
+
+// A quote rides on the user block.
+const quoted = foldEvents([{ kind: "user", body: "why?", tool: "", quotes: [{ source: "message", ref: "reply", label: "", text: "because", locator: "" }] }]);
+if (quoted[0].type !== "user" || quoted[0].quotes?.[0].text !== "because") throw new Error("quote fold");
 
 console.log("ok");
 

@@ -4,7 +4,9 @@ import { Link } from "@tanstack/react-router";
 import type { AgentLink } from "../links";
 import { Btn } from "../Btn";
 import { CopyButton, useArmed } from "../Feedback";
-import type { Attachment } from "../fold";
+import type { Attachment, Quote } from "../fold";
+import { Quotable } from "../quote/Quotable";
+import { QuoteList } from "../quote/QuoteList";
 import { fmtBytes, fullTime, runWhen } from "../format";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
@@ -16,6 +18,7 @@ const miniBtn =
 export function UserBubble({
   text,
   attachments,
+  quotes,
   isLast,
   busy,
   fresh,
@@ -25,10 +28,11 @@ export function UserBubble({
 }: {
   text: string;
   attachments?: Attachment[];
+  quotes?: Quote[];
   isLast?: boolean;
   busy?: boolean;
   fresh?: boolean;
-  onEdit?: (text: string, attachments?: Attachment[]) => void;
+  onEdit?: (text: string, attachments?: Attachment[], quotes?: Quote[]) => void;
   onDelete?: () => void;
   onDiverge?: () => void;
 }) {
@@ -43,12 +47,12 @@ export function UserBubble({
 
   const saveEdit = () => {
     const next = draft.trim();
-    if ((!next && !attachments?.length) || next === text) {
+    if ((!next && !attachments?.length && !quotes?.length) || next === text) {
       setEditing(false);
       return;
     }
     setEditing(false);
-    onEdit?.(next, attachments);
+    onEdit?.(next, attachments, quotes);
   };
 
   if (editing) {
@@ -85,7 +89,10 @@ export function UserBubble({
   return (
     <div className={`group flex w-full flex-col items-end gap-1 ${fresh ? "glide" : ""}`}>
       <div className="min-w-0 max-w-[88%] rounded-bubble rounded-br-[6px] bg-well px-4 py-2.5 text-ink sm:max-w-[80%]">
-        <div className="whitespace-pre-wrap break-words text-[15px] leading-6 select-text">{text}</div>
+        {quotes?.length ? <QuoteList quotes={quotes} /> : null}
+        <Quotable target={{ source: "message", ref: "own", label: "" }}>
+          <div className="whitespace-pre-wrap break-words text-[15px] leading-6 select-text">{text}</div>
+        </Quotable>
         {attachments?.length ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {attachments.map((a) => (
@@ -221,10 +228,10 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
 export function Reply({ text, bounds, streaming, onRetry }: { text: string; bounds?: number[]; streaming?: boolean; onRetry?: () => void }) {
   return (
     <div className="group/reply min-w-0">
-      <div className={`silo-reply ${streaming ? "silo-live" : ""}`}>
+      <Quotable target={{ source: "message", ref: "reply", label: "" }} className={`silo-reply ${streaming ? "silo-live" : ""}`}>
         <Md text={text} bounds={streaming ? bounds : undefined} />
         {streaming && !text ? <span className="breathe inline-block h-[7px] w-[7px] rounded-full bg-ink" /> : null}
-      </div>
+      </Quotable>
       {!streaming ? (
         <div className="mt-1 -ml-1.5 flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within/reply:translate-y-0 group-focus-within/reply:opacity-100 group-hover/reply:translate-y-0 group-hover/reply:opacity-100">
           <CopyButton text={text} title={t("Copy reply")} />

@@ -12,7 +12,7 @@ import { NetworkSettings } from "./NetworkSettings";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
 import { OidcSettings } from "./OidcSettings";
-import { AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { ARTIFACTS_NOTE, AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
@@ -42,6 +42,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
       <Group title={t("Context")} note={t(CONTEXT_NOTE)} id="context" />
       <Group title={t("Runs")} note={t(RUNS_NOTE)} id="runs" />
       <Group title={t("Workspace changes")} note={t(CHANGES_NOTE)} id="changes" />
+      <Group title={t("Artifacts")} note={t(ARTIFACTS_NOTE)} id="artifacts" />
       <Group title={t("Output filter")} note={t(FILTER_NOTE)} id="filter" />
     </>
   ),
@@ -72,14 +73,17 @@ function Group({ title, note, id }: { title: string; note?: string; id: string }
 }
 
 function Tunnels() {
-  const { fields, tunnelsHost } = useSettingsForm();
+  const { fields, contentHost } = useSettingsForm();
   return (
-    <FieldGroup
-      title={t("Tunnels")}
-      note={t(TUNNELS_NOTE)}
-      rows={fields.filter((f) => groupOf(f.key) === "tunnels")}
-      placeholders={{ "tunnels.host": tunnelsHost || "tunnels.example.com" }}
-    />
+    <>
+      <FieldGroup
+        title={t("Content host")}
+        note={t(CONTENT_NOTE)}
+        rows={fields.filter((f) => groupOf(f.key) === "content")}
+        placeholders={{ "content.host": contentHost || "content.example.com" }}
+      />
+      <FieldGroup title={t("Tunnels")} note={t(TUNNELS_NOTE)} rows={fields.filter((f) => groupOf(f.key) === "tunnels")} />
+    </>
   );
 }
 

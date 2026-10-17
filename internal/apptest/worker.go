@@ -82,8 +82,10 @@ type Worker struct {
 	Workspace string
 	// History is the worker's workspace history store (change tracking).
 	History string
-	Token   string
-	cmd     *exec.Cmd
+	// Artifacts is the worker's artifact store.
+	Artifacts string
+	Token     string
+	cmd       *exec.Cmd
 }
 
 // StartWorker launches the real worker binary against the harness CP and waits
@@ -119,6 +121,7 @@ func (h *H) StartWorker(botID string) *Worker {
 		"SILO_TOOLS_DIR=" + filepath.Join(scratch, "tools"),
 		"SILO_SKILLS_DIR=" + filepath.Join(scratch, "skills"),
 		"SILO_HISTORY_DIR=" + filepath.Join(scratch, "history"),
+		"SILO_ARTIFACTS_DIR=" + filepath.Join(scratch, "artifacts"),
 	}...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	var log strings.Builder
@@ -127,7 +130,7 @@ func (h *H) StartWorker(botID string) *Worker {
 	if err := cmd.Start(); err != nil {
 		h.T.Fatalf("start worker: %v", err)
 	}
-	w := &Worker{Workspace: ws, History: filepath.Join(scratch, "history"), Token: token, cmd: cmd}
+	w := &Worker{Workspace: ws, History: filepath.Join(scratch, "history"), Artifacts: filepath.Join(scratch, "artifacts"), Token: token, cmd: cmd}
 	h.T.Cleanup(func() {
 		if cmd.Process != nil {
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)

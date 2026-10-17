@@ -79,11 +79,12 @@ const events: Ev[] = [
   ev("feed_quote", "A post", "automation “Digest”", { createdAt: "2026-10-03T09:00:00Z" }),
   ev("subagent_report", "### a — done\nok", "a:done,b:error,c", { runId: R2 }),
 
-  // artifacts: a card, then the same card updated by approval id and by name+path
-  ev("artifact", j({ type: "skill", name: "pdf", title: "PDF", path: "skills/pdf", scope: "workspace", status: "pending" }), "", { runId: R2 }),
-  ev("artifact", j({ type: "skill", name: "pdf", title: "PDF", path: "skills/pdf", scope: "personal", status: "saved" }), "", { runId: R2 }),
-  ev("artifact", j({ type: "file", name: "r.pdf", path: "r.pdf", scope: "workspace", status: "ready", size: 12, approval_id: "ap9" }), "", { runId: R2 }),
-  ev("artifact", j({ type: "file", name: "r.pdf", path: "r.pdf", scope: "workspace", status: "ready", size: 99, approval_id: "ap9" }), "", { runId: R2 }),
+  // artifacts: a skill saved in place, a file in two versions, a live app
+  ev("artifact", j({ type: "skill", artifact_id: "s1", version: 1, name: "pdf", title: "PDF", path: "skills/pdf", status: "pending", pinned: true, kind: "tree" }), "", { runId: R2 }),
+  ev("artifact", j({ type: "skill", artifact_id: "s1", version: 1, name: "pdf", title: "PDF", path: "skills/pdf", status: "saved", pinned: true, kind: "tree" }), "", { runId: R2 }),
+  ev("artifact", j({ type: "file", artifact_id: "f1", version: 1, name: "r.pdf", path: "r.pdf", status: "ready", size: 12, pinned: true, kind: "file" }), "", { runId: R2 }),
+  ev("artifact", j({ type: "file", artifact_id: "f1", version: 2, name: "r.pdf", path: "r.pdf", status: "ready", size: 99, pinned: false, kind: "file", note: "the file is over 32 MB" }), "", { runId: R2 }),
+  ev("artifact", j({ type: "app", artifact_id: "a1", version: 1, name: "game", path: "game", status: "ready", pinned: true, kind: "tree", entry: "index.html", network: true }), "", { runId: R2 }),
   ev("artifact", "not json", "", { runId: R2 }),
 
   // an unknown kind is skipped but still uses up a key

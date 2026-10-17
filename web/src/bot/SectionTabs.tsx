@@ -117,7 +117,7 @@ const settings: readonly Item[] = [
   { tab: "settings", to: "/bots/$botId/settings", label: msg("General"), icon: SlidersHorizontal },
   { tab: "rules", to: "/bots/$botId/rules", label: msg("Rules"), icon: ListChecks },
   { tab: "secrets", to: "/bots/$botId/secrets", label: msg("Secrets"), icon: Key },
-  { tab: "tunnels", to: "/bots/$botId/tunnels", label: msg("Tunnels"), icon: Waypoints },
+  { tab: "tunnels", to: "/bots/$botId/tunnels", label: msg("Tunnels & Links"), icon: Waypoints },
   { tab: "container", to: "/bots/$botId/container", label: msg("Containers"), icon: Box },
   { tab: "audit", to: "/bots/$botId/audit", label: msg("Audit"), icon: History, attention: true },
 ];

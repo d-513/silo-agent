@@ -32,13 +32,20 @@ type Report struct {
 	Label string
 }
 
+// Extra is what a message carries besides its text: files the human uploaded
+// and what they quoted.
+type Extra struct {
+	Files  []*v1.Attachment
+	Quotes []*v1.Quote
+}
+
 // Request is one call into the shared execution engine. Chats, channels,
 // automations and subagents all go through here.
 type Request struct {
 	BotID  string
 	ChatID string
 	Text   string
-	Atts   []*v1.Attachment
+	Extra  Extra
 	Origin *Origin
 	// Compact starts a manual compaction run: it summarizes the chat and only
 	// goes on to a model turn if a message is injected meanwhile.
@@ -61,7 +68,7 @@ type Engine interface {
 	StartRun(Request) (string, error)
 	// StartOrInject steers a live run for the conversation with the message,
 	// or starts a new one: the single entry point for chats and channels.
-	StartOrInject(botID, chatID, text string, atts []*v1.Attachment, origin *Origin) (string, error)
+	StartOrInject(botID, chatID, text string, ex Extra, origin *Origin) (string, error)
 	// StartIfIdle starts a run only when the conversation has no live one,
 	// otherwise it returns ErrBusy: a scheduled firing is skipped, never queued.
 	StartIfIdle(Request) (string, error)

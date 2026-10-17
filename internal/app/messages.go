@@ -179,8 +179,8 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 		return nil, err
 	}
 	text := req.Msg.GetText()
-	atts := cleanAttachments(req.Msg.GetAttachments())
-	if text == "" && len(atts) == 0 {
+	ex := run.Extra{Files: cleanAttachments(req.Msg.GetAttachments()), Quotes: cleanQuotes(req.Msg.GetQuotes())}
+	if text == "" && len(ex.Files) == 0 && len(ex.Quotes) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text required"))
 	}
 	a.convMu.Lock()
@@ -198,7 +198,7 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 	}
 	a.publishReset(b.ID, ch.ID)
 	a.followZone(b, req.Msg.GetTimeZone())
-	runID, err := a.startOrInjectLocked(b.ID, ch.ID, text, atts, nil)
+	runID, err := a.startOrInjectLocked(b.ID, ch.ID, text, ex, nil)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}

@@ -1,6 +1,6 @@
 ---
 name: presentations
-description: Works with PowerPoint/OpenDocument decks (.pptx, .odp) in the workspace — read slide text, speaker notes, tables, and embedded media with python-pptx, and create or edit decks with python-pptx (text, tables, charts, images, notes). Use when the user uploads or points at a slide deck, or wants a presentation produced. This machine has no LibreOffice, so read and build the pieces rather than a rendered slide.
+description: Works with PowerPoint/OpenDocument decks (.pptx, .odp) in the workspace — read slide text, speaker notes, tables, and embedded media with python-pptx, and create or edit decks with python-pptx (text, tables, charts, images, notes). Use when the user uploads or points at a slide deck, or wants a presentation produced. This machine has no LibreOffice, so read and build the pieces rather than rasterizing a slide on the machine.
 metadata:
   silo_seed: presentations
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Chat uploads land in `tmp/`, wiped on every machine start. Paths are relative to `/workspace`. User-facing decks go under `/workspace`; scratch under `bot/`.
 
-`python-pptx` reads and writes `.pptx`. There is **no LibreOffice** here, so you cannot rasterize a slide directly. Extract text/notes/media instead. If a rendered slide truly matters, open the file on the desktop (Files or Chromium), or `sudo apt-get install -y libreoffice-impress` and render, then `present` the image.
+`python-pptx` reads and writes `.pptx`. There is **no LibreOffice** on this machine, so you cannot rasterize a slide to pixels yourself — extract text/notes/media in Python instead. The web console renders `.pptx` slides directly for the human in both `present` and `artifact` cards.
 
 ## Read: slide text and speaker notes
 
@@ -94,4 +94,4 @@ Match placeholder text before editing; iterate `slide.placeholders` and set `.te
 
 ## Output
 
-Write the deck to `/workspace` and `artifact` the relative path so the human gets a downloadable card — the thread cannot preview `.pptx`. If you rendered a slide to PNG, `present` that image instead. Summarize; do not dump every slide into chat. Do not claim you saw a rendered slide you did not render.
+Write the deck to `/workspace` and call `artifact` on the relative path so the human gets a versioned card they can step through slide by slide and download (or `present` to show it inline). Summarize; do not dump every slide into chat. Do not claim you saw a rendered slide you did not render.

@@ -222,6 +222,14 @@ service UI {
   rpc ListSkillFiles(ListSkillFilesRequest) returns (ListFilesResponse);
   rpc ReadSkillFile(ReadSkillFileRequest) returns (ReadFileResponse);
   rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
+  // Artifacts: a card's versions and pinned files, a live app's address, and
+  // the owner's public links.
+  rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
+  rpc ReadArtifactFile(ReadArtifactFileRequest) returns (ReadArtifactFileResponse);
+  rpc OpenArtifactApp(OpenArtifactAppRequest) returns (OpenArtifactAppResponse);
+  rpc ShareArtifact(ShareArtifactRequest) returns (ArtifactShare);
+  rpc ListArtifactShares(ListArtifactSharesRequest) returns (ListArtifactSharesResponse);
+  rpc DeleteArtifactShare(DeleteArtifactShareRequest) returns (DeleteArtifactShareResponse);
 
   rpc ListChannelAdapters(ListChannelAdaptersRequest) returns (ListChannelAdaptersResponse);
   rpc ListBotChannels(ListBotChannelsRequest) returns (ListBotChannelsResponse);
@@ -1007,7 +1015,7 @@ message HydrateDashboardCardRequest {
 }
 
 // Tunnel is one declared route into a service on a Bot's localhost: a generated
-// name, a port, and who may open it. url is built from tunnels.host, so it
+// name, a port, and who may open it. url is built from content.host, so it
 // follows a change of the domain.
 message Tunnel {
   string id = 1;
@@ -1029,7 +1037,7 @@ message ListTunnelsRequest {
 message ListTunnelsResponse {
   repeated Tunnel tunnels = 1;
   // state is "ok", "off" (tunnels.enabled is false) or "no_host" (no
-  // tunnels.host and none derivable from public_url).
+  // content.host and none derivable from public_url).
   string state = 2;
   // host is the effective domain suffix, empty when there is none.
   string host = 3;
@@ -1302,6 +1310,21 @@ message Attachment {
   string mime = 4;
 }
 
+// Quote is a piece of the conversation or of a file the human points at in a
+// message. source is message (a reply or the human's own words), file (a
+// workspace file) or artifact (a version of an artifact card). ref names what
+// was quoted: an event id, a workspace path, or artifact_id@version. locator is
+// where in it: "L40-52" for lines, "x,y,w,h" (fractions of the image) for an
+// image region. image is the workspace path of the cropped region, if any.
+message Quote {
+  string source = 1;
+  string ref = 2;
+  string label = 3;
+  string text = 4;
+  string locator = 5;
+  string image = 6;
+}
+
 message SendRequest {
   string bot_id = 1;
   string text = 2;
@@ -1314,6 +1337,7 @@ message SendRequest {
   bool new_chat = 6;
   string model = 7;
   string thinking = 8;
+  repeated Quote quotes = 9;
 }
 
 message SendResponse {
@@ -1345,6 +1369,8 @@ message RunEvent {
   // RFC 3339 time the event was recorded. Set on user events (live and
   // replayed) and on every replayed event.
   string created_at = 8;
+  // What a user message quoted.
+  repeated Quote quotes = 9;
 }
 
 // EditMessage truncates this chat at the last user message and re-sends the
@@ -1358,6 +1384,7 @@ message EditMessageRequest {
   repeated Attachment attachments = 5;
   // The sending device's IANA zone, as on SendRequest.
   string time_zone = 6;
+  repeated Quote quotes = 7;
 }
 
 // DeleteMessage truncates this chat at the last user message and stops there.
@@ -1742,9 +1769,10 @@ message Settings {
   string default_model = 7;
   string title_model = 8;
   repeated ConnectorVar connector_vars = 9;
-  // tunnels_host is the effective tunnels.host (explicit or derived), empty
-  // when tunnels have no domain; the form shows it where the field is unset.
-  string tunnels_host = 10;
+  // content_host is the effective content.host (explicit or derived), empty
+  // when there is no domain for tunnels, apps and shared links; the form shows
+  // it where the field is unset.
+  string content_host = 10;
   AutoenableConnectors autoenable_connectors = 11;
   // oidc_redirect_url is the callback to register at the OIDC provider.
   string oidc_redirect_url = 12;
@@ -2341,11 +2369,117 @@ message SaveSkillRequest {
   string bot_id = 1;
   string path = 2;
   string run_id = 3;
+  // The card's artifact and version: the pinned files are installed, not
+  // whatever the folder holds now.
+  string artifact_id = 4;
+  int32 version = 5;
 }
 
 message SaveSkillResponse {
   string name = 1;
 }
+
+// ArtifactVersion is one emit of an artifact card. pinned: its bytes are in
+// the Bot's artifact store; gone: they were, and the store's budget evicted
+// them. An unpinned version (over the size caps) reads the live file.
+message ArtifactVersion {
+  int32 n = 1;
+  string kind = 2;
+  string name = 3;
+  int64 size = 4;
+  bool pinned = 5;
+  bool gone = 6;
+  bool network = 7;
+  string entry = 8;
+  string created_at = 9;
+}
+
+message ArtifactEntry {
+  string path = 1;
+  int64 size = 2;
+}
+
+message GetArtifactRequest {
+  string bot_id = 1;
+  string artifact_id = 2;
+  // 0 is the newest.
+  int32 version = 3;
+}
+
+message GetArtifactResponse {
+  string id = 1;
+  string type = 2;
+  string title = 3;
+  string path = 4;
+  repeated ArtifactVersion versions = 5;
+  ArtifactVersion version = 6;
+  // The files of a folder version (skill or app).
+  repeated ArtifactEntry entries = 7;
+  // A live app can be opened (the content host is configured).
+  bool apps = 8;
+  // A public link can be made (the content host is configured).
+  bool shares = 9;
+}
+
+message ReadArtifactFileRequest {
+  string bot_id = 1;
+  string artifact_id = 2;
+  int32 version = 3;
+  // A file inside a folder version; empty for a file version.
+  string path = 4;
+}
+
+message ReadArtifactFileResponse {
+  string name = 1;
+  bytes data = 2;
+  int64 size = 3;
+}
+
+message OpenArtifactAppRequest {
+  string bot_id = 1;
+  string artifact_id = 2;
+  int32 version = 3;
+}
+
+message OpenArtifactAppResponse {
+  string url = 1;
+}
+
+message ArtifactShare {
+  string id = 1;
+  string artifact_id = 2;
+  int32 version = 3;
+  string title = 4;
+  string type = 5;
+  string url = 6;
+  string created_at = 7;
+  string last_used_at = 8;
+}
+
+message ShareArtifactRequest {
+  string bot_id = 1;
+  string artifact_id = 2;
+  int32 version = 3;
+}
+
+message ListArtifactSharesRequest {
+  string bot_id = 1;
+  // Only this artifact's links; empty for all of the Bot's.
+  string artifact_id = 2;
+}
+
+message ListArtifactSharesResponse {
+  repeated ArtifactShare shares = 1;
+  // The content host is configured.
+  bool available = 2;
+}
+
+message DeleteArtifactShareRequest {
+  string bot_id = 1;
+  string id = 2;
+}
+
+message DeleteArtifactShareResponse {}
 
 message ChannelFieldOption {
   string value = 1;

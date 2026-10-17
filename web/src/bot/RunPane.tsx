@@ -80,7 +80,7 @@ export function RunPane({
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
         onSelectPrompt={(p) => draft.setText(p)}
-        onEditMessage={(eid, t, a) => void actions.editMessage(eid, t, a)}
+        onEditMessage={(eid, t, a, q) => void actions.editMessage(eid, t, a, q)}
         onDeleteMessage={(eid) => void actions.deleteMessage(eid)}
         onDivergeChat={(eid) => void actions.divergeChat(eid)}
         agentHref={agentHref}
@@ -107,6 +107,8 @@ export function RunPane({
         setText={draft.setText}
         atts={draft.atts}
         onRemoveAtt={(path) => draft.setAtts((xs) => xs.filter((x) => x.path !== path))}
+        quotes={draft.quotes}
+        onRemoveQuote={draft.unquote}
         attachErr={draft.attachErr}
         onAttach={draft.attach}
         onSend={() => void actions.send()}

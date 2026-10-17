@@ -297,6 +297,8 @@ type Config struct {
 	Drives         Drives              `koanf:"drives"`
 	Egress         Egress              `koanf:"egress"`
 	Tunnels        Tunnels             `koanf:"tunnels"`
+	Content        Content             `koanf:"content"`
+	Artifacts      Artifacts           `koanf:"artifacts"`
 	Mail           Mail                `koanf:"mail"`
 	Outbound       Outbound            `koanf:"outbound"`
 	Tools          Tools               `koanf:"tools"`
@@ -483,6 +485,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "changes.enabled", Type: "bool"},
 	{Key: "changes.max_file_mb"},
 	{Key: "changes.keep_days"},
+	{Key: "artifacts.max_mb"},
 	{Key: "filter.enabled", Type: "bool"},
 	{Key: "filter.max_chars"},
 	{Key: "rules.approval_policy", Type: "text"},
@@ -512,9 +515,9 @@ var fieldDefs = []fieldMeta{
 	{Key: "egress.trust"},
 	{Key: "egress.pass"},
 	{Key: "egress.feeds"},
+	{Key: "content.host"},
+	{Key: "content.scheme"},
 	{Key: "tunnels.enabled", Type: "bool"},
-	{Key: "tunnels.host"},
-	{Key: "tunnels.scheme"},
 	{Key: "mail.enabled", Type: "bool"},
 	{Key: "mail.domain"},
 	{Key: "mail.addr"},

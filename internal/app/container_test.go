@@ -190,7 +190,7 @@ func TestContainerTunnel(t *testing.T) {
 	if !apptest.ContainersEnabled(t) {
 		return
 	}
-	h := newContainerHarness(t, "tunnels:\n  host: tunnels.test\n")
+	h := newContainerHarness(t, "content:\n  host: tunnels.test\n")
 	id := h.SeedBot("Tunneled")
 	h.StartSeededBot(id)
 
@@ -215,7 +215,7 @@ func TestContainerTunnel(t *testing.T) {
 	deadline := time.Now().Add(20 * time.Second)
 	var body string
 	for {
-		res, err := hc.Get("http://" + tun.Msg.GetName() + ".tunnels.test/hello.txt")
+		res, err := hc.Get("http://tunnel-" + tun.Msg.GetName() + ".tunnels.test/hello.txt")
 		if err == nil {
 			b, _ := io.ReadAll(res.Body)
 			res.Body.Close()
@@ -238,7 +238,7 @@ func TestContainerTunnel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := hc.Get("http://" + closed.Msg.GetName() + ".tunnels.test/")
+	res, err := hc.Get("http://tunnel-" + closed.Msg.GetName() + ".tunnels.test/")
 	if err != nil {
 		t.Fatal(err)
 	}

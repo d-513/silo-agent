@@ -1,6 +1,26 @@
 import { t } from "./i18n.ts";
 
-export type Kind = "dir" | "image" | "pdf" | "video" | "audio" | "markdown" | "csv" | "json" | "code" | "docx" | "text" | "other";
+export type Kind =
+  | "dir"
+  | "image"
+  | "pdf"
+  | "video"
+  | "audio"
+  | "markdown"
+  | "csv"
+  | "json"
+  | "code"
+  | "docx"
+  | "text"
+  | "sheet"
+  | "slides"
+  | "chart"
+  | "mermaid"
+  | "notebook"
+  | "geojson"
+  | "model"
+  | "html"
+  | "other";
 
 const images = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif"]);
 const videos = new Set(["mp4", "webm", "ogv", "mov"]);
@@ -46,9 +66,20 @@ export function isArchive(ext: string) {
   return ext === "zip" || ext === "gz" || ext === "tgz" || ext === "tar" || ext === "7z";
 }
 
+// A Vega or Vega-Lite spec is JSON with a second extension: chart.vl.json.
+const chartSuffix = /\.(vl|vg|vega|vegalite|vega-lite)\.json$/i;
+
 export function kindOf(name: string, dir?: boolean): Kind {
   if (dir) return "dir";
   const e = extOf(name);
+  if (chartSuffix.test(name)) return "chart";
+  if (e === "xlsx" || e === "xlsm" || e === "xls" || e === "ods") return "sheet";
+  if (e === "pptx") return "slides";
+  if (e === "mmd" || e === "mermaid") return "mermaid";
+  if (e === "ipynb") return "notebook";
+  if (e === "geojson") return "geojson";
+  if (e === "glb") return "model";
+  if (e === "html" || e === "htm") return "html";
   if (images.has(e)) return "image";
   if (e === "pdf") return "pdf";
   if (videos.has(e)) return "video";
@@ -86,6 +117,11 @@ export function mimeOf(name: string): string {
     flac: "audio/flac",
     aac: "audio/aac",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    glb: "model/gltf-binary",
+    geojson: "application/geo+json",
+    ipynb: "application/x-ipynb+json",
     html: "text/html",
     htm: "text/html",
     json: "application/json",
@@ -127,6 +163,22 @@ export function kindLabel(name: string): string {
       return extOf(name).toUpperCase() || t("Code");
     case "text":
       return t("Text");
+    case "sheet":
+      return t("Workbook");
+    case "slides":
+      return t("Slides");
+    case "chart":
+      return t("Chart");
+    case "mermaid":
+      return t("Diagram");
+    case "notebook":
+      return t("Notebook");
+    case "geojson":
+      return t("Map");
+    case "model":
+      return t("3D model");
+    case "html":
+      return "HTML";
     default:
       break;
   }
@@ -137,5 +189,8 @@ export function kindLabel(name: string): string {
 
 export function isTextKind(name: string): boolean {
   const k = kindOf(name);
-  return k === "markdown" || k === "csv" || k === "json" || k === "code" || k === "text";
+  return (
+    k === "markdown" || k === "csv" || k === "json" || k === "code" || k === "text" || k === "chart" ||
+    k === "mermaid" || k === "notebook" || k === "geojson" || k === "html"
+  );
 }

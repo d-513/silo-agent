@@ -740,7 +740,7 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	}).Error
 
 	userText := formatSubmittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote())
-	runID, err := s.host.StartOrInject(c.BotID, ch.ID, userText, nil, nil)
+	runID, err := s.host.StartOrInject(c.BotID, ch.ID, userText, run.Extra{}, nil)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}

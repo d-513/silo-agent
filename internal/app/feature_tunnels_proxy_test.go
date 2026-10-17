@@ -130,7 +130,7 @@ func newProxyEnv(t *testing.T, extraYAML string) *proxyEnv {
 	}
 	dir := t.TempDir()
 	cp := ln.Addr().String()
-	yaml := apptest.DefaultYAML(dir) + "public_url: http://" + cp + "\ntunnels:\n  host: " + tunnelTestHost + "\n" + extraYAML
+	yaml := apptest.DefaultYAML(dir) + "public_url: http://" + cp + "\ncontent:\n  host: " + tunnelTestHost + "\n" + tunnelsYAML(extraYAML)
 	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithListener(ln), apptest.WithYAML(yaml))
 	bot := h.CreateBot("Served").GetId()
 	h.StartWorker(bot)
@@ -194,7 +194,7 @@ func (b *browser) do(t *testing.T, method, rawURL string, hdr map[string]string,
 var nav = map[string]string{"Accept": "text/html"}
 
 func tunnelURL(tun *v1.Tunnel, path string) string {
-	return "http://" + tun.GetName() + "." + tunnelTestHost + path
+	return "http://" + "tunnel-" + tun.GetName() + "." + tunnelTestHost + path
 }
 
 func decode(t *testing.T, body string) seen {
@@ -220,7 +220,7 @@ func TestProxyPublicTunnelServesRequests(t *testing.T) {
 		t.Fatalf("upstream saw %+v", s)
 	}
 	// Dev servers check Host; it must be the one the browser used.
-	if s.Host != tun.GetName()+"."+tunnelTestHost || s.XForwardedHost != s.Host || s.XForwardedFor == "" {
+	if s.Host != "tunnel-"+tun.GetName()+"."+tunnelTestHost || s.XForwardedHost != s.Host || s.XForwardedFor == "" {
 		t.Fatalf("host headers: %+v", s)
 	}
 
@@ -273,7 +273,7 @@ func TestProxyWebSocketEcho(t *testing.T) {
 	tun := e.tunnel(t, true)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	c, _, err := websocket.Dial(ctx, "ws://"+tun.GetName()+"."+tunnelTestHost+"/ws", &websocket.DialOptions{HTTPClient: e.browser().c})
+	c, _, err := websocket.Dial(ctx, "ws://"+"tunnel-"+tun.GetName()+"."+tunnelTestHost+"/ws", &websocket.DialOptions{HTTPClient: e.browser().c})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +382,7 @@ func TestProxyPrivateTunnelIsOwnerOnly(t *testing.T) {
 	cookie := ids.New()
 	e.h.DB.Create(&db.TunnelGrant{ID: ids.Hash(cookie), TunnelID: tun.GetId(), UserID: "someone-else", ExpiresAt: time.Now().Add(time.Hour)})
 	forged := e.browser().noFollow()
-	forged.c.Jar.SetCookies(&url.URL{Scheme: "http", Host: tun.GetName() + "." + tunnelTestHost}, []*http.Cookie{{Name: "silo_tunnel", Value: cookie, Path: "/"}})
+	forged.c.Jar.SetCookies(&url.URL{Scheme: "http", Host: "tunnel-" + tun.GetName() + "." + tunnelTestHost}, []*http.Cookie{{Name: "silo_tunnel", Value: cookie, Path: "/"}})
 	if res, _ := forged.do(t, "GET", tunnelURL(tun, "/"), map[string]string{"Accept": "application/json"}, nil); res.StatusCode != 401 {
 		t.Fatalf("grant for another user: %d", res.StatusCode)
 	}
@@ -403,7 +403,7 @@ func TestProxyGrantsExpireAndAreHashedAtRest(t *testing.T) {
 		t.Fatalf("grant id %q", g.ID)
 	}
 	var cookieVal string
-	for _, c := range owner.c.Jar.Cookies(&url.URL{Scheme: "http", Host: tun.GetName() + "." + tunnelTestHost}) {
+	for _, c := range owner.c.Jar.Cookies(&url.URL{Scheme: "http", Host: "tunnel-" + tun.GetName() + "." + tunnelTestHost}) {
 		if c.Name == "silo_tunnel" {
 			cookieVal = c.Value
 		}
@@ -434,13 +434,13 @@ func TestProxyTicketsAreOneShotAndPerTunnel(t *testing.T) {
 		if res.StatusCode != 302 || err != nil {
 			t.Fatalf("auth: %d %v", res.StatusCode, err)
 		}
-		if loc.Host != name+"."+tunnelTestHost || loc.Path != "/.silo/auth" {
+		if loc.Host != "tunnel-"+name+"."+tunnelTestHost || loc.Path != "/.silo/auth" {
 			t.Fatalf("redirect %v", loc)
 		}
 		return loc.Query().Get("ticket")
 	}
 	redeem := func(name, ticket string) *http.Response {
-		res, _ := e.browser().noFollow().do(t, "GET", "http://"+name+"."+tunnelTestHost+"/.silo/auth?ticket="+ticket+"&rd=%2F", nil, nil)
+		res, _ := e.browser().noFollow().do(t, "GET", "http://tunnel-"+name+"."+tunnelTestHost+"/.silo/auth?ticket="+ticket+"&rd=%2F", nil, nil)
 		return res
 	}
 
@@ -469,7 +469,7 @@ func TestProxyAuthDoesNotRedirectOffsite(t *testing.T) {
 	for _, rd := range []string{"//evil.example", "https://evil.example/x", `/\evil.example`, "relative", ""} {
 		res, _ := owner.do(t, "GET", "http://"+e.cp+"/tunnels/auth?name="+tun.GetName()+"&rd="+url.QueryEscape(rd), nil, nil)
 		loc, _ := res.Location()
-		if loc == nil || loc.Host != tun.GetName()+"."+tunnelTestHost || loc.Query().Get("rd") != "/" {
+		if loc == nil || loc.Host != "tunnel-"+tun.GetName()+"."+tunnelTestHost || loc.Query().Get("rd") != "/" {
 			t.Errorf("rd=%q -> %v", rd, loc)
 		}
 	}
@@ -533,7 +533,7 @@ func TestProxyErrorPages(t *testing.T) {
 	}
 
 	// An unknown name is a 404 on the tunnel domain.
-	res, _ = b.do(t, "GET", "http://no-such-name-here."+tunnelTestHost+"/", nil, nil)
+	res, _ = b.do(t, "GET", "http://tunnel-no-such-name-here."+tunnelTestHost+"/", nil, nil)
 	if res.StatusCode != 404 {
 		t.Fatalf("unknown tunnel: %d", res.StatusCode)
 	}
@@ -544,7 +544,7 @@ func TestProxyOnlyAnswersTheTunnelDomain(t *testing.T) {
 	tun := e.tunnel(t, true)
 	b := e.browser()
 	// Other hosts reach the normal routes (the control plane itself).
-	for _, host := range []string{e.cp, "other.example.com", tunnelTestHost, "a.b." + tunnelTestHost, "x" + tunnelTestHost} {
+	for _, host := range []string{e.cp, "other.example.com", tunnelTestHost, "a.b." + tunnelTestHost, "x" + tunnelTestHost, tun.GetName() + "." + tunnelTestHost} {
 		res, body := b.do(t, "GET", "http://"+host+"/healthz", nil, nil)
 		if res.StatusCode != 200 || body != "ok" {
 			t.Errorf("%s/healthz: %d %q", host, res.StatusCode, body)
@@ -557,12 +557,12 @@ func TestProxyOnlyAnswersTheTunnelDomain(t *testing.T) {
 	}
 }
 
-func TestProxyOffLeavesTheDomainToTheControlPlane(t *testing.T) {
+func TestProxyOffNeverProxies(t *testing.T) {
 	e := newProxyEnv(t, "  enabled: false\n")
 	e.h.DB.Create(&db.Tunnel{ID: "t1", BotID: e.botID, Port: e.up.port, Name: "quiet-amber-heron", Public: true, CreatedAt: time.Now()})
-	res, body := e.browser().do(t, "GET", "http://quiet-amber-heron."+tunnelTestHost+"/healthz", nil, nil)
-	if res.StatusCode != 200 || body != "ok" {
-		t.Fatalf("%d %q: a disabled tunnel domain must not proxy", res.StatusCode, body)
+	res, body := e.browser().do(t, "GET", "http://tunnel-quiet-amber-heron."+tunnelTestHost+"/healthz", nil, nil)
+	if res.StatusCode != 404 || body == "ok" {
+		t.Fatalf("%d %q: a disabled tunnel must not proxy", res.StatusCode, body)
 	}
 	if n := len(e.up.requests()); n != 0 {
 		t.Fatalf("service saw %d requests", n)

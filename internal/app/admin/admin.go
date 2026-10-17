@@ -331,7 +331,7 @@ func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
 		EnvName:     config.EnvName("autoenable_connectors"),
 	}
 	out.DefaultModel = cfg.Model
-	out.TunnelsHost = cfg.TunnelHost()
+	out.ContentHost = cfg.ContentHost()
 	out.TitleModel = cfg.ModelTitle
 	out.Yaml = string(raw)
 	out.YamlPath = s.store.Path()

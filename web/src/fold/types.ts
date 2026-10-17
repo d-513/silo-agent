@@ -1,8 +1,59 @@
 export type Attachment = { name: string; path: string; size: number };
 
+// A quote the human put in a message. source is "message" (ref "reply" for
+// the Bot's words, "own" for the human's), "file" (ref the workspace path) or
+// "artifact" (ref artifact_id@version). locator is "lines 4–9", or x,y,w,h
+// fractions with image the workspace path of the crop.
+export type Quote = { source: "message" | "file" | "artifact"; ref: string; label: string; text: string; locator: string; image?: string };
+
 // `at` is the client arrival time (ms); replayed history arrives in a burst.
 // `createdAt` is the server's record time (RFC 3339) when it sent one.
-export type Ev = { id?: string; kind: string; body: string; tool: string; runId?: string; attachments?: Attachment[]; at?: number; createdAt?: string };
+export type Ev = {
+  id?: string;
+  kind: string;
+  body: string;
+  tool: string;
+  runId?: string;
+  attachments?: Attachment[];
+  quotes?: Quote[];
+  at?: number;
+  createdAt?: string;
+};
+
+// An artifact card's look at one version, made when it was pinned.
+export type ArtifactPreview = { text?: string; image?: string; more?: boolean };
+
+// One emit of an artifact. pinned: its bytes are kept as they were; not
+// pinned (over the size caps), the card shows the live file and note says why.
+export type ArtifactVersion = {
+  n: number;
+  name: string;
+  kind: string;
+  size?: number;
+  pinned: boolean;
+  note?: string;
+  network?: boolean;
+  entry?: string;
+  files?: number;
+  preview?: ArtifactPreview;
+  runId?: string;
+};
+
+export type ArtifactType = "file" | "skill" | "app";
+
+// A card: every version the Bot handed over at one path in this chat, oldest
+// first. saved is the skill version the human saved.
+export type ArtifactBlock = {
+  key: string;
+  type: "artifact";
+  artifactId: string;
+  artifactType: ArtifactType;
+  title: string;
+  path: string;
+  versions: ArtifactVersion[];
+  saved?: number;
+  runId?: string;
+};
 
 // Why a tool stopped without a clean result: the human denied it, or the run
 // was stopped/interrupted around it.
@@ -54,7 +105,7 @@ export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; t
 export type Block =
   // `from` names a non-human sender ("lead" for a subagent's brief and the
   // lead's messages to it).
-  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; createdAt?: string; from?: string }
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
   | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }
@@ -70,16 +121,6 @@ export type Block =
   // `running` while the summary is being written; empty text once settled
   // means it failed or was stopped.
   | CompactionBlock
-  | {
-      key: string;
-      type: "artifact";
-      artifactType: string;
-      name: string;
-      title: string;
-      path: string;
-      scope: string;
-      approvalId: string;
-      status: string;
-      size?: number;
-      runId?: string;
-    };
+  | ArtifactBlock
+  // A later emit of a card further up: the card shows it, this row says so.
+  | { key: string; type: "artifact_update"; artifactId: string; title: string; version: number; runId?: string };

@@ -52,9 +52,10 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `drives.image` | `localhost/silo-drive:v1` | `SILO_DRIVES__IMAGE` | The rclone drive sidecar (`make drive-image`) |
 | `drives.mount_root` | `<data_dir>/drives-mnt`; on macOS `/var/tmp/silo-drives` | `SILO_DRIVES__MOUNT_ROOT` | Where drive mounts live, as a path the container engine sees. It must be able to carry mount propagation, so on podman machine it is inside the VM, not the virtiofs `data/` share |
 | `drives.cache_max_size` | `10G` | `SILO_DRIVES__CACHE_MAX_SIZE` | rclone VFS cache cap per drive, kept in `data/drives/<bot>/cache` |
+| `content.host` | derived (see Content host & tunnels) | `SILO_CONTENT__HOST` | Domain suffix Bot-made content is served under, `host[:port]`: tunnels at `tunnel-<name>.<host>`, live app artifacts at `app-<name>.<host>`, and public shares at `share-<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
+| `content.scheme` | follows `public_url` | `SILO_CONTENT__SCHEME` | `http` or `https`, for the links tunnels, apps and shares are shown with. Set it when TLS ends at a proxy and `public_url` is an internal address |
 | `tunnels.enabled` | `true` | `SILO_TUNNELS__ENABLED` | Master switch for tunnels. Off: the proxy, the Bot's tunnel tools and the Tunnels tab's add form are gone (existing rows are kept) |
-| `tunnels.host` | derived (see Tunnels) | `SILO_TUNNELS__HOST` | Domain suffix tunnels are served under, `host[:port]`: a tunnel is `<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
-| `tunnels.scheme` | follows `public_url` | `SILO_TUNNELS__SCHEME` | `http` or `https`, for the links tunnels are shown with. Set it when TLS ends at a proxy and `public_url` is an internal address |
+| `artifacts.max_mb` | `2048` | `SILO_ARTIFACTS__MAX_MB` | Per-Bot disk budget (in MB, 1–102400) for pinned artifact versions in `data/bots/<id>/artifacts`. Past this, the oldest versions are evicted |
 | `mail.enabled` | `true` | `SILO_MAIL__ENABLED` | Master switch for Bot mailboxes. Off: the SMTP listener, the Bot's mail tools and the Mail page's address are gone (received mail is kept) |
 | `mail.domain` | (none) | `SILO_MAIL__DOMAIN` | What follows the `@` of every Bot's address (`<name>@<domain>`). A bare domain; its MX record must point here. Unset, there is no mail (see Mail) |
 | `mail.addr` | `:2525` | `SILO_MAIL__ADDR` | Where the SMTP listener binds, `host:port` or `:port`. The world delivers to port 25: publish or forward 25 to it |
@@ -210,23 +211,29 @@ egress:
 - **Turning it off** (`enabled: false`) leaves Bot machines on today's unfiltered network; Admin warns that nothing is being watched. The lists are kept and take effect again when it is back on.
 - **The gateway** is one container per container engine. Each client's `/24` is carved from `subnet_pool` (`10.213.0.0/16`, enough for 256 Bots without overlap); change it only if it collides with a network you really use. Admin → Settings → Network shows the gateway's certificate and the state of each threat list, and rotates the certificate (running machines pick up a new one on their next start).
 
-## Tunnels
+## Content host & tunnels
 
-A Bot can run a web service on its own localhost (a dev server, a dashboard, a notebook); a **tunnel** gives the owner an address for it, served by this control plane at `<name>.<tunnels.host>` (the name is generated, like `quiet-amber-heron`). Private tunnels open for the Bot's owner, signed in to Silo; public ones for anyone with the link. Make one on the Bot's **Tunnels** tab, or the Bot opens one with `open_tunnel` (making one public asks the owner first).
+What Bots make is served on a domain of its own (`content.host`), never the console's origin, dispatched by subdomain prefix:
+
+- **`tunnel-<name>.<content.host>`** — a **tunnel** to a web service running on a Bot's own localhost (a dev server, a dashboard, a notebook). Private tunnels open for the Bot's owner, signed in to Silo; public ones for anyone with the link. Make one on the Bot's **Tunnels** tab, or the Bot opens one with `open_tunnel` (making one public asks the owner first).
+- **`app-<name>.<content.host>`** — a **live app artifact** (an `.html` file or folder with `index.html` handed over via `artifact`), served from its pinned version in a sandboxed iframe for the signed-in owner.
+- **`share-<name>.<content.host>`** — a **public shared link** created by the owner from an artifact card, served from its pinned copy on the control plane (`data/shares/<id>`) so it works even while the Bot is stopped.
 
 ```yaml
-tunnels:
-  host: tunnels.example.com   # required unless public_url is local (below)
-  # enabled: true
+content:
+  host: content.example.com   # required unless public_url is local (below)
   # scheme: https             # default: public_url's scheme
+
+tunnels:
+  # enabled: true
 ```
 
-- **Local development**: with `public_url` on `localhost`/`127.0.0.1`, `host` defaults to `localhost:<port of http_addr>` (links like `http://quiet-amber-heron.localhost:8080`). Browsers resolve `*.localhost` to loopback, so no DNS is needed. It uses the control plane's own port, not Vite's.
-- **Anywhere else, set `host`.** Without it tunnels are "not configured": the tab says so and the Bot has no tunnel tools.
-- **DNS and TLS**: point a wildcard record `*.<host>` at the control plane and serve a certificate for `*.<host>` (a wildcard certificate, or on-demand TLS in the fronting proxy). The proxy in front must pass WebSocket upgrades and the original `Host` header.
-- **Use a separate domain** from the control plane's (`silo.example.com` → tunnels under `silo-tunnels.example.com`, not `tunnels.silo.example.com`). A page a Bot serves could otherwise set cookies for the whole domain and reach the control plane with them; a `host` equal to the `public_url` host is refused outright.
-- **Changing `host`** takes effect on the next request and re-points every existing tunnel (rows store only the name). Private tunnels' sign-in cookies belong to the old host, so owners sign in again.
-- **Private means signed in to Silo.** A private tunnel's access is tied to the owner's Silo session: signing out (or the session expiring) ends it immediately, and the next visit asks them to sign in again. An already-open WebSocket is not cut off until it closes.
+- **Local development**: with `public_url` on `localhost`/`127.0.0.1`, `content.host` defaults to `localhost:<port of http_addr>` (links like `http://tunnel-quiet-amber-heron.localhost:8080`). Browsers resolve `*.localhost` to loopback, so no DNS is needed. It uses the control plane's own port, not Vite's.
+- **Anywhere else, set `content.host`.** Without it, tunnels, live apps and public shares are unavailable: the Tunnels tab says so, the Bot has no tunnel tools, and HTML artifacts fall back to download-only.
+- **DNS and TLS**: point a wildcard record `*.<content.host>` at the control plane and serve a certificate for `*.<content.host>` (a wildcard certificate, or on-demand TLS in the fronting proxy). The proxy in front must pass WebSocket upgrades and the original `Host` header.
+- **Use a separate domain** from the control plane's (`silo.example.com` → content under `silo-content.example.com`, not `content.silo.example.com`). A page a Bot serves could otherwise set cookies for the whole domain and reach the control plane with them; a `content.host` equal to the `public_url` host is refused outright.
+- **Changing `content.host`** takes effect on the next request and moves every existing tunnel, app and shared link at once (rows store only the name). Private tunnels' and apps' sign-in cookies belong to the old host, so owners sign in again.
+- **Private means signed in to Silo.** A private tunnel's or live app's access is tied to the owner's Silo session: signing out (or the session expiring) ends it immediately, and the next visit asks them to sign in again. An already-open WebSocket is not cut off until it closes.
 - Ports `5900` (the desktop) and `9222` (Chromium's debugging port) are never tunnelled; a Bot has at most 20 tunnels. A tunnel request never starts a stopped Bot.
 
 ## Mail

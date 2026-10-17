@@ -104,6 +104,7 @@ var catalog = map[string]spec{
 	"bot.transcribe":       {title: "Transcribe audio", mode: Allow, output: OutCheck, summary: want("transcribe an audio file")},
 	"skills.load":          {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit":        {title: "Artifact", mode: Allow, summary: want("show an artifact")},
+	"artifact.app_network": {title: "App with network", mode: Ask, summary: appNetworkSummary, fields: appFields},
 	"web.search":           {title: "Web search", mode: Allow, output: OutCheck, summary: want("search the web")},
 	"chats.read":           {title: "Read chats", mode: Allow, output: OutCheck, summary: want("read chat messages")},
 	"model.list":           {title: "List models", mode: Allow, summary: want("list the allowed models")},
@@ -157,6 +158,25 @@ func tunnelSummary(verb string) func(map[string]string) string {
 
 // tunnelPublicSummary says plainly what a public tunnel is: it is the one
 // tunnel action that reaches people other than the owner.
+func appNetworkSummary(args map[string]string) string {
+	what := "an app"
+	if p := strings.TrimSpace(args["path"]); p != "" {
+		what = "the app " + p
+	}
+	return "This Bot wants to show " + what + " that can reach the internet: it could load code from other sites and send what you type into it elsewhere."
+}
+
+func appFields(args map[string]string) []Field {
+	var out []Field
+	if v := strings.TrimSpace(args["path"]); v != "" {
+		out = append(out, Field{Label: "App", Value: v})
+	}
+	if v := strings.TrimSpace(args["title"]); v != "" {
+		out = append(out, Field{Label: "Title", Value: v})
+	}
+	return out
+}
+
 func tunnelPublicSummary(args map[string]string) string {
 	port := "a service"
 	if p := strings.TrimSpace(args["port"]); p != "" {
@@ -269,6 +289,7 @@ func BuiltinRows() []Row {
 		{Bot, "transcribe", "Transcribe audio"},
 		{Skills, "load", "Load skill"},
 		{Artifact, "emit", "Artifact"},
+		{Artifact, "app_network", "App with network"},
 		{Web, "search", "Web search"},
 		{Chats, "read", "Read chats"},
 		{Model, "list", "List models"},

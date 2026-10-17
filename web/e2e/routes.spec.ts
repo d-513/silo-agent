@@ -41,7 +41,7 @@ const pages: [path: string, lit: string[]][] = [
   ["settings", ["Settings", "General"]],
   ["rules", ["Settings", "Rules"]],
   ["secrets", ["Settings", "Secrets"]],
-  ["tunnels", ["Settings", "Tunnels"]],
+  ["tunnels", ["Settings", "Tunnels & Links"]],
   ["container", ["Settings", "Containers"]],
   // The pages beside the chat light their own row.
   ["automations", ["Automations"]],

@@ -270,6 +270,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
 		go tickLoop(a.stopAutomations, egress.Tick, func(now time.Time) { a.Egress.Reconcile(context.Background()) })
 		go tickLoop(a.stopAutomations, audit.Tick, func(now time.Time) { a.Audit.Trim(now) })
+		go tickLoop(a.stopAutomations, artifact.SweepTick, func(time.Time) { a.Artifacts.Sweep(context.Background()) })
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
@@ -536,8 +537,38 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
 	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)
 	log.Printf("mounted %s %s", uiPath, wkPath)
-	// <name>.<tunnels.host> is a tunnel; every other host is the control plane.
-	return a.Tunnels.Route(access.WithHTTP(mux))
+	// <kind>-<name>.<content.host> is what Bots made; every other host is the
+	// control plane.
+	return a.contentRoute(access.WithHTTP(mux))
+}
+
+// contentRoute serves the content host: tunnel-<name> into a Bot's service,
+// app-<name> a live app artifact, share-<name> an owner's public link. A
+// content host label of no known kind, and anything while there is no content
+// host, is the control plane's.
+func (a *App) contentRoute(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg := a.cfg()
+		kind, name, ok := cfg.ContentFromHost(r.Host)
+		if !ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		switch kind {
+		case config.ContentTunnel:
+			if cfg.TunnelsOn() {
+				a.Tunnels.Serve(w, r, name)
+				return
+			}
+		case config.ContentApp:
+			a.Artifacts.ServeApp(w, r, name)
+			return
+		case config.ContentShare:
+			a.Artifacts.ServeShare(w, r, name)
+			return
+		}
+		tunnels.Page(w, http.StatusNotFound, "Nothing here", "There is nothing at this address.")
+	})
 }
 
 func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) *liveRun {

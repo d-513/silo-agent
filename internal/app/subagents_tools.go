@@ -226,7 +226,7 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
 	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
-		if a.inject(sa.BotID, sa.ChatID, runID, text, nil, "lead") {
+		if a.inject(sa.BotID, sa.ChatID, runID, text, run.Extra{}, "lead") {
 			return false, nil
 		}
 		return false, fmt.Errorf("%s has too many unread messages; wait for it to catch up", sa.Name)

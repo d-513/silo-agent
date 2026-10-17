@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
@@ -261,6 +262,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.DashboardCard{})
 	a.Tunnels.Drop(b.ID)
+	a.Artifacts.Drop(b.ID)
 	a.Mail.Drop(b.ID)
 	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Subagent{})
@@ -293,8 +295,8 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		return nil, err
 	}
 	text := req.Msg.GetText()
-	atts := cleanAttachments(req.Msg.GetAttachments())
-	if text == "" && len(atts) == 0 {
+	ex := run.Extra{Files: cleanAttachments(req.Msg.GetAttachments()), Quotes: cleanQuotes(req.Msg.GetQuotes())}
+	if text == "" && len(ex.Files) == 0 && len(ex.Quotes) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text required"))
 	}
 	chatID := req.Msg.GetChatId()
@@ -328,7 +330,7 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		return nil, err
 	}
 	a.followZone(b, req.Msg.GetTimeZone())
-	runID, err := a.StartOrInject(b.ID, ch.ID, text, atts, nil)
+	runID, err := a.StartOrInject(b.ID, ch.ID, text, ex, nil)
 	if err != nil {
 		if made {
 			a.DB.Delete(&db.Chat{}, "id = ?", ch.ID)
@@ -404,7 +406,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for _, r := range eventsAfter(rows, after) {
 		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(attachmentsFromMeta(r.Meta)), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
+		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(decodeUserMeta(r.Meta).Files), Quotes: v1Quotes(decodeUserMeta(r.Meta).Quotes), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
 			return err
 		}
 	}

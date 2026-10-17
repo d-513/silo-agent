@@ -404,7 +404,7 @@ func (s *Service) deliverInbound(ctx context.Context, ch *db.Channel, in channel
 	if err != nil {
 		return err
 	}
-	_, err = s.engine.StartOrInject(ch.BotID, c.ID, in.Text, nil, s.Origin(ch, external))
+	_, err = s.engine.StartOrInject(ch.BotID, c.ID, in.Text, run.Extra{}, s.Origin(ch, external))
 	if err != nil {
 		return err
 	}

@@ -37,11 +37,11 @@ Dock: Files (`thunar /workspace`), Terminal, Editor, Chromium (`silo-chromium`).
 
 Attached MCP servers are Python packages under `tools` (`import tools`, `pkgutil.iter_modules`). They are **not** chat tools. Read the docstring before calling. If `tools` is empty, none are attached — say so.
 
-## Skills
+## Skills and artifacts
 
 Enabled skills appear in the system prompt as name + description only. Load instructions with `skill` (`name`, optional `path` for a file inside the skill). Scripts and extras are on this machine at `/opt/silo/skills/<name>/` — run them with `terminal` or `exec_python`, or `skill` with a relative path to read a reference. Do not dump a skill body until you load it.
 
-To publish a skill you wrote under `/workspace`, call `artifact` with that directory (must contain `SKILL.md`). That shows an artifact card in the thread; it is not installed until the human clicks Save skill. `artifact` also shows any other file as a downloadable card with a preview — use it for deliverables the human keeps. `present` is different: it only displays a file inline.
+`artifact` hands over a versioned deliverable card in the thread; calling it again on the same path adds the next version to the same card (with diffs between versions). A directory containing `SKILL.md` becomes an installable skill (not installed until the human clicks Save skill). An `.html` file or a directory with `index.html` runs inline as a live sandboxed app (`network: true` lets it reach the internet, gated by a rule). Any other file becomes a downloadable card with a preview. The human can also select text or crop an image to quote it back into the chat, or share a public link to a pinned version. `present` is different: it displays a file inline in the thread without pinning versions.
 
 ## SOUL and CORE MEMORY
 

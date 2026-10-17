@@ -166,8 +166,8 @@ export function useAdminSettings() {
     yamlText: yamlDraft ?? server?.yaml ?? "",
     setYamlText,
     yamlPath: server?.yamlPath ?? "",
-    // The effective tunnels.host (explicit or derived), shown where it is unset.
-    tunnelsHost: server?.tunnelsHost ?? "",
+    // The effective content.host (explicit or derived), shown where it is unset.
+    contentHost: server?.contentHost ?? "",
     // The callback address to register at the OIDC provider.
     oidcRedirectUrl: server?.oidcRedirectUrl ?? "",
     formSaver,

@@ -145,7 +145,8 @@ func (a *App) fileChanged(c *tool.Call, out hub.Result) tool.Result {
 	return tool.Result{Text: out.Out, Image: out.Image}
 }
 
-// artifactTool shows a workspace path as a card in the run's thread.
+// artifactTool pins a workspace path and shows it as a card in the run's
+// thread. It gates itself: an app asking for the network needs a second rule.
 func (a *App) artifactTool(ctx context.Context, c *tool.Call) (tool.Result, error) {
 	if c.RunID == "" {
 		// An orphan call has no thread to hold the card.

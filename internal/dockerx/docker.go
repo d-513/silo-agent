@@ -230,7 +230,10 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 	// The workspace history (change tracking) sits beside the workspace, not
 	// in it: Files, grep and Knowledge never see it, and it outlives a reset.
 	history := filepath.Join(cfg.DataDir, "bots", botID, "history")
-	for _, d := range []string{ws, bot, tmp, chrome, history} {
+	// The artifact store (what the Bot handed the human, as it was) sits there
+	// too, for the same reasons.
+	artifacts := filepath.Join(cfg.DataDir, "bots", botID, "artifacts")
+	for _, d := range []string{ws, bot, tmp, chrome, history, artifacts} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return "", err
 		}
@@ -238,10 +241,12 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 	absWS, _ := filepath.Abs(ws)
 	absChrome, _ := filepath.Abs(chrome)
 	absHistory, _ := filepath.Abs(history)
+	absArtifacts, _ := filepath.Abs(artifacts)
 	binds := []string{
 		absWS + ":/workspace",
 		absChrome + ":/home/silo/chrome-profile",
 		absHistory + ":/var/lib/silo/history",
+		absArtifacts + ":/var/lib/silo/artifacts",
 	}
 	if b := e.botDriveBind(ctx, botID); b != "" {
 		binds = append(binds, b)

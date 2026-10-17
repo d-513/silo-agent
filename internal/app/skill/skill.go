@@ -7,7 +7,6 @@ package skill
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -434,6 +433,12 @@ func (s *Service) Propose(ctx context.Context, bot *db.Bot, rel string) (string,
 	if err != nil {
 		return "", err
 	}
+	return s.InstallFiles(bot, files)
+}
+
+// InstallFiles installs a skill's files (path to bytes, SKILL.md at the top)
+// as a personal skill of the Bot's owner and enables it on the Bot.
+func (s *Service) InstallFiles(bot *db.Bot, files map[string][]byte) (string, error) {
 	md, ok := files["SKILL.md"]
 	if !ok {
 		return "", errors.New("directory must contain SKILL.md")
@@ -512,25 +517,11 @@ func (s *Service) Peek(ctx context.Context, botID, rel string) (Proposal, error)
 	if !hasMD {
 		return Proposal{}, errors.New("directory must contain SKILL.md")
 	}
-	raw, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: rel + "/SKILL.md"}}})
+	f, err := s.ws.Read(ctx, botID, rel+"/SKILL.md", 0)
 	if err != nil {
 		return Proposal{}, err
 	}
-	var row struct {
-		Content string `json:"content"`
-		Data    string `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		return Proposal{}, err
-	}
-	body := row.Content
-	if body == "" && row.Data != "" {
-		b, err := base64.StdEncoding.DecodeString(row.Data)
-		if err != nil {
-			return Proposal{}, err
-		}
-		body = string(b)
-	}
+	body := string(f.Data)
 	m, err := skills.Parse(body)
 	if err != nil {
 		return Proposal{}, err
@@ -613,20 +604,11 @@ func (s *Service) PullTree(ctx context.Context, botID, rel string) (map[string][
 				}
 				continue
 			}
-			view, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{BrowseFile: &v1.BrowseFileCmd{Path: child}}})
+			f, err := s.ws.Read(ctx, botID, child, workspace.PresentLimit)
 			if err != nil {
 				return err
 			}
-			var row struct {
-				Data string `json:"data"`
-			}
-			if err := json.Unmarshal([]byte(view), &row); err != nil {
-				return err
-			}
-			b, err := base64.StdEncoding.DecodeString(row.Data)
-			if err != nil {
-				return err
-			}
+			b := f.Data
 			relPath, err := filepath.Rel(rel, child)
 			if err != nil {
 				relPath = e.Name

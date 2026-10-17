@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
@@ -55,60 +56,23 @@ func (a *App) kept(botID, s string) string {
 	return db.CleanText(textx.ValidUTF8(a.Mask(botID).Apply(s)))
 }
 
-type eventAttachment struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Size int64  `json:"size"`
-	Mime string `json:"mime,omitempty"`
-}
-
-// emitUser persists the opening user message and carries any chat uploads so
-// the thread can render chips on reload and the model can be told the paths.
-// from names a non-human sender ("lead" for a subagent's brief and the lead's
-// messages); it rides on Tool so the thread can label the bubble.
-func (a *App) emitUser(botID, chatID, runID, body string, atts []*v1.Attachment, from string) {
-	a.emitUserAt(botID, chatID, runID, ids.New(), time.Now(), a.botZone(botID), body, atts, from)
+// emitUser persists the opening user message and carries any chat uploads and
+// quotes, so the thread can render them on reload and the model can be told
+// about them. from names a non-human sender ("lead" for a subagent's brief and
+// the lead's messages); it rides on Tool so the thread can label the bubble.
+func (a *App) emitUser(botID, chatID, runID, body string, ex run.Extra, from string) {
+	a.emitUserAt(botID, chatID, runID, ids.New(), time.Now(), a.botZone(botID), body, ex, from)
 }
 
 // emitUserAt is emitUser for a caller that needs the event's id, time and
 // zone: a message injected into a live run is stamped with them when the run
 // reads it.
-func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneName, body string, atts []*v1.Attachment, from string) {
+func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneName, body string, ex run.Extra, from string) {
 	body = a.kept(botID, body)
-	meta := ""
-	if len(atts) > 0 {
-		flat := make([]eventAttachment, 0, len(atts))
-		for _, at := range atts {
-			flat = append(flat, eventAttachment{Name: at.GetName(), Path: at.GetPath(), Size: at.GetSize(), Mime: at.GetMime()})
-		}
-		if b, err := json.Marshal(flat); err == nil {
-			meta = string(b)
-		}
-	}
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: meta, Zone: zoneName, CreatedAt: now})
-	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from, Attachments: atts, CreatedAt: now.Format(time.RFC3339)})
-}
-
-func attachmentsFromMeta(meta string) []eventAttachment {
-	if meta == "" {
-		return nil
-	}
-	var out []eventAttachment
-	if json.Unmarshal([]byte(meta), &out) != nil {
-		return nil
-	}
-	return out
-}
-
-func v1Attachments(flat []eventAttachment) []*v1.Attachment {
-	if len(flat) == 0 {
-		return nil
-	}
-	out := make([]*v1.Attachment, 0, len(flat))
-	for _, a := range flat {
-		out = append(out, &v1.Attachment{Name: a.Name, Path: a.Path, Size: a.Size, Mime: a.Mime})
-	}
-	return out
+	um := a.userMeta(botID, ex)
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: um.encode(), Zone: zoneName, CreatedAt: now})
+	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from,
+		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), CreatedAt: now.Format(time.RFC3339)})
 }
 
 // emitDelivered persists one user-visible block and, on a channel origin,
@@ -165,16 +129,14 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 			send("Presented in the workspace: "+args.Path, nil)
 		}
 	case "artifact":
-		if info, err := a.Artifacts.Describe(ctx, botID, args.Path, args.Kind, args.Title); err == nil {
-			if info.Type == "skill" {
-				if att, err := a.Artifacts.ZipAttachment(ctx, botID, info.Path, info.Title); err == nil {
-					send("Skill: "+info.Name, &att)
-					return
-				}
-			} else if att, err := a.Workspace.Attachment(ctx, botID, info.Path); err == nil {
-				send("Artifact: "+info.Title, &att)
-				return
+		// The version the tool just pinned, as the card shows it.
+		if att, info, err := a.Artifacts.Attachment(ctx, botID, chatID, args.Path); err == nil {
+			label := "Artifact: " + info.Title
+			if info.Type == artifact.TypeSkill {
+				label = "Skill: " + info.Name
 			}
+			send(label, &att)
+			return
 		}
 		title := strings.TrimSpace(args.Title)
 		if title == "" {

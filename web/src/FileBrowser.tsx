@@ -21,7 +21,8 @@ export function TypeIcon({ name, dir, size = 16 }: { name: string; dir: boolean;
   if (k === "csv") return <FileSpreadsheet size={size} className={cls} />;
   if (k === "docx") return <FileType size={size} className={cls} />;
   if (isArchive(e)) return <FileArchive size={size} className={cls} />;
-  if (k === "code" || k === "json") return <FileCode size={size} className={cls} />;
+  if (k === "code" || k === "json" || k === "html" || k === "notebook") return <FileCode size={size} className={cls} />;
+  if (k === "sheet") return <FileSpreadsheet size={size} className={cls} />;
   if (k === "markdown" || k === "text") return <FileText size={size} className={cls} />;
   return <File size={size} className={cls} />;
 }
@@ -200,9 +201,9 @@ export function FileBrowser({
         </nav>
         <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "@max-[640px]:hidden"}`}>
           {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">{t("Showing the first 2 MB.")}</p>}
-          <div className="min-h-0 flex-1 overflow-auto p-3">
-            {busy ? <p className="text-ink-2">{t("Opening…")}</p> : null}
-            {!busy && file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} /> : null}
+          <div className={`min-h-0 flex-1 ${!busy && file && kindOf(file.name) === "pdf" ? "flex flex-col overflow-hidden" : "overflow-auto p-3"}`}>
+            {busy ? <p className="text-ink-2">{t("Opening\u2026")}</p> : null}
+            {!busy && file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} full quote={source.quote?.(sel)} /> : null}
             {!busy && !file && !err ? <p className="text-ink-2">{t("Select a file.")}</p> : null}
           </div>
         </section>
@@ -329,4 +330,3 @@ export function SkillBrowserOverlay({
     </div>
   );
 }
-

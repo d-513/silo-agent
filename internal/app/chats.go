@@ -119,6 +119,8 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	}
 	a.DB.Where("chat_id = ?", c.ID).Delete(&db.Run{})
 	a.DB.Delete(c)
+	// Its artifacts' pinned bytes go now rather than on the next sweep.
+	go a.Artifacts.SweepBot(context.Background(), c.BotID)
 	return connect.NewResponse(&v1.DeleteChatResponse{}), nil
 }
 

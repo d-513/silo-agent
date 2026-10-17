@@ -1,33 +1,32 @@
 // Package artifact is what a Bot hands the human in the thread: a file to
-// download or preview, or a skill to save. It describes a workspace path as a
-// card, emits it, serves the download endpoints (cookie auth) and runs the
-// "Save skill" action that copies a proposed skill to the owner's personal
-// library.
+// download or preview, a skill to save, or a live app. Every emit of a path
+// pins its bytes in the Bot's artifact store (on its machine, outside the
+// workspace) as a new version of the card, so a card never changes under the
+// human and older versions stay readable. The service records the versions,
+// emits the card, serves downloads (cookie auth), the apps and the owner's
+// public links on the content host, and runs "Save skill".
 package artifact
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
+	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
+	"time"
 
-	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
-	v1 "silo.agent/gen/silo/v1"
-	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/host"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/workspace"
-	siloauth "silo.agent/internal/auth"
-	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
+	"silo.agent/internal/names"
+	"silo.agent/internal/security"
 	"silo.agent/internal/skills"
 )
 
@@ -35,42 +34,59 @@ import (
 type Host interface {
 	host.Emitter
 	host.Runs
+	host.Authorizer
 }
 
-// Service describes, emits and serves artifacts.
+// Service describes, pins, emits and serves artifacts.
 type Service struct {
 	db     *gorm.DB
 	cfg    func() config.Config
 	ws     *workspace.Service
 	skills *skill.Service
 	host   Host
+	cache  blobCache
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, ws *workspace.Service, sk *skill.Service, h Host) *Service {
 	return &Service{db: gdb, cfg: cfg, ws: ws, skills: sk, host: h}
 }
 
-// Info is the JSON carried in a `artifact` RunEvent. A skill is an
-// installable deliverable (Save skill copies it to personal); a file is a
-// download with a preview. `present` is separate — it shows a file inline and
-// never produces a card.
+// The types of card.
+const (
+	TypeFile  = "file"
+	TypeSkill = "skill"
+	TypeApp   = "app"
+)
+
+// Info is the JSON carried in an `artifact` RunEvent: one version of a card.
+// Every emit of the same path in a chat carries the same artifact_id and the
+// next version; the thread keeps one card and lists the versions on it.
 type Info struct {
-	Type   string `json:"type"`
-	Name   string `json:"name"`
-	Title  string `json:"title"`
-	Path   string `json:"path"`
-	Scope  string `json:"scope"`
+	Type       string `json:"type"`
+	ArtifactID string `json:"artifact_id"`
+	Version    int    `json:"version"`
+	Name       string `json:"name"`
+	Title      string `json:"title"`
+	Path       string `json:"path"`
+	Scope      string `json:"scope"`
+	// Status is ready, or pending/saved for a skill.
 	Status string `json:"status"`
 	Size   int64  `json:"size,omitempty"`
-}
-
-func artifactJSON(info Info) string {
-	b, _ := json.Marshal(info)
-	return string(b)
+	// Kind is file or tree (a folder: a skill or a multi-file app).
+	Kind string `json:"kind"`
+	// Pinned: this version's bytes are kept. Not pinned (over the caps), the
+	// card shows the live file and Note says why.
+	Pinned  bool     `json:"pinned"`
+	Note    string   `json:"note,omitempty"`
+	Network bool     `json:"network,omitempty"`
+	Entry   string   `json:"entry,omitempty"`
+	Files   int      `json:"files,omitempty"`
+	Preview *Preview `json:"preview,omitempty"`
 }
 
 func (s *Service) emit(botID, runID string, info Info) {
-	s.host.Emit(botID, s.host.ChatOfRun(runID), runID, "artifact", artifactJSON(info), "")
+	b, _ := json.Marshal(info)
+	s.host.Emit(botID, s.host.ChatOfRun(runID), runID, "artifact", string(b), "")
 }
 
 func titleOr(title, fallback string) string {
@@ -80,360 +96,280 @@ func titleOr(title, fallback string) string {
 	return fallback
 }
 
-// Describe resolves a workspace path into a skill (directory with
-// SKILL.md) or a file. The file branch is tried first because it is a cheap
-// stat; a directory then falls through to the skill peek.
-func (s *Service) Describe(ctx context.Context, botID, rel, kind, title string) (Info, error) {
-	rel = strings.TrimSpace(strings.TrimPrefix(rel, "/"))
-	if rel == "" {
-		return Info{}, errors.New("path required")
-	}
-	kind = strings.ToLower(strings.TrimSpace(kind))
-	if kind != "" && kind != "skill" && kind != "file" {
-		return Info{}, errors.New("kind is skill or file")
-	}
-
-	var fileErr error
-	if kind == "" || kind == "file" {
-		info, err := s.fileArtifact(ctx, botID, rel, title)
-		if err == nil {
-			return info, nil
-		}
-		if kind == "file" {
-			return Info{}, err
-		}
-		fileErr = err
-	}
-
-	if kind == "" || kind == "skill" {
-		peek, err := s.skills.Peek(ctx, botID, rel)
-		if err == nil {
-			return Info{
-				Type: "skill", Name: peek.Name, Title: titleOr(title, peek.Name),
-				Path: peek.Path, Scope: "workspace", Status: "pending",
-			}, nil
-		}
-		if kind == "skill" {
-			return Info{}, err
-		}
-		if fileErr != nil && !strings.Contains(fileErr.Error(), "directory") {
-			return Info{}, fileErr
-		}
-		return Info{}, err
-	}
-	return Info{}, fileErr
+// args is the artifact tool's input.
+type args struct {
+	Path    string `json:"path"`
+	Title   string `json:"title"`
+	Kind    string `json:"kind"`
+	Network bool   `json:"network"`
 }
 
-func (s *Service) fileArtifact(ctx context.Context, botID, rel, title string) (Info, error) {
-	raw, err := s.ws.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
-		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: 1},
-	}})
-	if err != nil {
-		return Info{}, err
+func isHTML(name string) bool {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".html", ".htm":
+		return true
 	}
-	var row struct {
-		Name string `json:"name"`
-		Size int64  `json:"size"`
-	}
-	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		return Info{}, err
-	}
-	name := row.Name
-	if name == "" {
-		name = path.Base(rel)
-	}
-	return Info{
-		Type: "file", Name: name, Title: titleOr(title, name),
-		Path: rel, Scope: "workspace", Status: "ready", Size: row.Size,
-	}, nil
+	return false
 }
 
 // Tool is the shared engine behind the chat `artifact` tool and the Python
-// `silo_runtime.artifact` / CallTool path. It emits the card and returns a
-// short ack for the model.
+// `silo_runtime.artifact` / CallTool path: it pins the path, records the
+// version, emits the card and returns a short ack for the model. It gates
+// itself (artifact.emit, and artifact.app_network for an app that asks for
+// the internet), since the second rule depends on what the path turns out to
+// be.
 func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, argsJSON string) (string, error) {
-	var args struct {
-		Path  string `json:"path"`
-		Title string `json:"title"`
-		Kind  string `json:"kind"`
-	}
+	var a args
 	if raw := strings.TrimSpace(argsJSON); raw != "" {
-		if err := json.Unmarshal([]byte(raw), &args); err != nil {
+		if err := json.Unmarshal([]byte(raw), &a); err != nil {
 			return "", errors.New("invalid args")
 		}
 	}
-	info, err := s.Describe(ctx, bot.ID, args.Path, args.Kind, args.Title)
+	rel := workspace.Rel(a.Path)
+	if rel == "" {
+		return "", errors.New("path required")
+	}
+	kind := strings.ToLower(strings.TrimSpace(a.Kind))
+	switch kind {
+	case "", TypeFile, TypeSkill, TypeApp:
+	default:
+		return "", errors.New("kind is file, skill or app")
+	}
+	if _, err := s.host.AuthorizeAction(ctx, bot, runID, security.Artifact, "emit", argsJSON, ""); err != nil {
+		return "", err
+	}
+	chatID := s.host.ChatOfRun(runID)
+	if chatID == "" {
+		return "", errors.New("artifact needs a live chat run; this process is not attached to one")
+	}
+
+	asTree := isHTML(rel) && kind != TypeFile
+	var requires []string
+	switch kind {
+	case TypeSkill:
+		requires = []string{"SKILL.md"}
+	case TypeApp:
+		requires = []string{"index.html"}
+	default:
+		requires = []string{"SKILL.md", "index.html"}
+	}
+	p, err := s.pin(ctx, bot.ID, rel, asTree, requires)
 	if err != nil {
 		return "", err
 	}
+	typ, entry, err := cardType(kind, rel, p)
+	if err != nil {
+		s.release(ctx, bot.ID, p.ID)
+		return "", err
+	}
+	network := a.Network && typ == TypeApp
+	if network {
+		if _, err := s.host.AuthorizeAction(ctx, bot, runID, security.Artifact, "app_network", argsJSON, ""); err != nil {
+			s.release(ctx, bot.ID, p.ID)
+			return "", err
+		}
+	}
+	s.markEvicted(bot.ID, p.Evicted)
+
+	info := Info{
+		Type: typ, Path: rel, Scope: "workspace", Status: "ready", Size: p.Size, Kind: p.Kind,
+		Pinned: p.ID != "", Note: p.TooLarge, Network: network, Entry: entry, Files: len(p.Entries),
+		Name: p.Name, Preview: p.Preview,
+	}
+	if typ == TypeSkill {
+		info.Status = "pending"
+		if p.ID != "" {
+			if m, err := s.skillMeta(ctx, bot.ID, p.Entries); err == nil {
+				info.Name = m.Name
+				if d := strings.TrimSpace(m.Description); d != "" {
+					info.Preview = &Preview{Text: d}
+				}
+			}
+		} else if peek, err := s.skills.Peek(ctx, bot.ID, rel); err == nil {
+			info.Name = peek.Name
+		}
+	}
+	info.Title = titleOr(a.Title, info.Name)
+	art, ver, err := s.record(bot.ID, chatID, runID, info, p.ID)
+	if err != nil {
+		return "", err
+	}
+	info.ArtifactID, info.Version = art.ID, ver.N
 	s.emit(bot.ID, runID, info)
+	return ack(info), nil
+}
+
+// cardType decides what a pinned path is: a skill (a folder with SKILL.md), an
+// app (an HTML file, or a folder with index.html) or a file.
+func cardType(kind, rel string, p pinned) (typ, entry string, err error) {
+	if p.Kind == "tree" {
+		var hasSkill, hasIndex bool
+		for _, e := range p.Entries {
+			hasSkill = hasSkill || e.Path == "SKILL.md"
+			hasIndex = hasIndex || e.Path == "index.html"
+		}
+		switch {
+		case kind == TypeFile:
+			return "", "", errors.New("this is a folder: a file artifact names one file (or leave kind out)")
+		case len(p.Entries) == 1 && isHTML(p.Entries[0].Path) && kind != TypeSkill:
+			return TypeApp, p.Entries[0].Path, nil
+		case p.ID == "" && kind != "":
+			// Over the caps: the entries are unknown, so trust the kind asked for.
+			return kind, "index.html", nil
+		case hasSkill && kind != TypeApp:
+			return TypeSkill, "", nil
+		case hasIndex && kind != TypeSkill:
+			return TypeApp, "index.html", nil
+		case p.ID == "":
+			if isHTML(rel) {
+				return TypeApp, path.Base(rel), nil
+			}
+			return TypeSkill, "", nil
+		}
+		return "", "", errors.New("a folder artifact must hold SKILL.md (a skill) or index.html (an app) at its top")
+	}
+	if kind == TypeSkill {
+		return "", "", errors.New("a skill artifact is a folder holding SKILL.md")
+	}
+	if kind == TypeApp {
+		return "", "", errors.New("an app artifact is an .html file or a folder holding index.html")
+	}
+	return TypeFile, "", nil
+}
+
+func (s *Service) skillMeta(ctx context.Context, botID string, entries []entry) (skills.Meta, error) {
+	for _, e := range entries {
+		if e.Path == "SKILL.md" {
+			b, err := s.blob(ctx, botID, e.SHA)
+			if err != nil {
+				return skills.Meta{}, err
+			}
+			return skills.Parse(string(b))
+		}
+	}
+	return skills.Meta{}, errors.New("directory must contain SKILL.md")
+}
+
+func ack(info Info) string {
+	v := fmt.Sprintf(" (version %d)", info.Version)
+	note := ""
+	if !info.Pinned && info.Note != "" {
+		note = " It is too large to keep (" + info.Note + "), so the card shows the live file: changing it changes the card."
+	}
 	switch info.Type {
-	case "skill":
-		return "showed skill " + info.Name + " as an artifact. It is not installed until the human clicks Save skill.", nil
-	default:
-		return "showed " + info.Name + " as a downloadable artifact.", nil
-	}
-}
-
-// --- download endpoints -----------------------------------------------------
-
-func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	u, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies())
-	if err != nil {
-		access.HTTPSessionError(w, err)
-		return
-	}
-	switch strings.Trim(strings.TrimPrefix(r.URL.Path, "/artifacts/"), "/") {
-	case "file":
-		s.downloadWorkspaceFile(w, r, u)
-	case "skill.zip":
-		s.downloadSkillZip(w, r, u)
-	default:
-		http.NotFound(w, r)
-	}
-}
-
-func (s *Service) downloadWorkspaceFile(w http.ResponseWriter, r *http.Request, u *db.User) {
-	rel := workspace.Rel(r.URL.Query().Get("path"))
-	botID := strings.TrimSpace(r.URL.Query().Get("bot_id"))
-	if botID == "" || rel == "" {
-		http.Error(w, "bot_id and path required", http.StatusBadRequest)
-		return
-	}
-	ctx := access.WithUser(r.Context(), u)
-	b, err := access.OwnBot(ctx, s.db, botID)
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	raw, err := s.ws.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_BrowseFile{
-		BrowseFile: &v1.BrowseFileCmd{Path: rel, Limit: workspace.PresentLimit},
-	}})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	var row struct {
-		Name    string `json:"name"`
-		Content string `json:"content"`
-		Data    string `json:"data"`
-	}
-	if err := json.Unmarshal([]byte(raw), &row); err != nil {
-		http.Error(w, "bad file", http.StatusInternalServerError)
-		return
-	}
-	data, err := workspace.DecodeData(row.Data)
-	if err != nil {
-		http.Error(w, "bad file", http.StatusInternalServerError)
-		return
-	}
-	if len(data) == 0 {
-		data = []byte(row.Content)
-	}
-	name := row.Name
-	if name == "" {
-		name = path.Base(rel)
-	}
-	ct := workspace.MIME(name)
-	if ct == "" {
-		ct = "application/octet-stream"
-	}
-	// The Bot wrote these bytes. Only a type that cannot act as a page opens
-	// in place; the rest is a download whatever the link asks for.
-	disp := "attachment"
-	if r.URL.Query().Get("inline") != "" && workspace.Passive(ct) {
-		disp = "inline"
-	}
-	workspace.Untrusted(w.Header(), ct)
-	w.Header().Set("Content-Type", ct)
-	w.Header().Set("Content-Disposition", disp+`; filename="`+safeFilename(name)+`"`)
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, _ = w.Write(data)
-}
-
-type zipEntry struct {
-	Path string
-	Data []byte
-}
-
-func (s *Service) downloadSkillZip(w http.ResponseWriter, r *http.Request, u *db.User) {
-	q := r.URL.Query()
-	var (
-		files []zipEntry
-		name  string
-		total int
-	)
-	if p := strings.TrimSpace(q.Get("path")); p != "" {
-		botID := strings.TrimSpace(q.Get("bot_id"))
-		if botID == "" {
-			http.Error(w, "bot_id required", http.StatusBadRequest)
-			return
+	case TypeSkill:
+		return "showed skill " + info.Name + " as an artifact" + v + ". It is not installed until the human clicks Save skill." + note
+	case TypeApp:
+		net := "with no network: it can load only its own files"
+		if info.Network {
+			net = "with network access"
 		}
-		ctx := access.WithUser(r.Context(), u)
-		b, err := access.OwnBot(ctx, s.db, botID)
-		if err != nil {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
+		return "showed " + info.Name + " as a live app in the thread" + v + ", sandboxed " + net + "." + note
+	}
+	return "showed " + info.Name + " as a downloadable artifact" + v + "." + note
+}
+
+// record finds or makes the chat's card for the path and adds the version.
+func (s *Service) record(botID, chatID, runID string, info Info, blob string) (*db.Artifact, *db.ArtifactVersion, error) {
+	var art db.Artifact
+	var ver db.ArtifactVersion
+	preview := ""
+	if info.Preview != nil {
+		if b, err := json.Marshal(info.Preview); err == nil {
+			preview = string(b)
 		}
-		tree, err := s.skills.PullTree(ctx, b.ID, p)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+	}
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		res := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("chat_id = ? AND path = ?", chatID, info.Path).Limit(1).Find(&art)
+		if res.Error != nil {
+			return res.Error
 		}
-		name = path.Base(strings.Trim(strings.TrimPrefix(p, "/"), "/"))
-		if md, ok := tree["SKILL.md"]; ok {
-			if m, err := skills.Parse(string(md)); err == nil && m.Name != "" {
-				name = m.Name
+		now := time.Now()
+		if res.RowsAffected == 0 {
+			art = db.Artifact{ID: ids.New(), BotID: botID, ChatID: chatID, Path: info.Path, Type: info.Type, Title: info.Title,
+				Label: names.New() + "-" + ids.New()[:6], CreatedAt: now, UpdatedAt: now}
+			if err := tx.Create(&art).Error; err != nil {
+				return err
 			}
 		}
-		for k, v := range tree {
-			total += len(v)
-			files = append(files, zipEntry{Path: k, Data: v})
+		art.Latest++
+		art.Type, art.Title, art.UpdatedAt = info.Type, info.Title, now
+		if err := tx.Model(&art).Updates(map[string]any{"latest": art.Latest, "type": art.Type, "title": art.Title, "updated_at": now}).Error; err != nil {
+			return err
 		}
-	} else {
-		name = strings.TrimSpace(q.Get("name"))
-		scope := strings.ToLower(strings.TrimSpace(q.Get("scope")))
-		if scope == "" {
-			scope = skills.KindPersonal
+		ver = db.ArtifactVersion{
+			ID: ids.New(), ArtifactID: art.ID, N: art.Latest, BotID: botID, RunID: runID, Kind: info.Kind, Name: info.Name,
+			Size: info.Size, Blob: blob, Entry: info.Entry, Network: info.Network, Preview: preview, CreatedAt: now,
 		}
-		if scope != skills.KindLibrary && scope != skills.KindPersonal {
-			http.Error(w, "scope is library or personal", http.StatusBadRequest)
-			return
+		if err := tx.Create(&ver).Error; err != nil {
+			return err
 		}
-		userID := ""
-		if scope == skills.KindPersonal {
-			userID = u.ID
+		if blob != "" {
+			// Pinning again keeps the bytes for every version that has them.
+			return tx.Model(&db.ArtifactVersion{}).Where("bot_id = ? AND blob = ?", botID, blob).Update("gone", false).Error
 		}
-		root := skills.RootFor(s.skills.DataDir(), scope, userID)
-		if !skills.Exists(root, name) {
-			http.Error(w, "skill not found", http.StatusNotFound)
-			return
-		}
-		walked, err := skills.WalkFiles(filepath.Join(root, name))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for _, f := range walked {
-			total += len(f.Data)
-			files = append(files, zipEntry{Path: f.Path, Data: f.Data})
-		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-	if name == "" {
-		name = "skill"
-	}
-	if len(files) == 0 {
-		http.Error(w, "nothing to download", http.StatusNotFound)
+	return &art, &ver, nil
+}
+
+// release forgets a pin no version uses (a refused emit).
+func (s *Service) release(ctx context.Context, botID, id string) {
+	if id == "" {
 		return
 	}
-	if len(files) > skills.MaxExtractFiles || total > skills.MaxExtractBytes {
-		http.Error(w, "skill is too large to download", http.StatusRequestEntityTooLarge)
+	var n int64
+	s.db.Model(&db.ArtifactVersion{}).Where("bot_id = ? AND blob = ?", botID, id).Count(&n)
+	if n == 0 {
+		_ = s.forget(ctx, botID, []string{id})
+	}
+}
+
+// markEvicted records what the store's budget dropped.
+func (s *Service) markEvicted(botID string, evicted []string) {
+	if len(evicted) == 0 {
 		return
 	}
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+safeFilename(name)+`.zip"`)
-	w.Header().Set("Cache-Control", "private, no-store")
-	zw := zip.NewWriter(w)
-	for _, f := range files {
-		if strings.Contains(f.Path, "..") {
-			continue
-		}
-		hdr := &zip.FileHeader{Name: f.Path, Method: zip.Deflate}
-		hdr.SetMode(0o644)
-		part, err := zw.CreateHeader(hdr)
-		if err != nil {
-			return
-		}
-		if _, err := part.Write(f.Data); err != nil {
-			return
-		}
-	}
-	_ = zw.Close()
+	s.cache.drop(botID)
+	s.db.Model(&db.ArtifactVersion{}).Where("bot_id = ? AND blob IN ?", botID, evicted).Update("gone", true)
 }
 
-// ZipAttachment packs a workspace skill directory into a zip attachment.
-func (s *Service) ZipAttachment(ctx context.Context, botID, rel, title string) (channels.Attachment, error) {
-	tree, err := s.skills.PullTree(ctx, botID, rel)
-	if err != nil {
-		return channels.Attachment{}, err
+// version finds a Bot's artifact and one of its versions (0 = the newest).
+func (s *Service) version(botID, artifactID string, n int) (*db.Artifact, *db.ArtifactVersion, error) {
+	var art db.Artifact
+	if res := s.db.Where("id = ? AND bot_id = ?", artifactID, botID).Limit(1).Find(&art); res.Error != nil {
+		return nil, nil, res.Error
+	} else if res.RowsAffected == 0 {
+		return nil, nil, errNotFound
 	}
-	name := strings.TrimSpace(title)
-	if md, ok := tree["SKILL.md"]; ok {
-		if m, err := skills.Parse(string(md)); err == nil && m.Name != "" {
-			name = m.Name
-		}
+	if n <= 0 {
+		n = art.Latest
 	}
-	if name == "" {
-		name = path.Base(strings.Trim(strings.TrimPrefix(rel, "/"), "/"))
+	var v db.ArtifactVersion
+	if res := s.db.Where("artifact_id = ? AND n = ?", art.ID, n).Limit(1).Find(&v); res.Error != nil {
+		return nil, nil, res.Error
+	} else if res.RowsAffected == 0 {
+		return nil, nil, errNotFound
 	}
-	if name == "" {
-		name = "skill"
-	}
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	for k, v := range tree {
-		if strings.Contains(k, "..") {
-			continue
-		}
-		hdr := &zip.FileHeader{Name: k, Method: zip.Deflate}
-		hdr.SetMode(0o644)
-		part, err := zw.CreateHeader(hdr)
-		if err != nil {
-			_ = zw.Close()
-			return channels.Attachment{}, err
-		}
-		if _, err := part.Write(v); err != nil {
-			_ = zw.Close()
-			return channels.Attachment{}, err
-		}
-	}
-	if err := zw.Close(); err != nil {
-		return channels.Attachment{}, err
-	}
-	return channels.Attachment{Name: safeFilename(name) + ".zip", Mime: "application/zip", Data: buf.Bytes()}, nil
+	return &art, &v, nil
 }
 
-func safeFilename(name string) string {
-	var b strings.Builder
-	for _, r := range name {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
-			b.WriteRune(r)
-		default:
-			b.WriteByte('_')
-		}
-	}
-	out := strings.Trim(b.String(), ". ")
-	if out == "" {
-		return "artifact"
-	}
-	return out
-}
+var errNotFound = errors.New("artifact not found")
 
-// SaveSkill is the Save skill action on a skill card: it installs the proposed
-// workspace folder as a personal skill and re-emits the card as saved.
-func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
-	if err != nil {
-		return nil, err
+// Drop removes a Bot's artifacts and shared links (DeleteBot); the store goes
+// with the Bot's data directory.
+func (s *Service) Drop(botID string) {
+	var shares []db.ArtifactShare
+	s.db.Where("bot_id = ?", botID).Find(&shares)
+	for i := range shares {
+		s.removeShareFiles(shares[i].ID)
 	}
-	path := strings.TrimSpace(strings.TrimPrefix(req.Msg.GetPath(), "/"))
-	if path == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path required"))
-	}
-	peek, err := s.skills.Peek(ctx, b.ID, path)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if _, err := s.skills.Propose(ctx, b, path); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	runID := strings.TrimSpace(req.Msg.GetRunId())
-	if runID != "" {
-		s.emit(b.ID, runID, Info{
-			Type: "skill", Name: peek.Name, Title: peek.Name, Path: peek.Path,
-			Scope: skills.KindPersonal, Status: "saved",
-		})
-	}
-	return connect.NewResponse(&v1.SaveSkillResponse{Name: peek.Name}), nil
+	s.db.Where("bot_id = ?", botID).Delete(&db.ArtifactShare{})
+	s.db.Where("bot_id = ?", botID).Delete(&db.ArtifactView{})
+	s.db.Where("bot_id = ?", botID).Delete(&db.ArtifactVersion{})
+	s.db.Where("bot_id = ?", botID).Delete(&db.Artifact{})
+	s.cache.drop(botID)
 }

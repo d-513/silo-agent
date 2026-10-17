@@ -3,6 +3,10 @@
 // entry here: one per plural form.
 const en: Record<string, string> = {
   "{{count}} files_one": "{{count}} file",
+  "{{count}} rows_one": "{{count}} row",
+  "{{count}} rows_other": "{{count}} rows",
+  "{{count}} features_one": "{{count}} feature",
+  "{{count}} features_other": "{{count}} features",
   "{{count}} files_other": "{{count}} files",
   "{{count}} passages_one": "{{count}} passage",
   "{{count}} passages_other": "{{count}} passages",
