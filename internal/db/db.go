@@ -842,7 +842,13 @@ func Migrate(gdb *gorm.DB) error {
 	if err := gdb.Exec("UPDATE rules SET action = 'core_memory' WHERE connector = 'bot' AND action = 'memory'").Error; err != nil {
 		return err
 	}
+	if err := dedupePinnedAutomations(gdb); err != nil {
+		return err
+	}
 	for _, stmt := range []string{
+		// One Heartbeat and one Dashboard per Bot: the insert that pins them
+		// relies on this to lose a race instead of making a second.
+		"CREATE UNIQUE INDEX IF NOT EXISTS automations_pinned ON automations (bot_id, kind) WHERE kind IN ('heartbeat', 'dashboard')",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
 		// 'simple' keeps the keyword half language-neutral: names, part
 		// numbers and error codes match exactly in any language.
@@ -858,6 +864,29 @@ func Migrate(gdb *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// dedupePinnedAutomations removes the extra Heartbeats and Dashboards that a
+// racing create made before the unique index existed, with their log chats.
+// The copy kept is the one that was used: scheduled, then most recently run,
+// then the oldest.
+func dedupePinnedAutomations(gdb *gorm.DB) error {
+	const extra = `SELECT id FROM (SELECT id, row_number() OVER (PARTITION BY bot_id, kind
+		ORDER BY (schedule <> '') DESC, last_run_at DESC NULLS LAST, created_at, id) AS n
+		FROM automations WHERE kind IN ('heartbeat', 'dashboard')) ranked WHERE n > 1`
+	return gdb.Transaction(func(tx *gorm.DB) error {
+		for _, stmt := range []string{
+			"DELETE FROM run_events WHERE run_id IN (SELECT r.id FROM runs r JOIN chats c ON c.id = r.chat_id WHERE c.automation_id IN (" + extra + "))",
+			"DELETE FROM runs WHERE chat_id IN (SELECT id FROM chats WHERE automation_id IN (" + extra + "))",
+			"DELETE FROM chats WHERE automation_id IN (" + extra + ")",
+			"DELETE FROM automations WHERE id IN (" + extra + ")",
+		} {
+			if err := tx.Exec(stmt).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // hashSessionIDs moves sessions from before the id was a hash (they have no

@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -64,6 +65,63 @@ func TestAutomationHeartbeatIsPinnedAndIdle(t *testing.T) {
 	// A second list does not duplicate them.
 	if n := len(listAutomations(t, h, bot.GetId())); n != 2 {
 		t.Fatalf("pinned automations duplicated: %d", n)
+	}
+}
+
+func TestPinnedAutomationsSurviveConcurrentLists(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	botID := h.SeedBot("Racer")
+	var wg sync.WaitGroup
+	for range 12 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			h.Client.ListAutomations(h.Ctx(), connect.NewRequest(&v1.ListAutomationsRequest{BotId: botID}))
+		}()
+	}
+	wg.Wait()
+	for _, kind := range []string{"heartbeat", "dashboard"} {
+		var n, logs int64
+		h.DB.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, kind).Count(&n)
+		h.DB.Model(&db.Chat{}).Where("bot_id = ? AND automation_id IN (?)", botID,
+			h.DB.Model(&db.Automation{}).Select("id").Where("bot_id = ? AND kind = ?", botID, kind)).Count(&logs)
+		if n != 1 || logs != 1 {
+			t.Fatalf("%s: %d rows, %d log chats after concurrent lists; want 1 and 1", kind, n, logs)
+		}
+	}
+}
+
+func TestMigrateDropsDuplicatePinnedAutomations(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	botID := h.SeedBot("Twins")
+	listAutomations(t, h, botID)
+	if err := h.DB.Exec("DROP INDEX automations_pinned").Error; err != nil {
+		t.Fatal(err)
+	}
+	var keep db.Automation
+	h.DB.Where("bot_id = ? AND kind = 'dashboard'", botID).First(&keep)
+	h.DB.Model(&keep).Update("schedule", "0 9 * * *")
+	dup := db.Automation{ID: "dup-dashboard", BotID: botID, Kind: "dashboard", Name: "Dashboard", ChatID: "dup-log",
+		Enabled: true, CreatedAt: keep.CreatedAt.Add(-time.Hour), UpdatedAt: keep.CreatedAt}
+	h.DB.Create(&dup)
+	h.DB.Create(&db.Chat{ID: "dup-log", BotID: botID, AutomationID: dup.ID, Title: "Dashboard"})
+	if err := db.Migrate(h.DB); err != nil {
+		t.Fatal(err)
+	}
+	var rows []db.Automation
+	h.DB.Where("bot_id = ? AND kind = 'dashboard'", botID).Find(&rows)
+	if len(rows) != 1 || rows[0].ID != keep.ID {
+		t.Fatalf("want only the scheduled dashboard %s kept, got %v", keep.ID, rows)
+	}
+	var logs int64
+	h.DB.Model(&db.Chat{}).Where("id = 'dup-log'").Count(&logs)
+	if logs != 0 {
+		t.Fatal("the duplicate's log chat should be dropped with it")
+	}
+	if err := h.DB.Create(&db.Automation{ID: "dup-2", BotID: botID, Kind: "dashboard"}).Error; err == nil {
+		t.Fatal("the unique index should refuse a second dashboard")
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -145,6 +146,10 @@ func (s *Service) EnsureDashboard(botID string) {
 	s.ensurePinned(botID, automationDashboard, "Dashboard", prompts.Dashboard)
 }
 
+// ensurePinned is called from every page that lists automations, often by
+// several requests at once, so a count-then-create would race and pin two. The
+// partial unique index on (bot_id, kind) for pinned kinds makes the insert the
+// check: a loser's insert does nothing, and only the winner makes the log chat.
 func (s *Service) ensurePinned(botID, kind, name, prompt string) {
 	var n int64
 	s.db.Model(&db.Automation{}).Where("bot_id = ? AND kind = ?", botID, kind).Count(&n)
@@ -157,9 +162,13 @@ func (s *Service) ensurePinned(botID, kind, name, prompt string) {
 		Prompt: strings.TrimSpace(prompt), Enabled: true, CreatedBy: "user",
 		CreatedAt: now, UpdatedAt: now,
 	}
-	s.ensureAutomationChat(&au)
-	if err := s.db.Create(&au).Error; err != nil {
-		log.Printf("%s %s: %v", kind, botID, err)
+	res := s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&au)
+	if res.Error != nil {
+		log.Printf("%s %s: %v", kind, botID, res.Error)
+		return
+	}
+	if res.RowsAffected == 1 {
+		s.ensureAutomationChat(&au)
 	}
 }
 
