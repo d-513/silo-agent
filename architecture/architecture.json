@@ -1,0 +1,2780 @@
+{
+ "meta": {
+  "name": "Silo Agent",
+  "repo": "silo-agent",
+  "commit": "0f04a89",
+  "date": "16 Oct 2026",
+  "summary": "A multi-user agent host: each Bot is a durable container with a desktop, driven by an agent loop in a Go control plane that talks to model providers, gates every tool call through rules and approvals, and filters what the Bot reads. Bots are reached from a React console, an iOS app, chat apps, a receive-only mailbox and tunnels; all their internet traffic leaves through a filtering egress gateway.",
+  "facts": [
+   {
+    "label": "control plane",
+    "value": "Go · ConnectRPC · 161 UI RPCs"
+   },
+   {
+    "label": "DB",
+    "value": "Postgres 17 · pgvector · GORM"
+   },
+   {
+    "label": "boxes",
+    "value": "Podman · one per Bot"
+   },
+   {
+    "label": "frontend",
+    "value": "React · TanStack Router/Query"
+   },
+   {
+    "label": "LLM",
+    "value": "OpenRouter · OpenAI · Anthropic · local"
+   }
+  ]
+ },
+ "zones": [
+  {
+   "id": "clients",
+   "label": "People & clients"
+  },
+  {
+   "id": "cp",
+   "label": "Control plane (Go)"
+  },
+  {
+   "id": "boxes",
+   "label": "Containers (Podman)"
+  },
+  {
+   "id": "data",
+   "label": "Data"
+  },
+  {
+   "id": "outside",
+   "label": "Outside services"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "web",
+   "zone": "clients",
+   "title": "Web console",
+   "sub": "React · Vite · Tailwind",
+   "kind": "client",
+   "evidence": [
+    "web/src/router.tsx",
+    "web/src/useRunStream.ts:36"
+   ]
+  },
+  {
+   "id": "ios",
+   "zone": "clients",
+   "title": "iOS app",
+   "sub": "Swift · ConnectRPC client",
+   "kind": "client",
+   "evidence": [
+    "ios/SiloClient"
+   ]
+  },
+  {
+   "id": "chatapps",
+   "zone": "clients",
+   "title": "Chat apps",
+   "sub": "Telegram · WhatsApp · Discord",
+   "kind": "chat",
+   "evidence": [
+    "internal/channels/telegram/telegram.go:118",
+    "internal/channels/whatsapp/whatsapp.go:185",
+    "internal/channels/discord/discord.go:115"
+   ]
+  },
+  {
+   "id": "sender",
+   "zone": "clients",
+   "title": "Mail senders",
+   "sub": "any SMTP server",
+   "kind": "email",
+   "evidence": [
+    "internal/mailin/server.go:95"
+   ]
+  },
+  {
+   "id": "visitor",
+   "zone": "clients",
+   "title": "Tunnel visitor",
+   "sub": "<name>.<tunnels.host>",
+   "kind": "client",
+   "evidence": [
+    "internal/app/tunnels/proxy.go:57"
+   ]
+  },
+  {
+   "id": "cp",
+   "zone": "cp",
+   "title": "Control plane",
+   "sub": "Go · agent loop · tool gateway",
+   "kind": "service",
+   "big": true,
+   "evidence": [
+    "cmd/silo/main.go",
+    "internal/app/app.go:516",
+    "internal/app/agent.go:274"
+   ],
+   "endpoints": [
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/SignIn",
+     "label": "Password + 2FA sign-in",
+     "evidence": [
+      "proto/silo/v1/ui.proto:8"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/Send",
+     "label": "Message a Bot (start or inject)",
+     "evidence": [
+      "proto/silo/v1/ui.proto:118"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.UI/StreamRun",
+     "label": "Replay + follow a run",
+     "evidence": [
+      "proto/silo/v1/ui.proto:120"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/StopRun",
+     "label": "Stop a chat's run",
+     "evidence": [
+      "proto/silo/v1/ui.proto:119"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/DecideApproval",
+     "label": "Answer an approval slip",
+     "evidence": [
+      "proto/silo/v1/ui.proto:140"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/SetRule",
+     "label": "Change a call/output rule",
+     "evidence": [
+      "proto/silo/v1/ui.proto:143"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.UI/PutFile",
+     "label": "Upload into the workspace",
+     "evidence": [
+      "proto/silo/v1/ui.proto:168"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.BotWorker/Commands",
+     "label": "Worker command stream",
+     "evidence": [
+      "proto/silo/v1/worker.proto:8"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.BotWorker/CallTool",
+     "label": "Python tool call",
+     "evidence": [
+      "proto/silo/v1/worker.proto:10"
+     ]
+    },
+    {
+     "method": "RPC",
+     "path": "/silo.v1.BotWorker/GetSecret",
+     "label": "Python secret fetch",
+     "evidence": [
+      "proto/silo/v1/worker.proto:9"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.BotWorker/Tunnel",
+     "label": "Tunnel byte stream",
+     "evidence": [
+      "proto/silo/v1/worker.proto:15"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.MCPHost/Tunnel",
+     "label": "STDIO MCP bridge",
+     "evidence": [
+      "proto/silo/v1/mcpbridge.proto:13"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.DriveHost/Session",
+     "label": "Drive sidecar link",
+     "evidence": [
+      "proto/silo/v1/drives.proto:13"
+     ]
+    },
+    {
+     "method": "STREAM",
+     "path": "/silo.v1.EgressHost/Session",
+     "label": "Gateway link",
+     "evidence": [
+      "proto/silo/v1/egress.proto:14"
+     ]
+    },
+    {
+     "method": "WS",
+     "path": "/vnc",
+     "label": "Desktop viewer",
+     "evidence": [
+      "internal/app/app.go:529"
+     ]
+    },
+    {
+     "method": "WS",
+     "path": "/console",
+     "label": "Console PTY",
+     "evidence": [
+      "internal/app/app.go:530"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/oauth/callback",
+     "label": "Connector OAuth return",
+     "evidence": [
+      "internal/app/app.go:531"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/artifacts/",
+     "label": "Artifact downloads",
+     "evidence": [
+      "internal/app/app.go:533"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/tunnels/auth",
+     "label": "Tunnel sign-in handoff",
+     "evidence": [
+      "internal/app/app.go:534"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "smtp",
+   "zone": "cp",
+   "title": "SMTP listener",
+   "sub": "go-smtp · receive only",
+   "kind": "email",
+   "evidence": [
+    "internal/mailin/server.go:95",
+    "internal/app/mailbox/mailbox.go:112"
+   ],
+   "endpoints": [
+    {
+     "method": "SMTP",
+     "path": "/rcpt-to",
+     "label": "Known mailbox or 550",
+     "evidence": [
+      "internal/mailin/server.go:160"
+     ]
+    },
+    {
+     "method": "SMTP",
+     "path": "/data",
+     "label": "Store the message",
+     "evidence": [
+      "internal/mailin/server.go:179"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "proxy",
+   "zone": "cp",
+   "title": "Tunnel proxy",
+   "sub": "httputil.ReverseProxy",
+   "kind": "gateway",
+   "evidence": [
+    "internal/app/tunnels/proxy.go:57",
+    "internal/app/tunnels/proxy.go:298"
+   ],
+   "endpoints": [
+    {
+     "method": "ANY",
+     "path": "/*",
+     "label": "Proxy <name>.<host> to a Bot port",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:67"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/.silo/auth",
+     "label": "Redeem a ticket",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:177"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ticks",
+   "zone": "cp",
+   "title": "Tick loops",
+   "sub": "automations · memory · sync",
+   "kind": "cron",
+   "evidence": [
+    "internal/app/app.go:266",
+    "internal/app/app.go:282"
+   ]
+  },
+  {
+   "id": "box",
+   "zone": "boxes",
+   "title": "Bot box",
+   "sub": "worker · desktop · Python",
+   "kind": "worker",
+   "big": true,
+   "evidence": [
+    "cmd/silo-worker/main.go:110",
+    "botimage/start.sh",
+    "botimage/silo_runtime.py"
+   ],
+   "endpoints": [
+    {
+     "method": "POST",
+     "path": "/v1/tools/call",
+     "label": "silo_runtime.call",
+     "evidence": [
+      "cmd/silo-worker/local.go:41"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/v1/secrets/get",
+     "label": "silo_runtime.get_secret",
+     "evidence": [
+      "cmd/silo-worker/local.go:26"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/v1/chrome/ensure",
+     "label": "Start desktop Chromium",
+     "evidence": [
+      "cmd/silo-worker/local.go:83"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "egress",
+   "zone": "boxes",
+   "title": "Egress gateway",
+   "sub": "silo-egress · TLS MITM · DNS",
+   "kind": "gateway",
+   "evidence": [
+    "cmd/silo-egress/main.go:25",
+    "internal/egress/gateway.go:260",
+    "internal/egress/verdict.go:90"
+   ]
+  },
+  {
+   "id": "drive",
+   "zone": "boxes",
+   "title": "Drive sidecar",
+   "sub": "rclone mounts · FUSE",
+   "kind": "storage",
+   "evidence": [
+    "cmd/silo-drive/main.go",
+    "internal/app/drive/drive.go:287"
+   ]
+  },
+  {
+   "id": "stdio",
+   "zone": "boxes",
+   "title": "STDIO MCP sidecars",
+   "sub": "silo-mcp-bridge · npx",
+   "kind": "service",
+   "evidence": [
+    "cmd/silo-mcp-bridge/main.go",
+    "internal/app/connector/bridge.go:131"
+   ]
+  },
+  {
+   "id": "engine",
+   "zone": "boxes",
+   "title": "Container engine",
+   "sub": "Podman (Docker API)",
+   "kind": "service",
+   "evidence": [
+    "internal/dockerx/docker.go:224",
+    "internal/dockerx/docker.go:301"
+   ]
+  },
+  {
+   "id": "db",
+   "zone": "data",
+   "title": "Postgres",
+   "sub": "pgvector · 43 GORM models",
+   "kind": "db",
+   "evidence": [
+    "internal/db/db.go:722",
+    "internal/db/db.go:753",
+    "docker-compose.dev.yml"
+   ],
+   "entities": [
+    {
+     "name": "users",
+     "label": "Accounts",
+     "evidence": [
+      "internal/db/db.go:13"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "email",
+       "type": "text",
+       "unique": true
+      },
+      {
+       "name": "password_hash",
+       "type": "text"
+      },
+      {
+       "name": "admin",
+       "type": "bool"
+      },
+      {
+       "name": "disabled",
+       "type": "bool",
+       "default": "false"
+      },
+      {
+       "name": "totp_secret",
+       "type": "text"
+      },
+      {
+       "name": "totp_step",
+       "type": "int8",
+       "default": "0"
+      },
+      {
+       "name": "oidc_issuer",
+       "type": "text"
+      },
+      {
+       "name": "oidc_subject",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "sessions",
+     "label": "Sign-in sessions (hashed)",
+     "evidence": [
+      "internal/db/db.go:44"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk",
+       "note": "hash of the cookie"
+      },
+      {
+       "name": "user_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "users.id"
+      },
+      {
+       "name": "expires_at",
+       "type": "timestamptz"
+      },
+      {
+       "name": "last_seen_at",
+       "type": "timestamptz"
+      },
+      {
+       "name": "ip",
+       "type": "text"
+      },
+      {
+       "name": "method",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "bots",
+     "label": "Bots",
+     "evidence": [
+      "internal/db/db.go:79"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "user_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "users.id"
+      },
+      {
+       "name": "soul",
+       "type": "text"
+      },
+      {
+       "name": "memory",
+       "type": "text",
+       "note": "CORE MEMORY"
+      },
+      {
+       "name": "auto_approve",
+       "type": "text"
+      },
+      {
+       "name": "token_hash",
+       "type": "text",
+       "unique": true
+      },
+      {
+       "name": "container_id",
+       "type": "text"
+      },
+      {
+       "name": "status",
+       "type": "text"
+      },
+      {
+       "name": "time_zone",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "chats",
+     "label": "Conversations",
+     "evidence": [
+      "internal/db/db.go:174"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "channel_id",
+       "type": "text"
+      },
+      {
+       "name": "external_id",
+       "type": "text"
+      },
+      {
+       "name": "automation_id",
+       "type": "text"
+      },
+      {
+       "name": "subagent_id",
+       "type": "text"
+      },
+      {
+       "name": "model",
+       "type": "text"
+      },
+      {
+       "name": "memory_seq",
+       "type": "int8"
+      }
+     ]
+    },
+    {
+     "name": "runs",
+     "label": "Agent runs",
+     "evidence": [
+      "internal/db/db.go:202"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "chat_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "chats.id"
+      },
+      {
+       "name": "origin",
+       "type": "text",
+       "note": "chat/channel/automation/subagent/compact"
+      },
+      {
+       "name": "status",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "run_events",
+     "label": "Append-only run log",
+     "evidence": [
+      "internal/db/db.go:232"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "seq",
+       "type": "int8",
+       "unique": true,
+       "note": "replay order"
+      },
+      {
+       "name": "run_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "runs.id"
+      },
+      {
+       "name": "kind",
+       "type": "text"
+      },
+      {
+       "name": "body",
+       "type": "text"
+      },
+      {
+       "name": "tool",
+       "type": "text"
+      },
+      {
+       "name": "meta",
+       "type": "text"
+      },
+      {
+       "name": "zone",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "approvals",
+     "label": "Pending/decided slips",
+     "evidence": [
+      "internal/db/db.go:250"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "run_id",
+       "type": "text"
+      },
+      {
+       "name": "connector",
+       "type": "text"
+      },
+      {
+       "name": "action",
+       "type": "text"
+      },
+      {
+       "name": "args_json",
+       "type": "text",
+       "note": "redacted"
+      },
+      {
+       "name": "status",
+       "type": "text"
+      },
+      {
+       "name": "auto",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "name": "rules",
+     "label": "Per-Bot call/output rules",
+     "evidence": [
+      "internal/db/db.go:145"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "connector",
+       "type": "text"
+      },
+      {
+       "name": "action",
+       "type": "text"
+      },
+      {
+       "name": "decision",
+       "type": "text",
+       "note": "allow/ask/deny/auto"
+      },
+      {
+       "name": "output",
+       "type": "text",
+       "note": "pass/flag/check/withhold"
+      }
+     ]
+    },
+    {
+     "name": "secrets",
+     "label": "Bot secrets + surrogates",
+     "evidence": [
+      "internal/db/db.go:118"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "name",
+       "type": "text"
+      },
+      {
+       "name": "value",
+       "type": "text"
+      },
+      {
+       "name": "mode",
+       "type": "text",
+       "default": "'surrogate'"
+      },
+      {
+       "name": "hosts",
+       "type": "text"
+      },
+      {
+       "name": "surrogate",
+       "type": "text"
+      },
+      {
+       "name": "swap_body",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "name": "memories",
+     "label": "Long-term memories",
+     "evidence": [
+      "internal/db/db.go:449"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "kind",
+       "type": "text",
+       "default": "'fact'"
+      },
+      {
+       "name": "content",
+       "type": "text"
+      },
+      {
+       "name": "embedding",
+       "type": "vector(1536)"
+      }
+     ]
+    },
+    {
+     "name": "knowledge_chunks",
+     "label": "RAG chunks",
+     "evidence": [
+      "internal/db/db.go:513"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "source_id",
+       "type": "text"
+      },
+      {
+       "name": "content",
+       "type": "text"
+      },
+      {
+       "name": "embedding",
+       "type": "vector(1536)"
+      }
+     ]
+    },
+    {
+     "name": "automations",
+     "label": "Scheduled prompts",
+     "evidence": [
+      "internal/db/db.go:526"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "prompt",
+       "type": "text"
+      },
+      {
+       "name": "schedule",
+       "type": "text",
+       "note": "5-field cron"
+      },
+      {
+       "name": "enabled",
+       "type": "bool"
+      },
+      {
+       "name": "chat_id",
+       "type": "text"
+      },
+      {
+       "name": "next_run_at",
+       "type": "timestamptz"
+      },
+      {
+       "name": "last_status",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "tunnels",
+     "label": "Port addresses",
+     "evidence": [
+      "internal/db/db.go:629"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "port",
+       "type": "int"
+      },
+      {
+       "name": "name",
+       "type": "text",
+       "unique": true
+      },
+      {
+       "name": "public",
+       "type": "bool"
+      }
+     ]
+    },
+    {
+     "name": "tunnel_grants",
+     "label": "Private-tunnel cookies",
+     "evidence": [
+      "internal/db/db.go:644"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk",
+       "note": "hash of the cookie"
+      },
+      {
+       "name": "tunnel_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "tunnels.id"
+      },
+      {
+       "name": "user_id",
+       "type": "text"
+      },
+      {
+       "name": "session_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "sessions.id"
+      },
+      {
+       "name": "expires_at",
+       "type": "timestamptz"
+      }
+     ]
+    },
+    {
+     "name": "mail_messages",
+     "label": "Inbox",
+     "evidence": [
+      "internal/db/db.go:671"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text",
+       "key": "fk",
+       "ref": "bots.id"
+      },
+      {
+       "name": "hash",
+       "type": "text",
+       "note": "dedupe with bot_id"
+      },
+      {
+       "name": "sender_addr",
+       "type": "text"
+      },
+      {
+       "name": "subject",
+       "type": "text"
+      },
+      {
+       "name": "verified",
+       "type": "bool"
+      },
+      {
+       "name": "chat_id",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "name": "mail_bodies",
+     "label": "Raw .eml bytes",
+     "evidence": [
+      "internal/db/db.go:700"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text"
+      },
+      {
+       "name": "data",
+       "type": "bytea"
+      }
+     ]
+    },
+    {
+     "name": "egress_traffic",
+     "label": "Per-minute network totals",
+     "evidence": [
+      "internal/db/egress.go:76"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text"
+      },
+      {
+       "name": "host",
+       "type": "text"
+      },
+      {
+       "name": "minute",
+       "type": "timestamptz"
+      },
+      {
+       "name": "requests",
+       "type": "int4"
+      },
+      {
+       "name": "blocked",
+       "type": "int4"
+      },
+      {
+       "name": "flagged",
+       "type": "int4"
+      }
+     ]
+    },
+    {
+     "name": "audit_events",
+     "label": "Decisions & verdicts",
+     "evidence": [
+      "internal/db/db.go:285"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "bot_id",
+       "type": "text"
+      },
+      {
+       "name": "actor",
+       "type": "text"
+      },
+      {
+       "name": "action",
+       "type": "text"
+      },
+      {
+       "name": "decision",
+       "type": "text"
+      },
+      {
+       "name": "reason",
+       "type": "text"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "files",
+   "zone": "data",
+   "title": "data/ volume",
+   "sub": "workspaces · skills · history",
+   "kind": "storage",
+   "evidence": [
+    "AGENTS.md"
+   ]
+  },
+  {
+   "id": "llm",
+   "zone": "outside",
+   "title": "Model providers",
+   "sub": "OpenRouter, OpenAI, Anthropic",
+   "kind": "ai",
+   "evidence": [
+    "internal/llm/openaicompat.go:315",
+    "internal/llm/anthropic.go:313",
+    "internal/llm/typesafe.go"
+   ]
+  },
+  {
+   "id": "search",
+   "zone": "outside",
+   "title": "Search sites",
+   "sub": "DDG · Brave · Wikipedia …",
+   "kind": "external",
+   "evidence": [
+    "internal/search/meta.go:105",
+    "internal/search/ddg.go:15",
+    "internal/search/brave.go:11"
+   ]
+  },
+  {
+   "id": "mcp",
+   "zone": "outside",
+   "title": "HTTP MCP servers",
+   "sub": "GitHub · Cloudflare · …",
+   "kind": "external",
+   "evidence": [
+    "internal/mcpx",
+    "internal/app/connector/mcp.go:187"
+   ]
+  },
+  {
+   "id": "lightpanda",
+   "zone": "outside",
+   "title": "Lightpanda",
+   "sub": "shared reader · MCP :9223",
+   "kind": "external",
+   "evidence": [
+    "docker-compose.dev.yml:36"
+   ]
+  },
+  {
+   "id": "clouds",
+   "zone": "outside",
+   "title": "Drive providers",
+   "sub": "Google Drive · pCloud · …",
+   "kind": "storage",
+   "evidence": [
+    "internal/drives/catalog/gdrive/drive.yaml:11"
+   ]
+  },
+  {
+   "id": "internet",
+   "zone": "outside",
+   "title": "Internet",
+   "sub": "whatever the Bot browses",
+   "kind": "external",
+   "evidence": [
+    "internal/egress/proxy.go:244"
+   ]
+  },
+  {
+   "id": "dns",
+   "zone": "outside",
+   "title": "Public DNS",
+   "sub": "DKIM · SPF lookups",
+   "kind": "external",
+   "evidence": [
+    "internal/mailin/auth.go:35"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "id": "signin",
+   "name": "Sign in",
+   "summary": "Password sign-in with throttling and an optional authenticator code; the session cookie is the only credential the console holds.",
+   "toggles": [
+    {
+     "id": "throttled",
+     "label": "Too many attempts",
+     "hint": "ResourceExhausted"
+    },
+    {
+     "id": "wrong",
+     "label": "Wrong password",
+     "hint": "Unauthenticated"
+    },
+    {
+     "id": "needs2fa",
+     "label": "No 2FA code yet",
+     "hint": "needs_code"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "cp",
+     "kind": "req",
+     "text": "UI/SignIn {email, password, code}",
+     "endpoint": "RPC /silo.v1.UI/SignIn",
+     "detail": "The sign-in page sends email + password, and the code only once the server asked for one.",
+     "proto": "ConnectRPC · public RPC",
+     "evidence": [
+      "web/src/SignIn.tsx:63",
+      "internal/app/app.go:440"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "Limiter: account + address",
+     "detail": "Failures per account+address (5, then a doubling wait), per address and per account; the address is the peer unless it is a trusted proxy.",
+     "evidence": [
+      "internal/app/account/signin.go:39",
+      "internal/app/account/account.go:99"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "block",
+     "when": "throttled",
+     "text": "ResourceExhausted · try again in …",
+     "evidence": [
+      "internal/app/account/account.go:104"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT users by email",
+     "entities": [
+      "users"
+     ],
+     "evidence": [
+      "internal/app/account/signin.go:49"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "Check the password hash",
+     "detail": "The hash is checked even when no user matched, so a miss takes as long as a hit.",
+     "evidence": [
+      "internal/app/account/signin.go:58",
+      "internal/app/account/signin.go:62"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "block",
+     "when": "wrong",
+     "text": "Unauthenticated · wrong credentials",
+     "detail": "The failure is counted against the limiter.",
+     "evidence": [
+      "internal/app/account/signin.go:53"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "block",
+     "when": "needs2fa",
+     "text": "needs_code (nobody signed in)",
+     "detail": "No pending state is kept: the client resends email + password + code.",
+     "evidence": [
+      "internal/app/account/signin.go:70"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE users.totp_step (spend code)",
+     "entities": [
+      "users"
+     ],
+     "detail": "A conditional update on the used time step, so a code cannot be replayed or raced.",
+     "evidence": [
+      "internal/app/account/totp.go:164"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT sessions (hash of cookie)",
+     "entities": [
+      "sessions"
+     ],
+     "evidence": [
+      "internal/auth/auth.go:128",
+      "internal/app/account/account.go:90"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "res",
+     "text": "Set-Cookie silo_session · HttpOnly",
+     "detail": "With auth.host_cookie on, the cookie is __Host-silo_session and the plain name is never read.",
+     "evidence": [
+      "internal/auth/auth.go:145"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "chat",
+   "name": "Send a chat message",
+   "summary": "One run per chat: stream model turns, run tools on the Bot's box.",
+   "toggles": [
+    {
+     "id": "readonly",
+     "label": "Automation/subagent log",
+     "hint": "FailedPrecondition"
+    },
+    {
+     "id": "disabled",
+     "label": "Owner disabled",
+     "hint": "refused"
+    },
+    {
+     "id": "overflow",
+     "label": "Context too long",
+     "hint": "compact + retry"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "cp",
+     "kind": "req",
+     "text": "UI/Send {bot_id, chat_id|new_chat, text}",
+     "endpoint": "RPC /silo.v1.UI/Send",
+     "proto": "ConnectRPC · session cookie",
+     "evidence": [
+      "web/src/bot/runActions.ts:44",
+      "internal/app/ui.go:290"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "Own the Bot and chat; writable?",
+     "detail": "ownBot/ownChat scope to the signed-in user; automation and subagent logs are read-only.",
+     "evidence": [
+      "internal/app/ui.go:291",
+      "internal/app/chats.go:33"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "block",
+     "when": "readonly",
+     "text": "FailedPrecondition · log is read-only",
+     "evidence": [
+      "internal/app/chats.go:35"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT chats (new chat page)",
+     "entities": [
+      "chats"
+     ],
+     "detail": "The New chat page makes the row with this message; a refused send deletes it again.",
+     "evidence": [
+      "internal/app/ui.go:314",
+      "internal/app/ui.go:333"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "StartOrInject: live run?",
+     "detail": "One live run per conversation; a message during a run is injected into its inbox instead.",
+     "evidence": [
+      "internal/app/agent.go:618"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "block",
+     "when": "disabled",
+     "text": "errOwnerDisabled",
+     "evidence": [
+      "internal/app/agent.go:42"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT runs (status running)",
+     "entities": [
+      "runs",
+      "bots"
+     ],
+     "evidence": [
+      "internal/app/agent.go:63"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "engine",
+     "kind": "req",
+     "text": "ensureRunning: inspect / start / create",
+     "detail": "Always confirms the box with the engine even with a live worker session; creates it on the Bot's own egress network if gone.",
+     "evidence": [
+      "internal/app/agent.go:84",
+      "internal/app/bots.go:132",
+      "internal/app/bots.go:200"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT run_events (replay history)",
+     "entities": [
+      "run_events"
+     ],
+     "detail": "History is rebuilt byte for byte from the log so the provider's prompt cache keeps hitting.",
+     "evidence": [
+      "internal/app/agent.go:318",
+      "internal/app/agent_history.go"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Stream(system, messages, tools)",
+     "detail": "System prompt built once per run in cache tiers; thinking level fitted to the model.",
+     "proto": "HTTPS · SSE",
+     "evidence": [
+      "internal/app/agent.go:432",
+      "internal/app/agent.go:176"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "when": "overflow",
+     "text": "Compact history, retry once",
+     "detail": "A provider context-length error triggers one summary of the history and a retry of the turn.",
+     "evidence": [
+      "internal/app/agent.go:435"
+     ]
+    },
+    {
+     "from": "llm",
+     "to": "cp",
+     "kind": "res",
+     "text": "tool_call exec_python",
+     "evidence": [
+      "internal/app/agent.go:478"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "Engine.Run → AuthorizeAction(python.run)",
+     "detail": "Every tool goes through one engine: surface check, the rule (Allow/Auto/Ask/Deny), then the handler.",
+     "evidence": [
+      "internal/app/tools.go:55",
+      "internal/app/tool/tool.go:343"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "req",
+     "text": "Cmd exec_python {session, code}",
+     "detail": "Queued on the worker's Commands stream; the run's first file-changing tool takes a Changes snapshot first.",
+     "proto": "ConnectRPC bidi · bot token",
+     "evidence": [
+      "internal/app/tools.go:92",
+      "internal/app/tools.go:102",
+      "internal/app/worker.go:59"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "cp",
+     "kind": "res",
+     "text": "CmdEvent chunk… / done",
+     "detail": "Chunks stream to the thread live; done resolves the waiting call with masked output.",
+     "evidence": [
+      "internal/app/worker.go:39",
+      "internal/app/worker.go:42"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT run_events (tool_result)",
+     "entities": [
+      "run_events"
+     ],
+     "detail": "Output is filtered, masked and capped at 12000 bytes before the model or the log sees it.",
+     "evidence": [
+      "internal/app/agent.go:511",
+      "internal/app/agent.go:517",
+      "internal/app/agent_events.go:38"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Stream(next turn)",
+     "evidence": [
+      "internal/app/agent.go:432"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "res",
+     "text": "UI/StreamRun events · done",
+     "detail": "The client replays persisted events and reconnects with after_event_id.",
+     "evidence": [
+      "internal/app/agent.go:462",
+      "internal/app/ui.go:386",
+      "web/src/useRunStream.ts:76"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pytool",
+   "name": "Python calls a gated tool",
+   "summary": "Code in exec_python calls a connector through silo_runtime; the CP applies the same rule as a chat tool, may ask the owner, and filters what comes back.",
+   "toggles": [
+    {
+     "id": "deny",
+     "label": "Rule is Deny",
+     "hint": "denied"
+    },
+    {
+     "id": "auto",
+     "label": "Rule is Auto",
+     "hint": "model judges"
+    },
+    {
+     "id": "humandeny",
+     "label": "Owner denies",
+     "hint": "denied"
+    },
+    {
+     "id": "withheld",
+     "label": "Filter withholds",
+     "hint": "error to code"
+    }
+   ],
+   "steps": [
+    {
+     "from": "box",
+     "to": "box",
+     "kind": "req",
+     "text": "POST /v1/tools/call (unix socket)",
+     "detail": "silo_runtime.call posts connector, action, args and SILO_RUN_ID to the worker's socket.",
+     "evidence": [
+      "botimage/silo_runtime.py:463",
+      "botimage/silo_runtime.py:33",
+      "cmd/silo-worker/local.go:41"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "cp",
+     "kind": "req",
+     "text": "BotWorker/CallTool",
+     "endpoint": "RPC /silo.v1.BotWorker/CallTool",
+     "proto": "ConnectRPC · Bearer bot token",
+     "detail": "The bot token is looked up by hash; the call belongs to a chat only while that run is live on this Bot.",
+     "evidence": [
+      "cmd/silo-worker/local.go:107",
+      "internal/app/app.go:485",
+      "internal/app/connectors_call.go:28"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT rules (bot + operator layers)",
+     "entities": [
+      "rules"
+     ],
+     "detail": "A locked operator rule is a floor the owner can only tighten.",
+     "evidence": [
+      "internal/app/connectors_call.go:81",
+      "internal/app/operator.go:89"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "block",
+     "when": "deny",
+     "text": "denied",
+     "evidence": [
+      "internal/app/connectors_call.go:97"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "when": "auto",
+     "text": "Approval judge: allowed? forbidden?",
+     "detail": "Policy + action + the human's latest message; anything unclear, an error or a 30 s timeout becomes Ask, never Allow.",
+     "evidence": [
+      "internal/app/connectors_call.go:84",
+      "internal/app/approval/approval.go:81"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT approvals (status pending)",
+     "entities": [
+      "approvals"
+     ],
+     "detail": "Arguments are redacted; the Bot's status becomes needs_you.",
+     "evidence": [
+      "internal/app/connectors_call.go:104",
+      "internal/app/connectors_call.go:113"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "web",
+     "kind": "res",
+     "text": "approval event → slip",
+     "evidence": [
+      "internal/app/connectors_call.go:114"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "cp",
+     "kind": "req",
+     "text": "UI/DecideApproval {allow_once|always|deny}",
+     "endpoint": "RPC /silo.v1.UI/DecideApproval",
+     "detail": "always writes an Allow rule, except on an Auto rule's slip, where it counts as allow_once.",
+     "evidence": [
+      "web/src/Dashboard.tsx:494",
+      "internal/app/secrets.go:329",
+      "internal/app/secrets.go:338"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "block",
+     "when": "humandeny",
+     "text": "ToolRes {error: denied}",
+     "evidence": [
+      "internal/app/connectors_call.go:124"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "mcp",
+     "kind": "req",
+     "text": "mcpx.Call(action, args)",
+     "detail": "Connector headers and OAuth stay on the CP; a gone session is redialed once.",
+     "proto": "MCP streamable HTTP",
+     "evidence": [
+      "internal/app/connector/tools.go:109",
+      "internal/app/connector/tools.go:113"
+     ]
+    },
+    {
+     "from": "mcp",
+     "to": "cp",
+     "kind": "res",
+     "text": "tool result",
+     "evidence": [
+      "internal/app/connector/tools.go:124"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Output filter: clean / suspicious / malicious",
+     "detail": "Connector results default to Check; the verdict frames, withholds or passes the result.",
+     "evidence": [
+      "internal/app/tool/tool.go:349",
+      "internal/app/filter_hook.go:90",
+      "internal/app/filter/filter.go:153"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "block",
+     "when": "withheld",
+     "text": "ToolRes {error: withheld}",
+     "detail": "A script must not carry on as if it had the data; the warning rides on the cell's own result.",
+     "evidence": [
+      "internal/app/filter_hook.go:112"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "res",
+     "text": "ToolRes {result_json}",
+     "detail": "Prose is wrapped as {\"result\": text}; the thread shows a call / call_result row.",
+     "evidence": [
+      "internal/app/connectors_call.go:59",
+      "internal/app/connectors_call.go:69"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "secret",
+   "name": "Use a secret on the web",
+   "summary": "The box only ever holds a stand-in; the egress gateway swaps the real value in on the way to the secret's allowed hosts and blocks it anywhere else.",
+   "toggles": [
+    {
+     "id": "leak",
+     "label": "Sent to another host",
+     "hint": "surrogate_leak"
+    },
+    {
+     "id": "threat",
+     "label": "Host on threat list",
+     "hint": "blocked"
+    }
+   ],
+   "steps": [
+    {
+     "from": "box",
+     "to": "cp",
+     "kind": "req",
+     "text": "BotWorker/GetSecret {name}",
+     "endpoint": "RPC /silo.v1.BotWorker/GetSecret",
+     "evidence": [
+      "botimage/silo_runtime.py:46",
+      "cmd/silo-worker/local.go:96",
+      "internal/app/worker.go:102"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "AuthorizeAction(secrets.<name>)",
+     "evidence": [
+      "internal/app/worker.go:116"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT secrets; UPDATE last_used_at",
+     "entities": [
+      "secrets"
+     ],
+     "evidence": [
+      "internal/app/worker.go:109",
+      "internal/app/worker.go:122"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "res",
+     "text": "surrogate value",
+     "detail": "In surrogate mode, behind a filtering gateway, the box gets the stand-in; both values are masked from the log.",
+     "evidence": [
+      "internal/app/worker.go:130",
+      "internal/app/worker.go:133"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "egress",
+     "kind": "req",
+     "text": "HTTPS request with stand-in",
+     "detail": "The box sits on its own --internal network whose only way out and DNS is the gateway.",
+     "proto": "proxy · TLS intercepted",
+     "evidence": [
+      "internal/dockerx/docker.go:259",
+      "internal/egress/proxy.go:202"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "egress",
+     "kind": "check",
+     "text": "Guard.Check(host, payload)",
+     "detail": "Block lists, threat feeds, private addresses, then surrogate leaks; flags for exfil sinks and secret shapes.",
+     "evidence": [
+      "internal/egress/proxy.go:221",
+      "internal/egress/verdict.go:90"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "box",
+     "kind": "block",
+     "when": "threat",
+     "text": "blocked · on threat list",
+     "evidence": [
+      "internal/egress/verdict.go:109"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "box",
+     "kind": "block",
+     "when": "leak",
+     "text": "blocked · secret tried to leave",
+     "detail": "Reported to the CP as an alert in the Audit tab.",
+     "evidence": [
+      "internal/egress/verdict.go:132",
+      "internal/egress/proxy.go:224"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "egress",
+     "kind": "check",
+     "text": "swapHeaders: stand-in → real",
+     "detail": "Headers only, unless the owner allowed body swaps for that secret.",
+     "evidence": [
+      "internal/egress/proxy.go:235",
+      "internal/egress/state.go:237"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "internet",
+     "kind": "req",
+     "text": "Re-originated TLS (utls)",
+     "evidence": [
+      "internal/egress/proxy.go:244",
+      "internal/egress/proxy.go:86"
+     ]
+    },
+    {
+     "from": "internet",
+     "to": "egress",
+     "kind": "res",
+     "text": "response",
+     "evidence": [
+      "internal/egress/proxy.go:303"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "cp",
+     "kind": "req",
+     "text": "EgressHost/Session · traffic + verdicts",
+     "endpoint": "STREAM /silo.v1.EgressHost/Session",
+     "evidence": [
+      "internal/app/egress/egress.go:753"
+     ]
+    },
+    {
+     "from": "egress",
+     "to": "box",
+     "kind": "res",
+     "text": "response (real value swapped back)",
+     "evidence": [
+      "internal/egress/state.go:293"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mail",
+   "name": "Mail wakes a Bot",
+   "summary": "Each Bot has a receive-only address; a verified mail from a listed sender starts a run in a new chat.",
+   "toggles": [
+    {
+     "id": "unknown",
+     "label": "Unknown recipient",
+     "hint": "550"
+    },
+    {
+     "id": "notlisted",
+     "label": "Not verified / not listed",
+     "hint": "inbox only"
+    }
+   ],
+   "steps": [
+    {
+     "from": "sender",
+     "to": "smtp",
+     "kind": "req",
+     "text": "RCPT TO <name>@<mail.domain>",
+     "endpoint": "SMTP /rcpt-to",
+     "proto": "SMTP · STARTTLS",
+     "evidence": [
+      "internal/mailin/server.go:160"
+     ]
+    },
+    {
+     "from": "smtp",
+     "to": "sender",
+     "kind": "block",
+     "when": "unknown",
+     "text": "550 · No such mailbox here",
+     "detail": "Unknown recipients count toward a per-address probe limit (451 past it).",
+     "evidence": [
+      "internal/mailin/server.go:168",
+      "internal/mailin/server.go:70"
+     ]
+    },
+    {
+     "from": "sender",
+     "to": "smtp",
+     "kind": "req",
+     "text": "DATA (≤ max_size_mb)",
+     "endpoint": "SMTP /data",
+     "evidence": [
+      "internal/mailin/server.go:179"
+     ]
+    },
+    {
+     "from": "smtp",
+     "to": "cp",
+     "kind": "req",
+     "text": "mailbox.Deliver(envelope, raw)",
+     "detail": "A store failure answers 451 so the sender retries.",
+     "evidence": [
+      "internal/mailin/server.go:196",
+      "internal/app/mailbox/mailbox.go:272"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "dns",
+     "kind": "req",
+     "text": "Authenticate: DKIM / SPF alignment",
+     "detail": "DMARC's alignment test without the policy lookup; nothing is rejected over it.",
+     "evidence": [
+      "internal/app/mailbox/mailbox.go:287",
+      "internal/mailin/auth.go:35"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT mail_messages, mail_bodies",
+     "entities": [
+      "mail_messages",
+      "mail_bodies"
+     ],
+     "detail": "Deduped by (bot_id, sha256); the newest 200 are kept.",
+     "evidence": [
+      "internal/app/mailbox/mailbox.go:280",
+      "internal/app/mailbox/mailbox.go:303",
+      "internal/app/mailbox/mailbox.go:313"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "Wake on? verified? on list? < 10/h",
+     "evidence": [
+      "internal/app/mailbox/wake.go:75",
+      "internal/app/mailbox/wake.go:80"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "block",
+     "when": "notlisted",
+     "text": "Stays in the inbox",
+     "evidence": [
+      "internal/app/mailbox/wake.go:76"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT chats \"Mail: <subject>\"",
+     "entities": [
+      "chats"
+     ],
+     "evidence": [
+      "internal/app/mailbox/wake.go:89"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "req",
+     "text": "StartRun(wake text, from mail)",
+     "evidence": [
+      "internal/app/mailbox/wake.go:94"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Stream(…) → read_mail, act",
+     "evidence": [
+      "internal/app/agent.go:432"
+     ]
+    },
+    {
+     "from": "smtp",
+     "to": "sender",
+     "kind": "res",
+     "text": "250 OK",
+     "evidence": [
+      "internal/mailin/server.go:202"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tunnel",
+   "name": "Open a private tunnel",
+   "summary": "A Bot's localhost service gets an address on the CP; private ones hand off the owner's Silo session without the session cookie ever leaving the CP origin.",
+   "toggles": [
+    {
+     "id": "nogrant",
+     "label": "No grant cookie",
+     "hint": "302 to sign-in"
+    },
+    {
+     "id": "offline",
+     "label": "Bot offline",
+     "hint": "503"
+    }
+   ],
+   "steps": [
+    {
+     "from": "visitor",
+     "to": "proxy",
+     "kind": "req",
+     "text": "GET <name>.<host>/",
+     "endpoint": "ANY /*",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:59"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT tunnels by name",
+     "entities": [
+      "tunnels"
+     ],
+     "detail": "A disabled owner's tunnels are 404 to everyone.",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:68",
+      "internal/app/tunnels/proxy.go:75"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT tunnel_grants + sessions + bots",
+     "entities": [
+      "tunnel_grants",
+      "sessions",
+      "bots"
+     ],
+     "detail": "The grant lives only as long as the Silo session that made it, and only for the Bot's current owner.",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:103",
+      "internal/app/tunnels/proxy.go:110",
+      "internal/app/tunnels/proxy.go:115"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "visitor",
+     "kind": "block",
+     "when": "nogrant",
+     "text": "302 → {public_url}/tunnels/auth",
+     "detail": "Then a 30 s single-use ticket is redeemed at /.silo/auth; API calls get a plain 401.",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:134",
+      "internal/app/tunnels/proxy.go:126",
+      "internal/app/tunnels/proxy.go:177"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "visitor",
+     "kind": "block",
+     "when": "offline",
+     "text": "503 · The Bot is offline",
+     "detail": "A tunnel request never starts a box.",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:88"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "box",
+     "kind": "req",
+     "text": "Cmd open_tunnel {conn_id, port}",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:298",
+      "internal/hub/tunnel.go:39"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "box",
+     "kind": "check",
+     "text": "CheckPort; dial 127.0.0.1:port",
+     "detail": "5900 (VNC) and 9222 (Chromium) are refused on both ends.",
+     "evidence": [
+      "cmd/silo-worker/tunnel.go:25",
+      "cmd/silo-worker/tunnel.go:28"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "cp",
+     "kind": "req",
+     "text": "BotWorker/Tunnel (first frame names conn)",
+     "endpoint": "STREAM /silo.v1.BotWorker/Tunnel",
+     "evidence": [
+      "cmd/silo-worker/tunnel.go:31",
+      "internal/app/worker.go:297"
+     ]
+    },
+    {
+     "from": "proxy",
+     "to": "visitor",
+     "kind": "res",
+     "text": "Proxied response (HTTP/SSE/WS)",
+     "detail": "Both ends wrap the stream in a net.Conn, so keep-alive and upgrades need no special code.",
+     "evidence": [
+      "internal/app/tunnels/proxy.go:92"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "automation",
+   "name": "Automation fires",
+   "summary": "A scheduler tick fires due cron automations exactly once, each run starting from a fresh context in a hidden log chat.",
+   "toggles": [
+    {
+     "id": "claimed",
+     "label": "Another writer claimed it",
+     "hint": "skip"
+    },
+    {
+     "id": "busy",
+     "label": "Previous run still live",
+     "hint": "skipped"
+    }
+   ],
+   "steps": [
+    {
+     "from": "ticks",
+     "to": "cp",
+     "kind": "req",
+     "text": "FireDue(now) every 20 s",
+     "evidence": [
+      "internal/app/app.go:266",
+      "internal/app/automation/automation.go:319"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT automations WHERE next_run_at <= now",
+     "entities": [
+      "automations"
+     ],
+     "evidence": [
+      "internal/app/automation/automation.go:321"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE next_run_at WHERE next_run_at = old",
+     "entities": [
+      "automations"
+     ],
+     "detail": "Cron in the Bot's time zone; only the writer that moves next_run_at fires.",
+     "evidence": [
+      "internal/app/automation/automation.go:326",
+      "internal/app/automation/automation.go:328"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "block",
+     "when": "claimed",
+     "text": "RowsAffected ≠ 1 → skip",
+     "evidence": [
+      "internal/app/automation/automation.go:329"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "check",
+     "text": "StartIfIdle in the log chat",
+     "evidence": [
+      "internal/app/automation/automation.go:348",
+      "internal/app/agent.go:92"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "block",
+     "when": "busy",
+     "text": "UPDATE last_status = skipped",
+     "entities": [
+      "automations"
+     ],
+     "detail": "Never queued.",
+     "evidence": [
+      "internal/app/automation/automation.go:350"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT runs (origin automation)",
+     "entities": [
+      "runs"
+     ],
+     "evidence": [
+      "internal/app/agent.go:51",
+      "internal/app/agent.go:63"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Stream(fresh context: this run only)",
+     "detail": "The log does not grow with each firing; state lives in files or memory.",
+     "evidence": [
+      "internal/app/agent.go:314",
+      "internal/app/agent.go:316"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "req",
+     "text": "Cmd exec_python (session = run id)",
+     "evidence": [
+      "internal/app/agent.go:280",
+      "internal/app/agent.go:281"
+     ]
+    },
+    {
+     "from": "box",
+     "to": "cp",
+     "kind": "req",
+     "text": "silo_runtime.web_search → CallTool web.search",
+     "endpoint": "RPC /silo.v1.BotWorker/CallTool",
+     "detail": "Web search is Python-only: one gated call, a batch of up to 10 queries.",
+     "evidence": [
+      "botimage/silo_runtime.py:142",
+      "internal/app/tools_defs.go:405"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "search",
+     "kind": "req",
+     "text": "Metasearch: APIs + ≤ 2 scraped sites",
+     "detail": "Each scraped site has a token bucket shared across Bots (1 request / 6 s); a stuck source is never waited on past 4 s.",
+     "evidence": [
+      "internal/app/websearch.go:85",
+      "internal/search/meta.go:105",
+      "internal/search/meta.go:34"
+     ]
+    },
+    {
+     "from": "search",
+     "to": "cp",
+     "kind": "res",
+     "text": "fused hits (reciprocal rank)",
+     "evidence": [
+      "internal/search/meta.go:105"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "box",
+     "kind": "res",
+     "text": "ToolRes (output rule: Check)",
+     "detail": "web.search results are checked by the output filter by default.",
+     "evidence": [
+      "internal/security/security.go:107",
+      "internal/app/connectors_call.go:59"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE automations.last_run_id",
+     "entities": [
+      "automations"
+     ],
+     "evidence": [
+      "internal/app/automation/automation.go:356"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "telegram",
+   "name": "Telegram message in, reply out",
+   "summary": "A channel binds one Bot to one picked chat; inbound text starts or steers a run and only finished sections go back.",
+   "toggles": [
+    {
+     "id": "othertarget",
+     "label": "Message from another chat",
+     "hint": "ignored"
+    },
+    {
+     "id": "nomention",
+     "label": "Group, not mentioned",
+     "hint": "ignored"
+    }
+   ],
+   "steps": [
+    {
+     "from": "chatapps",
+     "to": "cp",
+     "kind": "req",
+     "text": "MTProto update (gotd)",
+     "proto": "MTProto",
+     "evidence": [
+      "internal/channels/telegram/telegram.go:118"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "block",
+     "when": "othertarget",
+     "text": "Not the bound chat → drop",
+     "evidence": [
+      "internal/channels/telegram/telegram.go:596"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "block",
+     "when": "nomention",
+     "text": "reply_mode gate → drop",
+     "detail": "Private chats always get a reply.",
+     "evidence": [
+      "internal/channels/telegram/telegram.go:601"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT/INSERT chats (channel_id, external_id)",
+     "entities": [
+      "chats"
+     ],
+     "evidence": [
+      "internal/channels/telegram/telegram.go:612",
+      "internal/app/channel/channel.go:403",
+      "internal/app/channel/channel.go:420"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "cp",
+     "kind": "req",
+     "text": "StartOrInject(origin channel)",
+     "evidence": [
+      "internal/app/channel/channel.go:407"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "llm",
+     "kind": "req",
+     "text": "Stream(…)",
+     "evidence": [
+      "internal/app/agent.go:432"
+     ]
+    },
+    {
+     "from": "llm",
+     "to": "cp",
+     "kind": "res",
+     "text": "text … <section_send />",
+     "evidence": [
+      "internal/app/agent.go:454"
+     ]
+    },
+    {
+     "from": "cp",
+     "to": "chatapps",
+     "kind": "res",
+     "text": "origin.Deliver(section) → send",
+     "detail": "Thinking and tool output stay in the log; presented files are attached as real bytes.",
+     "evidence": [
+      "internal/app/agent_events.go:123",
+      "internal/channels/telegram/telegram.go:171",
+      "internal/app/agent_events.go:133"
+     ]
+    }
+   ]
+  }
+ ],
+ "components": [
+  {
+   "name": "Control plane",
+   "tech": "Go · ConnectRPC · GORM",
+   "where": "host process (bin/silo)",
+   "role": "Users, Bots, agent loop, tool engine, rules and approvals, output filter, connectors, channels, mail, tunnels; serves the console and every sidecar link.",
+   "evidence": [
+    "cmd/silo/main.go",
+    "internal/app/app.go:516"
+   ]
+  },
+  {
+   "name": "Worker",
+   "tech": "Go",
+   "where": "inside each Bot box",
+   "role": "Dials the CP, runs commands (Python kernels, terminal, files, desktop), serves silo_runtime over a unix socket, tunnels VNC/console/ports.",
+   "evidence": [
+    "cmd/silo-worker/main.go:110",
+    "cmd/silo-worker/local.go:18"
+   ]
+  },
+  {
+   "name": "Bot box",
+   "tech": "Debian · Xvfb · Openbox · Chromium · Node",
+   "where": "Podman container per Bot",
+   "role": "The Bot's durable machine with a desktop; /workspace is bound from data/.",
+   "evidence": [
+    "botimage/Containerfile",
+    "botimage/start.sh"
+   ]
+  },
+  {
+   "name": "Egress gateway",
+   "tech": "Go · utls · DNS",
+   "where": "one container per engine",
+   "role": "The only way out for boxes and STDIO sidecars: blocks, flags, swaps surrogate secrets, reports traffic.",
+   "evidence": [
+    "cmd/silo-egress/main.go",
+    "internal/egress/verdict.go:90"
+   ]
+  },
+  {
+   "name": "Drive sidecar",
+   "tech": "Go · rclone · FUSE",
+   "where": "container per Bot",
+   "role": "Mounts cloud drives into /workspace/drives and journals changes; holds every drive credential.",
+   "evidence": [
+    "cmd/silo-drive/main.go",
+    "internal/app/drive/drive.go:287"
+   ]
+  },
+  {
+   "name": "STDIO MCP sidecar",
+   "tech": "silo-mcp-bridge · npx",
+   "where": "container per attached connector",
+   "role": "Runs a STDIO MCP server and pumps JSON-RPC to the CP over MCPHost.Tunnel.",
+   "evidence": [
+    "cmd/silo-mcp-bridge/main.go",
+    "internal/app/connector/bridge.go:131"
+   ]
+  },
+  {
+   "name": "Web console",
+   "tech": "React · TanStack Router/Query · Tailwind",
+   "where": "browser (Vite in dev)",
+   "role": "Chats, panes (Files, Desktop, Console, Changes, Mail), Customize, Settings, Admin.",
+   "evidence": [
+    "web/src/router.tsx",
+    "web/src/useRunStream.ts:36"
+   ]
+  },
+  {
+   "name": "iOS app",
+   "tech": "SwiftUI",
+   "where": "iPhone",
+   "role": "Native client of the same UI service.",
+   "evidence": [
+    "ios/SiloAgentApp"
+   ]
+  }
+ ],
+ "data": [
+  {
+   "name": "users / sessions / invites",
+   "holds": "Accounts, hashed sessions, invite and reset links, TOTP state",
+   "evidence": [
+    "internal/db/db.go:13",
+    "internal/db/db.go:44",
+    "internal/db/db.go:60"
+   ]
+  },
+  {
+   "name": "bots / secrets / rules / operator_rules",
+   "holds": "Bots with SOUL and CORE MEMORY, secrets with surrogates, call and output rules in two layers",
+   "evidence": [
+    "internal/db/db.go:79",
+    "internal/db/db.go:118",
+    "internal/db/db.go:145",
+    "internal/db/db.go:161"
+   ]
+  },
+  {
+   "name": "chats / runs / run_events",
+   "holds": "Conversations and the append-only event log replayed as model history",
+   "evidence": [
+    "internal/db/db.go:174",
+    "internal/db/db.go:202",
+    "internal/db/db.go:232"
+   ]
+  },
+  {
+   "name": "approvals / audit_events / llm_logs",
+   "holds": "Approval slips, every gate/filter/network decision, raw model traffic",
+   "evidence": [
+    "internal/db/db.go:250",
+    "internal/db/db.go:285",
+    "internal/db/db.go:266"
+   ]
+  },
+  {
+   "name": "memories / memory_digests",
+   "holds": "Long-term memories as vector(1536) and their digest",
+   "evidence": [
+    "internal/db/db.go:449",
+    "internal/db/db.go:467"
+   ]
+  },
+  {
+   "name": "knowledge_folders / sources / chunks",
+   "holds": "RAG index of workspace folders (vector + tsv)",
+   "evidence": [
+    "internal/db/db.go:478",
+    "internal/db/db.go:495",
+    "internal/db/db.go:513"
+   ]
+  },
+  {
+   "name": "connectors / bot_connectors / drives",
+   "holds": "Library presets, per-Bot copies with OAuth, drive specs and tokens",
+   "evidence": [
+    "internal/db/db.go:326",
+    "internal/db/db.go:364",
+    "internal/db/db.go:383"
+   ]
+  },
+  {
+   "name": "automations / subagents / task_items / feed_posts",
+   "holds": "Schedules, background agents, taskboards and the owner's feed",
+   "evidence": [
+    "internal/db/db.go:526",
+    "internal/db/db.go:593",
+    "internal/db/db.go:611",
+    "internal/db/db.go:549"
+   ]
+  },
+  {
+   "name": "tunnels / tunnel_grants / mailboxes / mail_*",
+   "holds": "Tunnel addresses and session-bound grants, mailboxes and received mail",
+   "evidence": [
+    "internal/db/db.go:629",
+    "internal/db/db.go:644",
+    "internal/db/db.go:658",
+    "internal/db/db.go:671"
+   ]
+  },
+  {
+   "name": "egress_*",
+   "holds": "Gateway hosts, client networks, patterns, CA, per-minute traffic",
+   "evidence": [
+    "internal/db/egress.go:8",
+    "internal/db/egress.go:65",
+    "internal/db/egress.go:76"
+   ]
+  },
+  {
+   "name": "data/bots/<id>",
+   "holds": "Workspace, Chrome profile, shadow git history, npm cache (files, not Postgres)",
+   "evidence": [
+    "AGENTS.md"
+   ]
+  }
+ ],
+ "guards": [
+  {
+   "what": "Every UI RPC",
+   "limit": "—",
+   "checks": "Session cookie (hashed lookup); only SignIn, AuthOptions, GetInvite, AcceptInvite are public",
+   "evidence": [
+    "internal/app/app.go:440",
+    "internal/app/app.go:471"
+   ]
+  },
+  {
+   "what": "Sign-in, codes, invite tokens",
+   "limit": "5 per account+address, then doubling 30 s → 15 min",
+   "checks": "Constant-time miss, TOTP step stored, recovery codes crossed off",
+   "evidence": [
+    "internal/app/account/signin.go:39",
+    "internal/app/account/totp.go:164"
+   ]
+  },
+  {
+   "what": "Worker / sidecar RPCs",
+   "limit": "—",
+   "checks": "Per-Bot bearer token looked up by hash",
+   "evidence": [
+    "internal/app/app.go:485"
+   ]
+  },
+  {
+   "what": "Every tool call",
+   "limit": "—",
+   "checks": "Rule Allow / Auto / Ask / Deny, operator floor, approval slip",
+   "evidence": [
+    "internal/app/tool/tool.go:343",
+    "internal/app/connectors_call.go:80"
+   ]
+  },
+  {
+   "what": "Every tool result",
+   "limit": "filter.max_chars",
+   "checks": "Output rule Pass / Flag / Check / Withhold; filter voice defanged",
+   "evidence": [
+    "internal/app/filter_hook.go:48"
+   ]
+  },
+  {
+   "what": "Repeated read/grep",
+   "limit": "3rd identical call short-circuited",
+   "checks": "Reset by any writing tool",
+   "evidence": [
+    "internal/app/agent.go:495"
+   ]
+  },
+  {
+   "what": "Inbound SMTP",
+   "limit": "10 unknown recipients / address; size cap",
+   "checks": "No relay, no AUTH; DKIM/SPF verified flag; wake ≤ 10/h",
+   "evidence": [
+    "internal/mailin/server.go:70",
+    "internal/app/mailbox/wake.go:80"
+   ]
+  },
+  {
+   "what": "Private tunnels",
+   "limit": "grant 12 h, ticket 30 s",
+   "checks": "Grant bound to a live session and the current owner",
+   "evidence": [
+    "internal/app/tunnels/proxy.go:97"
+   ]
+  },
+  {
+   "what": "Box network",
+   "limit": "—",
+   "checks": "Internal network; gateway blocks threats, private addresses and surrogate leaks",
+   "evidence": [
+    "internal/egress/verdict.go:104",
+    "internal/egress/verdict.go:128"
+   ]
+  },
+  {
+   "what": "Automations",
+   "limit": "≥ 5 min apart, 50 per Bot",
+   "checks": "Conditional claim; skip if previous run live",
+   "evidence": [
+    "internal/app/automation/automation.go:328"
+   ]
+  }
+ ],
+ "unknowns": [
+  "Production deployment (host, TLS termination, region) is not in the repository; only docker-compose.dev.yml for Postgres, Lightpanda, smtp4dev, Radicale and Dex.",
+  "There is no general per-user rate limit on UI RPCs such as Send; throttling exists only for sign-in, codes and invite tokens.",
+  "The WhatsApp and Discord adapters follow the same DeliverInbound path as Telegram but were not traced line by line here.",
+  "Drive sidecar internals (rclone supervision, journal) and the STDIO bridge were not traced as flows.",
+  "tmp/ddgs (a FastAPI search service) is in the tree but nothing in the Go code calls it."
+ ]
+}
