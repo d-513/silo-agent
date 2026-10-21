@@ -80,7 +80,7 @@ The "text-message agent" crowd (TechCrunch, 10-10) is the consumer pressure: Waj
 | # | Gap | Status | What shipped, what is left |
 |---|---|---|---|
 | 1 | Scheduling, proactivity | **Partial** | New: mail wake (a real event trigger, verified senders only); Dashboard probes are scheduled code with no model in the loop. Left: **webhook triggers** (Hermes mirrors webhook deliveries into chat), one-shot "at" schedules, heartbeat active hours, per-job delivery target |
-| 2 | Voice and telephony | **Partial, gap widened** | Only speech to text. Instinct, Muse and OpenClaw now **place calls**. OpenClaw's calls are a bundled plugin over a telephony API (Twilio Media Streams, Telnyx, Plivo; it needs a public webhook URL), with full-duplex realtime voice and briefs, reports, live steering and voicemail detection added on top. Instinct's and Muse's vendors are not public. For Silo this could be a connector or a channel adapter rather than a core feature. Left: TTS, spoken replies, voice channels, calls |
+| 2 | Voice and telephony | **Partial, gap widened** | Only speech to text. Instinct, Muse and OpenClaw now **place calls**. OpenClaw's calls are a bundled plugin over a telephony API (Twilio Media Streams, Telnyx, Plivo; it needs a public webhook URL), with full-duplex realtime voice and briefs, reports, live steering and voicemail detection added on top. Instinct's and Muse's vendors are not public. Calls are live, so they belong in Silo natively rather than as a connector or channel; **deferred for now**. Left: TTS, spoken replies, voice channels, calls |
 | 3 | Subagents | **Done** | Nice to have: depth > 1, fork-context |
 | 4 | Memory and retrieval | **Partial** | New: memory digest, all memories in prompt. Left: **search across past chats** (Hermes `session_search` has date bounds), external memory providers (Hermes moved Honcho/Mem0 to plugins), import of transcripts |
 | 5 | Self-improving skills | **Partial** | Unchanged: the human clicks Save skill |
@@ -120,7 +120,7 @@ Ordered by leverage, with the existing seams in brackets.
 4. **Push notifications + iOS catch-up** (Feed unread, Dashboard asks, approvals waiting).
 5. **Email replies as a channel** (the mailbox is the inbound half; sending needs SPF/DKIM for `mail.domain`).
 6. **Installer and backup story** (compose bundle, `make backup`/`restore`).
-7. **TTS, then calls** (`models` path shared with transcription; calls via a SIP/Twilio adapter as a channel).
+7. **TTS, then calls** (`models` path shared with transcription; calls native when they come, deferred for now).
 8. **Provider fallback** (provider registry is neutral).
 9. **Slack and Signal channels** (the adapter contract carries QR, picker and `Remover`).
 
@@ -148,6 +148,15 @@ Honest caveats:
 - iOS lags the web: no Desktop, Console, Dashboard, Changes, Mail, Tunnels, Knowledge or Admin, and no push.
 - WhatsApp is the unofficial linked-device protocol; Telegram bots and WhatsApp cannot read history.
 - `docker inspect` can still read a Bot's token and a STDIO sidecar's environment (documented v1 ceiling).
+
+## 9. Muse lessons, shipped 2026-10-21
+
+- **Slash commands** on every surface: `/clear` (context boundary, nothing deleted), `/wipe [last|all]` (deletes for good, asks first, memories kept), `/compact`, `/model`, `/thinking`, `/stop`, `/new`, `/rename`, `/remember`, `/onboard`, `/help`. Threads load a page at a time.
+- **Main chat** per Bot: the landing page; Feed, Dashboard and Mail replies land there unless asked for a new chat.
+- **Cards in the chat** (`ask_owner`): questions answered in place, plus **setup offers** that open Silo's own connector, channel and drive forms prefilled.
+- **Interview** on a new Bot (opt-out), **proactivity dial** (off / quiet / active), **ideas** on the Dashboard, **live activity** under the Bot's name.
+- **Designed documents**: themes, PDF templates and a render-and-look step in the document skills; Inter, EB Garamond and Libertine in the image.
+- Still open from that plan: show queued messages as queued; make the Audit page a friendlier timeline; iOS does not know commands, cards or the main chat yet; binding an owner's DM channel to the main chat (schema-ready, not built).
 
 ## Sources
 
