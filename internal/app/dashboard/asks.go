@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/memory"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -207,12 +208,7 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 
 func cardQuote(c *db.DashboardCard) string {
 	var b strings.Builder
-	if c.Title != "" {
-		b.WriteString("**" + c.Title + "**")
-	}
-	if c.Summary != "" {
-		b.WriteString("\n\n" + c.Summary)
-	}
+	b.WriteString(c.Summary)
 	var blocks []map[string]any
 	_ = json.Unmarshal([]byte(c.BlocksJSON), &blocks)
 	for _, blk := range blocks {
@@ -254,6 +250,8 @@ func valuesText(valuesJSON string) string {
 	return b.String()
 }
 
+// submittedTurn is the owner's answer to an ask, in their own voice: the
+// quote above it says which card it answers.
 func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 	var b strings.Builder
 	label := c.SubmitLabel
@@ -261,25 +259,24 @@ func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 		label = "Send"
 	}
 	if vals := valuesText(valuesJSON); vals != "" {
-		fmt.Fprintf(&b, "Submitted **%s** on Dashboard card **%s** with options:\n%s", label, c.Title, vals)
+		fmt.Fprintf(&b, "I chose **%s** with:\n%s", label, vals)
 	} else {
-		fmt.Fprintf(&b, "Submitted **%s** on Dashboard card **%s**.", label, c.Title)
+		fmt.Fprintf(&b, "I chose **%s**.", label)
 	}
 	if strings.TrimSpace(note) != "" {
 		b.WriteString("\n\n" + strings.TrimSpace(note))
 	}
-	b.WriteString("\n\nPlease carry this out.")
+	b.WriteString("\n\nPlease go ahead.")
 	return strings.TrimSpace(b.String())
 }
 
-// quoteChat opens a web chat whose first turn quotes something from the
-// Dashboard and starts a run with the owner's message. A run that cannot start
-// takes its chat with it, so a refused press leaves no empty chat behind.
-func (s *Service) quoteChat(botID, title, quote, label string, quotedAt time.Time, message string) (*db.Chat, string, error) {
+// quoteChat opens a web chat that starts from q and starts a run with the
+// owner's message as its first turn.
+func (s *Service) quoteChat(botID, title string, q quote.Quote, message string) (*db.Chat, string, error) {
 	if title == "" {
 		title = "Dashboard"
 	}
-	ch, err := feed.QuoteChat(s.db, botID, title, quote, label, quotedAt)
+	ch, err := quote.Open(s.db, botID, title, q)
 	if err != nil {
 		return nil, "", err
 	}
@@ -298,8 +295,8 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
-	ch, runID, err := s.quoteChat(c.BotID, c.Title, cardQuote(c), feed.SourceLabel(c.SourceKind, c.SourceName), c.CreatedAt,
-		submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote()))
+	q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
+	ch, runID, err := s.quoteChat(c.BotID, c.Title, q, submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote()))
 	if err != nil {
 		return nil, err
 	}

@@ -1,10 +1,15 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { Hand, Play } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ui } from "../api";
 import { ConsoleTerm } from "../Console";
 import { Crest } from "../Crest";
+import { fail } from "../errors";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp, statusText } from "../Lamp";
 import { LinkSurface, retryDelay, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
+import { setBot } from "../query";
+import { Tip, TipAction, TipTitle } from "../Tip";
 import { t } from "../i18n.ts";
 
 function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
@@ -87,12 +92,59 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
   return <LinkSurface noun={t("Desktop")} phase={phase} surfaceRef={ref} surfaceClass="silo-hatch" />;
 }
 
+// PauseSwitch hands the desktop to the owner: while it is on, the Bot's
+// clicks, keys, typing, scrolling and Chromium are refused (it can still look).
+function PauseSwitch({ bot, onError }: { bot: Bot; onError?: (s: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const on = bot.desktopPaused;
+  async function flip() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await ui.setDesktopPaused({ botId: bot.id, paused: !on });
+      setBot({ ...bot, desktopPaused: res.paused });
+    } catch (e) {
+      onError?.(fail(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Tip
+      content={
+        <div className="max-w-[280px]">
+          <TipTitle aside={on ? t("Paused") : t("Running")}>{t("Pause the Bot on the desktop")}</TipTitle>
+          <p className="mt-1 text-[12px] leading-[17px] text-ink-2">
+            {t("While paused, the Bot cannot click, type, press keys, scroll or use Chromium here. It is told you are in control. It can still look.")}
+          </p>
+          <TipAction>{on ? t("Click to hand the desktop back") : t("Click to take over")}</TipAction>
+        </div>
+      }
+    >
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-busy={busy}
+        onClick={flip}
+        className={`flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 font-mono text-[11.5px] transition-colors duration-[160ms] ease-quiet ${
+          on ? "bg-vermilion text-on-accent hover:bg-vermilion-deep" : "text-on-hatch/75 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-on-hatch)_18%,transparent)] hover:bg-on-hatch/10 hover:text-on-hatch"
+        } ${busy ? "opacity-60" : ""}`}
+      >
+        {on ? <Play size={12} /> : <Hand size={12} />}
+        {on ? t("You're in control · Resume") : t("Pause Bot")}
+      </button>
+    </Tip>
+  );
+}
+
 export function MachinePane({
   bot,
   onStart,
   visible,
   kind,
   actions,
+  onError,
 }: {
   bot: Bot;
   onStart: () => void;
@@ -100,6 +152,7 @@ export function MachinePane({
   kind: "desktop" | "console";
   // Controls for the end of the hatch's header (dock, open as a page, close).
   actions?: ReactNode;
+  onError?: (s: string) => void;
 }) {
   const label = kind === "console" ? t("Console") : t("Desktop");
   if (!bot.workerConnected) {
@@ -119,9 +172,14 @@ export function MachinePane({
         <span className="font-mono text-[12px] text-white/60">{label}</span>
         <Lamp status={bot.status} />
         <span className="ml-auto font-mono text-[12px] text-white/80">{statusText(bot.status)}</span>
+        {kind === "desktop" ? <PauseSwitch bot={bot} onError={onError} /> : null}
         {actions ? <span className="-mr-1.5 flex shrink-0 items-center gap-0.5">{actions}</span> : null}
       </div>
-      <div className="mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-sm bg-matte">
+      <div
+        className={`mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-sm bg-matte ${
+          kind === "desktop" && bot.desktopPaused ? "shadow-[0_0_0_2px_var(--color-vermilion)]" : ""
+        }`}
+      >
         {kind === "console" ? <ConsoleTerm botId={bot.id} live visible={visible} /> : <Hatch botId={bot.id} live visible={visible} />}
       </div>
     </div>

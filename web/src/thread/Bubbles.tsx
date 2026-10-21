@@ -1,10 +1,11 @@
-import { Bot, GitBranch, Inbox, Paperclip, Pencil, RotateCcw, Timer, Trash2 } from "lucide-react";
+import { Bot, GitBranch, Inbox, LayoutGrid, Paperclip, Pencil, RotateCcw, Timer, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AgentLink } from "../links";
 import { Btn } from "../Btn";
 import { CopyButton, useArmed } from "../Feedback";
-import type { Attachment, Quote } from "../fold";
+import type { Attachment, Quote, Quoted } from "../fold";
+import { WidgetSnapshot } from "../dashboard/Widget";
 import { Quotable } from "../quote/Quotable";
 import { QuoteList } from "../quote/QuoteList";
 import { fmtBytes, fullTime, runWhen } from "../format";
@@ -138,21 +139,32 @@ export function UserBubble({
   );
 }
 
-// FeedQuote is the Feed post a quoted chat starts from: the Bot's words, set
-// off by a cobalt rule, with where and when they were posted.
-export function FeedQuote({ text, source, createdAt }: { text: string; source: string; createdAt?: string }) {
+// Opened is what a chat opened from, set off by a cobalt rule: a Feed post,
+// a Dashboard ask, or a Dashboard widget drawn as it stood. The caption says
+// which, where the Bot made it and when.
+export function Opened({ text, source, quoted, createdAt }: { text: string; source: string; quoted?: Quoted; createdAt?: string }) {
   const at = createdAt ? new Date(createdAt) : null;
+  const when = at && !Number.isNaN(at.getTime()) ? fullTime(at) : "";
+  const from = quoted?.from || (source === "Dashboard" ? "dashboard" : "feed");
+  const board = from !== "feed";
+  const label = { feed: t("From the Feed"), widget: t("Widget on the Dashboard"), ask: t("Asked on the Dashboard"), dashboard: t("From the Dashboard") }[from];
+  const Icon = board ? LayoutGrid : Inbox;
   return (
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-cobalt)]">
-      <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
-        <Inbox size={12} className="shrink-0" />
-        <span className="truncate">
-          {[t("Quoted from the Feed"), source, at && !Number.isNaN(at.getTime()) ? fullTime(at) : ""].filter(Boolean).join(" · ")}
-        </span>
+      <figcaption className="mb-2 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+        <Icon size={12} className="shrink-0" />
+        <span className="truncate">{[label, from === "dashboard" ? "" : source, when].filter(Boolean).join(" · ")}</span>
       </figcaption>
-      <div className="silo-reply">
-        <Md text={text} />
-      </div>
+      {from === "widget" && quoted?.widget ? (
+        <WidgetSnapshot w={quoted.widget} />
+      ) : (
+        <>
+          {from === "ask" && quoted?.title ? <p className="mb-1 text-[15px] leading-[22px] font-medium text-ink">{quoted.title}</p> : null}
+          <div className="silo-reply">
+            <Md text={text} />
+          </div>
+        </>
+      )}
     </figure>
   );
 }

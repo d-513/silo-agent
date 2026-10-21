@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/db"
 	"silo.agent/internal/textx"
 )
@@ -102,7 +104,7 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 	}
 	out := &v1.RunWidgetActionResponse{}
 	if a.Kind == "hand" {
-		ch, runID, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), "Dashboard", time.Now(), handTurn(w, a, args))
+		ch, runID, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args))
 		if err != nil {
 			return nil, err
 		}
@@ -119,23 +121,36 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 	return connect.NewResponse(out), nil
 }
 
-// widgetQuote is the widget as the chat it is handed to quotes it.
-func widgetQuote(w *db.DashboardWidget) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "**%s** (Dashboard widget `%s`, %s)", w.Title, w.Key, w.Kind)
-	if data := strings.TrimSpace(w.DataJSON); data != "" && data != "{}" {
-		b.WriteString("\n\n```json\n" + textx.ClipRunes(data, 4000) + "\n```")
+// widgetQuote is the widget as it stands, for the chat it is handed to: the
+// model reads its data, the thread draws the widget again without actions.
+func widgetQuote(w *db.DashboardWidget) quote.Quote {
+	spec, _ := parseSpec(w.SpecJSON)
+	delete(spec, "actions")
+	specJSON, _ := json.Marshal(spec)
+	data := strings.TrimSpace(w.DataJSON)
+	body := "(no data yet)"
+	if data != "" && data != "{}" {
+		body = "```json\n" + textx.ClipRunes(data, 4000) + "\n```"
 	}
-	return b.String()
+	at := time.Now()
+	if w.DataAt != nil {
+		at = *w.DataAt
+	}
+	return quote.Quote{
+		From: quote.FromWidget, Title: w.Title, Body: body, At: at,
+		Widget: &quote.Widget{Key: w.Key, Kind: w.Kind, Spec: string(specJSON), Data: textx.ClipRunes(data, 20000), State: w.StateJSON, Source: w.Source},
+	}
 }
 
-func handTurn(w *db.DashboardWidget, a *action, args string) string {
+// handTurn is the owner pressing a hand action, in their own voice: the
+// quote above it says which widget.
+func handTurn(a *action, args string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Pressed **%s** on the Dashboard widget **%s**.", a.Label, w.Title)
+	fmt.Fprintf(&b, "I pressed **%s** on it.", a.Label)
 	if vals := valuesText(args); vals != "" {
 		b.WriteString(" For:\n" + vals)
 	}
-	b.WriteString("\n\nPlease carry this out.")
+	b.WriteString("\n\nPlease go ahead.")
 	return b.String()
 }
 

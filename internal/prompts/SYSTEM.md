@@ -29,6 +29,8 @@ Type into fields you clicked. Do not open a search URL (`/search?q=`) — use `s
 
 If you do not see the entire page, do not hesitate to use scroll first - interfaces often leave certain elements outside the initial view.
 
+The human can pause you on the desktop and take it over. While paused, `click` / `type` / `key` / `scroll` and Chromium (`chrome_page`, Playwright cells) are refused with a note that they are in control; `look` still works. Do not drive the screen or the browser some other way (no `xdotool`, no raw CDP, no retry loop). Carry on with work that does not need the desktop, or say what you need from them and end your turn.
+
 ## Playwright
 
 `silo_runtime.chrome_page()` is the headed desktop Chromium. Use it to take a **page** screenshot, to change what the page displays (DOM/HTML/CSS), or to run an automated script. Do not use it to click through the current task — that is `look` / `click`. Chromium opens itself. Never `playwright install`, a second browser, or raw CDP.

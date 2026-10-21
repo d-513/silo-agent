@@ -114,8 +114,10 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `oidc.allowed_domains` | (none) | `SILO_OIDC__ALLOWED_DOMAINS` | Comma-separated email domains `auto_create` is limited to |
 | `oidc.groups_claim` | `groups` | `SILO_OIDC__GROUPS_CLAIM` | ID token claim that lists a person's groups |
 | `oidc.admin_group` | (none) | `SILO_OIDC__ADMIN_GROUP` | Members of this group are admins, checked at every OIDC sign-in |
-| `search.engine` | `builtin` | `SILO_SEARCH__ENGINE` | Web search engine. `builtin` is the **Built-in Scraper**: it needs no key, asks DuckDuckGo, Mojeek, Brave, Startpage, Wikipedia and Marginalia at once, and merges what they return. It rate-limits itself per site (about ten requests a minute each, a search asking one or two sites), because every search leaves from the Control Plane's one address and a site asked too often blocks it; a search queues a few seconds rather than fail when that budget is spent. An engine's own keys live under `search.<engine_id>`. The old `duckduckgo_scraper` reads as `builtin` |
+| `search.engine` | `builtin` | `SILO_SEARCH__ENGINE` | Web search engine: `builtin`, `brave` or `exa`. `builtin` is the **Built-in Scraper**: it needs no key, asks DuckDuckGo, Mojeek, Brave, Startpage, Wikipedia and Marginalia at once, and merges what they return. It rate-limits itself per site (about ten requests a minute each, a search asking one or two sites), because every search leaves from the Control Plane's one address and a site asked too often blocks it; a search queues a few seconds rather than fail when that budget is spent. `brave` is [Brave's Search API](https://brave.com/search/api/) and `exa` is [Exa](https://exa.ai/): each is one provider's own index behind your key (`search.brave.api_key`, `search.exa.api_key`), so there is no scraping and no self-rate-limit, but every search spends the plan's quota (a 429 is retried once, then the Bot is told the plan is used up); answers are cached 5 minutes, and a rejected key or an account out of credit is said in words, never as an empty result. Exa takes no language, only the country. An engine's own keys live under `search.<engine_id>`. The old `duckduckgo_scraper` reads as `builtin` |
 | `search.builtin.sources` | (all) | `SILO_SEARCH__BUILTIN__SOURCES` | Comma-separated sources the Built-in Scraper asks: `duckduckgo`, `mojeek`, `brave`, `startpage`, `wikipedia`, `marginalia`. Empty asks all of them. Marginalia's public API key is a quota shared with every other user of it and its data is CC-BY-NC-SA; leave it out if that licence does not suit you |
+| `search.brave.api_key` | (none) | `SILO_SEARCH__BRAVE__API_KEY` | Brave Search API subscription token, for `search.engine: brave`. Not the Built-in Scraper's `brave` source, which needs no key |
+| `search.exa.api_key` | (none) | `SILO_SEARCH__EXA__API_KEY` | Exa API key, for `search.engine: exa` |
 | `connector_vars.<name>` | (none) | `SILO_CONNECTOR_VARS__<NAME>` | Connector variable. Referenced as `${NAME}` in connector settings. **Plain text, not a secret** |
 | `autoenable_connectors` | (none) | `SILO_AUTOENABLE_CONNECTORS` | List of library connector identifiers every new Bot gets. The env form is comma-separated (`lightpanda,fal_ai`) |
 
@@ -359,7 +361,7 @@ providers:
     cache_ttl: 5m
 
 search:
-  engine: builtin
+  engine: builtin      # or brave / exa, with search.<engine>.api_key
 
 context:
   compact_at: 0.8

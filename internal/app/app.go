@@ -37,6 +37,7 @@ import (
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/pause"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/app/tunnels"
@@ -170,7 +171,7 @@ type App struct {
 	// ending holds runs that are no longer live (stopped, or past their last
 	// turn) but still writing, until their goroutine exits, so a truncation
 	// can wait for them.
-	ending map[string]*liveRun
+	ending    map[string]*liveRun
 	mask      map[string]*masker.Masker
 	lifecycle sync.Map
 
@@ -218,6 +219,7 @@ type App struct {
 	Channels    *channel.Service
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
+	Pause       *pause.Service
 }
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
@@ -261,6 +263,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
 	}
 	a.Feed = feed.New(a.DB, a)
+	a.Pause = pause.New(a.DB)
 	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)

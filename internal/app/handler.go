@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/pause"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/tunnels"
@@ -47,6 +48,7 @@ type (
 	acctRPC   = account.Service
 	auditRPC  = audit.Service
 	egressRPC = egress.Service
+	pauseRPC  = pause.Service
 )
 
 // uiHandler is the whole UI service: App's own RPCs plus the ones the domain
@@ -73,10 +75,11 @@ type uiHandler struct {
 	*acctRPC
 	*auditRPC
 	*egressRPC
+	*pauseRPC
 }
 
 func (a *App) uiHandler() *uiHandler {
-	return &uiHandler{App: a, feedRPC: a.Feed, dashRPC: a.Dashboard, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, chgRPC: a.Changes, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, mailRPC: a.Mail, acctRPC: a.Accounts, auditRPC: a.Audit, egressRPC: a.Egress}
+	return &uiHandler{App: a, feedRPC: a.Feed, dashRPC: a.Dashboard, modelsRPC: a.Models, filesRPC: a.Workspace, voiceRPC: a.Voice, knowRPC: a.Knowledge, chgRPC: a.Changes, memRPC: a.Memory, driveRPC: a.Drives, autoRPC: a.Automations, chanRPC: a.Channels, connRPC: a.Connectors, adminRPC: a.Admin, skillRPC: a.Skills, artRPC: a.Artifacts, tunRPC: a.Tunnels, mailRPC: a.Mail, acctRPC: a.Accounts, auditRPC: a.Audit, egressRPC: a.Egress, pauseRPC: a.Pause}
 }
 
 // The App is the engine the satellite domains drive.

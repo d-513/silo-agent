@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"silo.agent/internal/app/feed"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/zone"
@@ -222,9 +222,9 @@ func replayEvents(evs []db.RunEvent) replayed {
 			var meta clearedMeta
 			_ = json.Unmarshal([]byte(ev.Meta), &meta)
 			out.cleared = max(out.cleared, meta.Results)
-		case feed.QuoteKind:
+		case quote.Kind:
 			flushTools()
-			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feed.QuoteText(ev.Tool, ev.Body, ev.CreatedAt, ev.Zone)})
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: quote.Text(&ev)})
 			fold = len(msgs) - 1
 			continue
 		case subagentReportKind:

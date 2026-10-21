@@ -90,16 +90,16 @@ build-all: build-cp build-worker build-bridge bot-image stdio-image drive-image 
 images: bot-image stdio-image drive-image egress-image ## Build all container images
 
 bot-image: build-worker ## Build the local bot image
-	$(PODMAN) build -t $(BOT_IMAGE) -f botimage/Containerfile .
+	$(PODMAN) build --pull=newer -t $(BOT_IMAGE) -f botimage/Containerfile .
 
 stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
-	$(PODMAN) build -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
+	$(PODMAN) build --pull=newer -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
 
 drive-image: build-drive ## Build the local drive (rclone) sidecar image
-	$(PODMAN) build -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+	$(PODMAN) build --pull=newer -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
 
 egress-image: build-egress ## Build the local network filter gateway image
-	$(PODMAN) build -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
+	$(PODMAN) build --pull=newer -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
 
 ## --- run -------------------------------------------------------------------
 

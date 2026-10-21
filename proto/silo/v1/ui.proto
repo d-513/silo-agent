@@ -45,6 +45,10 @@ service UI {
   rpc StartBot(GetBotRequest) returns (Bot);
   rpc StopBot(GetBotRequest) returns (Bot);
   rpc ResetContainer(GetBotRequest) returns (Bot);
+  // SetDesktopPaused hands the desktop to the owner: while paused the Bot's
+  // desktop actions and Chromium are refused with a note that the owner is
+  // in control.
+  rpc SetDesktopPaused(SetDesktopPausedRequest) returns (SetDesktopPausedResponse);
   // Every container that belongs to a Bot: its machine, drive sidecar, and
   // STDIO MCP sidecars, with usage.
   rpc ListBotContainers(GetBotRequest) returns (BotContainers);
@@ -506,6 +510,9 @@ message Bot {
   int32 audit_unseen = 18;
   // DashboardAsks counts the Dashboard asks waiting for the owner.
   int32 dashboard_asks = 19;
+  // DesktopPaused is the owner having taken the desktop over: the Bot's
+  // clicks, keys, typing, scrolling and Chromium are refused until resumed.
+  bool desktop_paused = 20;
 }
 
 message ListBotsRequest {}
@@ -932,6 +939,15 @@ message ListFeedResponse {
 }
 
 // MarkFeedRead marks every post up to now as read.
+message SetDesktopPausedRequest {
+  string bot_id = 1;
+  bool paused = 2;
+}
+
+message SetDesktopPausedResponse {
+  bool paused = 1;
+}
+
 message MarkFeedReadRequest {
   string bot_id = 1;
 }
@@ -1486,6 +1502,18 @@ message RunEvent {
   string created_at = 8;
   // What a user message quoted.
   repeated Quote quotes = 9;
+  // On a feed_quote event: what was quoted, for the thread to draw it.
+  Quoted quoted = 10;
+}
+
+// Quoted is the thing a chat opened from: a Feed post, a Dashboard widget as
+// it stood, or a Dashboard ask. The quoted text itself is the event's body.
+message Quoted {
+  // feed, widget or ask; empty on a quote from before this was recorded.
+  string from = 1;
+  string title = 2;
+  // A quoted widget, drawn read-only: no actions, data as it was.
+  DashboardWidget widget = 3;
 }
 
 // EditMessage truncates this chat at the last user message and re-sends the

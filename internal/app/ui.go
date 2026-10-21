@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/catalog"
@@ -41,6 +42,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		Model:           b.Model,
 		FeedUnread:      a.Feed.Unread(b.ID),
 		DashboardAsks:   a.Dashboard.Open(b.ID),
+		DesktopPaused:   a.Pause.Paused(b.ID),
 		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
@@ -261,6 +263,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.Tunnels.Drop(b.ID)
 	a.Artifacts.Drop(b.ID)
 	a.Mail.Drop(b.ID)
+	_ = a.Pause.Drop(b.ID)
 	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Subagent{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
@@ -414,7 +417,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for _, r := range eventsAfter(rows, after) {
 		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(decodeUserMeta(r.Meta).Files), Quotes: v1Quotes(decodeUserMeta(r.Meta).Quotes), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
+		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(decodeUserMeta(r.Meta).Files), Quotes: v1Quotes(decodeUserMeta(r.Meta).Quotes), Quoted: quote.Proto(&r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
 			return err
 		}
 	}

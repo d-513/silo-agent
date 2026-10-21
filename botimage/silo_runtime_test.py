@@ -1,4 +1,4 @@
-"""chrome_page asks the worker to open Chromium before it touches Playwright."""
+"""chrome_page asks for desktop.chrome before it touches Playwright."""
 
 from __future__ import annotations
 
@@ -7,14 +7,14 @@ import silo_runtime
 
 def test_chrome_page_ensures():
     seen = []
-    silo_runtime._post = lambda path, body: seen.append(path) or {}
+    silo_runtime._post = lambda path, body: seen.append((path, body["connector"], body["action"])) or {}
     silo_runtime._pw = None
     silo_runtime._browser = None
     try:
         silo_runtime.chrome_page()
     except Exception:
         pass
-    if seen[:1] != ["/v1/chrome/ensure"]:
+    if seen[:1] != [("/v1/tools/call", "desktop", "chrome")]:
         raise SystemExit(f"ensure first: {seen}")
 
 

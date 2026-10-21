@@ -82,6 +82,9 @@ type Def struct {
 	// Enabled, when set, decides whether the tool is offered to a Bot's model
 	// (a feature that is switched off). Nil is always.
 	Enabled func(botID string) bool
+	// Gate refuses the call for the state the Bot is in, on either surface
+	// and before a Local grant (the desktop while its owner has paused it).
+	Gate func(c *Call) error
 	// Check validates the arguments before anybody is asked for permission.
 	Check func(c *Call) error
 	// Title names the call on the thread's call row. Nil uses the rule's title.
@@ -337,6 +340,11 @@ func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 	}
 	if c.Args == nil {
 		c.Args = map[string]any{}
+	}
+	if d.Gate != nil {
+		if err := d.Gate(c); err != nil {
+			return Result{}, err
+		}
 	}
 	if c.Surface == Python && d.Local {
 		if _, err := e.auth.AuthorizeAction(ctx, c.Bot, c.RunID, d.Connector, d.Action, c.ArgsJSON, d.Mode); err != nil {

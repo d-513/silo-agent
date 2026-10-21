@@ -270,6 +270,8 @@ func (w *worker) runDesktop(ctx context.Context, action string, args map[string]
 		return w.key(ctx, strArg(args, "name"))
 	case "scroll":
 		return w.scroll(ctx, &v1.ScrollCmd{X: int32(intArg(args, "x")), Y: int32(intArg(args, "y")), Dy: int32(intArg(args, "dy"))})
+	case "chrome":
+		return w.ensureChrome(ctx)
 	default:
 		return "", fmt.Errorf("unknown desktop action %s", action)
 	}

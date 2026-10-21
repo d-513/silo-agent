@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm/dummy"
@@ -197,6 +198,26 @@ func TestDashboardProbesAndActions(t *testing.T) {
 	if !strings.Contains(h.RunBody(hr.Msg.GetRunId()), "on it") {
 		t.Fatal("handed chat did not run")
 	}
+	// The model is told it is a widget, as it stood, with the owner's press
+	// as their own words; never a Feed post.
+	var asked string
+	for _, req := range dummy.Streamed() {
+		for _, m := range req.Messages {
+			if strings.Contains(m.Text, "Test_handed") {
+				asked = m.Text
+			}
+		}
+	}
+	if !strings.HasPrefix(asked, "I'm quoting the “Files” widget from my Dashboard (`files`, a stat), as it stood on ") ||
+		!strings.Contains(asked, `"value":1`) || !strings.Contains(asked, "I pressed **Explain this** on it.") || strings.Contains(asked, "Feed") {
+		t.Fatalf("handed turn %q", asked)
+	}
+	// The thread gets the widget to draw again, without its actions.
+	var qev db.RunEvent
+	h.DB.Joins("JOIN runs ON runs.id = run_events.run_id").Where("runs.chat_id = ? AND run_events.kind = ?", hr.Msg.GetChat().GetId(), quote.Kind).Find(&qev)
+	if q := quote.Proto(&qev); q == nil || q.GetFrom() != quote.FromWidget || q.GetWidget().GetKind() != "stat" || strings.Contains(q.GetWidget().GetSpecJson(), "actions") {
+		t.Fatalf("quoted %+v", q)
+	}
 
 	// A failing probe keeps the data and shows why.
 	res = pyCall(t, h, id, "", "bot", "widget_put", `{"key":"files","probe":"raise ValueError('boom')"}`)
@@ -346,6 +367,17 @@ func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
 	h.WaitRun(subRes.Msg.GetRunId())
 	if body := h.RunBody(subRes.Msg.GetRunId()); !strings.Contains(body, "I received your dashboard form submission") {
 		t.Fatalf("submitted run body: %q", body)
+	}
+	var sent string
+	for _, req := range dummy.Streamed() {
+		for _, m := range req.Messages {
+			if strings.Contains(m.Text, "Apply cleanup") {
+				sent = m.Text
+			}
+		}
+	}
+	if !strings.HasPrefix(sent, "I'm quoting the card “Workspace cleanup” you put on my Dashboard") || !strings.Contains(sent, "I chose **Apply cleanup** with:") || strings.Contains(sent, "Feed") {
+		t.Fatalf("submitted turn %q", sent)
 	}
 
 	// Submitted card is no longer open.

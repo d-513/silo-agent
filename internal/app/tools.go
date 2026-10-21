@@ -137,6 +137,15 @@ func (a *App) onWorker(build func(c *tool.Call) *v1.Cmd, done func(c *tool.Call,
 	}
 }
 
+// chromeGate refuses a cell that would drive the desktop Chromium while the
+// owner has paused the desktop, before anybody is asked to approve it.
+func (a *App) chromeGate(c *tool.Call) error {
+	if c.Bot == nil || !desktop.WantsChromium(c.Str("code")) {
+		return nil
+	}
+	return a.Pause.Check(c.Bot.ID)
+}
+
 // withChrome opens the desktop Chromium first when the code is about to drive
 // it through Playwright.
 func (a *App) withChrome(next tool.Handler) tool.Handler {

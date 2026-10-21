@@ -14,6 +14,8 @@ import (
 
 const (
 	Builtin           = "builtin"
+	Brave             = "brave"
+	Exa               = "exa"
 	DefaultEngine     = Builtin
 	DefaultMaxResults = 8
 	MaxResultsCap     = 20
@@ -87,6 +89,18 @@ func newEngines() *registry.Registry[Descriptor, factory] {
 				". Marginalia's public key is a quota shared with everyone and its data is CC-BY-NC-SA.",
 		}},
 	}, func(s Settings) Engine { return newMeta(s) })
+	r.Put(Descriptor{
+		ID:          Brave,
+		Name:        "Brave Search",
+		Description: "Brave's own Search API: an independent index of the whole web. Needs an API key (brave.com/search/api); the plan's quota is spent per search.",
+		Settings:    []SettingDef{{Key: "api_key", Label: "API key", Description: "Your Brave Search API subscription token.", Secret: true}},
+	}, newBraveAPI)
+	r.Put(Descriptor{
+		ID:          Exa,
+		Name:        "Exa",
+		Description: "Exa's neural search API: finds pages by meaning and returns the passages that answer the query. Needs an API key (dashboard.exa.ai); each search is billed to the account.",
+		Settings:    []SettingDef{{Key: "api_key", Label: "API key", Description: "Your Exa API key.", Secret: true}},
+	}, newExa)
 	return r
 }
 

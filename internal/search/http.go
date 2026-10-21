@@ -32,6 +32,11 @@ type request struct {
 	// api marks a public API rather than a page: it is asked as what we are,
 	// not as a browser (Wikipedia refuses a client that only looks like one).
 	api bool
+	// keyed marks a paid API asked with the operator's key: it gets the time
+	// a real index needs, not the budget of a scraped page. It implies api.
+	keyed bool
+	// body is a raw request body (JSON for the keyed APIs).
+	body []byte
 }
 
 type page struct {
@@ -110,10 +115,24 @@ var plain = req.C().
 	SetTimeout(sourceTimeout).
 	DisableAutoReadResponse()
 
+// keyedTimeout is how long a paid API may take: Exa reads the pages it
+// returns before it answers.
+const keyedTimeout = 15 * time.Second
+
+// paid asks the keyed APIs, under an honest name.
+var paid = req.C().
+	SetUserAgent("SiloAgent/1.0 (web search for an AI agent)").
+	SetCookieJar(nil).
+	SetTimeout(keyedTimeout).
+	DisableAutoReadResponse()
+
 // fetch performs one request. Tests replace it.
 var fetch = func(ctx context.Context, rq request) (page, error) {
 	client := browser
-	if rq.api {
+	switch {
+	case rq.keyed:
+		rq.api, client = true, paid
+	case rq.api:
 		client = plain
 	}
 	r := client.R().SetContext(ctx)
@@ -134,6 +153,9 @@ var fetch = func(ctx context.Context, rq request) (page, error) {
 	}
 	if rq.form != nil {
 		r.SetFormDataFromValues(rq.form)
+	}
+	if rq.body != nil {
+		r.SetBodyBytes(rq.body)
 	}
 	method := rq.method
 	if method == "" {

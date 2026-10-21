@@ -1,149 +1,158 @@
 # Silo vs. the field
 
-Status report, 2026-10-05. Replaces the earlier gap list (still in git history); that list was written when Silo had no scheduler, no subagents, no compaction and no memory search, and most of it has since shipped.
+Status report, 2026-10-21. Replaces the 2026-10-05 report (in git history). Since then Silo shipped 76 commits on 11 working days, and the competitors shipped too: Hermes v0.22 "Threshold", OpenClaw's 2026.10 betas, Muse for Mac, and Instinct Concierge calls.
 
-Competitor facts come from their public docs and press as of this date (links at the bottom). Anything marked † is carried over from the earlier notes or comes from a secondary source, and was not checked against the project's own docs.
+Competitor facts come from their release notes and press as of this date (links at the bottom). Anything marked † comes from a secondary source (an aggregator or a blog) and was not checked against the project's own docs.
 
 ## TL;DR
 
-- **Of the 20 gaps in the old list: 3 are done, 10 are partly done, 6 are still open, 1 we chose to skip.** The #1 gap (scheduling and proactivity) now has cron automations, a Heartbeat, a feed and "run now". Subagents and compaction, #3 and #6, are done.
-- **Silo's edge is the architecture, not the feature count.** It is the only one of the four that is self-hosted, multi-user, isolated by default, and lets a human step into the agent's real desktop. Provider keys, OAuth tokens and secrets never enter the box.
-- **What is still behind:** reach (Telegram, WhatsApp and Discord against Hermes' 20+ and OpenClaw's ~24 channels), voice output and phone calls, event/webhook triggers, push notifications. Sentinel's story is now mostly covered: a per-Bot network filter with an operator floor, surrogate credential tokens and output filtering that labels untrusted results (#20).
-- **Built in about a month:** 178 commits across 17 working days since 2026-09-05.
+- **Since 10-05 Silo closed the checkpoint gap and moved six others forward.** #17 workspace checkpoints are done: Changes, with Restore, plus a journal of drive writes. Also new: a receive-only mailbox per Bot (#8), surrogate secrets at an egress gateway (#9, #20), live HTML apps, public shares and a Dashboard (#13), a keyless metasearch (#14), and decision models (#16). The platform also gained accounts with OIDC and 2FA, an operator rule layer, an output filter on tool results, i18n (PL/DE), dark mode, a persistent Python kernel and an append-only cached context.
+- **Two of Silo's "only we have it" claims are weaker now.** Hermes v0.22 ships **Bot Screen**, so you can watch a bot's desktop and take over. Nous also sells **Hermes Business/Enterprise**† (teams, self-hosted). What still sets Silo apart is the combination: isolated per-Bot boxes, multi-user accounts, a CP that holds every key, an egress gateway, an output filter, drives, knowledge, tunnels, a mailbox, change history and a dashboard, all in one self-hosted product.
+- **The field moved to where Silo is weakest:** phone calls (Instinct, Muse, OpenClaw), password-manager and payment rails (Hermes vault with 1Password/Bitwarden, Muse with Stripe Link), plugin marketplaces (Hermes ~600 reviewed plugins, ClawHub), one-click local models and signed desktop installers (Hermes), and reach over iMessage/SMS. The new "text-message agent" category has 20+ products.
+- **Biggest gaps now, in order:** event/webhook triggers, search across past chats, channel reach (Slack, Signal, iMessage/SMS, email replies), voice output and calls, a credential vault and payments, push notifications plus iOS parity, and an extension/plugin story.
 
 ## 1. Snapshot
 
-| | |
-|---|---|
-| Control plane + worker + bridges (Go, non-test) | ~38k lines |
-| Go tests | ~17.8k lines, 585 test functions |
-| Web console (React/TS) | ~18k lines |
-| iOS app (SwiftUI) | ~7.5k lines, most pages at parity with web |
-| UI API | 109 ConnectRPC methods, one `.proto` |
-| Connector library | 64 presets (HTTP MCP, 6 STDIO MCP, 2 built-in in Go: Email, Calendar) |
-| Drive providers | 15 (S3, B2, R2, GDrive, OneDrive, Dropbox, Box, pCloud, Nextcloud, ownCloud, Seafile, SFTP, SMB, WebDAV, S3-compatible) |
-| Default skills | 6 (pdf, word, spreadsheets, presentations, images, product-self-knowledge) |
-| LLM providers | OpenRouter, OpenAI, Anthropic (native), `local` (any self-hosted OpenAI-compatible server) |
-| Channels | Telegram (MTProto), WhatsApp (linked device), Discord |
+| | 10-05 | 10-21 |
+|---|---|---|
+| Control plane + worker + bridges (Go, non-test) | ~38k lines | ~66k lines |
+| Go tests | ~17.8k lines, 585 test functions | ~38.9k lines, 1167 test functions |
+| Web console (React/TS, hand-written) | ~18k lines | ~34k lines |
+| iOS app (SwiftUI, hand-written) | ~7.5k lines | ~7.6k lines (no Dashboard, Changes, Mail, Tunnels or Knowledge) |
+| UI API (ConnectRPC methods) | 109 | 174 |
+| Connector library | 64 presets | 64 presets (2 built-in in Go: Email, Calendar) |
+| Drive providers | 15 | 15 |
+| Default skills | 6 | 6 |
+| LLM providers | OpenRouter, OpenAI, Anthropic, `local` | + TypeSafe; decision models on OpenRouter and TypeSafe |
+| Channels | Telegram, WhatsApp, Discord | same, plus inbound mail that can wake the Bot |
+| Console languages | English | English, Polish, German |
 
 ## 2. The field
 
-| | **Hermes Agent** (Nous Research) | **OpenClaw** | **Muse** (Meta) | **Instinct** | **Silo** |
+| | **Hermes Agent** (Nous) | **OpenClaw** | **Muse** (Meta) | **Instinct** | **Silo** |
 |---|---|---|---|---|---|
-| Hosting | Self-hosted, MIT | Self-hosted, open source | Cloud only, Meta infrastructure | Hosted, invite-only US beta | Self-hosted |
-| Users | Multi-user not documented | Multi-user not documented | One consumer per VM | One consumer per agent | Accounts, admin, per-user Bots and skills |
-| Where tools run | Seven backends: local, Docker, SSH, Modal, Daytona, Singularity, Vercel Sandbox | On the host for the main session; per-session Docker sandbox is opt-in | Dedicated "Secure VM" per user | Hosted | One container per Bot, always |
-| Interface | TUI + messaging gateway | Local gateway to chat apps | iOS/Android apps, web, WhatsApp | iMessage, WhatsApp, calls, web settings | Web console + native iOS app, Telegram, WhatsApp, Discord |
-| Channels | 20+ platforms through one gateway | ~24 (WhatsApp, Slack, Discord, Signal, iMessage, Teams, Matrix, LINE, WeChat, …) | App, web, WhatsApp | iMessage, WhatsApp, phone | Telegram, WhatsApp, Discord |
-| Security story | Command approval, container backends | Optional sandbox; exec reviewer and DM pairing† | Sentinel: separate agent as sole authority for connector actions and network egress; `authd` swaps surrogate tokens for real credentials at the network edge | Terms let the agent "bind you as if you had signed"; trains on your data by default (opt-out) | One authorization gate, per-action rules, approvals, masker, per-Bot network filter with an operator floor, surrogate tokens swapped at the gateway, keys never in the box |
+| Hosting | Self-hosted MIT; Hermes Cloud (hourly, scales to zero); Business/Enterprise† | Self-hosted; cloud sessions (move local ↔ cloud) | Cloud only; Mac app since 09-17 | Hosted, invite-only, US | Self-hosted |
+| Users | Profiles isolated under one gateway; teams via Business† | Paired devices, session send/receive policy | One consumer per VM | One consumer | Accounts, admin, OIDC, 2FA, per-user Bots |
+| Install | Signed desktop apps (macOS, MS Store, Linux), first-run chat with no API key, one-click llama.cpp | Gateway + Tauri/Windows desktop apps, `doctor`, encrypted backups | App store | Invite | Docker/Podman + Postgres, operator config |
+| Where tools run | Seven backends (local, Docker, SSH, Modal, Daytona, Singularity, Vercel) | Host by default; Docker sandbox opt-in; cloud workers | Dedicated "Secure VM" per user | Hosted | One container per Bot, always |
+| Human takeover | **Bot Screen**: live desktop and takeover (v0.22) | – | – | – | VNC desktop, PTY console, Files |
+| Channels | 20+ (Telegram, Slack, Signal, Matrix, WhatsApp, Feishu, …) | ~25 incl. a new X (Twitter) channel | App, web, WhatsApp | iMessage, WhatsApp, email, **phone** | Telegram, WhatsApp, Discord (+ mail in) |
+| Voice | Live transcription, voice-chat model | **Voice calls**: briefs, reports, live steering, voicemail detection; Discord realtime voice | Calls (testing) | **Concierge phone calls** | Speech to text only |
+| Credentials, payments | **Password-blind vault**: 1Password, Bitwarden or local; TOTP from a saved key | Secret masking (chunk-boundary aware) | **Stripe Link**; Shop Pay and 1Password "soon" | Acts in your name | Surrogate secrets swapped at the egress gateway; secret typing without the model seeing it |
+| Extensibility | ~600 reviewed plugins, plugin SDK, plugin OAuth, MCP | ClawHub skills and plugins, hooks | Connector submission; Muse builds custom connectors | – | MCP (HTTP/SSE/STDIO), skills, Go built-ins |
+| Security story | Command approval, container backends, profile isolation | Optional sandbox, **turn tainting** from network results, hooks cannot change approved args | Sentinel gates all egress and connector actions; `authd` surrogates | Broad terms; trains on data by default | One gate, per-action and operator-locked rules, auto-approval (text or decision model), output filter, egress gateway with surrogates, keys never in the box |
 
-## 3. What only Silo has
+The "text-message agent" crowd (TechCrunch, 10-10) is the consumer pressure: Wajo has its own email, phone number **and payment card**; Folk runs on a private cloud computer for $8/mo; Tomo and Wajo join **group chats**; Martin covers SMS, phone, WhatsApp, email and Slack; Iris is built on Hermes.
 
-"Only" means none of the other three documents it publicly. Items 1 to 8 are the ones to lead with.
+## 3. What only Silo has (re-checked)
 
-1. **Self-hosted, multi-user, and with a real UI.** Accounts, an admin role, per-user Bots, per-user skills, an operator settings page with a YAML editor, an audit log and an LLM log. The others are single-user tools or single-tenant hosted products. A team can run one Silo.
-2. **A person can step into the agent's machine.** Every Bot is a Linux box with an X11 desktop, a PTY console and a file browser, all reachable from the browser (VNC and console tunnelled over the worker's own outbound stream, no published ports, no `docker exec`). The agent drives it with `look` / `click` / `type` / `key` / `scroll` and hands over for logins, captchas and 2FA. The human sees the same screen.
-3. **Isolation is the only mode, and the keys live somewhere else.** The Control Plane owns provider keys, connector tokens, OAuth and secrets; the Bot box has none of them and cannot reach the CP except through the worker's stream. Python never sees the CP URL or the bot token. A masker runs on both sides of the wire, covering base64, URL, JSON and hex encodings. In Hermes and OpenClaw isolation is a backend or sandbox setting you choose; OpenClaw's main session runs on the host by default. Muse's Sentinel is the one comparable design.
-4. **One gate for every action, down to a single secret.** Chat tools and Python calls share `authorizeAction`: Bot rule, then connector default, then catalog default, then ask. Each stored secret is its own action. Allow / Ask / Deny per Bot per connector action, an approval slip that never shows arguments (typed text is redacted), and a plain-language auto-approval policy judged by a model that may only answer `approve` / `ask` / `deny`.
-5. **STDIO MCP servers in their own sidecars.** Each runs in an isolated container whose bridge dials the CP, with a per-attachment token and no published port. Authorization, masking and audit are identical to HTTP MCP. OAuth tokens (CIMD, pre-registered client, or DCR) never enter the Bot. The same preset can be attached several times, each with its own OAuth.
-6. **Drives.** 15 cloud and network storage providers mounted into the Bot's workspace by a FUSE sidecar that holds every credential. The Bot sees files, never keys. Drives work with Knowledge, so a Bot can search a OneDrive folder it cannot authenticate to.
-7. **Knowledge: RAG over any workspace folder.** Hybrid cosine + keyword search fused in one SQL, OCR for scanned PDFs and images (tesseract, English and Polish), rename detection so moved files keep their chunks, an index that never deletes on a disconnected drive. Files stay on the box; only chunks and vectors are in Postgres.
-8. **Tunnels.** Named HTTPS addresses (`<adjective>-<colour>-<animal>.<host>`) for any port on the Bot's localhost, carried over the worker's outbound stream. Private tunnels hand off the owner's session and end when it ends. Making one public is an Ask. This is also the answer to "interactive artifacts": the Bot can build and serve a real web app.
-9. **The Feed.** A read-only inbox per Bot with an unread badge, written by chats, automations and channels. Quote turns a post into a new chat.
-10. **Run logs are first-class.** Automations and subagents each get a hidden log that renders through the same `Thread` as chat. The subagent tray and per-agent pages are the same pattern.
-11. **A test suite that runs the real thing without spending tokens.** A scripted `DummyLLM`, the real worker as a subprocess, the real STDIO bridge, a per-test Postgres schema, plus a real-Podman tier that boots the actual Bot image. TESTING.md documents it.
-
-12. **A mailbox per Bot.** Every Bot has its own receive-only address, served by an SMTP listener in the control plane: it can sign up for things, collect confirmation codes and take reports, with no mail account to rent and nothing it can send. The sender of each message is checked (DKIM/SPF), and only verified mail from senders the owner listed can wake the Bot.
+1. **Self-hosted, multi-user, with a real admin UI.** Accounts, invites, TOTP, OIDC, sessions, an operator rule floor, audit timeline, LLM log, silo.yaml editor. *Weaker than before:* Hermes Enterprise† targets the same buyer. Its public docs show profiles under one gateway, not accounts with an admin.
+2. **An isolated box per Bot, keys elsewhere.** The CP holds provider keys, OAuth and secrets. Box egress goes through a gateway that swaps surrogates only for allowed hosts. Only Muse (Sentinel + `authd`) is comparable, and it is cloud-only.
+3. **Step into the machine, isolated.** Hermes Bot Screen (v0.22) now does live view and takeover: Xvnc + Xfce per profile, the RFB stream spliced through the gateway, and a "control lease" that refuses the bot's `computer_use`/browser tools while the human drives. By its own docs it is "a tool-level fence, not an OS one" and "screens are work surfaces, not security boundaries". On the default `local` backend every bot shares the host's OS user, files, network, X socket and Chromium DevTools port. In a Docker backend it needs the `hermes-sandbox:desktop` image, and Modal, Daytona and Vercel cannot host it. It is Linux only and off by default. Silo's version is the only mode: one box per Bot, plus the PTY console and the file browser, with no published ports.
+4. **Output filter on every tool result.** Pass, flag, check (a model judges for prompt injection) or withhold, per action, with the warning delivered by the CP so code cannot drop it. OpenClaw taints a turn after network results; nobody else judges the content.
+5. **Decision models.** Typed yes/no, choice and score answers (OpenRouter Decisions, TypeSafe) used for auto-approval, filtering and a `decide` tool. Nobody else wires them.
+6. **Workspace history with Restore, plus a drive journal.** State-based snapshots catch what a script did, not just file tools.
+7. **Drives (15 providers) + Knowledge RAG with OCR.** A FUSE sidecar holds the credentials. Hybrid search and rename detection.
+8. **Tunnels, live apps and public shares.** A Bot serves a real web app on a private (session-bound) or public address.
+9. **A receive-only mailbox per Bot**, with DKIM/SPF verification and wake-on-verified-sender. Instinct and Wajo give an agent an email address, but they are hosted and can send.
+10. **Dashboard.** Widgets the Bot writes once and code keeps current (probes approved once), plus asks. Hermes and OpenClaw have nothing like it. OpenClaw Workboards are closer to Silo's taskboard.
+11. **Test suite without tokens.** Dummy LLM and decider, the real worker, the real bridge, a schema per test, and a real-Podman tier.
 
 ## 4. Where we matched them
 
 | Area | Silo |
 |---|---|
-| Cron and proactive runs | Automations (5-field cron, fresh context per run, once-only claim, no backfill), Heartbeat, Bot-created automations (Ask) |
-| Subagents | `spawn_agent`, status, message, stop; taskboard; push-based wake of the lead; per-agent model; 8 at once |
-| Context compaction | Auto and manual, mid-run, persisted as events, never deletes history; context meter |
-| Memory | pgvector memories, auto-recall, a collector that saves what the Bot forgot, a Memories page |
-| Skills | Agent Skills format, GitHub or zip install, progressive disclosure, library + personal |
-| MCP | HTTP, legacy SSE and STDIO |
-| Models | OpenRouter / OpenAI / Anthropic native / local, thinking ladder, per-chat model, window discovery, prompt-cache breakpoints |
-| Speech to text | Composer mic, `transcribe` tool, Python helper |
-| Branching | Edit message, diverge chat, delete, stop |
+| Cron and proactive runs | Automations, Heartbeat, Dashboard automation, Run now, mail wake |
+| Subagents | spawn/status/message/stop, taskboard, push wake, per-agent model |
+| Context | Append-only cached prompt, clearing of stale results, auto/manual compaction |
+| Memory | pgvector memories, all in prompt or a digest, collector, Memories page |
+| Persistent code state | A Python kernel per conversation (OpenClaw Code Mode `store`/`load` is the equivalent) |
+| Skills | Agent Skills format, GitHub/zip install, library + personal |
+| MCP | HTTP, legacy SSE, STDIO; connectors optionally exposed as chat tools; several accounts per preset (Hermes v0.22 just added this) |
+| Models | Four text providers + local, decision models, thinking ladder, per-chat model, window discovery |
+| Web | Keyless metasearch with a Chrome fingerprint, Lightpanda reader, real Chromium |
+| i18n | EN/PL/DE (Hermes Desktop: FR/DE/ES) |
 
-## 5. Gap report: the original 20, re-scored
+## 5. Gap report, re-scored
 
-Status: **Done** / **Partial** / **Missing** / **Skip** (chosen not to do).
+**Done** / **Partial** / **Missing** / **Skip**. The arrow shows the change since 10-05.
 
 | # | Gap | Status | What shipped, what is left |
 |---|---|---|---|
-| 1 | Scheduling, proactivity, autonomy | **Partial** | Shipped: automations, Heartbeat, Run now, Feed, UI and iOS. Left: webhook and event triggers, one-shot ("at") schedules, skill-attached jobs, script-only watchdogs, heartbeat active hours, declared per-job delivery target |
-| 2 | Voice and telephony | **Partial** | Shipped: speech to text. Left: text to speech, spoken replies, wake word, voice channels, phone calls |
-| 3 | Subagents | **Done** | Shipped as above. Left (nice to have): nesting beyond depth 1, fork-context mode, background reviewer |
-| 4 | Deep memory and retrieval | **Partial** | Shipped: memories, auto-recall, collector, Knowledge RAG. Left: search over all past conversations (`chats` reads one chat), external memory providers, a write-approval gate on `remember` |
-| 5 | Self-improving skills | **Partial** | Shipped: the Bot can write a skill directory and offer it through `artifact`, and the human clicks **Save skill**. Left: autonomous skill creation after a hard task, skills that patch themselves |
-| 6 | Compaction and session lifecycle | **Done** | Shipped: compaction, edit/branch/delete, stop, steering by injection, run cap now `runs.max_duration` (120 min). Left: one-click retry, undo (see 17) |
-| 7 | Channel breadth | **Partial** | Telegram (MTProto bot), WhatsApp (linked device paired by QR, unofficial protocol) and Discord (bot on the gateway). Left: Slack, Signal, iMessage, Matrix, Teams, and Email as a channel (it is a connector today) |
-| 8 | Agent-owned identity | **Missing** | A Bot can use a mailbox you give it (Email connector); nothing provisions an address or number for it |
-| 9 | Payments and credential rails | **Missing** | Secrets are per-name, Ask-gated and typed via `silo_runtime.type_text`; no virtual cards, no password-manager integration |
-| 10 | Agent-to-agent and multiplayer | **Missing** | Subagents inside one Bot work; nothing across users or Bots |
-| 11 | Native nodes and personal data | **Missing** | The iOS app is a client of the Control Plane, not a device node (no camera, location, contacts) |
-| 12 | Notifications | **Partial** | In-app Feed badge, and the Bot can message you on Telegram, WhatsApp or Discord. No APNs or web push; iOS polls |
-| 13 | Media generation, interactive artifacts | **Partial** | The fal.ai connector preset and the images/pdf/word/spreadsheets/presentations skills cover a lot; Tunnels let a Bot serve a live app. No native image, video or music tool |
-| 14 | Web extract and browser backends | **Partial** | Lightpanda (auto-attached markdown reader), Exa / Tavily / Firecrawl / Perplexity presets, real Chromium with Playwright. One native search engine (the Built-in Scraper, a keyless metasearch); native page extract still "later" |
-| 15 | Hooks, plugins, webhooks | **Missing** | Extensibility today is MCP, skills and in-tree Go connectors |
-| 16 | Provider routing and fallback | **Partial** | Shipped: four provider kinds including `local`, per-Bot and per-chat model, subagent/title/memory models, OpenRouter `ignore`. Left: fallback on failure, key pools, routing policy, an OpenAI-compatible API endpoint, IDE integration |
-| 17 | Checkpoints and rollback | **Missing** | Workspace is a durable bind mount, but nothing snapshots before `write` / `patch` / `delete` |
-| 18 | Workspace context files and `@` references | **Partial** | Knowledge folders and composer attachments cover "know my files". No `AGENTS.md` / `CLAUDE.md` autoload, no `@file` expansion |
-| 19 | Personality presets and skins | **Skip** | Per-Bot SOUL is editable and enough |
-| 20 | Independent permission authority, credential surrogation | **Done** | The gate with per-action and operator-locked rules, the masker, the auto-approval policy and the audit; a per-Bot network filter (Block / Trust / Pass-through, a threat-list set, raw-SOCKS behind one switch) whose gateway swaps a surrogate for the real secret only on an allowed host; results that do not pass cleanly are framed as untrusted before the Bot reads them. Left (nice to have): taint tracking of what came from outside across later steps |
+| 1 | Scheduling, proactivity | **Partial** | New: mail wake (a real event trigger, verified senders only); Dashboard probes are scheduled code with no model in the loop. Left: **webhook triggers** (Hermes mirrors webhook deliveries into chat), one-shot "at" schedules, heartbeat active hours, per-job delivery target |
+| 2 | Voice and telephony | **Partial, gap widened** | Only speech to text. Instinct, Muse and OpenClaw now **place calls**. OpenClaw's calls are a bundled plugin over a telephony API (Twilio Media Streams, Telnyx, Plivo; it needs a public webhook URL), with full-duplex realtime voice and briefs, reports, live steering and voicemail detection added on top. Instinct's and Muse's vendors are not public. For Silo this could be a connector or a channel adapter rather than a core feature. Left: TTS, spoken replies, voice channels, calls |
+| 3 | Subagents | **Done** | Nice to have: depth > 1, fork-context |
+| 4 | Memory and retrieval | **Partial** | New: memory digest, all memories in prompt. Left: **search across past chats** (Hermes `session_search` has date bounds), external memory providers (Hermes moved Honcho/Mem0 to plugins), import of transcripts |
+| 5 | Self-improving skills | **Partial** | Unchanged: the human clicks Save skill |
+| 6 | Session lifecycle | **Done** | Left: one-click retry |
+| 7 | Channel breadth | **Partial** | Unchanged at 3 chat channels; mail is inbound only. Left: Slack, Signal, Matrix, iMessage/SMS (the consumer market lives there), Teams, X, **email replies**, group-chat participation |
+| 8 | Agent-owned identity | **Missing → Partial** | New: a mailbox per Bot. Left: sending mail, a phone number (Wajo and Instinct have both) |
+| 9 | Payments and credential rails | **Missing → Partial, but behind** | New: surrogate secrets at the gateway. Left: a password-manager vault for browser sign-in (Hermes: 1Password, Bitwarden or its own vault, TOTP from a saved key, model never sees the secret), a payment rail (Muse uses Stripe Link) |
+| 10 | Agent-to-agent, multiplayer | **Missing** | Nothing across Bots or users; no shared Bot between teammates |
+| 11 | Device nodes and personal data | **Missing** | OpenClaw nodes run as a background service on joined devices; Muse for Mac reads Files, Mail, Messages and Calendar |
+| 12 | Notifications | **Partial** | Unchanged: Feed badge, channel messages. No APNs or web push |
+| 13 | Media, interactive artifacts | **Partial → mostly done** | New: versioned artifacts, live HTML apps, public shares, app widgets on the Dashboard. Left: native image/video/audio generation (connector only) |
+| 14 | Web extract, browser | **Partial** | New: Built-in Scraper. Left: native page extract, a browser login vault (see #9) |
+| 15 | Hooks, plugins, webhooks | **Missing, gap widened** | Hermes ships a plugin SDK, ~600 reviewed plugins and plugin OAuth; OpenClaw has ClawHub and hooks. Silo has MCP, skills and in-tree Go only |
+| 16 | Provider routing, fallback | **Partial** | New: decision models, TypeSafe, List models. Left: fallback on failure, transient-error retry across providers, key pools, an OpenAI-compatible API endpoint |
+| 17 | Checkpoints and rollback | **Missing → Done** | Changes pane, Restore of a file or a whole change, drive journal |
+| 18 | Workspace context files, `@` refs | **Partial** | Unchanged: no `AGENTS.md` autoload, no `@file` |
+| 19 | Personality presets | **Skip** | |
+| 20 | Permission authority, surrogation | **Done** | + operator rule layer, output filter, audit timeline. Left: taint tracking across steps (OpenClaw now taints the turn) |
 
 ## 6. New gaps the research turned up
 
-- **Execution backends.** Hermes runs on seven (local, Docker, SSH, Singularity, Modal, Daytona, Vercel Sandbox), with serverless hibernation. Silo is Docker/Podman only, on any host the Docker API reaches.
-- **Network egress control.** Muse routes all egress through Sentinel and tracks tainted data flow. Silo now puts every Bot box and STDIO sidecar on a network of its own behind one gateway per engine (see #20); what Sentinel has and Silo does not is taint tracking across a run.
-- **Unprompted contact.** Instinct texts and calls first. Silo can post to the Feed or a channel from a heartbeat, but only when a heartbeat is scheduled.
-- **Batch processing.** Hermes runs one prompt over hundreds of inputs. Silo has no batch mode.
-- **OpenClaw's skill library.** 100+ preconfigured skills† against our 6.
-- **Facts that changed in the old list.** OpenClaw lists about two dozen channels, not 29. The "runs cap at 10 min", "no compaction", "no steer", "no automation" and "no subagents" lines were already wrong for Silo.
+- **Install and onboarding.** Hermes is a signed download with a first-run chat that needs no API key and has one-click local models. Silo needs Docker/Podman, Postgres and a config file. A one-command installer (or compose bundle) and a first-run wizard would matter more than any single feature for adoption.
+- **Backups.** OpenClaw verifies SQLite backups and restores, with client-side encryption to NAS or R2. Silo has no documented backup and restore of Postgres plus `data/`.
+- **iOS parity.** The web console roughly doubled since 10-05; the iOS app did not. Dashboard, Changes, Mail, Tunnels and Knowledge have no iOS screen, and there is no push.
+- **Sharing a conversation.** OpenClaw has public conversation pages. Silo shares artifacts, not chats.
+- **Scale-to-zero hosting.** Hermes Cloud bills hourly and sleeps idle agents. A stopped Silo box costs nothing, but nothing stops idle boxes automatically.
+- **Group chats.** Tomo and Wajo act as a participant in a group. Silo's channel `reply_mode` covers mentions, not a multi-human thread with roles.
+- **Muse builds connectors for the user.** A Bot writing and attaching its own MCP server (with approval) is a natural next step from STDIO sidecars.
 
 ## 7. Next up
 
-Ordered by leverage, with the engine seams that already exist in brackets.
+Ordered by leverage, with the existing seams in brackets.
 
-1. **Webhook and event triggers, plus one-shot schedules** (finishes #1; the automation engine and `RunAutomation` are there).
-2. **Email as a channel** (reach; WhatsApp and Discord are in, and the adapter contract carries QR, picker and `Remover` for the next one).
-3. **Search across all past chats** (finishes #4; run events and pgvector are there).
-4. **Push notifications to the iOS app** (finishes #12; the app and the Feed unread count exist).
-5. **Text to speech** (finishes #2; speech to text already shares the `models` path).
-6. **Workspace checkpoints** before mutating file tools (#17).
-7. **Provider fallback** (#16; the provider registry is neutral already).
+1. **Webhook triggers and one-shot schedules** (automation engine, `RunAutomation`; tunnels already route inbound HTTP to a Bot).
+2. **Search across past chats** (run events, pgvector, the Knowledge hybrid search SQL).
+3. **Credential vault for browser sign-in** (surrogates + `type_text`; add a 1Password/Bitwarden connector and TOTP from a stored secret).
+4. **Push notifications + iOS catch-up** (Feed unread, Dashboard asks, approvals waiting).
+5. **Email replies as a channel** (the mailbox is the inbound half; sending needs SPF/DKIM for `mail.domain`).
+6. **Installer and backup story** (compose bundle, `make backup`/`restore`).
+7. **TTS, then calls** (`models` path shared with transcription; calls via a SIP/Twilio adapter as a channel).
+8. **Provider fallback** (provider registry is neutral).
+9. **Slack and Signal channels** (the adapter contract carries QR, picker and `Remover`).
 
 ## 8. Show and tell
 
-A demo order that plays to the advantages, and what to say is unfinished.
+Demo order, playing to what is still unique:
 
-1. **Create a Bot** and watch it come online (crest, lamp, container).
-2. **Step in:** open Desktop, let the Bot drive Chromium, take over for a login, hand back.
-3. **The gate:** a Bot asks for a secret; the approval slip names it and never shows the value. Flip a rule from Ask to Allow in Rules.
-4. **Connectors:** attach GitHub through OAuth; attach Email; show that the Bot has `import tools` and no token.
-5. **Drives and Knowledge:** mount a cloud drive, index a folder with scanned PDFs, ask a question, get a cited answer.
-6. **Tunnels:** the Bot builds a small web app; open its private address, then make it public and watch the Ask.
-7. **Subagents:** a research task that splits into three, with the taskboard and tray.
-8. **Automations and Feed:** a daily digest lands in the Feed; Quote it into a chat.
-9. **Telegram and iOS:** the same Bot from a phone chat and from the native app.
+1. **Create a Bot** as a second user; show the admin's operator rules apply to it.
+2. **The gate + filter:** a web result with a planted injection is flagged in the thread, and the Bot is told by the CP.
+3. **Egress:** the Bot uses a surrogate GitHub token; show the box never had the real one.
+4. **Step in:** Desktop, Console, Files on the same box.
+5. **Changes:** the Bot rewrites files from a script; open Changes, Restore one.
+6. **Drives + Knowledge:** a cited answer from a scanned PDF on OneDrive.
+7. **Tunnels + Dashboard:** the Bot builds a small app, pins it as a widget, keeps a stat current with a probe.
+8. **Mail:** sign the Bot up for something; the confirmation lands in its mailbox and wakes it.
+9. **Subagents + automations:** a split research task; a daily digest in the Feed.
 
-Honest caveats to say out loud:
+Honest caveats:
 
-- Auth is session cookies with invite links, TOTP two-factor and one OIDC provider. No passkeys, no email-based reset (Silo sends no mail), no SCIM.
-- The Docker host can be remote at the protocol level, but there is no multi-host UI.
-- Telegram bot accounts and WhatsApp linked devices cannot read history, so `chats` falls back to the local log.
-- WhatsApp runs on the unofficial linked-device protocol: use a spare number, and expect WhatsApp to be free to restrict automated accounts. Inbound media arrives as a placeholder, not a file.
-- `docker inspect` can still read the Bot's token and a STDIO sidecar's injected environment (the documented v1 ceiling).
-- The iOS app has no Desktop, Console, channel setup wizard, connector OAuth, Admin, Knowledge or Tunnels (`ios/todo_skipped.md`).
-- A box made before Drives needs a Container reset to get the mount.
+- No phone, no TTS, no payments, no password-manager sign-in. Competitors demo all four.
+- Three chat channels against Hermes' 20+ and OpenClaw's ~25; nothing on iMessage or SMS.
+- Mail is receive-only; Silo sends no mail (no email password reset either).
+- No passkeys, no SCIM; one OIDC provider.
+- Install needs Docker/Podman and Postgres; there is no desktop installer.
+- iOS lags the web: no Desktop, Console, Dashboard, Changes, Mail, Tunnels, Knowledge or Admin, and no push.
+- WhatsApp is the unofficial linked-device protocol; Telegram bots and WhatsApp cannot read history.
+- `docker inspect` can still read a Bot's token and a STDIO sidecar's environment (documented v1 ceiling).
 
 ## Sources
 
-- Hermes Agent: [GitHub](https://github.com/nousresearch/hermes-agent), [features overview](https://hermes-agent.nousresearch.com/docs/user-guide/features/overview)
-- OpenClaw: [DigitalOcean overview](https://www.digitalocean.com/resources/articles/what-is-openclaw), [OpenReplay](https://blog.openreplay.com/openclaw-open-source-ai-assistant/), [DEV Community](https://dev.to/aws-builders/what-is-openclaw-a-self-hosted-ai-assistants-311j)
-- Muse: [Meta announcement](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/), [Vellum breakdown](https://www.vellum.ai/blog/official-muse-breakdown), [Yahoo Tech on Sentinel](https://tech.yahoo.com/ai/meta-ai/articles/meta-muse-agent-lives-behind-094818903.html)
-- Instinct: [terms and capabilities](https://clawdocx.com/ai-agents/instinct), [Fox News on phone calls](https://www.foxnews.com/tech/ai-agents-make-phone-calls)
+- Hermes Agent: [GitHub releases](https://github.com/NousResearch/hermes-agent/releases), [v0.22.0 announcement](https://x.com/NousResearch/status/2110385143643091204), [changelog aggregator](https://www.gradually.ai/en/changelogs/hermes-agent/), [Hermes Cloud](https://portal.nousresearch.com/cloud), [teams and private infrastructure†](https://alphasignal.ai/news/nous-research-packages-hermes-agent-for-teams-and-private-infrastructure)
+- OpenClaw: [GitHub releases](https://github.com/openclaw/openclaw/releases), [changelog aggregator†](https://www.gradually.ai/en/changelogs/openclaw/), [NemoClaw release notes](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/release-notes/2026/10/20)
+- Muse: [TechCrunch launch](https://techcrunch.com/2026/09/08/meta-debuts-its-muse-ai-agent-will-consumers-trust-it/), [Muse guide†](https://codersera.com/blog/meta-muse-ai-agent-app-guide-2026/), [CNBC on adoption](https://www.cnbc.com/2026/10/07/meta-muse-personal-ai-agents-dazzle.html), [TIME on privacy](https://time.com/article/2026/10/06/meta-muse-ai-agent-privacy/), [Analytics India Mag on Sentinel](https://analyticsindiamag.com/ai-news/meta-launches-muse-ai-agent-with-internet-access-guardrails)
+- Instinct: [TechCrunch on calls](https://techcrunch.com/2026/09/17/rival-ai-agents-instinct-and-metas-muse-both-add-the-ability-to-make-calls/), [Fox News](https://www.foxnews.com/tech/ai-agents-make-phone-calls)
+- Text-message agents: [TechCrunch roundup, 10-10](https://techcrunch.com/2026/10/10/all-the-ai-agents-that-can-live-in-your-text-messages/)

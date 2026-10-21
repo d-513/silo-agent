@@ -1,7 +1,8 @@
 """Local tools bus. Talks to the Worker unix socket. Never talks to the Control Plane.
 
 Chromium: chrome_page() is Playwright on the headed desktop browser.
-The worker opens silo-chromium if CDP :9222 is down.
+It asks the Control Plane first (desktop.chrome, refused while the owner has
+paused the desktop); the worker opens silo-chromium if CDP :9222 is down.
 Web: web_search(query) runs on the Control Plane.
 Artifacts: artifact(path) shows a skill directory or a file as a card in the
 thread. It is not the same as present — present only displays a file inline.
@@ -52,9 +53,12 @@ def get_secret(name: str) -> str:
 
 
 def chrome_page():
-    """Playwright Page on the headed desktop Chromium. Opens it if needed."""
+    """Playwright Page on the headed desktop Chromium. Opens it if needed.
+
+    Raises while the owner has paused the desktop: they are in control.
+    """
     global _pw, _browser
-    _post("/v1/chrome/ensure", {})
+    call("desktop", "chrome", {})
     from playwright.sync_api import sync_playwright
 
     if _browser is None:

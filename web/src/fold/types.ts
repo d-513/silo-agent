@@ -1,4 +1,15 @@
+import type { DashboardWidget } from "../gen/silo/v1/ui_pb";
+
 export type Attachment = { name: string; path: string; size: number };
+
+// What a chat opened from (a feed_quote event): a Feed post, a Dashboard
+// widget as it stood, or a Dashboard ask. Absent on quotes from before it
+// was recorded.
+export type Quoted = { from: "feed" | "widget" | "ask" | ""; title: string; widget?: DashboardWidget };
+
+export function quotedFrom(s: string): Quoted["from"] {
+  return s === "feed" || s === "widget" || s === "ask" ? s : "";
+}
 
 // A quote the human put in a message. source is "message" (ref "reply" for
 // the Bot's words, "own" for the human's), "file" (ref the workspace path) or
@@ -16,6 +27,7 @@ export type Ev = {
   runId?: string;
   attachments?: Attachment[];
   quotes?: Quote[];
+  quoted?: Quoted;
   at?: number;
   createdAt?: string;
 };
@@ -115,8 +127,8 @@ export type Block =
   // Subagents finished and woke the lead: `agents` are their names and
   // statuses, `text` the report the lead was given.
   | ReportBlock
-  // A Feed post quoted into a new chat: `source` is where it was posted from.
-  | { key: string; type: "quote"; text: string; source: string; createdAt?: string }
+  // What a chat opened from (see Quoted): `source` is where the Bot made it.
+  | { key: string; type: "quote"; text: string; source: string; quoted?: Quoted; createdAt?: string }
   // The history before this point was summarized to fit the context window.
   // `running` while the summary is being written; empty text once settled
   // means it failed or was stopped.

@@ -80,15 +80,6 @@ func serveLocal(sock string, w *worker) {
 		}
 		_ = json.NewEncoder(rw).Encode(map[string]any{"result": parsed})
 	})
-	mux.HandleFunc("/v1/chrome/ensure", func(rw http.ResponseWriter, r *http.Request) {
-		st, err := w.ensureChrome(r.Context())
-		rw.Header().Set("Content-Type", "application/json")
-		if err != nil {
-			_ = json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-		_ = json.NewEncoder(rw).Encode(map[string]string{"status": st})
-	})
 	log.Printf("local tools on %s", sock)
 	_ = http.Serve(ln, mux)
 }

@@ -147,7 +147,7 @@ export function SidePane({
   const machine = (k: "desktop" | "console") =>
     has(k) ? (
       <div className={`min-h-0 flex-1 flex-col p-3 ${kind === k ? "flex" : "hidden"}`}>
-        <MachinePane bot={bot} onStart={onStart} visible={kind === k} kind={k} actions={actions(true)} />
+        <MachinePane bot={bot} onStart={onStart} visible={kind === k} kind={k} actions={actions(true)} onError={onError} />
         {max ? <p className="mt-2 text-[12.5px] text-ink-2">{t(captions[k])}</p> : null}
       </div>
     ) : null;

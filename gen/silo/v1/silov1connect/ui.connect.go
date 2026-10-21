@@ -93,6 +93,8 @@ const (
 	UIStopBotProcedure = "/silo.v1.UI/StopBot"
 	// UIResetContainerProcedure is the fully-qualified name of the UI's ResetContainer RPC.
 	UIResetContainerProcedure = "/silo.v1.UI/ResetContainer"
+	// UISetDesktopPausedProcedure is the fully-qualified name of the UI's SetDesktopPaused RPC.
+	UISetDesktopPausedProcedure = "/silo.v1.UI/SetDesktopPaused"
 	// UIListBotContainersProcedure is the fully-qualified name of the UI's ListBotContainers RPC.
 	UIListBotContainersProcedure = "/silo.v1.UI/ListBotContainers"
 	// UIRemoveBotContainersProcedure is the fully-qualified name of the UI's RemoveBotContainers RPC.
@@ -427,6 +429,10 @@ type UIClient interface {
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// SetDesktopPaused hands the desktop to the owner: while paused the Bot's
+	// desktop actions and Chromium are refused with a note that the owner is
+	// in control.
+	SetDesktopPaused(context.Context, *connect.Request[v1.SetDesktopPausedRequest]) (*connect.Response[v1.SetDesktopPausedResponse], error)
 	// Every container that belongs to a Bot: its machine, drive sidecar, and
 	// STDIO MCP sidecars, with usage.
 	ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error)
@@ -814,6 +820,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIResetContainerProcedure,
 			connect.WithSchema(uIMethods.ByName("ResetContainer")),
+			connect.WithClientOptions(opts...),
+		),
+		setDesktopPaused: connect.NewClient[v1.SetDesktopPausedRequest, v1.SetDesktopPausedResponse](
+			httpClient,
+			baseURL+UISetDesktopPausedProcedure,
+			connect.WithSchema(uIMethods.ByName("SetDesktopPaused")),
 			connect.WithClientOptions(opts...),
 		),
 		listBotContainers: connect.NewClient[v1.GetBotRequest, v1.BotContainers](
@@ -1715,6 +1727,7 @@ type uIClient struct {
 	startBot                 *connect.Client[v1.GetBotRequest, v1.Bot]
 	stopBot                  *connect.Client[v1.GetBotRequest, v1.Bot]
 	resetContainer           *connect.Client[v1.GetBotRequest, v1.Bot]
+	setDesktopPaused         *connect.Client[v1.SetDesktopPausedRequest, v1.SetDesktopPausedResponse]
 	listBotContainers        *connect.Client[v1.GetBotRequest, v1.BotContainers]
 	removeBotContainers      *connect.Client[v1.GetBotRequest, v1.Bot]
 	listAdminContainers      *connect.Client[v1.ListAdminContainersRequest, v1.AdminContainers]
@@ -2009,6 +2022,11 @@ func (c *uIClient) StopBot(ctx context.Context, req *connect.Request[v1.GetBotRe
 // ResetContainer calls silo.v1.UI.ResetContainer.
 func (c *uIClient) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return c.resetContainer.CallUnary(ctx, req)
+}
+
+// SetDesktopPaused calls silo.v1.UI.SetDesktopPaused.
+func (c *uIClient) SetDesktopPaused(ctx context.Context, req *connect.Request[v1.SetDesktopPausedRequest]) (*connect.Response[v1.SetDesktopPausedResponse], error) {
+	return c.setDesktopPaused.CallUnary(ctx, req)
 }
 
 // ListBotContainers calls silo.v1.UI.ListBotContainers.
@@ -2772,6 +2790,10 @@ type UIHandler interface {
 	StartBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	StopBot(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
 	ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error)
+	// SetDesktopPaused hands the desktop to the owner: while paused the Bot's
+	// desktop actions and Chromium are refused with a note that the owner is
+	// in control.
+	SetDesktopPaused(context.Context, *connect.Request[v1.SetDesktopPausedRequest]) (*connect.Response[v1.SetDesktopPausedResponse], error)
 	// Every container that belongs to a Bot: its machine, drive sidecar, and
 	// STDIO MCP sidecars, with usage.
 	ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error)
@@ -3155,6 +3177,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIResetContainerProcedure,
 		svc.ResetContainer,
 		connect.WithSchema(uIMethods.ByName("ResetContainer")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetDesktopPausedHandler := connect.NewUnaryHandler(
+		UISetDesktopPausedProcedure,
+		svc.SetDesktopPaused,
+		connect.WithSchema(uIMethods.ByName("SetDesktopPaused")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListBotContainersHandler := connect.NewUnaryHandler(
@@ -4083,6 +4111,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStopBotHandler.ServeHTTP(w, r)
 		case UIResetContainerProcedure:
 			uIResetContainerHandler.ServeHTTP(w, r)
+		case UISetDesktopPausedProcedure:
+			uISetDesktopPausedHandler.ServeHTTP(w, r)
 		case UIListBotContainersProcedure:
 			uIListBotContainersHandler.ServeHTTP(w, r)
 		case UIRemoveBotContainersProcedure:
@@ -4498,6 +4528,10 @@ func (UnimplementedUIHandler) StopBot(context.Context, *connect.Request[v1.GetBo
 
 func (UnimplementedUIHandler) ResetContainer(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ResetContainer is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetDesktopPaused(context.Context, *connect.Request[v1.SetDesktopPausedRequest]) (*connect.Response[v1.SetDesktopPausedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetDesktopPaused is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListBotContainers(context.Context, *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error) {

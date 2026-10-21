@@ -194,6 +194,38 @@ func TestLocalToolIsAGrantFromPython(t *testing.T) {
 	}
 }
 
+// A Gate refuses on both surfaces, before the Local grant and before anybody
+// is asked: a paused desktop must not raise an approval slip.
+func TestGateRefusesBeforeTheGrant(t *testing.T) {
+	g := &gate{}
+	e := New(g)
+	ran := 0
+	held := true
+	e.Register(Def{
+		Name: "click", Connector: "desktop", Action: "click", ExposeCompletion: true, ExposePython: true, Local: true,
+		Gate: func(*Call) error {
+			if held {
+				return errors.New("paused")
+			}
+			return nil
+		},
+		Run: func(context.Context, *Call) (Result, error) { ran++; return Result{Text: "clicked"}, nil },
+	})
+	d, _ := e.ByName("b", "click")
+	for _, s := range []Surface{Python, Completion} {
+		if _, err := e.Run(context.Background(), &Call{Surface: s, Bot: &db.Bot{}, Def: d}); err == nil || err.Error() != "paused" {
+			t.Fatalf("surface %v: %v", s, err)
+		}
+	}
+	if ran != 0 || len(g.calls) != 0 {
+		t.Fatalf("a gated call ran=%d or asked %v", ran, g.calls)
+	}
+	held = false
+	if _, err := e.Run(context.Background(), &Call{Surface: Completion, Bot: &db.Bot{}, Def: d}); err != nil || ran != 1 {
+		t.Fatalf("open gate: %v ran=%d", err, ran)
+	}
+}
+
 func TestRegisterRefusesAmbiguousDefinitions(t *testing.T) {
 	for name, defs := range map[string][]Def{
 		"no handler":       {{Name: "a", ExposeCompletion: true}},

@@ -1,11 +1,12 @@
-import { Blocks, Brain, ChevronDown, Inbox, LayoutGrid, Library, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
+import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
 import { pressClass } from "../Btn";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
 import { fullTime } from "../format";
-import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
+import { UI, type Bot, type Chat } from "../gen/silo/v1/ui_pb";
 import { Lamp, Status, StatusWord } from "../Lamp";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
@@ -19,8 +20,8 @@ import { t } from "../i18n.ts";
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
 
 // The wide layout's left column, on every page of a Bot: its name and state,
-// New chat, the Dashboard heading the pages beside the chat, the chats folded
-// into date groups, and Settings at the foot.
+// the Dashboard under them, New chat, the pages beside the chat, the chats
+// folded into date groups, and Settings at the foot.
 export function BotSidebar({
   id,
   bot,
@@ -46,6 +47,8 @@ export function BotSidebar({
 }) {
   const groups = useMemo(() => groupChats(chats), [chats]);
   const picked = useGroupsPicked();
+  const dashQ = useQuery(UI.method.listDashboard, { botId: id });
+  const freshCount = (dashQ.data?.widgets ?? []).filter((w) => w.fresh).length + (dashQ.data?.posts ?? []).length;
 
   // Landing on a chat (a new one, a link, a reply that moves it to Today)
   // opens the group it sits in, so the open row is never hidden. Folding that
@@ -60,18 +63,18 @@ export function BotSidebar({
   const busy = waiting || sending || agentsBusy;
   return (
     <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
-      <div className="flex h-14 shrink-0 items-center gap-3 pr-4 pl-5">
-        <h1 className="min-w-0 flex-1 truncate text-card-title leading-5">{bot.name}</h1>
-        <span className="flex shrink-0 items-center gap-2">
-          <Lamp status={bot.status} />
-          <StatusWord status={bot.status} />
-        </span>
-      </div>
+      <BotHome
+        botId={id}
+        bot={bot}
+        on={tab === "dashboard"}
+        needs={pendingCount + bot.dashboardAsks}
+        fresh={freshCount}
+        curating={!!dashQ.data?.curating}
+      />
       <div className="px-2 pb-3">
         <NewChat onClick={onNewChat} />
       </div>
       <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
-        <DashboardRow botId={id} on={tab === "dashboard"} needsYou={pendingCount + bot.dashboardAsks > 0} />
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
         <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
@@ -114,27 +117,90 @@ export function BotSidebar({
   );
 }
 
-// DashboardRow heads the pages beside the chat. It is the Bot's home, so it
-// is a row like the others but set in ink where they rest in ink-2, and the
-// open one is lifted off the well as well as barred. While an approval or an
-// ask waits for the owner it ends in the Needs you lamp and word, the same
-// signal a waiting chat row shows.
-function DashboardRow({ botId, on, needsYou }: { botId: string; on: boolean; needsYou: boolean }) {
+// BotHome heads the sidebar: the Bot's name and state over its Dashboard, so
+// the board reads as the Bot's front page rather than one more button. The
+// whole block opens it; its second line says what is waiting there.
+function BotHome({
+  botId,
+  bot,
+  on,
+  needs,
+  fresh,
+  curating,
+}: {
+  botId: string;
+  bot: Bot;
+  on: boolean;
+  needs: number;
+  fresh: number;
+  curating: boolean;
+}) {
   return (
-    <Link
-      to="/bots/$botId/dashboard"
-      params={{ botId }}
-      data-tab-on={on || undefined}
-      className={`relative mb-1.5 flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium text-ink transition-[background-color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] ${
-        on ? "bg-surface shadow-card" : "hover:bg-pressed"
-      }`}
-    >
-      <ActiveBar on={on} />
-      <LayoutGrid size={15} className={`transition-colors duration-[160ms] ${on ? "text-cobalt" : ""}`} />
-      <span className="min-w-0 flex-1 truncate">{t("Dashboard")}</span>
-      {needsYou ? <Status status="needs_you" className="shrink-0" /> : null}
-    </Link>
+    <div className="px-2 pt-2 pb-2">
+      <Link
+        to="/bots/$botId/dashboard"
+        params={{ botId }}
+        data-tab-on={on || undefined}
+        className={`group/home relative block rounded-card px-3 pt-2.5 pb-2 transition-[background-color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+          on ? "bg-surface shadow-card" : "hover:bg-pressed"
+        }`}
+      >
+        <ActiveBar on={on} />
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 flex-1 truncate text-card-title leading-6">{bot.name}</h1>
+          <span className="flex shrink-0 items-center gap-2">
+            <Lamp status={bot.status} />
+            <StatusWord status={bot.status} />
+          </span>
+        </div>
+        <div
+          className={`mt-1.5 flex h-6 items-center gap-2 text-[12.5px] leading-4 transition-colors duration-[160ms] ease-quiet ${
+            on ? "text-ink" : "text-ink-2 group-hover/home:text-ink"
+          }`}
+        >
+          <LayoutGrid size={13} className={on ? "text-cobalt" : "text-ink-3 group-hover/home:text-cobalt"} />
+          <span className="font-medium">{t("Dashboard")}</span>
+          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5 truncate">
+            <Digest needs={needs} fresh={fresh} curating={curating} />
+          </span>
+          <ChevronRight
+            size={13}
+            className="-mr-1 shrink-0 text-ink-3 opacity-0 transition-[opacity,transform] duration-[160ms] ease-quiet group-hover/home:translate-x-0.5 group-hover/home:opacity-100 motion-reduce:transition-opacity"
+          />
+        </div>
+      </Link>
+    </div>
   );
+}
+
+// Digest is the one thing worth saying about the board right now: what needs
+// the owner first, then what changed, then that the Bot is curating it.
+function Digest({ needs, fresh, curating }: { needs: number; fresh: number; curating: boolean }) {
+  if (needs > 0) {
+    return (
+      <span className="rise flex items-center gap-1.5 font-medium text-vermilion">
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
+        <span className="truncate">{t("{{count}} need you", { count: needs })}</span>
+      </span>
+    );
+  }
+  if (fresh > 0) {
+    return (
+      <span className="rise flex items-center gap-1.5 text-cobalt">
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" />
+        <span className="truncate">{t("{{count}} new", { count: fresh })}</span>
+      </span>
+    );
+  }
+  if (curating) {
+    return (
+      <span className="flex items-center gap-1.5 text-ink-3">
+        <Lamp status="working" />
+        <span className="truncate">{t("Curating")}</span>
+      </span>
+    );
+  }
+  return null;
 }
 
 // New chat is the sidebar's lifted control to start a conversation: a full-width

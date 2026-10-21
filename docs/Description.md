@@ -103,7 +103,6 @@ Local HTTP surface (Worker listens, nothing else):
 |---|---|---|---|
 | `POST` | `/v1/secrets/get` | `{name, run_id?}` | `{value}` or `{error}` |
 | `POST` | `/v1/tools/call` | `{connector, action, args, run_id?}` | `{result}` or `{error}` |
-| `POST` | `/v1/chrome/ensure` | `{}` | `{status}` (`up` / `started`) or `{error}` |
 
 No local auth. The container is the trust boundary; the CP security engine is the gate. Debug: `curl --unix-socket /var/run/silo/worker.sock http://localhost/v1/...`.
 
@@ -148,7 +147,7 @@ Catalog skills are `go:embed`’d under `internal/catalog/skills` and seeded int
 
 ### Web search
 
-CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is the Built-in Scraper (`builtin`) from Koanf `search.engine`: a keyless metasearch that asks DuckDuckGo, Mojeek, Brave, Startpage, Wikipedia and Marginalia at once, returns as soon as a few have answered, and fuses their lists. Admin → Settings → Search (`/admin/settings/search`) writes that key in `silo.yaml`. Provider keys never enter the Bot. `silo_runtime.web_search` / `web_search_many` run `web.search` after `authorizeAction`; the model picks the language per query.
+CP-only. `internal/search` is a registry of engines (`Descriptor` + `Engine.Search`). Default is the Built-in Scraper (`builtin`) from Koanf `search.engine`: a keyless metasearch that asks DuckDuckGo, Mojeek, Brave, Startpage, Wikipedia and Marginalia at once, returns as soon as a few have answered, and fuses their lists. Admin → Settings → Search (`/admin/settings/search`) writes that key in `silo.yaml`. Two keyed engines sit beside it, `brave` (Brave Search API) and `exa` (Exa), each with a secret `search.<id>.api_key`: one provider's own index, cached 5 minutes, with a rejected key or empty account reported as an error rather than an empty result. Provider keys never enter the Bot. `silo_runtime.web_search` / `web_search_many` run `web.search` after `authorizeAction`; the model picks the language per query.
 
 ### Web / connectors
 
@@ -175,7 +174,7 @@ The system prompt is ordered stable→volatile in cache tiers: the base prompt (
 
 ### Chromium
 
-Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`, a native 1600×900 Xvfb, and uBlock Origin Lite (managed policy: ads, cookie banners, overlays). Openbox (`botimage/openbox/rc.xml`) maximizes every Chromium window on map, so it fills the WM work area above the tint2 dock while keeping its decorations — it is maximized, not fullscreen. Closing Chromium must not take down the container. GUI work uses first-class `look` / `click` / `type` / `key` / `scroll` on the 1600×900 X11 desktop (screenshot pixels = display pixels; no scale) — that is the live click path. Playwright `silo_runtime.chrome_page()` is for page screenshots, mutating displayed HTML, and automated scripts. The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also hits `POST /v1/chrome/ensure`. Do not `playwright install` a second browser. The model must not call `pyautogui` or `xdotool`; the worker may. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
+Not autostarted with the desktop. The dock **Chromium** item and `silo-chromium` launch a headed browser on `DISPLAY=:1`, persistent `--user-data-dir=/home/silo/chrome-profile`, CDP on `127.0.0.1:9222`, a native 1600×900 Xvfb, and uBlock Origin Lite (managed policy: ads, cookie banners, overlays). Openbox (`botimage/openbox/rc.xml`) maximizes every Chromium window on map, so it fills the WM work area above the tint2 dock while keeping its decorations — it is maximized, not fullscreen. Closing Chromium must not take down the container. GUI work uses first-class `look` / `click` / `type` / `key` / `scroll` on the 1600×900 X11 desktop (screenshot pixels = display pixels; no scale) — that is the live click path. Playwright `silo_runtime.chrome_page()` is for page screenshots, mutating displayed HTML, and automated scripts. The worker opens `silo-chromium` when `exec_python` mentions Playwright / `chrome_page`; `chrome_page` also calls `desktop.chrome` (a grant the worker acts on by opening the browser; refused while the owner has paused the desktop). Do not `playwright install` a second browser. The model must not call `pyautogui` or `xdotool`; the worker may. The desktop, console, and worker run as user `silo` (uid 1000), not root; `sudo` is passwordless.
 
 ### Computer use
 

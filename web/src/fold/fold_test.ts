@@ -116,6 +116,13 @@ console.log("fold ok");
   if (q.length !== 3 || q[1].type !== "user" || q[2].type !== "assistant") throw new Error(`blocks ${q.map((b) => b.type)}`);
 }
 
+// A quoted Dashboard widget keeps what it was, for the thread to draw it.
+{
+  const quoted = { from: "widget" as const, title: "Disk", widget: { kind: "stat", dataJson: '{"value":3}' } as never };
+  const q = foldEvents([{ kind: "feed_quote", body: "```json\n{}\n```", tool: "", quoted }]);
+  if (q[0]?.type !== "quote" || q[0].quoted?.from !== "widget" || q[0].quoted.title !== "Disk") throw new Error(`widget quote ${JSON.stringify(q[0])}`);
+}
+
 // A compaction opens as a running row and settles with its summary; a run that
 // ends without one leaves a settled, empty row (it failed or was stopped).
 {

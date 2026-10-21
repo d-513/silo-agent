@@ -469,6 +469,15 @@ type MemoryDigest struct {
 	UpdatedAt time.Time
 }
 
+// DesktopPause is a Bot whose desktop its owner has taken over: while the row
+// exists the Bot's desktop actions and Chromium are refused. A table of its
+// own because the bots row is saved whole in places, and a stale copy must
+// not hand the desktop back while the owner is using it.
+type DesktopPause struct {
+	BotID     string `gorm:"primaryKey"`
+	CreatedAt time.Time
+}
+
 // KnowledgeFolder is a workspace folder (drives included) the owner chose to
 // index for `search_docs`. Files stay on the box; the CP keeps the sync state
 // and the searchable chunks. Status is idle | syncing | error. DirtyAt is set
@@ -819,7 +828,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &MemoryDigest{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

@@ -193,7 +193,29 @@ function ChecklistCount({ w }: { w: DashboardWidget }) {
   return <span className="font-mono text-[11.5px] text-ink-3">{`${on}/${all.length}`}</span>;
 }
 
-function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Record<string, unknown>; acts: Action[]; handlers: WidgetHandlers }) {
+// WidgetSnapshot is a widget as it stood when a chat quoted it: the same
+// body drawn read-only, with no actions and nothing to press.
+export function WidgetSnapshot({ w }: { w: DashboardWidget }) {
+  return (
+    <div className="@container min-w-0 rounded-card bg-surface px-3.5 pt-2.5 pb-3 shadow-card">
+      <header className="mb-2 flex h-6 min-w-0 items-center gap-2">
+        <h3 className="min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium text-ink">{w.title}</h3>
+        {w.source ? <span className="shrink-0 truncate font-mono text-[11.5px] text-ink-3">{w.source}</span> : null}
+      </header>
+      {w.kind === "app" ? (
+        <p className="text-[12.5px] text-ink-3">{t("A live app on the Dashboard.")}</p>
+      ) : (
+        <Body w={w} data={obj(w.dataJson)} acts={[]} />
+      )}
+    </div>
+  );
+}
+
+// inert stands in for a snapshot's handlers: with no actions, nothing calls it.
+const inert: WidgetHandlers = { onSelect: () => {}, onRefresh: async () => {}, onState: () => {}, onAction: async () => {} };
+
+// Body draws a widget's kind. With no handlers it is read-only.
+function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Record<string, unknown>; acts: Action[]; handlers?: WidgetHandlers }) {
   if (!w.dataAt && Object.keys(data).length === 0) {
     return <p className="text-[12.5px] text-ink-3">{w.hasProbe ? t("Waiting for the first refresh.") : t("Nothing here yet.")}</p>;
   }
@@ -209,15 +231,15 @@ function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Record<st
     case "chart":
       return <Chart data={data} type={text(obj(w.specJson).type) === "bar" ? "bar" : "line"} />;
     case "list":
-      return <List data={data} acts={acts} handlers={handlers} />;
+      return <List data={data} acts={handlers ? acts : []} handlers={handlers ?? inert} />;
     case "table":
-      return <Table data={data} acts={acts} handlers={handlers} />;
+      return <Table data={data} acts={handlers ? acts : []} handlers={handlers ?? inert} />;
     case "timeline":
       return <Timeline data={data} />;
     case "status":
       return <StatusList data={data} />;
     case "checklist":
-      return <Checklist w={w} data={data} onState={handlers.onState} />;
+      return <Checklist w={w} data={data} onState={handlers?.onState} />;
     case "progress":
       return <Progress data={data} />;
   }
@@ -501,7 +523,7 @@ function StatusList({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function Checklist({ w, data, onState }: { w: DashboardWidget; data: Record<string, unknown>; onState: (s: string) => void }) {
+function Checklist({ w, data, onState }: { w: DashboardWidget; data: Record<string, unknown>; onState?: (s: string) => void }) {
   const rows = items(data.items);
   const on = new Set(checked(w.stateJson));
   if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
@@ -516,7 +538,8 @@ function Checklist({ w, data, onState }: { w: DashboardWidget; data: Record<stri
               type="button"
               role="checkbox"
               aria-checked={done}
-              onClick={() => onState(toggle(w.stateJson, id))}
+              disabled={!onState}
+              onClick={() => onState?.(toggle(w.stateJson, id))}
               className="flex min-h-[30px] w-full items-center gap-2.5 py-1 text-left"
             >
               <span

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
 import { isTransient } from "./errors";
-import type { Ev } from "./fold";
+import { type Ev, quotedFrom } from "./fold";
 import { quoteFromProto } from "./quote/model";
 
 // window is the model's context size in tokens (0 when the server did not say).
@@ -122,6 +122,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
                 createdAt: ev.createdAt || undefined,
                 attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
                 quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
+                quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
               });
             }
           }

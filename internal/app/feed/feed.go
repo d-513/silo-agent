@@ -18,12 +18,12 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/host"
+	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
-	"silo.agent/internal/zone"
 )
 
 const (
@@ -31,11 +31,6 @@ const (
 	feedBodyMax  = 20000
 	// feedMax keeps a Bot's Feed bounded; the oldest posts fall off.
 	feedMax = 500
-
-	// QuoteKind is the run event a quoted Feed post or submitted Dashboard card
-	// becomes in a new chat. Body is the post/card; Tool carries the source label
-	// for the UI.
-	QuoteKind = "feed_quote"
 )
 
 // Host is what the Feed needs from the App around them.
@@ -131,31 +126,6 @@ func SourceLabel(kind, name string) string {
 	return ""
 }
 
-// QuoteText is what the model sees for a quoted post: a user turn that
-// frames the post, so the human's next message reads as a reply to it.
-// zoneName is the Bot's zone when the post was quoted, kept on the event so
-// the turn replays as the same text wherever the Bot is later.
-func QuoteText(label, body string, posted time.Time, zoneName string) string {
-	var b strings.Builder
-	b.WriteString("I'm quoting a post you made to my Feed")
-	switch {
-	case posted.IsZero():
-	case zoneName == "":
-		// A quote from before Bots had a zone: the bytes it always had.
-		fmt.Fprintf(&b, " on %s", posted.Local().Format("Mon 2006-01-02 15:04 MST"))
-	default:
-		fmt.Fprintf(&b, " on %s", zone.Stamp(posted, zone.Resolve(zoneName)))
-	}
-	if label != "" {
-		b.WriteString(" from " + label)
-	}
-	b.WriteString(":\n\n")
-	for _, line := range strings.Split(body, "\n") {
-		b.WriteString("> " + line + "\n")
-	}
-	return strings.TrimRight(b.String(), "\n")
-}
-
 func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error) {
 	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
 		return nil, err
@@ -224,32 +194,10 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 	if p.Title != "" {
 		body = "**" + p.Title + "**\n\n" + body
 	}
-	// The quote keeps the post's time: history frames it with when it was posted.
-	c, err := QuoteChat(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), body, feedLabel(p), p.CreatedAt)
+	c, err := quote.Open(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), quote.Quote{From: quote.FromFeed, Title: p.Title, Body: body, Source: feedLabel(p), At: p.CreatedAt})
 	if err != nil {
 		return nil, err
 	}
 	s.db.Model(p).Update("read_at", time.Now())
 	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(c)}), nil
-}
-
-// QuoteChat opens a web chat whose only context is a quote: one finished run
-// holding a QuoteKind event (body = what is quoted, tool = where it came from,
-// at = when it was written). The human's next message reads as a reply to it.
-// The Feed and the Dashboard both open chats this way.
-func QuoteChat(gdb *gorm.DB, botID, title, quote, label string, at time.Time) (*db.Chat, error) {
-	now := time.Now()
-	c := db.Chat{ID: ids.New(), BotID: botID, Title: textx.ClipRunes(strings.TrimLeft(title, "# "), feedTitleMax), CreatedAt: now, UpdatedAt: now}
-	if err := gdb.Create(&c).Error; err != nil {
-		return nil, err
-	}
-	r := db.Run{ID: ids.New(), BotID: botID, ChatID: c.ID, Origin: "feed", Status: "done", CreatedAt: now}
-	if err := gdb.Create(&r).Error; err != nil {
-		return nil, err
-	}
-	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: QuoteKind, Body: quote, Tool: label, Zone: zone.OfBot(gdb, botID).String(), CreatedAt: at}
-	if err := gdb.Create(&ev).Error; err != nil {
-		return nil, err
-	}
-	return &c, nil
 }

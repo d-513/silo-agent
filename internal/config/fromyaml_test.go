@@ -86,7 +86,8 @@ func TestLoadPathWritesAndReloads(t *testing.T) {
 }
 
 func TestKnownKeyAndEnvName(t *testing.T) {
-	if !KnownKey("model") || !KnownKey("providers.openrouter.api_key") || !KnownKey("search.engine") {
+	if !KnownKey("model") || !KnownKey("providers.openrouter.api_key") || !KnownKey("search.engine") ||
+		!KnownKey("search.brave.api_key") || !KnownKey("search.exa.api_key") {
 		t.Fatal("known keys misclassified")
 	}
 	if KnownKey("nope.nope") {

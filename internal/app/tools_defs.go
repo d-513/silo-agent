@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/tool"
@@ -75,6 +76,7 @@ func (a *App) toolDefs() []tool.Def {
 			}, "code"),
 			Connector: security.Python, Action: "run",
 			ExposeCompletion: true, Writes: true,
+			Gate: a.chromeGate,
 			Run: a.withChrome(a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_ExecPython{ExecPython: &v1.ExecPythonCmd{Code: c.Str("code"), Session: a.pySession(c.RunID)}}}
 			}, nil)),
@@ -316,7 +318,7 @@ func (a *App) toolDefs() []tool.Def {
 			}, "x", "y"),
 			Connector: security.Desktop, Action: "click",
 			ExposeCompletion: true, ExposePython: true, Local: true, Writes: true,
-			Check: checkPoint, Title: desktopTitle,
+			Gate: a.Pause.Gate, Check: checkPoint, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Click{Click: &v1.ClickCmd{X: int32(c.Int("x")), Y: int32(c.Int("y")), Button: c.Str("button")}}}
 			}, nil),
@@ -329,7 +331,7 @@ func (a *App) toolDefs() []tool.Def {
 			}, "text"),
 			Connector: security.Desktop, Action: "type",
 			ExposeCompletion: true, ExposePython: true, PyName: "type_text", Local: true, Writes: true,
-			Check: tool.Need("text"), Title: desktopTitle,
+			Gate: a.Pause.Gate, Check: tool.Need("text"), Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Type{Type: &v1.TypeCmd{Text: c.Str("text")}}}
 			}, nil),
@@ -342,7 +344,7 @@ func (a *App) toolDefs() []tool.Def {
 			}, "name"),
 			Connector: security.Desktop, Action: "key",
 			ExposeCompletion: true, ExposePython: true, Local: true, Writes: true,
-			Check: needKey, Title: desktopTitle,
+			Gate: a.Pause.Gate, Check: needKey, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Key{Key: &v1.KeyCmd{Name: c.Str("name")}}}
 			}, nil),
@@ -357,10 +359,24 @@ func (a *App) toolDefs() []tool.Def {
 			}, "x", "y", "dy"),
 			Connector: security.Desktop, Action: "scroll",
 			ExposeCompletion: true, ExposePython: true, Local: true,
-			Check: checkScroll, Title: desktopTitle,
+			Gate: a.Pause.Gate, Check: checkScroll, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Scroll{Scroll: &v1.ScrollCmd{X: int32(c.Int("x")), Y: int32(c.Int("y")), Dy: int32(c.Int("dy"))}}}
 			}, nil),
+		},
+		{
+			// chrome_page() asks for it before handing code the desktop
+			// Chromium; the worker opens the browser. It is a grant, so the
+			// pause can refuse it like any desktop action.
+			Name:        "chrome",
+			Description: "Open the desktop Chromium for Playwright (silo_runtime.chrome_page).",
+			Params:      tool.Object(nil),
+			Connector:   security.Desktop, Action: "chrome",
+			ExposePython: true, PyName: "chrome_page", Local: true,
+			Gate: a.Pause.Gate, Title: desktopTitle,
+			Run: func(context.Context, *tool.Call) (tool.Result, error) {
+				return tool.Result{}, errors.New("chrome_page runs on the machine, from Python")
+			},
 		},
 		{
 			Name:        "skill",

@@ -2,7 +2,7 @@ import { closeThinking, lastThinking } from "./find.ts";
 import { reportAgents, type Block, type Ev } from "./types.ts";
 
 // Handlers for what is said: the user's turn, the model's thinking and reply,
-// quoted Feed posts and subagent reports. Each folds one event into `out`.
+// quotes a chat opened from and subagent reports. Each folds one event into `out`.
 export type Handler = (out: Block[], e: Ev, key: string) => void;
 
 export const user: Handler = (out, e, key) => {
@@ -14,7 +14,7 @@ export const subagentReport: Handler = (out, e, key) => {
 };
 
 export const feedQuote: Handler = (out, e, key) => {
-  out.push({ key, type: "quote", text: e.body, source: e.tool, createdAt: e.createdAt });
+  out.push({ key, type: "quote", text: e.body, source: e.tool, quoted: e.quoted, createdAt: e.createdAt });
 };
 
 export const thinkingChunk: Handler = (out, e, key) => {
