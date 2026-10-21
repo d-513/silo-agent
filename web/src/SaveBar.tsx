@@ -1,25 +1,28 @@
-import { SaveButton, type SaveState } from "../Feedback";
-import { Btn } from "../Btn";
-import { t } from "../i18n.ts";
+import { SaveButton, type SaveState } from "./Feedback";
+import { Btn } from "./Btn";
+import { t } from "./i18n.ts";
 
 const SAVE_KEY = typeof navigator !== "undefined" && /Mac|iP(hone|ad)/.test(navigator.platform) ? "⌘S" : "Ctrl+S";
 
 // SaveBar pins the form's Save to the bottom of the viewport while the form is
 // in view, and settles under the last panel once the page scrolls past it. It
-// is the only save for the panels above; the model list and connector
-// variables save on their own.
+// is the only save for the panels above it; a control that applies on its own
+// (a segmented choice, a list that saves itself) stays out of its count.
 export function SaveBar({
   dirty,
   state,
   error,
   onSave,
   onDiscard,
+  savedLabel,
 }: {
   dirty: number;
   state: SaveState;
   error: string;
   onSave: () => void;
   onDiscard: () => void;
+  // savedLabel says where a save went; the admin form writes silo.yaml.
+  savedLabel?: string;
 }) {
   const live = dirty > 0;
   return (
@@ -34,7 +37,7 @@ export function SaveBar({
             : live
               ? t("{{count}} unsaved changes", { count: dirty })
               : state === "saved"
-                ? t("Saved to silo.yaml")
+                ? (savedLabel ?? t("Saved to silo.yaml"))
                 : t("No unsaved changes")}
         </p>
         <span className="font-mono text-[11px] text-ink-3 max-wide:hidden">{SAVE_KEY}</span>

@@ -20,7 +20,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
   } = state;
 
   return (
-    <div className="silo-page">
+    <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Secrets")}</h2>
       <p className="mb-6 text-ink-2">{t("Handed to the Bot only after you allow it. Masked before the model sees output.")}</p>
       <Panel title={t("Stored secrets")} padded={false}>

@@ -7,13 +7,13 @@ import { useAuth } from "./auth";
 import { btnClass } from "./Btn";
 import { fail } from "./errors";
 import { ArmedButton, CopyButton, SaveButton, useSave } from "./Feedback";
-import { ErrorWell, Field, Panel, SkeletonRows, textareaClass } from "./Field";
+import { ErrorWell, SettingGroup, SettingRow, SkeletonRows, textareaClass } from "./Field";
 import { feedStamp, fmtBytes } from "./format";
 import { UI, type Bot, type Mail, type Mailbox } from "./gen/silo/v1/ui_pb";
 import { chatLink } from "./links";
 import { mailNotice, rawMailHref, senderName, wakeListError } from "./mailbox";
 import { patch, reloadBot } from "./query";
-import { ToggleRow } from "./Switch";
+import { Switch } from "./Switch";
 import { t } from "./i18n.ts";
 
 // MailPane is the right-rail pane: the Bot's address to copy and what arrived.
@@ -101,8 +101,9 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
   );
 }
 
-// MailSettings is the per-Bot Mail panel on the Settings page: the address (to
-// copy or rotate) and whether mail from chosen senders starts a chat.
+// MailSettings is the Mail group of the Settings page: the address (to copy or
+// rotate) and whether mail from chosen senders starts a chat. It saves on its
+// own, apart from the page's Save bar.
 export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   const { admin } = useAuth();
   const botId = bot.id;
@@ -128,37 +129,42 @@ export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) 
   const notice = box ? mailNotice(box.state, admin) : null;
 
   return (
-    <Panel
+    <SettingGroup
       title={t("Mail")}
       note={t("This Bot's own address. It only receives: give it to a sign-up, a newsletter or a report, and the Bot reads what arrives. Nothing can be sent from it.")}
-      className="mt-8"
     >
-      {notice ? (
-        <div className="mb-4 rounded-card bg-well px-4 py-3 text-[13px] leading-[20px] text-ink-2">
-          {notice.text}{" "}
-          {notice.admin ? (
-            <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
-              {t("Open settings")}
-            </Link>
+      {notice || box?.problem ? (
+        <div className="grid gap-3 px-5 py-4">
+          {notice ? (
+            <div className="rounded-card bg-well px-4 py-3 text-[13px] leading-[20px] text-ink-2">
+              {notice.text}{" "}
+              {notice.admin ? (
+                <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
+                  {t("Open settings")}
+                </Link>
+              ) : null}
+            </div>
           ) : null}
+          {box?.problem ? <ErrorWell>{t("The mail listener is not running: {{problem}}", { problem: box.problem })}</ErrorWell> : null}
         </div>
       ) : null}
-      {box?.problem ? <ErrorWell className="mb-4">{t("The mail listener is not running: {{problem}}", { problem: box.problem })}</ErrorWell> : null}
       {box === null ? (
-        <SkeletonRows rows={2} height={64} />
+        <div className="px-5 py-4">
+          <SkeletonRows rows={2} height={48} />
+        </div>
       ) : box.address ? (
-        <div className="grid gap-5">
+        <>
           <AddressRow address={box.address} onRotate={() => void rotate()} />
           <WakeFields botId={botId} box={box} onSaved={setBox} />
-        </div>
+        </>
       ) : null}
-    </Panel>
+    </SettingGroup>
   );
 }
 
 function AddressRow({ address, onRotate }: { address: string; onRotate: () => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">
         <MailIcon size={18} />
       </div>
@@ -206,22 +212,27 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
     }
   }
 
+  const list = wake || wakeFrom;
   return (
-    <div className="border-t border-line pt-4">
-      <ToggleRow
+    <>
+      <SettingRow
         label={t("Start a chat when mail arrives from someone I trust")}
         hint={t("Off, mail waits in the inbox until the Bot is asked to look. On, a message from a sender below opens a new chat and the Bot acts on it.")}
-        on={wake}
-        onChange={(v) => {
-          setEdits((e) => ({ ...e, wake: v }));
-          setErr("");
-        }}
-      />
-      {wake || wakeFrom ? (
-        <Field
-          className="mt-4"
+        error={list ? undefined : err || undefined}
+      >
+        <Switch
+          on={wake}
+          onChange={(v) => {
+            setEdits((e) => ({ ...e, wake: v }));
+            setErr("");
+          }}
+        />
+      </SettingRow>
+      {list ? (
+        <SettingRow
+          stack
           label={t("Senders")}
-          error={err}
+          error={err || undefined}
           hint={t("One per line: an address (ada@example.com) or a whole domain (@example.com). Only mail the sender's domain vouches for counts, so a forged From address wakes nobody.")}
         >
           <textarea
@@ -230,29 +241,26 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
             spellCheck={false}
             placeholder={"you@example.com"}
             value={wakeFrom}
+            aria-label={t("Senders")}
             aria-invalid={err ? true : undefined}
             onChange={(e) => {
               setEdits((x) => ({ ...x, wakeFrom: e.target.value }));
               setErr("");
             }}
           />
-        </Field>
-      ) : err ? (
-        <p role="alert" className="mt-2 text-[12px] text-vermilion">
-          {err}
-        </p>
+        </SettingRow>
       ) : null}
       {dirty ? (
-        <div className="mt-4 flex items-center gap-2">
-          <SaveButton state={saver.state} onClick={() => void save()}>
-            {t("Save")}
-          </SaveButton>
+        <div className="flex items-center justify-end gap-2 bg-well/60 px-5 py-3">
           <button type="button" className={btnClass("ghost")} onClick={() => (setEdits({}), setErr(""))}>
             {t("Discard")}
           </button>
+          <SaveButton state={saver.state} onClick={() => void save()}>
+            {t("Save")}
+          </SaveButton>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 

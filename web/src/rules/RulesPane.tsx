@@ -28,7 +28,7 @@ export function RulesPane({ botId }: { botId: string }) {
   const output = side === "output";
 
   return (
-    <div className="silo-page">
+    <div className="silo-page silo-page-wide">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Rules")}</h2>

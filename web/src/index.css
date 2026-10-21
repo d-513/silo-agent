@@ -621,10 +621,21 @@ button {
 .silo-page-lg {
   max-width: 1000px;
 }
+/* A Bot's Settings tabs: anchored under the tab strip, not centred in the
+   window, and wide enough for a label column beside each group. It is the
+   `page` container SettingGroup and SettingRow lay themselves out against. */
+.silo-page-wide {
+  max-width: 1120px;
+  margin-inline: 0;
+  container: page / inline-size;
+}
 @media (min-width: 960px) {
   .silo-page,
   .silo-page-sm {
     padding: 28px;
+  }
+  .silo-page-wide {
+    padding: 24px 20px 48px;
   }
 }
 

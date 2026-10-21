@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { ActiveBar } from "../bot/SideNav";
 import { ErrorWell, SkeletonRows } from "../Field";
-import { SaveBar } from "./SaveBar";
+import { SaveBar } from "../SaveBar";
 import { FIRST_SECTION, SECTIONS, isFormSection, isSection, type SectionId } from "./sections";
 import { SettingsFormContext, useAdminSettings } from "./useAdminSettings";
 import { t } from "../i18n.ts";

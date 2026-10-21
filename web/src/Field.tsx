@@ -91,6 +91,77 @@ export function Panel({
   );
 }
 
+// SettingGroup is one block of a settings page (silo-page-wide): its title and
+// note in a column of their own beside the card once the page is wide, above
+// it otherwise. The card holds SettingRows, one line between each.
+export function SettingGroup({
+  title,
+  note,
+  tone = "default",
+  children,
+}: {
+  title: string;
+  note?: ReactNode;
+  tone?: "default" | "danger";
+  children: ReactNode;
+}) {
+  return (
+    <section
+      data-tone={tone}
+      className="grid gap-3 py-6 shadow-[inset_0_1px_0_var(--color-line)] first:pt-0 first:shadow-none @4xl/page:grid-cols-[220px_minmax(0,1fr)] @4xl/page:gap-8"
+    >
+      <header className="min-w-0 @4xl/page:pt-3.5">
+        <h3 className={`text-card-title leading-5 ${tone === "danger" ? "text-vermilion" : "text-ink"}`}>{title}</h3>
+        {note ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : null}
+      </header>
+      <div className="min-w-0 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">{children}</div>
+    </section>
+  );
+}
+
+// SettingRow is one setting: its label and hint on the left, the control
+// right-aligned in a column of its own. `stack` puts the control under the
+// label at full width, for a text that needs the room (a prompt, a list).
+export function SettingRow({
+  label,
+  hint,
+  error,
+  meta,
+  stack = false,
+  children,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  error?: string;
+  // meta sits at the end of the label line (a counter, a source chip).
+  meta?: ReactNode;
+  stack?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`group/field grid gap-x-8 gap-y-2.5 px-5 py-4 ${stack ? "" : "@2xl/page:grid-cols-[minmax(0,1fr)_minmax(0,340px)] @2xl/page:items-center"}`}
+      data-invalid={error ? "" : undefined}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[13.5px] font-medium leading-5 text-ink">{label}</span>
+          {meta ? <span className="ml-auto flex items-center gap-2">{meta}</span> : null}
+        </div>
+        {hint ? <div className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{hint}</div> : null}
+      </div>
+      <div className={`min-w-0 ${stack ? "" : "flex flex-col @2xl/page:items-end"}`}>
+        {children}
+        {error ? (
+          <p role="alert" className="mt-1.5 self-stretch text-[12px] leading-4 text-vermilion">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 // An error that belongs to the whole form or page rather than one field.
 export function ErrorWell({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (

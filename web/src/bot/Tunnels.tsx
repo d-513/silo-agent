@@ -96,7 +96,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
   const full = data ? rows.length >= data.max : false;
 
   return (
-    <div className="silo-page pb-12">
+    <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Tunnels & Links")}</h2>
       <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">
         {t("Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.")}

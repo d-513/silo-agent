@@ -72,7 +72,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
   const anyUp = (boxes ?? []).some((b) => b.state !== "absent");
 
   return (
-    <div className="silo-page">
+    <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Containers")}</h2>
       <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
       {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}

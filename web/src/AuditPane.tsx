@@ -52,7 +52,7 @@ export function AuditPane({ botId, embedded = false }: { botId: string; embedded
   }, [botId, unread]);
 
   return (
-    <div className={embedded ? "" : "silo-page pb-12"}>
+    <div className={embedded ? "" : "silo-page silo-page-wide"}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <TabPills>
           <TabPill on={view === "attention"} onClick={() => setView("attention")}>
