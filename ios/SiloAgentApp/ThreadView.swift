@@ -413,7 +413,7 @@ struct ArtifactCard: View {
                 Task { await open() }
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: artifact.artifactType == "skill" ? "book.closed" : fileSymbol)
+                    Image(systemName: artifact.artifactType == "skill" ? "square.stack.3d.up" : fileSymbol)
                         .font(.silo(.title3))
                         .foregroundStyle(Theme.cobalt)
                         .frame(width: 32)

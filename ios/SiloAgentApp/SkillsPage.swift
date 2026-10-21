@@ -40,7 +40,7 @@ struct SkillsPage: View {
         }
         .overlay {
             if loaded && skills.isEmpty {
-                ContentUnavailableView("No skills", systemImage: "book", description: Text("Install skills from the Skill Hub."))
+                ContentUnavailableView("No skills", systemImage: "square.stack.3d.up", description: Text("Install skills from the Skill Hub."))
             }
         }
         .refreshable { await load() }
@@ -118,7 +118,7 @@ struct SkillHub: View {
                     }
                 }
             }
-            .overlay { if loaded && skills.isEmpty { ContentUnavailableView("No skills", systemImage: "book") } }
+            .overlay { if loaded && skills.isEmpty { ContentUnavailableView("No skills", systemImage: "square.stack.3d.up") } }
             .navigationTitle("Skill Hub")
             .toolbar {
                 if !embedded { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }

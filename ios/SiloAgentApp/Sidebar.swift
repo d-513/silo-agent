@@ -141,20 +141,50 @@ struct BotSidebar: View {
             Theme.line.frame(height: 1)
             SideRow(symbol: "slider.horizontal.3", title: "Customize", on: model.path.first == .customize) { go(.customize) }
             SideRow(symbol: "gearshape", title: "Settings", on: model.path.first == .settings) { go(.settings) }
-            HStack(spacing: 0) {
-                Button { account = true } label: {
-                    Text(model.user?.email ?? "Account").lineLimit(1)
-                }
-                Text("  ·  ")
-                Button { hub = true } label: { Text("Skill Hub") }
-                Spacer(minLength: 0)
-            }
-            .buttonStyle(.plain)
-            .font(.silo(13))
-            .foregroundStyle(Theme.ink3)
-            .padding(.horizontal, 16)
-            .frame(height: 40)
+            Theme.line.frame(height: 1).padding(.top, 4)
+            SideRow(symbol: "square.stack.3d.up", title: "Skill Hub") { hub = true }
+            ProfileRow { account = true }
         }
+    }
+}
+
+/// Who is signed in, at the foot: an initial in a well circle, the email, and the way to the
+/// account (email, password, two-factor, sessions, sign out).
+private struct ProfileRow: View {
+    @Environment(AppModel.self) private var model
+    let action: () -> Void
+
+    private var email: String { model.user?.email ?? "" }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 11) {
+                Text(email.first.map { String($0).uppercased() } ?? "?")
+                    .font(.silo(13, .semibold))
+                    .foregroundStyle(Theme.onInk)
+                    .frame(width: 28, height: 28)
+                    .background(Theme.ink2, in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(email.isEmpty ? "Account" : email)
+                        .font(.silo(14, .medium))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text(model.user?.admin == true ? "Administrator · Account" : "Account")
+                        .font(.silo(12))
+                        .foregroundStyle(Theme.ink3)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.ink3)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 54)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Account, \(email)")
     }
 }
 

@@ -79,7 +79,7 @@ enum BotTab: String, CaseIterable, Identifiable {
         case .mail: return "envelope"
         case .connectors: return "puzzlepiece.extension"
         case .channels: return "antenna.radiowaves.left.and.right"
-        case .skills: return "book"
+        case .skills: return "square.stack.3d.up"
         case .secrets: return "key"
         case .rules: return "checklist"
         case .audit: return "list.bullet.rectangle"
