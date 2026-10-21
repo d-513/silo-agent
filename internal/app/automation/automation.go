@@ -1,7 +1,8 @@
 // Package automation is scheduled background prompts: a name, a prompt, a cron
 // schedule and an on/off switch per Bot. The scheduler fires due rows once into
-// the same run engine as chat, from a fresh context each time; every Bot also
-// has one pinned Heartbeat and one pinned Dashboard. This package owns the
+// the same run engine as chat, from a fresh context each time. Every Bot also
+// has one of each pinned automation: the Heartbeat, and whatever another
+// domain registers with Pin (the Dashboard's curator). This package owns the
 // rows, their RPCs and Bot tools, and the scheduler.
 package automation
 
@@ -11,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -36,12 +38,8 @@ import (
 // Tick is how often the scheduler looks for due automations.
 const Tick = 20 * time.Second
 
-// KindDashboard is the pinned automation that curates a Bot's Dashboard.
-const KindDashboard = automationDashboard
-
 const (
 	automationHeartbeat = "heartbeat"
-	automationDashboard = "dashboard"
 	automationCustom    = "custom"
 
 	// automationMinGap is the shortest allowed interval between two firings,
@@ -57,14 +55,35 @@ type Host interface {
 	host.Authorizer
 }
 
+// Pinned is an automation every Bot has exactly one of: made on first need
+// without a schedule (so it never fires until given one), never deleted, its
+// name fixed. A domain that tends something in the background registers one
+// with Pin and talks to it through Pinned and Ask.
+type Pinned struct {
+	Kind, Name, Prompt string
+	// Replaces are the openings of earlier default prompts: a row still on
+	// one is moved to Prompt at start (UpgradePinned). An edited prompt stays.
+	Replaces []string
+}
+
 // Service owns the automation rows, their tools and the scheduler.
 type Service struct {
 	db     *gorm.DB
 	engine run.Engine
 	host   Host
+	// pins are the pinned kinds in the order they list first. Registered
+	// while the App is built, read-only after.
+	pins []Pinned
 }
 
-func New(gdb *gorm.DB, e run.Engine, h Host) *Service { return &Service{db: gdb, engine: e, host: h} }
+func New(gdb *gorm.DB, e run.Engine, h Host) *Service {
+	s := &Service{db: gdb, engine: e, host: h}
+	s.Pin(Pinned{Kind: automationHeartbeat, Name: "Heartbeat", Prompt: prompts.Heartbeat})
+	return s
+}
+
+// Pin registers a pinned kind. Call it while the App is being built.
+func (s *Service) Pin(p Pinned) { s.pins = append(s.pins, p) }
 
 var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 
@@ -132,21 +151,26 @@ func (s *Service) Rezone(botID string) {
 
 // --- store ---
 
-func isPinned(kind string) bool {
-	return kind == automationHeartbeat || kind == automationDashboard
+// pin is the registered pinned kind, and where it lists among them.
+func (s *Service) pin(kind string) (Pinned, int, bool) {
+	for i, p := range s.pins {
+		if p.Kind == kind {
+			return p, i, true
+		}
+	}
+	return Pinned{}, len(s.pins), false
 }
 
-// EnsureHeartbeat creates the pinned Heartbeat for a Bot if it has none. It is
-// created without a schedule, so it never fires until someone sets one.
-func (s *Service) EnsureHeartbeat(botID string) {
-	s.ensurePinned(botID, automationHeartbeat, "Heartbeat", prompts.Heartbeat)
+func (s *Service) isPinned(kind string) bool {
+	_, _, ok := s.pin(kind)
+	return ok
 }
 
-// EnsureDashboard creates the pinned Dashboard automation for a Bot if it has
-// none. Like Heartbeat, it starts without a schedule until the owner or Bot
-// sets one (or clicks Run now).
-func (s *Service) EnsureDashboard(botID string) {
-	s.ensurePinned(botID, automationDashboard, "Dashboard", prompts.Dashboard)
+// EnsurePinned gives a Bot every pinned automation it is missing.
+func (s *Service) EnsurePinned(botID string) {
+	for _, p := range s.pins {
+		s.ensurePinned(botID, p.Kind, p.Name, p.Prompt)
+	}
 }
 
 // ensurePinned is called from every page that lists automations, often by
@@ -198,20 +222,22 @@ func (s *Service) ensureAutomationChat(au *db.Automation) {
 }
 
 func (s *Service) listAutomations(botID string) []db.Automation {
-	s.EnsureHeartbeat(botID)
-	s.EnsureDashboard(botID)
+	s.EnsurePinned(botID)
 	var rows []db.Automation
-	// Heartbeat and Dashboard are pinned first; the rest newest first.
-	s.db.Where("bot_id = ?", botID).
-		Order("CASE WHEN kind = 'heartbeat' THEN 0 WHEN kind = 'dashboard' THEN 1 ELSE 2 END").
-		Order("created_at desc").Find(&rows)
+	// The pinned ones first, in the order they were registered; the rest
+	// newest first.
+	s.db.Where("bot_id = ?", botID).Order("created_at desc").Find(&rows)
+	sort.SliceStable(rows, func(i, j int) bool {
+		_, a, _ := s.pin(rows[i].Kind)
+		_, b, _ := s.pin(rows[j].Kind)
+		return a < b
+	})
 	return rows
 }
 
 // findAutomation resolves an id or a (case-insensitive) name within a Bot.
 func (s *Service) findAutomation(botID, ref string) (*db.Automation, error) {
-	s.EnsureHeartbeat(botID)
-	s.EnsureDashboard(botID)
+	s.EnsurePinned(botID)
 	ref = strings.TrimSpace(ref)
 	if ref == "" {
 		return nil, errors.New("automation required")
@@ -258,11 +284,8 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 	if p.enabled != nil {
 		au.Enabled = *p.enabled
 	}
-	switch au.Kind {
-	case automationHeartbeat:
-		au.Name = "Heartbeat"
-	case automationDashboard:
-		au.Name = "Dashboard"
+	if p, _, ok := s.pin(au.Kind); ok {
+		au.Name = p.Name
 	}
 	if au.Name == "" {
 		return nil, errors.New("name required")
@@ -300,7 +323,7 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 }
 
 func (s *Service) deleteAutomation(au *db.Automation) error {
-	if isPinned(au.Kind) {
+	if s.isPinned(au.Kind) {
 		return fmt.Errorf("the %s is pinned; clear its schedule or pause it instead", au.Name)
 	}
 	if au.ChatID != "" {
@@ -369,21 +392,21 @@ func (s *Service) fireAutomation(au *db.Automation) (string, error) {
 	return runID, nil
 }
 
-// UpgradeDashboardPrompt moves Dashboard automations still on the first
-// prompt (which had the model rewrite every card on each run) to the current
-// one. A prompt the owner edited is theirs and stays.
-func (s *Service) UpgradeDashboardPrompt() {
-	s.db.Model(&db.Automation{}).Where("kind = ? AND prompt LIKE ?", automationDashboard, "Dashboard sweep.%").
-		Update("prompt", strings.TrimSpace(prompts.Dashboard))
+// UpgradePinned moves pinned automations still on an earlier default prompt
+// to the current one. A prompt the owner edited is theirs and stays.
+func (s *Service) UpgradePinned() {
+	for _, p := range s.pins {
+		for _, old := range p.Replaces {
+			s.db.Model(&db.Automation{}).Where("kind = ? AND prompt LIKE ?", p.Kind, old+"%").
+				Update("prompt", strings.TrimSpace(p.Prompt))
+		}
+	}
 }
 
 // Pinned is a Bot's pinned automation of a kind (made if missing), or nil.
 func (s *Service) Pinned(botID, kind string) *db.Automation {
-	switch kind {
-	case automationHeartbeat:
-		s.EnsureHeartbeat(botID)
-	case automationDashboard:
-		s.EnsureDashboard(botID)
+	if p, _, ok := s.pin(kind); ok {
+		s.ensurePinned(botID, p.Kind, p.Name, p.Prompt)
 	}
 	var au db.Automation
 	if s.db.Where("bot_id = ? AND kind = ?", botID, kind).Limit(1).Find(&au).RowsAffected == 0 {
@@ -502,7 +525,7 @@ func (s *Service) RunAutomation(ctx context.Context, req *connect.Request[v1.Run
 func (s *Service) automationLine(au *db.Automation, loc *time.Location) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "- %s  %s", au.ID, au.Name)
-	if isPinned(au.Kind) {
+	if s.isPinned(au.Kind) {
 		fmt.Fprintf(&b, " [%s, pinned]", au.Kind)
 	}
 	sched := au.Schedule
@@ -588,7 +611,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		}
 		return "created\n" + s.automationLine(au, loc), nil
 	case "update":
-		if isPinned(target.Kind) {
+		if s.isPinned(target.Kind) {
 			p.name = nil
 		}
 		au, err := s.saveAutomation(bot.ID, target, p, "")

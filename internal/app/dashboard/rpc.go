@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,43 +11,23 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
-	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
-	"silo.agent/internal/security"
 	"silo.agent/internal/textx"
 )
 
-// Tool is every Dashboard tool, from chat or Python. Each is gated on its own
-// bot.* rule here; code a widget carries is gated again on python.run when it
-// is put.
+// Tool runs a Dashboard tool, from chat or Python. The engine has already
+// gated it on its bot.* rule; code a widget carries is gated again on
+// python.run when it is put.
 func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, args map[string]any) (string, error) {
-	action := map[string]string{
-		"list_dashboard":        "dashboard_list",
-		"upsert_dashboard_card": "dashboard_upsert",
-		"remove_dashboard_card": "dashboard_remove",
-		"put_widget":            "widget_put",
-		"set_widget":            "widget_set",
-		"remove_widget":         "widget_remove",
-	}[name]
-	if action == "" {
-		return "", fmt.Errorf("unknown tool %s", name)
-	}
-	argsJSON, _ := json.Marshal(args)
-	if _, err := s.host.AuthorizeAction(ctx, bot, runID, security.Bot, action, string(argsJSON), ""); err != nil {
-		return "", err
-	}
 	switch name {
 	case "list_dashboard":
 		return s.listForBot(bot.ID)
 	case "upsert_dashboard_card":
 		return s.upsertAsk(bot.ID, s.host.ChatOfRun(runID), runID, args)
 	case "remove_dashboard_card":
-		ref := str(args, "id_or_key")
-		if strings.TrimSpace(ref) == "" {
-			ref = str(args, "id")
-		}
-		if strings.TrimSpace(ref) == "" {
+		ref := strings.TrimSpace(str(args, "id"))
+		if ref == "" {
 			ref = str(args, "key")
 		}
 		return s.removeAsk(bot.ID, ref)
@@ -56,9 +35,10 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		return s.putWidget(ctx, bot, runID, args)
 	case "set_widget":
 		return s.setWidget(bot.ID, args)
-	default:
+	case "remove_widget":
 		return s.removeWidget(bot.ID, str(args, "key"))
 	}
+	return "", fmt.Errorf("unknown tool %s", name)
 }
 
 func (s *Service) ownWidget(ctx context.Context, botID, id string) (*db.DashboardWidget, error) {
@@ -210,7 +190,7 @@ func (s *Service) AskDashboard(ctx context.Context, req *connect.Request[v1.AskD
 		}
 	}
 	b.WriteString(":\n\n" + text)
-	runID, chatID, err := s.automations.Ask(botID, automation.KindDashboard, b.String())
+	runID, chatID, err := s.automations.Ask(botID, Curator.Kind, b.String())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}

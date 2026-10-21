@@ -1,6 +1,6 @@
 import { CalendarDays, Check, GitCompare, Globe, Mail, Move, RotateCw, X } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
-import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApprovalCard } from "./Approval";
 import { ui } from "./api";
@@ -45,8 +45,8 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   const [places, setPlaces] = useState<Record<string, { size: string; rows: number }>>({});
   const [dragging, setDragging] = useState("");
 
-  const ref = useRef<HTMLDivElement>(null);
-  const cols = useColumns(ref);
+  const [page, ref] = useState<HTMLDivElement | null>(null);
+  const cols = useColumns(page);
 
   useEffect(() => {
     setVisitPosts([]);
@@ -150,16 +150,18 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       ...cur,
       cards: cur.cards.filter((c) => c.id !== card.id),
     }));
+    reloadBot(bot.id);
     if (r.chat) onQuoted(r.chat);
   }
 
   async function dismissAsk(card: DashboardCard, suppressKind: boolean) {
     const r = await guard(() => ui.dismissDashboardCard({ botId: bot.id, id: card.id, suppressKind }));
-    if (r)
-      patch(UI.method.listDashboard, input, (cur) => ({
-        ...cur,
-        cards: cur.cards.filter((c) => c.id !== card.id),
-      }));
+    if (!r) return;
+    patch(UI.method.listDashboard, input, (cur) => ({
+      ...cur,
+      cards: cur.cards.filter((c) => c.id !== card.id),
+    }));
+    reloadBot(bot.id);
   }
 
   async function quotePost(p: FeedPost) {
@@ -482,17 +484,17 @@ function suggestions() {
 }
 
 // useColumns follows the page's own width, not the window's: a docked pane
-// narrows the board.
-function useColumns(ref: React.RefObject<HTMLDivElement | null>): Cols {
+// narrows the board. It watches the element it is given, once per element
+// (the skeleton, the empty board and the board are different ones).
+function useColumns(el: HTMLElement | null): Cols {
   const [cols, setCols] = useState<Cols>(4);
   useEffect(() => {
-    const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const update = () => setCols(columnsFor(el.clientWidth));
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  });
+  }, [el]);
   return cols;
 }

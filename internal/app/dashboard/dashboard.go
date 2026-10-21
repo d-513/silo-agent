@@ -12,6 +12,11 @@
 //
 // An ask is what the Bot needs decided: a slip with optional form controls
 // whose submit opens a chat with the chosen values.
+//
+// The model touches the board only in the curator: a pinned automation this
+// package registers (Curator), which runs from a fresh context like any
+// firing, reads the board, mends and prunes it. The owner's words from the ask
+// bar go to that same run log, so the board never adds a chat.
 package dashboard
 
 import (
@@ -29,8 +34,19 @@ import (
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
+	"silo.agent/internal/prompts"
 	"silo.agent/internal/textx"
 )
+
+// Curator is the pinned automation that tends a Bot's Dashboard.
+var Curator = automation.Pinned{
+	Kind: "dashboard", Name: "Dashboard", Prompt: prompts.Dashboard,
+	// The first prompt had the model rewrite every card on each run.
+	Replaces: []string{"Dashboard sweep."},
+}
+
+// postsMax is how many unread Feed posts the board shows for a visit.
+const postsMax = 20
 
 // Host is what the Dashboard needs from the App around it.
 type Host interface {
@@ -54,13 +70,16 @@ type Service struct {
 	host        Host
 	memory      *memory.Service
 	automations *automation.Service
+	feed        *feed.Service
 	busy        busySet
 	// slots bounds how many probes run at once across every Bot.
 	slots chan struct{}
 }
 
-func New(gdb *gorm.DB, h Host, m *memory.Service, au *automation.Service) *Service {
-	return &Service{db: gdb, host: h, memory: m, automations: au, slots: make(chan struct{}, probeSlots)}
+// New makes the Dashboard and pins its curator on every Bot.
+func New(gdb *gorm.DB, h Host, m *memory.Service, au *automation.Service, f *feed.Service) *Service {
+	au.Pin(Curator)
+	return &Service{db: gdb, host: h, memory: m, automations: au, feed: f, slots: make(chan struct{}, probeSlots)}
 }
 
 // Drop forgets a deleted Bot's Dashboard.
@@ -69,7 +88,8 @@ func (s *Service) Drop(botID string) {
 	s.db.Where("bot_id = ?", botID).Delete(&db.DashboardWidget{})
 }
 
-// Open is how many asks wait for the owner.
+// Open is how many asks wait for the owner: the Bot row carries it, so the
+// sidebar can say the board needs them without loading the board.
 func (s *Service) Open(botID string) int32 {
 	var n int64
 	s.db.Model(&db.DashboardCard{}).Where("bot_id = ? AND status = 'open'", botID).Count(&n)
@@ -84,20 +104,14 @@ func (s *Service) ListDashboard(ctx context.Context, req *connect.Request[v1.Lis
 		return nil, err
 	}
 	out := &v1.ListDashboardResponse{}
-	var cards []db.DashboardCard
-	s.db.Where("bot_id = ? AND status = 'open'", botID).Order("priority asc, updated_at desc").Find(&cards)
-	for i := range cards {
-		out.Cards = append(out.Cards, protoCard(&cards[i]))
+	for _, c := range s.openAsks(botID) {
+		out.Cards = append(out.Cards, protoCard(&c))
 	}
-	var posts []db.FeedPost
-	s.db.Where("bot_id = ? AND read_at IS NULL", botID).Order("created_at desc").Limit(20).Find(&posts)
-	for i := range posts {
-		out.Posts = append(out.Posts, feed.Proto(&posts[i]))
-	}
+	out.Posts = s.feed.UnreadPosts(botID, postsMax)
 	for _, w := range s.widgets(botID) {
 		out.Widgets = append(out.Widgets, s.protoWidget(&w))
 	}
-	if au := s.automations.Pinned(botID, automation.KindDashboard); au != nil {
+	if au := s.automations.Pinned(botID, Curator.Kind); au != nil {
 		out.AutomationId = au.ID
 		out.ChatId = au.ChatID
 		out.Schedule = au.Schedule
@@ -119,7 +133,7 @@ func (s *Service) MarkDashboardRead(ctx context.Context, req *connect.Request[v1
 	}
 	now := time.Now()
 	s.db.Model(&db.DashboardCard{}).Where("bot_id = ? AND status = 'open' AND read_at IS NULL", botID).Update("read_at", now)
-	s.db.Model(&db.FeedPost{}).Where("bot_id = ? AND read_at IS NULL", botID).Update("read_at", now)
+	s.feed.MarkRead(botID, now)
 	s.db.Model(&db.DashboardWidget{}).Where("bot_id = ?", botID).UpdateColumn("seen_at", now)
 	return connect.NewResponse(&v1.MarkDashboardReadResponse{}), nil
 }

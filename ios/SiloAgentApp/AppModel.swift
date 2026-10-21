@@ -169,6 +169,9 @@ final class AppModel {
         }
     }
 
+    /// After an account change (email, password, two-factor) the server answers the fresh user.
+    func applyUser(_ fresh: Silo_V1_User) { user = fresh }
+
     /// Back from the code step to email and password.
     func cancelCode() {
         needsCode = false
@@ -400,16 +403,40 @@ final class AppModel {
     func fetchArtifact(_ artifact: ArtifactInfo) async -> URL? {
         guard let botID = selectedBotID else { return nil }
         do {
-            let data = try await client.download(path: artifact.downloadPath(botID: botID))
-            let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let url = dir.appendingPathComponent(artifact.downloadName)
-            try data.write(to: url)
-            return url
+            let data: Data
+            if let route = artifact.downloadPath(botID: botID) {
+                data = try await client.download(path: route)
+            } else {
+                let file = try await client.readFile(botID: botID, path: artifact.path)
+                data = file.data.isEmpty ? Data(file.content.utf8) : file.data
+            }
+            return try writeTemp(data, name: artifact.downloadName)
         } catch {
             errorMessage = describe(error)
             return nil
         }
+    }
+
+    /// Downloads one version of a listed artifact for preview/sharing.
+    func fetchArtifact(_ item: Silo_V1_ArtifactItem, version: Silo_V1_ArtifactVersion) async -> URL? {
+        guard let botID = selectedBotID else { return nil }
+        do {
+            let data = try await client.download(path: artifactDownloadPath(botID: botID, artifactID: item.id, version: Int(version.n)))
+            let base = version.name.isEmpty ? (item.path.split(separator: "/").last.map(String.init) ?? "artifact") : version.name
+            return try writeTemp(data, name: version.kind == "tree" ? base + ".zip" : base)
+        } catch {
+            errorMessage = describe(error)
+            return nil
+        }
+    }
+
+    /// A fresh temp directory per file, so two previews of the same name never collide.
+    func writeTemp(_ data: Data, name: String) throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(name.replacingOccurrences(of: "/", with: "_"))
+        try data.write(to: url)
+        return url
     }
 
     /// Copies a pending skill directory into the personal library; the card turns "saved".

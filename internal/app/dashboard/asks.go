@@ -21,7 +21,6 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/textx"
-	"silo.agent/internal/zone"
 )
 
 const (
@@ -114,6 +113,13 @@ func (s *Service) upsertAsk(botID, chatID, runID string, args map[string]any) (s
 	}
 	out, _ := json.Marshal(map[string]any{"id": c.ID, "key": c.Key, "title": c.Title, "created": creating, "updated": !creating && changed})
 	return string(out), nil
+}
+
+// openAsks are the asks waiting for the owner, most pressing first.
+func (s *Service) openAsks(botID string) []db.DashboardCard {
+	var out []db.DashboardCard
+	s.db.Where("bot_id = ? AND status = 'open'", botID).Order("priority asc, updated_at desc").Find(&out)
+	return out
 }
 
 // normalizeBlocks accepts a list of block objects, or that list as JSON text.
@@ -267,30 +273,22 @@ func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 }
 
 // quoteChat opens a web chat whose first turn quotes something from the
-// Dashboard (the quote run holds one feed_quote event) and starts a run with
-// the owner's message.
+// Dashboard and starts a run with the owner's message. A run that cannot start
+// takes its chat with it, so a refused press leaves no empty chat behind.
 func (s *Service) quoteChat(botID, title, quote, label string, quotedAt time.Time, message string) (*db.Chat, string, error) {
-	now := time.Now()
 	if title == "" {
 		title = "Dashboard"
 	}
-	ch := db.Chat{ID: ids.New(), BotID: botID, Title: textx.ClipRunes(strings.TrimLeft(title, "# "), titleMax), CreatedAt: now, UpdatedAt: now}
-	if err := s.db.Create(&ch).Error; err != nil {
-		return nil, "", err
-	}
-	q := db.Run{ID: ids.New(), BotID: botID, ChatID: ch.ID, Origin: "feed", Status: "done", CreatedAt: now}
-	if err := s.db.Create(&q).Error; err != nil {
-		return nil, "", err
-	}
-	ev := db.RunEvent{ID: ids.New(), RunID: q.ID, Kind: feed.QuoteKind, Body: quote, Tool: label, Zone: zone.OfBot(s.db, botID).String(), CreatedAt: quotedAt}
-	if err := s.db.Create(&ev).Error; err != nil {
+	ch, err := feed.QuoteChat(s.db, botID, title, quote, label, quotedAt)
+	if err != nil {
 		return nil, "", err
 	}
 	runID, err := s.host.StartOrInject(botID, ch.ID, message, run.Extra{}, nil)
 	if err != nil {
+		chats.Drop(s.db, ch.ID)
 		return nil, "", connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-	return &ch, runID, nil
+	return ch, runID, nil
 }
 
 // SubmitDashboardCard opens a chat quoting the ask and starts a run with the

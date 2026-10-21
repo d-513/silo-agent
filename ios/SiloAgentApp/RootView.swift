@@ -117,7 +117,14 @@ struct BotPage: View {
     @ViewBuilder
     private var content: some View {
         switch tab {
+        case .dashboard: DashboardPage()
         case .automations: AutomationsPage()
+        case .artifacts: ArtifactsPage()
+        case .knowledge: KnowledgePage()
+        case .changes: ChangesPage()
+        case .mail: MailPage()
+        case .tunnels: TunnelsPage()
+        case .audit: AuditPage()
         case .memories: MemoriesPage()
         case .feed: FeedPage()
         case .files: FilesPage()

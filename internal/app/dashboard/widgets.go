@@ -214,15 +214,25 @@ func (s *Service) widgetByKey(botID, key string) *db.DashboardWidget {
 	return &w
 }
 
-// setData stores new data, noting a change only when it differs.
-func (s *Service) setData(w *db.DashboardWidget, data string) {
+// setData puts new data on the widget (the caller writes it, see
+// dataColumns), noting a change only when it differs.
+func (s *Service) setData(w *db.DashboardWidget, data string) (changed bool) {
 	now := time.Now()
-	if canonical(data) != canonical(w.DataJSON) {
+	changed = canonical(data) != canonical(w.DataJSON)
+	if changed {
 		w.ChangedAt = &now
 	}
 	w.DataJSON = data
 	w.DataAt = &now
 	w.Error = ""
+	return changed
+}
+
+// dataColumns are the columns setData touches. Writes name their columns
+// rather than save the row: the owner's checks and places, a probe and the Bot
+// can all change one widget at once.
+func dataColumns(w *db.DashboardWidget) map[string]any {
+	return map[string]any{"data_json": w.DataJSON, "data_at": w.DataAt, "changed_at": w.ChangedAt, "error": ""}
 }
 
 func canonical(js string) string {
@@ -353,8 +363,17 @@ func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args
 		if err := s.db.Create(w).Error; err != nil {
 			return "", err
 		}
-	} else if err := s.db.Save(w).Error; err != nil {
-		return "", err
+	} else {
+		// Only what the Bot sets: an approval can wait on the owner, who may
+		// check items or arrange the board meanwhile.
+		cols := []string{"kind", "title", "source", "spec_json", "probe", "every", "artifact_id",
+			"data_json", "data_at", "changed_at", "error", "approved_hash", "next_at", "updated_at"}
+		if err := s.db.Model(w).Select(cols).Updates(w).Error; err != nil {
+			return "", err
+		}
+		if !w.OwnerPlaced {
+			s.db.Model(w).Where("owner_placed = ?", false).Select("size", "rows").Updates(w)
+		}
 	}
 
 	out := map[string]any{"key": w.Key, "created": creating, "updated": !creating}
@@ -421,12 +440,11 @@ func (s *Service) setWidget(botID string, args map[string]any) (string, error) {
 		}
 		data = string(b)
 	}
-	before := w.ChangedAt
-	s.setData(w, data)
-	if err := s.db.Save(w).Error; err != nil {
+	changed := s.setData(w, data)
+	if err := s.db.Model(&db.DashboardWidget{}).Where("id = ?", w.ID).UpdateColumns(dataColumns(w)).Error; err != nil {
 		return "", err
 	}
-	b, _ := json.Marshal(map[string]any{"key": w.Key, "changed": w.ChangedAt != before})
+	b, _ := json.Marshal(map[string]any{"key": w.Key, "changed": changed})
 	return string(b), nil
 }
 
@@ -499,9 +517,7 @@ func (s *Service) listForBot(botID string) (string, error) {
 		}
 		out.Widgets = append(out.Widgets, v)
 	}
-	var open []db.DashboardCard
-	s.db.Where("bot_id = ? AND status = 'open'", botID).Order("priority asc, updated_at desc").Find(&open)
-	for _, c := range open {
+	for _, c := range s.openAsks(botID) {
 		blocks := c.BlocksJSON
 		if !json.Valid([]byte(blocks)) {
 			blocks = "[]"

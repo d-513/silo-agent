@@ -250,7 +250,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
 	}
 	a.Feed = feed.New(a.DB, a)
-	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations)
+	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)
@@ -266,7 +266,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Channels.Reconcile()
 	if a.DB != nil {
 		a.Automations.Reschedule()
-		a.Automations.UpgradeDashboardPrompt()
+		a.Automations.UpgradePinned()
 		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.SweepDigests(context.Background(), now) })

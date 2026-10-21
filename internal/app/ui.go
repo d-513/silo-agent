@@ -40,6 +40,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		OutputPolicy:    b.OutputPolicy,
 		Model:           b.Model,
 		FeedUnread:      a.Feed.Unread(b.ID),
+		DashboardAsks:   a.Dashboard.Open(b.ID),
 		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
@@ -103,8 +104,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	}
 	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
 	a.Skills.EnsureDefaults(id)
-	a.Automations.EnsureHeartbeat(id)
-	a.Automations.EnsureDashboard(id)
+	a.Automations.EnsurePinned(id)
 	a.Connectors.AttachDefaults(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)

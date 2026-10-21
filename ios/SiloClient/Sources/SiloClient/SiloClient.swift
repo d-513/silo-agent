@@ -57,7 +57,7 @@ public enum SiloRunEvent: Sendable {
 /// `HTTPCookieStorage.shared` for later requests on the same host.
 public final class SiloClient: Sendable {
     private let protocolClient: ProtocolClient
-    private let host: String
+    let host: String
 
     public init(host: String) {
         self.host = host
@@ -72,7 +72,7 @@ public final class SiloClient: Sendable {
         )
     }
 
-    private var ui: Silo_V1_UiClient { Silo_V1_UiClient(client: protocolClient) }
+    var ui: Silo_V1_UiClient { Silo_V1_UiClient(client: protocolClient) }
 
     // MARK: - Session
 
@@ -770,7 +770,7 @@ public final class SiloClient: Sendable {
 
     // MARK: - Helpers
 
-    private func unwrap<Output: ProtobufMessage>(_ response: ResponseMessage<Output>) throws -> Output {
+    func unwrap<Output: ProtobufMessage>(_ response: ResponseMessage<Output>) throws -> Output {
         switch response.result {
         case .success(let message):
             return message

@@ -120,6 +120,26 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `removeBotContainers`(request: Silo_V1_GetBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Bot>
 
+    /// Admin: everything Silo has on the container engine — every user's Bots
+    /// with their machines, drive and MCP sidecars, the egress gateway, and any
+    /// Silo container left over that the database no longer claims — plus each
+    /// client network and the containers it carries. Nothing the engine hosts
+    /// for anyone else is listed or touched.
+    @available(iOS 13, *)
+    func `listAdminContainers`(request: Silo_V1_ListAdminContainersRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AdminContainers>
+
+    /// Start, stop, or remove one container by the engine name the list named.
+    /// Bot machines go through the Bot's own lifecycle; everything else is one
+    /// engine action on that container. The server refuses a name the list did
+    /// not carry.
+    @available(iOS 13, *)
+    func `adminContainerAction`(request: Silo_V1_AdminContainerActionRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AdminActionResponse>
+
+    /// Remove one Bot's containers, the owner's Remove all without the
+    /// ownership check.
+    @available(iOS 13, *)
+    func `removeAdminBotContainers`(request: Silo_V1_GetBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AdminActionResponse>
+
     @available(iOS 13, *)
     func `deleteBot`(request: Silo_V1_GetBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteBotResponse>
 
@@ -161,6 +181,40 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `quoteFeedPost`(request: Silo_V1_QuoteFeedPostRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_QuoteFeedPostResponse>
+
+    /// Dashboard: declarative modular form cards curated by the Bot.
+    @available(iOS 13, *)
+    func `listDashboard`(request: Silo_V1_ListDashboardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListDashboardResponse>
+
+    @available(iOS 13, *)
+    func `markDashboardRead`(request: Silo_V1_MarkDashboardReadRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_MarkDashboardReadResponse>
+
+    @available(iOS 13, *)
+    func `dismissDashboardCard`(request: Silo_V1_DismissDashboardCardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DismissDashboardCardResponse>
+
+    @available(iOS 13, *)
+    func `submitDashboardCard`(request: Silo_V1_SubmitDashboardCardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SubmitDashboardCardResponse>
+
+    /// Widgets: what the Bot keeps on the Dashboard and code keeps current.
+    @available(iOS 13, *)
+    func `refreshWidget`(request: Silo_V1_RefreshWidgetRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DashboardWidget>
+
+    @available(iOS 13, *)
+    func `setWidgetState`(request: Silo_V1_SetWidgetStateRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DashboardWidget>
+
+    @available(iOS 13, *)
+    func `runWidgetAction`(request: Silo_V1_RunWidgetActionRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RunWidgetActionResponse>
+
+    @available(iOS 13, *)
+    func `arrangeDashboard`(request: Silo_V1_ArrangeDashboardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ArrangeDashboardResponse>
+
+    @available(iOS 13, *)
+    func `removeWidget`(request: Silo_V1_RemoveWidgetRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RemoveWidgetResponse>
+
+    /// AskDashboard hands the owner's words about the Dashboard to the Bot in
+    /// the Dashboard automation's log, with the widget they picked.
+    @available(iOS 13, *)
+    func `askDashboard`(request: Silo_V1_AskDashboardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AskDashboardResponse>
 
     /// Tunnels: named, owner-or-public URLs into services on a Bot's localhost.
     @available(iOS 13, *)
@@ -467,6 +521,32 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `saveSkill`(request: Silo_V1_SaveSkillRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SaveSkillResponse>
 
+    /// Artifacts: a card's versions and pinned files, a live app's address, and
+    /// the owner's public links.
+    @available(iOS 13, *)
+    func `listArtifacts`(request: Silo_V1_ListArtifactsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListArtifactsResponse>
+
+    @available(iOS 13, *)
+    func `deleteArtifact`(request: Silo_V1_DeleteArtifactRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteArtifactResponse>
+
+    @available(iOS 13, *)
+    func `getArtifact`(request: Silo_V1_GetArtifactRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_GetArtifactResponse>
+
+    @available(iOS 13, *)
+    func `readArtifactFile`(request: Silo_V1_ReadArtifactFileRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ReadArtifactFileResponse>
+
+    @available(iOS 13, *)
+    func `openArtifactApp`(request: Silo_V1_OpenArtifactAppRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_OpenArtifactAppResponse>
+
+    @available(iOS 13, *)
+    func `shareArtifact`(request: Silo_V1_ShareArtifactRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ArtifactShare>
+
+    @available(iOS 13, *)
+    func `listArtifactShares`(request: Silo_V1_ListArtifactSharesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListArtifactSharesResponse>
+
+    @available(iOS 13, *)
+    func `deleteArtifactShare`(request: Silo_V1_DeleteArtifactShareRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteArtifactShareResponse>
+
     @available(iOS 13, *)
     func `listChannelAdapters`(request: Silo_V1_ListChannelAdaptersRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListChannelAdaptersResponse>
 
@@ -684,6 +764,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listAdminContainers`(request: Silo_V1_ListAdminContainersRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AdminContainers> {
+        return await self.client.unary(path: "/silo.v1.UI/ListAdminContainers", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `adminContainerAction`(request: Silo_V1_AdminContainerActionRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AdminActionResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AdminContainerAction", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeAdminBotContainers`(request: Silo_V1_GetBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AdminActionResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveAdminBotContainers", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `deleteBot`(request: Silo_V1_GetBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteBotResponse> {
         return await self.client.unary(path: "/silo.v1.UI/DeleteBot", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -746,6 +841,56 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `quoteFeedPost`(request: Silo_V1_QuoteFeedPostRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_QuoteFeedPostResponse> {
         return await self.client.unary(path: "/silo.v1.UI/QuoteFeedPost", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listDashboard`(request: Silo_V1_ListDashboardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListDashboardResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListDashboard", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `markDashboardRead`(request: Silo_V1_MarkDashboardReadRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_MarkDashboardReadResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/MarkDashboardRead", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `dismissDashboardCard`(request: Silo_V1_DismissDashboardCardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DismissDashboardCardResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DismissDashboardCard", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `submitDashboardCard`(request: Silo_V1_SubmitDashboardCardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SubmitDashboardCardResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/SubmitDashboardCard", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `refreshWidget`(request: Silo_V1_RefreshWidgetRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DashboardWidget> {
+        return await self.client.unary(path: "/silo.v1.UI/RefreshWidget", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setWidgetState`(request: Silo_V1_SetWidgetStateRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DashboardWidget> {
+        return await self.client.unary(path: "/silo.v1.UI/SetWidgetState", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `runWidgetAction`(request: Silo_V1_RunWidgetActionRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RunWidgetActionResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RunWidgetAction", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `arrangeDashboard`(request: Silo_V1_ArrangeDashboardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ArrangeDashboardResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ArrangeDashboard", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeWidget`(request: Silo_V1_RemoveWidgetRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RemoveWidgetResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveWidget", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `askDashboard`(request: Silo_V1_AskDashboardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AskDashboardResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AskDashboard", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1214,6 +1359,46 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listArtifacts`(request: Silo_V1_ListArtifactsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListArtifactsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListArtifacts", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteArtifact`(request: Silo_V1_DeleteArtifactRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteArtifactResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteArtifact", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getArtifact`(request: Silo_V1_GetArtifactRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_GetArtifactResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/GetArtifact", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `readArtifactFile`(request: Silo_V1_ReadArtifactFileRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ReadArtifactFileResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ReadArtifactFile", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `openArtifactApp`(request: Silo_V1_OpenArtifactAppRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_OpenArtifactAppResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/OpenArtifactApp", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `shareArtifact`(request: Silo_V1_ShareArtifactRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ArtifactShare> {
+        return await self.client.unary(path: "/silo.v1.UI/ShareArtifact", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listArtifactShares`(request: Silo_V1_ListArtifactSharesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListArtifactSharesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListArtifactShares", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteArtifactShare`(request: Silo_V1_DeleteArtifactShareRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteArtifactShareResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteArtifactShare", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listChannelAdapters`(request: Silo_V1_ListChannelAdaptersRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListChannelAdaptersResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListChannelAdapters", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1322,6 +1507,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let resetContainer = Connect.MethodSpec(name: "ResetContainer", service: "silo.v1.UI", type: .unary)
             public static let listBotContainers = Connect.MethodSpec(name: "ListBotContainers", service: "silo.v1.UI", type: .unary)
             public static let removeBotContainers = Connect.MethodSpec(name: "RemoveBotContainers", service: "silo.v1.UI", type: .unary)
+            public static let listAdminContainers = Connect.MethodSpec(name: "ListAdminContainers", service: "silo.v1.UI", type: .unary)
+            public static let adminContainerAction = Connect.MethodSpec(name: "AdminContainerAction", service: "silo.v1.UI", type: .unary)
+            public static let removeAdminBotContainers = Connect.MethodSpec(name: "RemoveAdminBotContainers", service: "silo.v1.UI", type: .unary)
             public static let deleteBot = Connect.MethodSpec(name: "DeleteBot", service: "silo.v1.UI", type: .unary)
             public static let listMemories = Connect.MethodSpec(name: "ListMemories", service: "silo.v1.UI", type: .unary)
             public static let searchMemories = Connect.MethodSpec(name: "SearchMemories", service: "silo.v1.UI", type: .unary)
@@ -1335,6 +1523,16 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let markFeedRead = Connect.MethodSpec(name: "MarkFeedRead", service: "silo.v1.UI", type: .unary)
             public static let deleteFeedPost = Connect.MethodSpec(name: "DeleteFeedPost", service: "silo.v1.UI", type: .unary)
             public static let quoteFeedPost = Connect.MethodSpec(name: "QuoteFeedPost", service: "silo.v1.UI", type: .unary)
+            public static let listDashboard = Connect.MethodSpec(name: "ListDashboard", service: "silo.v1.UI", type: .unary)
+            public static let markDashboardRead = Connect.MethodSpec(name: "MarkDashboardRead", service: "silo.v1.UI", type: .unary)
+            public static let dismissDashboardCard = Connect.MethodSpec(name: "DismissDashboardCard", service: "silo.v1.UI", type: .unary)
+            public static let submitDashboardCard = Connect.MethodSpec(name: "SubmitDashboardCard", service: "silo.v1.UI", type: .unary)
+            public static let refreshWidget = Connect.MethodSpec(name: "RefreshWidget", service: "silo.v1.UI", type: .unary)
+            public static let setWidgetState = Connect.MethodSpec(name: "SetWidgetState", service: "silo.v1.UI", type: .unary)
+            public static let runWidgetAction = Connect.MethodSpec(name: "RunWidgetAction", service: "silo.v1.UI", type: .unary)
+            public static let arrangeDashboard = Connect.MethodSpec(name: "ArrangeDashboard", service: "silo.v1.UI", type: .unary)
+            public static let removeWidget = Connect.MethodSpec(name: "RemoveWidget", service: "silo.v1.UI", type: .unary)
+            public static let askDashboard = Connect.MethodSpec(name: "AskDashboard", service: "silo.v1.UI", type: .unary)
             public static let listTunnels = Connect.MethodSpec(name: "ListTunnels", service: "silo.v1.UI", type: .unary)
             public static let createTunnel = Connect.MethodSpec(name: "CreateTunnel", service: "silo.v1.UI", type: .unary)
             public static let updateTunnel = Connect.MethodSpec(name: "UpdateTunnel", service: "silo.v1.UI", type: .unary)
@@ -1428,6 +1626,14 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listSkillFiles = Connect.MethodSpec(name: "ListSkillFiles", service: "silo.v1.UI", type: .unary)
             public static let readSkillFile = Connect.MethodSpec(name: "ReadSkillFile", service: "silo.v1.UI", type: .unary)
             public static let saveSkill = Connect.MethodSpec(name: "SaveSkill", service: "silo.v1.UI", type: .unary)
+            public static let listArtifacts = Connect.MethodSpec(name: "ListArtifacts", service: "silo.v1.UI", type: .unary)
+            public static let deleteArtifact = Connect.MethodSpec(name: "DeleteArtifact", service: "silo.v1.UI", type: .unary)
+            public static let getArtifact = Connect.MethodSpec(name: "GetArtifact", service: "silo.v1.UI", type: .unary)
+            public static let readArtifactFile = Connect.MethodSpec(name: "ReadArtifactFile", service: "silo.v1.UI", type: .unary)
+            public static let openArtifactApp = Connect.MethodSpec(name: "OpenArtifactApp", service: "silo.v1.UI", type: .unary)
+            public static let shareArtifact = Connect.MethodSpec(name: "ShareArtifact", service: "silo.v1.UI", type: .unary)
+            public static let listArtifactShares = Connect.MethodSpec(name: "ListArtifactShares", service: "silo.v1.UI", type: .unary)
+            public static let deleteArtifactShare = Connect.MethodSpec(name: "DeleteArtifactShare", service: "silo.v1.UI", type: .unary)
             public static let listChannelAdapters = Connect.MethodSpec(name: "ListChannelAdapters", service: "silo.v1.UI", type: .unary)
             public static let listBotChannels = Connect.MethodSpec(name: "ListBotChannels", service: "silo.v1.UI", type: .unary)
             public static let createChannel = Connect.MethodSpec(name: "CreateChannel", service: "silo.v1.UI", type: .unary)

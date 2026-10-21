@@ -174,17 +174,28 @@ func (s *Service) MarkFeedRead(ctx context.Context, req *connect.Request[v1.Mark
 		return nil, err
 	}
 	now := time.Now()
-	s.db.Model(&db.FeedPost{}).Where("bot_id = ? AND read_at IS NULL", req.Msg.GetBotId()).Update("read_at", now)
-	s.db.Model(&db.DashboardCard{}).Where("bot_id = ? AND status = 'open' AND read_at IS NULL", req.Msg.GetBotId()).Update("read_at", now)
+	s.MarkRead(req.Msg.GetBotId(), now)
 	return connect.NewResponse(&v1.MarkFeedReadResponse{}), nil
+}
+
+// MarkRead counts every post of the Bot read as of now.
+func (s *Service) MarkRead(botID string, now time.Time) {
+	s.db.Model(&db.FeedPost{}).Where("bot_id = ? AND read_at IS NULL", botID).Update("read_at", now)
+}
+
+// UnreadPosts are the newest posts the owner has not read, at most n.
+func (s *Service) UnreadPosts(botID string, n int) []*v1.FeedPost {
+	var posts []db.FeedPost
+	s.db.Where("bot_id = ? AND read_at IS NULL", botID).Order("created_at desc").Limit(n).Find(&posts)
+	out := make([]*v1.FeedPost, len(posts))
+	for i := range posts {
+		out[i] = Proto(&posts[i])
+	}
+	return out
 }
 
 func (s *Service) ownPost(ctx context.Context, botID, id string) (*db.FeedPost, error) {
 	return access.OwnBotRow[db.FeedPost](ctx, s.db, botID, id, "feed post")
-}
-
-func (s *Service) ownCard(ctx context.Context, botID, id string) (*db.DashboardCard, error) {
-	return access.OwnBotRow[db.DashboardCard](ctx, s.db, botID, id, "dashboard card")
 }
 
 func (s *Service) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error) {
@@ -209,24 +220,36 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 	if title == "" {
 		title = textx.FirstLine(p.Body)
 	}
-	now := time.Now()
-	c := db.Chat{ID: ids.New(), BotID: p.BotID, Title: textx.ClipRunes("Re: "+strings.TrimLeft(title, "# "), feedTitleMax), CreatedAt: now, UpdatedAt: now}
-	if err := s.db.Create(&c).Error; err != nil {
-		return nil, err
-	}
-	r := db.Run{ID: ids.New(), BotID: p.BotID, ChatID: c.ID, Origin: "feed", Status: "done", CreatedAt: now}
-	if err := s.db.Create(&r).Error; err != nil {
-		return nil, err
-	}
 	body := p.Body
 	if p.Title != "" {
 		body = "**" + p.Title + "**\n\n" + body
 	}
-	// CreatedAt is the post's time: history frames the quote with when it was posted.
-	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: QuoteKind, Body: body, Tool: feedLabel(p), Zone: zone.OfBot(s.db, p.BotID).String(), CreatedAt: p.CreatedAt}
-	if err := s.db.Create(&ev).Error; err != nil {
+	// The quote keeps the post's time: history frames it with when it was posted.
+	c, err := QuoteChat(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), body, feedLabel(p), p.CreatedAt)
+	if err != nil {
 		return nil, err
 	}
-	s.db.Model(p).Update("read_at", now)
-	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(&c)}), nil
+	s.db.Model(p).Update("read_at", time.Now())
+	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(c)}), nil
+}
+
+// QuoteChat opens a web chat whose only context is a quote: one finished run
+// holding a QuoteKind event (body = what is quoted, tool = where it came from,
+// at = when it was written). The human's next message reads as a reply to it.
+// The Feed and the Dashboard both open chats this way.
+func QuoteChat(gdb *gorm.DB, botID, title, quote, label string, at time.Time) (*db.Chat, error) {
+	now := time.Now()
+	c := db.Chat{ID: ids.New(), BotID: botID, Title: textx.ClipRunes(strings.TrimLeft(title, "# "), feedTitleMax), CreatedAt: now, UpdatedAt: now}
+	if err := gdb.Create(&c).Error; err != nil {
+		return nil, err
+	}
+	r := db.Run{ID: ids.New(), BotID: botID, ChatID: c.ID, Origin: "feed", Status: "done", CreatedAt: now}
+	if err := gdb.Create(&r).Error; err != nil {
+		return nil, err
+	}
+	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: QuoteKind, Body: quote, Tool: label, Zone: zone.OfBot(gdb, botID).String(), CreatedAt: at}
+	if err := gdb.Create(&ev).Error; err != nil {
+		return nil, err
+	}
+	return &c, nil
 }

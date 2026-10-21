@@ -260,6 +260,30 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     set {body = .restore(newValue)}
   }
 
+  public var artifactPin: Silo_V1_ArtifactPinCmd {
+    get {
+      if case .artifactPin(let v)? = body {return v}
+      return Silo_V1_ArtifactPinCmd()
+    }
+    set {body = .artifactPin(newValue)}
+  }
+
+  public var artifactRead: Silo_V1_ArtifactReadCmd {
+    get {
+      if case .artifactRead(let v)? = body {return v}
+      return Silo_V1_ArtifactReadCmd()
+    }
+    set {body = .artifactRead(newValue)}
+  }
+
+  public var artifactForget: Silo_V1_ArtifactForgetCmd {
+    get {
+      if case .artifactForget(let v)? = body {return v}
+      return Silo_V1_ArtifactForgetCmd()
+    }
+    set {body = .artifactForget(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -291,6 +315,9 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     case changeFiles(Silo_V1_ChangeFilesCmd)
     case changePatch(Silo_V1_ChangePatchCmd)
     case restore(Silo_V1_RestoreCmd)
+    case artifactPin(Silo_V1_ArtifactPinCmd)
+    case artifactRead(Silo_V1_ArtifactReadCmd)
+    case artifactForget(Silo_V1_ArtifactForgetCmd)
 
   }
 
@@ -689,6 +716,70 @@ public nonisolated struct Silo_V1_RestoreCmd: Sendable {
   fileprivate var _limits: Silo_V1_HistoryLimits? = nil
 }
 
+/// ArtifactPinCmd copies a workspace file or folder into the Bot's artifact
+/// store (/var/lib/silo/artifacts, outside the workspace): content-addressed
+/// blobs, a folder as a manifest of them. The pin id is the sha256 of the file
+/// or of the manifest, so the control plane can check every read. It answers
+/// JSON: the id, what was pinned, a card preview, and any ids the store's
+/// budget evicted. A file or folder over the caps is not pinned (too_large).
+public nonisolated struct Silo_V1_ArtifactPinCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var path: String = String()
+
+  /// Pin a single file as a one-entry folder (a one-file app).
+  public var asTree: Bool = false
+
+  /// A folder must hold one of these at its root (SKILL.md, index.html).
+  public var treeRequires: [String] = []
+
+  public var maxFileBytes: Int64 = 0
+
+  public var maxTreeFiles: Int32 = 0
+
+  public var maxTreeBytes: Int64 = 0
+
+  /// The store's budget: past it the oldest pins go (never this one).
+  public var maxStoreBytes: Int64 = 0
+
+  /// Make the card preview: a text excerpt or a small JPEG.
+  public var preview: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ArtifactReadCmd reads one blob of the artifact store by its sha256. The
+/// answer is JSON with the bytes base64-encoded, never masked: the control
+/// plane hashes them against the id it asked for.
+public nonisolated struct Silo_V1_ArtifactReadCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ArtifactForgetCmd removes pins; blobs no remaining pin uses go with them.
+public nonisolated struct Silo_V1_ArtifactForgetCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ids: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open
 /// a Tunnel stream for it, named conn_id. It gets no CmdDone: the stream is the
 /// answer.
@@ -1031,7 +1122,7 @@ fileprivate nonisolated let _protobuf_package = "silo.v1"
 
 nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Cmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0\u{1}restore\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0\u{1}restore\0\u{3}artifact_pin\0\u{3}artifact_read\0\u{3}artifact_forget\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1405,6 +1496,45 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
           self.body = .restore(v)
         }
       }()
+      case 31: try {
+        var v: Silo_V1_ArtifactPinCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .artifactPin(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .artifactPin(v)
+        }
+      }()
+      case 32: try {
+        var v: Silo_V1_ArtifactReadCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .artifactRead(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .artifactRead(v)
+        }
+      }()
+      case 33: try {
+        var v: Silo_V1_ArtifactForgetCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .artifactForget(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .artifactForget(v)
+        }
+      }()
       default: break
       }
     }
@@ -1536,6 +1666,18 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
     case .restore?: try {
       guard case .restore(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+    }()
+    case .artifactPin?: try {
+      guard case .artifactPin(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
+    }()
+    case .artifactRead?: try {
+      guard case .artifactRead(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+    }()
+    case .artifactForget?: try {
+      guard case .artifactForget(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 33)
     }()
     default: break
     }
@@ -2368,6 +2510,131 @@ nonisolated extension Silo_V1_RestoreCmd: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs._limits != rhs._limits {return false}
     if lhs.noteBefore != rhs.noteBefore {return false}
     if lhs.note != rhs.note {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ArtifactPinCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ArtifactPinCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}as_tree\0\u{3}tree_requires\0\u{3}max_file_bytes\0\u{3}max_tree_files\0\u{3}max_tree_bytes\0\u{3}max_store_bytes\0\u{1}preview\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.asTree) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.treeRequires) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.maxFileBytes) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self.maxTreeFiles) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.maxTreeBytes) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.maxStoreBytes) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.preview) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if self.asTree != false {
+      try visitor.visitSingularBoolField(value: self.asTree, fieldNumber: 2)
+    }
+    if !self.treeRequires.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.treeRequires, fieldNumber: 3)
+    }
+    if self.maxFileBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxFileBytes, fieldNumber: 4)
+    }
+    if self.maxTreeFiles != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxTreeFiles, fieldNumber: 5)
+    }
+    if self.maxTreeBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxTreeBytes, fieldNumber: 6)
+    }
+    if self.maxStoreBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxStoreBytes, fieldNumber: 7)
+    }
+    if self.preview != false {
+      try visitor.visitSingularBoolField(value: self.preview, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ArtifactPinCmd, rhs: Silo_V1_ArtifactPinCmd) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.asTree != rhs.asTree {return false}
+    if lhs.treeRequires != rhs.treeRequires {return false}
+    if lhs.maxFileBytes != rhs.maxFileBytes {return false}
+    if lhs.maxTreeFiles != rhs.maxTreeFiles {return false}
+    if lhs.maxTreeBytes != rhs.maxTreeBytes {return false}
+    if lhs.maxStoreBytes != rhs.maxStoreBytes {return false}
+    if lhs.preview != rhs.preview {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ArtifactReadCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ArtifactReadCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ArtifactReadCmd, rhs: Silo_V1_ArtifactReadCmd) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ArtifactForgetCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ArtifactForgetCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.ids) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ids.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.ids, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ArtifactForgetCmd, rhs: Silo_V1_ArtifactForgetCmd) -> Bool {
+    if lhs.ids != rhs.ids {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

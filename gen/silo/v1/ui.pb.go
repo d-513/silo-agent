@@ -2090,7 +2090,9 @@ type Bot struct {
 	OutputPolicy string `protobuf:"bytes,17,opt,name=output_policy,json=outputPolicy,proto3" json:"output_policy,omitempty"`
 	// AuditUnseen counts audit lines flagged for a human that the owner has not
 	// opened the Bot's Audit tab over yet.
-	AuditUnseen   int32 `protobuf:"varint,18,opt,name=audit_unseen,json=auditUnseen,proto3" json:"audit_unseen,omitempty"`
+	AuditUnseen int32 `protobuf:"varint,18,opt,name=audit_unseen,json=auditUnseen,proto3" json:"audit_unseen,omitempty"`
+	// DashboardAsks counts the Dashboard asks waiting for the owner.
+	DashboardAsks int32 `protobuf:"varint,19,opt,name=dashboard_asks,json=dashboardAsks,proto3" json:"dashboard_asks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2240,6 +2242,13 @@ func (x *Bot) GetOutputPolicy() string {
 func (x *Bot) GetAuditUnseen() int32 {
 	if x != nil {
 		return x.AuditUnseen
+	}
+	return 0
+}
+
+func (x *Bot) GetDashboardAsks() int32 {
+	if x != nil {
+		return x.DashboardAsks
 	}
 	return 0
 }
@@ -23247,7 +23256,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x83\x04\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xaa\x04\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -23267,7 +23276,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10time_zone_pinned\x18\x0f \x01(\bR\x0etimeZonePinned\x12\x1a\n" +
 	"\blanguage\x18\x10 \x01(\tR\blanguage\x12#\n" +
 	"\routput_policy\x18\x11 \x01(\tR\foutputPolicy\x12!\n" +
-	"\faudit_unseen\x18\x12 \x01(\x05R\vauditUnseenJ\x04\b\t\x10\n" +
+	"\faudit_unseen\x18\x12 \x01(\x05R\vauditUnseen\x12%\n" +
+	"\x0edashboard_asks\x18\x13 \x01(\x05R\rdashboardAsksJ\x04\b\t\x10\n" +
 	"\"\x11\n" +
 	"\x0fListBotsRequest\"4\n" +
 	"\x10ListBotsResponse\x12 \n" +

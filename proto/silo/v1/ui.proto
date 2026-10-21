@@ -504,6 +504,8 @@ message Bot {
   // AuditUnseen counts audit lines flagged for a human that the owner has not
   // opened the Bot's Audit tab over yet.
   int32 audit_unseen = 18;
+  // DashboardAsks counts the Dashboard asks waiting for the owner.
+  int32 dashboard_asks = 19;
 }
 
 message ListBotsRequest {}

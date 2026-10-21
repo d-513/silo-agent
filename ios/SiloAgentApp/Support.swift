@@ -8,21 +8,29 @@ enum BotRoute: Hashable {
     case page(BotTab)
 }
 
-/// The Bot pages. `automations`, `memories` and `feed` sit beside the chats list on web; the
-/// rest are the tab strip. Desktop stays web-only (see `ios/todo_skipped.md`).
+/// The Bot pages. The conversation-side pages (Dashboard … Feed) sit beside the chats list on web;
+/// Files, Changes and Mail are the machine rail's panes; the rest are Customize and Settings.
+/// Desktop and Console stay web-only (see `ios/todo_skipped.md`).
 enum BotTab: String, CaseIterable, Identifiable {
     case chat
+    case dashboard
     case automations
+    case artifacts
     case memories
+    case knowledge
     case feed
     case desktop
     case files
+    case changes
+    case mail
     case drives
     case connectors
     case channels
     case skills
     case secrets
     case rules
+    case audit
+    case tunnels
     case container
     case settings
 
@@ -31,17 +39,24 @@ enum BotTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .chat: return "Chat"
+        case .dashboard: return "Dashboard"
         case .automations: return "Automations"
+        case .artifacts: return "Artifacts"
         case .memories: return "Memories"
+        case .knowledge: return "Knowledge"
         case .feed: return "Feed"
         case .drives: return "Drives"
         case .desktop: return "Desktop"
         case .files: return "Files"
+        case .changes: return "Changes"
+        case .mail: return "Mail"
         case .connectors: return "Connectors"
         case .channels: return "Channels"
         case .skills: return "Skills"
         case .secrets: return "Secrets"
         case .rules: return "Rules"
+        case .audit: return "Audit"
+        case .tunnels: return "Tunnels"
         case .container: return "Containers"
         case .settings: return "Settings"
         }
@@ -50,17 +65,24 @@ enum BotTab: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right"
+        case .dashboard: return "square.grid.2x2"
         case .automations: return "clock.arrow.circlepath"
+        case .artifacts: return "shippingbox.and.arrow.backward"
         case .memories: return "brain"
+        case .knowledge: return "text.book.closed"
         case .feed: return "tray.full"
         case .drives: return "externaldrive"
         case .desktop: return "display"
         case .files: return "folder"
+        case .changes: return "clock.arrow.trianglehead.counterclockwise.rotate.90"
+        case .mail: return "envelope"
         case .connectors: return "puzzlepiece.extension"
         case .channels: return "antenna.radiowaves.left.and.right"
         case .skills: return "book"
         case .secrets: return "key"
         case .rules: return "checklist"
+        case .audit: return "list.bullet.rectangle"
+        case .tunnels: return "network"
         case .container: return "shippingbox"
         case .settings: return "slider.horizontal.3"
         }

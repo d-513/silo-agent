@@ -33,26 +33,33 @@ struct BotHub: View {
                 }
 
                 Section {
-                    row(.automations, Theme.cobalt)
+                    row(.dashboard, Theme.cobalt, badge: bot.dashboardAsks)
+                    row(.automations, Theme.tile(.teal))
+                    row(.artifacts, Theme.tile(.orange))
                     row(.memories, Theme.tile(.purple))
+                    row(.knowledge, Theme.tile(.wine))
                     row(.feed, Theme.tile(.orange), badge: bot.feedUnread)
                 }
-                Section("Workspace") {
+                Section("Machine") {
                     row(.files, Theme.emerald)
+                    row(.changes, Theme.tile(.graphite))
                     row(.drives, Theme.tile(.teal))
+                    if !bot.mailAddress.isEmpty { row(.mail, Theme.cobalt) }
                 }
-                Section("Connect") {
+                Section("Customize") {
                     row(.connectors, Theme.tile(.purple))
-                    row(.channels, Theme.cobalt)
                     row(.skills, Theme.tile(.orange))
-                }
-                Section("Safety") {
-                    row(.secrets, Theme.tile(.graphite))
-                    row(.rules, Theme.tile(.wine))
+                    row(.channels, Theme.cobalt)
                 }
                 Section {
-                    row(.container, Theme.tile(.graphite))
                     row(.settings, Theme.tile(.graphite))
+                    row(.rules, Theme.tile(.wine))
+                    row(.secrets, Theme.tile(.graphite))
+                    row(.tunnels, Theme.tile(.teal))
+                    row(.container, Theme.tile(.graphite))
+                    row(.audit, Theme.tile(.graphite), badge: bot.auditUnseen)
+                } header: {
+                    Text("Settings")
                 } footer: {
                     Text("Desktop and Console stay on the web client.")
                 }

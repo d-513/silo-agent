@@ -27,6 +27,11 @@ public struct ArtifactInfo: Equatable, Sendable {
     public var approvalID = ""
     public var status = ""
     public var size: Int64?
+    /// The server's id for the card (empty on events from before versions) and the version shown.
+    public var artifactID = ""
+    public var version = 0
+    /// `file` or `tree` (a folder: skills and apps).
+    public var kind = ""
 }
 
 public struct AgentStatus: Equatable, Sendable {
@@ -368,9 +373,13 @@ public func foldEvents(_ events: [Silo_V1_RunEvent]) -> [Block] {
             info.approvalID = (d["approval_id"] as? String) ?? ""
             info.status = (d["status"] as? String) ?? ""
             info.size = (d["size"] as? NSNumber)?.int64Value
+            info.artifactID = (d["artifact_id"] as? String) ?? ""
+            info.version = (d["version"] as? NSNumber)?.intValue ?? 0
+            info.kind = (d["kind"] as? String) ?? ""
             let same = out.indices.reversed().first { index in
                 guard out[index].kind == .artifact, let old = out[index].artifact else { return false }
-                return (!info.approvalID.isEmpty && old.approvalID == info.approvalID)
+                return (!info.artifactID.isEmpty && old.artifactID == info.artifactID)
+                    || (!info.approvalID.isEmpty && old.approvalID == info.approvalID)
                     || (!name.isEmpty && old.name == name && old.path == info.path)
             }
             if let same {

@@ -77,6 +77,12 @@ func TestDashboardWidgetsPushedData(t *testing.T) {
 	if res := pyCall(t, h, id, "", "bot", "dashboard_list", `{}`); !strings.Contains(res.GetResultJson(), `"checked":["a"]`) {
 		t.Fatalf("list does not show the owner's state: %s", res.GetResultJson())
 	}
+	// What the Bot writes next leaves the owner's checks alone.
+	pyCall(t, h, id, "", "bot", "widget_set", `{"key":"week","data":{"items":[{"id":"a","text":"Renew the domain"},{"id":"b","text":"Pay rent"}]}}`)
+	pyCall(t, h, id, "", "bot", "widget_put", `{"key":"week","title":"This week, again"}`)
+	if wk := widgetNamed(t, h, id, "week"); wk.GetStateJson() != `{"checked":["a"]}` || wk.GetTitle() != "This week, again" || !strings.Contains(wk.GetDataJson(), "Pay rent") {
+		t.Fatalf("Bot writes lost the owner's state: %+v", wk)
+	}
 
 	// Once the owner places a widget, the Bot's size no longer moves it.
 	if _, err := h.Client.ArrangeDashboard(h.Ctx(), connect.NewRequest(&v1.ArrangeDashboardRequest{BotId: id, Places: []*v1.WidgetPlace{
@@ -99,6 +105,26 @@ func TestDashboardWidgetsPushedData(t *testing.T) {
 	}
 	if n := len(listDashboard(t, h, id).GetWidgets()); n != 0 {
 		t.Fatalf("%d widgets left", n)
+	}
+}
+
+// A stopped Bot's due probes are moved on, never run and never left at the
+// head of the sweep's window, and its widget keeps its last data and error.
+func TestDashboardSweepSkipsStoppedBots(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	id := h.CreateBot("Asleep").GetId()
+	res := pyCall(t, h, id, "", "bot", "widget_put", `{"key":"up","kind":"stat","title":"Up","every":"15m","probe":"result = {'value': 1}","data":{"value":7}}`)
+	if !strings.Contains(res.GetResultJson(), "not running") {
+		t.Fatalf("probe on a stopped Bot: %+v", res)
+	}
+	past := time.Now().Add(-time.Minute)
+	h.DB.Model(&db.DashboardWidget{}).Where("bot_id = ?", id).Updates(map[string]any{"next_at": past, "error": "earlier"})
+	h.App.Dashboard.Sweep(time.Now())
+	var w db.DashboardWidget
+	h.DB.Where("bot_id = ?", id).First(&w)
+	if w.NextAt == nil || !w.NextAt.After(time.Now()) || w.Error != "earlier" || !strings.Contains(w.DataJSON, `"value":7`) {
+		t.Fatalf("after sweep: next %v error %q data %s", w.NextAt, w.Error, w.DataJSON)
 	}
 }
 
@@ -301,6 +327,9 @@ func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
 		t.Fatalf("ListDashboard: %+v", uiList.Msg)
 	}
 	card := uiList.Msg.GetCards()[0]
+	if got, _ := h.Client.GetBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.GetId()})); got.Msg.GetDashboardAsks() != 1 {
+		t.Fatalf("the Bot row counts %d open asks", got.Msg.GetDashboardAsks())
+	}
 	if card.GetTitle() != "Workspace cleanup" || card.GetSubmitLabel() != "Apply cleanup" || !strings.Contains(card.GetBlocksJson(), "delete_tmp") {
 		t.Fatalf("card: %+v", card)
 	}

@@ -28,7 +28,9 @@ const (
 	actionTimeout = 2 * time.Minute
 	// errorRetry is the shortest wait after a failed probe.
 	errorRetry = 5 * time.Minute
-	errorMax   = 600
+	// offlineRetry is how soon a probe due on a stopped Bot is looked at again.
+	offlineRetry = 2 * time.Minute
+	errorMax     = 600
 )
 
 // busySet is the widgets whose code runs now: one run per widget at a time.
@@ -157,10 +159,14 @@ func (s *Service) refresh(ctx context.Context, w *db.DashboardWidget) error {
 			s.setData(w, data)
 		}
 	}
-	upd := map[string]any{"data_json": w.DataJSON, "data_at": w.DataAt, "changed_at": w.ChangedAt, "error": ""}
-	if err != nil && !errors.Is(err, errNotRunning) {
-		upd = map[string]any{"error": textx.ClipRunes(err.Error(), errorMax)}
-		w.Error = upd["error"].(string)
+	// A stopped machine says nothing about the probe: its last data and error
+	// stand.
+	upd := map[string]any{}
+	if err == nil {
+		upd = dataColumns(w)
+	} else if !errors.Is(err, errNotRunning) {
+		w.Error = textx.ClipRunes(err.Error(), errorMax)
+		upd["error"] = w.Error
 	}
 	if w.Every > 0 {
 		wait := time.Duration(w.Every) * time.Second
@@ -170,6 +176,9 @@ func (s *Service) refresh(ctx context.Context, w *db.DashboardWidget) error {
 		next := now.Add(wait)
 		upd["next_at"] = next
 		w.NextAt = &next
+	}
+	if len(upd) == 0 {
+		return err
 	}
 	s.db.Model(&db.DashboardWidget{}).Where("id = ?", w.ID).UpdateColumns(upd)
 	return err
@@ -184,7 +193,13 @@ func (s *Service) Sweep(now time.Time) {
 	started := 0
 	for i := range due {
 		w := due[i]
-		if started >= perTick || !s.host.Online(w.BotID) || s.busy.has(w.ID) {
+		if started >= perTick || s.busy.has(w.ID) {
+			continue
+		}
+		if !s.host.Online(w.BotID) {
+			// Moved on, so a stopped Bot's widgets cannot fill every sweep's
+			// window and starve the Bots that are up.
+			s.db.Model(&db.DashboardWidget{}).Where("id = ?", w.ID).UpdateColumn("next_at", now.Add(offlineRetry))
 			continue
 		}
 		// Claim the slot so a slow probe is not started again next tick.
@@ -218,13 +233,28 @@ func (s *Service) runAction(ctx context.Context, w *db.DashboardWidget, a action
 	if !s.busy.take(w.ID) {
 		return errors.New("this widget is busy: try again in a moment")
 	}
+	r, err := s.act(ctx, w, a, args)
+	s.busy.done(w.ID)
+	if err == nil && r == nil && strings.TrimSpace(w.Probe) != "" {
+		_ = s.refresh(ctx, w)
+	}
+	return err
+}
+
+// act runs the action's code and leaves its receipt. It answers the data the
+// code set, or nil when the widget should be probed again to show the change.
+func (s *Service) act(ctx context.Context, w *db.DashboardWidget, a action, args string) (map[string]any, error) {
 	err := s.allowed(w)
 	var r any
 	if err == nil {
 		r, err = s.runCode(ctx, w, a.Code, args, actionTimeout)
 	}
+	if errors.Is(err, errNotRunning) {
+		return nil, err // nothing ran: no receipt
+	}
 	rc := receipt{Text: a.Label, OK: err == nil, At: time.Now().Format(time.RFC3339), By: "you"}
 	upd := map[string]any{}
+	var set map[string]any
 	if err != nil {
 		rc.Text = a.Label + " failed: " + textx.ClipRunes(err.Error(), 200)
 	} else if m, ok := r.(map[string]any); ok {
@@ -234,7 +264,8 @@ func (s *Service) runAction(ctx context.Context, w *db.DashboardWidget, a action
 		if d, ok := m["data"]; ok && d != nil {
 			if data, derr := object(d, "data", dataMax); derr == nil {
 				s.setData(w, data)
-				upd["data_json"], upd["data_at"], upd["changed_at"], upd["error"] = w.DataJSON, w.DataAt, w.ChangedAt, ""
+				upd = dataColumns(w)
+				set = m
 			}
 		}
 	}
@@ -242,9 +273,5 @@ func (s *Service) runAction(ctx context.Context, w *db.DashboardWidget, a action
 	w.ReceiptJSON = string(b)
 	upd["receipt_json"] = w.ReceiptJSON
 	s.db.Model(&db.DashboardWidget{}).Where("id = ?", w.ID).UpdateColumns(upd)
-	s.busy.done(w.ID)
-	if err == nil && upd["data_json"] == nil && strings.TrimSpace(w.Probe) != "" {
-		_ = s.refresh(ctx, w)
-	}
-	return err
+	return set, err
 }

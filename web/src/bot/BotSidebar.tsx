@@ -1,12 +1,11 @@
 import { Blocks, Brain, ChevronDown, Inbox, LayoutGrid, Library, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
-import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
 import { pressClass } from "../Btn";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
 import { fullTime } from "../format";
-import { UI, type Bot, type Chat } from "../gen/silo/v1/ui_pb";
+import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
 import { Lamp, Status, StatusWord } from "../Lamp";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
@@ -20,8 +19,8 @@ import { t } from "../i18n.ts";
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
 
 // The wide layout's left column, on every page of a Bot: its name and state,
-// Dashboard and New chat at the top, the pages beside the chat, the chats
-// folded into date groups, and Settings at the foot.
+// New chat, the Dashboard heading the pages beside the chat, the chats folded
+// into date groups, and Settings at the foot.
 export function BotSidebar({
   id,
   bot,
@@ -47,8 +46,6 @@ export function BotSidebar({
 }) {
   const groups = useMemo(() => groupChats(chats), [chats]);
   const picked = useGroupsPicked();
-  const dashQ = useQuery(UI.method.listDashboard, { botId: id });
-  const openCardsCount = (dashQ.data?.cards ?? []).length;
 
   // Landing on a chat (a new one, a link, a reply that moves it to Today)
   // opens the group it sits in, so the open row is never hidden. Folding that
@@ -70,16 +67,11 @@ export function BotSidebar({
           <StatusWord status={bot.status} />
         </span>
       </div>
-      <div className="space-y-1.5 px-2 pb-3">
-        <DashboardButton
-          botId={id}
-          on={tab === "dashboard"}
-          pendingCount={pendingCount}
-          cardsCount={openCardsCount}
-        />
+      <div className="px-2 pb-3">
         <NewChat onClick={onNewChat} />
       </div>
       <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
+        <DashboardRow botId={id} on={tab === "dashboard"} needsYou={pendingCount + bot.dashboardAsks > 0} />
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
         <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
@@ -122,47 +114,25 @@ export function BotSidebar({
   );
 }
 
-// Prominent Dashboard button at the very top of the Bot sidebar, lifted like
-// New chat and showing vermilion/cobalt pills for pending approvals & cards.
-function DashboardButton({
-  botId,
-  on,
-  pendingCount,
-  cardsCount,
-}: {
-  botId: string;
-  on: boolean;
-  pendingCount: number;
-  cardsCount: number;
-}) {
+// DashboardRow heads the pages beside the chat. It is the Bot's home, so it
+// is a row like the others but set in ink where they rest in ink-2, and the
+// open one is lifted off the well as well as barred. While an approval or an
+// ask waits for the owner it ends in the Needs you lamp and word, the same
+// signal a waiting chat row shows.
+function DashboardRow({ botId, on, needsYou }: { botId: string; on: boolean; needsYou: boolean }) {
   return (
     <Link
       to="/bots/$botId/dashboard"
       params={{ botId }}
       data-tab-on={on || undefined}
-      className={`group/dash relative flex h-10 w-full items-center gap-2.5 rounded-control bg-surface pr-2.5 pl-2 text-[13.5px] font-medium text-ink shadow-card hover:shadow-float ${
-        on ? "ring-1 ring-cobalt/45" : ""
-      } ${pressClass}`}
+      className={`relative mb-1.5 flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium text-ink transition-[background-color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+        on ? "bg-surface shadow-card" : "hover:bg-pressed"
+      }`}
     >
       <ActiveBar on={on} />
-      <span
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xs transition-colors duration-[160ms] ${
-          on ? "bg-cobalt text-on-accent" : "bg-cobalt-pale text-cobalt group-hover/dash:bg-cobalt group-hover/dash:text-on-accent"
-        }`}
-      >
-        <LayoutGrid size={14} strokeWidth={2.1} />
-      </span>
+      <LayoutGrid size={15} className={`transition-colors duration-[160ms] ${on ? "text-cobalt" : ""}`} />
       <span className="min-w-0 flex-1 truncate">{t("Dashboard")}</span>
-      {pendingCount > 0 ? (
-        <span className="rise min-w-[18px] shrink-0 rounded-full bg-vermilion px-1.5 text-center font-mono text-[11px] leading-[18px] text-on-accent">
-          {pendingCount > 99 ? "99+" : pendingCount}
-        </span>
-      ) : null}
-      {cardsCount > 0 ? (
-        <span className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-on-accent">
-          {cardsCount > 99 ? "99+" : cardsCount}
-        </span>
-      ) : null}
+      {needsYou ? <Status status="needs_you" className="shrink-0" /> : null}
     </Link>
   );
 }
