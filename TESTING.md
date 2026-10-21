@@ -18,6 +18,19 @@ make e2e             # Playwright against a running `make dev` stack
 `make test` does not use `go test ./...` — that walks `data/`, where a
 container-owned Chromium profile can be unreadable from the host.
 
+**Speed.** `make test`/`test-fast` run `scripts/gotest.sh`: `internal/app`
+(~400 feature tests, each a whole control plane) is split across `SHARDS`
+(default 8) `go test` processes beside the other packages. Its tests share
+package globals (the dummy provider's scripts), so they never use
+`t.Parallel`; separate processes do not share them. A shard skips
+`TestMain`'s container sweep (`SILO_TEST_SHARD`); the script sweeps once
+before and after. `dbtest.New` pools migrated schemas per process and empties
+one (TRUNCATE, run-time tables dropped) for the next test instead of migrating
+again; a schema whose columns or indexes a test changed is dropped, and pooled
+schemas older than an hour are dropped by the next run. The harness lowers the
+scrypt cost (`auth.UseTestHashing`, from `apptest`'s `init`). A plain
+`go test ./internal/app` still works, serially.
+
 ## Tiers
 
 ### 1. Unit tests (pure packages)

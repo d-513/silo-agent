@@ -34,9 +34,16 @@ func TestMain(m *testing.M) {
 	if apptest.RunMCPHelper() {
 		os.Exit(0)
 	}
-	apptest.SweepTestContainers()
+	// A shard of scripts/gotest.sh runs beside others; the script sweeps
+	// once for all of them instead.
+	sweep := os.Getenv("SILO_TEST_SHARD") == ""
+	if sweep {
+		apptest.SweepTestContainers()
+	}
 	code := m.Run()
-	apptest.SweepTestContainers()
+	if sweep {
+		apptest.SweepTestContainers()
+	}
 	os.Exit(code)
 }
 

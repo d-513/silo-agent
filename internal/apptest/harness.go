@@ -31,6 +31,10 @@ import (
 	_ "silo.agent/internal/llm/dummy"
 )
 
+// The harness signs a user in for every test; at the real scrypt cost that
+// hashing is a large part of the suite's time.
+func init() { auth.UseTestHashing() }
+
 // H is one isolated control plane: temp data dir, its own Postgres schema, the real
 // HTTP handler on an ephemeral h2c listener, and a signed-in UI client.
 type H struct {

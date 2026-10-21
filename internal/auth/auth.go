@@ -43,12 +43,22 @@ func CookieName(hostOnly bool) string {
 
 var ErrAuth = errors.New("unauthorized")
 
+// scryptN is scrypt's cost. The hash does not record it, so every hash in a
+// process is made and checked with the same value.
+var scryptN = 1 << 15
+
+// UseTestHashing makes password hashing cheap, for test binaries only: every
+// test harness hashes and checks a password, and at the real cost that is a
+// large part of the suite's time. Hashes made after it only verify in a
+// process that called it too. Call it before anything hashes (from init).
+func UseTestHashing() { scryptN = 1 << 10 }
+
 func HashPassword(pw string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	dk, err := scrypt.Key([]byte(pw), salt, 1<<15, 8, 1, 32)
+	dk, err := scrypt.Key([]byte(pw), salt, scryptN, 8, 1, 32)
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +91,7 @@ func CheckPassword(hash, pw string) bool {
 	if !ok {
 		salt, want = make([]byte, 16), make([]byte, 32)
 	}
-	dk, err := scrypt.Key([]byte(pw), salt, 1<<15, 8, 1, 32)
+	dk, err := scrypt.Key([]byte(pw), salt, scryptN, 8, 1, 32)
 	if err != nil {
 		return false
 	}

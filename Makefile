@@ -128,11 +128,11 @@ attach: ## Attach to the running dev tmux session
 
 ## --- quality ---------------------------------------------------------------
 
-test: db-check ## Run the full Go suite (includes the real-container tier; needs images)
-	$(GO) test ./cmd/... ./internal/...
+test: db-check ## Run the full Go suite (includes the real-container tier; needs images). SHARDS=n splits internal/app
+	GO=$(GO) scripts/gotest.sh
 
 test-fast: db-check ## Run the Go suite without the container tier (still needs make db-up)
-	SILO_SKIP_CONTAINERS=1 $(GO) test ./cmd/... ./internal/...
+	SILO_SKIP_CONTAINERS=1 GO=$(GO) scripts/gotest.sh
 
 test-containers: ## Run only the real-container tests and fail if Podman is missing
 	SILO_REQUIRE_CONTAINERS=1 $(GO) test ./internal/app -run 'TestContainer' -count=1 -v

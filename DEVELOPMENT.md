@@ -51,7 +51,7 @@ Run `make help` to list everything.
 | `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433` + Lightpanda MCP on `:9223` + smtp4dev on `:1025`/`:1143`/`:8025` + Radicale on `:5232` + Dex (OIDC) on `:5556` |
 | `make db-psql`       | `psql` on the dev database                                        |
 | `make db-reset`      | Drop the Postgres volume — every user, bot, chat (asks first)     |
-| `make test`          | Full Go suite: units + feature tests + real-container tier        |
+| `make test`          | Full Go suite: units + feature tests + real-container tier (`internal/app` in `SHARDS`=8 parallel processes) |
 | `make test-fast`     | Go suite without the container tier (still needs `make db-up`)    |
 | `make test-containers` | Only the real Bot-image tests; fails if Podman is missing       |
 | `make test-integration` | Go client integration tests against a running CP              |
