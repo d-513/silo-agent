@@ -32,7 +32,11 @@ func TestAskOwnerInChat(t *testing.T) {
 	id := h.CreateBot("Asker").GetId()
 	main := h.FirstChat(id)
 	run, _ := h.Send(id, main, "Test_ask1_Input")
-	h.WaitRun(run)
+	for _, ev := range h.WaitRun(run) {
+		if ev.Kind == "assistant" || ev.Kind == "section" {
+			t.Fatalf("the Bot kept talking after its question: %q", ev.Body)
+		}
+	}
 
 	var c db.DashboardCard
 	h.DB.Where("bot_id = ?", id).First(&c)

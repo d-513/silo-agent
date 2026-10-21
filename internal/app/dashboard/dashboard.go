@@ -60,6 +60,8 @@ type Host interface {
 	// CardChanged sends the chat's viewers a card as it stands now: a
 	// transient event, never persisted.
 	CardChanged(botID, chatID string, card *v1.DashboardCard)
+	// EndTurn ends the run after its current turn's tool calls.
+	EndTurn(runID string)
 	// Proactive reports whether the Bot may write into its main chat on its
 	// own, from a run nobody started there (its proactivity setting).
 	Proactive(botID string) bool

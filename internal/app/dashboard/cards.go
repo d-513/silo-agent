@@ -102,6 +102,8 @@ func (s *Service) askOwner(ctx context.Context, bot *db.Bot, runID string, args 
 	case webChat(&ch):
 		s.db.Model(&db.DashboardCard{}).Where("id = ?", c.ID).Update("chat_id", ch.ID)
 		s.host.Emit(bot.ID, ch.ID, runID, CardKind, c.ID, "")
+		// The question is the turn's last word: the owner answers it.
+		s.host.EndTurn(runID)
 		shown = "this chat"
 	default:
 		main, idle := chats.MainIdle(s.db, bot.ID, s.host.LiveRunID)
@@ -116,7 +118,11 @@ func (s *Service) askOwner(ctx context.Context, bot *db.Bot, runID string, args 
 		s.host.Shown(bot.ID, main.ID, ev)
 		shown = "the main chat"
 	}
-	out, _ := json.Marshal(map[string]any{"id": c.ID, "shown_in": shown, "note": "the owner's answer comes back as their next message"})
+	note := "it waits for the owner; carry on with your task"
+	if shown == "this chat" {
+		note = "shown to the owner; your turn ends here and their answer arrives as their next message"
+	}
+	out, _ := json.Marshal(map[string]any{"id": c.ID, "shown_in": shown, "note": note})
 	return string(out), nil
 }
 

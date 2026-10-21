@@ -650,6 +650,12 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 			}
 		}
 		msgs = append(msgs, shown...)
+		// A tool handed the conversation to the human: their answer starts
+		// the next run, unless a message is already waiting for this one.
+		if a.turnEnded(runID) && a.closeInbox(lr, runID) {
+			a.finish(botID, chatID, runID, "done")
+			return
+		}
 	}
 }
 

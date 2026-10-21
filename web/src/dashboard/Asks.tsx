@@ -406,7 +406,9 @@ export function AskSlip({
         <Btn kind="ghost" size="sm" disabled={busy !== ""} onClick={() => void act("dismiss", () => onDismiss(card, false))}>
           {t("Not now")}
         </Btn>
-        {card.key ? (
+        {/* A topic the Bot keeps raising on the board can be turned off; in
+            a chat the owner just answers or puts it away. */}
+        {card.key && place === "board" ? (
           <button
             type="button"
             disabled={busy !== ""}

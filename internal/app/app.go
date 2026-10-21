@@ -131,6 +131,10 @@ type liveRun struct {
 	// at the inbox: a message that arrives after it starts a new run instead
 	// of waiting in an inbox nobody reads.
 	closed bool
+	// endTurn is set by a tool that hands the conversation to the human (a
+	// question card in this chat): the run ends after the current turn's
+	// calls instead of asking the model again. Under App.mu.
+	endTurn bool
 	// step is the tool the run is in now, for the Bot's status line; "" between
 	// tools. Read and written under App.mu.
 	step string
