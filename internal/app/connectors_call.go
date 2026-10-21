@@ -37,6 +37,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 		Surface: tool.Python, Bot: bot, ChatID: a.ChatOfRun(runID), RunID: runID,
 		Def: def, Args: map[string]any{}, ArgsJSON: argsJSON,
 	}
+	call.Subagent = call.ChatID != "" && a.subagentOfChat(call.ChatID) != nil
 	// A local tool's arguments were held back by the worker, and a connector
 	// reads its own from the raw JSON, so a bad payload is theirs to refuse.
 	_ = json.Unmarshal([]byte(argsJSON), &call.Args)
@@ -48,7 +49,7 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	a.Emit(bot.ID, call.ChatID, runID, "call", title, key)
 	res, err := a.Tools.Run(ctx, call)
 	if err != nil {
-		a.emitCallDone(bot.ID, runID, key, err.Error())
+		a.emitCallDone(bot.ID, runID, key, textx.Cap(a.Mask(bot.ID).Apply(err.Error()), callResultMax))
 		return fail(err)
 	}
 	out := a.Mask(bot.ID).Apply(res.Text)

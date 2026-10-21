@@ -135,8 +135,10 @@ type Call struct {
 	// ChatID and RunID are empty for a call that belongs to no live run.
 	ChatID string
 	RunID  string
-	Def    *Def
-	Args   map[string]any
+	// Subagent is set for a call a subagent's run made: LeadOnly tools refuse.
+	Subagent bool
+	Def      *Def
+	Args     map[string]any
 	// ArgsJSON is the arguments as they arrived, for the approval slip.
 	ArgsJSON string
 }
@@ -324,6 +326,14 @@ func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 	}
 	if !e.exposed(d, c.Surface) {
 		return Result{}, fmt.Errorf("%s is not available here", d.Name)
+	}
+	// What is not offered cannot be called by name either: a subagent's
+	// model or code reaching a lead's tool, or a feature that is off.
+	if c.Subagent && d.LeadOnly {
+		return Result{}, fmt.Errorf("%s: only the lead agent can use it", d.Name)
+	}
+	if d.Enabled != nil && c.Bot != nil && !d.Enabled(c.Bot.ID) {
+		return Result{}, fmt.Errorf("%s is not enabled for this Bot", d.Name)
 	}
 	if c.Args == nil {
 		c.Args = map[string]any{}

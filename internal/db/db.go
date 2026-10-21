@@ -232,8 +232,10 @@ type RunEvent struct {
 	ID string `gorm:"primaryKey"`
 	// Seq is the insert order. Postgres timestamps are microsecond and IDs are
 	// random, so events of one run can tie on CreatedAt; replay orders by Seq.
-	Seq   int64  `gorm:"autoIncrement;uniqueIndex"`
-	RunID string `gorm:"index"`
+	Seq int64 `gorm:"autoIncrement;uniqueIndex;index:idx_run_events_run_seq,priority:2"`
+	// (run_id, seq) serves every read of a run's log in order and the
+	// memory collector's "events after the watermark".
+	RunID string `gorm:"index;index:idx_run_events_run_seq,priority:1"`
 	Kind  string
 	Body  string
 	Tool  string

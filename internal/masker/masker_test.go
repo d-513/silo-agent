@@ -35,3 +35,13 @@ func contains(s, sub string) bool {
 		return false
 	})()))
 }
+
+func TestOverlappingSecretsMaskWhole(t *testing.T) {
+	m := New()
+	m.AddMany([]string{"abcdefgh", "abcdefgh-longer-secret"})
+	for range 20 {
+		if got := m.Apply("token=abcdefgh-longer-secret;"); got != "token=***;" {
+			t.Fatalf("got %q", got)
+		}
+	}
+}

@@ -250,8 +250,9 @@ func trimTranscript(entries []string, keepFirst bool, budget int) string {
 
 // compact summarizes msgs with the conversation's model and records the
 // compaction. It returns the replacement history: one user turn holding the
-// summary, ending in a continue note when a task is mid-flight.
-func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID string, msgs []llm.Message, window int) ([]llm.Message, error) {
+// summary, ending in a continue note when a task is mid-flight (midTask: the
+// run has already had a model turn).
+func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID string, msgs []llm.Message, window int, midTask bool) ([]llm.Message, error) {
 	if len(msgs) == 0 {
 		return nil, errors.New("nothing to compact")
 	}
@@ -277,8 +278,10 @@ func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID
 	if summary == "" {
 		return nil, errors.New("compaction failed: the model returned an empty summary")
 	}
-	// A history that does not end on the human's turn is a task in flight.
-	midTask := reason == compactAuto && msgs[len(msgs)-1].Role != llm.RoleUser
+	// A history that does not end on the human's turn is a task in flight
+	// too (a turn the run did not start, such as a subagent report, reads
+	// as the human's).
+	midTask = reason == compactAuto && (midTask || msgs[len(msgs)-1].Role != llm.RoleUser)
 	meta, _ := json.Marshal(compactionMeta{After: after, MidTask: midTask})
 	a.emitMeta(botID, chatID, runID, compactionKind, summary, reason, string(meta))
 	out := []llm.Message{{Role: llm.RoleUser, Text: compactionText(summary)}}

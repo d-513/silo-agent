@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"silo.agent/internal/app/chats"
@@ -80,9 +81,17 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		cp := b
 		a.ensureRunningBg(&cp)
 	}
-	inbox := make(chan inboxMsg, 32)
-	done := make(chan struct{})
-	go a.runLoop(req, runID, inbox, done)
+	// Tracked before the goroutine starts, so a caller that releases the
+	// conversation lock right after this already sees the run as live.
+	ctx, cancel := runContext(a.cfg().Runs.Timeout())
+	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: req.ChatID}
+	if req.Origin != nil && req.Origin.Automation != nil {
+		lr.pySession = runID
+	}
+	a.mu.Lock()
+	a.runs[runID] = lr
+	a.mu.Unlock()
+	go a.runLoop(ctx, req, runID, lr)
 	return runID, nil
 }
 
@@ -121,6 +130,9 @@ func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from strin
 	}
 	lr.injecting.Lock()
 	defer lr.injecting.Unlock()
+	if lr.closed {
+		return false
+	}
 	id, at, zn := ids.New(), time.Now(), a.botZone(botID)
 	select {
 	case lr.inbox <- inboxMsg{text: text, ex: ex, id: id, at: at, zone: zn}:
@@ -140,7 +152,9 @@ func (a *App) dbSaveBotWorking(botID, text string) {
 // drainInbox appends the messages injected since the last turn. Each one's
 // event moves to this point of the run log, so the log's order is the order
 // the model read things in and a later run replays the message right here.
-func (a *App) drainInbox(lr *liveRun, msgs []llm.Message) []llm.Message {
+// fold joins the first one to the last message, a compaction summary, the way
+// replay folds the message after a summary into it.
+func (a *App) drainInbox(lr *liveRun, msgs []llm.Message, fold bool) []llm.Message {
 	lr.injecting.Lock()
 	var got []inboxMsg
 	for more := true; more; {
@@ -154,10 +168,30 @@ func (a *App) drainInbox(lr *liveRun, msgs []llm.Message) []llm.Message {
 	lr.injecting.Unlock()
 	for _, m := range got {
 		a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
-		text := userTurnText(a.kept(lr.botID, m.text), a.userMeta(lr.botID, m.ex))
-		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: stampUserText(text, m.at, m.zone)})
+		text := stampUserText(userTurnText(a.kept(lr.botID, m.text), a.userMeta(lr.botID, m.ex)), m.at, m.zone)
+		if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
+			msgs[n-1].Text += "\n\n" + text
+		} else {
+			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
+		}
+		fold = false
 	}
 	return msgs
+}
+
+// closeInbox ends the run's inbox when it is empty, and reports whether it did.
+// From then on the run is no longer the conversation's live run, so a message
+// sent while it finishes starts a new one instead of being lost in an inbox
+// nobody will read. A message that is already waiting keeps the run going.
+func (a *App) closeInbox(lr *liveRun, runID string) bool {
+	lr.injecting.Lock()
+	defer lr.injecting.Unlock()
+	if len(lr.inbox) > 0 {
+		return false
+	}
+	lr.closed = true
+	a.untrackRun(runID)
+	return true
 }
 
 // turnResult is one streamed assistant turn: the assembled message plus any
@@ -200,6 +234,8 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	var usage llm.Usage
 	var signed []llm.ThinkingBlock
 	saw := false
+	pieces := &coalescer{emit: func(kind, body, tool string) { a.Emit(botID, chatID, runID, kind, body, tool) }}
+	defer pieces.flush()
 
 	for stream.Next() {
 		ev := stream.Event()
@@ -210,7 +246,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			}
 			saw = true
 			text.WriteString(ev.Text)
-			a.Emit(botID, chatID, runID, "chunk", ev.Text, "")
+			pieces.add("chunk", ev.Text, "")
 			sections = append(sections, sp.Write(ev.Text)...)
 		case llm.EventReasoning:
 			if ev.Text == "" {
@@ -218,7 +254,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			}
 			saw = true
 			think.WriteString(ev.Text)
-			a.Emit(botID, chatID, runID, "thinking_chunk", ev.Text, "")
+			pieces.add("thinking_chunk", ev.Text, "")
 		case llm.EventToolCallStart:
 			saw = true
 			st := touch(ev.Index)
@@ -229,6 +265,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 				st.call.Name = ev.ToolName
 			}
 			if st.call.Name != "" && !st.notified {
+				pieces.flush()
 				a.Emit(botID, chatID, runID, "tool", "", st.call.Name)
 				st.notified = true
 			}
@@ -236,7 +273,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			saw = true
 			st := touch(ev.Index)
 			st.call.Arguments += ev.Text
-			a.Emit(botID, chatID, runID, "tool_args_chunk", ev.Text, st.call.Name)
+			pieces.add("tool_args_chunk", ev.Text, st.call.Name)
 		case llm.EventThinkingBlock:
 			if ev.Block != nil {
 				signed = append(signed, *ev.Block)
@@ -245,6 +282,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			usage = ev.Usage
 		}
 	}
+	pieces.flush()
 	if err := stream.Err(); err != nil {
 		return turnResult{}, err
 	}
@@ -270,16 +308,63 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	return turnResult{assistant: assistant, sections: sections, tail: sp.Flush(), usage: usage}, nil
 }
 
-func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done chan struct{}) {
-	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Extra.Files, req.Origin
-	ctx, cancel := runContext(a.cfg().Runs.Timeout())
-	defer cancel()
-	lr := a.trackRun(botID, chatID, runID, cancel, inbox, done)
-	lr.pySession = chatID
-	if origin != nil && origin.Automation != nil {
-		lr.pySession = runID
+// coalescer gathers a turn's streamed pieces of one kind into fewer events:
+// each event is a row in the run log, and a provider sends a piece per token.
+// A piece waits at most coalesceDelay, so the thread still reads live.
+type coalescer struct {
+	emit  func(kind, body, tool string)
+	mu    sync.Mutex
+	kind  string
+	tool  string
+	buf   strings.Builder
+	timer *time.Timer
+}
+
+const (
+	coalesceDelay = 60 * time.Millisecond
+	coalesceMax   = 4096
+)
+
+func (c *coalescer) add(kind, body, tool string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.buf.Len() > 0 && (kind != c.kind || tool != c.tool) {
+		c.flushLocked()
 	}
-	defer close(done)
+	c.kind, c.tool = kind, tool
+	c.buf.WriteString(body)
+	if c.buf.Len() >= coalesceMax {
+		c.flushLocked()
+	} else if c.timer == nil {
+		c.timer = time.AfterFunc(coalesceDelay, c.flush)
+	}
+}
+
+// flush emits what is gathered. Called before any other event of the turn so
+// the log keeps its order.
+func (c *coalescer) flush() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.flushLocked()
+}
+
+func (c *coalescer) flushLocked() {
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = nil
+	}
+	if c.buf.Len() == 0 {
+		return
+	}
+	body := c.buf.String()
+	c.buf.Reset()
+	c.emit(c.kind, body, c.tool)
+}
+
+func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *liveRun) {
+	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Extra.Files, req.Origin
+	defer lr.cancel()
+	defer close(lr.done)
 	defer a.untrackRun(runID)
 
 	modelID := a.Models.Resolve(botID, chatID)
@@ -290,7 +375,8 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		return
 	}
 	settings := a.cfg().ProviderSettings(provider)
-	tools := a.toolsFor(botID, origin)
+	rt := a.runToolsFor(botID, origin)
+	tools := rt.list
 	window := a.contextWindow(ctx, modelID)
 
 	switch {
@@ -326,7 +412,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 	// many old tool results are blanked in msgs.
 	lastNote, cleared := past.note, past.cleared
 	if req.Compact {
-		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window)
+		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window, false)
 		if err != nil {
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
@@ -337,7 +423,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		}
 		// A message sent while the summary was written continues as a normal
 		// turn; otherwise the run is just the compaction.
-		msgs = a.drainInbox(lr, out)
+		msgs = a.drainInbox(lr, out, true)
 		lastNote, cleared = "", 0
 		if len(msgs) == len(out) {
 			a.finish(botID, chatID, runID, "done")
@@ -353,13 +439,16 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 	// output) and lastLen the history length it covered; the next request is
 	// that plus an estimate of what was appended since. Zero means no turn yet.
 	lastTotal, lastLen := 0, 0
+	// turned is set once this run has had a model turn: a compaction after
+	// that is in the middle of the task.
+	turned := false
 
 	// The system prompt is built once: a run that edits its own SOUL or
 	// memory is told so by the tool's result, and the next run reads the new
 	// prompt. Rebuilding it per turn would re-bill the whole conversation.
 	system := a.buildSystemBlocks(botID, origin)
 	for {
-		msgs = a.drainInbox(lr, msgs)
+		msgs = a.drainInbox(lr, msgs, false)
 		if a.stopped(ctx, botID, chatID, runID) {
 			return
 		}
@@ -384,7 +473,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		// compactNow replaces the history with a summary; mid-task it tells
 		// the model to carry on. It reports whether the history was replaced.
 		compactNow := func() bool {
-			out, err := a.compact(ctx, botID, chatID, runID, compactAuto, modelID, msgs, window)
+			out, err := a.compact(ctx, botID, chatID, runID, compactAuto, modelID, msgs, window, turned)
 			if err != nil {
 				if ctx.Err() == nil {
 					a.Emit(botID, chatID, runID, "error", err.Error(), "")
@@ -448,6 +537,10 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		if u := res.usage; u.InputTokens > 0 || u.OutputTokens > 0 || u.CacheReadTokens > 0 || u.CacheWriteTokens > 0 {
 			a.emitUsage(botID, chatID, runID, u, window)
 			lastTotal = u.InputTokens + u.OutputTokens
+		} else {
+			// No count for this turn: an older one no longer describes the
+			// history, so the next check falls back to the estimate.
+			lastTotal = 0
 		}
 		if len(res.assistant.ToolCalls) == 0 {
 			for _, sec := range res.sections {
@@ -460,8 +553,20 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 				}
 				a.emitDelivered(botID, chatID, runID, kind, res.tail, origin)
 			}
-			a.finish(botID, chatID, runID, "done")
-			return
+			if a.closeInbox(lr, runID) {
+				a.finish(botID, chatID, runID, "done")
+				return
+			}
+			// A message came in while the reply was written: answer it in
+			// this run, with the reply as replay will read it back.
+			for _, t := range append(res.sections, res.tail) {
+				if t = a.kept(botID, t); strings.TrimSpace(t) != "" {
+					msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: t})
+				}
+			}
+			lastLen = len(msgs)
+			turned = true
+			continue
 		}
 		// A tool-call turn: send any section the model explicitly closed so the
 		// human gets a progress note, but keep it out of replayed history.
@@ -483,8 +588,17 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 		a.record(runID, turnKind, turn.Text, "", string(rawMeta))
 		msgs = append(msgs, turn)
 		lastLen = len(msgs)
+		turned = true
+		// Pixels go after the turn's last result, where replay puts their
+		// seen notes: a user turn between two results breaks the pairing.
+		var shown []llm.Message
 		for _, tc := range res.assistant.ToolCalls {
-			def := a.toolDef(botID, tc.Name)
+			def := rt.byName[tc.Name]
+			if def == nil {
+				// Not offered to this run: the engine says why (a lead's
+				// tool, a feature that is off) instead of "unknown tool".
+				def = a.toolDef(botID, tc.Name)
+			}
 			if def != nil && def.Writes {
 				clear(seen)
 			}
@@ -498,7 +612,7 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 					continue
 				}
 			}
-			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments)
+			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments, isSubagent(origin))
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
@@ -523,16 +637,18 @@ func (a *App) runLoop(req run.Request, runID string, inbox chan inboxMsg, done c
 				later := itype
 				if isLookTool(tc.Name) {
 					pruneLookImages(msgs)
+					pruneLookImages(shown)
 					lastLook = img
 					later = lookOmitted
 				}
 				a.record(runID, seenKind, later, tc.Name, "")
-				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
+				shown = append(shown, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
 			}
 			if origin != nil && origin.Channel != nil && err == nil {
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
 			}
 		}
+		msgs = append(msgs, shown...)
 	}
 }
 
@@ -618,6 +734,11 @@ func (a *App) startOrInjectLocked(botID, chatID, text string, ex run.Extra, orig
 	if runID := a.LiveRunID(botID, chatID); runID != "" {
 		if a.inject(botID, chatID, runID, text, ex, "") {
 			return runID, nil
+		}
+		// Refused with the run still live: its inbox is full. A second run
+		// beside it would interleave the conversation.
+		if a.LiveRunID(botID, chatID) != "" {
+			return "", run.ErrBusy
 		}
 	}
 	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Extra: ex, Origin: origin})

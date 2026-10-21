@@ -214,6 +214,11 @@ func (s *Service) MCPSession(ctx context.Context, row *db.BotConnector, c *db.Co
 		return nil, wrapOAuth(err)
 	}
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		go sess.Close()
+		return nil, errors.New("shutting down")
+	}
 	if old := s.mcp[row.ID]; old != nil {
 		_ = old.Close()
 	}
@@ -235,6 +240,7 @@ func (s *Service) lockSession(id string) func() {
 // running: their bridges reconnect when the control plane comes back.
 func (s *Service) CloseAll() {
 	s.mu.Lock()
+	s.closed = true
 	for id, sess := range s.mcp {
 		go sess.Close()
 		delete(s.mcp, id)

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"silo.agent/internal/app/toolarg"
@@ -58,6 +59,9 @@ func formatBoard(items []db.TaskItem) string {
 	return b.String()
 }
 
+// taskMu serializes taskboard writes (see taskTool).
+var taskMu sync.Mutex
+
 // taskActor names who is writing to the board from a run: the subagent's name
 // or "lead".
 func (a *App) taskActor(runID string) (actor string, sub *db.Subagent, chatID string) {
@@ -87,6 +91,10 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		return "", err
 	}
 	changed := false
+	// One writer at a time: add numbers items from the board's last one, and
+	// the lead and its subagents write to the same board at once.
+	taskMu.Lock()
+	defer taskMu.Unlock()
 	switch action {
 	case "add":
 		var texts []string

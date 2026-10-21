@@ -36,6 +36,11 @@ const (
 	collectPerTick = 5
 	// collectPauseFor holds the sweep back after a provider error.
 	collectPauseFor = 15 * time.Minute
+	// collectRest is how long a chat whose collection failed is skipped: the
+	// pause at first, doubling with each failure in a row up to
+	// collectRestMax, so a chat that always fails stops holding up the rest.
+	collectRest    = collectPauseFor
+	collectRestMax = 24 * time.Hour
 
 	// collectBudget is the excerpt size of one call in tokens; a larger delta
 	// is split into at most collectChunks calls and the oldest part dropped.
@@ -90,14 +95,22 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	if ch.ID == "" {
 		return collectResult{}, fmt.Errorf("no chat %s", chatID)
 	}
-	var evs []db.RunEvent
-	a.DB.Joins("JOIN runs ON runs.id = run_events.run_id").
+	// The watermark moves past every event, streamed ones too, or the sweep
+	// would keep finding this chat; only what replay reads is loaded.
+	var maxSeq int64
+	a.DB.Model(&db.RunEvent{}).Joins("JOIN runs ON runs.id = run_events.run_id").
 		Where("runs.chat_id = ? AND run_events.seq > ?", ch.ID, ch.MemorySeq).
-		Order("run_events.seq").Find(&evs)
-	if len(evs) == 0 {
+		Select("COALESCE(MAX(run_events.seq), 0)").Scan(&maxSeq)
+	if maxSeq == 0 {
 		return collectResult{Note: "nothing new"}, nil
 	}
-	maxSeq := evs[len(evs)-1].Seq
+	// A compaction is left out: the collector reads the turns themselves,
+	// not a summary of what it may already have read.
+	var evs []db.RunEvent
+	a.DB.Joins("JOIN runs ON runs.id = run_events.run_id").
+		Where("runs.chat_id = ? AND run_events.seq > ? AND run_events.seq <= ? AND run_events.kind NOT IN ?",
+			ch.ID, ch.MemorySeq, maxSeq, append([]string{compactionKind, compactingKind}, streamedKinds...)).
+		Order("run_events.seq").Find(&evs)
 
 	msgs := historyFromEvents(evs)
 	if !hasUserText(msgs) {
@@ -164,7 +177,7 @@ func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []memory.Reca
 			break
 		}
 		text := strings.TrimSpace(s.Text)
-		if text == "" || len(text) > memory.RememberMax {
+		if text == "" || utf8.RuneCountInString(text) > memory.RememberMax {
 			continue
 		}
 		saved, err := a.Memory.Save(ctx, memory.Entry{BotID: ch.BotID, ChatID: ch.ID, Content: text})
@@ -310,15 +323,25 @@ func (a *App) SweepMemories(now time.Time) int {
 		ID    string
 		BotID string
 	}
+	// A chat whose collection failed rests (collectBackoff), so one that
+	// always fails cannot hold the head of the queue for every Bot.
+	resting := []string{""}
+	a.collectBackoff.Range(func(k, v any) bool {
+		if now.Before(v.(collectRestState).until) {
+			resting = append(resting, k.(string))
+		}
+		return true
+	})
 	var rows []due
 	a.DB.Raw(`SELECT chats.id, chats.bot_id FROM chats
 		JOIN runs ON runs.chat_id = chats.id
 		JOIN run_events e ON e.run_id = runs.id
 		WHERE chats.automation_id = '' AND chats.subagent_id = '' AND e.seq > chats.memory_seq
+			AND chats.id NOT IN ?
 		GROUP BY chats.id, chats.bot_id
 		HAVING MAX(e.created_at) < ?
 		ORDER BY MAX(e.created_at)
-		LIMIT ?`, now.Add(-collectIdle), collectPerTick*4).Scan(&rows)
+		LIMIT ?`, resting, now.Add(-collectIdle), collectPerTick*4).Scan(&rows)
 	read := 0
 	for _, r := range rows {
 		if read == collectPerTick {
@@ -334,8 +357,12 @@ func (a *App) SweepMemories(now time.Time) int {
 			continue
 		}
 		read++
+		if err == nil {
+			a.collectBackoff.Delete(r.ID)
+		}
 		if err != nil {
 			log.Printf("memory collector: chat %s: %v", r.ID, err)
+			a.restChat(r.ID, now)
 			var pe models.ProviderError
 			if errors.As(err, &pe) {
 				a.collectPause.Store(now.Add(collectPauseFor).UnixNano())
@@ -344,6 +371,27 @@ func (a *App) SweepMemories(now time.Time) int {
 		}
 	}
 	return read
+}
+
+// collectRestState is a chat's place in the collector's backoff.
+type collectRestState struct {
+	until    time.Time
+	failures int
+}
+
+// restChat backs a chat whose collection failed off for twice as long as
+// last time.
+func (a *App) restChat(chatID string, now time.Time) {
+	st := collectRestState{failures: 1}
+	if v, ok := a.collectBackoff.Load(chatID); ok {
+		st.failures = v.(collectRestState).failures + 1
+	}
+	rest := collectRest
+	for i := 1; i < st.failures && rest < collectRestMax; i++ {
+		rest *= 2
+	}
+	st.until = now.Add(min(rest, collectRestMax))
+	a.collectBackoff.Store(chatID, st)
 }
 
 // --- RPC ---

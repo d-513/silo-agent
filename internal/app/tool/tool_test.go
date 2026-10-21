@@ -291,3 +291,24 @@ func TestEngineFiltersWhatHandlersReturn(t *testing.T) {
 		t.Fatalf("the filter saw %q", got)
 	}
 }
+
+// What is not offered cannot be called by name: a lead-only tool from a
+// subagent, or a tool whose feature is off, on either surface.
+func TestRunRefusesWhatIsNotOffered(t *testing.T) {
+	e := newEngine(&gate{})
+	bot := &db.Bot{ID: "b"}
+	spawn, _ := e.ByName("b", "spawn_agent")
+	if _, err := e.Run(context.Background(), &Call{Surface: Completion, Bot: bot, Def: spawn, Subagent: true}); err == nil {
+		t.Fatal("a subagent ran a lead-only tool")
+	}
+	if res, err := e.Run(context.Background(), &Call{Surface: Completion, Bot: bot, Def: spawn}); err != nil || res.Text != "spawned" {
+		t.Fatalf("the lead was refused: %v", err)
+	}
+	off, err := e.ByAction("b", "bot", "transcribe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Run(context.Background(), &Call{Surface: Python, Bot: bot, Def: off}); err == nil {
+		t.Fatal("a disabled tool ran from Python")
+	}
+}

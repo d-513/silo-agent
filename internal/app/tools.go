@@ -37,12 +37,31 @@ func (a *App) newTools() *tool.Engine {
 // toolsFor is the completion tool list for a run: every tool exposed to the
 // model and enabled for this Bot, minus the lead-only ones for a subagent.
 func (a *App) toolsFor(botID string, origin *run.Origin) []llm.Tool {
-	return tool.LLM(a.Tools.Offered(botID, origin != nil && origin.Subagent != nil))
+	return tool.LLM(a.Tools.Offered(botID, isSubagent(origin)))
+}
+
+func isSubagent(origin *run.Origin) bool { return origin != nil && origin.Subagent != nil }
+
+// runTools is a run's completion tools: the list sent to the model and the
+// definitions its calls resolve to. Built once per run, so a call does not
+// rebuild every connector's tool list to find its own.
+type runTools struct {
+	list   []llm.Tool
+	byName map[string]*tool.Def
+}
+
+func (a *App) runToolsFor(botID string, origin *run.Origin) runTools {
+	defs := a.Tools.Offered(botID, isSubagent(origin))
+	rt := runTools{list: tool.LLM(defs), byName: make(map[string]*tool.Def, len(defs))}
+	for i := range defs {
+		rt.byName[defs[i].Name] = &defs[i]
+	}
+	return rt
 }
 
 // execTool runs one tool call the model made: the completion surface. def is
 // the definition its name resolved to (toolDef), nil when there is none.
-func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID, name, argsJSON string) (string, string, error) {
+func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID, name, argsJSON string, subagent bool) (string, string, error) {
 	if def == nil {
 		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
@@ -51,9 +70,15 @@ func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID,
 		return "", "", errors.New("unknown bot")
 	}
 	var args map[string]any
-	_ = json.Unmarshal([]byte(argsJSON), &args)
+	if strings.TrimSpace(argsJSON) != "" {
+		// Running a cut-off call with no arguments would answer with a
+		// misleading "x required"; the model can fix its JSON.
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			return "", "", fmt.Errorf("the arguments are not valid JSON (%v); call %s again with a complete JSON object", err, name)
+		}
+	}
 	res, err := a.Tools.Run(ctx, &tool.Call{
-		Surface: tool.Completion, Bot: &bot, ChatID: chatID, RunID: runID,
+		Surface: tool.Completion, Bot: &bot, ChatID: chatID, RunID: runID, Subagent: subagent,
 		Def: def, Args: args, ArgsJSON: argsJSON,
 	})
 	return res.Text, res.Image, err

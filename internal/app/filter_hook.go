@@ -146,13 +146,23 @@ func (a *App) holdNotice(botID, runID, line string) {
 	if line == "" {
 		return
 	}
+	// A run that ended while its code's call was being judged has dropped
+	// its notices already: held for it, this one would never be read.
+	if runID != "" {
+		a.mu.Lock()
+		_, live := a.runs[runID]
+		a.mu.Unlock()
+		if !live {
+			runID = ""
+		}
+	}
 	a.noticeMu.Lock()
 	defer a.noticeMu.Unlock()
 	if runID == "" {
 		if a.botNotices == nil {
 			a.botNotices = map[string][]botNotice{}
 		}
-		held := a.botNotices[botID]
+		held := slices.DeleteFunc(a.botNotices[botID], func(n botNotice) bool { return time.Since(n.at) > noticeFor })
 		for _, n := range held {
 			if n.line == line {
 				return

@@ -7,8 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"github.com/pgvector/pgvector-go"
@@ -42,6 +45,9 @@ type Service struct {
 	db     *gorm.DB
 	cfg    func() config.Config
 	models *models.Service
+	// saving makes Save's look for a near-copy and its write one step, so a
+	// remember and the collector saving the same fact add one row.
+	saving sync.Mutex
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service) *Service {
@@ -60,15 +66,27 @@ type Recalled struct {
 // no farther than maxDist (0 = no limit).
 func (s *Service) nearest(botID string, vec pgvector.Vector, k int, maxDist float64) ([]Recalled, error) {
 	var rows []Recalled
-	q := s.db.Model(&db.Memory{}).
-		Select("id, content, created_at, embedding <=> ? AS distance", vec).
-		Where("bot_id = ?", botID)
-	if maxDist > 0 {
-		q = q.Where("embedding <=> ? < ?", vec, maxDist)
-	}
-	// Order(clause.Expr) is silently dropped by GORM; OrderBy is what binds.
-	err := q.Clauses(clause.OrderBy{Expression: clause.Expr{SQL: "embedding <=> ?", Vars: []any{vec}}}).
-		Limit(k).Scan(&rows).Error
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// The HNSW index is over every Bot's memories: without iterative
+		// scan (pgvector 0.8) the bot filter can leave fewer than k rows, or
+		// none, and dedupe would miss the near-copy. Older servers lack it,
+		// and a failed SET must not poison the transaction.
+		tx.Exec("SAVEPOINT iter")
+		if err := tx.Exec("SET LOCAL hnsw.iterative_scan = relaxed_order").Error; err != nil {
+			tx.Exec("ROLLBACK TO SAVEPOINT iter")
+		}
+		q := tx.Model(&db.Memory{}).
+			Select("id, content, created_at, embedding <=> ? AS distance", vec).
+			Where("bot_id = ?", botID)
+		if maxDist > 0 {
+			q = q.Where("embedding <=> ? < ?", vec, maxDist)
+		}
+		// Order(clause.Expr) is silently dropped by GORM; OrderBy is what binds.
+		return q.Clauses(clause.OrderBy{Expression: clause.Expr{SQL: "embedding <=> ?", Vars: []any{vec}}}).
+			Limit(k).Scan(&rows).Error
+	})
+	// relaxed_order may return the k nearest slightly out of order.
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].Distance < rows[j].Distance })
 	return rows, err
 }
 
@@ -103,13 +121,15 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 	if content == "" {
 		return Saved{}, errors.New("content required")
 	}
-	if len(content) > RememberMax {
-		return Saved{}, fmt.Errorf("memory is %d characters; cap is %d. Save one short fact per call.", len(content), RememberMax)
+	if n := utf8.RuneCountInString(content); n > RememberMax {
+		return Saved{}, fmt.Errorf("memory is %d characters; cap is %d. Save one short fact per call.", n, RememberMax)
 	}
 	vecs, model, err := s.models.Embed(ctx, []string{content})
 	if err != nil {
 		return Saved{}, err
 	}
+	s.saving.Lock()
+	defer s.saving.Unlock()
 	near, err := s.nearest(m.BotID, vecs[0], 1, dedupeDistance)
 	if err != nil {
 		return Saved{}, err
@@ -135,7 +155,7 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 // Rewrite replaces one memory's text (and its embedding).
 func (s *Service) Rewrite(ctx context.Context, botID, id, content string) error {
 	content = strings.TrimSpace(content)
-	if content == "" || len(content) > RememberMax {
+	if content == "" || utf8.RuneCountInString(content) > RememberMax {
 		return fmt.Errorf("memory text must be 1..%d characters", RememberMax)
 	}
 	vecs, model, err := s.models.Embed(ctx, []string{content})
@@ -186,6 +206,10 @@ func (s *Service) Forget(botID, id string) (string, error) {
 	if res.RowsAffected == 0 {
 		return "", fmt.Errorf("no memory %s", id)
 	}
+	// A digest may still tell what was just forgotten, and the owner deletes
+	// a memory because it is wrong or private: until the sweep writes a new
+	// one, the prompt lists the newest memories instead.
+	s.DropDigest(botID)
 	return "forgot " + id, nil
 }
 

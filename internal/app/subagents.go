@@ -167,6 +167,9 @@ func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {
 	if st == "stopped" && sa.Status != "running" && sa.Reported {
 		return // quieted by a stop the lead already knows about
 	}
+	if live := a.LiveRunID(sa.BotID, sa.ChatID); live != "" && live != runID {
+		return // resumed while this run was unwinding: the new run reports
+	}
 	status := st
 	if status == "" {
 		status = "done"

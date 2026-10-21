@@ -79,6 +79,9 @@ type Service struct {
 	mu    sync.Mutex
 	oauth map[string]*oauthWait
 	mcp   map[string]*mcpx.Session
+	// closed is set by CloseAll: a session a background refresh opens after
+	// it is closed at once instead of being kept (and holding its stream).
+	closed bool
 	// locks serializes session dials and sidecar starts per connector.
 	locks sync.Map
 	// bridges are the live reverse tunnels from STDIO sidecars.

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -13,6 +14,10 @@ const minLen = 8
 type Masker struct {
 	mu   sync.Mutex
 	vals map[string]struct{}
+	// rep replaces every value in one pass, longest first, so a secret that
+	// contains another is masked whole and the output is the same each time
+	// (history replay depends on that). Nil until built after a change.
+	rep *strings.Replacer
 }
 
 func New() *Masker { return &Masker{vals: map[string]struct{}{}} }
@@ -37,6 +42,7 @@ func (m *Masker) AddMany(vs []string) {
 }
 
 func (m *Masker) addLocked(v string) {
+	m.rep = nil
 	m.vals[v] = struct{}{}
 	m.vals[base64.StdEncoding.EncodeToString([]byte(v))] = struct{}{}
 	m.vals[url.QueryEscape(v)] = struct{}{}
@@ -66,13 +72,26 @@ func toJSONString(s string) string {
 
 func (m *Masker) Apply(s string) string {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	out := s
-	for v := range m.vals {
-		if v == "" {
-			continue
+	if m.rep == nil {
+		vals := make([]string, 0, len(m.vals))
+		for v := range m.vals {
+			if v != "" {
+				vals = append(vals, v)
+			}
 		}
-		out = strings.ReplaceAll(out, v, "***")
+		sort.Slice(vals, func(i, j int) bool {
+			if len(vals[i]) != len(vals[j]) {
+				return len(vals[i]) > len(vals[j])
+			}
+			return vals[i] < vals[j]
+		})
+		pairs := make([]string, 0, 2*len(vals))
+		for _, v := range vals {
+			pairs = append(pairs, v, "***")
+		}
+		m.rep = strings.NewReplacer(pairs...)
 	}
-	return out
+	rep := m.rep
+	m.mu.Unlock()
+	return rep.Replace(s)
 }

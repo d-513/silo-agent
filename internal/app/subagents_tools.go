@@ -229,6 +229,9 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 		if a.inject(sa.BotID, sa.ChatID, runID, text, run.Extra{}, "lead") {
 			return false, nil
 		}
+	}
+	// A run that refused the message may have just closed its inbox to finish.
+	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
 		return false, fmt.Errorf("%s has too many unread messages; wait for it to catch up", sa.Name)
 	}
 	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{"status": "running", "reported": true, "finished_at": nil})

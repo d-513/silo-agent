@@ -28,11 +28,22 @@ type chatEvent struct {
 func (a *App) orderedChatEvents(chatID string) []chatEvent {
 	var runs []db.Run
 	a.DB.Where("chat_id = ?", chatID).Order("created_at").Order("id").Find(&runs)
-	var out []chatEvent
+	if len(runs) == 0 {
+		return nil
+	}
+	ids := make([]string, len(runs))
+	for i, r := range runs {
+		ids[i] = r.ID
+	}
+	var evs []db.RunEvent
+	a.DB.Where("run_id IN ?", ids).Order("seq").Find(&evs)
+	byRun := make(map[string][]db.RunEvent, len(runs))
+	for _, ev := range evs {
+		byRun[ev.RunID] = append(byRun[ev.RunID], ev)
+	}
+	out := make([]chatEvent, 0, len(evs))
 	for _, run := range runs {
-		var evs []db.RunEvent
-		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
-		for _, ev := range evs {
+		for _, ev := range byRun[run.ID] {
 			out = append(out, chatEvent{run: run, ev: ev})
 		}
 	}
@@ -41,13 +52,11 @@ func (a *App) orderedChatEvents(chatID string) []chatEvent {
 
 // lastUserEventID is the most recent user message in a chat, or "" if none.
 func (a *App) lastUserEventID(chatID string) string {
-	last := ""
-	for _, e := range a.orderedChatEvents(chatID) {
-		if e.ev.Kind == "user" {
-			last = e.ev.ID
-		}
-	}
-	return last
+	var ev db.RunEvent
+	a.DB.Select("run_events.id").Joins("JOIN runs ON runs.id = run_events.run_id").
+		Where("runs.chat_id = ? AND run_events.kind = ?", chatID, "user").
+		Order("runs.created_at DESC, runs.id DESC, run_events.seq DESC").Limit(1).Find(&ev)
+	return ev.ID
 }
 
 // truncateChatFrom deletes the anchor event and everything after it, dropping

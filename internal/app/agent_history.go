@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 
@@ -50,15 +51,65 @@ func (a *App) historyFromRuns(runs []db.Run) []llm.Message {
 // contextFromRuns replays runs exactly as the runs that wrote them saw the
 // conversation, cleared tool results included.
 func (a *App) contextFromRuns(runs []db.Run) replayed {
-	var all []db.RunEvent
-	for _, run := range runs {
-		var evs []db.RunEvent
-		a.DB.Where("run_id = ?", run.ID).Order("seq").Find(&evs)
-		all = append(all, evs...)
-	}
+	all := a.replayRows(runs)
 	r := replayEvents(all)
 	clearResults(r.msgs, r.cleared)
 	return r
+}
+
+// streamedKinds are the live-only events: a turn's text, reasoning and
+// command output as they streamed, and its token counts. Replay reads none of
+// them, and they are most of a long conversation's rows.
+var streamedKinds = []string{"chunk", "thinking_chunk", "thinking", "tool_chunk", "usage"}
+
+// replayRows loads the events replay reads for runs, in one query, ordered by
+// run (as given) and then by seq.
+func (a *App) replayRows(runs []db.Run) []db.RunEvent {
+	if len(runs) == 0 {
+		return nil
+	}
+	order := make(map[string]int, len(runs))
+	runIDs := make([]string, len(runs))
+	for i, r := range runs {
+		order[r.ID] = i
+		runIDs[i] = r.ID
+	}
+	var evs []db.RunEvent
+	a.DB.Where("run_id IN ? AND kind NOT IN ?", runIDs, streamedKinds).Order("seq").Find(&evs)
+	sort.SliceStable(evs, func(i, j int) bool { return order[evs[i].RunID] < order[evs[j].RunID] })
+	a.reanchorCompactions(evs)
+	return evs
+}
+
+// reanchorCompactions points a compaction whose anchor is a streamed event
+// (not loaded) at the newest loaded event before it, so replay still resumes
+// right after what the summary covers.
+func (a *App) reanchorCompactions(evs []db.RunEvent) {
+	have := make(map[string]bool, len(evs))
+	for _, ev := range evs {
+		have[ev.ID] = true
+	}
+	for i := range evs {
+		if evs[i].Kind != compactionKind {
+			continue
+		}
+		var meta compactionMeta
+		if json.Unmarshal([]byte(evs[i].Meta), &meta) != nil || meta.After == "" || have[meta.After] {
+			continue
+		}
+		var anchor db.RunEvent
+		if a.DB.Select("seq").Where("id = ?", meta.After).Limit(1).Find(&anchor).RowsAffected == 0 {
+			continue
+		}
+		for j := i - 1; j >= 0; j-- {
+			if evs[j].Seq <= anchor.Seq {
+				meta.After = evs[j].ID
+				raw, _ := json.Marshal(meta)
+				evs[i].Meta = string(raw)
+				break
+			}
+		}
+	}
 }
 
 // The run log holds a few events only replay reads. They are what makes a
@@ -118,16 +169,19 @@ func historyFromEvents(evs []db.RunEvent) []llm.Message {
 func replayEvents(evs []db.RunEvent) replayed {
 	var out replayed
 	msgs := out.msgs
-	// fold merges the next user message into a preceding framed user turn (a
-	// quoted Feed post or a compaction summary) so roles still alternate.
-	fold := false
+	// fold is the index of a framed user turn (a quoted Feed post, a
+	// compaction summary, a subagent report) that the user message right
+	// after it is merged into, so roles still alternate. Only that one
+	// message: the run that reads a second one appends it as a turn of its
+	// own, and replay must give the same messages.
+	fold := -1
 	if cut, ok := cutAtCompaction(evs); ok {
 		text := compactionText(cut.summary)
 		if cut.midTask {
 			text += compactionContinue
 		}
 		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
-		fold = true
+		fold = 0
 		evs = evs[cut.start:]
 	}
 	// pending is one model turn's calls and said what it wrote beside them;
@@ -135,7 +189,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 	// several tools at once) and the note left by any pixels a result had.
 	var pending []llm.ToolCall
 	var said string
-	var after []llm.Message
+	var after, seen []llm.Message
 	answered := 0
 	flushTools := func() {
 		if len(pending) > 0 {
@@ -148,8 +202,11 @@ func replayEvents(evs []db.RunEvent) replayed {
 			}
 			msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: said, ToolCalls: pending})
 			msgs = append(msgs, after...)
+			// Notes left by pixels follow the turn's last result, as the run
+			// appended them: nothing may sit between two results.
+			msgs = append(msgs, seen...)
 		}
-		pending, said, after, answered = nil, "", nil, 0
+		pending, said, after, seen, answered = nil, "", nil, nil, 0
 	}
 	runID := ""
 	for _, ev := range evs {
@@ -168,7 +225,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 		case feed.QuoteKind:
 			flushTools()
 			msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: feed.QuoteText(ev.Tool, ev.Body, ev.CreatedAt, ev.Zone)})
-			fold = true
+			fold = len(msgs) - 1
 			continue
 		case subagentReportKind:
 			flushTools()
@@ -178,13 +235,14 @@ func replayEvents(evs []db.RunEvent) replayed {
 			} else {
 				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
 			}
-			fold = true
+			fold = len(msgs) - 1
 			continue
 		case "user":
 			flushTools()
 			text := stampUserText(userTurnText(ev.Body, decodeUserMeta(ev.Meta)), ev.CreatedAt, ev.Zone)
-			if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
+			if n := len(msgs); n > 0 && fold == n-1 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
+				fold = -1
 			} else {
 				msgs = append(msgs, llm.Message{Role: llm.RoleUser, Text: text})
 			}
@@ -199,7 +257,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 			}
 		case "tool":
 			// A call after results is the model's next turn.
-			if answered > 0 || len(after) > 0 {
+			if answered > 0 || len(after) > 0 || len(seen) > 0 {
 				flushTools()
 			}
 			// Older runs could record a call twice, the second time with its
@@ -229,7 +287,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 			if json.Unmarshal([]byte(ev.Meta), &meta) != nil || len(meta.Calls) == 0 {
 				continue
 			}
-			if answered > 0 || len(after) > 0 {
+			if answered > 0 || len(after) > 0 || len(seen) > 0 {
 				flushTools()
 			}
 			pending = make([]llm.ToolCall, 0, len(meta.Calls))
@@ -246,7 +304,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 		case seenKind:
 			m := llm.Message{Role: llm.RoleUser, Text: ev.Body}
 			if len(pending) > 0 {
-				after = append(after, m)
+				seen = append(seen, m)
 			} else {
 				msgs = append(msgs, m)
 			}

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"silo.agent/internal/llm"
@@ -45,6 +46,9 @@ type Turn struct {
 	// request carries more than this many runes, so tests can drive the
 	// compact-and-retry path. Zero never overflows.
 	OverflowAbove int
+	// Delay holds the stream back this long before it answers, so a test can
+	// act while the turn is being written.
+	Delay time.Duration
 }
 
 // CompactMarker is the heading the CP's compaction prompt starts with; a
@@ -137,6 +141,13 @@ func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error
 	size := requestRunes(req)
 	if turn.OverflowAbove > 0 && size > turn.OverflowAbove {
 		return nil, fmt.Errorf("This model's maximum context length is %d tokens. However, your messages resulted in %d tokens.", turn.OverflowAbove, size)
+	}
+	if turn.Delay > 0 {
+		select {
+		case <-time.After(turn.Delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 	events := buildEvents(turn, size)
 	return &sliceStream{events: events}, nil

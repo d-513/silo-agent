@@ -125,6 +125,10 @@ type liveRun struct {
 	// so the run never reads a message whose event is not written yet.
 	inbox     chan inboxMsg
 	injecting sync.Mutex
+	// closed is set, under injecting, once the run has taken its last look
+	// at the inbox: a message that arrives after it starts a new run instead
+	// of waiting in an inbox nobody reads.
+	closed bool
 	// pySession names the persistent Python interpreter the run's
 	// exec_python calls share: the conversation, so a later message finds
 	// what an earlier one loaded. An automation's firings each get their own.
@@ -176,6 +180,9 @@ type App struct {
 	collecting sync.Map
 	// collectPause (unix nanos) holds the sweep back after a provider error.
 	collectPause atomic.Int64
+	// collectBackoff (chat id → collectRestState) rests a chat whose
+	// collection failed, so the sweep moves on to the others.
+	collectBackoff sync.Map
 	// wakeTimers debounce waking a lead chat when its subagents finish.
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
@@ -574,14 +581,6 @@ func (a *App) contentRoute(next http.Handler) http.Handler {
 		}
 		tunnels.Page(w, http.StatusNotFound, "Nothing here", "There is nothing at this address.")
 	})
-}
-
-func (a *App) trackRun(botID, chatID, runID string, cancel context.CancelFunc, inbox chan inboxMsg, done chan struct{}) *liveRun {
-	lr := &liveRun{cancel: cancel, botID: botID, chatID: chatID, inbox: inbox, done: done, wake: make(chan string, 8)}
-	a.mu.Lock()
-	a.runs[runID] = lr
-	a.mu.Unlock()
-	return lr
 }
 
 // LiveRuns names the runs at work on a Bot now, for the audit timeline: a
