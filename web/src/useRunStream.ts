@@ -43,6 +43,7 @@ function toEv(ev: RunEvent): Ev {
     attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
     quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
     quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
+    card: ev.card,
   };
 }
 

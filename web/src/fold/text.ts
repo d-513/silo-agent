@@ -14,7 +14,25 @@ export const subagentReport: Handler = (out, e, key) => {
 };
 
 export const feedQuote: Handler = (out, e, key) => {
+  // A question the Bot asked from elsewhere is drawn as its card, live.
+  if (e.card) {
+    out.push({ key, type: "card", card: e.card, asked: true, createdAt: e.createdAt });
+    return;
+  }
   out.push({ key, type: "quote", text: e.body, source: e.tool, quoted: e.quoted, createdAt: e.createdAt });
+};
+
+// card is an ask the Bot showed in this chat.
+export const card: Handler = (out, e, key) => {
+  if (e.card) out.push({ key, type: "card", card: e.card, createdAt: e.createdAt });
+};
+
+// cardState is a card in the chat changing (answered, put away, a setup
+// done): every block that shows it takes the new state.
+export const cardState: Handler = (out, e) => {
+  const c = e.card;
+  if (!c) return;
+  for (const b of out) if (b.type === "card" && b.card.id === c.id) b.card = c;
 };
 
 export const thinkingChunk: Handler = (out, e, key) => {

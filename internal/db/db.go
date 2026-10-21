@@ -100,6 +100,10 @@ type Bot struct {
 	// Language is what this Bot writes to people in: a language code or
 	// "mixed". Empty (a Bot from before languages) reads as mixed: lang.Bot.
 	Language string `gorm:"not null;default:''"`
+	// Proactivity is how much the Bot does unasked: off (no Heartbeat),
+	// quiet (the Heartbeat reports to the Feed; questions wait on the
+	// Dashboard) or active (it may also write into the main chat).
+	Proactivity string `gorm:"not null;default:'quiet'"`
 	// OtherProtocols lets this Bot's box open connections that are not HTTP
 	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
 	OtherProtocols bool `gorm:"not null;default:false"`
@@ -590,8 +594,10 @@ type DashboardCard struct {
 	RunID       string
 	ReadAt      *time.Time
 	DismissedAt *time.Time
-	CreatedAt   time.Time `gorm:"index"`
-	UpdatedAt   time.Time `gorm:"index"`
+	// SetupJSON is what the owner did with each setup block, by index.
+	SetupJSON string    `gorm:"not null;default:'{}'"`
+	CreatedAt time.Time `gorm:"index"`
+	UpdatedAt time.Time `gorm:"index"`
 }
 
 // DashboardWidget is one view a Bot keeps on its Dashboard. The Bot writes the

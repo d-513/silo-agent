@@ -1595,6 +1595,10 @@ const de: Record<string, string> = {
   "Answers in the main chat. Ctrl/⌘-click for a new chat.": "Antwortet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
   "Opens in the main chat. Ctrl/⌘-click for a new chat.": "Öffnet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
   "What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.": "Was dieser Bot für dich zum späteren Lesen gepostet hat. Antworte auf einen Beitrag im Hauptchat oder in einem eigenen Chat.",
+  "Answered": "Beantwortet",
+  "Put away": "Weggelegt",
+  "{{what}} is not available on this server any more.": "{{what}} ist auf diesem Server nicht mehr verfügbar.",
+  "Asked while you were away": "Gefragt, während du weg warst",
 };
 
 export default de;

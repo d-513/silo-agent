@@ -1,8 +1,9 @@
-import { Check, Send } from "lucide-react";
+import { Check, Plus, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
-import { defaultFormValues, normalizeOptions, parseBlocks, type DashboardBlock } from "../dashboardLayout";
+import { defaultFormValues, hasFormControls, normalizeOptions, parseBlocks, setupState, type DashboardBlock, type SetupBlock } from "../dashboardLayout";
+import { SetupModal } from "../setup/SetupModal";
 import { Spinner } from "../Feedback";
 import { Field, inputClass, textareaClass } from "../Field";
 import type { DashboardCard } from "../gen/silo/v1/ui_pb";
@@ -230,17 +231,86 @@ export function BlockRenderer({
   }
 }
 
+// SetupOffer is one setup block: what the Bot suggests adding and why, the
+// fields it filled in, and Set up (Silo's own form, in a sheet) or Not now.
+function SetupOffer({
+  botId,
+  block,
+  state,
+  onResolve,
+}: {
+  botId: string;
+  block: SetupBlock;
+  state?: "done" | "skipped";
+  onResolve?: (outcome: "done" | "skipped") => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const filled = Object.entries(block.prefill ?? {});
+  const resolve = async (outcome: "done" | "skipped") => {
+    setBusy(true);
+    try {
+      await onResolve?.(outcome);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control bg-well px-3.5 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[13.5px] font-medium text-ink">{block.label}</p>
+        {block.why ? <p className="text-[12.5px] leading-[18px] text-ink-2">{block.why}</p> : null}
+        {filled.length ? <p className="mt-0.5 truncate font-mono text-[11.5px] text-ink-3">{filled.map(([k, v]) => `${k}: ${v}`).join(" · ")}</p> : null}
+      </div>
+      {state === "done" ? (
+        <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
+          <Check size={13} /> {t("Set up")}
+        </span>
+      ) : state === "skipped" ? (
+        <span className="text-[12.5px] text-ink-3">{t("Skipped")}</span>
+      ) : onResolve ? (
+        <span className="flex items-center gap-1">
+          <Btn kind="secondary" size="sm" disabled={busy} icon={<Plus size={13} />} onClick={() => setOpen(true)}>
+            {t("Set up")}
+          </Btn>
+          <Btn kind="ghost" size="sm" disabled={busy} onClick={() => void resolve("skipped")}>
+            {t("Not now")}
+          </Btn>
+        </span>
+      ) : null}
+      {open ? (
+        <SetupModal
+          botId={botId}
+          offer={block}
+          onClose={() => setOpen(false)}
+          onDone={() => {
+            setOpen(false);
+            void resolve("done");
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function AskSlip({
   botId,
   card,
   onSubmit,
   onDismiss,
+  onSetup,
+  place = "board",
 }: {
   botId: string;
   card: DashboardCard;
   // apart answers in a chat of its own instead of the main one.
   onSubmit: (card: DashboardCard, values: Record<string, unknown>, apart?: boolean) => Promise<void>;
   onDismiss: (card: DashboardCard, suppress: boolean) => Promise<void>;
+  // The owner set up (or skipped) the setup offer at block index i.
+  onSetup?: (card: DashboardCard, index: number, outcome: "done" | "skipped") => Promise<void>;
+  // In a thread the card answers in that chat, and an answered one stays as
+  // a record.
+  place?: "board" | "thread";
 }) {
   const blocks = parseBlocks(card.blocksJson);
   const [values, setValues] = useState<Record<string, unknown>>(() => defaultFormValues(blocks));
@@ -252,6 +322,9 @@ export function AskSlip({
     }));
   }, [card.blocksJson]);
   const src = sourceLabel(card);
+  const setups = setupState(card.setupJson);
+  const answerable = hasFormControls(blocks) || !blocks.some((b) => b.type === "setup");
+  const closed = card.status !== "open";
 
   async function act(kind: "submit" | "dismiss", fn: () => Promise<void>) {
     setBusy(kind);
@@ -266,8 +339,14 @@ export function AskSlip({
     <article className="rise relative flex flex-col overflow-hidden rounded-card bg-surface py-4 pr-4 pl-5 shadow-card">
       <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-vermilion" />
       <div className="flex min-w-0 items-center gap-2 text-[12px]">
-        <Lamp status="needs_you" />
-        <StatusWord status="needs_you" />
+        {closed ? (
+          <span className="font-medium text-ink-3">{card.status === "submitted" ? t("Answered") : t("Put away")}</span>
+        ) : (
+          <>
+            <Lamp status="needs_you" />
+            <StatusWord status="needs_you" />
+          </>
+        )}
         {src ? (
           <span className="min-w-0 truncate text-ink-3">
             ·{" "}
@@ -286,25 +365,44 @@ export function AskSlip({
       {card.summary ? <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{card.summary}</p> : null}
       {blocks.length > 0 ? (
         <div className="mt-3 space-y-3">
-          {blocks.map((b, i) => (
-            <BlockRenderer key={i} block={b} values={values} disabled={busy !== ""} onChange={(name, val) => setValues((prev) => ({ ...prev, [name]: val }))} />
-          ))}
+          {blocks.map((b, i) =>
+            b.type === "setup" ? (
+              <SetupOffer
+                key={i}
+                botId={botId}
+                block={b}
+                state={setups[i]}
+                onResolve={onSetup && !closed ? (outcome) => onSetup(card, i, outcome) : undefined}
+              />
+            ) : (
+              <BlockRenderer
+                key={i}
+                block={b}
+                values={values}
+                disabled={busy !== "" || closed}
+                onChange={(name, val) => setValues((prev) => ({ ...prev, [name]: val }))}
+              />
+            ),
+          )}
         </div>
       ) : null}
+      {closed ? null : (
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        {answerable ? (
         <Btn
           kind="primary"
           size="sm"
           disabled={busy !== ""}
           icon={busy === "submit" ? <Spinner size={12} tone="on-ink" /> : <Send size={13} />}
-          title={t("Answers in the main chat. Ctrl/⌘-click for a new chat.")}
+          title={place === "board" ? t("Answers in the main chat. Ctrl/⌘-click for a new chat.") : undefined}
           onClick={(e) => {
-            const apart = e.metaKey || e.ctrlKey;
+            const apart = place === "board" && (e.metaKey || e.ctrlKey);
             void act("submit", () => onSubmit(card, values, apart));
           }}
         >
           {card.submitLabel || t("Send")}
         </Btn>
+        ) : null}
         <Btn kind="ghost" size="sm" disabled={busy !== ""} onClick={() => void act("dismiss", () => onDismiss(card, false))}>
           {t("Not now")}
         </Btn>
@@ -319,6 +417,7 @@ export function AskSlip({
           </button>
         ) : null}
       </div>
+      )}
     </article>
   );
 }

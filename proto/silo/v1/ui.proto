@@ -90,6 +90,7 @@ service UI {
   rpc MarkDashboardRead(MarkDashboardReadRequest) returns (MarkDashboardReadResponse);
   rpc DismissDashboardCard(DismissDashboardCardRequest) returns (DismissDashboardCardResponse);
   rpc SubmitDashboardCard(SubmitDashboardCardRequest) returns (SubmitDashboardCardResponse);
+  rpc ResolveCardSetup(ResolveCardSetupRequest) returns (DashboardCard);
   // Widgets: what the Bot keeps on the Dashboard and code keeps current.
   rpc RefreshWidget(RefreshWidgetRequest) returns (DashboardWidget);
   rpc SetWidgetState(SetWidgetStateRequest) returns (DashboardWidget);
@@ -1003,6 +1004,18 @@ message DashboardCard {
   string created_at = 15;
   string updated_at = 16;
   bool read = 17;
+  // What the owner did with each setup block, by block index: {"2": "done"}.
+  string setup_json = 18;
+}
+
+// ResolveCardSetup records what the owner did with one setup block of a card
+// (index into its blocks) and tells the Bot in the card's chat.
+message ResolveCardSetupRequest {
+  string bot_id = 1;
+  string id = 2;
+  int32 index = 3;
+  // done or skipped.
+  string outcome = 4;
 }
 
 message ListDashboardRequest {
@@ -1565,6 +1578,8 @@ message RunEvent {
   repeated Quote quotes = 9;
   // On a feed_quote event: what was quoted, for the thread to draw it.
   Quoted quoted = 10;
+  // On a card event (and a quote of a card): the card as it stands now.
+  DashboardCard card = 11;
 }
 
 // Quoted is the thing a chat opened from: a Feed post, a Dashboard widget as

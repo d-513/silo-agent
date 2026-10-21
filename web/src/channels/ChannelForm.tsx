@@ -21,17 +21,23 @@ export function ChannelForm({
   adapter,
   channel,
   onBack,
+  prefill,
+  onSaved,
 }: {
   botId: string;
   adapter: ChannelAdapter;
   channel?: Channel;
   onBack: () => void;
+  // A Bot's setup offer: plain fields filled in for a new channel.
+  prefill?: Record<string, string>;
+  // A new channel was made (instead of going back).
+  onSaved?: (ch: Channel) => void;
 }) {
   const [name, setName] = useState(channel?.name ?? "");
   const [enabled, setEnabled] = useState(channel?.enabled ?? true);
   const [inbound, setInbound] = useState(channel?.inbound ?? true);
   const [prompt, setPrompt] = useState(channel?.prompt ?? "");
-  const [config, setConfig] = useState<Record<string, string>>(() => ({ ...(channel?.config ?? {}) }));
+  const [config, setConfig] = useState<Record<string, string>>(() => ({ ...(prefill ?? {}), ...(channel?.config ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const saver = useSave();
@@ -81,9 +87,14 @@ export function ChannelForm({
             targetTitle: channel.targetTitle,
           });
         } else {
-          await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
+          const made = await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
+          if (onSaved) {
+            onSaved(made);
+            return;
+          }
         }
       });
+      if (!channel && onSaved) return;
       onBack();
     } catch (ex) {
       setErr(fail(ex));

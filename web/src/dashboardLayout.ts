@@ -67,7 +67,37 @@ export type DashboardBlock =
       placeholder?: string;
       rows?: number;
       default?: string;
-    };
+    }
+  | SetupBlock;
+
+// A setup offer: something from Silo's catalog the Bot suggests adding, with
+// a few plain fields filled in. The owner adds it with the normal form.
+export type SetupBlock = {
+  type: "setup";
+  kind: "connector" | "channel" | "drive";
+  target: string;
+  label: string;
+  why?: string;
+  prefill?: Record<string, string>;
+};
+
+// formControls are the blocks that take an answer (a setup offer is answered
+// on its own).
+export function hasFormControls(blocks: DashboardBlock[]): boolean {
+  return blocks.some((b) => ["switch", "select", "segmented", "checkboxes", "input", "textarea"].includes(b.type));
+}
+
+// setupState is what the owner did with each setup offer, by block index.
+export function setupState(json: string): Record<number, "done" | "skipped"> {
+  try {
+    const raw = JSON.parse(json || "{}") as Record<string, string>;
+    const out: Record<number, "done" | "skipped"> = {};
+    for (const [k, v] of Object.entries(raw)) if (v === "done" || v === "skipped") out[Number(k)] = v;
+    return out;
+  } catch {
+    return {};
+  }
+}
 
 export function parseBlocks(blocksJson: string): DashboardBlock[] {
   if (!blocksJson || !blocksJson.trim()) return [];

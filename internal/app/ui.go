@@ -14,6 +14,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/command"
+	"silo.agent/internal/app/dashboard"
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/workspace"
@@ -469,7 +470,7 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	seen := map[string]struct{}{}
 	for i := range rows {
 		seen[rows[i].ID] = struct{}{}
-		if err := stream.Send(threadEvent(&rows[i], chatID)); err != nil {
+		if err := stream.Send(a.threadEvent(&rows[i], chatID)); err != nil {
 			return err
 		}
 	}
@@ -504,10 +505,44 @@ func clipDesc(s string) string {
 	return textx.TruncateUTF8(strings.TrimSpace(s), descMax)
 }
 
-// threadEvent is a persisted event as a viewer receives it.
-func threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
+// threadEvent is a persisted event as a viewer receives it. A card (or a
+// quote of one) carries the card as it stands now.
+func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 	meta := decodeUserMeta(r.Meta)
-	return &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+	out := &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+	switch {
+	case r.Kind == dashboard.CardKind:
+		out.Card = a.Dashboard.CardProto(r.Body)
+	case r.Kind == quote.Kind:
+		out.Card = a.Dashboard.CardProto(quote.CardOf(r))
+	}
+	return out
+}
+
+// Shown sends a persisted event that was written outside a run's stream (a
+// quote put into the main chat) to that chat's viewers.
+func (a *App) Shown(botID, chatID string, ev *db.RunEvent) {
+	a.Bus.Publish(botID, a.threadEvent(ev, chatID))
+}
+
+// The proactivity levels (bots.proactivity).
+const (
+	proactiveOff    = "off"
+	proactiveQuiet  = "quiet"
+	proactiveActive = "active"
+)
+
+// Proactive reports whether the Bot may write into its main chat unasked.
+func (a *App) Proactive(botID string) bool {
+	var b db.Bot
+	a.DB.Select("proactivity").Where("id = ?", botID).Limit(1).Find(&b)
+	return b.Proactivity == proactiveActive
+}
+
+// CardChanged sends a chat's viewers a card as it stands now: a transient
+// event, never persisted or replayed.
+func (a *App) CardChanged(botID, chatID string, card *v1.DashboardCard) {
+	a.Bus.Publish(botID, &v1.RunEvent{ChatId: chatID, Kind: dashboard.CardStateKind, Body: card.GetId(), Card: card})
 }
 
 // A thread is sent a page at a time: the newest pageTurns of the human's
@@ -562,7 +597,7 @@ func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListCh
 	}
 	out := &v1.ListChatEventsResponse{More: more}
 	for i := range rows {
-		out.Events = append(out.Events, threadEvent(&rows[i], chatID))
+		out.Events = append(out.Events, a.threadEvent(&rows[i], chatID))
 	}
 	return connect.NewResponse(out), nil
 }

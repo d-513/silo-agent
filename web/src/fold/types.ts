@@ -1,14 +1,14 @@
-import type { DashboardWidget } from "../gen/silo/v1/ui_pb";
+import type { DashboardCard, DashboardWidget } from "../gen/silo/v1/ui_pb";
 
 export type Attachment = { name: string; path: string; size: number };
 
 // What a chat opened from (a feed_quote event): a Feed post, a Dashboard
 // widget as it stood, or a Dashboard ask. Absent on quotes from before it
 // was recorded.
-export type Quoted = { from: "feed" | "widget" | "ask" | ""; title: string; widget?: DashboardWidget };
+export type Quoted = { from: "feed" | "widget" | "ask" | "asked" | ""; title: string; widget?: DashboardWidget };
 
 export function quotedFrom(s: string): Quoted["from"] {
-  return s === "feed" || s === "widget" || s === "ask" ? s : "";
+  return s === "feed" || s === "widget" || s === "ask" || s === "asked" ? s : "";
 }
 
 // A quote the human put in a message. source is "message" (ref "reply" for
@@ -28,6 +28,9 @@ export type Ev = {
   attachments?: Attachment[];
   quotes?: Quote[];
   quoted?: Quoted;
+  // A card (and a quote of one, and a card_state update): the card as it
+  // stands.
+  card?: DashboardCard;
   at?: number;
   createdAt?: string;
 };
@@ -133,6 +136,9 @@ export type Block =
   // `running` while the summary is being written; empty text once settled
   // means it failed or was stopped.
   | CompactionBlock
+  // An ask shown in the chat: the Bot's question as a card answered in
+  // place. `asked` when it came from elsewhere (an automation) into this chat.
+  | { key: string; type: "card"; card: DashboardCard; asked?: boolean; createdAt?: string }
   // A slash command's mark in the thread: the context started over here
   // (/clear), or `count` messages were deleted for good (/wipe).
   | { key: string; type: "boundary"; kind: "cleared" | "wiped"; count: number; createdAt?: string }

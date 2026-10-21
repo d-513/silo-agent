@@ -24,18 +24,22 @@ export function DriveForm({
   drive,
   taken,
   onDone,
+  prefill,
+  onSaved,
 }: {
   botId: string;
   t: DriveTemplate;
   drive?: Drive;
   taken: Set<string>;
   onDone: () => void;
+  prefill?: Record<string, string>;
+  onSaved?: () => void;
 }) {
   const {
     editing, draft, values, setValues, secrets, name, setName, readOnly, setReadOnly, err, authBusy, authErr, test, saver,
     oauth, connectVars, mountVars, advancedVars, connected, requiredMissing, set, setSecret, signIn, runTest, browse, pickLoader,
     nameOk, canSave, save, pathPreview,
-  } = useDriveForm({ botId, t: tpl, drive, taken, onDone });
+  } = useDriveForm({ botId, t: tpl, drive, taken, onDone, prefill, onSaved });
   const varInputs = (vars: typeof connectVars) =>
     vars.map((v) => (
       <VarInput

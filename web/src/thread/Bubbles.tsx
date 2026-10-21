@@ -147,7 +147,13 @@ export function Opened({ text, source, quoted, createdAt }: { text: string; sour
   const when = at && !Number.isNaN(at.getTime()) ? fullTime(at) : "";
   const from = quoted?.from || (source === "Dashboard" ? "dashboard" : "feed");
   const board = from !== "feed";
-  const label = { feed: t("From the Feed"), widget: t("Widget on the Dashboard"), ask: t("Asked on the Dashboard"), dashboard: t("From the Dashboard") }[from];
+  const label = {
+    feed: t("From the Feed"),
+    widget: t("Widget on the Dashboard"),
+    ask: t("Asked on the Dashboard"),
+    asked: t("Asked while you were away"),
+    dashboard: t("From the Dashboard"),
+  }[from];
   const Icon = board ? LayoutGrid : Inbox;
   return (
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-cobalt)]">

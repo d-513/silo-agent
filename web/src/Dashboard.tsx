@@ -155,6 +155,12 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
     if (r.chat) onQuoted(r.chat);
   }
 
+  async function setupAsk(card: DashboardCard, index: number, outcome: "done" | "skipped") {
+    const r = await guard(() => ui.resolveCardSetup({ botId: bot.id, id: card.id, index, outcome }));
+    if (!r) return;
+    patch(UI.method.listDashboard, input, (cur) => ({ ...cur, cards: cur.cards.map((c) => (c.id === r.id ? r : c)) }));
+  }
+
   async function dismissAsk(card: DashboardCard, suppressKind: boolean) {
     const r = await guard(() => ui.dismissDashboardCard({ botId: bot.id, id: card.id, suppressKind }));
     if (!r) return;
@@ -346,7 +352,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
             <ApprovalCard key={ap.id} approval={ap} onDecide={(d) => void decideApproval(ap, d)} onAutoApprove={() => void autoApprove(ap)} />
           ))}
           {data.cards.map((c) => (
-            <AskSlip key={c.id} botId={bot.id} card={c} onSubmit={submitAsk} onDismiss={dismissAsk} />
+            <AskSlip key={c.id} botId={bot.id} card={c} onSubmit={submitAsk} onDismiss={dismissAsk} onSetup={setupAsk} />
           ))}
         </section>
       ) : null}

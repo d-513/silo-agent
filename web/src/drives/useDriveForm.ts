@@ -16,16 +16,22 @@ export function useDriveForm({
   drive,
   taken,
   onDone,
+  prefill,
+  onSaved,
 }: {
   botId: string;
   t: DriveTemplate;
   drive?: Drive;
   taken: Set<string>;
   onDone: () => void;
+  // A Bot's setup offer: plain options filled in for a new drive.
+  prefill?: Record<string, string>;
+  // The drive was saved (instead of onDone).
+  onSaved?: () => void;
 }) {
   const editing = !!drive;
   const [draft, setDraft] = useState<Drive | undefined>(drive);
-  const [values, setValues] = useState<Record<string, string>>(() => ({ ...(drive?.options ?? {}) }));
+  const [values, setValues] = useState<Record<string, string>>(() => ({ ...(prefill ?? {}), ...(drive?.options ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [name, setName] = useState(drive?.name ?? uniqueName(tpl.title, taken));
   const [readOnly, setReadOnly] = useState(drive?.readOnly ?? false);
@@ -210,7 +216,7 @@ export function useDriveForm({
           options: options(),
         });
       });
-      onDone();
+      (onSaved ?? onDone)();
     } catch (e) {
       setErr(fail(e));
     }

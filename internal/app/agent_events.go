@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
+	"silo.agent/internal/app/dashboard"
 	"strings"
 	"time"
 
@@ -37,7 +38,11 @@ func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 		return
 	}
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
-	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool})
+	ev := &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool}
+	if kind == dashboard.CardKind {
+		ev.Card = a.Dashboard.CardProto(body)
+	}
+	a.Bus.Publish(botID, ev)
 }
 
 // record persists an event only replay reads (internalKinds): it is part of

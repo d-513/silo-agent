@@ -25,6 +25,8 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 	switch name {
 	case "list_dashboard":
 		return s.listForBot(bot.ID)
+	case "ask_owner":
+		return s.askOwner(ctx, bot, runID, args)
 	case "upsert_dashboard_card":
 		return s.upsertAsk(bot.ID, s.host.ChatOfRun(runID), runID, args)
 	case "remove_dashboard_card":

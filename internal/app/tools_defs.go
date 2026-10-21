@@ -444,6 +444,20 @@ func (a *App) toolDefs() []tool.Def {
 			Run:          dashboard,
 		},
 		{
+			Name:        "ask_owner",
+			Description: "Ask the owner something only they can answer or decide, as a card they answer in place: a question, optional display blocks and form controls, and setup offers. In this chat it shows here; from an automation or a channel it goes to the main chat (when the owner allows that) and always waits on the Dashboard. Their answer comes back as their next message. Use the Feed for news that needs no answer.",
+			Params: tool.Object(map[string]any{
+				"text":         map[string]any{"type": "string", "description": "the question, a sentence or two, markdown"},
+				"title":        map[string]any{"type": "string", "description": "a short heading (default: the first line of text)"},
+				"blocks":       map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "display blocks (markdown, kv, metrics, diff), form controls (switch, select, segmented, checkboxes, input, textarea; each with a name) and setup offers ({type: setup, kind: connector|channel|drive, target, prefill, why})"},
+				"submit_label": map[string]any{"type": "string", "description": "the submit button's label; omit for a card with only setup offers"},
+				"key":          map[string]any{"type": "string", "description": "stable key: asking again with it updates the open card"},
+			}, "text"),
+			Connector: security.Bot, Action: "ask_owner",
+			ExposeCompletion: true, ExposePython: true,
+			Run: dashboard,
+		},
+		{
 			Name:        "upsert_dashboard_card",
 			Description: "Create or update an ask on the Dashboard: something the owner must decide, shown as a slip with optional form controls and a submit button that opens a chat with their choice. Match by id or key; pass only the fields to change.",
 			Params: tool.Object(map[string]any{

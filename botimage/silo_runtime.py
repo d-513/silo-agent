@@ -286,6 +286,29 @@ def remove_widget(key: str) -> dict:
     return call("bot", "widget_remove", {"key": key})
 
 
+def ask_owner(
+    text: str,
+    title: str | None = None,
+    blocks: list[dict] | None = None,
+    submit_label: str | None = None,
+    key: str | None = None,
+) -> dict:
+    """Ask the owner something only they can answer, as a card they answer in place.
+
+    In a chat it shows there; from an automation or a channel it goes to the
+    main chat (when the owner allows it) and waits on the Dashboard either way.
+    `blocks` are display blocks, form controls (each with a `name`) and setup
+    offers: {"type": "setup", "kind": "connector"|"channel"|"drive",
+    "target": <library identifier, adapter or provider>, "prefill": {...},
+    "why": "..."}. Their answer comes back as their next message.
+    """
+    args: dict = {"text": text}
+    for k, v in (("title", title), ("blocks", blocks), ("submit_label", submit_label), ("key", key)):
+        if v is not None:
+            args[k] = v
+    return call("bot", "ask_owner", args)
+
+
 def upsert_dashboard_card(
     id: str | None = None,
     key: str | None = None,

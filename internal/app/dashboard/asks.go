@@ -89,7 +89,7 @@ func (s *Service) upsertAsk(botID, chatID, runID string, args map[string]any) (s
 		set(&c.SubmitLabel, lbl)
 	}
 	if raw, ok := args["blocks"]; ok && raw != nil {
-		norm, err := normalizeBlocks(raw)
+		norm, err := s.cleanBlocks(raw)
 		if err != nil {
 			return "", err
 		}
@@ -174,6 +174,7 @@ func protoCard(c *db.DashboardCard) *v1.DashboardCard {
 		Priority: int32(c.Priority), BlocksJson: blocks, SubmitLabel: submit, Status: c.Status,
 		SourceKind: c.SourceKind, SourceName: c.SourceName, ChatId: c.ChatID,
 		CreatedAt: c.CreatedAt.Format(time.RFC3339), UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Read: c.ReadAt != nil,
+		SetupJson: c.SetupJSON,
 	}
 }
 
@@ -195,6 +196,8 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 	}).Error; err != nil {
 		return nil, err
 	}
+	c.Status = "dismissed"
+	s.cardChanged(c)
 	if suppress && s.memory != nil {
 		topic := c.Title
 		if c.Key != "" {
@@ -306,13 +309,28 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
-	q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
-	ch, runID, err := s.quoteChat(c.BotID, c.Title, q, submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote()), req.Msg.GetNewChat())
-	if err != nil {
-		return nil, err
+	turn := submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote())
+	var ch *db.Chat
+	var runID string
+	if in := s.answerIn(c); in != "" && !req.Msg.GetNewChat() {
+		// The card is in that chat already: the answer follows it there.
+		runID, err = s.host.StartOrInject(c.BotID, in, turn, run.Extra{}, nil)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		ch = &db.Chat{}
+		s.db.Where("id = ?", in).Limit(1).Find(ch)
+	} else {
+		q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
+		ch, runID, err = s.quoteChat(c.BotID, c.Title, q, turn, req.Msg.GetNewChat())
+		if err != nil {
+			return nil, err
+		}
 	}
 	now := time.Now()
 	_ = s.db.Model(c).Updates(map[string]any{"status": "submitted", "read_at": now, "updated_at": now}).Error
+	c.Status = "submitted"
+	s.cardChanged(c)
 	return connect.NewResponse(&v1.SubmitDashboardCardResponse{Chat: chats.Proto(ch), RunId: runID}), nil
 }
 

@@ -30,6 +30,9 @@ const (
 	FromFeed   = "feed"
 	FromWidget = "widget"
 	FromAsk    = "ask"
+	// FromAsked is a question the Bot asked from a background run
+	// (ask_owner in an automation), put into the main chat with its card.
+	FromAsked = "asked"
 )
 
 const titleMax = 120
@@ -58,12 +61,23 @@ type Quote struct {
 	// At is when it was made: posted, asked, or the widget's data time.
 	At     time.Time
 	Widget *Widget
+	// Card is the ask a quote of one stands for, so the thread draws it live.
+	Card string
 }
 
 type meta struct {
 	From   string  `json:"from,omitempty"`
 	Title  string  `json:"title,omitempty"`
 	Widget *Widget `json:"widget,omitempty"`
+	Card   string  `json:"card,omitempty"`
+}
+
+// CardOf is the card a quote event stands for, "" for none.
+func CardOf(ev *db.RunEvent) string {
+	if ev.Kind != Kind || ev.Meta == "" {
+		return ""
+	}
+	return decode(ev.Meta).Card
 }
 
 // Open makes a web chat titled title whose only run holds the quote. The
@@ -83,22 +97,29 @@ func Open(gdb *gorm.DB, botID, title string, q Quote) (*db.Chat, error) {
 // Into puts the quote at the end of an existing chat (the main chat), in a
 // run of its own; the owner's next message there is the reply to it.
 func Into(gdb *gorm.DB, ch *db.Chat, q Quote) error {
+	_, err := Put(gdb, ch, q)
+	return err
+}
+
+// Put is Into, answering the event it wrote so a caller can show it to the
+// chat's viewers at once.
+func Put(gdb *gorm.DB, ch *db.Chat, q Quote) (*db.RunEvent, error) {
 	now := time.Now()
 	botID := ch.BotID
 	r := db.Run{ID: ids.New(), BotID: botID, ChatID: ch.ID, Origin: "feed", Status: "done", CreatedAt: now}
 	if err := gdb.Create(&r).Error; err != nil {
-		return err
+		return nil, err
 	}
-	m, _ := json.Marshal(meta{From: q.From, Title: q.Title, Widget: q.Widget})
+	m, _ := json.Marshal(meta{From: q.From, Title: q.Title, Widget: q.Widget, Card: q.Card})
 	if q.At.IsZero() {
 		q.At = now
 	}
 	// CreatedAt is the quoted thing's time: history frames the quote with it.
 	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: Kind, Body: q.Body, Tool: q.Source, Meta: string(m), Zone: zone.OfBot(gdb, botID).String(), CreatedAt: q.At}
 	if err := gdb.Create(&ev).Error; err != nil {
-		return err
+		return nil, err
 	}
-	return gdb.Model(&db.Chat{}).Where("id = ?", ch.ID).Update("updated_at", now).Error
+	return &ev, gdb.Model(&db.Chat{}).Where("id = ?", ch.ID).Update("updated_at", now).Error
 }
 
 func decode(raw string) meta {
@@ -137,6 +158,8 @@ func Text(ev *db.RunEvent) string {
 		b.WriteString(", as it stood")
 	case FromAsk:
 		fmt.Fprintf(&b, "I'm quoting the card “%s” you put on my Dashboard", m.Title)
+	case FromAsked:
+		b.WriteString("You asked me this")
 	default:
 		b.WriteString("I'm quoting a post you made to my Feed")
 	}
