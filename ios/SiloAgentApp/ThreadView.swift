@@ -5,6 +5,7 @@ import SwiftUI
 
 struct ThreadView: View {
     @Environment(AppModel.self) private var model
+    private static let end = "thread-end"
     /// The events to render; the chat passes `model.events`, a log page its own stream.
     var events: [Silo_V1_RunEvent]
     var busy: Bool
@@ -13,6 +14,12 @@ struct ThreadView: View {
     @State private var editing: Block?
     @State private var editText = ""
     @State private var deleting: Block?
+    /// Whether the reader is at the end of the thread. New output follows only while they are,
+    /// so scrolling up to read while a run streams is not yanked back down.
+    @State private var atBottom = true
+    /// Only the reader's own scrolling can leave the end: content growing under a scroll that is
+    /// still settling must not count as "scrolled up".
+    @State private var dragging = false
 
     var body: some View {
         let blocks = foldEvents(events)
@@ -32,21 +39,55 @@ struct ThreadView: View {
                             .id(block.id)
                             .contextMenu { menu(for: block, isLastUser: interactive && block.id == lastUserID) }
                     }
+                    Color.clear.frame(height: 1).id(Self.end)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDismissesKeyboard(.interactively)
-            .onChange(of: events.count) { _, _ in
-                guard let last = blocks.last else { return }
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo(last.id, anchor: .bottom)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                let seen = geometry.contentOffset.y + geometry.containerSize.height - geometry.contentInsets.bottom
+                return seen >= geometry.contentSize.height - 80
+            } action: { _, value in
+                if value || dragging { atBottom = value }
+            }
+            .onScrollPhaseChange { _, phase in
+                dragging = phase == .interacting || phase == .decelerating
+            }
+            .onChange(of: events.count) { old, new in
+                guard atBottom else { return }
+                // A replay arrives as a burst: jump, do not animate through it.
+                if new - old > 3 || old == 0 {
+                    proxy.scrollTo(Self.end, anchor: .bottom)
+                } else {
+                    withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(Self.end, anchor: .bottom) }
                 }
             }
-            .onAppear {
-                guard let last = blocks.last else { return }
-                proxy.scrollTo(last.id, anchor: .bottom)
+            .onChange(of: lastUserID) { _, _ in
+                // The reader's own message always brings them to the end.
+                atBottom = true
+                withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(Self.end, anchor: .bottom) }
+            }
+            .onAppear { proxy.scrollTo(Self.end, anchor: .bottom) }
+            .overlay(alignment: .bottomTrailing) {
+                if !atBottom && !blocks.isEmpty {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.end, anchor: .bottom) }
+                    } label: {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(Theme.surface, in: Circle())
+                            .overlay(Circle().stroke(Theme.line, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 8)
+                    .accessibilityLabel("Jump to latest")
+                    .transition(.opacity)
+                }
             }
         }
         .sheet(item: $editing) { block in
@@ -432,29 +473,6 @@ struct ArtifactCard: View {
         loading = true
         preview = await model.fetchArtifact(artifact)
         loading = false
-    }
-}
-
-struct ProseView: View {
-    let text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(Prose.parse(text)) { part in
-                switch part {
-                case .text(let value):
-                    Text(attributed(value))
-                        .font(.reply())
-                        .textSelection(.enabled)
-                case .code(let value, let language):
-                    CodeWell(code: value, language: language)
-                }
-            }
-        }
-    }
-
-    private func attributed(_ value: String) -> AttributedString {
-        (try? AttributedString(markdown: value)) ?? AttributedString(value)
     }
 }
 
