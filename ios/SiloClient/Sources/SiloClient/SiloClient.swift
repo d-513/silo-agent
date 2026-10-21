@@ -88,6 +88,11 @@ public final class SiloClient: Sendable {
         return response.needsCode ? .needsCode : .signedIn(response.user)
     }
 
+    /// How this server lets people sign in (public; also tells the app the address is a Silo).
+    public func authOptions() async throws -> Silo_V1_AuthOptionsResponse {
+        try unwrap(await ui.authOptions(request: Silo_V1_AuthOptionsRequest(), headers: [:]))
+    }
+
     public func signOut() async throws {
         _ = await ui.signOut(request: Silo_V1_SignOutRequest(), headers: [:])
     }

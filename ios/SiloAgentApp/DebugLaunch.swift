@@ -13,9 +13,18 @@ enum DebugLaunch {
     @MainActor
     static func run(_ model: AppModel) async {
         let env = ProcessInfo.processInfo.environment
+        // A server alone opens the sign-in step without signing in.
+        if model.user == nil, let server = env["SILO_DEV_SERVER"], env["SILO_DEV_EMAIL"] == nil {
+            model.serverURL = server
+            return
+        }
         guard let email = env["SILO_DEV_EMAIL"], let password = env["SILO_DEV_PASSWORD"] else { return }
         if model.user == nil {
-            if let server = env["SILO_DEV_SERVER"] { model.serverURL = server }
+            if let server = env["SILO_DEV_SERVER"] {
+                model.serverURL = server
+            } else if model.serverURL.isEmpty {
+                model.serverURL = "http://localhost:8080"
+            }
             model.email = email
             model.password = password
             await model.signIn()

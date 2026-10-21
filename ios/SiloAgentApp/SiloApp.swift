@@ -1,4 +1,5 @@
 import CoreText
+import SiloClient
 import SwiftUI
 import UIKit
 
@@ -43,14 +44,7 @@ struct SiloApp: App {
         WindowGroup {
             Group {
                 if model.restoring && model.user == nil {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        if let error = model.restoreError {
-                            Text(error).font(.silo(.footnote)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                            Text("Retrying…").font(.silo(.caption)).foregroundStyle(.tertiary)
-                        }
-                    }
-                    .padding()
+                    Reconnecting()
                 } else if model.user == nil {
                     SignInView()
                 } else {
@@ -89,5 +83,42 @@ private extension UIFont {
             UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [wght: value],
         ])
         return UIFont(descriptor: descriptor, size: pointSize)
+    }
+}
+
+/// The remembered server is not answering yet: keep trying, or pick another one.
+private struct Reconnecting: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            AuthMark()
+            Spacer()
+            if let error = model.restoreError {
+                Text("Can't reach \(serverLabel(model.serverURL))")
+                    .font(.silo(26, .medium))
+                    .foregroundStyle(Theme.ink)
+                Text(error)
+                    .font(.silo(14))
+                    .foregroundStyle(Theme.ink2)
+                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Trying again…").font(.silo(13)).foregroundStyle(Theme.ink3)
+                }
+                .padding(.top, 16)
+                Button("Use another server") { model.changeServer() }
+                    .buttonStyle(.quiet)
+                    .padding(.top, 24)
+            } else {
+                ProgressView().frame(maxWidth: .infinity)
+            }
+            Spacer()
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 56)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Theme.canvas.ignoresSafeArea())
     }
 }

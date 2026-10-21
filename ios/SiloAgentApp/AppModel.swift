@@ -6,19 +6,25 @@ import SiloClient
 @MainActor
 @Observable
 final class AppModel {
-    static let defaultServerURL = "http://localhost:8080"
-
     // Session
     private(set) var user: Silo_V1_User?
     private(set) var restoring = true
     /// Set while the boot `me` call keeps failing because the Control Plane is unreachable.
     private(set) var restoreError: String?
+    /// The Control Plane this app talks to; empty until the person connects to one. There is
+    /// no default: a guess like localhost only ever works on a developer's simulator.
     var serverURL: String {
         didSet {
             UserDefaults.standard.set(serverURL, forKey: "serverURL")
-            client = SiloClient(host: normalizedServerURL())
+            client = SiloClient(host: serverURL)
         }
     }
+    /// What the person types on the welcome step, before it is checked.
+    var serverInput = ""
+    /// How the connected server lets people sign in; nil until asked.
+    private(set) var serverOptions: Silo_V1_AuthOptionsResponse?
+    private(set) var checkingServer = false
+    var serverError: String?
     var email = ""
     var password = ""
     /// The two-factor code, asked for once the password was accepted.
@@ -78,7 +84,7 @@ final class AppModel {
     private var streamingChatID: String?
 
     init() {
-        let stored = UserDefaults.standard.string(forKey: "serverURL") ?? Self.defaultServerURL
+        let stored = UserDefaults.standard.string(forKey: "serverURL").flatMap(serverAddress) ?? ""
         serverURL = stored
         client = SiloClient(host: stored)
     }
@@ -119,12 +125,20 @@ final class AppModel {
     // MARK: - Session lifecycle
 
     func restoreSession() async {
+        let host = serverURL
+        guard !host.isEmpty else {
+            restoring = false
+            return
+        }
         restoring = true
-        defer { restoring = false }
+        defer { if serverURL == host { restoring = false } }
         var delay = 1.0
-        while !Task.isCancelled {
+        // Ends when the person picks another server while this one is unreachable.
+        while !Task.isCancelled && serverURL == host {
             do {
-                user = try await client.me()
+                let me = try await client.me()
+                guard serverURL == host else { return }
+                user = me
                 restoreError = nil
                 await refreshBots()
                 pickBot()
@@ -165,8 +179,7 @@ final class AppModel {
         signingIn = true
         signInError = nil
         defer { signingIn = false }
-        let host = normalizedServerURL()
-        if host != serverURL { serverURL = host }
+        guard !serverURL.isEmpty else { return }
         do {
             let outcome = try await client.signIn(
                 email: email.trimmingCharacters(in: .whitespaces), password: password,
@@ -757,15 +770,48 @@ final class AppModel {
         pollTask = nil
     }
 
-    // MARK: - Helpers
+    // MARK: - Server
 
-    private func normalizedServerURL() -> String {
-        var value = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if value.isEmpty { value = Self.defaultServerURL }
-        if !value.contains("://") { value = "http://" + value }
-        while value.hasSuffix("/") { value.removeLast() }
-        return value
+    /// Checks the typed address answers as a Silo before anyone types a password into it.
+    func connect() async {
+        guard !checkingServer else { return }
+        serverError = nil
+        guard let address = serverAddress(serverInput) else {
+            serverError = "That does not look like a server address."
+            return
+        }
+        checkingServer = true
+        defer { checkingServer = false }
+        do {
+            let options = try await SiloClient(host: address).authOptions()
+            serverURL = address
+            serverOptions = options
+            signInError = nil
+        } catch {
+            serverError = "Could not reach Silo at \(serverLabel(address)). Check the address, and that this phone can reach that network."
+        }
     }
+
+    /// Asks a remembered server how it signs people in (for the sign-in step after a sign-out).
+    func loadServerOptions() async {
+        guard !serverURL.isEmpty, serverOptions == nil else { return }
+        let host = serverURL
+        if let options = try? await client.authOptions(), serverURL == host { serverOptions = options }
+    }
+
+    /// Back to the welcome step with the current address ready to edit.
+    func changeServer() {
+        if !serverURL.isEmpty { serverInput = serverLabel(serverURL) }
+        serverURL = ""
+        serverOptions = nil
+        serverError = nil
+        signInError = nil
+        restoreError = nil
+        restoring = false
+        cancelCode()
+    }
+
+    // MARK: - Helpers
 
     private func isUnauthenticated(_ error: Error) -> Bool {
         if let silo = error as? SiloError, case .unauthenticated = silo { return true }
