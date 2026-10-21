@@ -286,7 +286,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   }
 
   return (
-    <div ref={ref} className={`relative ${board}`}>
+    <div ref={ref} className={`relative flex min-h-full flex-col ${board}`}>
       <div className="mb-2 flex h-8 min-w-0 items-center gap-2.5 text-[12.5px] text-ink-3">
         {working ? (
           <span className="flex min-w-0 items-center gap-2">
@@ -432,9 +432,10 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
         </div>
       ) : null}
 
-      <div className="sticky bottom-0 z-10 -mx-1 mt-3 bg-gradient-to-b from-transparent to-canvas to-30% px-1 pt-3 pb-3">
-        {/* A line to the Bot, not a page-wide field: it keeps a reading width. */}
-        <div className="mx-auto max-w-[560px]">
+      {/* Pinned to the foot of the page however little is on the board. */}
+      <div className="sticky bottom-0 z-10 -mx-1 mt-auto bg-gradient-to-b from-transparent to-canvas to-30% px-1 pt-6 pb-3">
+        {/* A line to the Bot, not a page-wide field. */}
+        <div className="mx-auto w-full min-[960px]:w-[70%]">
         <AskBar
           botName={bot.name}
           picked={pickedWidget ? { id: pickedWidget.id, title: pickedWidget.title } : undefined}
