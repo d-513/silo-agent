@@ -25,7 +25,7 @@ struct SignInView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .textContentType(.oneTimeCode)
-                            .font(.body.monospaced())
+                            .font(.siloMono(.body))
                             .onSubmit { Task { await model.signIn() } }
                     } header: {
                         Text("Two-factor code")
@@ -69,7 +69,7 @@ struct SignInView: View {
                 if let error = model.signInError {
                     Section {
                         Text(error)
-                            .font(.footnote)
+                            .font(.silo(.footnote))
                             .foregroundStyle(Theme.vermilion)
                     }
                 }

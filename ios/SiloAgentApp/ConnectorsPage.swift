@@ -19,22 +19,22 @@ struct ConnectorsPage: View {
             ForEach(rows) { row in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(row.connector.name).font(.headline)
+                        Text(row.connector.name).font(.silo(.headline))
                         Spacer()
                         if busy == row.id || row.authStatus == "initializing" {
                             ProgressView().controlSize(.small)
                         } else {
-                            Text(statusLabel(row)).font(.caption.weight(.medium)).foregroundStyle(tone(row))
+                            Text(statusLabel(row)).font(.silo(.caption, .medium)).foregroundStyle(tone(row))
                         }
                     }
                     if !row.connector.description_p.isEmpty {
-                        Text(row.connector.description_p).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(row.connector.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                     }
                     if !row.lastError.isEmpty {
-                        Text(row.lastError).font(.caption).foregroundStyle(Theme.vermilion).lineLimit(3)
+                        Text(row.lastError).font(.silo(.caption)).foregroundStyle(Theme.vermilion).lineLimit(3)
                     } else if row.authStatus == "needs_auth" {
                         Text(row.connector.auth == "oauth" ? "Authorize on the web client." : (row.statusDetail.isEmpty ? "Set up on the web client." : row.statusDetail))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.silo(.caption)).foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 2)
@@ -117,9 +117,9 @@ private struct AddConnectorSheet: View {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name).font(.headline).foregroundStyle(.primary)
+                            Text(item.name).font(.silo(.headline)).foregroundStyle(.primary)
                             if !item.description_p.isEmpty {
-                                Text(item.description_p).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                Text(item.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                             }
                         }
                         Spacer()

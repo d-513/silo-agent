@@ -17,18 +17,23 @@ struct ComposerView: View {
             controls
             attachmentChips
             if let error = dictation.error {
-                Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
+                Text(error).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let error = model.attachError {
-                Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
+                Text(error).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             field
         }
         .padding(.horizontal, 12)
-        .padding(.top, 4)
+        .padding(.top, 6)
         .padding(.bottom, 6)
+        .background {
+            // Paper under the composer so the thread fades out behind it rather than showing through.
+            LinearGradient(colors: [Theme.canvas.opacity(0), Theme.canvas], startPoint: .top, endPoint: .init(x: 0.5, y: 0.25))
+                .ignoresSafeArea()
+        }
         .onChange(of: photos) { _, items in loadPhotos(items) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
@@ -40,70 +45,65 @@ struct ComposerView: View {
 
     private var controls: some View {
         HStack(spacing: 6) {
-            modelMenu
-            thinkingMenu
+            pickMenu
             Spacer(minLength: 0)
-            if let usage = model.usage, usage.window > 0 {
+            // The meter only speaks up once the window is filling; compacting is also in the title menu.
+            if let usage = model.usage, usage.window > 0, usage.fraction >= 0.7 {
                 ContextMeter(usage: usage, canCompact: !model.isRunning && model.selectedChatID != nil) {
                     Task { await model.compact() }
                 }
             }
         }
-        .font(.footnote)
-        .tint(.secondary)
-        .foregroundStyle(.secondary)
+        .padding(.horizontal, 4)
     }
 
-    private var modelMenu: some View {
+    /// The model and the thinking level as one quiet chip.
+    private var pickMenu: some View {
         Menu {
-            ForEach(model.models, id: \.id) { option in
-                Button {
-                    Task { await model.setModel(option.id) }
-                } label: {
-                    Label(option.label.isEmpty ? option.id : option.label,
-                          systemImage: option.id == model.activeModel ? "checkmark" : "")
+            Section("Model") {
+                ForEach(model.models, id: \.id) { option in
+                    Button {
+                        Task { await model.setModel(option.id) }
+                    } label: {
+                        Label(option.label.isEmpty ? option.id : option.label,
+                              systemImage: option.id == model.activeModel ? "checkmark" : "")
+                    }
+                }
+            }
+            if !model.thinkingLevels.isEmpty {
+                Section("Thinking") {
+                    Button {
+                        Task { await model.setThinking("") }
+                    } label: {
+                        Label("Default", systemImage: model.fittedThinking.isEmpty ? "checkmark" : "")
+                    }
+                    ForEach(model.thinkingLevels, id: \.self) { level in
+                        Button {
+                            Task { await model.setThinking(level) }
+                        } label: {
+                            Label(thinkingLabel(level), systemImage: model.fittedThinking == level ? "checkmark" : "")
+                        }
+                    }
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                Text(modelLabel).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+            HStack(spacing: 5) {
+                Text(pickLabel).lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .semibold))
             }
-            .foregroundStyle(.secondary)
+            .font(.silo(12.5, .medium))
+            .foregroundStyle(Theme.ink2)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Theme.well, in: Capsule())
         }
-        .disabled(model.models.isEmpty || model.selectedChatID == nil)
+        .disabled(model.models.isEmpty)
     }
 
-    private var modelLabel: String {
+    private var pickLabel: String {
         let id = model.activeModel
-        return id.isEmpty ? "Model" : shortModel(id)
-    }
-
-    @ViewBuilder
-    private var thinkingMenu: some View {
-        if !model.thinkingLevels.isEmpty {
-            Menu {
-                Button {
-                    Task { await model.setThinking("") }
-                } label: {
-                    Label("Default", systemImage: model.fittedThinking.isEmpty ? "checkmark" : "")
-                }
-                ForEach(model.thinkingLevels, id: \.self) { level in
-                    Button {
-                        Task { await model.setThinking(level) }
-                    } label: {
-                        Label(thinkingLabel(level), systemImage: model.fittedThinking == level ? "checkmark" : "")
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                    Text(thinkingLabel(model.fittedThinking)).lineLimit(1)
-                }
-                .foregroundStyle(.secondary)
-            }
-            .disabled(model.selectedChatID == nil)
-        }
+        let name = id.isEmpty ? "Model" : shortModel(id)
+        return model.thinkingLevels.isEmpty ? name : "\(name) · \(thinkingLabel(model.fittedThinking))"
     }
 
     // MARK: attachments
@@ -125,10 +125,11 @@ struct ComposerView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Remove \(item.name)")
                         }
-                        .font(.caption)
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.ink2)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .glassEffect(.regular, in: .capsule)
+                        .background(Theme.well, in: Capsule())
                     }
                 }
             }
@@ -165,45 +166,52 @@ struct ComposerView: View {
     }
 
     private var field: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(alignment: .bottom, spacing: 8) {
-                Menu {
-                    PhotosPicker(selection: $photos, maxSelectionCount: 5, matching: .images) {
-                        Label("Photo Library", systemImage: "photo")
-                    }
-                    Button {
-                        importing = true
-                    } label: {
-                        Label("Files", systemImage: "folder")
-                    }
+        HStack(alignment: .bottom, spacing: 8) {
+            Menu {
+                PhotosPicker(selection: $photos, maxSelectionCount: 5, matching: .images) {
+                    Label("Photo Library", systemImage: "photo")
+                }
+                Button {
+                    importing = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
+                    Label("Files", systemImage: "folder")
                 }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .accessibilityLabel("Attach")
-
-                Group {
-                    if dictation.state == .recording {
-                        recordingBar
-                    } else {
-                        TextField("Message", text: $text, axis: .vertical)
-                            .lineLimit(1...6)
-                            .focused($focused)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                    }
-                }
-                .frame(minHeight: 44)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 22))
-
-                trailing
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.surface, in: Circle())
+                    .overlay(Circle().stroke(Theme.lineStrong))
+                    .contentShape(Circle())
             }
+            .accessibilityLabel("Attach")
+
+            Group {
+                if dictation.state == .recording {
+                    recordingBar
+                } else {
+                    TextField(placeholder, text: $text, axis: .vertical)
+                        .font(.silo(16))
+                        .foregroundStyle(Theme.ink)
+                        .tint(Theme.cobalt)
+                        .lineLimit(1...6)
+                        .focused($focused)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                }
+            }
+            .frame(minHeight: 44)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.lineStrong))
+
+            trailing
         }
         .sensoryFeedback(.impact(weight: .light), trigger: model.isRunning)
+    }
+
+    private var placeholder: String {
+        model.selectedBot.map { "Message \($0.name)" } ?? "Message"
     }
 
     @ViewBuilder
@@ -213,22 +221,24 @@ struct ComposerView: View {
                 Task { await model.stopRun() }
             } label: {
                 Image(systemName: "stop.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.onInk)
                     .frame(width: 44, height: 44)
+                    .background(Theme.vermilion, in: Circle())
             }
-            .glassEffect(.regular.tint(Theme.vermilion).interactive(), in: .circle)
+            .buttonStyle(.plain)
             .accessibilityLabel("Stop")
         } else if canSend {
             Button {
                 send()
             } label: {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.onInk)
                     .frame(width: 44, height: 44)
+                    .background(Theme.ink, in: Circle())
             }
-            .glassEffect(.regular.tint(Theme.cobalt).interactive(), in: .circle)
+            .buttonStyle(.plain)
             .accessibilityLabel("Send")
         } else if model.voiceEnabled && dictation.state != .recording {
             micButton
@@ -243,13 +253,15 @@ struct ComposerView: View {
                 if dictation.state == .transcribing {
                     ProgressView().controlSize(.small)
                 } else {
-                    Image(systemName: "mic").font(.system(size: 17, weight: .semibold))
+                    Image(systemName: "mic").font(.system(size: 17, weight: .medium))
                 }
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(Theme.ink)
             .frame(width: 44, height: 44)
+            .background(Theme.surface, in: Circle())
+            .overlay(Circle().stroke(Theme.lineStrong))
         }
-        .glassEffect(.regular.interactive(), in: .circle)
+        .buttonStyle(.plain)
         .disabled(dictation.state == .transcribing)
         .accessibilityLabel("Dictate")
     }
@@ -258,7 +270,7 @@ struct ComposerView: View {
         HStack(spacing: 10) {
             Circle().fill(Theme.vermilion).frame(width: 9, height: 9)
             Text(formatClock(dictation.elapsed))
-                .font(.system(.body, design: .monospaced))
+                .font(.siloMono(.body))
             Spacer()
             Button("Cancel") { dictation.cancel() }
                 .buttonStyle(.borderless)
@@ -274,8 +286,9 @@ struct ComposerView: View {
                     .font(.system(size: 15, weight: .bold))
                     .frame(width: 30, height: 30)
             }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.onInk)
+            .background(Theme.ink, in: Circle())
             .accessibilityLabel("Stop and transcribe")
         }
         .padding(.horizontal, 14)
@@ -315,7 +328,7 @@ struct ContextMeter: View {
                 }
                 .frame(width: 16, height: 16)
                 Text("\(Int((usage.fraction * 100).rounded()))%")
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.siloMono(.caption))
             }
             .foregroundStyle(tone)
         }
@@ -323,19 +336,19 @@ struct ContextMeter: View {
         .accessibilityLabel("Context \(Int((usage.fraction * 100).rounded())) percent full")
         .popover(isPresented: $showing) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Context window").font(.headline)
+                Text("Context window").font(.silo(.headline))
                 ProgressView(value: usage.fraction).tint(tone)
                 LabeledContent("Used", value: formatTokens(usage.used))
                 LabeledContent("Model limit", value: formatTokens(usage.window))
                 if usage.cacheRead > 0 { LabeledContent("From cache", value: formatTokens(usage.cacheRead)) }
                 Text("Near the limit the conversation is summarized automatically; the thread keeps everything.")
-                    .font(.footnote)
+                    .font(.silo(.footnote))
                     .foregroundStyle(.secondary)
                 Button("Compact now") {
                     showing = false
                     onCompact()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.ink)
                 .disabled(!canCompact)
             }
             .padding()

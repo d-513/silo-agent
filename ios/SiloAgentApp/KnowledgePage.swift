@@ -63,7 +63,7 @@ struct KnowledgePage: View {
                 } description: {
                     Text("Pick a folder of documents and the Bot can search it by meaning and by exact words, with the file and page cited.")
                 } actions: {
-                    Button("Add Folder") { picking = true }.buttonStyle(.borderedProminent)
+                    Button("Add Folder") { picking = true }.buttonStyle(.ink)
                 }
             }
         }
@@ -147,25 +147,25 @@ private struct FolderRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: folder.drive ? "externaldrive" : "folder").foregroundStyle(.secondary)
-                Text(folder.path).font(.body.monospaced()).lineLimit(1).truncationMode(.middle)
+                Text(folder.path).font(.siloMono(.body)).lineLimit(1).truncationMode(.middle)
             }
             status
             if folder.status == "idle", !folder.detail.isEmpty {
-                Text(folder.detail).font(.footnote).foregroundStyle(.secondary)
+                Text(folder.detail).font(.silo(.footnote)).foregroundStyle(.secondary)
             }
             if folder.skipped > 0 {
                 DisclosureGroup {
                     ForEach(folder.issues, id: \.path) { issue in
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(issue.path).font(.caption.monospaced())
-                            Text(issue.detail).font(.caption).foregroundStyle(.secondary)
+                            Text(issue.path).font(.siloMono(.caption))
+                            Text(issue.detail).font(.silo(.caption)).foregroundStyle(.secondary)
                         }
                     }
                     if folder.skipped > folder.issues.count {
-                        Text("…and \(Int(folder.skipped) - folder.issues.count) more").font(.caption).foregroundStyle(.secondary)
+                        Text("…and \(Int(folder.skipped) - folder.issues.count) more").font(.silo(.caption)).foregroundStyle(.secondary)
                     }
                 } label: {
-                    Text("\(folder.skipped) not indexed").font(.footnote).foregroundStyle(.secondary)
+                    Text("\(folder.skipped) not indexed").font(.silo(.footnote)).foregroundStyle(.secondary)
                 }
             }
         }
@@ -180,14 +180,14 @@ private struct FolderRow: View {
                 ProgressView().controlSize(.mini)
                 Text(folder.files > 0 ? "Indexing… \(folder.files) files so far" : "Indexing…")
             }
-            .font(.footnote)
+            .font(.silo(.footnote))
             .foregroundStyle(.secondary)
         case "error":
-            Text(folder.detail.isEmpty ? "Sync failed." : folder.detail).font(.footnote).foregroundStyle(Theme.vermilion)
+            Text(folder.detail.isEmpty ? "Sync failed." : folder.detail).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
         default:
             Text(["\(folder.files) files", "\(folder.chunks) passages", folder.lastSyncAt.isEmpty ? "" : "synced \(relativeTime(folder.lastSyncAt))"]
                 .filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.footnote)
+                .font(.silo(.footnote))
                 .foregroundStyle(.secondary)
         }
     }
@@ -199,12 +199,12 @@ private struct HitRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Text(hit.path).font(.subheadline.monospaced()).lineLimit(1).truncationMode(.middle)
+                Text(hit.path).font(.siloMono(.subheadline)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 6)
-                if !hit.locator.isEmpty { Text(hit.locator).font(.caption).foregroundStyle(.secondary) }
+                if !hit.locator.isEmpty { Text(hit.locator).font(.silo(.caption)).foregroundStyle(.secondary) }
             }
-            Text(hit.snippet).font(.subheadline).foregroundStyle(.secondary).lineLimit(5).textSelection(.enabled)
-            if !hit.indexedAt.isEmpty { Text("indexed \(shortDay(hit.indexedAt))").font(.caption2).foregroundStyle(.tertiary) }
+            Text(hit.snippet).font(.silo(.subheadline)).foregroundStyle(.secondary).lineLimit(5).textSelection(.enabled)
+            if !hit.indexedAt.isEmpty { Text("indexed \(shortDay(hit.indexedAt))").font(.silo(.caption2)).foregroundStyle(.tertiary) }
         }
         .padding(.vertical, 2)
     }
@@ -254,7 +254,7 @@ private struct FolderLevel: View {
             } else if path.hasPrefix("drives/") {
                 Section {
                     Label("This folder is on a drive. Indexing reads every file over the network, so a large folder can be slow.", systemImage: "externaldrive")
-                        .font(.footnote)
+                        .font(.silo(.footnote))
                         .foregroundStyle(.secondary)
                 }
             }

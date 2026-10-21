@@ -13,9 +13,9 @@ struct SecretsPage: View {
         List {
             ForEach(secrets, id: \.id) { secret in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(secret.name).font(.system(.body, design: .monospaced))
+                    Text(secret.name).font(.siloMono(.body))
                     Text(secret.lastUsedAt.isEmpty ? "Never used" : "Used \(relativeTime(secret.lastUsedAt))")
-                        .font(.caption)
+                        .font(.silo(.caption))
                         .foregroundStyle(.secondary)
                 }
                 .swipeActions { Button(role: .destructive) { deleting = secret } label: { Label("Delete", systemImage: "trash") } }
@@ -69,7 +69,7 @@ private struct AddSecretSheet: View {
                     TextField("GITHUB_TOKEN", text: $name)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .font(.system(.body, design: .monospaced))
+                        .font(.siloMono(.body))
                 }
                 Section {
                     SecureField("Value", text: $value)

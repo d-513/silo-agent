@@ -14,13 +14,13 @@ struct FeedPage: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline) {
                         if !post.read { Circle().fill(Theme.cobalt).frame(width: 7, height: 7) }
-                        Text(post.title.isEmpty ? "Post" : post.title).font(.headline)
+                        Text(post.title.isEmpty ? "Post" : post.title).font(.silo(.headline))
                         Spacer(minLength: 8)
-                        Text(relativeTime(post.createdAt)).font(.caption).foregroundStyle(.secondary)
+                        Text(relativeTime(post.createdAt)).font(.silo(.caption)).foregroundStyle(.secondary)
                     }
                     if !post.sourceName.isEmpty {
                         Text("\(sourceLabel(post.sourceKind)) · \(post.sourceName)")
-                            .font(.caption.weight(.medium))
+                            .font(.silo(.caption, .medium))
                             .foregroundStyle(.secondary)
                     }
                     ProseView(text: post.body)

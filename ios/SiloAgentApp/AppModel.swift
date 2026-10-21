@@ -54,14 +54,22 @@ final class AppModel {
 
     // Approvals (the Bot's "Needs you" queue, oldest first)
     private(set) var approvals: [Silo_V1_Approval] = []
-    /// The approval whose sheet the reader swiped away; a banner brings it back.
-    var dismissedApprovalID: String?
 
     // Selection
-    var selectedBotID: String?
-    var selectedChatID: String?
-    /// The Bot stack's pushed pages (chats, Feed, Files, …), so any code can navigate.
+    var selectedBotID: String? {
+        didSet { UserDefaults.standard.set(selectedBotID, forKey: "lastBot") }
+    }
+    /// The open chat; nil is a new chat with no row behind it yet (the first `send` makes it).
+    private(set) var selectedChatID: String?
+    /// The model and thinking level picked on a new chat; the first `send` carries them.
+    private(set) var draftModel = ""
+    private(set) var draftThinking = ""
+    /// Pages pushed over the chat (Feed, Files, Settings, …), so any code can navigate.
     var path: [BotRoute] = []
+
+    // Shell
+    var sidebarOpen = false
+    var machineOpen = false
 
     private(set) var client: SiloClient
     private var streamTask: Task<Void, Never>?
@@ -89,7 +97,7 @@ final class AppModel {
 
     /// The model the next turn uses: the chat's override, else the operator default.
     var activeModel: String {
-        let chosen = selectedChat?.model ?? ""
+        let chosen = selectedChatID == nil ? draftModel : selectedChat?.model ?? ""
         return chosen.isEmpty ? defaultModel : chosen
     }
 
@@ -98,7 +106,15 @@ final class AppModel {
     var thinkingLevels: [String] { activeModelOption?.thinkingLevels ?? [] }
 
     /// The thinking level that will actually be sent (the chat's choice fitted to the model).
-    var fittedThinking: String { fitThinking(selectedChat?.thinking ?? "", thinkingLevels) }
+    var fittedThinking: String {
+        fitThinking(selectedChatID == nil ? draftThinking : selectedChat?.thinking ?? "", thinkingLevels)
+    }
+
+    /// The oldest approval paused in the open chat: its slip takes the composer's place.
+    var chatApproval: Silo_V1_Approval? {
+        let runs = Set(events.map(\.runID).filter { !$0.isEmpty })
+        return approvals.first { !$0.runID.isEmpty && runs.contains($0.runID) }
+    }
 
     // MARK: - Session lifecycle
 
@@ -111,6 +127,7 @@ final class AppModel {
                 user = try await client.me()
                 restoreError = nil
                 await refreshBots()
+                pickBot()
                 startPolling()
                 return
             } catch {
@@ -163,6 +180,7 @@ final class AppModel {
             code = ""
             needsCode = false
             await refreshBots()
+            pickBot()
             startPolling()
         } catch {
             signInError = describe(error)
@@ -193,6 +211,8 @@ final class AppModel {
         selectedBotID = nil
         selectedChatID = nil
         path = []
+        sidebarOpen = false
+        machineOpen = false
         loadedBotID = nil
         streamingChatID = nil
     }
@@ -208,10 +228,18 @@ final class AppModel {
         }
     }
 
+    /// The Bot the app opens on: the last one used, else the first.
+    func pickBot() {
+        guard selectedBotID == nil || !bots.contains(where: { $0.id == selectedBotID }) else { return }
+        let last = UserDefaults.standard.string(forKey: "lastBot")
+        selectedBotID = bots.first { $0.id == last }?.id ?? bots.first?.id
+    }
+
+    /// Loads a Bot's chats and opens the last chat used with it, else a new one.
     func chooseBot(_ id: String?) async {
         guard let id, id != loadedBotID else { return }
+        path = []
         approvals = []
-        dismissedApprovalID = nil
         usage = nil
         subagents = []
         board = []
@@ -227,9 +255,14 @@ final class AppModel {
         } catch {
             if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
         }
+        guard id == selectedBotID else { return }
+        let last = UserDefaults.standard.string(forKey: Self.lastChatKey(id))
+        if let last, chats.contains(where: { $0.id == last }) { selectChat(last) } else { startDraft() }
         await refreshApprovals()
         await loadModels(botID: id)
     }
+
+    private static func lastChatKey(_ botID: String) -> String { "lastChat.\(botID)" }
 
     func createBot(name: String, crest: Int32, description: String) async throws -> Silo_V1_Bot {
         let bot = try await client.createBot(name: name, crest: crest, description: description)
@@ -298,22 +331,32 @@ final class AppModel {
     /// Runs paused on an approval, so the tray can mark those subagents "needs you".
     var waitingRunIDs: Set<String> { Set(approvals.map(\.runID).filter { !$0.isEmpty }) }
 
-    /// Opens a chat created elsewhere (a Feed quote, a branch): list it and push its thread.
+    /// Opens a chat created elsewhere (a Feed quote, a branch): list it and show its thread.
     func openChat(_ chat: Silo_V1_Chat) {
         chats.removeAll { $0.id == chat.id }
         chats.insert(chat, at: 0)
-        path.append(.chat(chat.id))
+        showChat(chat.id)
     }
 
-    /// After `DeleteBot`: drop the row and leave the Bot's pages.
+    /// Back to the chat (closing any page over it) with this conversation open.
+    func showChat(_ id: String) {
+        path = []
+        sidebarOpen = false
+        selectChat(id)
+    }
+
+    /// After `DeleteBot`: drop the row and open another Bot.
     func botDeleted(_ id: String) async {
         stopStream()
+        streamingChatID = nil
         selectedBotID = nil
         selectedChatID = nil
         loadedBotID = nil
+        path = []
         chats = []
         events = []
         await refreshBots()
+        pickBot()
     }
 
     /// Replaces the Bot row (after an edit) so the header and lists update without waiting for the poll.
@@ -339,13 +382,7 @@ final class AppModel {
         do {
             try await client.deleteChat(botID: botID, chatID: id)
             chats.removeAll { $0.id == id }
-            if selectedChatID == id {
-                stopStream()
-                streamingChatID = nil
-                events = []
-                selectedChatID = nil
-                path.removeAll { $0 == .chat(id) }
-            }
+            if selectedChatID == id { startDraft() }
         } catch {
             errorMessage = describe(error)
         }
@@ -451,7 +488,11 @@ final class AppModel {
     }
 
     func setModel(_ model: String) async {
-        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        guard let botID = selectedBotID else { return }
+        guard let chatID = selectedChatID else {
+            draftModel = model
+            return
+        }
         do {
             replaceChat(try await client.setChatModel(botID: botID, chatID: chatID, model: model))
         } catch {
@@ -460,7 +501,11 @@ final class AppModel {
     }
 
     func setThinking(_ level: String) async {
-        guard let botID = selectedBotID, let chatID = selectedChatID else { return }
+        guard let botID = selectedBotID else { return }
+        guard let chatID = selectedChatID else {
+            draftThinking = level
+            return
+        }
         do {
             replaceChat(try await client.setChatThinking(botID: botID, chatID: chatID, thinking: level))
         } catch {
@@ -529,9 +574,6 @@ final class AppModel {
             let list = try await client.listApprovals(botID: botID)
             guard botID == selectedBotID else { return }
             approvals = list
-            if let dismissed = dismissedApprovalID, !list.contains(where: { $0.id == dismissed }) {
-                dismissedApprovalID = nil
-            }
         } catch {
             if isUnauthenticated(error) { await signOut() }
         }
@@ -547,7 +589,6 @@ final class AppModel {
                 try await client.decideApproval(id: approval.id, decision: decision)
             }
             approvals.removeAll { $0.id == approval.id }
-            dismissedApprovalID = nil
         } catch {
             errorMessage = describe(error)
         }
@@ -557,17 +598,31 @@ final class AppModel {
 
     // MARK: - Chats and runs
 
-    func newChat() async {
-        guard let botID = selectedBotID else { return }
-        do {
-            openChat(try await client.createChat(botID: botID))
-        } catch {
-            errorMessage = describe(error)
-        }
+    /// A new chat: an empty thread and a working composer, no row until the first message.
+    func newChat() {
+        path = []
+        sidebarOpen = false
+        startDraft()
+    }
+
+    private func startDraft() {
+        stopStream()
+        streamingChatID = nil
+        selectedChatID = nil
+        events = []
+        usage = nil
+        subagents = []
+        board = []
+        attachments = []
+        sending = false
+        draftModel = ""
+        draftThinking = ""
+        if let botID = selectedBotID { UserDefaults.standard.removeObject(forKey: Self.lastChatKey(botID)) }
     }
 
     func selectChat(_ id: String) {
         guard id != streamingChatID else { return }
+        if let botID = selectedBotID { UserDefaults.standard.set(id, forKey: Self.lastChatKey(botID)) }
         selectedChatID = id
         events = []
         usage = nil
@@ -585,15 +640,16 @@ final class AppModel {
         errorMessage = nil
         sending = true
         do {
-            var chatID = selectedChatID ?? ""
-            if chatID.isEmpty {
-                let chat = try await client.createChat(botID: botID)
-                chats.insert(chat, at: 0)
-                chatID = chat.id
-                selectedChatID = chat.id
-                startStream(for: chat.id)
+            if let chatID = selectedChatID {
+                _ = try await client.send(botID: botID, chatID: chatID, text: message, attachments: attachments)
+            } else {
+                // The server makes the chat and starts the run in one call.
+                let sent = try await client.send(botID: botID, chatID: "", text: message, attachments: attachments,
+                                                 newChat: true, model: draftModel, thinking: draftThinking)
+                guard botID == selectedBotID, selectedChatID == nil else { return }
+                selectChat(sent.chatID)
+                sending = true
             }
-            _ = try await client.send(botID: botID, chatID: chatID, text: message, attachments: attachments)
             attachments = []
             await refreshChats()
             await refreshBots()

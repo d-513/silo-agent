@@ -57,7 +57,7 @@ struct RulesPage: View {
                                     .disabled(!section.rules.allSatisfy { ruleModeAllowed(mode.0, floor: floor($0), side: side) })
                             }
                         }
-                        .font(.footnote)
+                        .font(.silo(.footnote))
                         .textCase(nil)
                     }
                 } footer: {
@@ -216,7 +216,7 @@ private struct RuleRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     if !floor.isEmpty {
-                        Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary)
+                        Image(systemName: "lock.fill").font(.silo(.caption2)).foregroundStyle(.secondary)
                             .accessibilityLabel("Locked by the operator")
                     }
                     Text(rule.title.isEmpty ? rule.action : rule.title)
@@ -224,7 +224,7 @@ private struct RuleRow: View {
                 }
                 if !rule.title.isEmpty, rule.title != rule.action, rule.action != "*", rule.connector != "secrets" {
                     Text(rule.action)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.siloMono(.caption))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -242,9 +242,9 @@ private struct RuleRow: View {
             } label: {
                 HStack(spacing: 3) {
                     Text(label(value))
-                    Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                    Image(systemName: "chevron.up.chevron.down").font(.silo(.caption2))
                 }
-                .font(.subheadline)
+                .font(.silo(.subheadline))
                 .foregroundStyle(tone)
             }
         }

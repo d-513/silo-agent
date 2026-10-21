@@ -154,10 +154,16 @@ public final class SiloClient: Sendable {
 
     // MARK: - Runs
 
-    public func send(botID: String, chatID: String, text: String, attachments: [Silo_V1_Attachment] = []) async throws -> Silo_V1_SendResponse {
+    /// With an empty `chatID` and `newChat`, the server makes the chat and starts the run in one
+    /// call (a refused send leaves no row), starting it with `model` and `thinking`.
+    public func send(botID: String, chatID: String, text: String, attachments: [Silo_V1_Attachment] = [],
+                     newChat: Bool = false, model: String = "", thinking: String = "") async throws -> Silo_V1_SendResponse {
         var request = Silo_V1_SendRequest()
         request.botID = botID
         request.chatID = chatID
+        request.newChat = newChat
+        request.model = model
+        request.thinking = thinking
         request.text = text
         request.attachments = attachments
         // Where the human is now: an unpinned Bot follows it.

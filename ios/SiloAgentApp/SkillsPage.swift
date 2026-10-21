@@ -22,9 +22,9 @@ struct SkillsPage: View {
                             HStack {
                                 Button { inspecting = skill } label: {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(skill.name).font(.body.weight(.medium)).foregroundStyle(.primary)
+                                        Text(skill.name).font(.silo(.body, .medium)).foregroundStyle(.primary)
                                         if !skill.description_p.isEmpty {
-                                            Text(skill.description_p).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                            Text(skill.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                                         }
                                     }
                                 }
@@ -95,19 +95,19 @@ struct SkillHub: View {
                 }
                 .pickerStyle(.segmented)
                 .listRowBackground(Color.clear)
-                if let note { Section { Text(note).font(.footnote) } }
+                if let note { Section { Text(note).font(.silo(.footnote)) } }
                 ForEach(skills) { skill in
                     Button { inspecting = skill } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text(skill.name).font(.body.weight(.medium)).foregroundStyle(.primary)
+                                Text(skill.name).font(.silo(.body, .medium)).foregroundStyle(.primary)
                                 if skill.seeded {
-                                    Text("catalog").font(.caption2).padding(.horizontal, 6).padding(.vertical, 1)
+                                    Text("catalog").font(.silo(.caption2)).padding(.horizontal, 6).padding(.vertical, 1)
                                         .background(Theme.cobaltPale, in: Capsule()).foregroundStyle(Theme.cobalt)
                                 }
                             }
                             if !skill.description_p.isEmpty {
-                                Text(skill.description_p).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                Text(skill.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                             }
                         }
                     }

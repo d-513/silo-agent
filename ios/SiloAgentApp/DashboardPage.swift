@@ -20,6 +20,11 @@ struct DashboardPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                // Approvals wait here with the Bot's asks, as on the web: the ones paused in the
+                // open chat also sit in its composer.
+                ForEach(model.approvals) { approval in
+                    ApprovalSlip(approval: approval)
+                }
                 if let board {
                     asks(board.cards.filter { $0.status == "open" })
                     sinceLooked
@@ -32,9 +37,9 @@ struct DashboardPage: View {
             .padding(.horizontal)
             .padding(.bottom, 24)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .background(Theme.canvas.ignoresSafeArea())
         .overlay {
-            if let board, board.widgets.isEmpty, board.cards.allSatisfy({ $0.status != "open" }), since.isEmpty {
+            if let board, board.widgets.isEmpty, board.cards.allSatisfy({ $0.status != "open" }), since.isEmpty, model.approvals.isEmpty {
                 ContentUnavailableView {
                     Label("Nothing on the board yet", systemImage: "square.grid.2x2")
                 } description: {
@@ -92,9 +97,9 @@ struct DashboardPage: View {
                 ForEach(since, id: \.id) { post in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(post.title.isEmpty ? "Post" : post.title).font(.headline)
+                            Text(post.title.isEmpty ? "Post" : post.title).font(.silo(.headline))
                             Spacer(minLength: 8)
-                            Text(relativeTime(post.createdAt)).font(.caption).foregroundStyle(.secondary)
+                            Text(relativeTime(post.createdAt)).font(.silo(.caption)).foregroundStyle(.secondary)
                         }
                         ProseView(text: post.body).lineLimit(8)
                     }
@@ -139,7 +144,7 @@ struct DashboardPage: View {
                     Text(curatorLine(board))
                 }
             }
-            .font(.footnote)
+            .font(.silo(.footnote))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
@@ -253,7 +258,7 @@ private struct SectionTitle: View {
 
     var body: some View {
         Text(text)
-            .font(.footnote.weight(.semibold))
+            .font(.silo(.footnote, .semibold))
             .textCase(.uppercase)
             .foregroundStyle(color)
             .padding(.leading, 4)
@@ -287,7 +292,7 @@ private struct AskBar: View {
                     Button { self.focus = nil } label: { Image(systemName: "xmark.circle.fill") }
                         .accessibilityLabel("Stop asking about \(focus.title)")
                 }
-                .font(.caption.weight(.medium))
+                .font(.silo(.caption, .medium))
                 .foregroundStyle(Theme.cobalt)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -300,7 +305,7 @@ private struct AskBar: View {
                     .submitLabel(.send)
                     .onSubmit { submit() }
                 Button { submit() } label: {
-                    if sending { ProgressView() } else { Image(systemName: "arrow.up.circle.fill").font(.title2) }
+                    if sending { ProgressView() } else { Image(systemName: "arrow.up.circle.fill").font(.system(size: 28)).foregroundStyle(Theme.ink) }
                 }
                 .disabled(sending || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityLabel("Send")
@@ -308,7 +313,8 @@ private struct AskBar: View {
             .padding(.leading, 16)
             .padding(.trailing, 8)
             .padding(.vertical, 8)
-            .glassEffect(.regular, in: .rect(cornerRadius: 24))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.lineStrong))
         }
         .padding(.horizontal)
         .padding(.bottom, 8)
@@ -352,7 +358,7 @@ private struct WidgetCard: View {
                 Button { Task { await onOpenApp() } } label: {
                     Label("Open app", systemImage: "macwindow").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.quiet)
                 .disabled(widget.artifactID.isEmpty)
             } else {
                 content
@@ -377,7 +383,7 @@ private struct WidgetCard: View {
     private var header: some View {
         HStack(spacing: 6) {
             if widget.fresh { Circle().fill(Theme.cobalt).frame(width: 6, height: 6).accessibilityLabel("Changed") }
-            Text(widget.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+            Text(widget.title).font(.silo(.subheadline, .semibold)).lineLimit(1)
             Spacer(minLength: 6)
             if widget.busy || refreshing {
                 ProgressView().controlSize(.mini)
@@ -385,7 +391,7 @@ private struct WidgetCard: View {
                 checklistCount
             } else {
                 Text([widget.source, widgetAge(widget.dataAt)].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.caption.monospaced())
+                    .font(.siloMono(.caption))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -393,7 +399,7 @@ private struct WidgetCard: View {
                 Button {
                     refreshing = true
                     Task { await onRefresh(); refreshing = false }
-                } label: { Image(systemName: "arrow.clockwise").font(.caption) }
+                } label: { Image(systemName: "arrow.clockwise").font(.silo(.caption)) }
                     .buttonStyle(.borderless)
                     .disabled(widget.busy || refreshing)
                     .accessibilityLabel("Refresh")
@@ -406,13 +412,13 @@ private struct WidgetCard: View {
         let all = WidgetJSON.items(data["items"])
         let on = Set(widgetChecked(widget.stateJson))
         let done = all.enumerated().filter { on.contains(itemID($0.element, $0.offset)) }.count
-        if !all.isEmpty { Text("\(done)/\(all.count)").font(.caption.monospaced()).foregroundStyle(.secondary) }
+        if !all.isEmpty { Text("\(done)/\(all.count)").font(.siloMono(.caption)).foregroundStyle(.secondary) }
     }
 
     @ViewBuilder
     private var content: some View {
         if widget.dataAt.isEmpty && data.isEmpty {
-            Text(widget.hasProbe_p ? "Waiting for the first refresh." : "Nothing here yet.").font(.footnote).foregroundStyle(.secondary)
+            Text(widget.hasProbe_p ? "Waiting for the first refresh." : "Nothing here yet.").font(.silo(.footnote)).foregroundStyle(.secondary)
         } else {
             switch widget.kind {
             case "note": ProseView(text: WidgetJSON.text(data["text"]))
@@ -436,7 +442,7 @@ private struct WidgetCard: View {
         return VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(WidgetJSON.display(data["value"]))
-                    .font(.system(.largeTitle, design: .default).weight(.medium))
+                    .font(.silo(.largeTitle, .medium))
                     .monospacedDigit()
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
@@ -450,13 +456,13 @@ private struct WidgetCard: View {
     @ViewBuilder
     private var unit: some View {
         let u = WidgetJSON.text(data["unit"])
-        if !u.isEmpty { Text(u).font(.footnote.monospaced()).foregroundStyle(.secondary) }
+        if !u.isEmpty { Text(u).font(.siloMono(.footnote)).foregroundStyle(.secondary) }
     }
 
     @ViewBuilder
     private var caption: some View {
         let c = WidgetJSON.text(data["caption"])
-        if !c.isEmpty { Text(c).font(.footnote).foregroundStyle(.secondary) }
+        if !c.isEmpty { Text(c).font(.silo(.footnote)).foregroundStyle(.secondary) }
     }
 
     private struct Point: Identifiable {
@@ -473,10 +479,10 @@ private struct WidgetCard: View {
         return VStack(alignment: .leading, spacing: 6) {
             if let last = points.last {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(WidgetJSON.format(last.value)).font(.title2.weight(.medium)).monospacedDigit()
+                    Text(WidgetJSON.format(last.value)).font(.silo(.title2, .medium)).monospacedDigit()
                     unit
                     Spacer()
-                    Text(last.label).font(.caption.monospaced()).foregroundStyle(.secondary)
+                    Text(last.label).font(.siloMono(.caption)).foregroundStyle(.secondary)
                 }
             }
             caption
@@ -503,7 +509,7 @@ private struct WidgetCard: View {
                     Spacer()
                     Text(points.last?.label ?? "")
                 }
-                .font(.caption2.monospaced())
+                .font(.siloMono(.caption2))
                 .foregroundStyle(.secondary)
             }
         }
@@ -513,21 +519,21 @@ private struct WidgetCard: View {
         let rows = WidgetJSON.items(data["items"])
         let rowActs = acts.filter(\.row)
         return VStack(alignment: .leading, spacing: 0) {
-            if rows.isEmpty { Text("Nothing here.").font(.footnote).foregroundStyle(.secondary) }
+            if rows.isEmpty { Text("Nothing here.").font(.silo(.footnote)).foregroundStyle(.secondary) }
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         if let url = widgetURL(row["url"]) {
-                            Link(WidgetJSON.text(row["title"]), destination: url).font(.subheadline).lineLimit(1)
+                            Link(WidgetJSON.text(row["title"]), destination: url).font(.silo(.subheadline)).lineLimit(1)
                         } else {
-                            Text(WidgetJSON.text(row["title"])).font(.subheadline).lineLimit(1)
+                            Text(WidgetJSON.text(row["title"])).font(.silo(.subheadline)).lineLimit(1)
                         }
                         let detail = WidgetJSON.text(row["detail"])
-                        if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                        if !detail.isEmpty { Text(detail).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(1) }
                     }
                     Spacer(minLength: 4)
                     let meta = WidgetJSON.text(row["meta"])
-                    if !meta.isEmpty { Text(meta).font(.caption.monospaced()).foregroundStyle(.secondary) }
+                    if !meta.isEmpty { Text(meta).font(.siloMono(.caption)).foregroundStyle(.secondary) }
                     rowMenu(rowActs, row)
                 }
                 .padding(.vertical, 6)
@@ -546,7 +552,7 @@ private struct WidgetCard: View {
                     GridRow {
                         ForEach(Array(columns.enumerated()), id: \.offset) { i, c in
                             Text(c.uppercased())
-                                .font(.caption2.weight(.semibold))
+                                .font(.silo(.caption2, .semibold))
                                 .foregroundStyle(.secondary)
                                 .gridColumnAlignment(widgetNumeric(rows.first?[safe: i]) ? .trailing : .leading)
                         }
@@ -558,7 +564,7 @@ private struct WidgetCard: View {
                     GridRow {
                         ForEach(Array(row.enumerated()), id: \.offset) { _, v in
                             Text(WidgetJSON.text(v))
-                                .font(widgetNumeric(v) ? .caption.monospaced() : .subheadline)
+                                .font(widgetNumeric(v) ? .siloMono(.caption) : .silo(.subheadline))
                                 .monospacedDigit()
                                 .lineLimit(1)
                         }
@@ -578,12 +584,12 @@ private struct WidgetCard: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 if index == split { nowRule }
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(clock(WidgetJSON.text(row["time"]))).font(.caption.monospaced()).foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
+                    Text(clock(WidgetJSON.text(row["time"]))).font(.siloMono(.caption)).foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(WidgetJSON.text(row["title"])).font(.subheadline.weight(.medium))
+                        Text(WidgetJSON.text(row["title"])).font(.silo(.subheadline, .medium))
                             .foregroundStyle(split >= 0 && index < split ? .secondary : .primary)
                         let detail = WidgetJSON.text(row["detail"])
-                        if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                        if !detail.isEmpty { Text(detail).font(.silo(.caption)).foregroundStyle(.secondary) }
                     }
                 }
                 .padding(.vertical, 5)
@@ -594,7 +600,7 @@ private struct WidgetCard: View {
 
     private var nowRule: some View {
         HStack(spacing: 6) {
-            Text(Date().formatted(date: .omitted, time: .shortened)).font(.caption.monospaced().weight(.medium)).frame(width: 52, alignment: .leading)
+            Text(Date().formatted(date: .omitted, time: .shortened)).font(.siloMono(.caption, .medium)).frame(width: 52, alignment: .leading)
             Circle().frame(width: 6, height: 6)
             Rectangle().frame(height: 1)
         }
@@ -616,14 +622,14 @@ private struct WidgetCard: View {
                         .fill(tone == .ok ? Theme.lamp : tone == .down ? Theme.vermilion : tone == .warn ? Color.secondary : Color.clear)
                         .overlay { if tone == .off { Circle().strokeBorder(Color.secondary, lineWidth: 1.5) } }
                         .frame(width: 8, height: 8)
-                    Text(WidgetJSON.text(row["label"])).font(.subheadline.monospaced()).lineLimit(1)
+                    Text(WidgetJSON.text(row["label"])).font(.siloMono(.subheadline)).lineLimit(1)
                     Spacer(minLength: 6)
                     let word = WidgetJSON.text(row["word"])
                     Text(word.isEmpty ? toneWord(tone) : word)
-                        .font(.caption.weight(.medium))
+                        .font(.silo(.caption, .medium))
                         .foregroundStyle(tone == .ok ? Theme.emerald : tone == .down ? Theme.vermilion : .secondary)
                     let meta = WidgetJSON.text(row["meta"])
-                    if !meta.isEmpty { Text(meta).font(.caption.monospaced()).foregroundStyle(.secondary) }
+                    if !meta.isEmpty { Text(meta).font(.siloMono(.caption)).foregroundStyle(.secondary) }
                 }
                 .padding(.vertical, 6)
                 if index < rows.count - 1 { Divider() }
@@ -658,9 +664,9 @@ private struct WidgetCard: View {
                     HStack(spacing: 10) {
                         Image(systemName: done ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(done ? Theme.emerald : .secondary)
-                            .font(.body)
+                            .font(.silo(.body))
                         Text(WidgetJSON.text(row["text"]))
-                            .font(.subheadline)
+                            .font(.silo(.subheadline))
                             .strikethrough(done)
                             .foregroundStyle(done ? .secondary : .primary)
                             .multilineTextAlignment(.leading)
@@ -684,10 +690,10 @@ private struct WidgetCard: View {
         let c = WidgetJSON.text(data["caption"])
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text("\(Int((fraction * 100).rounded()))").font(.largeTitle.weight(.medium)).monospacedDigit()
-                Text("%").font(.footnote.monospaced()).foregroundStyle(.secondary)
+                Text("\(Int((fraction * 100).rounded()))").font(.silo(.largeTitle, .medium)).monospacedDigit()
+                Text("%").font(.siloMono(.footnote)).foregroundStyle(.secondary)
             }
-            Text(c.isEmpty ? "\(WidgetJSON.format(v)) / \(WidgetJSON.format(max))" : c).font(.footnote).foregroundStyle(.secondary)
+            Text(c.isEmpty ? "\(WidgetJSON.format(v)) / \(WidgetJSON.format(max))" : c).font(.silo(.footnote)).foregroundStyle(.secondary)
             ProgressView(value: fraction).tint(.primary)
         }
     }
@@ -733,7 +739,7 @@ private struct WidgetCard: View {
                                 Text(action.label)
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.quiet)
                         .tint(index == 0 && !action.hand ? Theme.cobalt : .secondary)
                         .controlSize(.small)
                         .disabled(!running.isEmpty)
@@ -743,9 +749,9 @@ private struct WidgetCard: View {
         }
         if !widget.error.isEmpty {
             DisclosureGroup {
-                Text(widget.error).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                Text(widget.error).font(.siloMono(.caption)).foregroundStyle(.secondary).textSelection(.enabled)
             } label: {
-                Label("Couldn't refresh", systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.secondary)
+                Label("Couldn't refresh", systemImage: "exclamationmark.circle").font(.silo(.caption)).foregroundStyle(.secondary)
             }
         }
         if let rc = widgetReceipt(widget.receiptJson) {
@@ -755,7 +761,7 @@ private struct WidgetCard: View {
                 Spacer(minLength: 4)
                 Text([rc.by, relativeTime(rc.at)].filter { !$0.isEmpty }.joined(separator: " · ")).foregroundStyle(.secondary)
             }
-            .font(.caption)
+            .font(.silo(.caption))
         }
     }
 }
@@ -789,16 +795,16 @@ private struct AskRow: View {
         HStack(alignment: .top, spacing: 12) {
             RoundedRectangle(cornerRadius: 2).fill(Theme.vermilion).frame(width: 4)
             VStack(alignment: .leading, spacing: 4) {
-                Text(card.title).font(.headline).foregroundStyle(.primary).multilineTextAlignment(.leading)
+                Text(card.title).font(.silo(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                 if !card.summary.isEmpty {
-                    Text(card.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
+                    Text(card.summary).font(.silo(.subheadline)).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
                 }
                 if !card.sourceName.isEmpty {
-                    Text(card.sourceName).font(.caption).foregroundStyle(.tertiary)
+                    Text(card.sourceName).font(.silo(.caption)).foregroundStyle(.tertiary)
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+            Image(systemName: "chevron.right").font(.silo(.footnote, .semibold)).foregroundStyle(.tertiary)
         }
         .fixedSize(horizontal: false, vertical: true)
         .widgetCard()
@@ -821,7 +827,7 @@ private struct AskSheet: View {
         NavigationStack {
             Form {
                 if !card.summary.isEmpty {
-                    Section { Text(card.summary).font(.body) }
+                    Section { Text(card.summary).font(.silo(.body)) }
                 }
                 ForEach(blocks) { block in
                     blockView(block)
@@ -864,7 +870,7 @@ private struct AskSheet: View {
                         HStack(spacing: 6) {
                             Text(pair.value).monospacedDigit()
                             if !pair.delta.isEmpty {
-                                Text(pair.delta).font(.caption.monospaced())
+                                Text(pair.delta).font(.siloMono(.caption))
                                     .foregroundStyle(pair.tone == "good" ? Theme.emerald : pair.tone == "bad" ? Theme.vermilion : .secondary)
                             }
                         }
@@ -873,7 +879,7 @@ private struct AskSheet: View {
             }
         case "diff":
             Section(b.path) {
-                ScrollView(.horizontal) { Text(b.text).font(.caption.monospaced()).textSelection(.enabled) }
+                ScrollView(.horizontal) { Text(b.text).font(.siloMono(.caption)).textSelection(.enabled) }
             }
         case "switch":
             Section {
@@ -911,7 +917,7 @@ private struct AskSheet: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(option.label).foregroundStyle(.primary)
-                                if !option.hint.isEmpty { Text(option.hint).font(.caption).foregroundStyle(.secondary) }
+                                if !option.hint.isEmpty { Text(option.hint).font(.silo(.caption)).foregroundStyle(.secondary) }
                             }
                             Spacer()
                             if on { Image(systemName: "checkmark").foregroundStyle(Theme.cobalt) }

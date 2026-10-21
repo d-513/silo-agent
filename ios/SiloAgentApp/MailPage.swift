@@ -87,7 +87,7 @@ struct AddressRow: View {
 
     var body: some View {
         HStack {
-            Text(address).font(.callout.monospaced()).textSelection(.enabled).lineLimit(1).minimumScaleFactor(0.7)
+            Text(address).font(.siloMono(.callout)).textSelection(.enabled).lineLimit(1).minimumScaleFactor(0.7)
             Spacer(minLength: 8)
             Button {
                 UIPasteboard.general.string = address
@@ -113,20 +113,20 @@ private struct MailRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 if !mail.read { Circle().fill(Theme.cobalt).frame(width: 8, height: 8).accessibilityLabel("Unread by the Bot") }
                 Text(mailSenderName(from: mail.from, address: mail.fromAddress))
-                    .font(.headline)
+                    .font(.silo(.headline))
                     .lineLimit(1)
                 if mail.verified {
-                    Image(systemName: "checkmark.seal.fill").font(.caption).foregroundStyle(Theme.emerald).accessibilityLabel("Verified sender")
+                    Image(systemName: "checkmark.seal.fill").font(.silo(.caption)).foregroundStyle(Theme.emerald).accessibilityLabel("Verified sender")
                 }
                 Spacer(minLength: 6)
-                Text(relativeTime(mail.receivedAt)).font(.caption).foregroundStyle(.secondary)
+                Text(relativeTime(mail.receivedAt)).font(.silo(.caption)).foregroundStyle(.secondary)
             }
-            Text(mail.subject.isEmpty ? "(no subject)" : mail.subject).font(.subheadline).lineLimit(1)
+            Text(mail.subject.isEmpty ? "(no subject)" : mail.subject).font(.silo(.subheadline)).lineLimit(1)
             if !mail.preview.isEmpty {
-                Text(mail.preview).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                Text(mail.preview).font(.silo(.subheadline)).foregroundStyle(.secondary).lineLimit(2)
             }
             if !mail.attachments.isEmpty {
-                Label("\(mail.attachments.count)", systemImage: "paperclip").font(.caption).foregroundStyle(.secondary)
+                Label("\(mail.attachments.count)", systemImage: "paperclip").font(.silo(.caption)).foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 2)
@@ -149,24 +149,24 @@ private struct MailDetail: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(m.subject.isEmpty ? "(no subject)" : m.subject).font(.title3.weight(.semibold))
+                    Text(m.subject.isEmpty ? "(no subject)" : m.subject).font(.silo(.title3, .semibold))
                     LabeledContent("From") { Text(m.from.isEmpty ? m.fromAddress : m.from).textSelection(.enabled) }
                     if !m.to.isEmpty { LabeledContent("To") { Text(m.to).textSelection(.enabled) } }
                     LabeledContent("Received") { Text(parseDate(m.receivedAt)?.formatted(date: .abbreviated, time: .shortened) ?? "") }
                 }
-                .font(.subheadline)
+                .font(.silo(.subheadline))
                 Label {
                     Text(m.verified ? "The sender's domain vouched for this message." : (m.authDetail.isEmpty ? "The sender could not be verified." : m.authDetail))
                 } icon: {
                     Image(systemName: m.verified ? "checkmark.seal.fill" : "exclamationmark.shield")
                         .foregroundStyle(m.verified ? Theme.emerald : Theme.vermilion)
                 }
-                .font(.footnote)
+                .font(.silo(.footnote))
             }
             if !m.chatID.isEmpty {
                 Section {
                     Button {
-                        if let chat = model.chats.first(where: { $0.id == m.chatID }) { model.openChat(chat) } else { model.path.append(.chat(m.chatID)) }
+                        if let chat = model.chats.first(where: { $0.id == m.chatID }) { model.openChat(chat) } else { model.showChat(m.chatID) }
                     } label: {
                         Label("Open the chat it started", systemImage: "bubble.left.and.bubble.right")
                     }
@@ -175,7 +175,7 @@ private struct MailDetail: View {
             Section {
                 if let mail {
                     Text(mail.text.isEmpty ? "(empty)" : mail.text)
-                        .font(.body)
+                        .font(.silo(.body))
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
@@ -260,7 +260,7 @@ struct MailSettingsSection: View {
                         .autocorrectionDisabled()
                 }
                 if let error = mailWakeListError(on: wake, raw: wakeFrom), dirty {
-                    Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
+                    Text(error).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
                 }
                 if dirty {
                     Button(saving ? "Saving…" : "Save mail settings") { Task { await save() } }

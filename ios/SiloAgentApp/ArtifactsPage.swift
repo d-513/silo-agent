@@ -101,11 +101,11 @@ private struct ArtifactRow: View {
         HStack(spacing: 12) {
             thumbnail
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.headline).lineLimit(1)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text(title).font(.silo(.headline)).lineLimit(1)
+                Text(subtitle).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 6)
-            if opening { ProgressView() } else { Text(relativeTime(item.updatedAt)).font(.caption).foregroundStyle(.secondary) }
+            if opening { ProgressView() } else { Text(relativeTime(item.updatedAt)).font(.silo(.caption)).foregroundStyle(.secondary) }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -244,16 +244,16 @@ private struct AuditRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 verdict
-                Text(event.action).font(.subheadline.monospaced()).lineLimit(1)
+                Text(event.action).font(.siloMono(.subheadline)).lineLimit(1)
                 Spacer(minLength: 6)
-                Text(relativeTime(event.at)).font(.caption).foregroundStyle(.secondary)
+                Text(relativeTime(event.at)).font(.silo(.caption)).foregroundStyle(.secondary)
             }
-            Text(line).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            Text(line).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(3)
             if !event.chatID.isEmpty {
                 Button {
-                    if let chat = model.chats.first(where: { $0.id == event.chatID }) { model.openChat(chat) } else { model.path.append(.chat(event.chatID)) }
+                    if let chat = model.chats.first(where: { $0.id == event.chatID }) { model.openChat(chat) } else { model.showChat(event.chatID) }
                 } label: {
-                    Text(event.chatTitle.isEmpty ? "Open the conversation" : event.chatTitle).font(.caption).lineLimit(1)
+                    Text(event.chatTitle.isEmpty ? "Open the conversation" : event.chatTitle).font(.silo(.caption)).lineLimit(1)
                 }
                 .buttonStyle(.borderless)
             }
@@ -306,7 +306,7 @@ private struct AuditRow: View {
             }
         }()
         return Text(label)
-            .font(.caption2.weight(.semibold))
+            .font(.silo(.caption2, .semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

@@ -171,7 +171,7 @@ struct CrestPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Shape").font(.caption).foregroundStyle(.secondary)
+                Text("Shape").font(.silo(.caption)).foregroundStyle(.secondary)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
                     ForEach(0..<SHAPE_COUNT, id: \.self) { shape in
                         Button {
@@ -191,7 +191,7 @@ struct CrestPicker: View {
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Color").font(.caption).foregroundStyle(.secondary)
+                Text("Color").font(.silo(.caption)).foregroundStyle(.secondary)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 10) {
                     ForEach(0..<CREST_COLORS.count, id: \.self) { color in
                         Button {

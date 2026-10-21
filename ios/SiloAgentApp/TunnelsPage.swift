@@ -145,7 +145,7 @@ private struct TunnelRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(tunnel.name).font(.headline).lineLimit(1)
+                Text(tunnel.name).font(.silo(.headline)).lineLimit(1)
                 Spacer(minLength: 6)
                 Menu {
                     Button { if tunnel.public { flip() } } label: {
@@ -156,7 +156,7 @@ private struct TunnelRow: View {
                     }
                 } label: {
                     Label(tunnel.public ? "Public" : "Private", systemImage: tunnel.public ? "globe" : "lock.fill")
-                        .font(.caption.weight(.medium))
+                        .font(.silo(.caption, .medium))
                         .foregroundStyle(tunnel.public ? Theme.vermilion : .secondary)
                 }
             }
@@ -165,11 +165,11 @@ private struct TunnelRow: View {
                 tunnel.createdBy == "bot" ? "Opened by the Bot" : "Opened by you",
                 tunnel.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(tunnel.lastUsedAt))",
             ].joined(separator: " · "))
-                .font(.caption)
+                .font(.silo(.caption))
                 .foregroundStyle(.secondary)
             if !tunnel.url.isEmpty {
                 HStack(spacing: 14) {
-                    Text(tunnel.url).font(.caption.monospaced()).foregroundStyle(Theme.cobalt).lineLimit(1).truncationMode(.middle)
+                    Text(tunnel.url).font(.siloMono(.caption)).foregroundStyle(Theme.cobalt).lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 0)
                     Button { UIPasteboard.general.string = tunnel.url } label: { Image(systemName: "doc.on.doc") }
                         .accessibilityLabel("Copy address")
@@ -193,7 +193,7 @@ private struct ShareRow: View {
                 Text(share.title.isEmpty ? "Shared \(share.type)" : share.title).lineLimit(1)
                 Text([share.type == "app" ? "App" : "File", "v\(share.version)",
                       share.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(share.lastUsedAt))"].joined(separator: " · "))
-                    .font(.caption)
+                    .font(.silo(.caption))
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 6)

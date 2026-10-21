@@ -29,7 +29,7 @@ struct ThreadView: View {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     if blocks.isEmpty && !busy {
                         Text("Send a message to start.")
-                            .font(.callout)
+                            .font(.silo(.callout))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.top, 48)
@@ -167,7 +167,7 @@ struct BlockView: View {
             receiptRow
         case .error:
             Text(block.text)
-                .font(.callout)
+                .font(.silo(.callout))
                 .foregroundStyle(Theme.vermilion)
                 .textSelection(.enabled)
         case .report:
@@ -187,7 +187,7 @@ struct BlockView: View {
         VStack(alignment: .trailing, spacing: 6) {
             if !block.from.isEmpty {
                 Text("From \(block.from)")
-                    .font(.caption.weight(.medium))
+                    .font(.silo(.caption, .medium))
                     .foregroundStyle(.secondary)
             }
             if !block.text.isEmpty {
@@ -204,7 +204,7 @@ struct BlockView: View {
                 } icon: {
                     Image(systemName: "paperclip")
                 }
-                .font(.caption)
+                .font(.silo(.caption))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(Theme.well, in: Capsule())
@@ -221,12 +221,12 @@ struct BlockView: View {
             HStack(spacing: 6) {
                 if block.streaming { ProgressView().controlSize(.mini) }
                 Text(block.streaming ? "Thinking…" : "Thought")
-                    .font(.footnote)
+                    .font(.silo(.footnote))
                     .foregroundStyle(.secondary)
             }
         } content: {
             Text(block.text)
-                .font(.callout)
+                .font(.silo(.callout))
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }
@@ -239,16 +239,16 @@ struct BlockView: View {
             HStack(spacing: 6) {
                 toolGlyph
                 Text(toolTitle)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(.siloMono(.footnote))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if block.waiting {
                     Text("Waiting for you")
-                        .font(.caption2.weight(.semibold))
+                        .font(.silo(.caption2, .semibold))
                         .foregroundStyle(Theme.vermilion)
                 } else if let outcome = block.outcome {
                     Text(outcome == .denied ? "Denied" : "Stopped")
-                        .font(.caption2.weight(.semibold))
+                        .font(.silo(.caption2, .semibold))
                         .foregroundStyle(outcome == .denied ? Theme.vermilion : .secondary)
                 }
             }
@@ -260,7 +260,7 @@ struct BlockView: View {
                 ForEach(block.calls) { call in
                     HStack(spacing: 6) {
                         callGlyph(call)
-                        Text(call.title).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                        Text(call.title).font(.siloMono(.caption)).foregroundStyle(.secondary)
                     }
                     if let result = call.result, !result.isEmpty {
                         CodeWell(code: result, language: nil)
@@ -303,13 +303,13 @@ struct BlockView: View {
     @ViewBuilder
     private func callGlyph(_ call: NestedCall) -> some View {
         if call.waiting {
-            Image(systemName: "hand.raised.fill").foregroundStyle(Theme.vermilion).font(.caption)
+            Image(systemName: "hand.raised.fill").foregroundStyle(Theme.vermilion).font(.silo(.caption))
         } else if call.running {
             ProgressView().controlSize(.mini)
         } else if call.outcome != nil {
-            Image(systemName: "xmark.circle").foregroundStyle(.secondary).font(.caption)
+            Image(systemName: "xmark.circle").foregroundStyle(.secondary).font(.silo(.caption))
         } else {
-            Image(systemName: "arrow.turn.down.right").foregroundStyle(.secondary).font(.caption)
+            Image(systemName: "arrow.turn.down.right").foregroundStyle(.secondary).font(.silo(.caption))
         }
     }
 
@@ -330,7 +330,7 @@ struct BlockView: View {
             Text([label, block.title, block.text].filter { !$0.isEmpty }.joined(separator: " · "))
                 .lineLimit(2)
         }
-        .font(.caption)
+        .font(.silo(.caption))
         .foregroundStyle(block.decision == "deny" ? Theme.vermilion : .secondary)
         .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -338,14 +338,14 @@ struct BlockView: View {
     private var reportCard: some View {
         FoldRow {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Subagents reported").font(.subheadline.weight(.semibold))
+                Text("Subagents reported").font(.silo(.subheadline, .semibold))
                 Text(block.agents.map { $0.status.isEmpty ? $0.name : "\($0.name) · \($0.status)" }.joined(separator: ", "))
-                    .font(.caption)
+                    .font(.silo(.caption))
                     .foregroundStyle(.secondary)
             }
         } content: {
             Text(block.text)
-                .font(.callout)
+                .font(.silo(.callout))
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }
@@ -356,7 +356,7 @@ struct BlockView: View {
         VStack(alignment: .leading, spacing: 8) {
             if !block.source.isEmpty {
                 Label(block.source, systemImage: "quote.opening")
-                    .font(.caption.weight(.medium))
+                    .font(.silo(.caption, .medium))
                     .foregroundStyle(.secondary)
             }
             ProseView(text: block.text)
@@ -372,20 +372,20 @@ struct BlockView: View {
                     ProgressView().controlSize(.mini)
                     Text("Summarizing earlier messages…")
                 }
-                .font(.caption)
+                .font(.silo(.caption))
                 .foregroundStyle(.secondary)
             } else if block.text.isEmpty {
                 Label("Summary stopped", systemImage: "rectangle.compress.vertical")
-                    .font(.caption)
+                    .font(.silo(.caption))
                     .foregroundStyle(.secondary)
             } else {
                 FoldRow {
                     Label("Earlier messages summarized", systemImage: "rectangle.compress.vertical")
-                        .font(.footnote)
+                        .font(.silo(.footnote))
                         .foregroundStyle(.secondary)
                 } content: {
                     Text(block.text)
-                        .font(.callout)
+                        .font(.silo(.callout))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -414,16 +414,16 @@ struct ArtifactCard: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: artifact.artifactType == "skill" ? "book.closed" : fileSymbol)
-                        .font(.title3)
+                        .font(.silo(.title3))
                         .foregroundStyle(Theme.cobalt)
                         .frame(width: 32)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(artifact.title.isEmpty ? artifact.name : artifact.title)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.silo(.subheadline, .semibold))
                             .multilineTextAlignment(.leading)
                             .lineLimit(2)
                         Text(subtitle)
-                            .font(.caption)
+                            .font(.silo(.caption))
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
@@ -442,7 +442,7 @@ struct ArtifactCard: View {
                 } label: {
                     Label("Save skill", systemImage: "tray.and.arrow.down").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.ink)
                 .disabled(saving)
             }
         }
@@ -484,20 +484,20 @@ struct CodeWell: View {
         VStack(alignment: .leading, spacing: 0) {
             if let language, !language.isEmpty {
                 Text(language.uppercased())
-                    .font(.caption2.weight(.medium))
+                    .font(.silo(.caption2, .medium))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 10)
                     .padding(.top, 6)
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(.siloMono(.footnote))
                     .textSelection(.enabled)
                     .padding(10)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -520,9 +520,9 @@ struct PresentCard: View {
             HStack(spacing: 10) {
                 Image(systemName: "doc").foregroundStyle(Theme.cobalt)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(name).font(.silo(.subheadline, .semibold)).lineLimit(1)
                     Text([file.map { formatBytes($0.size) }, "in Files"].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption)
+                        .font(.silo(.caption))
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -536,7 +536,7 @@ struct PresentCard: View {
                 }
             }
             if let failure {
-                Text(failure).font(.footnote).foregroundStyle(Theme.vermilion)
+                Text(failure).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
             } else if let file {
                 content(file)
             } else {
@@ -567,10 +567,10 @@ struct PresentCard: View {
         } else if !file.binary, !file.content.isEmpty {
             CodeWell(code: String(file.content.prefix(4000)), language: nil)
             if file.truncated || file.content.count > 4000 {
-                Text("Open to see more.").font(.caption).foregroundStyle(.secondary)
+                Text("Open to see more.").font(.silo(.caption)).foregroundStyle(.secondary)
             }
         } else if file.binary {
-            Text("Preview not available. Open to view.").font(.footnote).foregroundStyle(.secondary)
+            Text("Preview not available. Open to view.").font(.silo(.footnote)).foregroundStyle(.secondary)
         }
     }
 
@@ -606,6 +606,7 @@ struct FoldRow<Label: View, Content: View>: View {
                     label
                     Spacer(minLength: 0)
                 }
+                .frame(minHeight: 30)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

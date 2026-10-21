@@ -473,6 +473,7 @@ No bounce, and no overshoot beyond the settle curve.
   - Files shows either the tree or the preview, not both.
   - The approval slip becomes a bottom sheet.
   - Hit areas are 40px.
+- **iOS:** the same tokens and faces (Geist, Geist Mono, Source Serif 4 ship in the app), no glass on content and no blue fills. The app opens on a chat (the last one with the last Bot, else a new one with no row behind it). The nav bar is the crest (opens the sidebar), the chat's title (its menu renames, saves memories, compacts, deletes), New chat, and the status lamp (opens the machine). The sidebar is the web's, in the same order, sliding in from the left edge on `well` (a column on iPad), with the account and the Skill Hub at its foot; there is no tab bar. The machine is a sheet: the status with Start (ink) or Stop (quiet), then Files, Changes, Mail and Containers. A run paused on an approval puts the slip in place of the composer in its chat (Allow once in ink, Deny quiet in `vermilion`, the rule one tap further); every approval also waits on the Dashboard. Nothing pops over a page by itself.
 
 ## 8. Voice
 

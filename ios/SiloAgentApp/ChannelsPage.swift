@@ -21,19 +21,19 @@ struct ChannelsPage: View {
                 Button { editing = channel } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(channel.name).font(.headline).foregroundStyle(.primary)
+                            Text(channel.name).font(.silo(.headline)).foregroundStyle(.primary)
                             Spacer()
                             Toggle("Enabled", isOn: Binding(get: { channel.enabled }, set: { value in Task { await setEnabled(channel, value) } }))
                                 .labelsHidden()
                         }
-                        Text(channel.adapterName.isEmpty ? channel.adapter : channel.adapterName).font(.caption).foregroundStyle(.secondary)
+                        Text(channel.adapterName.isEmpty ? channel.adapter : channel.adapterName).font(.silo(.caption)).foregroundStyle(.secondary)
                         if let need = needsTarget(channel) {
-                            Text(need).font(.caption.weight(.semibold)).foregroundStyle(Theme.vermilion)
+                            Text(need).font(.silo(.caption, .semibold)).foregroundStyle(Theme.vermilion)
                         } else if !channel.targetTitle.isEmpty {
-                            Text("→ \(channel.targetTitle)").font(.caption).foregroundStyle(.secondary)
+                            Text("→ \(channel.targetTitle)").font(.silo(.caption)).foregroundStyle(.secondary)
                         }
                         if !channel.statusDetail.isEmpty {
-                            Text(channel.statusDetail).font(.caption).foregroundStyle(channel.status == "error" ? Theme.vermilion : .secondary).lineLimit(2)
+                            Text(channel.statusDetail).font(.silo(.caption)).foregroundStyle(channel.status == "error" ? Theme.vermilion : .secondary).lineLimit(2)
                         }
                     }
                 }
@@ -107,8 +107,8 @@ private struct AddChannelSheet: View {
                     ChannelForm(adapter: adapter, existing: nil) { await onSaved(); dismiss() }
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(adapter.name).font(.headline)
-                        Text(adapter.description_p).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(adapter.name).font(.silo(.headline))
+                        Text(adapter.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
             }
@@ -153,7 +153,7 @@ private struct ChannelForm: View {
                     } header: { Text("Secrets") } footer: { Text("Leave blank to keep the stored value.") }
                 }
                 if adapter.requiresTarget {
-                    Section { Text("Picking which chat this channel reads and writes happens on the web client.").font(.footnote) }
+                    Section { Text("Picking which chat this channel reads and writes happens on the web client.").font(.silo(.footnote)) }
                 }
             }
             Section {

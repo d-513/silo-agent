@@ -105,16 +105,16 @@ private struct ChangeRow: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline) {
                 if change.restore { Image(systemName: "arrow.uturn.backward").foregroundStyle(Theme.cobalt) }
-                Text(title).font(.headline).lineLimit(2)
+                Text(title).font(.silo(.headline)).lineLimit(2)
                 Spacer(minLength: 6)
-                if !change.pending { Text(relativeTime(change.at)).font(.caption).foregroundStyle(.secondary) }
+                if !change.pending { Text(relativeTime(change.at)).font(.silo(.caption)).foregroundStyle(.secondary) }
             }
             HStack(spacing: 8) {
                 Text(change.files == 1 ? "1 file" : "\(change.files) files")
                 if change.added > 0 { Text("+\(change.added)").foregroundStyle(Theme.emerald) }
                 if change.deleted > 0 { Text("−\(change.deleted)").foregroundStyle(Theme.vermilion) }
             }
-            .font(.caption.monospaced())
+            .font(.siloMono(.caption))
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
@@ -134,9 +134,9 @@ private struct ChangeDetail: View {
 
     var body: some View {
         List {
-            if let notice { Section { Text(notice).font(.footnote) } }
+            if let notice { Section { Text(notice).font(.silo(.footnote)) } }
             let hint = change.pending ? "" : changeSourceHint(change.sources, restore: change.restore)
-            if !hint.isEmpty { Section { Text(hint).font(.footnote).foregroundStyle(.secondary) } }
+            if !hint.isEmpty { Section { Text(hint).font(.silo(.footnote)).foregroundStyle(.secondary) } }
             Section {
                 ForEach(files, id: \.path) { file in
                     NavigationLink {
@@ -192,20 +192,20 @@ private struct FileChangeRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(file.path.split(separator: "/").last.map(String.init) ?? file.path).lineLimit(1)
                 Text(file.status == "renamed" && !file.oldPath.isEmpty ? "from \(file.oldPath)" : directory)
-                    .font(.caption.monospaced())
+                    .font(.siloMono(.caption))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
             Spacer(minLength: 6)
             if file.binary || file.large {
-                Text(changeSizes(old: file.oldSize, new: file.newSize)).font(.caption).foregroundStyle(.secondary)
+                Text(changeSizes(old: file.oldSize, new: file.newSize)).font(.silo(.caption)).foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 4) {
                     if file.added > 0 { Text("+\(file.added)").foregroundStyle(Theme.emerald) }
                     if file.deleted > 0 { Text("−\(file.deleted)").foregroundStyle(Theme.vermilion) }
                 }
-                .font(.caption.monospaced())
+                .font(.siloMono(.caption))
             }
         }
     }
@@ -249,13 +249,13 @@ private struct PatchPage: View {
             VStack(alignment: .leading, spacing: 0) {
                 let note = changeFileNote(file, maxFileBytes: maxFileBytes)
                 if !note.isEmpty {
-                    Text(note).font(.footnote).foregroundStyle(.secondary).padding()
+                    Text(note).font(.silo(.footnote)).foregroundStyle(.secondary).padding()
                 } else if let lines {
-                    if lines.isEmpty { Text("No lines changed.").font(.footnote).foregroundStyle(.secondary).padding() }
+                    if lines.isEmpty { Text("No lines changed.").font(.silo(.footnote)).foregroundStyle(.secondary).padding() }
                     ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                         DiffRow(line: line)
                     }
-                    if truncated { Text("The rest of this diff is not shown.").font(.footnote).foregroundStyle(.secondary).padding() }
+                    if truncated { Text("The rest of this diff is not shown.").font(.silo(.footnote)).foregroundStyle(.secondary).padding() }
                 } else {
                     ProgressView().padding(40)
                 }
@@ -308,7 +308,7 @@ private struct DiffRow: View {
                 .foregroundStyle(line.kind == .hunk || line.kind == .note ? .secondary : .primary)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .font(.caption.monospaced())
+        .font(.siloMono(.caption))
         .padding(.vertical, 1.5)
         .padding(.trailing, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -360,13 +360,13 @@ private struct DriveJournal: View {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(entry.path.isEmpty ? entry.drive : "\(entry.drive)/\(entry.path)")
-                                    .font(.subheadline.monospaced())
+                                    .font(.siloMono(.subheadline))
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                 Spacer(minLength: 6)
-                                Text(relativeTime(entry.at)).font(.caption).foregroundStyle(.secondary)
+                                Text(relativeTime(entry.at)).font(.silo(.caption)).foregroundStyle(.secondary)
                             }
-                            Text(driveChangeLine(entry)).font(.caption).foregroundStyle(.secondary)
+                            Text(driveChangeLine(entry)).font(.silo(.caption)).foregroundStyle(.secondary)
                         }
                     }
                 } footer: {

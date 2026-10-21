@@ -153,10 +153,10 @@ private struct ZonePicker: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(zone.split(separator: "/").last.map { $0.replacingOccurrences(of: "_", with: " ") } ?? zone).foregroundStyle(.primary)
-                        Text(zone).font(.caption).foregroundStyle(.secondary)
+                        Text(zone).font(.silo(.caption)).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(TimeZone(identifier: zone)?.abbreviation() ?? "").font(.caption.monospaced()).foregroundStyle(.secondary)
+                    Text(TimeZone(identifier: zone)?.abbreviation() ?? "").font(.siloMono(.caption)).foregroundStyle(.secondary)
                     if zone == selected { Image(systemName: "checkmark").foregroundStyle(Theme.cobalt) }
                 }
             }

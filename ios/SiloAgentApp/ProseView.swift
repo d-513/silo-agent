@@ -76,7 +76,7 @@ private struct ItemRow: View {
             Group {
                 if let checked = item.checked {
                     Image(systemName: checked ? "checkmark.square" : "square")
-                        .font(.callout)
+                        .font(.silo(.callout))
                 } else {
                     Text(item.marker).font(.reply()).monospacedDigit()
                 }
@@ -103,7 +103,7 @@ private struct TableView: View {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 0) {
                 GridRow {
                     ForEach(header.indices, id: \.self) { column in
-                        cell(header[column], column).font(.footnote.weight(.medium)).foregroundStyle(.secondary)
+                        cell(header[column], column).font(.silo(.footnote, .medium)).foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical, 6)
@@ -111,7 +111,7 @@ private struct TableView: View {
                 ForEach(rows.indices, id: \.self) { index in
                     GridRow {
                         ForEach(header.indices, id: \.self) { column in
-                            cell(column < rows[index].count ? rows[index][column] : "", column).font(.subheadline)
+                            cell(column < rows[index].count ? rows[index][column] : "", column).font(.silo(.subheadline))
                         }
                     }
                     .padding(.vertical, 7)

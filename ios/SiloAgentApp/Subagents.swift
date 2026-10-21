@@ -20,13 +20,13 @@ struct TaskboardStrip: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.semibold))
+                            .font(.silo(.caption2, .semibold))
                             .rotationEffect(.degrees(open ? 90 : 0))
                             .foregroundStyle(.secondary)
                         Image(systemName: "checklist").foregroundStyle(.secondary)
-                        Text("Tasks").font(.subheadline.weight(.medium))
+                        Text("Tasks").font(.silo(.subheadline, .medium))
                         Text("\(done)/\(list.count)")
-                            .font(.system(.caption, design: .monospaced))
+                            .font(.siloMono(.caption))
                             .foregroundStyle(.secondary)
                         Spacer()
                         ProgressView(value: Double(done), total: Double(list.count))
@@ -48,11 +48,11 @@ struct TaskboardStrip: View {
                                     .foregroundStyle(item.done ? Theme.emerald : .secondary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.text)
-                                        .font(.callout)
+                                        .font(.silo(.callout))
                                         .strikethrough(item.done)
                                     if !item.assignee.isEmpty || !item.note.isEmpty {
                                         Text([item.assignee, item.note].filter { !$0.isEmpty }.joined(separator: " · "))
-                                            .font(.caption)
+                                            .font(.silo(.caption))
                                             .foregroundStyle(.secondary)
                                     }
                                 }
@@ -61,7 +61,7 @@ struct TaskboardStrip: View {
                         }
                         if items == nil {
                             Button("Clear tasks", role: .destructive) { clearing = true }
-                                .font(.footnote)
+                                .font(.silo(.footnote))
                                 .padding(.top, 4)
                         }
                     }
@@ -115,7 +115,7 @@ struct SubagentTray: View {
                         }
                     } label: {
                         Text("\(finished.count) finished")
-                            .font(.caption.weight(.medium))
+                            .font(.silo(.caption, .medium))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(Theme.well, in: Capsule())
@@ -136,11 +136,11 @@ struct SubagentTray: View {
             opened = agent
         } label: {
             VStack(alignment: .leading, spacing: 3) {
-                Text(agent.name).font(.subheadline.weight(.medium)).lineLimit(1)
+                Text(agent.name).font(.silo(.subheadline, .medium)).lineLimit(1)
                 HStack(spacing: 5) {
                     StatusDot(status: waiting ? "needs_you" : "working", size: 7)
                     Text(waiting ? "needs you" : (agent.activity.isEmpty ? shortModel(agent.model) : agent.activity))
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.siloMono(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

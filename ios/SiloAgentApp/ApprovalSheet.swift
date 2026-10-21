@@ -1,97 +1,114 @@
 import SiloClient
 import SwiftUI
 
-/// The "Needs you" slip: a native sheet (bottom on iPhone, form sheet on iPad) with the Bot's
-/// request and its choices. The run stays paused until one is picked.
-struct ApprovalSheet: View {
+/// The "Needs you" slip: what the Bot wants to do and the choice. Docked in place of the composer
+/// in the chat whose run it paused (`here`), and listed on the Dashboard with the rest. Allow once
+/// and Deny are one tap; changing the rule is one tap further.
+struct ApprovalSlip: View {
     @Environment(AppModel.self) private var model
-    let bot: Silo_V1_Bot
     let approval: Silo_V1_Approval
+    var here = false
     @State private var deciding = false
+    @State private var details = false
 
     var body: some View {
         let description = describeApproval(approval)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 10) {
-                    CrestView(index: bot.crest, size: 28)
-                    Text(bot.name).font(.headline).lineLimit(1)
-                    Spacer(minLength: 8)
-                    StatusLine(status: "needs_you")
-                }
-                if !approval.source.isEmpty {
-                    Text(approval.source)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                Text(description.title)
-                    .font(.title2.weight(.medium))
-                Text(description.summary)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                if !description.fields.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(Array(description.fields.enumerated()), id: \.offset) { index, field in
-                            if index > 0 { Divider() }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(field.label).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                                Text(field.value)
-                                    .font(.system(.callout, design: .monospaced))
-                                    .textSelection(.enabled)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                        }
-                    }
-                    .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                StatusDot(status: "needs_you", size: 7)
+                Text(source).lineLimit(1)
             }
-            .padding(20)
-        }
-        .safeAreaInset(edge: .bottom) { actions }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
+            .font(.silo(12))
+            .foregroundStyle(Theme.ink3)
 
-    private var actions: some View {
-        VStack(spacing: 10) {
-            // An Auto rule whose model would not decide: this one call is the human's to
-            // settle, the rule is not, so there is no "always" or "auto" here.
-            Button { decide("allow_once") } label: {
-                Text(approval.auto ? "Allow" : "Allow once").frame(maxWidth: .infinity)
+            Text(description.title)
+                .font(.silo(17, .medium))
+                .foregroundStyle(Theme.ink)
+            if !description.summary.isEmpty {
+                Text(description.summary)
+                    .font(.silo(14))
+                    .foregroundStyle(Theme.ink2)
+                    .lineLimit(details ? nil : 3)
             }
-            .buttonStyle(.glassProminent)
-            if !approval.auto {
-                Button { decide("always") } label: {
-                    Text("Always allow this action").frame(maxWidth: .infinity)
+            if !description.fields.isEmpty {
+                fields(description.fields)
+            }
+
+            HStack(spacing: 8) {
+                Button { decide("allow_once") } label: {
+                    Text(approval.auto ? "Allow" : "Allow once").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glass)
-                Button { decide("auto") } label: {
-                    Text("Auto-approve this action").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.glass)
+                .buttonStyle(.ink)
+                Button { decide("deny") } label: { Text("Deny").frame(maxWidth: .infinity) }
+                    .buttonStyle(.quiet(tint: Theme.vermilion))
             }
-            Button(role: .destructive) { decide("deny") } label: {
-                Text("Deny").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .tint(Theme.vermilion)
+            .padding(.top, 4)
+
             if approval.auto {
                 Text("Auto-approval was not sure about this one. The rule is in Rules.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.silo(12))
+                    .foregroundStyle(Theme.ink3)
+            } else {
+                Menu {
+                    Button { decide("always") } label: { Label("Always allow this action", systemImage: "checkmark.circle") }
+                    Button { decide("auto") } label: { Label("Auto-approve this action", systemImage: "sparkles") }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Change the rule")
+                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+                    }
+                    .font(.silo(13, .medium))
+                    .foregroundStyle(Theme.ink2)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 30)
+                }
             }
-            Text(approval.runID.isEmpty ? "The process is waiting for your choice." : "This run is paused until you choose.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
         }
-        .controlSize(.large)
         .disabled(deciding)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.leading, 18)
+        .padding([.trailing, .vertical], 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(alignment: .leading) { Theme.vermilion.frame(width: 3) }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.line))
+        .shadow(color: .black.opacity(here ? 0.08 : 0), radius: 16, y: 6)
         .sensoryFeedback(.selection, trigger: deciding)
+    }
+
+    private var source: String {
+        var parts = ["Needs you"]
+        if here { parts.append("this chat") } else if !approval.source.isEmpty { parts.append(approval.source) }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private func fields(_ list: [ApprovalDescription.Field]) -> some View {
+        let shown = details ? list : Array(list.prefix(2))
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(shown.enumerated()), id: \.offset) { index, field in
+                if index > 0 { Theme.line.frame(height: 1) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(field.label).font(.silo(11, .medium)).foregroundStyle(Theme.ink3)
+                    Text(field.value)
+                        .font(.siloMono(12.5))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(details ? nil : 4)
+                        .textSelection(.enabled)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+            }
+        }
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+        .onTapGesture { withAnimation(.snappy) { details.toggle() } }
+        if !details && (list.count > 2 || list.contains { $0.value.count > 160 }) {
+            Button { withAnimation(.snappy) { details = true } } label: {
+                Text("Show everything").font(.silo(12, .medium)).foregroundStyle(Theme.ink2)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func decide(_ decision: String) {

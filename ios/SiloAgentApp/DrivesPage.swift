@@ -18,23 +18,23 @@ struct DrivesPage: View {
     var body: some View {
         List {
             if !unavailable.isEmpty {
-                Section { Text(unavailable).font(.footnote).foregroundStyle(Theme.vermilion) }
+                Section { Text(unavailable).font(.silo(.footnote)).foregroundStyle(Theme.vermilion) }
             }
             ForEach(drives.filter { !$0.draft }) { drive in
                 Button { editing = drive } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack {
-                            Text(drive.name).font(.headline).foregroundStyle(.primary)
+                            Text(drive.name).font(.silo(.headline)).foregroundStyle(.primary)
                             Spacer()
-                            Text(drive.state.isEmpty ? "—" : drive.state).font(.caption.weight(.medium)).foregroundStyle(stateTone(drive))
+                            Text(drive.state.isEmpty ? "—" : drive.state).font(.silo(.caption, .medium)).foregroundStyle(stateTone(drive))
                         }
                         Text(templates.first { $0.key == drive.template }?.title ?? drive.template)
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.silo(.caption)).foregroundStyle(.secondary)
                         Text("/workspace/drives/\(drive.name)\(drive.readOnly ? " · read-only" : "")")
-                            .font(.system(.caption2, design: .monospaced)).foregroundStyle(.tertiary)
-                        if !drive.account.isEmpty { Text(drive.account).font(.caption).foregroundStyle(.secondary) }
+                            .font(.siloMono(.caption2)).foregroundStyle(.tertiary)
+                        if !drive.account.isEmpty { Text(drive.account).font(.silo(.caption)).foregroundStyle(.secondary) }
                         if !drive.stateDetail.isEmpty, drive.state != "mounted" {
-                            Text(drive.stateDetail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            Text(drive.stateDetail).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                         }
                     }
                 }
@@ -104,10 +104,10 @@ private struct DriveTemplatePicker: View {
                     DriveForm(template: template, drive: nil, taken: taken) { await onSaved(); dismiss() }
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(template.title).font(.headline)
-                        Text(template.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(template.title).font(.silo(.headline))
+                        Text(template.blurb).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
                         if !template.available {
-                            Text("Needs operator setup").font(.caption2).foregroundStyle(Theme.vermilion)
+                            Text("Needs operator setup").font(.silo(.caption2)).foregroundStyle(Theme.vermilion)
                         }
                     }
                 }
@@ -185,7 +185,7 @@ private struct DriveForm: View {
             }
             Section {
                 TextField("name", text: $name).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .font(.system(.body, design: .monospaced))
+                    .font(.siloMono(.body))
                 Toggle("Read-only", isOn: $readOnly)
             } header: { Text("Mount") } footer: {
                 Text(nameOK ? "/workspace/drives/\(name)" : "Lowercase letters, digits and dashes; unique on this Bot.")
@@ -219,9 +219,9 @@ private struct DriveForm: View {
                     ForEach(v.options, id: \.value) { Text($0.label).tag($0.value) }
                 }
             case "textarea":
-                Text(v.label).font(.caption).foregroundStyle(.secondary)
+                Text(v.label).font(.silo(.caption)).foregroundStyle(.secondary)
                 TextEditor(text: Binding(get: { values[v.key] ?? "" }, set: { values[v.key] = $0 })).frame(minHeight: 80)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(.siloMono(.footnote))
             case "pick":
                 PickRow(label: v.label, key: v.key, value: Binding(get: { values[v.key] ?? "" }, set: { values[v.key] = $0 }), sync: { try await sync() })
             case "folder":
@@ -231,7 +231,7 @@ private struct DriveForm: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .keyboardType(v.type == "url" ? .URL : v.type == "number" ? .numberPad : .default)
             }
-            if !v.help.isEmpty { Text(v.help).font(.caption).foregroundStyle(.secondary) }
+            if !v.help.isEmpty { Text(v.help).font(.silo(.caption)).foregroundStyle(.secondary) }
         }
     }
 
@@ -250,8 +250,8 @@ private struct DriveForm: View {
         Button(testState == .busy ? "Testing…" : "Test connection") { Task { await runTest() } }
             .disabled(testState == .busy || missing)
         switch testState {
-        case .ok(let message): Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.emerald).font(.footnote)
-        case .fail(let message): Text(message).foregroundStyle(Theme.vermilion).font(.footnote)
+        case .ok(let message): Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.emerald).font(.silo(.footnote))
+        case .fail(let message): Text(message).foregroundStyle(Theme.vermilion).font(.silo(.footnote))
         default: EmptyView()
         }
     }

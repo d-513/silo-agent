@@ -74,7 +74,7 @@ struct FileBrowser: View {
                         HStack {
                             Label(entry.name, systemImage: symbol(entry.name))
                             Spacer()
-                            Text(formatBytes(entry.size)).font(.caption).foregroundStyle(.secondary)
+                            Text(formatBytes(entry.size)).font(.silo(.caption)).foregroundStyle(.secondary)
                         }
                     }
                     .swipeActions { deleteAction(entry) }
@@ -206,7 +206,7 @@ struct FilePreviewPage: View {
                 if let failure {
                     Text(failure).foregroundStyle(Theme.vermilion)
                 } else if let file {
-                    if file.truncated { Text("Showing the first 2 MB.").font(.footnote).foregroundStyle(.secondary) }
+                    if file.truncated { Text("Showing the first 2 MB.").font(.silo(.footnote)).foregroundStyle(.secondary) }
                     if !file.data.isEmpty, let image = UIImage(data: file.data) {
                         Image(uiImage: image).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 8))
                     } else if !file.binary {
@@ -273,7 +273,7 @@ struct NeedMachine: View {
             Text("Start the Bot to browse its workspace.")
         } actions: {
             Button("Start Bot") { Task { await model.startBot() } }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.ink)
         }
     }
 }

@@ -15,14 +15,14 @@ struct ContainersPage: View {
                 ForEach(containers, id: \.name) { box in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(box.label).font(.headline)
+                            Text(box.label).font(.silo(.headline))
                             Spacer()
                             StatusLine(status: box.state == "running" ? "online" : "stopped")
                         }
-                        if !box.detail.isEmpty { Text(box.detail).font(.footnote).foregroundStyle(.secondary) }
-                        Text(usage(box)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                        if !box.detail.isEmpty { Text(box.detail).font(.silo(.footnote)).foregroundStyle(.secondary) }
+                        Text(usage(box)).font(.siloMono(.caption)).foregroundStyle(.secondary)
                         if !box.image.isEmpty {
-                            Text(box.image).font(.system(.caption2, design: .monospaced)).foregroundStyle(.tertiary).lineLimit(1)
+                            Text(box.image).font(.siloMono(.caption2)).foregroundStyle(.tertiary).lineLimit(1)
                         }
                     }
                     .padding(.vertical, 2)

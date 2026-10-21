@@ -4,9 +4,11 @@ import SiloClient
 import SwiftUI
 
 /// Who is signed in, how they sign in (email, password, two-factor), where they are signed in, and
-/// Sign Out. Admin stays on the web client.
+/// Sign Out. Admin stays on the web client. Opened as a sheet from the sidebar's foot.
 struct AccountView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    var modal = false
     @State private var confirmSignOut = false
 
     var body: some View {
@@ -18,9 +20,9 @@ struct AccountView: View {
                             .font(.system(size: 44))
                             .foregroundStyle(.secondary)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(model.user?.email ?? "Signed in").font(.headline)
+                            Text(model.user?.email ?? "Signed in").font(.silo(.headline))
                             if model.user?.admin == true {
-                                Text("Administrator").font(.subheadline).foregroundStyle(.secondary)
+                                Text("Administrator").font(.silo(.subheadline)).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -47,7 +49,11 @@ struct AccountView: View {
                     Button("Sign Out", role: .destructive) { confirmSignOut = true }
                 }
             }
+            .siloList()
             .navigationTitle("Account")
+            .toolbar {
+                if modal { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+            }
             .confirmationDialog("Sign out of Silo?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) { Task { await model.signOut() } }
             }
@@ -193,7 +199,7 @@ private struct TwoFactorPage: View {
                         Button { openURL(url) } label: { Label("Add to Passwords", systemImage: "key.viewfinder") }
                     }
                     LabeledContent("Key") {
-                        Text(setup.secret).font(.caption.monospaced()).textSelection(.enabled)
+                        Text(setup.secret).font(.siloMono(.caption)).textSelection(.enabled)
                     }
                 } footer: {
                     Text("Scan the code with an authenticator, or add it to Passwords on this device, then enter the code it shows.")
@@ -228,7 +234,7 @@ private struct TwoFactorPage: View {
 
     private var recoverySection: some View {
         Section {
-            ForEach(codes, id: \.self) { Text($0).font(.body.monospaced()) }
+            ForEach(codes, id: \.self) { Text($0).font(.siloMono(.body)) }
             Button { UIPasteboard.general.string = codes.joined(separator: "\n") } label: { Label("Copy All", systemImage: "doc.on.doc") }
             ShareLink(item: codes.joined(separator: "\n")) { Label("Save…", systemImage: "square.and.arrow.up") }
             Button("Done") {
@@ -313,14 +319,14 @@ private struct SessionsPage: View {
                 ForEach(sessions) { session in
                     VStack(alignment: .leading, spacing: 3) {
                         HStack {
-                            Text(device(session.userAgent)).font(.headline)
+                            Text(device(session.userAgent)).font(.silo(.headline))
                             if session.current {
-                                Text("This device").font(.caption.weight(.medium)).foregroundStyle(Theme.emerald)
+                                Text("This device").font(.silo(.caption, .medium)).foregroundStyle(Theme.emerald)
                             }
                         }
                         Text([session.ip, session.method == "oidc" ? "Single sign-on" : "", "seen \(relativeTime(session.lastSeenAt))"]
                             .filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.caption)
+                            .font(.silo(.caption))
                             .foregroundStyle(.secondary)
                     }
                     .swipeActions {

@@ -39,7 +39,7 @@ struct NewBotView: View {
 
                 if let error {
                     Section {
-                        Text(error).font(.footnote).foregroundStyle(Theme.vermilion)
+                        Text(error).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
                     }
                 }
             }

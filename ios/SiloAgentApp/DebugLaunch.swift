@@ -7,7 +7,8 @@ import SiloClient
 ///
 ///   SILO_DEV_EMAIL / SILO_DEV_PASSWORD / SILO_DEV_SERVER   sign in
 ///   SILO_DEV_BOT=<index>                                   select that Bot
-///   SILO_DEV_PATH=feed,files,chat:0                        push pages / the nth chat
+///   SILO_DEV_PATH=feed,files,chat:0                        push pages / open the nth chat
+///                 new, sidebar, machine, customize, settings-list
 enum DebugLaunch {
     @MainActor
     static func run(_ model: AppModel) async {
@@ -24,11 +25,19 @@ enum DebugLaunch {
         try? await Task.sleep(for: .seconds(1.5))
         for step in (env["SILO_DEV_PATH"] ?? "").split(separator: ",") {
             if step.hasPrefix("chat:"), let n = Int(step.dropFirst(5)), model.chats.indices.contains(n) {
-                model.path.append(.chat(model.chats[n].id))
+                model.showChat(model.chats[n].id)
             } else if let tab = BotTab(rawValue: String(step)) {
                 model.path.append(.page(tab))
-            } else if step == "chats" {
-                model.path.append(.chats)
+            } else if step == "new" {
+                model.newChat()
+            } else if step == "sidebar" {
+                model.sidebarOpen = true
+            } else if step == "machine" {
+                model.machineOpen = true
+            } else if step == "customize" {
+                model.path.append(.customize)
+            } else if step == "settings-list" {
+                model.path.append(.settings)
             }
             try? await Task.sleep(for: .milliseconds(600))
         }

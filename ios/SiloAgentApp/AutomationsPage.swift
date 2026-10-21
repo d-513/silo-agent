@@ -54,14 +54,14 @@ struct AutomationsPage: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(item.name).font(.headline).lineLimit(1)
+                    Text(item.name).font(.silo(.headline)).lineLimit(1)
                     if item.kind == "heartbeat" {
-                        Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.secondary)
+                        Image(systemName: "pin.fill").font(.silo(.caption2)).foregroundStyle(.secondary)
                     }
                     if item.running { ProgressView().controlSize(.mini) }
                 }
-                Text(describeSchedule(item.schedule)).font(.subheadline).foregroundStyle(.secondary)
-                Text(status(item)).font(.caption).foregroundStyle(item.lastStatus == "error" ? Theme.vermilion : .secondary)
+                Text(describeSchedule(item.schedule)).font(.silo(.subheadline)).foregroundStyle(.secondary)
+                Text(status(item)).font(.silo(.caption)).foregroundStyle(item.lastStatus == "error" ? Theme.vermilion : .secondary)
             }
             Spacer(minLength: 8)
             Toggle("Enabled", isOn: Binding(get: { item.enabled }, set: { value in Task { await setEnabled(item, value) } }))
@@ -247,7 +247,7 @@ struct ScheduleEditor: View {
                         if on { schedule.days.removeAll { $0 == day } } else { schedule.days.append(day) }
                     } label: {
                         Text(String(Schedule.dayShort[day].prefix(1)))
-                            .font(.subheadline.weight(.semibold))
+                            .font(.silo(.subheadline, .semibold))
                             .frame(width: 34, height: 34)
                             .background(on ? Theme.cobalt : Theme.well, in: Circle())
                             .foregroundStyle(on ? Color.white : Color.primary)
@@ -262,11 +262,11 @@ struct ScheduleEditor: View {
             timeRow
         case .custom:
             TextField("* * * * *", text: $schedule.cron)
-                .font(.system(.body, design: .monospaced))
+                .font(.siloMono(.body))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         }
-        Text(schedule.summary).font(.footnote).foregroundStyle(.secondary)
+        Text(schedule.summary).font(.silo(.footnote)).foregroundStyle(.secondary)
     }
 
     private var timeRow: some View {

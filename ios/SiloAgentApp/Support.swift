@@ -1,11 +1,12 @@
 import SiloClient
 import SwiftUI
 
-/// Where the Bot's navigation stack can go.
+/// The pages pushed over the chat. The chat itself is the stack's root, never a route.
 enum BotRoute: Hashable {
-    case chat(String)
-    case chats
     case page(BotTab)
+    /// The Customize and Settings lists, as on the web sidebar.
+    case customize
+    case settings
 }
 
 /// The Bot pages. The conversation-side pages (Dashboard … Feed) sit beside the chats list on web;
@@ -95,16 +96,15 @@ func statusColor(_ status: String) -> Color {
         return Theme.lamp
     case "needs_you":
         return Theme.vermilion
-    case "stopped", "starting":
-        return .secondary
     default:
-        return .secondary
+        return Theme.ink3
     }
 }
 
+/// States are plain words: Needs you, Working, Online, Stopped.
 func statusLabel(_ status: String) -> String {
-    if status == "idle" { return "online" }
-    return status.replacingOccurrences(of: "_", with: " ")
+    let word = status == "idle" ? "online" : status.replacingOccurrences(of: "_", with: " ")
+    return word.prefix(1).uppercased() + word.dropFirst()
 }
 
 struct StatusDot: View {
@@ -131,7 +131,7 @@ struct StatusLine: View {
         HStack(spacing: 6) {
             StatusDot(status: status, size: 8)
             Text(statusLabel(status))
-                .font(.caption.weight(.medium))
+                .font(.silo(.caption, .medium))
                 .foregroundStyle(statusColor(status))
         }
     }

@@ -16,7 +16,7 @@ struct MemoriesPage: View {
                 ForEach(results ?? memories, id: \.id) { memory in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(memory.content).textSelection(.enabled)
-                        Text(meta(memory)).font(.caption).foregroundStyle(.secondary)
+                        Text(meta(memory)).font(.silo(.caption)).foregroundStyle(.secondary)
                     }
                     .swipeActions { Button(role: .destructive) { deleting = memory } label: { Label("Delete", systemImage: "trash") } }
                 }
