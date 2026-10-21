@@ -9,23 +9,13 @@ import { DriveMark } from "../drives/DriveMark";
 import { fail } from "../errors";
 import { UI, type SetupOffer } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
+import { optionWord } from "./prefill";
 import { SetupModal } from "./SetupModal";
 
 const kindWord: Record<string, string> = {
   connector: msg("Connector"),
   channel: msg("Channel"),
   drive: msg("Drive"),
-};
-
-// The form's own options, as the card names them.
-const optionWord: Record<string, string> = {
-  name: msg("Name"),
-  default_mode: msg("Default rule"),
-  expose_completion: msg("Also chat tools"),
-  inbound: msg("Deliver messages to the Bot"),
-  enabled: msg("Enabled"),
-  prompt: msg("Prompt"),
-  read_only: msg("Read-only"),
 };
 
 function shown(v: string): string {
@@ -43,7 +33,7 @@ function useTarget(offer: SetupOffer): { mark: ReactNode; blurb: string; fieldLa
   if (offer.kind === "connector") {
     const c = connectors?.find((x) => x.identifier === offer.target);
     return {
-      mark: c ? <ConnectorMark id={c.id} hasImage={c.hasImage} size={44} /> : <span className="h-11 w-11 rounded-control bg-well" />,
+      mark: c ? <ConnectorMark id={c.id} hasImage={c.hasImage} size={44} /> : <span className="block h-11 w-11 rounded-control bg-well" />,
       blurb: c?.description ?? "",
       fieldLabel: (k) => c?.fields.find((f) => f.key === k)?.label ?? k,
     };
@@ -133,7 +123,6 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
     </article>
   );
 }
-
 
 // OfferGroup is what the Bot offered in one turn, two to a row on a wide
 // thread. With more than one still open, Not now for these answers them all

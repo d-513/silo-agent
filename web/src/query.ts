@@ -1,8 +1,8 @@
 import type { DescMessage, DescMethodUnary, MessageInitShape, MessageShape } from "@bufbuild/protobuf";
 import { createConnectQueryKey } from "@connectrpc/connect-query";
 import { QueryClient } from "@tanstack/react-query";
-import { transport } from "./api";
-import { UI, type Bot } from "./gen/silo/v1/ui_pb";
+import { transport, ui } from "./api";
+import { UI, type Bot, type UpdateBotRequestSchema } from "./gen/silo/v1/ui_pb";
 import { putRow, retryable } from "./queryPolicy";
 
 // query.ts is the one cache of what the server said. Components read it with
@@ -62,4 +62,22 @@ export function setBot(bot: Bot) {
 export function reloadBot(id: string) {
   void reload(UI.method.getBot, { id });
   void reload(UI.method.listBots);
+}
+
+/**
+ * Save one change to a Bot's settings and store the answer. UpdateBot replaces
+ * the Bot's other fields, so they are sent back unchanged.
+ */
+export async function updateBotWith(bot: Bot, change: Partial<MessageInitShape<typeof UpdateBotRequestSchema>>) {
+  setBot(
+    await ui.updateBot({
+      id: bot.id,
+      name: bot.name,
+      description: bot.description,
+      soul: bot.soul,
+      autoApprove: bot.autoApprove,
+      model: bot.model,
+      ...change,
+    }),
+  );
 }

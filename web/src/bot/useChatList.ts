@@ -70,9 +70,8 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     }
   }
 
-  async function newChat() {
-    if (!id) return;
-    void nav(newChatLink(id));
+  function newChat() {
+    if (id) void nav(newChatLink(id));
   }
 
   async function deleteChat(cid: string) {

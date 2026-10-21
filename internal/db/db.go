@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pgvector/pgvector-go"
@@ -535,6 +536,18 @@ type KnowledgeChunk struct {
 	Embedding pgvector.Vector `gorm:"type:vector(1536)"`
 }
 
+// PinnedAutomationKinds are the automation kinds a Bot has exactly one of
+// (automation.Service.Pin registers them). The partial unique index
+// automations_pinned covers these and no others, so a new pinned kind is
+// added here too.
+var PinnedAutomationKinds = []string{"heartbeat", "dashboard"}
+
+// pinnedKindList is PinnedAutomationKinds as an SQL list.
+var pinnedKindList = "('" + strings.Join(PinnedAutomationKinds, "', '") + "')"
+
+// pinnedIndex is automations_pinned over PinnedAutomationKinds.
+var pinnedIndex = "CREATE UNIQUE INDEX IF NOT EXISTS automations_pinned ON automations (bot_id, kind) WHERE kind IN " + pinnedKindList
+
 // Automation is a scheduled background prompt. Its runs land in ChatID (a
 // hidden Chat) and each firing starts with a fresh context. Kind "heartbeat" is
 // the pinned one every Bot has; it is created without a schedule.
@@ -921,10 +934,13 @@ func Migrate(gdb *gorm.DB) error {
 	if err := dedupePinnedAutomations(gdb); err != nil {
 		return err
 	}
+	if err := repinIndex(gdb); err != nil {
+		return err
+	}
 	for _, stmt := range []string{
 		// One Heartbeat and one Dashboard per Bot: the insert that pins them
 		// relies on this to lose a race instead of making a second.
-		"CREATE UNIQUE INDEX IF NOT EXISTS automations_pinned ON automations (bot_id, kind) WHERE kind IN ('heartbeat', 'dashboard')",
+		pinnedIndex,
 		// One main chat per Bot: chats.Main relies on it to lose a race.
 		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main ON chats (bot_id) WHERE main",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
@@ -949,9 +965,9 @@ func Migrate(gdb *gorm.DB) error {
 // The copy kept is the one that was used: scheduled, then most recently run,
 // then the oldest.
 func dedupePinnedAutomations(gdb *gorm.DB) error {
-	const extra = `SELECT id FROM (SELECT id, row_number() OVER (PARTITION BY bot_id, kind
+	extra := `SELECT id FROM (SELECT id, row_number() OVER (PARTITION BY bot_id, kind
 		ORDER BY (schedule <> '') DESC, last_run_at DESC NULLS LAST, created_at, id) AS n
-		FROM automations WHERE kind IN ('heartbeat', 'dashboard')) ranked WHERE n > 1`
+		FROM automations WHERE kind IN ` + pinnedKindList + `) ranked WHERE n > 1`
 	return gdb.Transaction(func(tx *gorm.DB) error {
 		for _, stmt := range []string{
 			"DELETE FROM run_events WHERE run_id IN (SELECT r.id FROM runs r JOIN chats c ON c.id = r.chat_id WHERE c.automation_id IN (" + extra + "))",
@@ -965,6 +981,22 @@ func dedupePinnedAutomations(gdb *gorm.DB) error {
 		}
 		return nil
 	})
+}
+
+// repinIndex drops automations_pinned when it misses a pinned kind (one
+// added since it was made), so the CREATE below makes it over every kind.
+func repinIndex(gdb *gorm.DB) error {
+	var def string
+	gdb.Raw("SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'automations_pinned'").Scan(&def)
+	if def == "" {
+		return nil
+	}
+	for _, k := range PinnedAutomationKinds {
+		if !strings.Contains(def, "'"+k+"'") {
+			return gdb.Exec("DROP INDEX automations_pinned").Error
+		}
+	}
+	return nil
 }
 
 // hashSessionIDs moves sessions from before the id was a hash (they have no

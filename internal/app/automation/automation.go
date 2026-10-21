@@ -85,21 +85,10 @@ func New(gdb *gorm.DB, e run.Engine, h Host) *Service {
 // heartbeatV1 is the Heartbeat's first default prompt, before ask_owner.
 const heartbeatV1 = "Heartbeat. No human sent this; it is your periodic check-in.\n\nLook over what you are responsible for: open tasks or notes in `/workspace`, and anything you promised to follow up on. Do the small things that are due now. If something needs the human, post it to the Feed with `feed`"
 
-// HeartbeatSchedules are the Heartbeat's schedules for the proactivity
-// levels, in the Bot's time zone: none when off, a morning check when quiet,
-// every three hours of the day (and never at night) when active.
-var HeartbeatSchedules = map[string]string{
-	"off":    "",
-	"quiet":  "0 9 * * *",
-	"active": "0 9-21/3 * * *",
-}
-
-// SetHeartbeat puts the Heartbeat on a proactivity level's schedule.
-func (s *Service) SetHeartbeat(botID, level string) error {
-	sched, ok := HeartbeatSchedules[level]
-	if !ok {
-		return fmt.Errorf("unknown proactivity %q", level)
-	}
+// SetHeartbeatSchedule puts the Heartbeat on a schedule (empty: it never
+// fires) and switches it on. It writes those columns alone, so a prompt edit
+// or a firing that lands meanwhile stays.
+func (s *Service) SetHeartbeatSchedule(botID, sched string) error {
 	au := s.Pinned(botID, automationHeartbeat)
 	if au == nil {
 		return errors.New("the Heartbeat is missing")
@@ -109,15 +98,23 @@ func (s *Service) SetHeartbeat(botID, level string) error {
 	return err
 }
 
-// HeartbeatCustom reports whether the Bot's Heartbeat runs on a schedule of
-// its own rather than its proactivity level's (someone set it by hand).
-func (s *Service) HeartbeatCustom(botID, level string) bool {
+// Heartbeat is the Bot's Heartbeat schedule and switch; ok is false when it
+// has none yet.
+func (s *Service) Heartbeat(botID string) (schedule string, enabled, ok bool) {
 	var au db.Automation
 	if s.db.Select("schedule, enabled").Where("bot_id = ? AND kind = ?", botID, automationHeartbeat).Limit(1).Find(&au).RowsAffected == 0 {
-		return false
+		return "", false, false
 	}
-	want, ok := HeartbeatSchedules[level]
-	return ok && (au.Schedule != want || !au.Enabled && want != "")
+	return au.Schedule, au.Enabled, true
+}
+
+// Kinds are the registered pinned kinds, in the order they list.
+func (s *Service) Kinds() []string {
+	out := make([]string, len(s.pins))
+	for i, p := range s.pins {
+		out[i] = p.Kind
+	}
+	return out
 }
 
 // Pin registers a pinned kind. Call it while the App is being built.
@@ -353,10 +350,30 @@ func (s *Service) saveAutomation(botID string, au *db.Automation, p automationPa
 		}
 		return au, nil
 	}
-	if err := s.db.Save(au).Error; err != nil {
+	// Only the columns the patch names (and the next firing they move): a
+	// whole-row save would undo a concurrent edit or a firing's last_* write.
+	cols := []string{"updated_at"}
+	if p.schedule != nil || p.enabled != nil {
+		cols = append(cols, "next_run_at")
+	}
+	if p.name != nil {
+		cols = append(cols, "name")
+	}
+	if p.prompt != nil {
+		cols = append(cols, "prompt")
+	}
+	if p.schedule != nil {
+		cols = append(cols, "schedule")
+	}
+	if p.enabled != nil {
+		cols = append(cols, "enabled")
+	}
+	if err := s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Select(cols).Updates(au).Error; err != nil {
 		return nil, err
 	}
-	s.db.Model(&db.Chat{}).Where("id = ?", au.ChatID).Update("title", au.Name)
+	if p.name != nil {
+		s.db.Model(&db.Chat{}).Where("id = ?", au.ChatID).Update("title", au.Name)
+	}
 	return au, nil
 }
 

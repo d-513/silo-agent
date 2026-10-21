@@ -194,6 +194,29 @@ func (a *App) closeInbox(lr *liveRun, runID string) bool {
 	return true
 }
 
+// EndTurn ends a live run after the tool calls of its current turn: the
+// tool has handed the conversation to the human, and another model turn would
+// only talk about the question it just asked.
+func (a *App) EndTurn(runID string) {
+	a.mu.Lock()
+	if lr := a.runs[runID]; lr != nil {
+		lr.endTurn = true
+	}
+	a.mu.Unlock()
+}
+
+// turnEnded reports (and clears) a run's EndTurn.
+func (a *App) turnEnded(runID string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	lr := a.runs[runID]
+	if lr == nil || !lr.endTurn {
+		return false
+	}
+	lr.endTurn = false
+	return true
+}
+
 // turnResult is one streamed assistant turn: the assembled message plus any
 // user-visible sections the model closed with <section_send />.
 type turnResult struct {
@@ -206,6 +229,7 @@ type turnResult struct {
 // streamTurn drives one provider completion, emitting chunks, reasoning, and
 // tool-call events, and returns the assembled assistant message.
 func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, client llm.Client, req llm.Request) (turnResult, error) {
+	a.setStep(runID, "")
 	stream, err := client.Stream(ctx, req)
 	if err != nil {
 		return turnResult{}, err
@@ -613,6 +637,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 					continue
 				}
 			}
+			a.setStep(runID, tc.Name)
 			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments, isSubagent(origin))
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
@@ -649,6 +674,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
 			}
 		}
+		a.setStep(runID, "")
 		msgs = append(msgs, shown...)
 		// A tool handed the conversation to the human: their answer starts
 		// the next run, unless a message is already waiting for this one.

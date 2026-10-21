@@ -8,12 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/security"
@@ -34,6 +36,16 @@ var Kinds = map[string]string{
 	"progress":  "s",
 	"ideas":     "m",
 	"app":       "m",
+}
+
+// kindNames are the widget kinds, sorted.
+func kindNames() []string {
+	out := make([]string, 0, len(Kinds))
+	for k := range Kinds {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 const (
@@ -249,7 +261,7 @@ func canonical(js string) string {
 // run action) goes through the python.run rule once, here, and only that code
 // runs later; a new probe runs at once so the Bot sees what it returns.
 func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args map[string]any) (string, error) {
-	key := strings.ToLower(strings.TrimSpace(str(args, "key")))
+	key := strings.ToLower(strings.TrimSpace(toolarg.Str(args, "key")))
 	if !keyRe.MatchString(key) {
 		return "", errors.New("key required: lowercase letters, digits and - _ . : (up to 60)")
 	}
@@ -267,16 +279,16 @@ func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args
 		w = &db.DashboardWidget{ID: ids.New(), BotID: bot.ID, Key: key, SpecJSON: "{}", DataJSON: "{}", StateJSON: "{}",
 			Rows: 1, Position: last.P + 1, ChatID: s.host.ChatOfRun(runID), RunID: runID, CreatedAt: now}
 	}
-	if v := strings.TrimSpace(str(args, "kind")); v != "" {
+	if v := strings.TrimSpace(toolarg.Str(args, "kind")); v != "" {
 		if _, ok := Kinds[v]; !ok {
-			return "", fmt.Errorf("kind %q: one of note, stat, chart, list, table, timeline, status, checklist, progress, app", v)
+			return "", fmt.Errorf("kind %q: one of %s", v, strings.Join(kindNames(), ", "))
 		}
 		w.Kind = v
 	}
 	if w.Kind == "" {
 		return "", errors.New("kind required for a new widget")
 	}
-	if v := strings.TrimSpace(str(args, "title")); v != "" {
+	if v := strings.TrimSpace(toolarg.Str(args, "title")); v != "" {
 		w.Title = textx.ClipRunes(strings.ReplaceAll(v, "\n", " "), titleMax)
 	}
 	if w.Title == "" {
@@ -286,7 +298,7 @@ func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args
 		w.Source = textx.ClipRunes(strings.TrimSpace(v), 60)
 	}
 	if !w.OwnerPlaced {
-		if v := strings.TrimSpace(str(args, "size")); v != "" {
+		if v := strings.TrimSpace(toolarg.Str(args, "size")); v != "" {
 			if v != "s" && v != "m" && v != "l" {
 				return "", errors.New("size is s, m or l")
 			}
@@ -334,7 +346,9 @@ func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args
 	if w.Kind == "app" && w.ArtifactID == "" {
 		return "", errors.New("an app widget needs artifact: the id or path of an app artifact")
 	}
+	gaveData := false
 	if v, ok := args["data"]; ok && v != nil {
+		gaveData = true
 		data, err := object(v, "data", dataMax)
 		if err != nil {
 			return "", err
@@ -366,9 +380,15 @@ func (s *Service) putWidget(ctx context.Context, bot *db.Bot, runID string, args
 		}
 	} else {
 		// Only what the Bot sets: an approval can wait on the owner, who may
-		// check items or arrange the board meanwhile.
-		cols := []string{"kind", "title", "source", "spec_json", "probe", "every", "artifact_id",
-			"data_json", "data_at", "changed_at", "error", "approved_hash", "next_at", "updated_at"}
+		// check items or arrange the board meanwhile, and a probe or
+		// set_widget may bring data that this call did not.
+		cols := []string{"kind", "title", "source", "spec_json", "probe", "every", "artifact_id", "approved_hash", "updated_at"}
+		if gaveData {
+			cols = append(cols, "data_json", "data_at", "changed_at", "error")
+		}
+		if _, p := args["probe"]; p || args["every"] != nil {
+			cols = append(cols, "next_at")
+		}
 		if err := s.db.Model(w).Select(cols).Updates(w).Error; err != nil {
 			return "", err
 		}
@@ -418,7 +438,7 @@ func (s *Service) appArtifact(botID, ref string) (string, error) {
 
 // setWidget pushes data from code: no model, no approval.
 func (s *Service) setWidget(botID string, args map[string]any) (string, error) {
-	key := strings.ToLower(strings.TrimSpace(str(args, "key")))
+	key := strings.ToLower(strings.TrimSpace(toolarg.Str(args, "key")))
 	w := s.widgetByKey(botID, key)
 	if w == nil {
 		return "", fmt.Errorf("no widget %q: create it with put_widget", key)

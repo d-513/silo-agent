@@ -2,27 +2,17 @@ import { Link } from "@tanstack/react-router";
 import type { Bot, BotActivity } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { chatLink } from "../links";
+import { sourceLabel } from "../sources";
 import { toolMeta } from "../thread/toolInfo";
 import { t } from "../i18n.ts";
 
-// What a live run is called on the strip.
-function where(a: BotActivity): string {
-  switch (a.kind) {
-    case "main":
-      return t("Main chat");
-    case "automation":
-      return t("Automation “{{name}}”", { name: a.title });
-    case "channel":
-      return t("Channel “{{name}}”", { name: a.title });
-    default:
-      return a.title || t("New chat");
-  }
-}
+// What a live run is called on the strip: an untitled chat is a new one.
+const where = (a: BotActivity) => sourceLabel(a.kind, a.title, t("New chat"));
 
 // ActivityStrip is what the Bot is doing right now, under its name: each live
 // conversation with the tool it is in, a press away; its subagents counted
 // on one line. It shows only while something runs.
-export function ActivityStrip({ botId, bot }: { botId: string; bot: Bot }) {
+export function ActivityStrip({ bot }: { bot: Bot }) {
   const runs = bot.activity.filter((a) => a.kind !== "subagent");
   const agents = bot.activity.filter((a) => a.kind === "subagent");
   if (!runs.length && !agents.length) return null;
@@ -31,7 +21,7 @@ export function ActivityStrip({ botId, bot }: { botId: string; bot: Bot }) {
       {runs.slice(0, 3).map((a) => (
         <li key={a.chatId}>
           <Link
-            {...chatLink(botId, a.chatId)}
+            {...chatLink(bot.id, a.chatId)}
             className="flex h-7 min-w-0 items-center gap-2 rounded-sm px-2 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink"
           >
             <Lamp status="working" />
@@ -43,7 +33,7 @@ export function ActivityStrip({ botId, bot }: { botId: string; bot: Bot }) {
       {agents.length ? (
         <li>
           <Link
-            {...chatLink(botId, agents[0].leadChatId)}
+            {...chatLink(bot.id, agents[0].leadChatId)}
             className="flex h-7 min-w-0 items-center gap-2 rounded-sm px-2 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink"
           >
             <Lamp status="working" />

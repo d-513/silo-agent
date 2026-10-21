@@ -14,6 +14,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/quote"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/textx"
 )
@@ -28,11 +29,16 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 	case "ask_owner":
 		return s.askOwner(ctx, bot, runID, args)
 	case "upsert_dashboard_card":
-		return s.upsertAsk(bot.ID, s.host.ChatOfRun(runID), runID, args)
+		c, created, changed, err := s.upsertAsk(bot.ID, s.host.ChatOfRun(runID), runID, askArgs(args))
+		if err != nil {
+			return "", err
+		}
+		out, _ := json.Marshal(map[string]any{"id": c.ID, "key": c.Key, "title": c.Title, "created": created, "updated": !created && changed})
+		return string(out), nil
 	case "remove_dashboard_card":
-		ref := strings.TrimSpace(str(args, "id"))
+		ref := strings.TrimSpace(toolarg.Str(args, "id"))
 		if ref == "" {
-			ref = str(args, "key")
+			ref = toolarg.Str(args, "key")
 		}
 		return s.removeAsk(bot.ID, ref)
 	case "put_widget":
@@ -40,7 +46,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 	case "set_widget":
 		return s.setWidget(bot.ID, args)
 	case "remove_widget":
-		return s.removeWidget(bot.ID, str(args, "key"))
+		return s.removeWidget(bot.ID, toolarg.Str(args, "key"))
 	}
 	return "", fmt.Errorf("unknown tool %s", name)
 }
@@ -55,13 +61,24 @@ func (s *Service) RefreshWidget(ctx context.Context, req *connect.Request[v1.Ref
 	if err != nil {
 		return nil, err
 	}
-	if err := s.refresh(ctx, w); err != nil {
-		if errors.Is(err, errNotRunning) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("start the Bot to refresh this widget"))
-		}
-		// The error is on the widget; the page shows it there.
+	// Any other error is on the widget; the page shows it there.
+	if err := pressed(s.refresh(ctx, w), "start the Bot to refresh this widget"); err != nil {
+		return nil, err
 	}
 	return connect.NewResponse(s.protoWidget(w)), nil
+}
+
+// pressed is the answer to the owner's press when the widget could not take
+// it: nothing ran, so nothing on the widget says why. stopped is what a
+// stopped machine reads as.
+func pressed(err error, stopped string) error {
+	switch {
+	case errors.Is(err, errNotRunning):
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(stopped))
+	case errors.Is(err, errBusy), errors.Is(err, errNoProbe):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	return nil
 }
 
 // SetWidgetState stores what the owner set in place, such as checked items.
@@ -106,13 +123,14 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 	}
 	out := &v1.RunWidgetActionResponse{}
 	if a.Kind == "hand" {
-		ch, runID, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args), req.Msg.GetNewChat())
+		placed, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args), req.Msg.GetNewChat())
 		if err != nil {
-			return nil, err
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}
-		out.Chat, out.RunId = chats.Proto(ch), runID
-	} else if err := s.runAction(ctx, w, *a, args); errors.Is(err, errNotRunning) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("start the Bot to run this"))
+		out.Chat, out.RunId = chats.Proto(placed.Chat), placed.RunID
+	} else if err := pressed(s.runAction(ctx, w, *a, args), "start the Bot to run this"); err != nil {
+		// A failure the code met is the receipt on the widget.
+		return nil, err
 	}
 	var fresh db.DashboardWidget
 	s.db.Where("id = ?", w.ID).Limit(1).Find(&fresh)

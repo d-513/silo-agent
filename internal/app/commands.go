@@ -15,7 +15,6 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
-	"silo.agent/internal/prompts"
 )
 
 // The run log's command events. A command that changes the conversation
@@ -434,28 +433,11 @@ func (a *App) ListCommands(ctx context.Context, req *connect.Request[v1.ListComm
 	return connect.NewResponse(out), nil
 }
 
-// fromOnboarding marks the opening turn of an interview: Silo wrote it, and
-// the thread draws it as a divider rather than a message.
-const fromOnboarding = "onboarding"
-
-// onboardingPrompt is the interview: the operator's own, else the built-in.
-func (a *App) onboardingPrompt() string {
-	if p := strings.TrimSpace(a.cfg().Onboarding.Prompt); p != "" {
-		return p
-	}
-	return strings.TrimSpace(prompts.Onboarding)
-}
-
-// startInterview opens a chat with the interview.
-func (a *App) startInterview(botID, chatID string) (string, error) {
-	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: a.onboardingPrompt(), From: fromOnboarding})
-}
-
 func (a *App) cmdOnboard(ctx context.Context, c command.Call) (command.Result, error) {
-	if a.LiveRunID(c.BotID, c.ChatID) != "" {
+	runID, err := a.startInterview(c.BotID, c.ChatID)
+	if errors.Is(err, run.ErrBusy) {
 		return command.Result{}, command.Refused("A reply is running. Stop it first (/stop), then /onboard.")
 	}
-	runID, err := a.startInterview(c.BotID, c.ChatID)
 	if err != nil {
 		return command.Result{}, command.Refused(err.Error())
 	}

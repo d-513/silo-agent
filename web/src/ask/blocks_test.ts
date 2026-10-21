@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { defaultFormValues, normalizeOptions, parseBlocks } from "./dashboardLayout.ts";
+import { defaultFormValues, isDisplay, normalizeOptions, parseBlocks } from "./blocks.ts";
 
 const blocks = parseBlocks(
   JSON.stringify([
@@ -25,4 +25,10 @@ assert.deepEqual(normalizeOptions(["a", { value: "b", label: "Bee" }]), [
   { value: "b", label: "Bee", hint: undefined },
 ]);
 
-console.log("dashboardLayout ok");
+// An answered card keeps only what it showed, not its controls.
+assert.deepEqual(
+  blocks.filter(isDisplay).map((b) => b.type),
+  ["metrics"],
+);
+
+console.log("ask blocks ok");

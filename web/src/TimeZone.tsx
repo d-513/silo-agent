@@ -1,9 +1,9 @@
 import { useEffect, useId, useState } from "react";
-import { ui } from "./api";
+import { ChipRadio } from "./ChipRadio";
 import { fail } from "./errors";
 import { SettingRow, inputClass } from "./Field";
 import type { Bot } from "./gen/silo/v1/ui_pb";
-import { setBot } from "./query";
+import { updateBotWith } from "./query";
 import { deviceZone, zoneLabel, zoneNames, zoneOffset } from "./zones";
 import { msg, t } from "./i18n.ts";
 import { Trans } from "./Trans.tsx";

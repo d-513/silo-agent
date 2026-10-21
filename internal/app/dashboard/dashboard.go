@@ -54,17 +54,8 @@ type Host interface {
 	host.Runs
 	host.Emitter
 	run.Engine
-	// Shown sends an event written outside a run's stream (a quote put into
-	// the main chat) to that chat's viewers.
-	Shown(botID, chatID string, ev *db.RunEvent)
-	// CardChanged sends the chat's viewers a card as it stands now: a
-	// transient event, never persisted.
-	CardChanged(botID, chatID string, card *v1.DashboardCard)
 	// EndTurn ends the run after its current turn's tool calls.
 	EndTurn(runID string)
-	// Proactive reports whether the Bot may write into its main chat on its
-	// own, from a run nobody started there (its proactivity setting).
-	Proactive(botID string) bool
 	// Online reports whether the Bot's worker is connected. The Dashboard
 	// never starts a box.
 	Online(botID string) bool

@@ -7,7 +7,7 @@ import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } f
 import { fail } from "../errors";
 import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
 import { widePage } from "../PageHead";
-import { ConnectorModal } from "./ConnectorModal";
+import { Modal } from "../Modal";
 import { ConnectorToolbar } from "./ConnectorToolbar";
 import { CustomTab } from "./CustomTab";
 import { InUseTab } from "./InUseTab";
@@ -220,7 +220,7 @@ export function BotConnectors({
 
       {/* POPUP: Add From Library Modal */}
       {libraryModal && (
-        <ConnectorModal rise onClose={closeLibraryModal}>
+        <Modal rise onClose={closeLibraryModal}>
           <form onSubmit={submitAddLibrary}>
             <ConnectorFields value={libraryDraft} onChange={setLibraryDraft} fromCatalog={true} catalogGuide={libraryModal.catalogGuide} />
             <div className="mt-6 flex items-center gap-2">
@@ -232,12 +232,12 @@ export function BotConnectors({
               </Btn>
             </div>
           </form>
-        </ConnectorModal>
+        </Modal>
       )}
 
       {/* POPUP: the full error of one connector */}
       {errView && (
-        <ConnectorModal wide dismissOnBackdrop onClose={() => setErrView(null)}>
+        <Modal size="wide" dismissOnBackdrop onClose={() => setErrView(null)}>
           <h3 className="mb-1 text-base font-semibold text-ink">{t("{{name}} error", { name: errView.connector?.name ?? "" })}</h3>
           <p className="mb-3 text-[12px] text-ink-3">{errView.statusDetail}</p>
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-md bg-well p-3 font-mono text-[12px] leading-relaxed text-ink">
@@ -252,12 +252,12 @@ export function BotConnectors({
               {t("Close")}
             </Btn>
           </div>
-        </ConnectorModal>
+        </Modal>
       )}
 
       {/* POPUP: Edit Attached Connector Modal */}
       {edit && (
-        <ConnectorModal onClose={() => setEdit(null)}>
+        <Modal onClose={() => setEdit(null)}>
           <h3 className="mb-4 text-base font-semibold text-ink">{t("Edit connector")}</h3>
           <form onSubmit={saveEdit}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
@@ -270,7 +270,7 @@ export function BotConnectors({
               </Btn>
             </div>
           </form>
-        </ConnectorModal>
+        </Modal>
       )}
     </div>
   );

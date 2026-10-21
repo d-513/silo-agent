@@ -19,3 +19,9 @@ func Int(args map[string]any, k string) int {
 		return 0
 	}
 }
+
+// Str is args[k] as a string; "" when it is missing or not one.
+func Str(args map[string]any, k string) string {
+	v, _ := args[k].(string)
+	return v
+}

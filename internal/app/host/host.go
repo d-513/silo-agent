@@ -7,6 +7,7 @@ package host
 import (
 	"context"
 
+	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
 )
 
@@ -26,4 +27,7 @@ type Runs interface {
 // known, persists it in the run's log (secrets masked, text made valid UTF-8).
 type Emitter interface {
 	Emit(botID, chatID, runID, kind, body, tool string)
+	// Publish sends a transient event to the Bot's viewers, never persisted
+	// or replayed: a card or an offer as it stands now.
+	Publish(botID string, ev *v1.RunEvent)
 }

@@ -9,6 +9,7 @@ import type { Channel, ChannelAdapter, ChannelField } from "../gen/silo/v1/ui_pb
 import { widePage } from "../PageHead";
 import { Step } from "../Step";
 import { ToggleRow } from "../Switch";
+import { splitPrefill } from "../setup/prefill";
 import { AdapterHead } from "./AdapterHead";
 import { GuideCard } from "./GuideCard";
 import { t } from "../i18n.ts";
@@ -34,11 +35,11 @@ export function ChannelForm({
   onSaved?: (ch: Channel) => void;
 }) {
   // A setup offer fills in the form's own options and the adapter's plain fields.
-  const { name: preName, enabled: preEnabled, inbound: preInbound, prompt: prePrompt, ...preConfig } = prefill ?? {};
-  const [name, setName] = useState(channel?.name ?? preName ?? "");
-  const [enabled, setEnabled] = useState(channel?.enabled ?? preEnabled !== "false");
-  const [inbound, setInbound] = useState(channel?.inbound ?? preInbound !== "false");
-  const [prompt, setPrompt] = useState(channel?.prompt ?? prePrompt ?? "");
+  const { own: pre, fields: preConfig } = splitPrefill("channel", prefill);
+  const [name, setName] = useState(channel?.name ?? pre.name ?? "");
+  const [enabled, setEnabled] = useState(channel?.enabled ?? pre.enabled !== "false");
+  const [inbound, setInbound] = useState(channel?.inbound ?? pre.inbound !== "false");
+  const [prompt, setPrompt] = useState(channel?.prompt ?? pre.prompt ?? "");
   const [config, setConfig] = useState<Record<string, string>>(() => ({ ...preConfig, ...(channel?.config ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -72,7 +73,7 @@ export function ChannelForm({
     setBusy(true);
     setErr("");
     try {
-      await saver.run(async () => {
+      const made = await saver.run(async (): Promise<Channel | undefined> => {
         const cleanSecrets: Record<string, string> = {};
         for (const [k, v] of Object.entries(secrets)) if (v.trim()) cleanSecrets[k] = v;
         if (channel) {
@@ -89,15 +90,13 @@ export function ChannelForm({
             targetTitle: channel.targetTitle,
           });
         } else {
-          const made = await ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
-          if (onSaved) {
-            onSaved(made);
-            return;
-          }
+          return ui.createChannel({ botId, adapter: adapter.slug, name, enabled, inbound, prompt, config, secrets: cleanSecrets });
         }
+        return undefined;
       });
-      if (!channel && onSaved) return;
-      onBack();
+      // A new channel goes on to its setup when the caller wants it.
+      if (made && onSaved) onSaved(made);
+      else onBack();
     } catch (ex) {
       setErr(fail(ex));
     } finally {

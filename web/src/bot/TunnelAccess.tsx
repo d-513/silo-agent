@@ -1,5 +1,5 @@
 import { Globe, Lock } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import { ChipRadio } from "../ChipRadio";
 import { useArmed } from "../Feedback";
 import { accessOf } from "../tunnels";
 import { t } from "../i18n.ts";
@@ -37,42 +37,25 @@ export function TunnelAccess({
     onChange(pub);
   };
 
-  // Arrow keys move between the two, like any radio group.
-  const keys = (e: KeyboardEvent) => {
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-    e.preventDefault();
-    choose(!isPublic);
-  };
-
   return (
-    <div role="radiogroup" aria-label={t("Who can open this tunnel")} onKeyDown={keys} className="flex w-fit select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
-      {options.map((o) => {
-        const active = o.pub === isPublic;
-        const arming = o.pub && armed && !active;
+    <ChipRadio
+      label={t("Who can open this tunnel")}
+      disabled={disabled}
+      value={isPublic}
+      onChange={choose}
+      chip="w-[104px] gap-1.5 px-2.5"
+      options={options.map((o) => {
+        const arming = o.pub && armed && o.pub !== isPublic;
         const Icon = o.icon;
-        return (
-          <button
-            key={String(o.pub)}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            tabIndex={active ? 0 : -1}
-            disabled={disabled}
-            title={arming ? t("Click again to make it public") : accessOf(o.pub).caption}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              choose(o.pub);
-            }}
-            className={`flex h-8 w-[104px] items-center justify-center gap-1.5 rounded-sm px-2.5 text-[12.5px] font-medium transition-[transform,background-color,color,box-shadow] duration-[200ms] ease-quiet active:scale-[.97] active:duration-[70ms] ${
-              active ? `bg-surface shadow-card ${o.tone}` : arming ? "bg-vermilion text-on-accent" : "text-ink-3 hover:bg-pressed hover:text-ink"
-            } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-          >
-            <Icon size={12} />
-            <span>{arming ? t("Click again") : accessOf(o.pub).label}</span>
-          </button>
-        );
+        return {
+          value: o.pub,
+          icon: <Icon size={12} />,
+          label: <span>{arming ? t("Click again") : accessOf(o.pub).label}</span>,
+          tone: o.tone,
+          title: arming ? t("Click again to make it public") : accessOf(o.pub).caption,
+          look: arming ? "bg-vermilion text-on-accent" : undefined,
+        };
       })}
-    </div>
+    />
   );
 }

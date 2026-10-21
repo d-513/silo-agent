@@ -39,6 +39,7 @@ import (
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/pause"
+	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/tool"
@@ -229,6 +230,7 @@ type App struct {
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
+	Proactivity *proactivity.Service
 	Setup       *setup.Service
 	// Slash is the slash commands a human types in a conversation.
 	Slash *command.Registry
@@ -257,6 +259,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Changes = changes.New(a.DB, a.cfg, a.Workspace, a, a.Mask)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Automations = automation.New(a.DB, a, a)
+	a.Proactivity = proactivity.New(a.DB, a.Automations)
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
 	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)

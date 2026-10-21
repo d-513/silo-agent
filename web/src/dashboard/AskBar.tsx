@@ -17,7 +17,7 @@ export function AskBar({
 }: {
   botName: string;
   picked?: { id: string; title: string };
-  onUnpick: () => void;
+  onUnpick?: () => void;
   draft: string;
   setDraft: (s: string) => void;
   onAsk: (text: string, widgetId: string) => Promise<boolean>;
@@ -64,7 +64,7 @@ export function AskBar({
             e.preventDefault();
             void send();
           }
-          if (e.key === "Escape" && picked) onUnpick();
+          if (e.key === "Escape" && picked) onUnpick?.();
         }}
         placeholder={placeholder}
         aria-label={placeholder}

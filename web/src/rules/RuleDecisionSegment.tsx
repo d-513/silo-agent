@@ -1,4 +1,5 @@
 import { Bot, Check, CircleHelp, EyeOff, Flag, ScanSearch, X, type LucideIcon } from "lucide-react";
+import { ChipRadio } from "../ChipRadio";
 import { msg, t } from "../i18n.ts";
 import type { Side } from "./model";
 import { strictness } from "./model";
@@ -50,40 +51,27 @@ export function RuleDecisionSegment({
   floor?: string;
 }) {
   const modes = sideModes[side];
+  const small = size === "sm";
   return (
-    <div role="radiogroup" className="flex select-none items-center gap-0.5 rounded-control bg-well p-[3px]">
-      {modes.map((m) => {
-        const active = value === m.id;
+    <ChipRadio
+      value={value}
+      onChange={onChange}
+      size={size}
+      className=""
+      chip={`flex-1 gap-1 ${small ? "px-1.5" : "px-2"}`}
+      options={modes.map((m) => {
         const Icon = m.icon;
-        // Selected segment is a surface chip; only the text carries the tone.
-        const tone = m.tone;
         const below = floor !== "" && strictness(m.id, side) < strictness(floor, side);
-        const off = disabled || below;
-        return (
-          <button
-            key={m.id}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-disabled={off || undefined}
-            title={below ? t("Your operator holds this at {{mode}} or stricter", { mode: modeLabel(floor, side) }) : undefined}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-sm font-medium transition-[transform,background-color,color,box-shadow] duration-[200ms] ease-quiet active:duration-[70ms] ${
-              size === "sm" ? "h-7 px-1.5 text-[11.5px]" : "h-8 px-2 text-[12.5px]"
-            } ${active ? `bg-surface shadow-card ${tone}` : off ? "text-ink-3" : "text-ink-3 hover:bg-pressed hover:text-ink"} ${
-              off ? "cursor-not-allowed opacity-50" : "cursor-pointer active:scale-[.97]"
-            }`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (off) return;
-              onChange(m.id);
-            }}
-          >
-            <Icon size={size === "sm" ? 11 : 12} />
-            <span>{t(m.label)}</span>
-          </button>
-        );
+        return {
+          value: m.id,
+          icon: <Icon size={small ? 11 : 12} />,
+          label: <span>{t(m.label)}</span>,
+          // Selected segment is a surface chip; only the text carries the tone.
+          tone: m.tone,
+          disabled: disabled || below,
+          title: below ? t("Your operator holds this at {{mode}} or stricter", { mode: modeLabel(floor, side) }) : undefined,
+        };
       })}
-    </div>
+    />
   );
 }

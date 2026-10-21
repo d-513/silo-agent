@@ -4,6 +4,7 @@ import { ui } from "../api";
 import { useSave } from "../Feedback";
 import { UI, type Drive, type DriveOption, type DriveTemplate } from "../gen/silo/v1/ui_pb";
 import { fail } from "../errors";
+import { splitPrefill } from "../setup/prefill";
 import { NAME_RE, uniqueName, visible } from "./driveModel";
 import { t } from "../i18n.ts";
 
@@ -32,11 +33,11 @@ export function useDriveForm({
   const editing = !!drive;
   const [draft, setDraft] = useState<Drive | undefined>(drive);
   // A setup offer fills in the form's own options and the provider's plain fields.
-  const { name: preName, read_only: preReadOnly, ...preValues } = prefill ?? {};
+  const { own: pre, fields: preValues } = splitPrefill("drive", prefill);
   const [values, setValues] = useState<Record<string, string>>(() => ({ ...preValues, ...(drive?.options ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
-  const [name, setName] = useState(drive?.name ?? (preName && !taken.has(preName) ? preName : uniqueName(tpl.title, taken)));
-  const [readOnly, setReadOnly] = useState(drive?.readOnly ?? preReadOnly === "true");
+  const [name, setName] = useState(drive?.name ?? (pre.name && !taken.has(pre.name) ? pre.name : uniqueName(tpl.title, taken)));
+  const [readOnly, setReadOnly] = useState(drive?.readOnly ?? pre.read_only === "true");
   const [err, setErr] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authErr, setAuthErr] = useState("");

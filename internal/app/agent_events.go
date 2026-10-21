@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
-	"silo.agent/internal/app/dashboard"
-	"silo.agent/internal/app/setup"
 	"strings"
 	"time"
 
@@ -38,14 +36,17 @@ func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 		a.Bus.Publish(botID, &v1.RunEvent{Id: id, Kind: kind, Body: body, Tool: tool})
 		return
 	}
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
-	ev := &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool}
-	switch kind {
-	case dashboard.CardKind:
-		ev.Card = a.Dashboard.CardProto(body)
-	case setup.Kind:
-		ev.SetupOffer = a.Setup.Proto(body)
-	}
+	row := db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()}
+	a.DB.Create(&row)
+	// As a thread reads it, minus the time: a live event is now.
+	ev := a.threadEvent(&row, chatID)
+	ev.CreatedAt = ""
+	a.Bus.Publish(botID, ev)
+}
+
+// Publish sends a transient event to the Bot's viewers: never persisted or
+// replayed (a card or an offer as it stands now, after the owner answers).
+func (a *App) Publish(botID string, ev *v1.RunEvent) {
 	a.Bus.Publish(botID, ev)
 }
 

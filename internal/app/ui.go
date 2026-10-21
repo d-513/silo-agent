@@ -15,6 +15,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/command"
 	"silo.agent/internal/app/dashboard"
+	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/setup"
@@ -47,7 +48,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		DashboardAsks:   a.Dashboard.Open(b.ID),
 		DesktopPaused:   a.Pause.Paused(b.ID),
 		Proactivity:     b.Proactivity,
-		HeartbeatCustom: a.Automations.HeartbeatCustom(b.ID, b.Proactivity),
+		HeartbeatCustom: a.Proactivity.Custom(b.ID, b.Proactivity),
 		Activity:        a.activity(b.ID),
 		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
@@ -170,17 +171,29 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 		}
 		b.Language = req.Msg.GetLanguage()
 	}
-	if err := a.DB.Save(b).Error; err != nil {
+	level := ""
+	if req.Msg.Proactivity != nil {
+		l, err := proactivity.Normalize(req.Msg.GetProactivity())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		level = l
+	}
+	// proactivity is Proactivity.Set's to write, with the Heartbeat: a
+	// whole-row save would undo a set_proactivity that landed meanwhile.
+	if err := a.DB.Omit("proactivity").Save(b).Error; err != nil {
 		return nil, err
 	}
 	if rezone {
 		a.Automations.Rezone(b.ID)
 	}
-	if req.Msg.Proactivity != nil {
-		if err := a.setProactivity(b.ID, req.Msg.GetProactivity()); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	// The same level again is a no-op, unless the Heartbeat was set by hand:
+	// then choosing the level puts it back on the level's schedule.
+	if level != "" && (level != b.Proactivity || a.Proactivity.Custom(b.ID, level)) {
+		if _, _, err := a.Proactivity.Set(b.ID, level); err != nil {
+			return nil, err
 		}
-		b.Proactivity = strings.ToLower(strings.TrimSpace(req.Msg.GetProactivity()))
+		b.Proactivity = level
 	}
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
@@ -538,37 +551,8 @@ func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 	return out
 }
 
-// Shown sends a persisted event that was written outside a run's stream (a
-// quote put into the main chat) to that chat's viewers.
-func (a *App) Shown(botID, chatID string, ev *db.RunEvent) {
-	a.Bus.Publish(botID, a.threadEvent(ev, chatID))
-}
-
-// The proactivity levels (bots.proactivity).
-const (
-	proactiveOff    = "off"
-	proactiveQuiet  = "quiet"
-	proactiveActive = "active"
-)
-
 // Proactive reports whether the Bot may write into its main chat unasked.
-func (a *App) Proactive(botID string) bool {
-	var b db.Bot
-	a.DB.Select("proactivity").Where("id = ?", botID).Limit(1).Find(&b)
-	return b.Proactivity == proactiveActive
-}
-
-// OfferChanged sends a chat's viewers a setup offer as it stands now: a
-// transient event, never persisted or replayed.
-func (a *App) OfferChanged(botID, chatID string, o *v1.SetupOffer) {
-	a.Bus.Publish(botID, &v1.RunEvent{ChatId: chatID, Kind: setup.StateKind, Body: o.GetId(), SetupOffer: o})
-}
-
-// CardChanged sends a chat's viewers a card as it stands now: a transient
-// event, never persisted or replayed.
-func (a *App) CardChanged(botID, chatID string, card *v1.DashboardCard) {
-	a.Bus.Publish(botID, &v1.RunEvent{ChatId: chatID, Kind: dashboard.CardStateKind, Body: card.GetId(), Card: card})
-}
+func (a *App) Proactive(botID string) bool { return a.Proactivity.Proactive(botID) }
 
 // A thread is sent a page at a time: the newest pageTurns of the human's
 // messages and everything after, then the same again before that on request.

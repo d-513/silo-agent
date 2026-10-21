@@ -15,10 +15,10 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
-	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/textx"
@@ -32,30 +32,56 @@ const (
 	dismissalsMax = 25
 )
 
-// upsertAsk creates or updates an open ask by id or key: only the fields
-// given change.
-func (s *Service) upsertAsk(botID, chatID, runID string, args map[string]any) (string, error) {
-	id := strings.TrimSpace(str(args, "id"))
-	key := strings.TrimSpace(str(args, "key"))
+// askInput is an ask as a tool gives it. A nil field is not given: on an
+// update it stays as it is.
+type askInput struct {
+	ID, Key, Title string
+	Summary        *string
+	Priority       *int
+	SubmitLabel    *string
+	// Blocks is a list of block objects or that list as JSON text.
+	Blocks any
+}
 
-	var c db.DashboardCard
+func askArgs(args map[string]any) askInput {
+	in := askInput{ID: toolarg.Str(args, "id"), Key: toolarg.Str(args, "key"), Title: toolarg.Str(args, "title"), Blocks: args["blocks"]}
+	if v, ok := args["summary"].(string); ok {
+		in.Summary = &v
+	}
+	if p := toolarg.Int(args, "priority"); p != 0 {
+		in.Priority = &p
+	}
+	if v, ok := args["submit_label"].(string); ok {
+		in.SubmitLabel = &v
+	}
+	return in
+}
+
+// upsertAsk creates or updates an open ask by id or key: only the fields
+// given change. chatID and runID are where it was asked from; the chat it is
+// shown in, if any, is the caller's to record (showIn).
+func (s *Service) upsertAsk(botID, chatID, runID string, in askInput) (c *db.DashboardCard, created, changed bool, err error) {
+	id := strings.TrimSpace(in.ID)
+	key := strings.TrimSpace(in.Key)
+
+	c = &db.DashboardCard{}
 	if id != "" {
-		s.db.Where("bot_id = ? AND id = ? AND status = 'open'", botID, id).Limit(1).Find(&c)
+		s.db.Where("bot_id = ? AND id = ? AND status = 'open'", botID, id).Limit(1).Find(c)
 	}
 	if c.ID == "" && key != "" {
-		s.db.Where("bot_id = ? AND key = ? AND status = 'open'", botID, key).Order("updated_at desc").Limit(1).Find(&c)
+		s.db.Where("bot_id = ? AND key = ? AND status = 'open'", botID, key).Order("updated_at desc").Limit(1).Find(c)
 	}
-	creating := c.ID == ""
+	created = c.ID == ""
 	now := time.Now()
-	if creating {
+	if created {
 		kind, name := chats.Source(s.db, chatID)
-		c = db.DashboardCard{
+		*c = db.DashboardCard{
 			ID: ids.New(), BotID: botID, Key: textx.ClipRunes(key, 80), Priority: 2, BlocksJSON: "[]",
 			SubmitLabel: "Send", Status: "open", SourceKind: kind, SourceName: name,
-			ChatID: chatID, RunID: runID, CreatedAt: now,
+			RunID: runID, CreatedAt: now,
 		}
 	}
-	changed := creating
+	changed = created
 	set := func(dst *string, v string) {
 		if *dst != v {
 			*dst = v
@@ -65,55 +91,64 @@ func (s *Service) upsertAsk(botID, chatID, runID string, args map[string]any) (s
 	if key != "" {
 		set(&c.Key, textx.ClipRunes(key, 80))
 	}
-	if v := strings.TrimSpace(str(args, "title")); v != "" {
+	if v := strings.TrimSpace(in.Title); v != "" {
 		set(&c.Title, textx.ClipRunes(strings.ReplaceAll(v, "\n", " "), titleMax))
 	}
 	if c.Title == "" {
-		return "", errors.New("title required")
+		return nil, false, false, errors.New("title required")
 	}
-	if v, ok := args["summary"].(string); ok {
-		set(&c.Summary, textx.ClipRunes(strings.TrimSpace(v), summaryMax))
+	if in.Summary != nil {
+		set(&c.Summary, textx.ClipRunes(strings.TrimSpace(*in.Summary), summaryMax))
 	}
-	if v, ok := args["priority"].(float64); ok {
-		p := min(max(int(v), 1), 3)
-		if c.Priority != p {
+	if in.Priority != nil {
+		if p := min(max(*in.Priority, 1), 3); c.Priority != p {
 			c.Priority = p
 			changed = true
 		}
 	}
-	if v, ok := args["submit_label"].(string); ok {
-		lbl := textx.ClipRunes(strings.TrimSpace(v), 48)
+	if in.SubmitLabel != nil {
+		lbl := textx.ClipRunes(strings.TrimSpace(*in.SubmitLabel), 48)
 		if lbl == "" {
 			lbl = "Send"
 		}
 		set(&c.SubmitLabel, lbl)
 	}
-	if raw, ok := args["blocks"]; ok && raw != nil {
-		norm, err := s.cleanBlocks(raw)
+	if in.Blocks != nil {
+		norm, err := normalizeBlocks(in.Blocks)
 		if err != nil {
-			return "", err
+			return nil, false, false, err
 		}
 		if utf8.RuneCountInString(norm) > blocksMax {
-			return "", fmt.Errorf("blocks is over %d characters", blocksMax)
+			return nil, false, false, fmt.Errorf("blocks is over %d characters", blocksMax)
 		}
 		set(&c.BlocksJSON, norm)
 	}
 	c.UpdatedAt = now
-	if changed && !creating {
-		c.ReadAt = nil
-	}
-	if creating {
-		if err := s.db.Create(&c).Error; err != nil {
-			return "", err
+	if created {
+		if err := s.db.Create(c).Error; err != nil {
+			return nil, false, false, err
 		}
 		s.db.Where("bot_id = ? AND status = 'open' AND id NOT IN (?)", botID,
 			s.db.Model(&db.DashboardCard{}).Select("id").Where("bot_id = ? AND status = 'open'", botID).Order("updated_at desc").Limit(askMax),
 		).Delete(&db.DashboardCard{})
-	} else if err := s.db.Save(&c).Error; err != nil {
-		return "", err
+		return c, true, true, nil
 	}
-	out, _ := json.Marshal(map[string]any{"id": c.ID, "key": c.Key, "title": c.Title, "created": creating, "updated": !creating && changed})
-	return string(out), nil
+	if !changed {
+		return c, false, false, nil
+	}
+	// Only what the Bot sets, and only while the card is open: the owner may
+	// answer it at the same moment, and that answer stands.
+	res := s.db.Model(&db.DashboardCard{}).Where("id = ? AND status = 'open'", c.ID).Updates(map[string]any{
+		"key": c.Key, "title": c.Title, "summary": c.Summary, "priority": c.Priority, "submit_label": c.SubmitLabel,
+		"blocks_json": c.BlocksJSON, "read_at": nil, "updated_at": now,
+	})
+	if res.Error != nil {
+		return nil, false, false, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, false, false, errors.New("the owner answered that card meanwhile; ask again if it still matters")
+	}
+	return c, false, true, nil
 }
 
 // openAsks are the asks waiting for the owner, most pressing first.
@@ -188,14 +223,10 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now()
 	suppress := req.Msg.GetSuppressKind()
-	if err := s.db.Model(c).Updates(map[string]any{
-		"status": "dismissed", "suppressed": suppress, "dismissed_at": now, "read_at": now, "updated_at": now,
-	}).Error; err != nil {
+	if err := s.claim(c, "dismissed", map[string]any{"suppressed": suppress, "dismissed_at": time.Now()}); err != nil {
 		return nil, err
 	}
-	c.Status = "dismissed"
 	s.cardChanged(c)
 	// A question put aside in a chat is an answer too: the Bot carries on.
 	if in := s.answerIn(c); in != "" {
@@ -284,31 +315,33 @@ func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 
 // quoteChat puts q in the main chat (or, asked for or with a reply running
 // there, a chat of its own) and starts a run with the owner's message.
-func (s *Service) quoteChat(botID, title string, q quote.Quote, message string, own bool) (*db.Chat, string, error) {
+func (s *Service) quoteChat(botID, title string, q quote.Quote, message string, own bool) (run.Placed, error) {
 	if title == "" {
 		title = "Dashboard"
 	}
-	main, ok := chats.MainIdle(s.db, botID, s.host.LiveRunID)
-	if own || !ok {
-		ch, err := quote.Open(s.db, botID, title, q)
-		if err != nil {
-			return nil, "", err
-		}
-		runID, err := s.host.StartOrInject(botID, ch.ID, message, run.Extra{}, nil)
-		if err != nil {
-			chats.Drop(s.db, ch.ID)
-			return nil, "", connect.NewError(connect.CodeFailedPrecondition, err)
-		}
-		return ch, runID, nil
+	return s.host.Place(run.Placement{
+		BotID: botID, Title: title, Own: own, Message: message,
+		Write: func(ch *db.Chat) (*db.RunEvent, error) { return quote.Put(s.db, ch, q) },
+	})
+}
+
+// claim moves an open card to status (with more columns), refusing one the
+// owner already answered: a second press must not answer it twice.
+func (s *Service) claim(c *db.DashboardCard, status string, more map[string]any) error {
+	now := time.Now()
+	upd := map[string]any{"status": status, "read_at": now, "updated_at": now}
+	for k, v := range more {
+		upd[k] = v
 	}
-	if err := quote.Into(s.db, main, q); err != nil {
-		return nil, "", err
+	res := s.db.Model(&db.DashboardCard{}).Where("id = ? AND status = 'open'", c.ID).Updates(upd)
+	if res.Error != nil {
+		return res.Error
 	}
-	runID, err := s.host.StartOrInject(botID, main.ID, message, run.Extra{}, nil)
-	if err != nil {
-		return nil, "", connect.NewError(connect.CodeFailedPrecondition, err)
+	if res.RowsAffected == 0 {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("this card is answered already"))
 	}
-	return main, runID, nil
+	c.Status = status
+	return nil
 }
 
 // SubmitDashboardCard opens a chat quoting the ask and starts a run with the
@@ -318,32 +351,28 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
+	if err := s.claim(c, "submitted", nil); err != nil {
+		return nil, err
+	}
 	turn := submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote())
 	var ch *db.Chat
 	var runID string
 	if in := s.answerIn(c); in != "" && !req.Msg.GetNewChat() {
 		// The card is in that chat already: the answer follows it there.
 		runID, err = s.host.StartOrInject(c.BotID, in, turn, run.Extra{}, nil)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-		}
 		ch = &db.Chat{}
 		s.db.Where("id = ?", in).Limit(1).Find(ch)
 	} else {
-		q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
-		ch, runID, err = s.quoteChat(c.BotID, c.Title, q, turn, req.Msg.GetNewChat())
-		if err != nil {
-			return nil, err
-		}
+		q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: chats.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
+		var placed run.Placed
+		placed, err = s.quoteChat(c.BotID, c.Title, q, turn, req.Msg.GetNewChat())
+		ch, runID = placed.Chat, placed.RunID
 	}
-	now := time.Now()
-	_ = s.db.Model(c).Updates(map[string]any{"status": "submitted", "read_at": now, "updated_at": now}).Error
-	c.Status = "submitted"
+	if err != nil {
+		// Nothing heard it: the card is open again for another try.
+		s.db.Model(&db.DashboardCard{}).Where("id = ?", c.ID).Updates(map[string]any{"status": "open", "updated_at": time.Now()})
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
 	s.cardChanged(c)
 	return connect.NewResponse(&v1.SubmitDashboardCardResponse{Chat: chats.Proto(ch), RunId: runID}), nil
-}
-
-func str(args map[string]any, k string) string {
-	v, _ := args[k].(string)
-	return v
 }

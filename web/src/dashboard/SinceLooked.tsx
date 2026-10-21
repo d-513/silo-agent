@@ -6,7 +6,8 @@ import type { FeedPost } from "../gen/silo/v1/ui_pb";
 import { feedStamp } from "../format";
 import { t } from "../i18n.ts";
 import { Md } from "../Md";
-import { sourceLabel } from "./Asks";
+import { apart } from "../links";
+import { sourceLabel } from "../sources";
 
 // SinceLooked is the Feed's new posts, shown on the Dashboard for the visit
 // that read them: the server marks them read when the page opens, and they
@@ -27,7 +28,7 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
       <ul>
         {posts.map((p) => {
           const on = open === p.id;
-          const src = sourceLabel(p);
+          const src = sourceLabel(p.sourceKind, p.sourceName);
           return (
             <li key={p.id} className={`rounded-control transition-colors duration-[160ms] ${on ? "bg-well" : "hover:bg-well"}`}>
               <button
@@ -60,7 +61,7 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
                     icon={<MessageSquareQuote size={13} />}
                     onClick={(e) => {
                       setQuoting(p.id);
-                      void onQuote(p, e.metaKey || e.ctrlKey).finally(() => setQuoting(""));
+                      void onQuote(p, apart(e)).finally(() => setQuoting(""));
                     }}
                   >
                     {t("Reply")}

@@ -5,36 +5,14 @@ import (
 	"silo.agent/internal/db"
 )
 
-// setStep records the tool a live run is in now, for the Bot's status line.
+// setStep records the tool a live run is in now, for the Bot's status line;
+// "" while the model is writing or between turns.
 func (a *App) setStep(runID, step string) {
 	a.mu.Lock()
 	if lr := a.runs[runID]; lr != nil {
 		lr.step = step
 	}
 	a.mu.Unlock()
-}
-
-// EndTurn ends a live run after the tool calls of its current turn: the
-// tool has handed the conversation to the human, and another model turn would
-// only talk about the question it just asked.
-func (a *App) EndTurn(runID string) {
-	a.mu.Lock()
-	if lr := a.runs[runID]; lr != nil {
-		lr.endTurn = true
-	}
-	a.mu.Unlock()
-}
-
-// turnEnded reports (and clears) a run's EndTurn.
-func (a *App) turnEnded(runID string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	lr := a.runs[runID]
-	if lr == nil || !lr.endTurn {
-		return false
-	}
-	lr.endTurn = false
-	return true
 }
 
 // activity is what a Bot is doing right now: one row per live run, with

@@ -174,7 +174,7 @@ export function BotPage() {
     }
   }
   const onSaveSkill = (a: Artifact) => void saveSkill(a);
-  const onNewChat = () => void newChat().catch((e) => setActErr(fail(e)));
+  const onNewChat = newChat;
   const onDeleteChat = (cid: string) => void deleteChat(cid).catch((e) => setActErr(fail(e)));
 
   // The rail: on a pane's own page it moves between those pages; beside the

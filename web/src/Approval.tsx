@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
 import { Lamp, StatusWord } from "./Lamp";
@@ -275,4 +276,11 @@ export function ConnectorAuthSlip({
       </Btn>
     </NeedYouSlip>
   );
+}
+
+// approveSetAuto is "Auto-approve from now on": the action's rule becomes
+// Auto, then this one call is let through once.
+export async function approveSetAuto(botId: string, ap: Approval) {
+  await ui.setRule({ botId, connector: ap.connector, action: ap.action, decision: "auto" });
+  await ui.decideApproval({ id: ap.id, decision: "allow_once" });
 }

@@ -50,7 +50,7 @@ export function ProactivitySettings({ bot, onError }: { bot: Bot; onError: (s: s
       <ChipRadio
         label={t("Proactivity")}
         disabled={busy}
-        value={current.id as string}
+        value={current.id}
         onChange={(v) => void choose(v)}
         options={levels.map((l) => ({ value: l.id, label: t(l.label) }))}
       />

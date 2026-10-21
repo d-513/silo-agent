@@ -51,8 +51,8 @@ export const offerState: Handler = (out, e) => {
   for (const b of out) if (b.type === "offers") b.offers = b.offers.map((x) => (x.id === o.id ? o : x));
 };
 
-// cardState is a card in the chat changing (answered, put away, a setup
-// done): every block that shows it takes the new state.
+// cardState is a card in the chat changing (answered, put away): every block
+// that shows it takes the new state.
 export const cardState: Handler = (out, e) => {
   const c = e.card;
   if (!c) return;

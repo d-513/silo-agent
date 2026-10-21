@@ -1,5 +1,6 @@
-// Package quote opens a chat from something the Bot made for the owner: a
-// Feed post, a Dashboard widget or a Dashboard ask. The chat's first event is
+// Package quote is something the Bot made for the owner (a Feed post, a
+// Dashboard widget or ask, a question asked from a background run) put into a
+// chat for the owner to reply to. The chat's first event is
 // the quoted thing; the model reads it as a user turn that says truthfully
 // what was quoted, and the thread draws it as what it was (a widget as the
 // widget, as it stood).
@@ -14,9 +15,8 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/db"
-	"silo.agent/internal/ids"
-	"silo.agent/internal/textx"
 	"silo.agent/internal/zone"
 )
 
@@ -34,8 +34,6 @@ const (
 	// (ask_owner in an automation), put into the main chat with its card.
 	FromAsked = "asked"
 )
-
-const titleMax = 120
 
 // Widget is a widget as it stood when it was quoted: enough for the thread to
 // draw it again, with no actions (a thread is a record, not the board).
@@ -80,46 +78,16 @@ func CardOf(ev *db.RunEvent) string {
 	return decode(ev.Meta).Card
 }
 
-// Open makes a web chat titled title whose only run holds the quote. The
-// caller starts a run on it, or leaves it for the owner to reply.
-func Open(gdb *gorm.DB, botID, title string, q Quote) (*db.Chat, error) {
-	now := time.Now()
-	ch := db.Chat{ID: ids.New(), BotID: botID, Title: textx.ClipRunes(strings.TrimLeft(title, "# "), titleMax), CreatedAt: now, UpdatedAt: now}
-	if err := gdb.Create(&ch).Error; err != nil {
-		return nil, err
-	}
-	if err := Into(gdb, &ch, q); err != nil {
-		return nil, err
-	}
-	return &ch, nil
-}
+// Origin is the run a quote is written in.
+const Origin = "quote"
 
-// Into puts the quote at the end of an existing chat (the main chat), in a
-// run of its own; the owner's next message there is the reply to it.
-func Into(gdb *gorm.DB, ch *db.Chat, q Quote) error {
-	_, err := Put(gdb, ch, q)
-	return err
-}
-
-// Put is Into, answering the event it wrote so a caller can show it to the
-// chat's viewers at once.
+// Put writes the quote at the end of ch, in a run of its own; the owner's
+// next message there is the reply to it. Where it goes (the main chat or a
+// chat of its own) is run.Engine.Place's to decide.
 func Put(gdb *gorm.DB, ch *db.Chat, q Quote) (*db.RunEvent, error) {
-	now := time.Now()
-	botID := ch.BotID
-	r := db.Run{ID: ids.New(), BotID: botID, ChatID: ch.ID, Origin: "feed", Status: "done", CreatedAt: now}
-	if err := gdb.Create(&r).Error; err != nil {
-		return nil, err
-	}
 	m, _ := json.Marshal(meta{From: q.From, Title: q.Title, Widget: q.Widget, Card: q.Card})
-	if q.At.IsZero() {
-		q.At = now
-	}
 	// CreatedAt is the quoted thing's time: history frames the quote with it.
-	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: Kind, Body: q.Body, Tool: q.Source, Meta: string(m), Zone: zone.OfBot(gdb, botID).String(), CreatedAt: q.At}
-	if err := gdb.Create(&ev).Error; err != nil {
-		return nil, err
-	}
-	return &ev, gdb.Model(&db.Chat{}).Where("id = ?", ch.ID).Update("updated_at", now).Error
+	return chats.Put(gdb, ch, Origin, db.RunEvent{Kind: Kind, Body: q.Body, Tool: q.Source, Meta: string(m), CreatedAt: q.At})
 }
 
 func decode(raw string) meta {

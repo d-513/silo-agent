@@ -1,3 +1,7 @@
+// What an ask card (a Dashboard question, shown on the board or in a chat)
+// is made of: the blocks the Bot wrote, read from the server's JSON, and the
+// values its form starts with. Pure, so the node test (blocks_test.ts) holds it.
+
 export type DashboardOption = string | { value: string; label: string; hint?: string };
 
 export type DashboardBlock =
@@ -117,4 +121,9 @@ export function defaultFormValues(blocks: DashboardBlock[]): Record<string, unkn
     }
   }
   return out;
+}
+
+/** A block that only shows something (no control): what an answered card keeps. */
+export function isDisplay(b: DashboardBlock): boolean {
+  return b.type === "markdown" || b.type === "kv" || b.type === "metrics" || b.type === "diff";
 }

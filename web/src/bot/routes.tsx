@@ -18,7 +18,7 @@ const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog")
 const ArtifactsPane = lazyNamed(() => import("../Artifacts"), "ArtifactsPane");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
-const DashboardPane = lazyNamed(() => import("../Dashboard"), "DashboardPane");
+const DashboardPane = lazyNamed(() => import("../dashboard/Dashboard"), "DashboardPane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
 const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");

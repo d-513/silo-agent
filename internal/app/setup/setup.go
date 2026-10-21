@@ -23,12 +23,14 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/host"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/builtin"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/channels"
@@ -71,12 +73,6 @@ type Host interface {
 	host.Runs
 	host.Emitter
 	run.Engine
-	// EndTurn ends the run after its current turn's tool calls.
-	EndTurn(runID string)
-	// Proactive reports whether the Bot may write into its main chat unasked.
-	Proactive(botID string) bool
-	// OfferChanged sends the chat's viewers an offer as it stands now.
-	OfferChanged(botID, chatID string, o *v1.SetupOffer)
 }
 
 // Service owns setup offers: the tool, the thread's view of them and the
@@ -134,6 +130,19 @@ func addressField(key string) bool {
 	return false
 }
 
+// inAddress reports whether a drive's user var is part of where rclone
+// connects (R2's account_id is in its endpoint's host): a value there could
+// point the drive anywhere.
+func inAddress(t *drives.Template, key string) bool {
+	ref := "{{user." + key
+	for k, v := range t.Rclone {
+		if (addressField(k) || strings.Contains(v, "://")) && strings.Contains(v, ref) {
+			return true
+		}
+	}
+	return false
+}
+
 // resolve checks an offer's target against the catalog and keeps the values
 // it may fill in. It answers the catalog's name for the target.
 func (s *Service) resolve(kind, target string, raw map[string]any) (label string, values map[string]string, err error) {
@@ -171,8 +180,8 @@ func (s *Service) resolve(kind, target string, raw map[string]any) (label string
 			return "", nil, fmt.Errorf("no drive provider %q", target)
 		}
 		label = t.Title
-		for _, v := range t.Vars {
-			if v.Kind == "user" && !v.Secret && v.Type != "password" && v.Type != "hidden" && !addressField(v.Key) {
+		for _, v := range t.VarsOf(drives.KindUser) {
+			if !v.IsSecret() && v.Type != drives.TypeHidden && v.Type != drives.TypeURL && !addressField(v.Key) && !inAddress(t, v.Key) {
 				plain[v.Key] = true
 			}
 		}
@@ -221,12 +230,12 @@ func adapters() []string {
 	return out
 }
 
-// Tool is offer_setup. In a web chat the offer is a card there and the turn
-// ends with it (the owner answers). From an automation or a channel it goes
+// Tool is offer_setup. In a web chat the offer is a card there; the turn
+// goes on, so the Bot can say what it offers. From an automation or a channel it goes
 // to the main chat when the Bot may write there unasked.
 func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID string, args map[string]any) (string, error) {
-	kind := strings.TrimSpace(str(args, "kind"))
-	target := strings.TrimSpace(str(args, "target"))
+	kind := strings.TrimSpace(toolarg.Str(args, "kind"))
+	target := strings.TrimSpace(toolarg.Str(args, "target"))
 	if target == "" {
 		return "", errors.New("target required: a library connector identifier, a channel adapter or a drive provider")
 	}
@@ -235,39 +244,42 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID string, args map[
 	if err != nil {
 		return "", err
 	}
-	chatID := s.host.ChatOfRun(runID)
+	vals, _ := json.Marshal(values)
+	o := db.SetupOffer{
+		ID: ids.New(), BotID: bot.ID, RunID: runID, Kind: kind, Target: target, Label: label,
+		Why: textx.ClipRunes(strings.TrimSpace(toolarg.Str(args, "why")), whyMax), ValuesJSON: string(vals), Status: Open,
+	}
+	write := func(ch *db.Chat) error {
+		now := time.Now()
+		o.ChatID, o.CreatedAt, o.UpdatedAt = ch.ID, now, now
+		return s.db.Create(&o).Error
+	}
 	var ch db.Chat
-	if chatID != "" {
+	if chatID := s.host.ChatOfRun(runID); chatID != "" {
 		s.db.Where("id = ?", chatID).Limit(1).Find(&ch)
 	}
-	inChat := webChat(&ch)
-	if !inChat {
-		main, idle := chats.MainIdle(s.db, bot.ID, s.host.LiveRunID)
-		if !idle || !s.host.Proactive(bot.ID) {
-			return "", errors.New("an offer is shown in a chat; from here, tell the owner with feed or ask_owner and offer it when they are in a chat")
-		}
-		ch = *main
-	}
-	vals, _ := json.Marshal(values)
-	now := time.Now()
-	o := db.SetupOffer{
-		ID: ids.New(), BotID: bot.ID, ChatID: ch.ID, RunID: runID, Kind: kind, Target: target, Label: label,
-		Why: textx.ClipRunes(strings.TrimSpace(str(args, "why")), whyMax), ValuesJSON: string(vals), Status: Open,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := s.db.Create(&o).Error; err != nil {
-		return "", err
-	}
-	s.trim(bot.ID)
-	if inChat {
-		s.host.Emit(bot.ID, ch.ID, runID, Kind, o.ID, "")
-	} else {
-		r := db.Run{ID: ids.New(), BotID: bot.ID, ChatID: ch.ID, Origin: "setup", Status: "done", CreatedAt: now}
-		if err := s.db.Create(&r).Error; err != nil {
+	if chats.Web(&ch) {
+		if err := write(&ch); err != nil {
 			return "", err
 		}
-		s.host.Emit(bot.ID, ch.ID, r.ID, Kind, o.ID, "")
+		s.host.Emit(bot.ID, ch.ID, runID, Kind, o.ID, "")
+	} else {
+		// From an automation or a channel: the main chat, when the Bot may
+		// write there unasked and nothing runs there.
+		_, err := s.host.Place(run.Placement{BotID: bot.ID, Proactive: true, Write: func(main *db.Chat) (*db.RunEvent, error) {
+			if err := write(main); err != nil {
+				return nil, err
+			}
+			return chats.Put(s.db, main, "setup", db.RunEvent{Kind: Kind, Body: o.ID})
+		}})
+		if errors.Is(err, run.ErrNotMain) {
+			return "", errors.New("an offer is shown in a chat; from here, tell the owner with feed or ask_owner and offer it when they are in a chat")
+		}
+		if err != nil {
+			return "", err
+		}
 	}
+	s.trim(bot.ID)
 	out, _ := json.Marshal(map[string]any{
 		"offered": label, "id": o.ID, "filled_in": values,
 		"note": "shown as a card; the owner answers on it",
@@ -279,11 +291,6 @@ func (s *Service) trim(botID string) {
 	s.db.Where("bot_id = ? AND status <> ? AND id NOT IN (?)", botID, Open,
 		s.db.Model(&db.SetupOffer{}).Select("id").Where("bot_id = ?", botID).Order("created_at desc").Limit(keep),
 	).Delete(&db.SetupOffer{})
-}
-
-// webChat is a conversation the owner reads in Silo.
-func webChat(c *db.Chat) bool {
-	return c != nil && c.ID != "" && c.AutomationID == "" && c.SubagentID == "" && c.ChannelID == ""
 }
 
 // Proto is an offer as a thread shows it, nil when it is gone.
@@ -322,25 +329,33 @@ func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1
 	if outcome != Done && outcome != Skipped {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("outcome is done or skipped"))
 	}
-	now := time.Now()
-	changed := []*db.SetupOffer{}
-	if o.Status != outcome {
-		o.Status, o.UpdatedAt = outcome, now
-		s.db.Model(&db.SetupOffer{}).Where("id = ?", o.ID).Updates(map[string]any{"status": o.Status, "updated_at": now})
-		changed = append(changed, o)
+	if o.Status != Open {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this offer is answered already"))
 	}
+	now := time.Now()
+	res := s.db.Model(&db.SetupOffer{}).Where("id = ? AND status = ?", o.ID, Open).Updates(map[string]any{"status": outcome, "updated_at": now})
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this offer is answered already"))
+	}
+	o.Status, o.UpdatedAt = outcome, now
+	changed := []*db.SetupOffer{o}
 	var rest []db.SetupOffer
 	s.db.Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status = ? AND id <> ?", o.BotID, o.ChatID, o.RunID, Open, o.ID).Order("created_at").Find(&rest)
-	if req.Msg.GetRest() {
+	if req.Msg.GetRest() && len(rest) > 0 {
+		restIDs := make([]string, len(rest))
 		for i := range rest {
+			restIDs[i] = rest[i].ID
 			rest[i].Status, rest[i].UpdatedAt = Skipped, now
-			s.db.Model(&db.SetupOffer{}).Where("id = ?", rest[i].ID).Updates(map[string]any{"status": Skipped, "updated_at": now})
 			changed = append(changed, &rest[i])
 		}
+		s.db.Model(&db.SetupOffer{}).Where("id IN ? AND status = ?", restIDs, Open).Updates(map[string]any{"status": Skipped, "updated_at": now})
 		rest = nil
 	}
 	for _, c := range changed {
-		s.host.OfferChanged(c.BotID, c.ChatID, proto(c))
+		s.host.Publish(c.BotID, &v1.RunEvent{ChatId: c.ChatID, Kind: StateKind, Body: c.ID, SetupOffer: proto(c)})
 	}
 	if outcome == Done || len(rest) == 0 {
 		if err := s.tell(o, rest); err != nil {
@@ -351,13 +366,19 @@ func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1
 }
 
 // tell gives the Bot, in one message, what the owner did with the offers of
-// o's turn it has not heard about yet, naming those still open.
+// o's turn it has not heard about yet, naming those still open. The offers
+// are claimed as told in one statement, so two answers at once never tell
+// the Bot the same thing twice; a message that cannot be delivered leaves
+// them untold.
 func (s *Service) tell(o *db.SetupOffer, open []db.SetupOffer) error {
 	var news []db.SetupOffer
-	s.db.Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status <> ? AND NOT told", o.BotID, o.ChatID, o.RunID, Open).Order("created_at").Find(&news)
+	s.db.Model(&news).Clauses(clause.Returning{}).
+		Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status <> ? AND NOT told", o.BotID, o.ChatID, o.RunID, Open).
+		Update("told", true)
 	if len(news) == 0 {
 		return nil
 	}
+	sort.Slice(news, func(i, j int) bool { return news[i].CreatedAt.Before(news[j].CreatedAt) })
 	var done, skipped, still []string
 	ids := make([]string, 0, len(news))
 	for _, n := range news {
@@ -381,9 +402,11 @@ func (s *Service) tell(o *db.SetupOffer, open []db.SetupOffer) error {
 	if len(still) > 0 {
 		parts = append(parts, "Still open: "+strings.Join(still, ", ")+".")
 	}
-	s.db.Model(&db.SetupOffer{}).Where("id IN ?", ids).Update("told", true)
-	_, err := s.host.StartOrInject(o.BotID, o.ChatID, strings.Join(parts, " "), run.Extra{}, nil)
-	return err
+	if _, err := s.host.StartOrInject(o.BotID, o.ChatID, strings.Join(parts, " "), run.Extra{}, nil); err != nil {
+		s.db.Model(&db.SetupOffer{}).Where("id IN ?", ids).Update("told", false)
+		return err
+	}
+	return nil
 }
 
 func andList(xs []string) string {
@@ -393,12 +416,13 @@ func andList(xs []string) string {
 	return strings.Join(xs[:len(xs)-1], ", ") + " and " + xs[len(xs)-1]
 }
 
+// DropChat deletes the offers shown in a deleted chat: there is nowhere to
+// tell the Bot what became of them.
+func (s *Service) DropChat(chatID string) {
+	s.db.Where("chat_id = ?", chatID).Delete(&db.SetupOffer{})
+}
+
 // Drop deletes a Bot's offers.
 func (s *Service) Drop(botID string) {
 	s.db.Where("bot_id = ?", botID).Delete(&db.SetupOffer{})
-}
-
-func str(args map[string]any, k string) string {
-	v, _ := args[k].(string)
-	return v
 }

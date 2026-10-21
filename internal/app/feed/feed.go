@@ -110,20 +110,7 @@ func Proto(p *db.FeedPost) *v1.FeedPost {
 
 // feedLabel is the human line for where a post came from.
 func feedLabel(p *db.FeedPost) string {
-	return SourceLabel(p.SourceKind, p.SourceName)
-}
-
-// SourceLabel is the human line for a run source: kind and name.
-func SourceLabel(kind, name string) string {
-	switch kind {
-	case "automation":
-		return "automation “" + name + "”"
-	case "channel":
-		return "channel “" + name + "”"
-	case "chat":
-		return "chat “" + name + "”"
-	}
-	return ""
+	return chats.SourceLabel(p.SourceKind, p.SourceName)
 }
 
 func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error) {
@@ -179,8 +166,9 @@ func (s *Service) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.De
 	return connect.NewResponse(&v1.DeleteFeedPostResponse{}), nil
 }
 
-// QuoteFeedPost starts a web chat whose only context is the quoted post, so
-// the human can reply to it. The post stays in the Feed.
+// QuoteFeedPost puts the post in the main chat (or, asked for or with a
+// reply running there, a chat of its own) so the human can reply to it. The
+// post stays in the Feed.
 func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
 	p, err := s.ownPost(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
@@ -195,15 +183,13 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 		body = "**" + p.Title + "**\n\n" + body
 	}
 	q := quote.Quote{From: quote.FromFeed, Title: p.Title, Body: body, Source: feedLabel(p), At: p.CreatedAt}
-	var c *db.Chat
-	if main, ok := chats.MainIdle(s.db, p.BotID, s.host.LiveRunID); ok && !req.Msg.GetNewChat() {
-		c, err = main, quote.Into(s.db, main, q)
-	} else {
-		c, err = quote.Open(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), q)
-	}
+	placed, err := s.host.Place(run.Placement{
+		BotID: p.BotID, Title: "Re: " + strings.TrimLeft(title, "# "), Own: req.Msg.GetNewChat(),
+		Write: func(ch *db.Chat) (*db.RunEvent, error) { return quote.Put(s.db, ch, q) },
+	})
 	if err != nil {
 		return nil, err
 	}
 	s.db.Model(p).Update("read_at", time.Now())
-	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(c)}), nil
+	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(placed.Chat)}), nil
 }

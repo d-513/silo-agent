@@ -8,24 +8,17 @@ import (
 	"unicode/utf8"
 
 	"connectrpc.com/connect"
-	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
-	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 )
 
 func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, error) {
 	return access.OwnBotRow[db.Chat](ctx, a.DB, botID, chatID, "chat")
-}
-
-// webChats keeps Web UI chats: not a channel conversation, not an automation log.
-func webChats(q *gorm.DB) *gorm.DB {
-	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL) AND (subagent_id = '' OR subagent_id IS NULL)")
 }
 
 // writableChat refuses conversation edits on an automation's log: its runs are
@@ -62,7 +55,7 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 		if _, err := a.mainChat(req.Msg.GetBotId()); err != nil {
 			return nil, err
 		}
-		q = q.Scopes(webChats)
+		q = q.Scopes(chats.WebScope)
 	} else {
 		q = q.Where("channel_id = ?", req.Msg.GetChannelId())
 	}
@@ -79,11 +72,11 @@ func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChat
 	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
 		return nil, err
 	}
-	c := db.Chat{ID: ids.New(), BotID: req.Msg.GetBotId(), Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
-	if err := a.DB.Create(&c).Error; err != nil {
+	c, err := chats.New(a.DB, req.Msg.GetBotId(), "")
+	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(chats.Proto(&c)), nil
+	return connect.NewResponse(chats.Proto(c)), nil
 }
 
 func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error) {
@@ -101,9 +94,8 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	if n := utf8.RuneCountInString(title); n > 80 {
 		title = string([]rune(title)[:80])
 	}
-	c.Title = title
-	c.UpdatedAt = time.Now()
-	a.DB.Save(c)
+	c.Title, c.UpdatedAt = title, time.Now()
+	a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).Updates(map[string]any{"title": c.Title, "updated_at": c.UpdatedAt})
 	return connect.NewResponse(chats.Proto(c)), nil
 }
 
@@ -127,6 +119,7 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	}
 	a.DB.Where("chat_id = ?", c.ID).Delete(&db.Run{})
 	a.DB.Delete(c)
+	a.Setup.DropChat(c.ID)
 	// Its artifacts' pinned bytes go now rather than on the next sweep.
 	go a.Artifacts.SweepBot(context.Background(), c.BotID)
 	return connect.NewResponse(&v1.DeleteChatResponse{}), nil
@@ -198,7 +191,7 @@ func (a *App) applyGeneratedTitle(chatID, title string) bool {
 	if chats.Untitled(title) {
 		return false
 	}
-	res := a.DB.Model(&db.Chat{}).Where("id = ? AND title IN ?", chatID, []string{"New chat", "Chat", ""}).
+	res := a.DB.Model(&db.Chat{}).Where("id = ? AND title IN ?", chatID, chats.Placeholders).
 		Updates(map[string]any{"title": title, "updated_at": time.Now()})
 	return res.RowsAffected > 0
 }

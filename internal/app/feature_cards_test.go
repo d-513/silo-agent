@@ -195,3 +195,139 @@ func TestAskOwnerFromAutomation(t *testing.T) {
 		})
 	}
 }
+
+// A card is answered once: a second press, or putting away an answered card,
+// is refused and starts nothing.
+func TestCardIsAnsweredOnce(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_once1", memCall("ask_owner", `{"text":"Ship it?"}`), dummy.Turn{Text: "ok"})
+	h := apptest.New(t)
+	id := h.CreateBot("Once").GetId()
+	main := h.FirstChat(id)
+	run, _ := h.Send(id, main, "Test_once1_Input")
+	h.WaitRun(run)
+	var c db.DashboardCard
+	h.DB.Where("bot_id = ?", id).First(&c)
+	sub, err := h.Client.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{BotId: id, Id: c.ID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.WaitRun(sub.Msg.GetRunId())
+	before := len(userBodies(h.ChatEvents(main)))
+	if _, err := h.Client.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{BotId: id, Id: c.ID})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("second submit: %v", err)
+	}
+	if _, err := h.Client.DismissDashboardCard(h.Ctx(), connect.NewRequest(&v1.DismissDashboardCardRequest{BotId: id, Id: c.ID})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("dismiss after submit: %v", err)
+	}
+	if n := len(userBodies(h.ChatEvents(main))); n != before {
+		t.Fatalf("the Bot was told again: %d user turns, want %d", n, before)
+	}
+}
+
+// A Dashboard card put from a chat is not shown there, so its answer quotes
+// it in the main chat rather than landing unexplained in that chat.
+func TestDashboardCardAnswerQuotesIt(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_dash1", memCall("upsert_dashboard_card", `{"title":"Renew the domain?","summary":"It lapses Friday."}`), dummy.Turn{Text: "on the board"})
+	h := apptest.New(t, apptest.WithChatTools())
+	id := h.CreateBot("Boarder").GetId()
+	main := h.FirstChat(id)
+	side, err := h.Client.CreateChat(h.Ctx(), connect.NewRequest(&v1.CreateChatRequest{BotId: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, _ := h.Send(id, side.Msg.GetId(), "Test_dash1_Input")
+	h.WaitRun(run)
+	var c db.DashboardCard
+	h.DB.Where("bot_id = ?", id).First(&c)
+	if c.ChatID != "" {
+		t.Fatalf("a card on the Dashboard only is recorded as shown in %q", c.ChatID)
+	}
+	sub, err := h.Client.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{BotId: id, Id: c.ID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.WaitRun(sub.Msg.GetRunId())
+	if sub.Msg.GetChat().GetId() != main {
+		t.Fatalf("answered in %q, want the main chat", sub.Msg.GetChat().GetId())
+	}
+	if _, ok := find(h.ChatEvents(main), "feed_quote"); !ok {
+		t.Fatal("the answer does not quote the card")
+	}
+}
+
+// A drive offer fills in no secret and nothing that is part of where the
+// drive connects; an answered offer is not answered again.
+func TestOfferSetupDriveFields(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_offer2",
+		memCall("offer_setup", `{"kind":"drive","target":"r2","options":{"secret_access_key":"x"}}`),
+		memCall("offer_setup", `{"kind":"drive","target":"r2","options":{"account_id":"evil.example/x?"}}`),
+		memCall("offer_setup", `{"kind":"drive","target":"r2","options":{"access_key_id":"AKIA","read_only":true}}`),
+		dummy.Turn{Text: "offered"},
+		dummy.Turn{Text: "noted"},
+	)
+	h := apptest.New(t)
+	id := h.CreateBot("Driver").GetId()
+	main := h.FirstChat(id)
+	run, _ := h.Send(id, main, "Test_offer2_Input")
+	var results []string
+	for _, ev := range h.WaitRun(run) {
+		if ev.Kind == "tool_result" {
+			results = append(results, ev.Body)
+		}
+	}
+	if len(results) != 3 || !strings.Contains(results[0], "cannot be filled in") || !strings.Contains(results[1], "cannot be filled in") || strings.Contains(results[2], "cannot") {
+		t.Fatalf("results %q", results)
+	}
+	var o db.SetupOffer
+	h.DB.Where("bot_id = ?", id).First(&o)
+	resolve := func() error {
+		_, err := h.Client.ResolveSetupOffer(h.Ctx(), connect.NewRequest(&v1.ResolveSetupOfferRequest{BotId: id, Id: o.ID, Outcome: "done"}))
+		return err
+	}
+	if err := resolve(); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolve(); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("resolved twice: %v", err)
+	}
+}
+
+// From an automation an offer goes to the main chat only when the Bot may
+// write there unasked; otherwise the Bot is told to tell the owner instead.
+func TestOfferSetupFromAutomation(t *testing.T) {
+	for _, level := range []string{"quiet", "active"} {
+		t.Run(level, func(t *testing.T) {
+			dummy.Reset()
+			dummy.Script("Test_offer3", memCall("offer_setup", `{"kind":"connector","target":"calendar"}`), dummy.Turn{Text: "done"})
+			h := apptest.New(t)
+			id := h.CreateBot("Background").GetId()
+			h.DB.Model(&db.Bot{}).Where("id = ?", id).Update("proactivity", level)
+			au, err := h.Client.CreateAutomation(h.Ctx(), connect.NewRequest(&v1.CreateAutomationRequest{BotId: id, Name: "Look", Prompt: "Test_offer3_Input", Schedule: "0 9 * * *"}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, err := h.Client.RunAutomation(h.Ctx(), connect.NewRequest(&v1.RunAutomationRequest{BotId: id, Id: au.Msg.GetId()}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.WaitRun(r.Msg.GetRunId())
+			main := h.FirstChat(id)
+			ev, shown := find(h.ChatEvents(main), "setup_offer")
+			var o db.SetupOffer
+			h.DB.Where("bot_id = ?", id).Limit(1).Find(&o)
+			switch level {
+			case "active":
+				if !shown || o.ID == "" || ev.Body != o.ID || o.ChatID != main {
+					t.Fatalf("active: offer %+v shown=%v", o, shown)
+				}
+			default:
+				if shown || o.ID != "" {
+					t.Fatalf("quiet: offered in the main chat: %+v", o)
+				}
+			}
+		})
+	}
+}

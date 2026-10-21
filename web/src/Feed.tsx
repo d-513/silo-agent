@@ -2,7 +2,7 @@ import { Inbox, MessageSquarePlus, MessageSquareQuote, Trash2 } from "lucide-rea
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { chatLink } from "./links";
+import { apart, chatLink } from "./links";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton } from "./Feedback";
@@ -11,24 +11,15 @@ import { feedStamp } from "./format";
 import { Md } from "./Md";
 import { fail } from "./errors";
 import { patch, recheck, reloadBot } from "./query";
+import { sourceLabel } from "./sources";
 import { t } from "./i18n.ts";
-
-function sourceLabel(p: FeedPost) {
-  switch (p.sourceKind) {
-    case "automation":
-      return `${t("Automation")} · ${p.sourceName}`;
-    case "channel":
-      return `${t("Channel")} · ${p.sourceName}`;
-    case "chat":
-      return p.sourceName || t("Chat");
-    default:
-      return "";
-  }
-}
 
 // FeedPane is the Bot's read-only inbox: posts it made with `feed`, newest
 // first. Opening it marks everything read; posts that were unread keep their
-// dot for this visit. The human can delete a post or quote it into a new chat.
+// dot for this visit. The human can delete a post or reply to it: in the main
+// chat by default, or in a chat of its own.
+const src = (p: FeedPost) => sourceLabel(p.sourceKind, p.sourceName);
+
 export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: string) => void; onQuoted: (c: Chat) => void }) {
   const q = useQuery(UI.method.listFeed, { botId: bot.id });
   const posts = q.data?.posts ?? null;
@@ -101,15 +92,15 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                   <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-ink-3">
                     {fresh.has(p.id) ? <span aria-label={t("New")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
                     <span className="shrink-0 font-mono">{feedStamp(p.createdAt)}</span>
-                    {sourceLabel(p) ? (
+                    {src(p) ? (
                       <>
                         <span aria-hidden>·</span>
                         {p.sourceKind === "chat" && p.chatId ? (
                           <Link {...chatLink(bot.id, p.chatId)} className="truncate hover:text-ink hover:underline">
-                            {sourceLabel(p)}
+                            {src(p)}
                           </Link>
                         ) : (
-                          <span className="truncate">{sourceLabel(p)}</span>
+                          <span className="truncate">{src(p)}</span>
                         )}
                       </>
                     ) : null}
@@ -124,7 +115,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                     aria-label={t("Reply in the main chat")}
                     disabled={!!quoting}
                     icon={<MessageSquareQuote size={14} />}
-                    onClick={(e) => void quote(p.id, e.metaKey || e.ctrlKey)}
+                    onClick={(e) => void quote(p.id, apart(e))}
                   />
                   <Btn
                     kind="ghost"

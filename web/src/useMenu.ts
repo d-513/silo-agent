@@ -58,6 +58,8 @@ export function listboxKeys(
     e.preventDefault();
     m.pickActive();
   } else if (e.key === "Escape" || e.key === "Tab") {
+    // Escape is spent closing the menu, not the dialog around it.
+    if (e.key === "Escape") e.preventDefault();
     m.setOpen(false);
   }
 }

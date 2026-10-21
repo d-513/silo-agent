@@ -211,7 +211,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		return "", err
 	}
 	a.convMu.Lock()
-	_, err := a.StartRun(run.Request{BotID: bot.ID, ChatID: c.ID, Text: subagentBrief(goal, ctxText), From: "lead", Origin: &run.Origin{Subagent: &sa}})
+	_, err := a.StartRun(run.Request{BotID: bot.ID, ChatID: c.ID, Text: subagentBrief(goal, ctxText), From: run.FromLead, Origin: &run.Origin{Subagent: &sa}})
 	a.convMu.Unlock()
 	if err != nil {
 		return "", err
@@ -226,7 +226,7 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
 	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
-		if a.inject(sa.BotID, sa.ChatID, runID, text, run.Extra{}, "lead") {
+		if a.inject(sa.BotID, sa.ChatID, runID, text, run.Extra{}, run.FromLead) {
 			return false, nil
 		}
 	}
@@ -236,7 +236,7 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	}
 	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{"status": "running", "reported": true, "finished_at": nil})
 	sa.Status, sa.Reported, sa.FinishedAt = "running", true, nil
-	if _, err := a.StartRun(run.Request{BotID: sa.BotID, ChatID: sa.ChatID, Text: text, From: "lead", Origin: &run.Origin{Subagent: sa}}); err != nil {
+	if _, err := a.StartRun(run.Request{BotID: sa.BotID, ChatID: sa.ChatID, Text: text, From: run.FromLead, Origin: &run.Origin{Subagent: sa}}); err != nil {
 		return false, err
 	}
 	a.pingLead(sa.BotID, sa.ParentChatID, "subagents")

@@ -2,35 +2,27 @@ import { Check, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
-import { defaultFormValues, normalizeOptions, parseBlocks, type DashboardBlock } from "../dashboardLayout";
+import { ChipRadio } from "../ChipRadio";
 import { Spinner } from "../Feedback";
 import { Field, inputClass, textareaClass } from "../Field";
 import type { DashboardCard } from "../gen/silo/v1/ui_pb";
 import { feedStamp } from "../format";
-import { chatLink } from "../links";
+import { apart, chatLink } from "../links";
 import { Lamp, StatusWord } from "../Lamp";
 import { Md } from "../Md";
 import { Select } from "../Select";
+import { sourceLabel } from "../sources";
 import { Switch } from "../Switch";
+import { Tip } from "../Tip";
 import { t } from "../i18n.ts";
+import { defaultFormValues, isDisplay, normalizeOptions, parseBlocks, type DashboardBlock } from "./blocks";
 
 // An ask is a decision the Bot needs from the owner: a slip with the vermilion
-// ribbon, the question, its context and controls, and one submit that opens a
-// chat with the chosen values. "Not now" puts it away; "Don't suggest this
-// again" also tells the Bot never to raise the topic again.
-
-export function sourceLabel(p: { sourceKind: string; sourceName: string }) {
-  switch (p.sourceKind) {
-    case "automation":
-      return t("Automation “{{name}}”", { name: p.sourceName });
-    case "channel":
-      return t("Channel “{{name}}”", { name: p.sourceName });
-    case "chat":
-      return p.sourceName || t("Chat");
-    default:
-      return "";
-  }
-}
+// ribbon, the question, its context and controls, and one submit that answers
+// with the chosen values. "Not now" puts it away; on the Dashboard, "Don't
+// suggest this again" also tells the Bot never to raise the topic again. The
+// same card is on the Dashboard and, when the Bot asked in a chat (or into the
+// main chat from elsewhere), in the thread.
 
 export function BlockRenderer({
   block,
@@ -129,24 +121,15 @@ export function BlockRenderer({
       const val = typeof values[block.name] === "string" ? (values[block.name] as string) : (opts[0]?.value ?? "");
       return (
         <Field label={block.label} hint={block.hint}>
-          <div className="inline-flex w-full flex-wrap gap-1 rounded-control bg-well p-1">
-            {opts.map((o) => {
-              const active = o.value === val;
-              return (
-                <button
-                  key={o.value}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(block.name, o.value)}
-                  className={`flex-1 rounded-sm px-2.5 py-1 text-[12.5px] font-medium transition-colors duration-[140ms] ${
-                    active ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:text-ink"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
+          <ChipRadio
+            label={block.label}
+            disabled={disabled}
+            value={val}
+            onChange={(v) => onChange(block.name, v)}
+            className="w-full flex-wrap"
+            chip="flex-1 px-2.5"
+            options={opts.map((o) => ({ value: o.value, label: o.label }))}
+          />
         </Field>
       );
     }
@@ -156,10 +139,7 @@ export function BlockRenderer({
       const selected = Array.isArray(values[block.name]) ? (values[block.name] as string[]) : [];
       const toggle = (v: string) => {
         if (selected.includes(v)) {
-          onChange(
-            block.name,
-            selected.filter((x) => x !== v),
-          );
+          onChange(block.name, selected.filter((x) => x !== v));
         } else {
           onChange(block.name, [...selected, v]);
         }
@@ -230,12 +210,19 @@ export function BlockRenderer({
   }
 }
 
+// The server words a card's submit "Send" when the Bot gave it no label of
+// its own; that one is ours to translate.
+function submitWord(label: string) {
+  return !label || label === "Send" ? t("Send") : label;
+}
+
 export function AskSlip({
   botId,
   card,
   onSubmit,
   onDismiss,
   place = "board",
+  asked = false,
 }: {
   botId: string;
   card: DashboardCard;
@@ -245,6 +232,9 @@ export function AskSlip({
   // In a thread the card answers in that chat, and an answered one stays as
   // a record.
   place?: "board" | "thread";
+  // In a thread: the Bot asked from elsewhere (an automation, a channel) and
+  // the question was put into this chat. Only then is its source worth naming.
+  asked?: boolean;
 }) {
   const blocks = parseBlocks(card.blocksJson);
   const [values, setValues] = useState<Record<string, unknown>>(() => defaultFormValues(blocks));
@@ -255,8 +245,12 @@ export function AskSlip({
       ...prev,
     }));
   }, [card.blocksJson]);
-  const src = sourceLabel(card);
   const closed = card.status !== "open";
+  const board = place === "board";
+  const src = board || asked ? sourceLabel(card.sourceKind, card.sourceName) : "";
+  // An answered card keeps what it showed; its controls would read as the
+  // owner's answer, and the answer is in the thread below it.
+  const shown = closed ? blocks.filter(isDisplay) : blocks;
 
   async function act(kind: "submit" | "dismiss", fn: () => Promise<void>) {
     setBusy(kind);
@@ -267,18 +261,31 @@ export function AskSlip({
     }
   }
 
+  const submit = (
+    <Btn
+      kind="primary"
+      size="sm"
+      disabled={busy !== ""}
+      icon={busy === "submit" ? <Spinner size={12} tone="on-ink" /> : <Send size={13} />}
+      onClick={(e) => void act("submit", () => onSubmit(card, values, board && apart(e)))}
+    >
+      {submitWord(card.submitLabel)}
+    </Btn>
+  );
+
   return (
     <article className="rise relative flex flex-col overflow-hidden rounded-card bg-surface py-4 pr-4 pl-5 shadow-card">
       <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-vermilion" />
       <div className="flex min-w-0 items-center gap-2 text-[12px]">
         {closed ? (
-          <span className="font-medium text-ink-3">{card.status === "submitted" ? t("Answered") : t("Put away")}</span>
+          <span className="shrink-0 font-medium text-ink-3">{card.status === "submitted" ? t("Answered") : t("Put away")}</span>
         ) : (
           <>
             <Lamp status="needs_you" />
             <StatusWord status="needs_you" />
           </>
         )}
+        {asked ? <span className="shrink-0 text-ink-3">· {t("Asked while you were away")}</span> : null}
         {src ? (
           <span className="min-w-0 truncate text-ink-3">
             ·{" "}
@@ -295,50 +302,38 @@ export function AskSlip({
       </div>
       <h3 className="mt-1.5 text-[15px] leading-5 font-medium tracking-[-0.01em] text-ink">{card.title}</h3>
       {card.summary ? <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{card.summary}</p> : null}
-      {blocks.length > 0 ? (
+      {shown.length > 0 ? (
         <div className="mt-3 space-y-3">
-          {blocks.map((b, i) => (
-              <BlockRenderer
-                key={i}
-                block={b}
-                values={values}
-                disabled={busy !== "" || closed}
-                onChange={(name, val) => setValues((prev) => ({ ...prev, [name]: val }))}
-              />
+          {shown.map((b, i) => (
+            <BlockRenderer
+              key={i}
+              block={b}
+              values={values}
+              disabled={busy !== "" || closed}
+              onChange={(name, val) => setValues((prev) => ({ ...prev, [name]: val }))}
+            />
           ))}
         </div>
       ) : null}
       {closed ? null : (
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        <Btn
-          kind="primary"
-          size="sm"
-          disabled={busy !== ""}
-          icon={busy === "submit" ? <Spinner size={12} tone="on-ink" /> : <Send size={13} />}
-          title={place === "board" ? t("Answers in the main chat. Ctrl/⌘-click for a new chat.") : undefined}
-          onClick={(e) => {
-            const apart = place === "board" && (e.metaKey || e.ctrlKey);
-            void act("submit", () => onSubmit(card, values, apart));
-          }}
-        >
-          {card.submitLabel || t("Send")}
-        </Btn>
-        <Btn kind="ghost" size="sm" disabled={busy !== ""} onClick={() => void act("dismiss", () => onDismiss(card, false))}>
-          {t("Not now")}
-        </Btn>
-        {/* A topic the Bot keeps raising on the board can be turned off; in
-            a chat the owner just answers or puts it away. */}
-        {card.key && place === "board" ? (
-          <button
-            type="button"
-            disabled={busy !== ""}
-            onClick={() => void act("dismiss", () => onDismiss(card, true))}
-            className="ml-auto text-[12px] text-ink-3 transition-colors duration-[160ms] hover:text-ink disabled:opacity-50"
-          >
-            {t("Don't suggest this again")}
-          </button>
-        ) : null}
-      </div>
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          {board ? <Tip content={t("Answers in the main chat. Ctrl/⌘-click for a new chat.")}>{submit}</Tip> : submit}
+          <Btn kind="ghost" size="sm" disabled={busy !== ""} onClick={() => void act("dismiss", () => onDismiss(card, false))}>
+            {t("Not now")}
+          </Btn>
+          {/* A topic the Bot keeps raising on the board can be turned off; in
+              a chat the owner just answers or puts it away. */}
+          {card.key && board ? (
+            <button
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void act("dismiss", () => onDismiss(card, true))}
+              className="ml-auto text-[12px] text-ink-3 transition-colors duration-[160ms] hover:text-ink disabled:opacity-50"
+            >
+              {t("Don't suggest this again")}
+            </button>
+          ) : null}
+        </div>
       )}
     </article>
   );

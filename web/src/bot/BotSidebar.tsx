@@ -58,13 +58,18 @@ export function BotSidebar({
   // opens the group it sits in, so the open row is never hidden. Folding that
   // group by hand afterwards sticks: this runs only when the chat or its group
   // changes.
-  const openAt = tab === "run" ? chats.find((c) => c.id === chatId)?.updatedAt : undefined;
+  // The main chat sits in no group.
+  const openAt = tab === "run" && chatId !== main?.id ? chats.find((c) => c.id === chatId)?.updatedAt : undefined;
   const openKey = openAt === undefined ? "" : groupKeyOf(openAt);
   useEffect(() => {
     if (openKey) setGroupOpen(openKey, true);
   }, [chatId, openKey]);
 
   const busy = waiting || sending || agentsBusy;
+  // The main chat's lamp: waiting on the owner while open, else working
+  // whenever a run is live there, open or not.
+  const mainOpen = tab === "run" && !!main && main.id === chatId;
+  const mainStatus = mainOpen && waiting ? "needs_you" : (mainOpen && busy) || bot.activity.some((a) => a.kind === "main") ? "working" : "";
   return (
     <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
       <BotHome
@@ -75,13 +80,13 @@ export function BotSidebar({
         fresh={freshCount}
         curating={!!dashQ.data?.curating}
       />
-      <ActivityStrip botId={id} bot={bot} />
+      <ActivityStrip bot={bot} />
       <div className="px-2 pb-3">
         <MainChat
           botId={id}
           mainId={main?.id}
-          on={tab === "run" && !!main && main.id === chatId}
-          status={tab === "run" && !!main && main.id === chatId && busy ? (waiting ? "needs_you" : "working") : ""}
+          on={mainOpen}
+          status={mainStatus}
           onNewChat={onNewChat}
         />
       </div>
@@ -290,7 +295,7 @@ function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; o
   );
 }
 
-// One chat: a single quiet line. The open one is lifted by tone and marked
+// One side chat: a single quiet line (the main chat is MainChat, above). The open one is lifted by tone and marked
 // with the cobalt bar; rename and delete fade in over the end of the title.
 function ChatRow({
   botId,
@@ -310,8 +315,6 @@ function ChatRow({
 }) {
   const editing = rename.editing === chat.id;
   const ms = Date.parse(chat.updatedAt);
-  // The main chat keeps its name and cannot be deleted.
-  const fixed = chat.main;
   return (
     <div
       className={`group relative rounded-control bg-(--row) transition-[background-color] duration-[160ms] ease-quiet ${
@@ -329,24 +332,22 @@ function ChatRow({
           params={{ botId, chatId: chat.id }}
           title={Number.isFinite(ms) ? fullTime(new Date(ms)) : undefined}
           onDoubleClick={(e) => {
-            if (fixed) return;
             e.preventDefault();
             rename.begin(chat);
           }}
           className="flex h-8 min-w-0 items-center gap-2 rounded-control pr-2 pl-3 outline-offset-[-2px]"
         >
-          {fixed ? <MessageCircle size={15} className={`shrink-0 ${on ? "text-ink" : "text-ink-2"}`} aria-hidden /> : null}
           <span
             className={`min-w-0 flex-1 truncate text-[13.5px] leading-5 transition-colors duration-[160ms] ease-quiet ${
               on ? "text-ink" : "text-ink-2 group-hover:text-ink"
             }`}
           >
-            {fixed ? t("Main chat") : chat.title || t("New chat")}
+            {chat.title || t("New chat")}
           </span>
           {status ? <Status status={status} className="shrink-0" /> : null}
         </Link>
       )}
-      {!editing && !fixed && (
+      {!editing && (
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 opacity-0 transition-opacity duration-[160ms] ease-quiet group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
           <button
             type="button"

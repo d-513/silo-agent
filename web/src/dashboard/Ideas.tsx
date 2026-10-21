@@ -18,15 +18,17 @@ export function ideasOf(data: Record<string, unknown>): Idea[] {
 }
 
 // useOpenIdea puts an idea in the main chat's composer and goes there; it is
-// never sent for the owner.
+// never sent for the owner. A draft the owner already started is kept: the
+// idea goes in below it. With the chat list not in yet, the chat page itself
+// opens the main chat.
 export function useOpenIdea() {
   const page = useContext(BotPageCtx);
   const navigate = useNavigate();
   return (prompt: string) => {
     if (!page) return;
     const main = page.chats.find((c) => c.main)?.id;
-    page.draft.setText(prompt);
-    if (main) void navigate(chatLink(page.id, main));
+    page.draft.setText((cur) => (!cur.trim() ? prompt : cur.includes(prompt) ? cur : `${cur.trimEnd()}\n\n${prompt}`));
+    void navigate(chatLink(page.id, main));
   };
 }
 
@@ -35,8 +37,8 @@ export function IdeaList({ ideas }: { ideas: Idea[] }) {
   const open = useOpenIdea();
   return (
     <ul className="space-y-1">
-      {ideas.map((idea) => (
-        <li key={idea.title}>
+      {ideas.map((idea, i) => (
+        <li key={i}>
           <button
             type="button"
             onClick={() => open(idea.prompt)}
@@ -65,9 +67,10 @@ export function StarterIdeas({ botId, name }: { botId: string; name: string }) {
   const attached = useQuery(UI.method.listBotConnectors, { botId }).data?.connectors ?? [];
   const has = (...keys: string[]) => attached.some((r) => keys.includes(r.connector?.builtin ?? "") || keys.includes(r.connector?.identifier ?? ""));
   const ideas: Idea[] = [];
-  if (has("email", "gmail")) ideas.push({ title: t("Go through my unread mail and tell me what needs an answer"), prompt: t("Go through my unread mail and tell me what needs an answer") });
-  if (has("calendar", "google_calendar")) ideas.push({ title: t("Plan my week from my calendar"), prompt: t("Plan my week from my calendar") });
-  for (const g of general) ideas.push({ title: t(g), prompt: t(g) });
+  const say = (text: string) => ideas.push({ title: text, prompt: text });
+  if (has("email", "gmail")) say(t("Go through my unread mail and tell me what needs an answer"));
+  if (has("calendar", "google_calendar")) say(t("Plan my week from my calendar"));
+  for (const g of general) say(t(g));
   return (
     <section className="rounded-card bg-surface px-3 py-3 shadow-card">
       <h3 className="mb-1 px-2.5 text-label-caps leading-4 text-ink-3 uppercase">{t("Things to ask {{name}}", { name })}</h3>

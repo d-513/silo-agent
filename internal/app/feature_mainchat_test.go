@@ -3,12 +3,14 @@ package app_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
 	"silo.agent/internal/llm/dummy"
 )
 
@@ -95,4 +97,33 @@ func lastStreamedText(t *testing.T) string {
 	}
 	msgs := reqs[len(reqs)-1].Messages
 	return msgs[len(msgs)-1].Text
+}
+
+// With a reply running in the main chat, a quote opens a chat of its own:
+// the live run's history and the thread must not disagree about order.
+func TestQuoteWhileTheMainChatIsBusy(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_busy1", dummy.Turn{Text: "thinking it over", Delay: 2 * time.Second})
+	h := apptest.New(t)
+	id := h.CreateBot("Busy").GetId()
+	main := h.FirstChat(id)
+	post := db.FeedPost{ID: ids.New(), BotID: id, Title: "Prices", Body: "Coffee went up.", CreatedAt: time.Now()}
+	h.DB.Create(&post)
+
+	run, _ := h.Send(id, main, "Test_busy1_Input")
+	q, err := h.Client.QuoteFeedPost(h.Ctx(), connect.NewRequest(&v1.QuoteFeedPostRequest{BotId: id, Id: post.ID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.WaitRun(run)
+	own := q.Msg.GetChat().GetId()
+	if own == main || own == "" {
+		t.Fatalf("quoted into %q while a reply ran in the main chat", own)
+	}
+	if _, ok := find(h.ChatEvents(main), "feed_quote"); ok {
+		t.Fatal("the quote landed in the busy main chat")
+	}
+	if _, ok := find(h.ChatEvents(own), "feed_quote"); !ok {
+		t.Fatal("the chat of its own has no quote")
+	}
 }

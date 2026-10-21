@@ -1,5 +1,5 @@
 import { ui } from "../api";
-import { ApprovalSlip, ConnectorAuthSlip, SlipPresence } from "../Approval";
+import { ApprovalSlip, ConnectorAuthSlip, SlipPresence, approveSetAuto } from "../Approval";
 import { startConnectorAuth } from "../connectorAuth";
 import { fail } from "../errors";
 import { UI, type Approval, type Bot, type BotConnector } from "../gen/silo/v1/ui_pb";
@@ -36,15 +36,8 @@ export function BotSlip({
           }}
           onAutoApprove={async () => {
             try {
-              await ui.setRule({
-                botId: bot.id,
-                connector: pending[0].connector,
-                action: pending[0].action,
-                decision: "auto",
-              });
-              const { id } = pending[0];
-              await ui.decideApproval({ id, decision: "allow_once" });
-              decided(id);
+              await approveSetAuto(bot.id, pending[0]);
+              decided(pending[0].id);
             } catch (e) {
               onError(fail(e));
             }

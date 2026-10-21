@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
@@ -447,11 +448,11 @@ func (a *App) toolDefs() []tool.Def {
 			Name:        "set_proactivity",
 			Description: "Set how much you do unasked, as your owner chose: off (no Heartbeat), quiet (a morning Heartbeat that reports to the Feed; questions wait on the Dashboard) or active (a Heartbeat every three hours of the day, and you may write into the main chat). Only on your owner's word.",
 			Params: tool.Object(map[string]any{
-				"level": map[string]any{"type": "string", "enum": []string{"off", "quiet", "active"}},
+				"level": map[string]any{"type": "string", "enum": proactivity.Levels},
 			}, "level"),
 			Connector: security.Bot, Action: "set_proactivity",
 			ExposePython: true, LeadOnly: true,
-			Run: text(a.proactivityTool),
+			Run: text(a.Proactivity.Tool),
 		},
 		{
 			Name:        "offer_setup",
@@ -475,12 +476,15 @@ func (a *App) toolDefs() []tool.Def {
 				"text":         map[string]any{"type": "string", "description": "the question, a sentence or two, markdown"},
 				"title":        map[string]any{"type": "string", "description": "a short heading (default: the first line of text)"},
 				"blocks":       map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "display blocks (markdown, kv, metrics, diff) and form controls (switch, select, segmented, checkboxes, input, textarea; each with a name)"},
-				"submit_label": map[string]any{"type": "string", "description": "the submit button's label; omit for a card with only setup offers"},
+				"submit_label": map[string]any{"type": "string", "description": "the submit button's label (default Send)"},
 				"key":          map[string]any{"type": "string", "description": "stable key: asking again with it updates the open card"},
 			}, "text"),
 			Connector: security.Bot, Action: "ask_owner",
 			ExposeCompletion: true, ExposePython: true,
-			Run: dashboard,
+			// A subagent reports to its lead; an answer in the main chat would
+			// reach neither.
+			LeadOnly: true,
+			Run:      dashboard,
 		},
 		{
 			Name:        "upsert_dashboard_card",

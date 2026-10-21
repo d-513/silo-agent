@@ -91,7 +91,7 @@ func TestLeadOnlyTools(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	want := "agent_status channel create_automation delete_automation list_automations message_agent offer_setup set_proactivity set_timezone spawn_agent stop_agent switch_model task_reset update_automation"
+	want := "agent_status ask_owner channel create_automation delete_automation list_automations message_agent offer_setup set_proactivity set_timezone spawn_agent stop_agent switch_model task_reset update_automation"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("lead-only tools: %s", strings.Join(got, " "))
 	}

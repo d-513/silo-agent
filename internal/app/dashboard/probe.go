@@ -48,6 +48,13 @@ func (b *busySet) has(id string) bool {
 
 var errNotRunning = errors.New("the Bot's machine is not running")
 
+// errBusy and errNoProbe are refusals that leave nothing on the widget, so the
+// owner who pressed is told instead.
+var (
+	errBusy    = errors.New("this widget is busy: try again in a moment")
+	errNoProbe = errors.New("this widget has no probe")
+)
+
 // harness wraps widget code so it runs with ARGS, STATE and DATA bound and
 // reports `result` on a marked line the CP finds whatever else was printed.
 // Everything goes in base64 so no value can break out of its string.
@@ -137,10 +144,10 @@ func (s *Service) allowed(w *db.DashboardWidget) error {
 // refresh runs the widget's probe and stores what it returned, or why not.
 func (s *Service) refresh(ctx context.Context, w *db.DashboardWidget) error {
 	if strings.TrimSpace(w.Probe) == "" {
-		return errors.New("this widget has no probe")
+		return errNoProbe
 	}
 	if !s.busy.take(w.ID) {
-		return errors.New("it is refreshing already")
+		return errBusy
 	}
 	defer s.busy.done(w.ID)
 	err := s.allowed(w)
@@ -231,7 +238,7 @@ type receipt struct {
 // widget's, else its probe runs again so the widget shows the new state.
 func (s *Service) runAction(ctx context.Context, w *db.DashboardWidget, a action, args string) error {
 	if !s.busy.take(w.ID) {
-		return errors.New("this widget is busy: try again in a moment")
+		return errBusy
 	}
 	r, err := s.act(ctx, w, a, args)
 	s.busy.done(w.ID)

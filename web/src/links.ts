@@ -20,3 +20,8 @@ export function agentLink(botId: string, chatId: string, agentId: string) {
   return linkOptions({ to: "/bots/$botId/run/$chatId/agent/$agentId", params: { botId, chatId, agentId } });
 }
 export type AgentLink = ReturnType<typeof agentLink>;
+
+/** A press that asks for a place of its own: Ctrl/⌘-click, like a link opened in a new tab. */
+export function apart(e: { metaKey: boolean; ctrlKey: boolean }): boolean {
+  return e.metaKey || e.ctrlKey;
+}

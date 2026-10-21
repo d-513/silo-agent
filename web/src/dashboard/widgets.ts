@@ -20,10 +20,10 @@ export function items(v: unknown): Record<string, unknown>[] {
   return Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x)) : [];
 }
 
+/** A string or a number as text; anything else (a yes/no too: the page words it) is "". */
 export function text(v: unknown): string {
   if (typeof v === "string") return v;
   if (typeof v === "number" && Number.isFinite(v)) return String(v);
-  if (typeof v === "boolean") return v ? "yes" : "no";
   return "";
 }
 
@@ -46,26 +46,38 @@ export function span(size: string, cols: Cols): number {
   return Math.min(want, cols);
 }
 
-/** "now", "4 m", "2 h", "3 d": how old a widget's data is, for its corner. */
-export function age(iso: string, now: Date = new Date()): string {
+/** A span of time in one unit, for the page to word: 4 m, 2 h, 3 d. */
+export type Span = { n: number; unit: "m" | "h" | "d" };
+
+/** How old a widget's data is, for its corner: "now" under a minute, null when unknown. */
+export function age(iso: string, now: Date = new Date()): Span | "now" | null {
   const ms = iso ? Date.parse(iso) : NaN;
-  if (!Number.isFinite(ms)) return "";
+  if (!Number.isFinite(ms)) return null;
   const s = Math.max(0, (now.getTime() - ms) / 1000);
   if (s < 60) return "now";
-  if (s < 3600) return `${Math.floor(s / 60)} m`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h`;
-  return `${Math.floor(s / 86400)} d`;
+  if (s < 3600) return { n: Math.floor(s / 60), unit: "m" };
+  if (s < 86400) return { n: Math.floor(s / 3600), unit: "h" };
+  return { n: Math.floor(s / 86400), unit: "d" };
 }
 
-/** "15 m", "2 h", "1 d" for a probe interval in seconds. */
-export function interval(sec: number): string {
-  if (sec <= 0) return "";
-  if (sec % 86400 === 0) return `${sec / 86400} d`;
-  if (sec % 3600 === 0) return `${sec / 3600} h`;
-  return `${Math.round(sec / 60)} m`;
+/** A probe interval in seconds as a span, null when there is none. */
+export function interval(sec: number): Span | null {
+  if (sec <= 0) return null;
+  if (sec % 86400 === 0) return { n: sec / 86400, unit: "d" };
+  if (sec % 3600 === 0) return { n: sec / 3600, unit: "h" };
+  return { n: Math.round(sec / 60), unit: "m" };
 }
 
 export type Action = { id: string; label: string; kind: "run" | "hand"; row?: boolean; confirm?: boolean };
+
+export type WidgetHandlers = {
+  onSelect: () => void;
+  onRefresh: () => Promise<void>;
+  onState: (stateJson: string) => void;
+  // apart: a hand action opens a chat of its own instead of the main one
+  // (Ctrl/⌘-click, like a link in a new tab).
+  onAction: (a: Action, args: Record<string, unknown>, apart?: boolean) => Promise<void>;
+};
 
 /** The buttons a widget's spec declares. */
 export function actions(specJson: string): Action[] {
@@ -146,12 +158,12 @@ export function toggle(stateJson: string, id: string): string {
   return JSON.stringify(st);
 }
 
-export type Receipt = { text: string; ok: boolean; at: string; by: string };
+export type Receipt = { text: string; ok: boolean; at: string };
 
 export function receipt(json: string): Receipt | null {
   const r = obj(json);
   if (!text(r.text)) return null;
-  return { text: text(r.text), ok: r.ok !== false, at: text(r.at), by: text(r.by) || "you" };
+  return { text: text(r.text), ok: r.ok !== false, at: text(r.at) };
 }
 
 /** Move the widget `from` to where `to` is now. */
