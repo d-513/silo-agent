@@ -1057,6 +1057,8 @@ message ResolveSetupOfferRequest {
   string id = 2;
   // done or skipped.
   string outcome = 3;
+  // rest also skips every other open offer made in the same turn.
+  bool rest = 4;
 }
 
 message ListDashboardRequest {

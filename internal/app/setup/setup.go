@@ -261,8 +261,6 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID string, args map[
 	s.trim(bot.ID)
 	if inChat {
 		s.host.Emit(bot.ID, ch.ID, runID, Kind, o.ID, "")
-		// Like a question, the offer is the turn's last word.
-		s.host.EndTurn(runID)
 	} else {
 		r := db.Run{ID: ids.New(), BotID: bot.ID, ChatID: ch.ID, Origin: "setup", Status: "done", CreatedAt: now}
 		if err := s.db.Create(&r).Error; err != nil {
@@ -272,7 +270,7 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID string, args map[
 	}
 	out, _ := json.Marshal(map[string]any{
 		"offered": label, "id": o.ID, "filled_in": values,
-		"note": "the owner sets it up with Silo's own form; you are told in this chat when they do or skip it",
+		"note": "shown as a card; the owner answers on it",
 	})
 	return string(out), nil
 }
@@ -309,9 +307,12 @@ func proto(o *db.SetupOffer) *v1.SetupOffer {
 	}
 }
 
-// ResolveSetupOffer records what the owner did with an offer and tells the
-// Bot in its chat: "I set up Email." or "Not now for Email.", which starts
-// (or joins) a run there.
+// ResolveSetupOffer records what the owner did with an offer (with rest,
+// with every other open offer of the same turn too) and tells the Bot in its
+// chat. Something set up is told at once, since the Bot can use it now; a
+// "not now" waits until the turn's other offers are answered, so skipping a
+// few is one message, not one each: "I set up **Email**. Not now for
+// **Calendar**, **Telegram**."
 func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error) {
 	o, err := access.OwnBotRow[db.SetupOffer](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "setup offer")
 	if err != nil {
@@ -321,21 +322,75 @@ func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1
 	if outcome != Done && outcome != Skipped {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("outcome is done or skipped"))
 	}
-	if o.Status == outcome {
-		return connect.NewResponse(proto(o)), nil
+	now := time.Now()
+	changed := []*db.SetupOffer{}
+	if o.Status != outcome {
+		o.Status, o.UpdatedAt = outcome, now
+		s.db.Model(&db.SetupOffer{}).Where("id = ?", o.ID).Updates(map[string]any{"status": o.Status, "updated_at": now})
+		changed = append(changed, o)
 	}
-	o.Status, o.UpdatedAt = outcome, time.Now()
-	s.db.Model(&db.SetupOffer{}).Where("id = ?", o.ID).Updates(map[string]any{"status": o.Status, "updated_at": o.UpdatedAt})
-	p := proto(o)
-	s.host.OfferChanged(o.BotID, o.ChatID, p)
-	turn := fmt.Sprintf("I set up **%s**.", o.Label)
-	if outcome == Skipped {
-		turn = fmt.Sprintf("Not now for **%s**.", o.Label)
+	var rest []db.SetupOffer
+	s.db.Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status = ? AND id <> ?", o.BotID, o.ChatID, o.RunID, Open, o.ID).Order("created_at").Find(&rest)
+	if req.Msg.GetRest() {
+		for i := range rest {
+			rest[i].Status, rest[i].UpdatedAt = Skipped, now
+			s.db.Model(&db.SetupOffer{}).Where("id = ?", rest[i].ID).Updates(map[string]any{"status": Skipped, "updated_at": now})
+			changed = append(changed, &rest[i])
+		}
+		rest = nil
 	}
-	if _, err := s.host.StartOrInject(o.BotID, o.ChatID, turn, run.Extra{}, nil); err != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	for _, c := range changed {
+		s.host.OfferChanged(c.BotID, c.ChatID, proto(c))
 	}
-	return connect.NewResponse(p), nil
+	if outcome == Done || len(rest) == 0 {
+		if err := s.tell(o, rest); err != nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+	}
+	return connect.NewResponse(proto(o)), nil
+}
+
+// tell gives the Bot, in one message, what the owner did with the offers of
+// o's turn it has not heard about yet, naming those still open.
+func (s *Service) tell(o *db.SetupOffer, open []db.SetupOffer) error {
+	var news []db.SetupOffer
+	s.db.Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status <> ? AND NOT told", o.BotID, o.ChatID, o.RunID, Open).Order("created_at").Find(&news)
+	if len(news) == 0 {
+		return nil
+	}
+	var done, skipped, still []string
+	ids := make([]string, 0, len(news))
+	for _, n := range news {
+		ids = append(ids, n.ID)
+		if n.Status == Done {
+			done = append(done, "**"+n.Label+"**")
+		} else {
+			skipped = append(skipped, "**"+n.Label+"**")
+		}
+	}
+	for _, n := range open {
+		still = append(still, "**"+n.Label+"**")
+	}
+	var parts []string
+	if len(done) > 0 {
+		parts = append(parts, "I set up "+andList(done)+".")
+	}
+	if len(skipped) > 0 {
+		parts = append(parts, "Not now for "+strings.Join(skipped, ", ")+".")
+	}
+	if len(still) > 0 {
+		parts = append(parts, "Still open: "+strings.Join(still, ", ")+".")
+	}
+	s.db.Model(&db.SetupOffer{}).Where("id IN ?", ids).Update("told", true)
+	_, err := s.host.StartOrInject(o.BotID, o.ChatID, strings.Join(parts, " "), run.Extra{}, nil)
+	return err
+}
+
+func andList(xs []string) string {
+	if len(xs) < 2 {
+		return strings.Join(xs, "")
+	}
+	return strings.Join(xs[:len(xs)-1], ", ") + " and " + xs[len(xs)-1]
 }
 
 // Drop deletes a Bot's offers.

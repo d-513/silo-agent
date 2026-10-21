@@ -141,8 +141,9 @@ export type Block =
   // An ask shown in the chat: the Bot's question as a card answered in
   // place. `asked` when it came from elsewhere (an automation) into this chat.
   | { key: string; type: "card"; card: DashboardCard; asked?: boolean; createdAt?: string }
-  // Something the Bot offers to add (a connector, channel or drive).
-  | { key: string; type: "offer"; offer: SetupOffer }
+  // What the Bot offered to add (connectors, channels, drives) in one turn,
+  // drawn side by side.
+  | { key: string; type: "offers"; runId?: string; offers: SetupOffer[] }
   // A slash command's mark in the thread: the context started over here
   // (/clear), or `count` messages were deleted for good (/wipe).
   | { key: string; type: "boundary"; kind: "cleared" | "wiped"; count: number; createdAt?: string }

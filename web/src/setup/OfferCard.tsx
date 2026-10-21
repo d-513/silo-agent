@@ -71,7 +71,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
     setBusy(true);
     setErr("");
     try {
-      await ui.resolveSetupOffer({ botId, id: offer.id, outcome });
+      await ui.resolveSetupOffer({ botId, id: offer.id, outcome, rest: false });
     } catch (e) {
       setErr(fail(e));
     } finally {
@@ -80,7 +80,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
   }
 
   return (
-    <article className="w-full max-w-[460px] overflow-hidden rounded-card bg-surface shadow-card">
+    <article className="flex w-full min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card">
       <div className="flex items-start gap-3 p-3.5">
         <span className="shrink-0">{target.mark}</span>
         <div className="min-w-0 flex-1">
@@ -100,7 +100,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
           ))}
         </dl>
       ) : null}
-      <div className="flex items-center gap-1.5 border-t border-line px-3.5 py-2.5">
+      <div className="mt-auto flex items-center gap-1.5 border-t border-line px-3.5 py-2.5">
         {offer.status === "done" ? (
           <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
             <Check size={13} /> {t("Added")}
@@ -134,3 +134,40 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
   );
 }
 
+
+// OfferGroup is what the Bot offered in one turn, two to a row on a wide
+// thread. With more than one still open, Not now for these answers them all
+// at once, and the Bot hears it in one message.
+export function OfferGroup({ botId, offers }: { botId: string; offers: SetupOffer[] }) {
+  const open = offers.filter((o) => o.status === "open");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function skipAll() {
+    setBusy(true);
+    setErr("");
+    try {
+      await ui.resolveSetupOffer({ botId, id: open[0].id, outcome: "skipped", rest: true });
+    } catch (e) {
+      setErr(fail(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <div className={`grid gap-2.5 ${offers.length > 1 ? "sm:grid-cols-2" : "max-w-[460px]"}`}>
+        {offers.map((o) => (
+          <OfferCard key={o.id} botId={botId} offer={o} />
+        ))}
+      </div>
+      {open.length > 1 ? (
+        <div className="flex items-center gap-2">
+          <Btn kind="ghost" size="sm" disabled={busy} onClick={() => void skipAll()}>
+            {t("Not now for these")}
+          </Btn>
+          {err ? <span className="truncate text-[12px] text-vermilion">{err}</span> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}

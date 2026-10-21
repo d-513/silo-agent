@@ -1702,6 +1702,7 @@ const pl: Record<string, string> = {
   "Also chat tools": "Także jako narzędzia czatu",
   "Yes": "Tak",
   "No": "Nie",
+  "Not now for these": "Na razie żadne z tych",
 };
 
 export default pl;

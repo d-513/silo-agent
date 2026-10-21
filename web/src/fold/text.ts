@@ -29,14 +29,26 @@ export const card: Handler = (out, e, key) => {
 
 // offer is a setup the Bot offered in this chat; offerState is the owner
 // answering it.
+// Offers of one run join the group before them, past the offer_setup rows
+// that made them.
 export const offer: Handler = (out, e, key) => {
-  if (e.setupOffer) out.push({ key, type: "offer", offer: e.setupOffer });
+  const o = e.setupOffer;
+  if (!o) return;
+  for (let i = out.length - 1; i >= 0; i--) {
+    const b = out[i];
+    if (b.type === "offers" && b.runId === e.runId) {
+      b.offers = [...b.offers, o];
+      return;
+    }
+    if (!(b.type === "tool" && b.name === "offer_setup")) break;
+  }
+  out.push({ key, type: "offers", runId: e.runId, offers: [o] });
 };
 
 export const offerState: Handler = (out, e) => {
   const o = e.setupOffer;
   if (!o) return;
-  for (const b of out) if (b.type === "offer" && b.offer.id === o.id) b.offer = o;
+  for (const b of out) if (b.type === "offers") b.offers = b.offers.map((x) => (x.id === o.id ? o : x));
 };
 
 // cardState is a card in the chat changing (answered, put away, a setup

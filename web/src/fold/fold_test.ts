@@ -186,3 +186,24 @@ if (!cell || cell.type !== "tool" || cell.filter) throw new Error("the Python ro
 if (cell.calls?.[0].filter?.verdict !== "withheld" || cell.calls[0].filter.original !== "bad page") throw new Error("nested call not marked withheld");
 if (cell.calls?.[1].filter) throw new Error("a clean call was marked");
 if (marked.length !== 2) throw new Error(`a filtered event made a block of its own: ${marked.length}`);
+
+// Offers of one turn are one group, past the offer_setup rows that made
+// them; an answer updates the offer where it is drawn.
+{
+  const offer = (id: string, status = "open") => ({ id, status }) as unknown as NonNullable<Ev["setupOffer"]>;
+  const R = { runId: "r1" };
+  const got = foldEvents([
+    { ...ev("tool", "", "offer_setup"), ...R },
+    { ...ev("tool_result", '{"offered":"Email"}', "offer_setup"), ...R },
+    { ...ev("setup_offer", "a"), ...R, setupOffer: offer("a") },
+    { ...ev("tool", "", "offer_setup"), ...R },
+    { ...ev("tool_result", '{"offered":"Calendar"}', "offer_setup"), ...R },
+    { ...ev("setup_offer", "b"), ...R, setupOffer: offer("b") },
+    ev("setup_state", "b"),
+    { ...ev("setup_state", "a"), setupOffer: offer("a", "done") },
+  ]);
+  const groups = got.filter((b) => b.type === "offers");
+  if (groups.length !== 1 || groups[0].type !== "offers" || groups[0].offers.length !== 2) throw new Error(`offer groups ${JSON.stringify(groups)}`);
+  if (groups[0].offers[0].status !== "done") throw new Error("an answer did not reach its offer");
+}
+console.log("fold offers ok");

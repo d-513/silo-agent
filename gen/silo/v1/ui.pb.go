@@ -6523,7 +6523,9 @@ type ResolveSetupOfferRequest struct {
 	BotId string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
 	Id    string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	// done or skipped.
-	Outcome       string `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	Outcome string `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	// rest also skips every other open offer made in the same turn.
+	Rest          bool `protobuf:"varint,4,opt,name=rest,proto3" json:"rest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6577,6 +6579,13 @@ func (x *ResolveSetupOfferRequest) GetOutcome() string {
 		return x.Outcome
 	}
 	return ""
+}
+
+func (x *ResolveSetupOfferRequest) GetRest() bool {
+	if x != nil {
+		return x.Rest
+	}
+	return false
 }
 
 type ListDashboardRequest struct {
@@ -24492,11 +24501,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x1a:\n" +
 	"\fOptionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"[\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"o\n" +
 	"\x18ResolveSetupOfferRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x18\n" +
-	"\aoutcome\x18\x03 \x01(\tR\aoutcome\"-\n" +
+	"\aoutcome\x18\x03 \x01(\tR\aoutcome\x12\x12\n" +
+	"\x04rest\x18\x04 \x01(\bR\x04rest\"-\n" +
 	"\x14ListDashboardRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\xd0\x02\n" +
 	"\x15ListDashboardResponse\x12,\n" +

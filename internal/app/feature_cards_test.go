@@ -84,48 +84,77 @@ func waitUserTurn(t *testing.T, h *apptest.H, chat, want string) {
 }
 
 // An offer is a card of its own: a catalog entry, with the form's values the
-// Bot filled in. Nothing else can be filled in, and the owner's answer
-// reaches the Bot.
+// Bot filled in. Nothing else can be filled in. The Bot hears a "not now"
+// once the turn's other offers are answered, and a setup at once.
 func TestOfferSetup(t *testing.T) {
 	dummy.Reset()
 	dummy.Script("Test_offer1",
 		memCall("offer_setup", `{"kind":"connector","target":"https://evil.example/mcp"}`),
 		memCall("offer_setup", `{"kind":"connector","target":"email","options":{"imap_host":"evil.example","password":"hunter2"}}`),
 		memCall("offer_setup", `{"kind":"connector","target":"email","why":"to read your mail","options":{"address":"me@example.com","default_mode":"ask","expose_completion":true,"name":"My mail"}}`),
-		dummy.Turn{Text: "ok, later then"},
+		memCall("offer_setup", `{"kind":"connector","target":"calendar"}`),
+		memCall("offer_setup", `{"kind":"connector","target":"github"}`),
+		dummy.Turn{Text: "These would let me read your mail and calendar."},
+		dummy.Turn{Text: "noted"},
+		dummy.Turn{Text: "noted again"},
 	)
 	h := apptest.New(t)
 	id := h.CreateBot("Offerer").GetId()
 	main := h.FirstChat(id)
 	run, _ := h.Send(id, main, "Test_offer1_Input")
 	var results []string
+	said := false
 	for _, ev := range h.WaitRun(run) {
 		switch ev.Kind {
 		case "tool_result":
 			results = append(results, ev.Body)
 		case "assistant", "section":
-			t.Fatalf("the Bot kept talking after its offer: %q", ev.Body)
+			said = true
 		}
 	}
-	if len(results) != 3 || !strings.Contains(results[0], "no connector") || !strings.Contains(results[1], "cannot be filled in") {
+	if len(results) != 5 || !strings.Contains(results[0], "no connector") || !strings.Contains(results[1], "cannot be filled in") {
 		t.Fatalf("results %q", results)
 	}
-	var o db.SetupOffer
-	if err := h.DB.Where("bot_id = ?", id).First(&o).Error; err != nil {
-		t.Fatal(err)
+	if !said {
+		t.Fatal("the Bot could not say what the offers are for")
 	}
-	if o.ChatID != main || o.Status != "open" || o.Label == "" || !strings.Contains(o.ValuesJSON, `"expose_completion":"true"`) || !strings.Contains(o.ValuesJSON, `"address":"me@example.com"`) {
-		t.Fatalf("offer %+v", o)
+	var offers []db.SetupOffer
+	h.DB.Where("bot_id = ?", id).Order("created_at").Find(&offers)
+	if len(offers) != 3 {
+		t.Fatalf("%d offers", len(offers))
 	}
-	if ev, ok := find(h.ChatEvents(main), "setup_offer"); !ok || ev.Body != o.ID {
+	mail, cal, gh := offers[0], offers[1], offers[2]
+	if mail.ChatID != main || mail.Status != "open" || mail.Label == "" || !strings.Contains(mail.ValuesJSON, `"expose_completion":"true"`) || !strings.Contains(mail.ValuesJSON, `"address":"me@example.com"`) {
+		t.Fatalf("offer %+v", mail)
+	}
+	if ev, ok := find(h.ChatEvents(main), "setup_offer"); !ok || ev.Body != mail.ID {
 		t.Fatalf("no offer in the chat: %+v", ev)
 	}
-
-	res, err := h.Client.ResolveSetupOffer(h.Ctx(), connect.NewRequest(&v1.ResolveSetupOfferRequest{BotId: id, Id: o.ID, Outcome: "skipped"}))
-	if err != nil || res.Msg.GetStatus() != "skipped" {
-		t.Fatalf("resolve: %v %+v", err, res)
+	resolve := func(o db.SetupOffer, outcome string, rest bool) {
+		t.Helper()
+		if _, err := h.Client.ResolveSetupOffer(h.Ctx(), connect.NewRequest(&v1.ResolveSetupOfferRequest{BotId: id, Id: o.ID, Outcome: outcome, Rest: rest})); err != nil {
+			t.Fatal(err)
+		}
 	}
-	waitUserTurn(t, h, main, "Not now for **")
+	users := func() int { return len(userBodies(h.ChatEvents(main))) }
+	before := users()
+
+	resolve(cal, "skipped", false)
+	time.Sleep(100 * time.Millisecond)
+	if users() != before {
+		t.Fatal("a single not-now told the Bot while other offers were open")
+	}
+	resolve(mail, "done", false)
+	waitUserTurn(t, h, main, "I set up **"+mail.Label+"**. Not now for **"+cal.Label+"**. Still open: **"+gh.Label+"**.")
+	h.WaitRun(lastRun(h, main))
+
+	resolve(gh, "skipped", true)
+	waitUserTurn(t, h, main, "Not now for **"+gh.Label+"**.")
+}
+
+func lastRun(h *apptest.H, chat string) string {
+	ev, _ := h.FindLastUserEvent(chat)
+	return ev.RunID
 }
 
 // From an automation the question goes to the main chat only when the owner

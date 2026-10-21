@@ -8,7 +8,7 @@ import { rowState, rowVerb } from "./FoldRow";
 import { isBotScratch, PresentFile, QuietPreview } from "./Present";
 import type { ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, toolAction, toolMeta } from "./toolInfo";
-import { OfferCard } from "../setup/OfferCard";
+import { OfferGroup } from "../setup/OfferCard";
 import { ThreadCard } from "./ThreadCard";
 import { ToolInput, ToolResult, ToolRow } from "./ToolRow";
 import { t } from "../i18n.ts";
@@ -43,6 +43,8 @@ function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
   const live = sending && !!b.running;
   const path = asStr(parseToolArgs(b.args).path);
   const failed = !b.running && b.result?.startsWith("error:");
+  // An offer that was made is its card, too.
+  if (b.name === "offer_setup" && !b.running && b.result && !failed) return null;
   // An artifact call that worked is its card: the row would only repeat it.
   if (b.name === "artifact" && !failed && path && cardFor(blocks, path, b.runId)) return null;
   if (b.name === "look" || (b.name === "present" && path && isBotScratch(path))) {
@@ -146,7 +148,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "report") return <SubagentReport text={b.text} agents={b.agents} href={c.agentHref} />;
   if (b.type === "quote") return <Opened text={b.text} source={b.source} quoted={b.quoted} createdAt={b.createdAt} />;
   if (b.type === "card") return <ThreadCard botId={c.botId} card={b.card} />;
-  if (b.type === "offer") return <OfferCard botId={c.botId} offer={b.offer} />;
+  if (b.type === "offers") return <OfferGroup botId={c.botId} offers={b.offers} />;
   if (b.type === "boundary") return <Boundary kind={b.kind} count={b.count} />;
   if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && c.sending} />;
   if (b.type === "tool") return renderTool(b, c);

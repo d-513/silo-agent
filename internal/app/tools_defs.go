@@ -455,7 +455,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "offer_setup",
-			Description: "Offer the owner something to add from Silo's catalog, as a card in this chat with its logo: a library connector (target = its identifier: email, calendar, gmail, github, …), a channel (telegram, whatsapp, discord) or a drive (gdrive, onedrive, dropbox, …). They open Silo's own form with the options you fill in and submit it; you are told when they set it up or skip it. Give only the target for the form's defaults. Offer several in one turn if they fit; your turn ends with the offers.",
+			Description: "Offer the owner something to add from Silo's catalog, as a card in this chat with its logo: a library connector (target = its identifier: email, calendar, gmail, github, …), a channel (telegram, whatsapp, discord) or a drive (gdrive, onedrive, dropbox, …). They open Silo's own form with the options you fill in and submit it; you are told when they set it up or skip it. Give only the target for the form's defaults. Offer several at once when they fit (they show side by side), and say in your message what they are for; then let the owner answer on the cards.",
 			Params: tool.Object(map[string]any{
 				"kind":    map[string]any{"type": "string", "enum": []string{"connector", "channel", "drive"}},
 				"target":  map[string]any{"type": "string", "description": "library identifier, channel adapter or drive provider"},

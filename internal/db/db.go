@@ -612,8 +612,10 @@ type SetupOffer struct {
 	Why        string
 	ValuesJSON string `gorm:"not null;default:'{}'"`
 	Status     string `gorm:"not null;default:'open'"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// Told is set once the Bot has heard what the owner did with it.
+	Told      bool `gorm:"not null;default:false"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // DashboardWidget is one view a Bot keeps on its Dashboard. The Bot writes the
