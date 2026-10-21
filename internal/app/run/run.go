@@ -76,4 +76,8 @@ type Engine interface {
 	LiveRunID(botID, chatID string) string
 	// StopChatLive stops any live run of the conversation and waits for it.
 	StopChatLive(botID, chatID string)
+	// Command runs text typed in a channel conversation as a slash command;
+	// handled is false when it is an ordinary message. reply is what to send
+	// back.
+	Command(botID, chatID, text string) (reply string, handled bool)
 }

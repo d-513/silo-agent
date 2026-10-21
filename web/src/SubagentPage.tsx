@@ -119,6 +119,7 @@ export function SubagentPage({
         chatId={sa.chatId}
         events={stream.events}
         sending={stream.sending}
+        paging={stream}
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
         emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">{t("Starting…")}</p>}

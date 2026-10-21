@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
+import type { RunEvent } from "./gen/silo/v1/ui_pb";
 import { isTransient } from "./errors";
 import { type Ev, quotedFrom } from "./fold";
 import { quoteFromProto } from "./quote/model";
@@ -30,10 +31,27 @@ type Handlers = {
 
 const pings = new Set(["board", "subagents"]);
 
+function toEv(ev: RunEvent): Ev {
+  return {
+    id: ev.id,
+    kind: ev.kind,
+    body: ev.body,
+    tool: ev.tool,
+    runId: ev.runId,
+    at: Date.now(),
+    createdAt: ev.createdAt || undefined,
+    attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
+    quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
+    quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
+  };
+}
+
 // useRunStream is the one reader of a conversation's run log: it replays the
 // persisted events, follows the live bus, reconnects with after_event_id (no
 // duplicates), and resets on a history truncation. Chats and automation logs
-// both render through it.
+// both render through it. A long thread replays its newest turns only:
+// `earlier` says there is more and loadEarlier puts the page before in front
+// (`prepended` counts those events, so the fold keeps its keys).
 export function useRunStream(botId: string | undefined, chatId: string | undefined, handlers: Handlers = {}) {
   const [events, setEvents] = useState<Ev[]>([]);
   const [sending, setSending] = useState(false);
@@ -42,6 +60,11 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   // User messages sent from this tab glide in; history does not animate.
   const sentAt = useRef(0);
   const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  const [earlier, setEarlier] = useState(false);
+  const [prepended, setPrepended] = useState(0);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const first = useRef<string | undefined>(undefined);
+  first.current = events[0]?.id;
   const on = useRef(handlers);
   on.current = handlers;
 
@@ -61,6 +84,8 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
     const seen = new Set<string>();
     setEvents([]);
     setSending(false);
+    setEarlier(false);
+    setPrepended(0);
     const push = (ev: Ev) => {
       setEvents((xs) => {
         const next = [...xs, ev];
@@ -80,6 +105,10 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               if (seen.has(ev.id)) continue;
               seen.add(ev.id);
               after = ev.id;
+            }
+            if (ev.kind === "earlier") {
+              if (!dead) setEarlier(true);
+              continue;
             }
             if (pings.has(ev.kind)) {
               on.current.onPing?.(ev.kind);
@@ -103,6 +132,8 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               // cached events and replay from scratch.
               setEvents([]);
               setSending(false);
+              setEarlier(false);
+              setPrepended(0);
               setNonce((n) => n + 1);
               return;
             }
@@ -111,20 +142,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
               const sid = ev.id;
               setFresh((xs) => new Set(xs).add(sid));
             }
-            if (!dead) {
-              push({
-                id: ev.id,
-                kind: ev.kind,
-                body: ev.body,
-                tool: ev.tool,
-                runId: ev.runId,
-                at: Date.now(),
-                createdAt: ev.createdAt || undefined,
-                attachments: ev.attachments.map((a) => ({ name: a.name, path: a.path, size: Number(a.size) })),
-                quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
-                quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
-              });
-            }
+            if (!dead) push(toEv(ev));
           }
         } catch (e) {
           if (!dead) setSending(false);
@@ -153,5 +171,24 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
     setNonce((n) => n + 1);
   }, []);
 
-  return { events, sending, setSending, usage, fresh, markSent, resync };
+  // loadEarlier puts the page before the oldest loaded event in front.
+  const loadEarlier = useCallback(async () => {
+    const before = first.current;
+    if (!botId || !chatId || !before || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const page = await ui.listChatEvents({ botId, chatId, beforeEventId: before });
+      const older = page.events.map(toEv);
+      setEvents((xs) => (xs[0]?.id === before ? [...older, ...xs] : xs));
+      setPrepended((n) => n + older.length);
+      setEarlier(page.more);
+    } catch (e) {
+      // The anchor went (a wipe or an edit elsewhere): start over.
+      if (!isTransient(e)) resync();
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }, [botId, chatId, loadingEarlier, resync]);
+
+  return { events, sending, setSending, usage, fresh, markSent, resync, earlier, prepended, loadEarlier, loadingEarlier };
 }

@@ -175,6 +175,14 @@ func replayEvents(evs []db.RunEvent) replayed {
 	// message: the run that reads a second one appends it as a turn of its
 	// own, and replay must give the same messages.
 	fold := -1
+	// A /clear starts the context over: nothing before it is read, not even
+	// a compaction's summary.
+	for i := len(evs) - 1; i >= 0; i-- {
+		if evs[i].Kind == contextClearedKind {
+			evs = evs[i+1:]
+			break
+		}
+	}
 	if cut, ok := cutAtCompaction(evs); ok {
 		text := compactionText(cut.summary)
 		if cut.midTask {

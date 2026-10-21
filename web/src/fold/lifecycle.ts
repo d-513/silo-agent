@@ -6,6 +6,13 @@ import { t } from "../i18n.ts";
 // Handlers for what happens to the run itself: compaction, its end, artifact
 // cards, and errors.
 
+// A /clear (the context starts over here) or a /wipe (messages were deleted
+// for good; the body is how many).
+export const boundary: Handler = (out, e, key) => {
+  closeThinking(out, e.at);
+  out.push({ key, type: "boundary", kind: e.kind === "wiped" ? "wiped" : "cleared", count: Number(e.body) || 0, createdAt: e.createdAt });
+};
+
 export const compacting: Handler = (out, e, key) => {
   closeThinking(out, e.at);
   out.push({ key, type: "compaction", text: "", reason: e.tool, running: true, runId: e.runId });

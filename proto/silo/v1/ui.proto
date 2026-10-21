@@ -130,6 +130,12 @@ service UI {
   rpc Send(SendRequest) returns (SendResponse);
   rpc StopRun(StopRunRequest) returns (StopRunResponse);
   rpc StreamRun(StreamRunRequest) returns (stream RunEvent);
+  // ListChatEvents is a page of a chat's thread before an event: StreamRun
+  // replays only the newest turns and opens with an "earlier" event when
+  // there is more.
+  rpc ListChatEvents(ListChatEventsRequest) returns (ListChatEventsResponse);
+  // ListCommands is the slash commands a chat's composer offers.
+  rpc ListCommands(ListCommandsRequest) returns (ListCommandsResponse);
   rpc EditMessage(EditMessageRequest) returns (SendResponse);
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
   rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
@@ -1469,11 +1475,58 @@ message SendRequest {
   string model = 7;
   string thinking = 8;
   repeated Quote quotes = 9;
+  // confirmed re-sends a slash command that answered with confirm.
+  bool confirmed = 10;
 }
 
 message SendResponse {
   string run_id = 1;
   string chat_id = 2;
+  // A text that was a slash command ran it instead of starting a run: the
+  // command's name, what it says back, and (for one that destroys something)
+  // the question to ask before sending again with confirmed.
+  string command = 3;
+  string notice = 4;
+  string confirm = 5;
+  // new_chat: the command asks the client to open an empty new chat.
+  bool new_chat = 6;
+  // value is the command's result for a client that words it itself: the
+  // model or thinking level now set, the new title, how many messages a wipe
+  // takes, "empty" for a /clear with nothing to clear, "idle" for a /stop
+  // with nothing running, "saved/updated/forgotten" for /remember.
+  string value = 7;
+}
+
+message Command {
+  string name = 1;
+  // How its argument reads in the menu ("[model]"), empty for none.
+  string args = 2;
+  string summary = 3;
+  // It asks before it acts.
+  bool confirm = 4;
+  // It also works from a channel conversation.
+  bool channel = 5;
+}
+
+message ListCommandsRequest {
+  string bot_id = 1;
+}
+
+message ListCommandsResponse {
+  repeated Command commands = 1;
+}
+
+message ListChatEventsRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  // The oldest event the client has; the page is what came before it.
+  string before_event_id = 3;
+}
+
+message ListChatEventsResponse {
+  repeated RunEvent events = 1;
+  // There is more before this page.
+  bool more = 2;
 }
 
 message StopRunRequest {

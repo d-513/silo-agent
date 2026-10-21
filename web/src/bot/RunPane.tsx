@@ -1,8 +1,9 @@
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
-import { Composer } from "../composer/Composer";
+import { useQuery } from "@connectrpc/connect-query";
+import { Composer, type Said } from "../composer/Composer";
 import { fail } from "../errors";
-import type { Bot, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
+import { UI, type Bot, type Chat, type Command, type ModelOption } from "../gen/silo/v1/ui_pb";
 import type { AgentLink } from "../links";
 import { SubagentTray } from "../SubagentTray";
 import { Taskboard } from "../Taskboard";
@@ -11,6 +12,8 @@ import type { useRunStream } from "../useRunStream";
 import type { useSubagents } from "../useSubagents";
 import type { ChatPick, RunActions } from "./runActions";
 import type { ComposerDraft } from "./useComposerDraft";
+
+const none: Command[] = [];
 
 // The chat's working area: the shared taskboard, the thread, the tray of
 // subagents, and the composer.
@@ -28,6 +31,8 @@ export function RunPane({
   subs,
   draft,
   actions,
+  said,
+  setSaid,
   waitingRuns,
   agentHref,
   onInspectArtifact,
@@ -47,6 +52,8 @@ export function RunPane({
   subs: ReturnType<typeof useSubagents>;
   draft: ComposerDraft;
   actions: RunActions;
+  said: Said | null;
+  setSaid: (s: Said | null) => void;
   // Runs of subagents that are paused on an approval.
   waitingRuns: Set<string>;
   agentHref: (name: string) => AgentLink | undefined;
@@ -55,6 +62,7 @@ export function RunPane({
   onError: (message: string) => void;
 }) {
   const chat = chats.find((c) => c.id === chatId);
+  const commands = useQuery(UI.method.listCommands, { botId: id }, { staleTime: Infinity }).data?.commands ?? none;
   // The empty chat shows what was picked for it; the first send carries it.
   const picked = !chatId && fresh ? pick : undefined;
   return (
@@ -84,6 +92,7 @@ export function RunPane({
         onDeleteMessage={(eid) => void actions.deleteMessage(eid)}
         onDivergeChat={(eid) => void actions.divergeChat(eid)}
         agentHref={agentHref}
+        paging={run}
       />
       {chatId ? (
         <SubagentTray
@@ -128,6 +137,10 @@ export function RunPane({
         voice={voice}
         onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
         onCollect={() => ui.collectMemories({ botId: id, chatId: chatId! })}
+        commands={commands}
+        onCommand={actions.sendCommand}
+        said={said}
+        onDismissSaid={() => setSaid(null)}
       />
     </>
   );

@@ -1,5 +1,5 @@
 import { Upload } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import type { CollectMemoriesResponse, ModelOption } from "../gen/silo/v1/ui_pb";
 import type { Usage } from "../useRunStream";
 import { AttachmentChips, type Attachment } from "./AttachmentChips";
@@ -7,13 +7,16 @@ import { QuoteChips } from "../quote/QuoteChips";
 import type { DraftQuote } from "../quote/model";
 import { DictationStrip } from "./DictationStrip";
 import { placeholderFor } from "./model";
-import { Notice } from "./Notice";
+import { CommandNotice, Notice, type Said } from "./Notice";
+import { completion, matchCommands, needsArgs, slashQuery, type SlashCommand } from "./slash.ts";
+import { SlashMenu } from "./SlashMenu";
 import { Toolbar } from "./Toolbar";
 import { useComposerInput } from "./useComposerInput";
 import { useDictationInput } from "./useDictationInput";
 import { t } from "../i18n.ts";
 
 export type { Attachment } from "./AttachmentChips";
+export type { Said } from "./Notice";
 
 export interface ComposerProps {
   text: string;
@@ -47,6 +50,13 @@ export interface ComposerProps {
   onTranscribe?: (audio: Uint8Array, mime: string) => Promise<string>;
   // onCollect runs the memory collector over this chat now.
   onCollect?: () => Promise<CollectMemoriesResponse>;
+  // commands are the slash commands the menu offers; onCommand runs one
+  // picked from it.
+  commands?: SlashCommand[];
+  onCommand?: (text: string) => void;
+  // said is what the last command said back, or the question it asks.
+  said?: Said | null;
+  onDismissSaid?: () => void;
 }
 
 // The message box: attachments, the textarea and its toolbar, with drag-and-drop
@@ -77,6 +87,10 @@ export function Composer({
   voice,
   onTranscribe,
   onCollect,
+  commands = [],
+  onCommand,
+  said,
+  onDismissSaid,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +108,42 @@ export function Composer({
     onStop,
     onAttach,
   });
+
+  // The slash menu: open while a bare "/name" is typed, until Esc.
+  const query = slashQuery(text);
+  const [closedFor, setClosedFor] = useState<string | null>(null);
+  const [active, setActive] = useState(0);
+  const items = query === null || query === closedFor ? [] : matchCommands(commands, query);
+  const pickCommand = (c: SlashCommand, run: boolean) => {
+    if (run && !needsArgs(c) && onCommand) {
+      setText("");
+      onCommand(`/${c.name}`);
+      return;
+    }
+    setText(completion(c));
+    textareaRef.current?.focus();
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (items.length > 0) {
+      const at = Math.min(active, items.length - 1);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((at + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length);
+        return;
+      }
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing)) {
+        e.preventDefault();
+        pickCommand(items[at], e.key === "Enter");
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setClosedFor(query);
+        return;
+      }
+    }
+    input.onKeyDown(e);
+  };
 
   return (
     <div className="shrink-0 px-4 pt-1 pb-4 max-wide:pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -114,6 +164,10 @@ export function Composer({
             </div>
           )}
 
+          {items.length > 0 && <SlashMenu items={items} active={Math.min(active, items.length - 1)} onHover={setActive} onPick={(c) => pickCommand(c, true)} />}
+
+          {said && <CommandNotice said={said} onDismiss={() => onDismissSaid?.()} />}
+
           {quotes.length > 0 && <QuoteChips quotes={quotes} onRemove={(id) => onRemoveQuote?.(id)} />}
 
           {atts.length > 0 && <AttachmentChips atts={atts} onRemove={onRemoveAtt} />}
@@ -128,8 +182,11 @@ export function Composer({
             ref={textareaRef}
             rows={1}
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={input.onKeyDown}
+            onChange={(e) => {
+              setText(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onKeyDown}
             onPaste={input.onPaste}
             placeholder={placeholderFor(ready, botName)}
             disabled={!ready}

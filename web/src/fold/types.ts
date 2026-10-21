@@ -133,6 +133,9 @@ export type Block =
   // `running` while the summary is being written; empty text once settled
   // means it failed or was stopped.
   | CompactionBlock
+  // A slash command's mark in the thread: the context started over here
+  // (/clear), or `count` messages were deleted for good (/wipe).
+  | { key: string; type: "boundary"; kind: "cleared" | "wiped"; count: number; createdAt?: string }
   | ArtifactBlock
   // A later emit of a card further up: the card shows it, this row says so.
   | { key: string; type: "artifact_update"; artifactId: string; title: string; version: number; runId?: string };

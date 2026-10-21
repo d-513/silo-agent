@@ -105,11 +105,12 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		return collectResult{Note: "nothing new"}, nil
 	}
 	// A compaction is left out: the collector reads the turns themselves,
-	// not a summary of what it may already have read.
+	// not a summary of what it may already have read. So is a /clear: what
+	// came before it is still the conversation's to remember.
 	var evs []db.RunEvent
 	a.DB.Joins("JOIN runs ON runs.id = run_events.run_id").
 		Where("runs.chat_id = ? AND run_events.seq > ? AND run_events.seq <= ? AND run_events.kind NOT IN ?",
-			ch.ID, ch.MemorySeq, maxSeq, append([]string{compactionKind, compactingKind}, streamedKinds...)).
+			ch.ID, ch.MemorySeq, maxSeq, append([]string{compactionKind, compactingKind, contextClearedKind, wipedKind}, streamedKinds...)).
 		Order("run_events.seq").Find(&evs)
 
 	if !hasUserText(historyFromEvents(evs)) {

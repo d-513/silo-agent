@@ -328,6 +328,7 @@ export function AutomationLog({
         events={stream.events}
         sending={stream.sending}
         userAs="run"
+        paging={stream}
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
         emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">{t("No runs yet. Run it now, or wait for its schedule.")}</p>}

@@ -1,3 +1,4 @@
+import type { Said } from "../composer/Composer";
 import { createContext, useContext } from "react";
 import type { Artifact } from "../Artifact";
 import type { Bot, BotConnector, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
@@ -44,6 +45,9 @@ export type BotPageState = {
   subs: ReturnType<typeof useSubagents>;
   draft: ComposerDraft;
   actions: RunActions;
+  // What the last slash command said back in the composer.
+  said: Said | null;
+  setSaid: (s: Said | null) => void;
   // The open chat (or one of its subagents) is paused on an approval.
   waiting: boolean;
   waitingRuns: Set<string>;

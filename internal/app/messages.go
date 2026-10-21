@@ -293,22 +293,39 @@ func (a *App) CompactChat(ctx context.Context, req *connect.Request[v1.CompactCh
 	if err := writableChat(ch); err != nil {
 		return nil, err
 	}
+	runID, err := a.compactChat(b.ID, ch.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.CompactChatResponse{RunId: runID}), nil
+}
+
+// compactChat starts a manual compaction run, refused while a reply runs,
+// for a channel conversation, or when there is nothing to summarize.
+func (a *App) compactChat(botID, chatID string) (string, error) {
+	ch, err := a.chatRow(botID, chatID)
+	if err != nil {
+		return "", err
+	}
+	if err := writableChat(ch); err != nil {
+		return "", err
+	}
 	if ch.ChannelID != "" {
 		// Its replies must go back over the channel; channel conversations
 		// compact automatically inside their runs.
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("channel conversations compact automatically"))
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("channel conversations compact automatically"))
 	}
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	if a.LiveRunID(b.ID, ch.ID) != "" {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
+	if a.LiveRunID(botID, ch.ID) != "" {
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
 	}
 	if len(a.historyFromDB(ch.ID)) < 2 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to compact yet"))
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to compact yet"))
 	}
-	runID, err := a.StartRun(run.Request{BotID: b.ID, ChatID: ch.ID, Compact: true})
+	runID, err := a.StartRun(run.Request{BotID: botID, ChatID: ch.ID, Compact: true})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		return "", connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-	return connect.NewResponse(&v1.CompactChatResponse{RunId: runID}), nil
+	return runID, nil
 }

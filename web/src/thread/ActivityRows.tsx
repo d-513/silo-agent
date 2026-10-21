@@ -1,4 +1,4 @@
-import { Lightbulb, Minimize2, ShieldCheck, ShieldX } from "lucide-react";
+import { Eraser, Lightbulb, Minimize2, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
 import type { Decision, ReceiptBlock } from "../fold";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
@@ -79,5 +79,23 @@ export function Compaction({ text, reason, running }: { text: string; reason: st
         </div>
       ) : null}
     </FoldRow>
+  );
+}
+
+// Boundary marks where a slash command changed the conversation: /clear (the
+// Bot's context starts over below it; everything above stays) or /wipe
+// (messages were deleted for good).
+export function Boundary({ kind, count }: { kind: "cleared" | "wiped"; count: number }) {
+  const label = kind === "cleared" ? t("Context cleared") : t("{{count}} messages wiped", { count });
+  const hint = kind === "cleared" ? t("The Bot does not see anything above this line.") : t("Deleted for good by you.");
+  return (
+    <div className="flex items-center gap-3 pt-4 pb-1" title={hint}>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+        {kind === "cleared" ? <Eraser size={12} /> : <Trash2 size={12} />}
+        {label}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+    </div>
   );
 }

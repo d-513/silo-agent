@@ -15,7 +15,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
   // Until one is picked, the newest conversation is open.
   const [picked, setChatId] = useState("");
   const chatId = picked || (chats[0]?.id ?? "");
-  const { events } = useRunStream(botId, chatId || undefined);
+  const stream = useRunStream(botId, chatId || undefined);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/30 backdrop-blur-xs p-4" onClick={onClose}>
@@ -63,7 +63,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
 
         <div className="flex min-h-0 flex-1 flex-col bg-canvas">
           {chatId ? (
-            <Thread botId={botId} chatId={chatId} events={events} sending={false} />
+            <Thread botId={botId} chatId={chatId} events={stream.events} sending={false} paging={stream} />
           ) : (
             <div className="flex h-full items-center justify-center text-ink-3 text-[13px]">
               {t("No conversations recorded yet.")}

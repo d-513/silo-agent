@@ -203,6 +203,10 @@ const (
 	UIStopRunProcedure = "/silo.v1.UI/StopRun"
 	// UIStreamRunProcedure is the fully-qualified name of the UI's StreamRun RPC.
 	UIStreamRunProcedure = "/silo.v1.UI/StreamRun"
+	// UIListChatEventsProcedure is the fully-qualified name of the UI's ListChatEvents RPC.
+	UIListChatEventsProcedure = "/silo.v1.UI/ListChatEvents"
+	// UIListCommandsProcedure is the fully-qualified name of the UI's ListCommands RPC.
+	UIListCommandsProcedure = "/silo.v1.UI/ListCommands"
 	// UIEditMessageProcedure is the fully-qualified name of the UI's EditMessage RPC.
 	UIEditMessageProcedure = "/silo.v1.UI/EditMessage"
 	// UIDeleteMessageProcedure is the fully-qualified name of the UI's DeleteMessage RPC.
@@ -511,6 +515,12 @@ type UIClient interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
+	// ListChatEvents is a page of a chat's thread before an event: StreamRun
+	// replays only the newest turns and opens with an "earlier" event when
+	// there is more.
+	ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error)
+	// ListCommands is the slash commands a chat's composer offers.
+	ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error)
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
@@ -1144,6 +1154,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIStreamRunProcedure,
 			connect.WithSchema(uIMethods.ByName("StreamRun")),
+			connect.WithClientOptions(opts...),
+		),
+		listChatEvents: connect.NewClient[v1.ListChatEventsRequest, v1.ListChatEventsResponse](
+			httpClient,
+			baseURL+UIListChatEventsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListChatEvents")),
+			connect.WithClientOptions(opts...),
+		),
+		listCommands: connect.NewClient[v1.ListCommandsRequest, v1.ListCommandsResponse](
+			httpClient,
+			baseURL+UIListCommandsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListCommands")),
 			connect.WithClientOptions(opts...),
 		),
 		editMessage: connect.NewClient[v1.EditMessageRequest, v1.SendResponse](
@@ -1781,6 +1803,8 @@ type uIClient struct {
 	send                     *connect.Client[v1.SendRequest, v1.SendResponse]
 	stopRun                  *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun                *connect.Client[v1.StreamRunRequest, v1.RunEvent]
+	listChatEvents           *connect.Client[v1.ListChatEventsRequest, v1.ListChatEventsResponse]
+	listCommands             *connect.Client[v1.ListCommandsRequest, v1.ListCommandsResponse]
 	editMessage              *connect.Client[v1.EditMessageRequest, v1.SendResponse]
 	deleteMessage            *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
 	divergeChat              *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
@@ -2292,6 +2316,16 @@ func (c *uIClient) StopRun(ctx context.Context, req *connect.Request[v1.StopRunR
 // StreamRun calls silo.v1.UI.StreamRun.
 func (c *uIClient) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error) {
 	return c.streamRun.CallServerStream(ctx, req)
+}
+
+// ListChatEvents calls silo.v1.UI.ListChatEvents.
+func (c *uIClient) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
+	return c.listChatEvents.CallUnary(ctx, req)
+}
+
+// ListCommands calls silo.v1.UI.ListCommands.
+func (c *uIClient) ListCommands(ctx context.Context, req *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error) {
+	return c.listCommands.CallUnary(ctx, req)
 }
 
 // EditMessage calls silo.v1.UI.EditMessage.
@@ -2872,6 +2906,12 @@ type UIHandler interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
+	// ListChatEvents is a page of a chat's thread before an event: StreamRun
+	// replays only the newest turns and opens with an "earlier" event when
+	// there is more.
+	ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error)
+	// ListCommands is the slash commands a chat's composer offers.
+	ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error)
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
@@ -3501,6 +3541,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIStreamRunProcedure,
 		svc.StreamRun,
 		connect.WithSchema(uIMethods.ByName("StreamRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListChatEventsHandler := connect.NewUnaryHandler(
+		UIListChatEventsProcedure,
+		svc.ListChatEvents,
+		connect.WithSchema(uIMethods.ByName("ListChatEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListCommandsHandler := connect.NewUnaryHandler(
+		UIListCommandsProcedure,
+		svc.ListCommands,
+		connect.WithSchema(uIMethods.ByName("ListCommands")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIEditMessageHandler := connect.NewUnaryHandler(
@@ -4219,6 +4271,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStopRunHandler.ServeHTTP(w, r)
 		case UIStreamRunProcedure:
 			uIStreamRunHandler.ServeHTTP(w, r)
+		case UIListChatEventsProcedure:
+			uIListChatEventsHandler.ServeHTTP(w, r)
+		case UIListCommandsProcedure:
+			uIListCommandsHandler.ServeHTTP(w, r)
 		case UIEditMessageProcedure:
 			uIEditMessageHandler.ServeHTTP(w, r)
 		case UIDeleteMessageProcedure:
@@ -4744,6 +4800,14 @@ func (UnimplementedUIHandler) StopRun(context.Context, *connect.Request[v1.StopR
 
 func (UnimplementedUIHandler) StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StreamRun is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListChatEvents is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListCommands is not implemented"))
 }
 
 func (UnimplementedUIHandler) EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error) {

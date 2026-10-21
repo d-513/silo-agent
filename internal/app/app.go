@@ -27,6 +27,7 @@ import (
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/changes"
 	"silo.agent/internal/app/channel"
+	"silo.agent/internal/app/command"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/app/dashboard"
 	"silo.agent/internal/app/drive"
@@ -220,6 +221,8 @@ type App struct {
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
+	// Slash is the slash commands a human types in a conversation.
+	Slash *command.Registry
 }
 
 func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
@@ -270,6 +273,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Accounts = account.New(a.DB, a.cfg, a)
 	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice, a.Accounts.OIDCRedirectURL)
 	a.Tools = a.newTools()
+	a.Slash = command.New(a.commandDefs())
 	a.recoverOrphans()
 	a.Connectors.Init()
 	a.Connectors.ReconcileStdio()

@@ -1,3 +1,4 @@
+import type { Said } from "../composer/Composer";
 import { Link, Outlet, useMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
@@ -71,6 +72,8 @@ export function BotPage() {
   const chatSide = onChatSide(tab);
   const navigate = useNavigate();
   const [actErr, setActErr] = useState("");
+  const [said, setSaid] = useState<Said | null>(null);
+  useEffect(() => setSaid(null), [id, chatId]);
   const { bot, loadErr, pending, reloadApprovals } = useBotLive(id, chatId);
   const { chats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId, fresh }, setActErr);
   const draft = useComposerDraft(id, bot?.workerConnected);
@@ -219,7 +222,22 @@ export function BotPage() {
         run,
         subs,
         draft,
-        actions: runActions({ id, chatId, fresh, pick, setPick, draft, run, onError: setActErr, openChat: (cid) => void navigate(chatLink(id, cid)) }),
+        actions: runActions({
+          id,
+          chatId,
+          fresh,
+          pick,
+          setPick,
+          draft,
+          run,
+          onError: setActErr,
+          openChat: (cid) => void navigate(chatLink(id, cid)),
+          openNew: () => void navigate(newChatLink(id)),
+          onSaid: setSaid,
+          showCommands: () => draft.setText("/"),
+        }),
+        said,
+        setSaid,
         waiting,
         waitingRuns,
         agentsBusy,

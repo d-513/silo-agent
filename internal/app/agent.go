@@ -84,7 +84,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	// Tracked before the goroutine starts, so a caller that releases the
 	// conversation lock right after this already sees the run as live.
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
-	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: req.ChatID}
+	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
 	if req.Origin != nil && req.Origin.Automation != nil {
 		lr.pySession = runID
 	}

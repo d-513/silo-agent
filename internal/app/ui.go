@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/command"
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/workspace"
@@ -300,6 +301,14 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text required"))
 	}
 	chatID := req.Msg.GetChatId()
+	// A slash command runs instead of a message; one sent with files or
+	// quotes is a message (nothing would carry them).
+	if p := a.Slash.Parse(text); len(ex.Files) == 0 && len(ex.Quotes) == 0 {
+		if p.Def != nil {
+			return a.sendCommand(ctx, b, chatID, p, req.Msg.GetConfirmed())
+		}
+		text = p.Text
+	}
 	var ch *db.Chat
 	made := false
 	if chatID == "" && req.Msg.GetNewChat() {
@@ -338,6 +347,33 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return connect.NewResponse(&v1.SendResponse{RunId: runID, ChatId: ch.ID}), nil
+}
+
+// sendCommand runs a command typed in a chat's composer.
+func (a *App) sendCommand(ctx context.Context, b *db.Bot, chatID string, p command.Parsed, confirmed bool) (*connect.Response[v1.SendResponse], error) {
+	out := &v1.SendResponse{Command: p.Def.Name}
+	if chatID != "" {
+		ch, err := a.ownChat(ctx, b.ID, chatID)
+		if err != nil {
+			return nil, err
+		}
+		if err := writableChat(ch); err != nil {
+			return nil, err
+		}
+	} else if p.Def.Name != "new" && p.Def.Name != "help" {
+		// The New chat page has no conversation to act on yet.
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("/"+p.Def.Name+" needs a chat; send a message first"))
+	}
+	res, err := a.runCommand(ctx, p.Def, command.Call{BotID: b.ID, ChatID: chatID, Args: p.Args, Surface: command.Web, Confirmed: confirmed})
+	if err != nil {
+		return nil, err
+	}
+	out.Notice, out.Confirm, out.RunId, out.NewChat, out.Value = res.Notice, res.Confirm, res.RunID, res.NewChat, res.Value
+	out.ChatId = chatID
+	if res.ChatID != "" {
+		out.ChatId = res.ChatID
+	}
+	return connect.NewResponse(out), nil
 }
 
 const maxAttachments = 20
@@ -402,22 +438,32 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	// Replay-only events are the model's context, not the thread.
 	q := a.DB.Where("run_id IN (?) AND kind NOT IN ?", runQ, internalKinds)
 	// A reconnect reads only what came after the client's last event. An
-	// anchor that is gone (an edit truncated it) replays everything, so the
-	// client does not stall on an open run.
+	// anchor that is gone (an edit truncated it) replays the newest page
+	// again, so the client does not stall on an open run.
+	anchored := false
 	if after != "" {
 		var anchor db.RunEvent
 		if a.DB.Select("seq").Where("id = ? AND run_id IN (?)", after, runQ).Limit(1).Find(&anchor).RowsAffected > 0 {
 			q = q.Where("seq > ?", anchor.Seq)
-			after = ""
+			anchored = true
+		}
+	}
+	if !anchored && chatID != "" {
+		// A first look gets the newest turns; older ones are a page away.
+		if start, more := a.threadPage(runQ, 0); more {
+			q = q.Where("seq >= ?", start)
+			if err := stream.Send(&v1.RunEvent{ChatId: chatID, Kind: earlierKind}); err != nil {
+				return err
+			}
 		}
 	}
 	if err := q.Order("seq").Find(&rows).Error; err != nil {
 		return err
 	}
 	seen := map[string]struct{}{}
-	for _, r := range eventsAfter(rows, after) {
-		seen[r.ID] = struct{}{}
-		if err := stream.Send(&v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(decodeUserMeta(r.Meta).Files), Quotes: v1Quotes(decodeUserMeta(r.Meta).Quotes), Quoted: quote.Proto(&r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}); err != nil {
+	for i := range rows {
+		seen[rows[i].ID] = struct{}{}
+		if err := stream.Send(threadEvent(&rows[i], chatID)); err != nil {
 			return err
 		}
 	}
@@ -452,16 +498,65 @@ func clipDesc(s string) string {
 	return textx.TruncateUTF8(strings.TrimSpace(s), descMax)
 }
 
-func eventsAfter(rows []db.RunEvent, after string) []db.RunEvent {
-	if after == "" {
-		return rows
+// threadEvent is a persisted event as a viewer receives it.
+func threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
+	meta := decodeUserMeta(r.Meta)
+	return &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+}
+
+// A thread is sent a page at a time: the newest pageTurns of the human's
+// messages and everything after, then the same again before that on request.
+// A conversation that runs for months (a Bot's main chat) would otherwise be
+// replayed whole every time it is opened.
+const pageTurns = 20
+
+// earlierKind is a transient event StreamRun opens with when the thread has
+// more before what it replays.
+const earlierKind = "earlier"
+
+// threadPage is where the page of the thread before beforeSeq (0: the end)
+// starts, and whether anything comes before it. A page starts on a human
+// message, so it never opens in the middle of a turn.
+func (a *App) threadPage(runQ any, beforeSeq int64) (start int64, more bool) {
+	q := a.DB.Model(&db.RunEvent{}).Select("seq").Where("run_id IN (?) AND kind = ?", runQ, "user")
+	if beforeSeq > 0 {
+		q = q.Where("seq < ?", beforeSeq)
 	}
+	var seqs []int64
+	q.Order("seq DESC").Limit(pageTurns).Pluck("seq", &seqs)
+	if len(seqs) < pageTurns {
+		return 0, false
+	}
+	start = seqs[len(seqs)-1]
+	var n int64
+	a.DB.Model(&db.RunEvent{}).Where("run_id IN (?) AND kind NOT IN ? AND seq < ?", runQ, internalKinds, start).Limit(1).Count(&n)
+	return start, n > 0
+}
+
+// ListChatEvents is the page of a thread before the oldest event the client
+// has.
+func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
+	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	if err != nil {
+		return nil, err
+	}
+	chatID := req.Msg.GetChatId()
+	if _, err := a.ownChat(ctx, b.ID, chatID); err != nil {
+		return nil, err
+	}
+	runQ := a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", b.ID, chatID)
+	var anchor db.RunEvent
+	if a.DB.Select("seq").Where("id = ? AND run_id IN (?)", req.Msg.GetBeforeEventId(), runQ).Limit(1).Find(&anchor).RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("that message is gone; reload the chat"))
+	}
+	start, more := a.threadPage(runQ, anchor.Seq)
+	var rows []db.RunEvent
+	if err := a.DB.Where("run_id IN (?) AND kind NOT IN ? AND seq >= ? AND seq < ?", runQ, internalKinds, start, anchor.Seq).Order("seq").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := &v1.ListChatEventsResponse{More: more}
 	for i := range rows {
-		if rows[i].ID == after {
-			return rows[i+1:]
-		}
+		out.Events = append(out.Events, threadEvent(&rows[i], chatID))
 	}
-	// The anchor was truncated by an edit/delete. Replay everything so the
-	// client does not stall on an open run.
-	return rows
+	return connect.NewResponse(out), nil
 }

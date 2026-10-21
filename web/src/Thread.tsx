@@ -1,5 +1,5 @@
-import { ArrowDown } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import type { Artifact } from "./Artifact";
 import type { AgentLink } from "./links";
 import { foldEvents, type Attachment, type Block, type Ev, type Quote } from "./fold";
@@ -10,6 +10,9 @@ import { useConnectorMarks } from "./thread/toolIcons";
 import { asStr, parseToolArgs } from "./thread/toolInfo";
 import { useStickyScroll } from "./thread/useStickyScroll";
 import { t } from "./i18n.ts";
+
+// Paging is what useRunStream says about the thread's older pages.
+export type Paging = { earlier: boolean; prepended: number; loadingEarlier: boolean; loadEarlier: () => Promise<void> };
 
 // One-line rows (as opposed to bubbles, replies and cards).
 function isActivity(b: Block) {
@@ -42,6 +45,7 @@ export function Thread({
   emptyState,
   userAs = "bubble",
   agentHref,
+  paging,
 }: {
   botId: string;
   botName?: string;
@@ -64,10 +68,25 @@ export function Thread({
   userAs?: "bubble" | "run";
   // Links a subagent named in a wake report to its page.
   agentHref?: (name: string) => AgentLink | undefined;
+  // Older pages of a long thread, loaded on request.
+  paging?: Paging;
 }) {
   const marks = useConnectorMarks(botId);
-  const blocks = foldEvents(events);
+  const blocks = foldEvents(events, -(paging?.prepended ?? 0));
   const scroll = useStickyScroll({ chatId, events, sending, fresh, blocks });
+  // A page put in front keeps what the reader was looking at where it was.
+  const fromBottom = useRef<number | null>(null);
+  const prepended = paging?.prepended ?? 0;
+  useLayoutEffect(() => {
+    const el = scroll.containerRef.current;
+    if (el && fromBottom.current !== null) el.scrollTop = el.scrollHeight - fromBottom.current;
+    fromBottom.current = null;
+  }, [prepended, scroll.containerRef]);
+  const showEarlier = () => {
+    const el = scroll.containerRef.current;
+    if (el) fromBottom.current = el.scrollHeight - el.scrollTop;
+    void paging?.loadEarlier();
+  };
   let lastUser: Extract<Block, { type: "user" }> | undefined;
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i];
@@ -137,6 +156,19 @@ export function Thread({
       className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6"
     >
       <div ref={scroll.innerRef} className="mx-auto flex max-w-[720px] flex-col">
+        {paging?.earlier && (
+          <div className="mb-4 flex justify-center">
+            <button
+              type="button"
+              onClick={showEarlier}
+              disabled={paging.loadingEarlier}
+              className="flex h-8 items-center gap-1.5 rounded-control px-3 text-[12.5px] font-medium text-ink-2 transition-colors duration-[160ms] ease-quiet hover:bg-well hover:text-ink disabled:opacity-60"
+            >
+              <ArrowUp size={13} />
+              <span>{paging.loadingEarlier ? t("Loading…") : t("Show earlier messages")}</span>
+            </button>
+          </div>
+        )}
         {blocks.length === 0 && !sending && emptyState}
         {blocks.length === 0 && !sending && !emptyState && <EmptyThread botName={botName} botCrest={botCrest} onSelectPrompt={onSelectPrompt} />}
         {rows}

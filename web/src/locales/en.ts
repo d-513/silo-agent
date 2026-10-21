@@ -48,6 +48,12 @@ const en: Record<string, string> = {
     "Removes the account with its {{count}} Bots, their files and its personal skills. This cannot be undone.",
   "Left as they are: {{list}}._one": "Left as it is: {{list}}.",
   "Left as they are: {{list}}._other": "Left as they are: {{list}}.",
+  "Wiped {{count}} messages._one": "Wiped {{count}} message.",
+  "Wiped {{count}} messages._other": "Wiped {{count}} messages.",
+  "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay._one": "Delete {{count}} message for good? Tool output and files shown with it go too; memories stay.",
+  "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay._other": "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay.",
+  "{{count}} messages wiped_one": "{{count}} message wiped",
+  "{{count}} messages wiped_other": "{{count}} messages wiped",
 };
 
 export default en;
