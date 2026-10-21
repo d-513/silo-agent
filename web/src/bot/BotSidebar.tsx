@@ -77,19 +77,15 @@ export function BotSidebar({
       />
       <ActivityStrip botId={id} bot={bot} />
       <div className="px-2 pb-3">
-        <NewChat onClick={onNewChat} />
+        <MainChat
+          botId={id}
+          mainId={main?.id}
+          on={tab === "run" && !!main && main.id === chatId}
+          status={tab === "run" && !!main && main.id === chatId && busy ? (waiting ? "needs_you" : "working") : ""}
+          onNewChat={onNewChat}
+        />
       </div>
       <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
-        {main ? (
-          <ChatRow
-            botId={id}
-            chat={main}
-            on={tab === "run" && main.id === chatId}
-            status={tab === "run" && main.id === chatId && busy ? (waiting ? "needs_you" : "working") : ""}
-            rename={rename}
-            onDelete={() => {}}
-          />
-        ) : null}
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
         <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
@@ -218,20 +214,52 @@ function Digest({ needs, fresh, curating }: { needs: number; fresh: number; cura
   return null;
 }
 
-// New chat is the sidebar's lifted control to start a conversation: a full-width
-// surface button whose plus sits in a glyph well and turns a quarter on hover.
-function NewChat({ onClick }: { onClick: () => void }) {
+// MainChat is the sidebar's lifted control: the Bot's one standing
+// conversation, where it opens and where replies land. A side chat is the
+// small plus beside it, whose plus turns a quarter on hover.
+function MainChat({
+  botId,
+  mainId,
+  on,
+  status,
+  onNewChat,
+}: {
+  botId: string;
+  mainId?: string;
+  on: boolean;
+  status: "needs_you" | "working" | "";
+  onNewChat: () => void;
+}) {
+  const lift = `rounded-control bg-surface shadow-card hover:shadow-float ${pressClass}`;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group/new flex h-10 w-full items-center gap-2.5 rounded-control bg-surface pr-3 pl-2 text-[13.5px] font-medium text-ink shadow-card hover:shadow-float ${pressClass}`}
-    >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
-        <Plus size={15} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
-      </span>
-      {t("New chat")}
-    </button>
+    <div className="flex gap-1.5">
+      {mainId ? (
+        <Link
+          to="/bots/$botId/run/$chatId"
+          params={{ botId, chatId: mainId }}
+          data-tab-on={on || undefined}
+          className={`relative flex h-10 min-w-0 flex-1 items-center gap-2.5 pr-3 pl-2 text-[13.5px] font-medium text-ink ${lift} ${on ? "shadow-float" : ""}`}
+        >
+          <ActiveBar on={on} />
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
+            <MessageCircle size={14} strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1 truncate">{t("Main chat")}</span>
+          {status ? <Status status={status} className="shrink-0" /> : null}
+        </Link>
+      ) : (
+        <span className="h-10 flex-1" />
+      )}
+      <button
+        type="button"
+        onClick={onNewChat}
+        title={t("New chat")}
+        aria-label={t("New chat")}
+        className={`group/new flex h-10 w-10 shrink-0 items-center justify-center text-ink ${lift}`}
+      >
+        <Plus size={16} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
+      </button>
+    </div>
   );
 }
 

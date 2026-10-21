@@ -1580,7 +1580,6 @@ const pl: Record<string, string> = {
   "Is my site up": "Czy moja strona działa",
   "What should {{name}} watch for you?": "Czego {{name}} ma dla Ciebie pilnować?",
   "What should change about it?": "Co tu zmienić?",
-  "Ask {{name}} to add, change or remove something…": "Poproś {{name}}, by coś dodał, zmienił lub usunął…",
   "Automation “{{name}}”": "Automatyzacja „{{name}}”",
   "Channel “{{name}}”": "Kanał „{{name}}”",
   "Not now": "Nie teraz",
@@ -1703,6 +1702,7 @@ const pl: Record<string, string> = {
   "Yes": "Tak",
   "No": "Nie",
   "Not now for these": "Na razie żadne z tych",
+  "Change the board…": "Zmień coś na pulpicie…",
 };
 
 export default pl;

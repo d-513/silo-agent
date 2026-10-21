@@ -433,6 +433,8 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       ) : null}
 
       <div className="sticky bottom-0 z-10 -mx-1 mt-3 bg-gradient-to-b from-transparent to-canvas to-30% px-1 pt-3 pb-3">
+        {/* A line to the Bot, not a page-wide field: it keeps a reading width. */}
+        <div className="mx-auto max-w-[560px]">
         <AskBar
           botName={bot.name}
           picked={pickedWidget ? { id: pickedWidget.id, title: pickedWidget.title } : undefined}
@@ -441,6 +443,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
           setDraft={setDraft}
           onAsk={ask}
         />
+        </div>
       </div>
     </div>
   );

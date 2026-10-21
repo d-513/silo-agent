@@ -38,9 +38,7 @@ export function AskBar({
     ? t("What should {{name}} watch for you?", { name: botName })
     : picked
       ? t("What should change about it?")
-      : t("Ask {{name}} to add, change or remove something…", {
-          name: botName,
-        });
+      : t("Change the board…");
   return (
     <form
       onSubmit={(e) => {
