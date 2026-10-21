@@ -84,7 +84,14 @@ public final class SiloClient: Sendable {
         request.email = email
         request.password = password
         request.code = code
-        let response = try unwrap(await ui.signIn(request: request, headers: [:]))
+        let result = await ui.signIn(request: request, headers: [:])
+        // Here Unauthenticated means the email, password or code was wrong, not that a session
+        // ended: say so, and keep it from reading as a sign-out anywhere else.
+        if case .failure(let error) = result.result {
+            throw SiloError.invalidArgument(signInRefusal(code: error.code == .unauthenticated ? "unauthenticated" : "",
+                                                          message: error.message ?? ""))
+        }
+        let response = try unwrap(result)
         return response.needsCode ? .needsCode : .signedIn(response.user)
     }
 
