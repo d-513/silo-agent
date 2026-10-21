@@ -1,3 +1,4 @@
+import { IdeaList, ideasOf } from "./Ideas";
 import { AlertCircle, Check, MessageSquare, RotateCw, X } from "lucide-react";
 import { type HTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
 import { AppFrame } from "../Artifact";
@@ -244,6 +245,8 @@ function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Record<st
       return <Checklist w={w} data={data} onState={handlers?.onState} />;
     case "progress":
       return <Progress data={data} />;
+    case "ideas":
+      return <IdeaList ideas={ideasOf(data)} />;
   }
   return null;
 }

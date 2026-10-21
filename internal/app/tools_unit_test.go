@@ -70,7 +70,7 @@ func TestBuiltinToolExposure(t *testing.T) {
 	want := map[string]string{
 		"chat": "agent_status delete exec_python grep message_agent patch present read skill sleep soul spawn_agent stop_agent switch_model terminal write",
 		"python": "channel chats chrome close_tunnel delete_automation feed forget list_automations list_dashboard list_mail list_models list_tunnels put_widget read_mail remove_dashboard_card remove_widget search_docs " +
-			"set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_search",
+			"set_proactivity set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_search",
 		"both": "artifact ask_owner click create_automation decide key look open_tunnel recall remember scroll type update_automation",
 	}
 	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both} {
@@ -91,7 +91,7 @@ func TestLeadOnlyTools(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	want := "agent_status channel create_automation delete_automation list_automations message_agent set_timezone spawn_agent stop_agent switch_model task_reset update_automation"
+	want := "agent_status channel create_automation delete_automation list_automations message_agent set_proactivity set_timezone spawn_agent stop_agent switch_model task_reset update_automation"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("lead-only tools: %s", strings.Join(got, " "))
 	}

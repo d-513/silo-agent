@@ -1,3 +1,4 @@
+import { ActivityStrip } from "./ActivityStrip";
 import { Blocks, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
@@ -74,6 +75,7 @@ export function BotSidebar({
         fresh={freshCount}
         curating={!!dashQ.data?.curating}
       />
+      <ActivityStrip botId={id} bot={bot} />
       <div className="px-2 pb-3">
         <NewChat onClick={onNewChat} />
       </div>

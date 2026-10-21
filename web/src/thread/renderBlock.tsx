@@ -2,7 +2,7 @@ import type { AgentLink } from "../links";
 import type { ReactNode } from "react";
 import { ArtifactCard, ArtifactUpdateRow, type Artifact } from "../Artifact";
 import type { Attachment, Block, Quote } from "../fold";
-import { Boundary, Compaction, Receipt, Thinking } from "./ActivityRows";
+import { Boundary, Compaction, InterviewMark, Receipt, Thinking } from "./ActivityRows";
 import { LeadNote, Opened, Reply, RunMark, SubagentReport, UserBubble } from "./Bubbles";
 import { rowState, rowVerb } from "./FoldRow";
 import { isBotScratch, PresentFile, QuietPreview } from "./Present";
@@ -117,6 +117,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "user" && c.userAs === "run") {
     return <RunMark prompt={b.text} createdAt={b.createdAt} />;
   }
+  if (b.type === "user" && b.from === "onboarding") return <InterviewMark />;
   if (b.type === "user" && b.from === "lead") {
     return <LeadNote text={b.text} createdAt={b.createdAt} />;
   }

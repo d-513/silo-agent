@@ -14,6 +14,7 @@ const summaries: Record<string, string> = {
   rename: msg("Rename this chat."),
   remember: msg("Collect memories from this chat now."),
   help: msg("List the commands."),
+  onboard: msg("Let the Bot interview you again."),
 };
 
 // SlashMenu is the list over the composer while a command's name is typed:

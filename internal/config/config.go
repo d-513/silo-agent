@@ -307,6 +307,8 @@ type Config struct {
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
 	// Rules is the operator's layer of the rules engine.
 	Rules Rules `koanf:"rules"`
+	// Onboarding is the interview a new Bot can open with.
+	Onboarding Onboarding `koanf:"onboarding"`
 	// Audit is how long the audit timeline and the traffic summaries are kept.
 	Audit Audit `koanf:"audit"`
 }
@@ -330,6 +332,12 @@ type Rules struct {
 	ApprovalPolicy string `koanf:"approval_policy"`
 	// OutputPolicy is read before the Bot's own output policy.
 	OutputPolicy string `koanf:"output_policy"`
+}
+
+// Onboarding holds the operator's own interview prompt.
+type Onboarding struct {
+	// Prompt replaces the built-in interview (prompts/ONBOARDING.md) when set.
+	Prompt string `koanf:"prompt"`
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.

@@ -38,6 +38,12 @@ var Automation string
 //go:embed HEARTBEAT.md
 var Heartbeat string
 
+// Onboarding is the interview a new Bot opens its main chat with (and what
+// /onboard runs): the opening turn of a run Silo starts, not the owner.
+//
+//go:embed ONBOARDING.md
+var Onboarding string
+
 // Dashboard is the default prompt of the pinned Dashboard automation.
 //
 //go:embed DASHBOARD.md

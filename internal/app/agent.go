@@ -267,6 +267,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			if st.call.Name != "" && !st.notified {
 				pieces.flush()
 				a.Emit(botID, chatID, runID, "tool", "", st.call.Name)
+				a.setStep(runID, st.call.Name)
 				st.notified = true
 			}
 		case llm.EventToolCallDelta:

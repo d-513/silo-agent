@@ -286,6 +286,11 @@ def remove_widget(key: str) -> dict:
     return call("bot", "widget_remove", {"key": key})
 
 
+def set_proactivity(level: str) -> dict:
+    """Set how much you do unasked, as your owner chose: "off", "quiet" or "active"."""
+    return call("bot", "set_proactivity", {"level": level})
+
+
 def ask_owner(
     text: str,
     title: str | None = None,

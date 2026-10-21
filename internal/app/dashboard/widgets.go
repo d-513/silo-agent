@@ -32,6 +32,7 @@ var Kinds = map[string]string{
 	"status":    "m",
 	"checklist": "m",
 	"progress":  "s",
+	"ideas":     "m",
 	"app":       "m",
 }
 

@@ -78,8 +78,46 @@ type Service struct {
 
 func New(gdb *gorm.DB, e run.Engine, h Host) *Service {
 	s := &Service{db: gdb, engine: e, host: h}
-	s.Pin(Pinned{Kind: automationHeartbeat, Name: "Heartbeat", Prompt: prompts.Heartbeat})
+	s.Pin(Pinned{Kind: automationHeartbeat, Name: "Heartbeat", Prompt: prompts.Heartbeat, Replaces: []string{heartbeatV1}})
 	return s
+}
+
+// heartbeatV1 is the Heartbeat's first default prompt, before ask_owner.
+const heartbeatV1 = "Heartbeat. No human sent this; it is your periodic check-in.\n\nLook over what you are responsible for: open tasks or notes in `/workspace`, and anything you promised to follow up on. Do the small things that are due now. If something needs the human, post it to the Feed with `feed`"
+
+// HeartbeatSchedules are the Heartbeat's schedules for the proactivity
+// levels, in the Bot's time zone: none when off, a morning check when quiet,
+// every three hours of the day (and never at night) when active.
+var HeartbeatSchedules = map[string]string{
+	"off":    "",
+	"quiet":  "0 9 * * *",
+	"active": "0 9-21/3 * * *",
+}
+
+// SetHeartbeat puts the Heartbeat on a proactivity level's schedule.
+func (s *Service) SetHeartbeat(botID, level string) error {
+	sched, ok := HeartbeatSchedules[level]
+	if !ok {
+		return fmt.Errorf("unknown proactivity %q", level)
+	}
+	au := s.Pinned(botID, automationHeartbeat)
+	if au == nil {
+		return errors.New("the Heartbeat is missing")
+	}
+	on := true
+	_, err := s.saveAutomation(botID, au, automationPatch{schedule: &sched, enabled: &on}, "")
+	return err
+}
+
+// HeartbeatCustom reports whether the Bot's Heartbeat runs on a schedule of
+// its own rather than its proactivity level's (someone set it by hand).
+func (s *Service) HeartbeatCustom(botID, level string) bool {
+	var au db.Automation
+	if s.db.Select("schedule, enabled").Where("bot_id = ? AND kind = ?", botID, automationHeartbeat).Limit(1).Find(&au).RowsAffected == 0 {
+		return false
+	}
+	want, ok := HeartbeatSchedules[level]
+	return ok && (au.Schedule != want || !au.Enabled && want != "")
 }
 
 // Pin registers a pinned kind. Call it while the App is being built.

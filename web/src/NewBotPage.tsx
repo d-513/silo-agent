@@ -7,6 +7,7 @@ import { fail } from "./errors";
 import { UI } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
 import { inputClass, textareaClass } from "./Field";
+import { ToggleRow } from "./Switch";
 import { deviceZone } from "./zones";
 import { t } from "./i18n.ts";
 
@@ -19,6 +20,7 @@ export function NewBotPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [crest, setCrest] = useState(randomCrest);
+  const [interview, setInterview] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function create(e: FormEvent) {
@@ -28,7 +30,7 @@ export function NewBotPage() {
     setErr("");
     try {
       // The Bot starts in this device's time zone and follows it from here.
-      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim(), timeZone: deviceZone() });
+      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim(), timeZone: deviceZone(), interview });
       void reload(UI.method.listBots);
       void nav({ to: "/bots/$botId/run", params: { botId: b.id } });
     } catch (ex) {
@@ -68,7 +70,14 @@ export function NewBotPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <p className="mb-6 text-[13px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
+        <p className="mb-4 text-[13px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
+        <ToggleRow
+          className="mb-6 rounded-control bg-well px-3.5 py-3"
+          label={t("Start with a short interview")}
+          hint={t("The Bot asks what you want help with, offers what to connect, and how proactive to be. You can skip any step, or run /onboard later.")}
+          on={interview}
+          onChange={setInterview}
+        />
         {err && (
           <p role="alert" className="mb-3 text-[13px] text-vermilion">
             {err}

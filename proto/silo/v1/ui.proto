@@ -520,6 +520,26 @@ message Bot {
   // DesktopPaused is the owner having taken the desktop over: the Bot's
   // clicks, keys, typing, scrolling and Chromium are refused until resumed.
   bool desktop_paused = 20;
+  // Proactivity is how much the Bot does unasked: off, quiet or active.
+  string proactivity = 21;
+  // HeartbeatCustom: the Heartbeat runs on a schedule someone set by hand,
+  // not the one its proactivity level gives it.
+  bool heartbeat_custom = 22;
+  // Activity is what the Bot is doing right now: one row per live run.
+  repeated BotActivity activity = 23;
+}
+
+// BotActivity is one live run of a Bot, for the sidebar's status line.
+message BotActivity {
+  string chat_id = 1;
+  // chat, main, automation, channel or subagent.
+  string kind = 2;
+  // The chat's title, the automation's or channel's name, the subagent's.
+  string title = 3;
+  // The tool it is running now ("" between tools); the client words it.
+  string step = 4;
+  // For a subagent: its lead chat, which the strip links to.
+  string lead_chat_id = 5;
 }
 
 message ListBotsRequest {}
@@ -534,6 +554,8 @@ message CreateBotRequest {
   string description = 3;
   // The creating device's IANA zone. Empty or unknown takes the server's.
   string time_zone = 4;
+  // interview opens the main chat with the Bot getting to know its owner.
+  bool interview = 5;
 }
 
 message UpdateBotRequest {
@@ -551,6 +573,8 @@ message UpdateBotRequest {
   optional string language = 10;
   // Optional, so a save of the other fields leaves the output policy alone.
   optional string output_policy = 11;
+  // off | quiet | active; it also puts the Heartbeat on that level's schedule.
+  optional string proactivity = 12;
 }
 
 message GetBotRequest {

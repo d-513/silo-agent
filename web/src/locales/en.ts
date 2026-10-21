@@ -54,6 +54,8 @@ const en: Record<string, string> = {
   "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay._other": "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay.",
   "{{count}} messages wiped_one": "{{count}} message wiped",
   "{{count}} messages wiped_other": "{{count}} messages wiped",
+  "{{count}} subagents at work_one": "{{count}} subagent at work",
+  "{{count}} subagents at work_other": "{{count}} subagents at work",
 };
 
 export default en;

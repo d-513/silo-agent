@@ -444,6 +444,16 @@ func (a *App) toolDefs() []tool.Def {
 			Run:          dashboard,
 		},
 		{
+			Name:        "set_proactivity",
+			Description: "Set how much you do unasked, as your owner chose: off (no Heartbeat), quiet (a morning Heartbeat that reports to the Feed; questions wait on the Dashboard) or active (a Heartbeat every three hours of the day, and you may write into the main chat). Only on your owner's word.",
+			Params: tool.Object(map[string]any{
+				"level": map[string]any{"type": "string", "enum": []string{"off", "quiet", "active"}},
+			}, "level"),
+			Connector: security.Bot, Action: "set_proactivity",
+			ExposePython: true, LeadOnly: true,
+			Run: text(a.proactivityTool),
+		},
+		{
 			Name:        "ask_owner",
 			Description: "Ask the owner something only they can answer or decide, as a card they answer in place: a question, optional display blocks and form controls, and setup offers. In this chat it shows here; from an automation or a channel it goes to the main chat (when the owner allows that) and always waits on the Dashboard. Their answer comes back as their next message. Use the Feed for news that needs no answer.",
 			Params: tool.Object(map[string]any{

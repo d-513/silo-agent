@@ -131,6 +131,9 @@ type liveRun struct {
 	// at the inbox: a message that arrives after it starts a new run instead
 	// of waiting in an inbox nobody reads.
 	closed bool
+	// step is the tool the run is in now, for the Bot's status line; "" between
+	// tools. Read and written under App.mu.
+	step string
 	// pySession names the persistent Python interpreter the run's
 	// exec_python calls share: the conversation, so a later message finds
 	// what an earlier one loaded. An automation's firings each get their own.

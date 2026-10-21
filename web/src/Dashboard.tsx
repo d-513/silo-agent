@@ -7,6 +7,7 @@ import { ui } from "./api";
 import { Btn } from "./Btn";
 import { AskBar } from "./dashboard/AskBar";
 import { AskSlip } from "./dashboard/Asks";
+import { StarterIdeas } from "./dashboard/Ideas";
 import { SinceLooked } from "./dashboard/SinceLooked";
 import { Widget } from "./dashboard/Widget";
 import { type Cols, columnsFor, reorder } from "./dashboard/widgets";
@@ -283,6 +284,9 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
             </button>
           ))}
         </div>
+        <div className="mt-10">
+          <StarterIdeas botId={bot.id} name={bot.name} />
+        </div>
       </div>
     );
   }
@@ -360,6 +364,12 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       {visitPosts.length ? (
         <div className="mb-2.5">
           <SinceLooked botId={bot.id} posts={visitPosts} onQuote={quotePost} />
+        </div>
+      ) : null}
+
+      {!widgets.some((w) => w.kind === "ideas") && widgets.length < 3 ? (
+        <div className="mb-2.5">
+          <StarterIdeas botId={bot.id} name={bot.name} />
         </div>
       ) : null}
 

@@ -1,3 +1,4 @@
+import { ProactivitySettings } from "./Proactivity";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -175,6 +176,8 @@ export function SettingsPane({
           </SaveButton>
         </div>
       </form>
+
+      <ProactivitySettings bot={bot} onError={onError} />
 
       <TimeZoneSettings bot={bot} onError={onError} />
 

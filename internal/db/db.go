@@ -103,7 +103,7 @@ type Bot struct {
 	// Proactivity is how much the Bot does unasked: off (no Heartbeat),
 	// quiet (the Heartbeat reports to the Feed; questions wait on the
 	// Dashboard) or active (it may also write into the main chat).
-	Proactivity string `gorm:"not null;default:'quiet'"`
+	Proactivity string `gorm:"not null;default:'off'"`
 	// OtherProtocols lets this Bot's box open connections that are not HTTP
 	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
 	OtherProtocols bool `gorm:"not null;default:false"`

@@ -1,4 +1,4 @@
-import { Eraser, Lightbulb, Minimize2, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
+import { Eraser, Lightbulb, Minimize2, ShieldCheck, ShieldX, Sparkles, Trash2 } from "lucide-react";
 import type { Decision, ReceiptBlock } from "../fold";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
@@ -94,6 +94,21 @@ export function Boundary({ kind, count }: { kind: "cleared" | "wiped"; count: nu
       <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
         {kind === "cleared" ? <Eraser size={12} /> : <Trash2 size={12} />}
         {label}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
+// InterviewMark opens an interview (a new Bot's, or /onboard): Silo started
+// it, so its brief to the Bot is not shown as the owner's message.
+export function InterviewMark() {
+  return (
+    <div className="flex items-center gap-3 pt-2 pb-1">
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+        <Sparkles size={12} />
+        {t("Getting to know you")}
       </span>
       <span aria-hidden className="h-px flex-1 bg-line" />
     </div>

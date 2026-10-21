@@ -45,6 +45,9 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		FeedUnread:      a.Feed.Unread(b.ID),
 		DashboardAsks:   a.Dashboard.Open(b.ID),
 		DesktopPaused:   a.Pause.Paused(b.ID),
+		Proactivity:     b.Proactivity,
+		HeartbeatCustom: a.Automations.HeartbeatCustom(b.ID, b.Proactivity),
+		Activity:        a.activity(b.ID),
 		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
@@ -106,7 +109,8 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err := a.DB.Create(&b).Error; err != nil {
 		return nil, err
 	}
-	if _, err := a.mainChat(id); err != nil {
+	main, err := a.mainChat(id)
+	if err != nil {
 		return nil, err
 	}
 	a.Skills.EnsureDefaults(id)
@@ -114,6 +118,11 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	a.Connectors.AttachDefaults(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
+	}
+	if req.Msg.GetInterview() {
+		if _, err := a.startInterview(id, main.ID); err != nil {
+			log.Printf("create interview %s: %v", id, err)
+		}
 	}
 	return connect.NewResponse(a.viewBot(ctx, &b)), nil
 }
@@ -165,6 +174,12 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	}
 	if rezone {
 		a.Automations.Rezone(b.ID)
+	}
+	if req.Msg.Proactivity != nil {
+		if err := a.setProactivity(b.ID, req.Msg.GetProactivity()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		b.Proactivity = strings.ToLower(strings.TrimSpace(req.Msg.GetProactivity()))
 	}
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
