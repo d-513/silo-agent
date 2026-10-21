@@ -455,7 +455,7 @@ func TestDeleteChatForgetsItsArtifacts(t *testing.T) {
 	h := artifactHarness(t)
 	bot := h.CreateBot("Sweep")
 	w := h.StartWorker(bot.GetId())
-	chat := h.FirstChat(bot.GetId())
+	chat := newChat(t, h, bot.GetId())
 	runID, _ := h.Send(bot.GetId(), chat, "Test_artsweep_Input")
 	h.WaitRun(runID)
 	if pins, _ := os.ReadDir(filepath.Join(w.Artifacts, "pins")); len(pins) != 1 {

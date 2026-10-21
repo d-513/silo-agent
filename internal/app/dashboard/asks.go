@@ -270,22 +270,33 @@ func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// quoteChat opens a web chat that starts from q and starts a run with the
-// owner's message as its first turn.
-func (s *Service) quoteChat(botID, title string, q quote.Quote, message string) (*db.Chat, string, error) {
+// quoteChat puts q in the main chat (or, asked for or with a reply running
+// there, a chat of its own) and starts a run with the owner's message.
+func (s *Service) quoteChat(botID, title string, q quote.Quote, message string, own bool) (*db.Chat, string, error) {
 	if title == "" {
 		title = "Dashboard"
 	}
-	ch, err := quote.Open(s.db, botID, title, q)
-	if err != nil {
+	main, ok := chats.MainIdle(s.db, botID, s.host.LiveRunID)
+	if own || !ok {
+		ch, err := quote.Open(s.db, botID, title, q)
+		if err != nil {
+			return nil, "", err
+		}
+		runID, err := s.host.StartOrInject(botID, ch.ID, message, run.Extra{}, nil)
+		if err != nil {
+			chats.Drop(s.db, ch.ID)
+			return nil, "", connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return ch, runID, nil
+	}
+	if err := quote.Into(s.db, main, q); err != nil {
 		return nil, "", err
 	}
-	runID, err := s.host.StartOrInject(botID, ch.ID, message, run.Extra{}, nil)
+	runID, err := s.host.StartOrInject(botID, main.ID, message, run.Extra{}, nil)
 	if err != nil {
-		chats.Drop(s.db, ch.ID)
 		return nil, "", connect.NewError(connect.CodeFailedPrecondition, err)
 	}
-	return ch, runID, nil
+	return main, runID, nil
 }
 
 // SubmitDashboardCard opens a chat quoting the ask and starts a run with the
@@ -296,7 +307,7 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 		return nil, err
 	}
 	q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
-	ch, runID, err := s.quoteChat(c.BotID, c.Title, q, submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote()))
+	ch, runID, err := s.quoteChat(c.BotID, c.Title, q, submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote()), req.Msg.GetNewChat())
 	if err != nil {
 		return nil, err
 	}

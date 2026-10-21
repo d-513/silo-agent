@@ -183,7 +183,11 @@ type Chat struct {
 	// SubagentID marks the hidden Chat that holds one subagent's work log.
 	// Web chat lists and Send skip these too.
 	SubagentID string `gorm:"index;default:''"`
-	Title      string
+	// Main marks the Bot's one main chat: where its page opens, where
+	// replies to what the Bot made go, and where it asks the owner things.
+	// It cannot be deleted or renamed; /clear and /wipe keep it light.
+	Main  bool `gorm:"not null;default:false"`
+	Title string
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
 	Model string
@@ -897,6 +901,8 @@ func Migrate(gdb *gorm.DB) error {
 		// One Heartbeat and one Dashboard per Bot: the insert that pins them
 		// relies on this to lose a race instead of making a second.
 		"CREATE UNIQUE INDEX IF NOT EXISTS automations_pinned ON automations (bot_id, kind) WHERE kind IN ('heartbeat', 'dashboard')",
+		// One main chat per Bot: chats.Main relies on it to lose a race.
+		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main ON chats (bot_id) WHERE main",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
 		// 'simple' keeps the keyword half language-neutral: names, part
 		// numbers and error codes match exactly in any language.

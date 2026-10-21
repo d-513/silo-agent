@@ -32,7 +32,7 @@ export function putChat(botId: string, row: Chat) {
 }
 
 // useChatList loads a Bot's chats (the sidebar shows them on every page) and,
-// while a chat-side page is open, its models; it opens the newest chat when
+// while a chat-side page is open, its models; it opens the main chat when
 // none is picked, and owns create, rename and delete.
 export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string; fresh?: boolean }, onError: (message: string) => void) {
   const { tab, chatSide, chatId, fresh } = route;
@@ -50,10 +50,11 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     if (id) void recheck(UI.method.listChats, { botId: id });
   }, [id, tab, chatId]);
 
-  const newest = chatsQ.data?.chats[0]?.id;
+  // A Bot opens on its main chat.
+  const main = chatsQ.data?.chats.find((c) => c.main)?.id;
   useEffect(() => {
-    if (id && tab === "run" && !chatId && !fresh && newest) void nav({ ...chatLink(id, newest), replace: true });
-  }, [id, tab, chatId, fresh, newest, nav]);
+    if (id && tab === "run" && !chatId && !fresh && main) void nav({ ...chatLink(id, main), replace: true });
+  }, [id, tab, chatId, fresh, main, nav]);
 
   async function renameChat(cid: string) {
     if (!id) return;
@@ -79,10 +80,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     await ui.deleteChat({ botId: id, id: cid });
     const next = chats.filter((x) => x.id !== cid);
     patchChats(id, () => next);
-    if (cid === chatId) {
-      if (next[0]) void nav(chatLink(id, next[0].id));
-      else void nav(newChatLink(id));
-    }
+    if (cid === chatId) void nav(main ? chatLink(id, main) : newChatLink(id));
   }
 
   const rename: ChatRename = {

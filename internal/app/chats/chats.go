@@ -11,14 +11,51 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
 )
 
 // Proto is the wire form of a chat.
 func Proto(c *db.Chat) *v1.Chat {
 	return &v1.Chat{
 		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
-		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
+		UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Main: c.Main,
 	}
+}
+
+// MainTitle is the main chat's title; it is not renamed.
+const MainTitle = "Main"
+
+// Main is the Bot's main chat, made the first time it is asked for. The
+// caller has checked the Bot is the user's.
+func Main(gdb *gorm.DB, botID string) (*db.Chat, error) {
+	var c db.Chat
+	if gdb.Where("bot_id = ? AND main", botID).Limit(1).Find(&c); c.ID != "" {
+		return &c, nil
+	}
+	now := time.Now()
+	c = db.Chat{ID: ids.New(), BotID: botID, Main: true, Title: MainTitle, CreatedAt: now, UpdatedAt: now}
+	if err := gdb.Create(&c).Error; err != nil {
+		// Made at the same moment by another caller (chats_main).
+		var won db.Chat
+		if gdb.Where("bot_id = ? AND main", botID).Limit(1).Find(&won); won.ID != "" {
+			return &won, nil
+		}
+		return nil, err
+	}
+	return &c, nil
+}
+
+// MainIdle is the Bot's main chat when nothing is running in it: what a
+// reply to something the Bot made opens in. With a reply running there, the
+// caller opens a chat of its own instead, so the run's history and the
+// thread stay in the same order. live says whether a conversation has a
+// live run.
+func MainIdle(gdb *gorm.DB, botID string, live func(botID, chatID string) string) (*db.Chat, bool) {
+	c, err := Main(gdb, botID)
+	if err != nil || live(botID, c.ID) != "" {
+		return nil, false
+	}
+	return c, true
 }
 
 // Untitled reports whether s is still a placeholder title.

@@ -65,7 +65,7 @@ export function BotStrip({
       {bot.mailAddress || tab === "mail" ? <SideChip to="/bots/$botId/mail" botId={id} on={tab === "mail"} icon={Mail} label={t("Mail")} /> : null}
       <Btn kind="ghost" size="sm" iconOnly title={power} aria-label={power} className="h-10 w-10" disabled={!bot.workerConnected && starting} icon={<Power size={15} />} onClick={bot.workerConnected ? onStop : onStart} />
       {rule}
-      {chats.map((c) => {
+      {[...chats.filter((c) => c.main), ...chats.filter((c) => !c.main)].map((c) => {
         const on = tab === "run" && c.id === chatId;
         return (
           <div
@@ -80,16 +80,17 @@ export function BotStrip({
                 to="/bots/$botId/run/$chatId"
                 params={{ botId: id, chatId: c.id }}
                 onDoubleClick={(e) => {
+                  if (c.main) return;
                   e.preventDefault();
                   rename.begin(c);
                 }}
                 className={`flex h-10 max-w-[11rem] items-center gap-2 px-3 ${on ? "" : "rounded-control hover:bg-pressed hover:text-ink"}`}
               >
-                <span className="truncate">{c.title || t("New chat")}</span>
+                <span className="truncate">{c.main ? t("Main chat") : c.title || t("New chat")}</span>
                 {on && (waiting || sending) ? <Lamp status={waiting ? "needs_you" : "working"} /> : null}
               </Link>
             )}
-            {on && rename.editing !== c.id && (
+            {on && !c.main && rename.editing !== c.id && (
               <button
                 type="button"
                 title={t("Rename chat")}
@@ -102,7 +103,7 @@ export function BotStrip({
                 <Pencil size={13} />
               </button>
             )}
-            {on && (
+            {on && !c.main && (
               <button type="button" title={t("Delete chat")} className="flex h-10 w-8 items-center justify-center text-ink-2 hover:text-vermilion" onClick={() => onDeleteChat(c.id)}>
                 <Trash2 size={13} />
               </button>

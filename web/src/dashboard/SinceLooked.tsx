@@ -11,7 +11,7 @@ import { sourceLabel } from "./Asks";
 // SinceLooked is the Feed's new posts, shown on the Dashboard for the visit
 // that read them: the server marks them read when the page opens, and they
 // stay here, dotted, until the owner leaves. A row opens in place.
-export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: FeedPost[]; onQuote: (p: FeedPost) => Promise<void> }) {
+export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: FeedPost[]; onQuote: (p: FeedPost, apart: boolean) => Promise<void> }) {
   const [open, setOpen] = useState(posts.length === 1 ? posts[0].id : "");
   const [quoting, setQuoting] = useState("");
   if (!posts.length) return null;
@@ -58,12 +58,24 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
                     className="mt-1 -ml-2.5"
                     disabled={quoting !== ""}
                     icon={<MessageSquareQuote size={13} />}
-                    onClick={() => {
+                    onClick={(e) => {
                       setQuoting(p.id);
-                      void onQuote(p).finally(() => setQuoting(""));
+                      void onQuote(p, e.metaKey || e.ctrlKey).finally(() => setQuoting(""));
                     }}
                   >
-                    {t("Quote in a new chat")}
+                    {t("Reply")}
+                  </Btn>
+                  <Btn
+                    kind="ghost"
+                    size="sm"
+                    className="mt-1"
+                    disabled={quoting !== ""}
+                    onClick={() => {
+                      setQuoting(p.id);
+                      void onQuote(p, true).finally(() => setQuoting(""));
+                    }}
+                  >
+                    {t("Reply in a new chat")}
                   </Btn>
                 </div>
               ) : null}

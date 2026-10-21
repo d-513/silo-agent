@@ -360,6 +360,7 @@ func TestDashboardCardsGradualUpsertSubmitDismiss(t *testing.T) {
 		BotId:      bot.GetId(),
 		Id:         card.GetId(),
 		ValuesJson: `{"delete_tmp":true,"mode":"zip"}`,
+		NewChat:    true,
 	}))
 	if err != nil {
 		t.Fatal(err)

@@ -190,11 +190,9 @@ const de: Record<string, string> = {
   "Channel": "Kanal",
   "Chat": "Chat",
   "Feed": "Feed",
-  "What this Bot posted for you to read later. Quote a post to talk about it in a new chat.": "Was dieser Bot für dich zum späteren Lesen gepostet hat. Zitiere einen Beitrag, um in einem neuen Chat darüber zu sprechen.",
   "Loading…": "Wird geladen…",
   "Nothing yet.": "Noch nichts.",
   "The Bot posts here with the feed tool — from a chat, an automation, or a channel.": "Der Bot postet hier mit dem feed-Tool — aus einem Chat, einer Automatisierung oder einem Kanal.",
-  "Quote in a new chat": "In neuem Chat zitieren",
   "Delete post": "Beitrag löschen",
   "Click again to delete": "Zum Löschen erneut klicken",
   "Copy": "Kopieren",
@@ -744,7 +742,6 @@ const de: Record<string, string> = {
   "Dismiss": "Schließen",
   "Pages": "Seiten",
   "Customize": "Anpassen",
-  "No chats": "Keine Chats",
   "New chat": "Neuer Chat",
   "Rename chat": "Chat umbenennen",
   "Delete chat": "Chat löschen",
@@ -1591,6 +1588,13 @@ const de: Record<string, string> = {
   "Delete {{count}} messages for good? Tool output and files shown in them go too; memories stay._other": "{{count}} Nachrichten endgültig löschen? Werkzeugausgaben und darin gezeigte Dateien verschwinden auch; Erinnerungen bleiben.",
   "{{count}} messages wiped_one": "{{count}} Nachricht gelöscht",
   "{{count}} messages wiped_other": "{{count}} Nachrichten gelöscht",
+  "Reply in the main chat": "Im Hauptchat antworten",
+  "Reply in a new chat": "In einem neuen Chat antworten",
+  "No other chats": "Keine weiteren Chats",
+  "Main chat": "Hauptchat",
+  "Answers in the main chat. Ctrl/⌘-click for a new chat.": "Antwortet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
+  "Opens in the main chat. Ctrl/⌘-click for a new chat.": "Öffnet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
+  "What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.": "Was dieser Bot für dich zum späteren Lesen gepostet hat. Antworte auf einen Beitrag im Hauptchat oder in einem eigenen Chat.",
 };
 
 export default de;

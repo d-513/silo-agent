@@ -1,4 +1,4 @@
-import { Blocks, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Blocks, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
@@ -45,7 +45,10 @@ export function BotSidebar({
   onNewChat: () => void;
   onDeleteChat: (cid: string) => void;
 }) {
-  const groups = useMemo(() => groupChats(chats), [chats]);
+  // The main chat is pinned above the pages; the date groups are the side
+  // chats.
+  const main = chats.find((c) => c.main);
+  const groups = useMemo(() => groupChats(chats.filter((c) => !c.main)), [chats]);
   const picked = useGroupsPicked();
   const dashQ = useQuery(UI.method.listDashboard, { botId: id });
   const freshCount = (dashQ.data?.widgets ?? []).filter((w) => w.fresh).length + (dashQ.data?.posts ?? []).length;
@@ -75,6 +78,16 @@ export function BotSidebar({
         <NewChat onClick={onNewChat} />
       </div>
       <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
+        {main ? (
+          <ChatRow
+            botId={id}
+            chat={main}
+            on={tab === "run" && main.id === chatId}
+            status={tab === "run" && main.id === chatId && busy ? (waiting ? "needs_you" : "working") : ""}
+            rename={rename}
+            onDelete={() => {}}
+          />
+        ) : null}
         <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
         <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
@@ -83,7 +96,7 @@ export function BotSidebar({
         <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label={t("Customize")} />
       </nav>
       <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">
-        {chats.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No chats")}</p>}
+        {groups.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No other chats")}</p>}
         {groups.map((g) => (
           <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
             {g.chats.map((c) => {
@@ -267,6 +280,8 @@ function ChatRow({
 }) {
   const editing = rename.editing === chat.id;
   const ms = Date.parse(chat.updatedAt);
+  // The main chat keeps its name and cannot be deleted.
+  const fixed = chat.main;
   return (
     <div
       className={`group relative rounded-control bg-(--row) transition-[background-color] duration-[160ms] ease-quiet ${
@@ -284,22 +299,24 @@ function ChatRow({
           params={{ botId, chatId: chat.id }}
           title={Number.isFinite(ms) ? fullTime(new Date(ms)) : undefined}
           onDoubleClick={(e) => {
+            if (fixed) return;
             e.preventDefault();
             rename.begin(chat);
           }}
           className="flex h-8 min-w-0 items-center gap-2 rounded-control pr-2 pl-3 outline-offset-[-2px]"
         >
+          {fixed ? <MessageCircle size={15} className={`shrink-0 ${on ? "text-ink" : "text-ink-2"}`} aria-hidden /> : null}
           <span
             className={`min-w-0 flex-1 truncate text-[13.5px] leading-5 transition-colors duration-[160ms] ease-quiet ${
               on ? "text-ink" : "text-ink-2 group-hover:text-ink"
             }`}
           >
-            {chat.title || t("New chat")}
+            {fixed ? t("Main chat") : chat.title || t("New chat")}
           </span>
           {status ? <Status status={status} className="shrink-0" /> : null}
         </Link>
       )}
-      {!editing && (
+      {!editing && !fixed && (
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 opacity-0 transition-opacity duration-[160ms] ease-quiet group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
           <button
             type="button"

@@ -137,12 +137,13 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
     reloadBot(bot.id);
   }
 
-  async function submitAsk(card: DashboardCard, values: Record<string, unknown>) {
+  async function submitAsk(card: DashboardCard, values: Record<string, unknown>, apart = false) {
     const r = await guard(() =>
       ui.submitDashboardCard({
         botId: bot.id,
         id: card.id,
         valuesJson: JSON.stringify(values),
+        newChat: apart,
       }),
     );
     if (!r) return;
@@ -164,8 +165,8 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
     reloadBot(bot.id);
   }
 
-  async function quotePost(p: FeedPost) {
-    const r = await guard(() => ui.quoteFeedPost({ botId: bot.id, id: p.id }));
+  async function quotePost(p: FeedPost, apart: boolean) {
+    const r = await guard(() => ui.quoteFeedPost({ botId: bot.id, id: p.id, newChat: apart }));
     if (r?.chat) onQuoted(r.chat);
   }
 
@@ -401,13 +402,14 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
                     setWidget({ ...w, stateJson });
                     void guard(() => ui.setWidgetState({ botId: bot.id, id: w.id, stateJson }));
                   },
-                  onAction: async (a, args) => {
+                  onAction: async (a, args, apart) => {
                     const r = await guard(() =>
                       ui.runWidgetAction({
                         botId: bot.id,
                         id: w.id,
                         action: a.id,
                         argsJson: JSON.stringify(args),
+                        newChat: !!apart,
                       }),
                     );
                     if (r?.widget) setWidget(r.widget);

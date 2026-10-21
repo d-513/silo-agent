@@ -331,9 +331,10 @@ func TestMailWakeStartsAChatForAVerifiedListedSender(t *testing.T) {
 	if !m.GetVerified() || m.GetChatId() == "" || !strings.Contains(m.GetAuthDetail(), "dkim=pass (example.com)") {
 		t.Fatalf("message = %+v", m)
 	}
+	// It wakes the Bot in its main chat, which is idle.
 	chats := webChats(t, h, id)
-	if len(chats) != before+1 {
-		t.Fatalf("%d chats, want %d", len(chats), before+1)
+	if len(chats) != before {
+		t.Fatalf("%d chats, want %d", len(chats), before)
 	}
 	var woke *v1.Chat
 	for _, c := range chats {
@@ -341,7 +342,7 @@ func TestMailWakeStartsAChatForAVerifiedListedSender(t *testing.T) {
 			woke = c
 		}
 	}
-	if woke == nil || woke.GetTitle() != "Mail: Test_mw1_Input please" {
+	if woke == nil || !woke.GetMain() {
 		t.Fatalf("woken chat = %+v", woke)
 	}
 	var run db.Run

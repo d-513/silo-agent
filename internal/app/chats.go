@@ -40,18 +40,18 @@ func writableChat(c *db.Chat) error {
 	return nil
 }
 
-func (a *App) backfillChats(botID string) *db.Chat {
-	var convs []db.Chat
-	a.DB.Where("bot_id = ?", botID).Scopes(webChats).Order("updated_at desc").Find(&convs)
-	if len(convs) == 0 {
-		c := db.Chat{ID: ids.New(), BotID: botID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
-		a.DB.Create(&c)
-		a.DB.Model(&db.Run{}).Where("bot_id = ? AND (chat_id = '' OR chat_id IS NULL)", botID).Update("chat_id", c.ID)
-		return &c
+// mainChat is the Bot's main chat (made on first use).
+func (a *App) mainChat(botID string) (*db.Chat, error) {
+	c, err := chats.Main(a.DB, botID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	a.DB.Model(&db.Run{}).Where("bot_id = ? AND (chat_id = '' OR chat_id IS NULL)", botID).Update("chat_id", convs[0].ID)
-	return &convs[0]
+	return c, nil
 }
+
+// errMainChat refuses what the main chat does not do: it is the Bot's one
+// standing conversation.
+var errMainChat = connect.NewError(connect.CodeFailedPrecondition, errors.New("the main chat cannot be deleted or renamed; /clear or /wipe it instead"))
 
 func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error) {
 	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
@@ -59,7 +59,9 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 	}
 	q := a.DB.Where("bot_id = ?", req.Msg.GetBotId())
 	if req.Msg.GetChannelId() == "" {
-		a.backfillChats(req.Msg.GetBotId())
+		if _, err := a.mainChat(req.Msg.GetBotId()); err != nil {
+			return nil, err
+		}
 		q = q.Scopes(webChats)
 	} else {
 		q = q.Where("channel_id = ?", req.Msg.GetChannelId())
@@ -89,6 +91,9 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	if err != nil {
 		return nil, err
 	}
+	if c.Main {
+		return nil, errMainChat
+	}
 	title := strings.TrimSpace(req.Msg.GetTitle())
 	if title == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title required"))
@@ -109,6 +114,9 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 	}
 	if err := writableChat(c); err != nil {
 		return nil, err
+	}
+	if c.Main {
+		return nil, errMainChat
 	}
 	a.StopChatLive(c.BotID, c.ID)
 	a.dropSubagents(c.BotID, c.ID)

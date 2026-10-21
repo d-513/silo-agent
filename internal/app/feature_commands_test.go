@@ -155,7 +155,11 @@ func TestSlashTextThatIsAMessage(t *testing.T) {
 func TestSlashModelThinkingRename(t *testing.T) {
 	h := apptest.New(t)
 	id := h.CreateBot("Switcher").GetId()
-	chat := h.FirstChat(id)
+	main := h.FirstChat(id)
+	chat := newChat(t, h, id)
+	if _, err := h.Client.Send(h.Ctx(), connect.NewRequest(&v1.SendRequest{BotId: id, ChatId: main, Text: "/rename Other"})); err == nil {
+		t.Fatal("the main chat was renamed")
+	}
 
 	if res := command(t, h, id, chat, "/model echo", false); !strings.Contains(res.GetNotice(), "dummy/echo") {
 		t.Fatalf("/model echo: %+v", res)

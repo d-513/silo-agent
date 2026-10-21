@@ -194,7 +194,13 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 	if p.Title != "" {
 		body = "**" + p.Title + "**\n\n" + body
 	}
-	c, err := quote.Open(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), quote.Quote{From: quote.FromFeed, Title: p.Title, Body: body, Source: feedLabel(p), At: p.CreatedAt})
+	q := quote.Quote{From: quote.FromFeed, Title: p.Title, Body: body, Source: feedLabel(p), At: p.CreatedAt}
+	var c *db.Chat
+	if main, ok := chats.MainIdle(s.db, p.BotID, s.host.LiveRunID); ok && !req.Msg.GetNewChat() {
+		c, err = main, quote.Into(s.db, main, q)
+	} else {
+		c, err = quote.Open(s.db, p.BotID, "Re: "+strings.TrimLeft(title, "# "), q)
+	}
 	if err != nil {
 		return nil, err
 	}

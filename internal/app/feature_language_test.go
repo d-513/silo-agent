@@ -122,7 +122,8 @@ func TestLanguageReachesTheModel(t *testing.T) {
 	h := apptest.New(t)
 	setLanguage(t, h, "pl")
 	id := botNamed(t, h, "Polka").GetId()
-	h.WaitRun(sendFrom(t, h, id, h.FirstChat(id), "dzień dobry", ""))
+	// A side chat: the main chat keeps its title, so it asks for none.
+	h.WaitRun(sendFrom(t, h, id, newChat(t, h, id), "dzień dobry", ""))
 
 	reqs := dummy.Streamed()
 	sys := reqs[len(reqs)-1].System

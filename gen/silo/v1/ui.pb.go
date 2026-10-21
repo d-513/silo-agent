@@ -6006,9 +6006,11 @@ func (*DeleteFeedPostResponse) Descriptor() ([]byte, []int) {
 
 // QuoteFeedPost starts a new chat whose context is the quoted post.
 type QuoteFeedPostRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	BotId string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Id    string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	// new_chat replies in a chat of its own instead of the main chat.
+	NewChat       bool `protobuf:"varint,3,opt,name=new_chat,json=newChat,proto3" json:"new_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6055,6 +6057,13 @@ func (x *QuoteFeedPostRequest) GetId() string {
 		return x.Id
 	}
 	return ""
+}
+
+func (x *QuoteFeedPostRequest) GetNewChat() bool {
+	if x != nil {
+		return x.NewChat
+	}
+	return false
 }
 
 type QuoteFeedPostResponse struct {
@@ -6751,7 +6760,9 @@ type RunWidgetActionRequest struct {
 	// An action id from the widget's spec.
 	Action string `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
 	// The item or form values the action is for: JSON object.
-	ArgsJson      string `protobuf:"bytes,4,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	ArgsJson string `protobuf:"bytes,4,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	// new_chat: a hand action opens a chat of its own instead of the main one.
+	NewChat       bool `protobuf:"varint,5,opt,name=new_chat,json=newChat,proto3" json:"new_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6812,6 +6823,13 @@ func (x *RunWidgetActionRequest) GetArgsJson() string {
 		return x.ArgsJson
 	}
 	return ""
+}
+
+func (x *RunWidgetActionRequest) GetNewChat() bool {
+	if x != nil {
+		return x.NewChat
+	}
+	return false
 }
 
 type RunWidgetActionResponse struct {
@@ -7416,7 +7434,9 @@ type SubmitDashboardCardRequest struct {
 	// JSON object mapping form field names to user-selected values.
 	ValuesJson string `protobuf:"bytes,3,opt,name=values_json,json=valuesJson,proto3" json:"values_json,omitempty"`
 	// Optional free-text note accompanying the form submission.
-	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	Note string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	// new_chat answers in a chat of its own instead of the main chat.
+	NewChat       bool `protobuf:"varint,5,opt,name=new_chat,json=newChat,proto3" json:"new_chat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7477,6 +7497,13 @@ func (x *SubmitDashboardCardRequest) GetNote() string {
 		return x.Note
 	}
 	return ""
+}
+
+func (x *SubmitDashboardCardRequest) GetNewChat() bool {
+	if x != nil {
+		return x.NewChat
+	}
+	return false
 }
 
 type SubmitDashboardCardResponse struct {
@@ -9230,7 +9257,9 @@ type Chat struct {
 	Model     string                 `protobuf:"bytes,5,opt,name=model,proto3" json:"model,omitempty"`
 	// thinking is the chosen thinking level; "" is the model's default. It is
 	// fitted to each model's levels when a turn runs.
-	Thinking      string `protobuf:"bytes,6,opt,name=thinking,proto3" json:"thinking,omitempty"`
+	Thinking string `protobuf:"bytes,6,opt,name=thinking,proto3" json:"thinking,omitempty"`
+	// The Bot's main chat: pinned, never deleted or renamed.
+	Main          bool `protobuf:"varint,7,opt,name=main,proto3" json:"main,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9305,6 +9334,13 @@ func (x *Chat) GetThinking() string {
 		return x.Thinking
 	}
 	return ""
+}
+
+func (x *Chat) GetMain() bool {
+	if x != nil {
+		return x.Main
+	}
+	return false
 }
 
 type ModelOption struct {
@@ -24075,10 +24111,11 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x15DeleteFeedPostRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\x18\n" +
-	"\x16DeleteFeedPostResponse\"=\n" +
+	"\x16DeleteFeedPostResponse\"X\n" +
 	"\x14QuoteFeedPostRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\":\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x19\n" +
+	"\bnew_chat\x18\x03 \x01(\bR\anewChat\":\n" +
 	"\x15QuoteFeedPostResponse\x12!\n" +
 	"\x04chat\x18\x01 \x01(\v2\r.silo.v1.ChatR\x04chat\"\xa9\x03\n" +
 	"\rDashboardCard\x12\x0e\n" +
@@ -24149,12 +24186,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"state_json\x18\x03 \x01(\tR\tstateJson\"t\n" +
+	"state_json\x18\x03 \x01(\tR\tstateJson\"\x8f\x01\n" +
 	"\x16RunWidgetActionRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x03 \x01(\tR\x06action\x12\x1b\n" +
-	"\targs_json\x18\x04 \x01(\tR\bargsJson\"\x85\x01\n" +
+	"\targs_json\x18\x04 \x01(\tR\bargsJson\x12\x19\n" +
+	"\bnew_chat\x18\x05 \x01(\bR\anewChat\"\x85\x01\n" +
 	"\x17RunWidgetActionResponse\x120\n" +
 	"\x06widget\x18\x01 \x01(\v2\x18.silo.v1.DashboardWidgetR\x06widget\x12!\n" +
 	"\x04chat\x18\x02 \x01(\v2\r.silo.v1.ChatR\x04chat\x12\x15\n" +
@@ -24186,13 +24224,14 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12#\n" +
 	"\rsuppress_kind\x18\x03 \x01(\bR\fsuppressKind\"\x1e\n" +
-	"\x1cDismissDashboardCardResponse\"x\n" +
+	"\x1cDismissDashboardCardResponse\"\x93\x01\n" +
 	"\x1aSubmitDashboardCardRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x1f\n" +
 	"\vvalues_json\x18\x03 \x01(\tR\n" +
 	"valuesJson\x12\x12\n" +
-	"\x04note\x18\x04 \x01(\tR\x04note\"W\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\x12\x19\n" +
+	"\bnew_chat\x18\x05 \x01(\bR\anewChat\"W\n" +
 	"\x1bSubmitDashboardCardResponse\x12!\n" +
 	"\x04chat\x18\x01 \x01(\v2\r.silo.v1.ChatR\x04chat\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\"\xca\x01\n" +
@@ -24322,7 +24361,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"G\n" +
 	"\x15RunAutomationResponse\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x17\n" +
-	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\x94\x01\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\xa8\x01\n" +
 	"\x04Chat\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x14\n" +
@@ -24330,7 +24369,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\tR\tupdatedAt\x12\x14\n" +
 	"\x05model\x18\x05 \x01(\tR\x05model\x12\x1a\n" +
-	"\bthinking\x18\x06 \x01(\tR\bthinking\"\x8c\x01\n" +
+	"\bthinking\x18\x06 \x01(\tR\bthinking\x12\x12\n" +
+	"\x04main\x18\a \x01(\bR\x04main\"\x8c\x01\n" +
 	"\vModelOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +

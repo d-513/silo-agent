@@ -1,4 +1,4 @@
-import { Inbox, MessageSquareQuote, Trash2 } from "lucide-react";
+import { Inbox, MessageSquarePlus, MessageSquareQuote, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -66,11 +66,11 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
     }
   }
 
-  async function quote(id: string) {
+  async function quote(id: string, newChat: boolean) {
     onError("");
     setQuoting(id);
     try {
-      const r = await ui.quoteFeedPost({ botId: bot.id, id });
+      const r = await ui.quoteFeedPost({ botId: bot.id, id, newChat });
       if (r.chat) onQuoted(r.chat);
     } catch (e) {
       onError(fail(e));
@@ -82,7 +82,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
   return (
     <div className="silo-page pb-12">
       <h2 className="text-title">{t("Feed")}</h2>
-      <p className="mb-6 text-ink-2">{t("What this Bot posted for you to read later. Quote a post to talk about it in a new chat.")}</p>
+      <p className="mb-6 text-ink-2">{t("What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.")}</p>
       {posts === null ? (
         <p className="text-ink-3">{t("Loading…")}</p>
       ) : posts.length === 0 ? (
@@ -120,11 +120,21 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
                     kind="ghost"
                     size="sm"
                     iconOnly
-                    title={t("Quote in a new chat")}
-                    aria-label={t("Quote in a new chat")}
+                    title={t("Reply in the main chat")}
+                    aria-label={t("Reply in the main chat")}
                     disabled={!!quoting}
                     icon={<MessageSquareQuote size={14} />}
-                    onClick={() => void quote(p.id)}
+                    onClick={(e) => void quote(p.id, e.metaKey || e.ctrlKey)}
+                  />
+                  <Btn
+                    kind="ghost"
+                    size="sm"
+                    iconOnly
+                    title={t("Reply in a new chat")}
+                    aria-label={t("Reply in a new chat")}
+                    disabled={!!quoting}
+                    icon={<MessageSquarePlus size={14} />}
+                    onClick={() => void quote(p.id, true)}
                   />
                   <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete post")} icon={<Trash2 size={13} />} onConfirm={() => void remove(p.id)}>
                     {t("Delete")}

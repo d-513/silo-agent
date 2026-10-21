@@ -74,9 +74,20 @@ func Open(gdb *gorm.DB, botID, title string, q Quote) (*db.Chat, error) {
 	if err := gdb.Create(&ch).Error; err != nil {
 		return nil, err
 	}
+	if err := Into(gdb, &ch, q); err != nil {
+		return nil, err
+	}
+	return &ch, nil
+}
+
+// Into puts the quote at the end of an existing chat (the main chat), in a
+// run of its own; the owner's next message there is the reply to it.
+func Into(gdb *gorm.DB, ch *db.Chat, q Quote) error {
+	now := time.Now()
+	botID := ch.BotID
 	r := db.Run{ID: ids.New(), BotID: botID, ChatID: ch.ID, Origin: "feed", Status: "done", CreatedAt: now}
 	if err := gdb.Create(&r).Error; err != nil {
-		return nil, err
+		return err
 	}
 	m, _ := json.Marshal(meta{From: q.From, Title: q.Title, Widget: q.Widget})
 	if q.At.IsZero() {
@@ -85,9 +96,9 @@ func Open(gdb *gorm.DB, botID, title string, q Quote) (*db.Chat, error) {
 	// CreatedAt is the quoted thing's time: history frames the quote with it.
 	ev := db.RunEvent{ID: ids.New(), RunID: r.ID, Kind: Kind, Body: q.Body, Tool: q.Source, Meta: string(m), Zone: zone.OfBot(gdb, botID).String(), CreatedAt: q.At}
 	if err := gdb.Create(&ev).Error; err != nil {
-		return nil, err
+		return err
 	}
-	return &ch, nil
+	return gdb.Model(&db.Chat{}).Where("id = ?", ch.ID).Update("updated_at", now).Error
 }
 
 func decode(raw string) meta {

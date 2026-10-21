@@ -34,7 +34,9 @@ export type WidgetHandlers = {
   onSelect: () => void;
   onRefresh: () => Promise<void>;
   onState: (stateJson: string) => void;
-  onAction: (a: Action, args: Record<string, unknown>) => Promise<void>;
+  // apart: a hand action opens a chat of its own instead of the main one
+  // (Ctrl/⌘-click, like a link in a new tab).
+  onAction: (a: Action, args: Record<string, unknown>, apart?: boolean) => Promise<void>;
 };
 
 // Widget is one view on the Dashboard, drawn by Silo whatever the Bot wrote:
@@ -347,9 +349,9 @@ function RowActions({ acts, row, handlers }: { acts: Action[]; row: Record<strin
   return (
     <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-[160ms] group-hover/row:opacity-100 group-focus-within/row:opacity-100 [@media(hover:none)]:opacity-100">
       {acts.map((a) => {
-        const run = () => {
+        const run = (apart = false) => {
           setBusy(a.id);
-          void handlers.onAction(a, row).finally(() => setBusy(""));
+          void handlers.onAction(a, row, apart).finally(() => setBusy(""));
         };
         const cls =
           "h-6 rounded-sm px-1.5 text-[12px] font-medium text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink disabled:opacity-50";
@@ -360,13 +362,20 @@ function RowActions({ acts, row, handlers }: { acts: Action[]; row: Record<strin
             size="sm"
             className="!h-6 !px-1.5 !text-[12px]"
             armedLabel={t("Click again")}
-            onConfirm={run}
+            onConfirm={() => run()}
             disabled={busy !== ""}
           >
             {a.label}
           </ArmedButton>
         ) : (
-          <button key={a.id} type="button" disabled={busy !== ""} onClick={run} className={cls}>
+          <button
+            key={a.id}
+            type="button"
+            disabled={busy !== ""}
+            title={a.kind === "hand" ? t("Opens in the main chat. Ctrl/⌘-click for a new chat.") : undefined}
+            onClick={(e) => run(e.metaKey || e.ctrlKey)}
+            className={cls}
+          >
             {busy === a.id ? <Spinner size={11} /> : a.label}
           </button>
         );
@@ -586,9 +595,9 @@ function Foot({ w, acts, handlers }: { w: DashboardWidget; acts: Action[]; handl
   const [busy, setBusy] = useState("");
   const rc = receiptOf(w.receiptJson);
   if (!acts.length && !rc && !w.error) return null;
-  const run = (a: Action) => {
+  const run = (a: Action, apart = false) => {
     setBusy(a.id);
-    void handlers.onAction(a, {}).finally(() => setBusy(""));
+    void handlers.onAction(a, {}, apart).finally(() => setBusy(""));
   };
   return (
     <div className="mt-3 space-y-2">
@@ -602,7 +611,15 @@ function Foot({ w, acts, handlers }: { w: DashboardWidget; acts: Action[]; handl
                 {a.label}
               </ArmedButton>
             ) : (
-              <Btn key={a.id} kind={kind} size="sm" disabled={busy !== ""} onClick={() => run(a)} icon={icon}>
+              <Btn
+                key={a.id}
+                kind={kind}
+                size="sm"
+                disabled={busy !== ""}
+                title={a.kind === "hand" ? t("Opens in the main chat. Ctrl/⌘-click for a new chat.") : undefined}
+                onClick={(e) => run(a, e.metaKey || e.ctrlKey)}
+                icon={icon}
+              >
                 {a.label}
               </Btn>
             );

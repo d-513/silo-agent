@@ -379,6 +379,11 @@ func (a *App) cmdRename(ctx context.Context, c command.Call) (command.Result, er
 	if title == "" {
 		return command.Result{}, command.Refused("Give the new title: /rename Trip to Lisbon.")
 	}
+	if ch, err := a.chatRow(c.BotID, c.ChatID); err != nil {
+		return command.Result{}, err
+	} else if ch.Main {
+		return command.Result{}, command.Refused("The main chat keeps its name.")
+	}
 	if r := []rune(title); len(r) > 80 {
 		title = string(r[:80])
 	}

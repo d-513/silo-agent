@@ -124,7 +124,7 @@ func TestFeedQuoteStartsChatWithPostInContext(t *testing.T) {
 		t.Fatalf("posts %d\n%s", len(posts), h.RunBody(run))
 	}
 
-	q, err := h.Client.QuoteFeedPost(h.Ctx(), connect.NewRequest(&v1.QuoteFeedPostRequest{BotId: bot.GetId(), Id: posts[0].GetId()}))
+	q, err := h.Client.QuoteFeedPost(h.Ctx(), connect.NewRequest(&v1.QuoteFeedPostRequest{BotId: bot.GetId(), Id: posts[0].GetId(), NewChat: true}))
 	if err != nil {
 		t.Fatal(err)
 	}

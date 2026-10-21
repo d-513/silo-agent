@@ -104,7 +104,7 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 	}
 	out := &v1.RunWidgetActionResponse{}
 	if a.Kind == "hand" {
-		ch, runID, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args))
+		ch, runID, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args), req.Msg.GetNewChat())
 		if err != nil {
 			return nil, err
 		}

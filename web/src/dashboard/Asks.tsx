@@ -238,7 +238,8 @@ export function AskSlip({
 }: {
   botId: string;
   card: DashboardCard;
-  onSubmit: (card: DashboardCard, values: Record<string, unknown>) => Promise<void>;
+  // apart answers in a chat of its own instead of the main one.
+  onSubmit: (card: DashboardCard, values: Record<string, unknown>, apart?: boolean) => Promise<void>;
   onDismiss: (card: DashboardCard, suppress: boolean) => Promise<void>;
 }) {
   const blocks = parseBlocks(card.blocksJson);
@@ -296,7 +297,11 @@ export function AskSlip({
           size="sm"
           disabled={busy !== ""}
           icon={busy === "submit" ? <Spinner size={12} tone="on-ink" /> : <Send size={13} />}
-          onClick={() => void act("submit", () => onSubmit(card, values))}
+          title={t("Answers in the main chat. Ctrl/⌘-click for a new chat.")}
+          onClick={(e) => {
+            const apart = e.metaKey || e.ctrlKey;
+            void act("submit", () => onSubmit(card, values, apart));
+          }}
         >
           {card.submitLabel || t("Send")}
         </Btn>

@@ -105,7 +105,9 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err := a.DB.Create(&b).Error; err != nil {
 		return nil, err
 	}
-	_ = a.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error
+	if _, err := a.mainChat(id); err != nil {
+		return nil, err
+	}
 	a.Skills.EnsureDefaults(id)
 	a.Automations.EnsurePinned(id)
 	a.Connectors.AttachDefaults(ctx, id)
@@ -327,7 +329,11 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		}
 		made = true
 	} else if chatID == "" {
-		ch = a.backfillChats(b.ID)
+		main, err := a.mainChat(b.ID)
+		if err != nil {
+			return nil, err
+		}
+		ch = main
 	} else {
 		owned, cerr := a.ownChat(ctx, b.ID, chatID)
 		if cerr != nil {

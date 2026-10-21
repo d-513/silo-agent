@@ -195,11 +195,9 @@ const pl: Record<string, string> = {
   "Channel": "Kanał",
   "Chat": "Czat",
   "Feed": "Feed",
-  "What this Bot posted for you to read later. Quote a post to talk about it in a new chat.": "To, co ten Bot opublikował, abyś przeczytał później. Zacytuj wpis, aby porozmawiać o nim w nowym czacie.",
   "Loading…": "Wczytywanie…",
   "Nothing yet.": "Jeszcze nic.",
   "The Bot posts here with the feed tool — from a chat, an automation, or a channel.": "Bot publikuje tutaj narzędziem feed — z czatu, automatyzacji albo kanału.",
-  "Quote in a new chat": "Cytuj w nowym czacie",
   "Delete post": "Usuń wpis",
   "Click again to delete": "Kliknij ponownie, aby usunąć",
   "Copy": "Kopiuj",
@@ -775,7 +773,6 @@ const pl: Record<string, string> = {
   "Dismiss": "Zamknij",
   "Pages": "Strony",
   "Customize": "Dostosuj",
-  "No chats": "Brak czatów",
   "New chat": "Nowy czat",
   "Rename chat": "Zmień nazwę czatu",
   "Delete chat": "Usuń czat",
@@ -1665,6 +1662,13 @@ const pl: Record<string, string> = {
   "{{count}} messages wiped_few": "Usunięto {{count}} wiadomości",
   "{{count}} messages wiped_many": "Usunięto {{count}} wiadomości",
   "{{count}} messages wiped_other": "Usunięto {{count}} wiadomości",
+  "Reply in the main chat": "Odpowiedz w głównym czacie",
+  "Reply in a new chat": "Odpowiedz w nowym czacie",
+  "No other chats": "Brak innych czatów",
+  "Main chat": "Główny czat",
+  "Answers in the main chat. Ctrl/⌘-click for a new chat.": "Odpowiada w głównym czacie. Ctrl/⌘ + klik, aby w nowym czacie.",
+  "Opens in the main chat. Ctrl/⌘-click for a new chat.": "Otwiera się w głównym czacie. Ctrl/⌘ + klik, aby w nowym czacie.",
+  "What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.": "Co ten bot opublikował dla Ciebie na później. Odpowiedz na wpis w głównym czacie albo w osobnym czacie.",
 };
 
 export default pl;

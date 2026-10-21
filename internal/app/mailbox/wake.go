@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -86,14 +87,20 @@ func (s *Service) wake(box *db.Mailbox, m *db.MailMessage) {
 		subject = "(no subject)"
 	}
 	now := time.Now()
-	chat := db.Chat{ID: ids.New(), BotID: m.BotID, Title: textx.ClipRunes("Mail: "+subject, 80), CreatedAt: now, UpdatedAt: now}
-	if err := s.db.Create(&chat).Error; err != nil {
-		log.Printf("mail: wake chat for %s: %v", m.ID, err)
-		return
+	// The main chat, unless a reply is running there: then a chat of its own.
+	chat, inMain := chats.MainIdle(s.db, m.BotID, s.engine.LiveRunID)
+	if !inMain {
+		chat = &db.Chat{ID: ids.New(), BotID: m.BotID, Title: textx.ClipRunes("Mail: "+subject, 80), CreatedAt: now, UpdatedAt: now}
+		if err := s.db.Create(chat).Error; err != nil {
+			log.Printf("mail: wake chat for %s: %v", m.ID, err)
+			return
+		}
 	}
 	if _, err := s.engine.StartRun(run.Request{BotID: m.BotID, ChatID: chat.ID, Text: wakeText(m), From: "mail"}); err != nil {
 		// A disabled owner, a Bot that is gone: the mail stays in the inbox.
-		s.db.Delete(&chat)
+		if !inMain {
+			s.db.Delete(chat)
+		}
 		if !errors.Is(err, run.ErrBusy) {
 			log.Printf("mail: wake run for %s: %v", m.ID, err)
 		}

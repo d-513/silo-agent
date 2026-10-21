@@ -317,7 +317,7 @@ func TestSubagentStopCascadesAndDeleteDrops(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Stopper")
 	id := bot.GetId()
-	chat := h.FirstChat(id)
+	chat := newChat(t, h, id)
 	run, _ := h.Send(id, chat, "Test_SA4_Input")
 	h.WaitRun(run)
 	waitSubagent(t, h, id, chat, "slow", func(s *v1.Subagent) bool { return s.GetRunning() })
