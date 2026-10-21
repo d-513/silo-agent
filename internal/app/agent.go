@@ -365,7 +365,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	botID, chatID, userText, atts, origin := req.BotID, req.ChatID, req.Text, req.Extra.Files, req.Origin
 	defer lr.cancel()
 	defer close(lr.done)
-	defer a.untrackRun(runID)
+	defer a.runExited(runID)
 
 	modelID := a.Models.Resolve(botID, chatID)
 	client, provider, model, err := a.Models.Observed(modelID, botID, "chat")

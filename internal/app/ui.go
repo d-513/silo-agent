@@ -397,7 +397,18 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	}
 	var rows []db.RunEvent
 	// Replay-only events are the model's context, not the thread.
-	if err := a.DB.Where("run_id IN (?) AND kind NOT IN ?", runQ, internalKinds).Order("seq").Find(&rows).Error; err != nil {
+	q := a.DB.Where("run_id IN (?) AND kind NOT IN ?", runQ, internalKinds)
+	// A reconnect reads only what came after the client's last event. An
+	// anchor that is gone (an edit truncated it) replays everything, so the
+	// client does not stall on an open run.
+	if after != "" {
+		var anchor db.RunEvent
+		if a.DB.Select("seq").Where("id = ? AND run_id IN (?)", after, runQ).Limit(1).Find(&anchor).RowsAffected > 0 {
+			q = q.Where("seq > ?", anchor.Seq)
+			after = ""
+		}
+	}
+	if err := q.Order("seq").Find(&rows).Error; err != nil {
 		return err
 	}
 	seen := map[string]struct{}{}

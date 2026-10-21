@@ -162,14 +162,29 @@ func (a *App) publishReset(botID, chatID string) {
 // StopChatLive stops any live run for the chat and waits for its goroutine to
 // exit, so history truncation is not raced by a final write.
 func (a *App) StopChatLive(botID, chatID string) {
-	lr := a.liveRunFor(botID, chatID)
-	if lr == nil {
+	// A run already stopped or past its last turn is still writing its last
+	// events: wait for those too, or they land after the truncation.
+	var wait []*liveRun
+	a.mu.Lock()
+	for _, m := range []map[string]*liveRun{a.runs, a.ending} {
+		for _, lr := range m {
+			if lr.botID == botID && lr.chatID == chatID {
+				wait = append(wait, lr)
+			}
+		}
+	}
+	a.mu.Unlock()
+	if len(wait) == 0 {
 		return
 	}
 	a.stopChat(botID, chatID)
-	select {
-	case <-lr.done:
-	case <-time.After(5 * time.Second):
+	deadline := time.After(5 * time.Second)
+	for _, lr := range wait {
+		select {
+		case <-lr.done:
+		case <-deadline:
+			return
+		}
 	}
 }
 

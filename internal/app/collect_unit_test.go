@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 )
 
@@ -59,5 +60,32 @@ func TestCollectCapsKeepMoreOfFailures(t *testing.T) {
 	okLen, errLen := len([]rune(entries[0])), len([]rune(entries[1]))
 	if okLen > 450 || errLen < 800 || errLen > 850 {
 		t.Fatalf("result caps: ok %d, error %d", okLen, errLen)
+	}
+}
+
+// A delta is cut only before a user message or a model turn, so a call stays
+// with its results; past the limit the oldest parts are dropped.
+func TestSplitEventsKeepsCallsWithResults(t *testing.T) {
+	big := strings.Repeat("x", 4000)
+	evs := []db.RunEvent{
+		{Kind: "user", Body: big, Seq: 1},
+		{Kind: turnKind, Seq: 2},
+		{Kind: "tool_result", Body: big, Seq: 3},
+		{Kind: turnKind, Seq: 4},
+		{Kind: "tool_result", Body: big, Seq: 5},
+		{Kind: "assistant", Body: "done", Seq: 6},
+	}
+	parts, dropped := splitEvents(evs, 100, 10)
+	if dropped != 0 || len(parts) != 4 {
+		t.Fatalf("parts %d dropped %d", len(parts), dropped)
+	}
+	for _, p := range parts {
+		if p[0].Kind == "tool_result" {
+			t.Fatalf("a part starts with a result: %+v", p)
+		}
+	}
+	parts, dropped = splitEvents(evs, 100, 2)
+	if len(parts) != 2 || dropped != 3 || parts[len(parts)-1][len(parts[len(parts)-1])-1].Seq != 6 {
+		t.Fatalf("limited: parts %d dropped %d", len(parts), dropped)
 	}
 }

@@ -48,6 +48,9 @@ type Service struct {
 	// saving makes Save's look for a near-copy and its write one step, so a
 	// remember and the collector saving the same fact add one row.
 	saving sync.Mutex
+	// digestFailed (bot id → time.Time) holds a Bot's digest back after a
+	// failure that was not the provider's.
+	digestFailed sync.Map
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service) *Service {

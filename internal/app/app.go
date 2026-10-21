@@ -167,6 +167,10 @@ type App struct {
 	approvals map[string]*waiter
 	cmdRun    map[string]string
 	runs      map[string]*liveRun
+	// ending holds runs that are no longer live (stopped, or past their last
+	// turn) but still writing, until their goroutine exits, so a truncation
+	// can wait for them.
+	ending map[string]*liveRun
 	mask      map[string]*masker.Masker
 	lifecycle sync.Map
 
@@ -609,9 +613,31 @@ func (a *App) liveRunFor(botID, chatID string) *liveRun {
 	return nil
 }
 
-func (a *App) untrackRun(runID string) {
+// endingLocked notes a run that left a.runs while its goroutine still runs.
+// Hold a.mu.
+func (a *App) endingLocked(runID string, lr *liveRun) {
+	if a.ending == nil {
+		a.ending = map[string]*liveRun{}
+	}
+	a.ending[runID] = lr
+}
+
+// runExited forgets a run whose goroutine is done.
+func (a *App) runExited(runID string) {
 	a.mu.Lock()
 	delete(a.runs, runID)
+	delete(a.ending, runID)
+	a.mu.Unlock()
+}
+
+// untrackRun ends a run's time as the conversation's live run; it stays in
+// ending until its goroutine exits.
+func (a *App) untrackRun(runID string) {
+	a.mu.Lock()
+	if lr := a.runs[runID]; lr != nil {
+		delete(a.runs, runID)
+		a.endingLocked(runID, lr)
+	}
 	a.mu.Unlock()
 }
 
@@ -637,6 +663,7 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 		}
 		lr.cancel()
 		delete(a.runs, id)
+		a.endingLocked(id, lr)
 		want[id] = true
 	}
 	for id, w := range a.approvals {

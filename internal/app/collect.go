@@ -112,13 +112,15 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 			ch.ID, ch.MemorySeq, maxSeq, append([]string{compactionKind, compactingKind}, streamedKinds...)).
 		Order("run_events.seq").Find(&evs)
 
-	msgs := historyFromEvents(evs)
-	if !hasUserText(msgs) {
+	if !hasUserText(historyFromEvents(evs)) {
 		a.advanceMemorySeq(ch.ID, maxSeq)
 		return collectResult{Note: "nothing new"}, nil
 	}
-	entries, _ := transcriptEntries(msgs, collectCaps)
-	chunks, dropped := chunkEntries(entries, collectBudget, collectChunks)
+	// The delta is split by events, not by transcript, so the watermark can
+	// move past each part once it is applied: a failure in a later part
+	// retries only that part, and the model never re-reads (and re-saves in
+	// other words) what it already took from an earlier one.
+	parts, dropped := splitEvents(evs, collectBudget, collectChunks)
 
 	modelID := a.cfg().MemoryModel()
 	client, provider, model, err := a.Models.Observed(modelID, ch.BotID, "memory")
@@ -129,13 +131,29 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	cache.Key, cache.Messages = "silo-memory-collector", false
 
 	var res collectResult
-	for i, chunk := range chunks {
+	for i, part := range parts {
+		// The last part carries the watermark past the delta's streamed tail.
+		upTo := part[len(part)-1].Seq
+		if i == len(parts)-1 {
+			upTo = maxSeq
+		}
+		entries, _ := transcriptEntries(historyFromEvents(part), collectCaps)
+		if len(entries) == 0 {
+			a.advanceMemorySeq(ch.ID, upTo)
+			continue
+		}
+		// A part with no place to cut keeps its newest budget's worth.
+		cut, over := chunkEntries(entries, collectBudget, 1)
+		chunk := cut[len(cut)-1]
 		note := ""
-		if len(chunks) > 1 {
-			note = fmt.Sprintf(" (part %d of %d)", i+1, len(chunks))
+		if len(parts) > 1 {
+			note = fmt.Sprintf(" (part %d of %d)", i+1, len(parts))
 		}
 		if i == 0 && dropped > 0 {
-			chunk = fmt.Sprintf("[%d older entries were dropped to fit.]\n\n", dropped) + chunk
+			chunk = fmt.Sprintf("[%d older events were dropped to fit.]\n\n", dropped) + chunk
+		}
+		if over > 0 {
+			chunk = fmt.Sprintf("[%d older entries of this part were dropped to fit.]\n\n", over) + chunk
 		}
 		shown, err := a.Memory.Search(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown, 0)
 		if err != nil {
@@ -155,13 +173,14 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		if !ok {
 			log.Printf("memory collector: chat %s: unreadable reply %q", ch.ID, textx.TruncateUTF8(out.Text, 200))
 			res.Note = "the model's reply could not be read"
+			a.advanceMemorySeq(ch.ID, upTo)
 			continue
 		}
 		if err := a.applyCollect(ctx, &ch, shown, reply, &res); err != nil {
 			return res, err
 		}
+		a.advanceMemorySeq(ch.ID, upTo)
 	}
-	a.advanceMemorySeq(ch.ID, maxSeq)
 	return res, nil
 }
 
@@ -232,6 +251,37 @@ func hasUserText(msgs []llm.Message) bool {
 		}
 	}
 	return false
+}
+
+// splitEvents cuts a delta into parts of about budget tokens, at most max of
+// them (limit), oldest first. A part only ends before a user message or a model turn,
+// so no tool call is parted from its results. What does not fit in max parts
+// is dropped from the front (dropped counts those events), so the newest part
+// of a conversation is always read.
+func splitEvents(evs []db.RunEvent, budget, limit int) (parts [][]db.RunEvent, dropped int) {
+	// A result reads capped in the transcript; count it that way.
+	capTokens := runeTokens(strings.Repeat("x", max(collectCaps.Result, collectCaps.ErrorResult)))
+	start, size := 0, 0
+	for i, e := range evs {
+		cuttable := e.Kind == "user" || e.Kind == turnKind || e.Kind == "assistant"
+		if cuttable && size >= budget && i > start {
+			parts = append(parts, evs[start:i])
+			start, size = i, 0
+		}
+		n := runeTokens(e.Body)
+		if e.Kind == "tool_result" {
+			n = min(n, capTokens)
+		}
+		size += n + 1
+	}
+	parts = append(parts, evs[start:])
+	if len(parts) > limit {
+		for _, p := range parts[:len(parts)-limit] {
+			dropped += len(p)
+		}
+		parts = parts[len(parts)-limit:]
+	}
+	return parts, dropped
 }
 
 // chunkEntries packs transcript entries into at most max chunks of about

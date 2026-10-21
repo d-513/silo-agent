@@ -92,16 +92,36 @@ func (s *Service) listed(botID string, budget int) []Recalled {
 	return rows
 }
 
-// storeKey identifies the exact contents of a Bot's memory.
+// storeKey identifies the exact contents of a Bot's memory: the SHA-256 of
+// each memory's id and text, NUL-terminated, in id order (storeKeyOf). It is
+// computed in the database, so a sweep does not load every memory to learn
+// that nothing changed.
 func (s *Service) storeKey(botID string) string {
-	var rows []struct {
-		ID      string
-		Content string
+	var key string
+	err := s.db.Raw(`SELECT encode(sha256(COALESCE(string_agg(
+			convert_to(id, 'UTF8') || '\x00'::bytea || convert_to(content, 'UTF8') || '\x00'::bytea,
+			''::bytea ORDER BY id), ''::bytea)), 'hex')
+		FROM memories WHERE bot_id = ?`, botID).Scan(&key).Error
+	if err != nil || key == "" {
+		var rows []struct {
+			ID      string
+			Content string
+		}
+		s.db.Model(&db.Memory{}).Select("id, content").Where("bot_id = ?", botID).Order("id").Scan(&rows)
+		pairs := make([][2]string, len(rows))
+		for i, r := range rows {
+			pairs[i] = [2]string{r.ID, r.Content}
+		}
+		return storeKeyOf(pairs)
 	}
-	s.db.Model(&db.Memory{}).Select("id, content").Where("bot_id = ?", botID).Order("id").Scan(&rows)
+	return key
+}
+
+// storeKeyOf is storeKey over (id, content) pairs in id order.
+func storeKeyOf(rows [][2]string) string {
 	h := sha256.New()
 	for _, r := range rows {
-		fmt.Fprintf(h, "%s\x00%s\x00", r.ID, r.Content)
+		fmt.Fprintf(h, "%s\x00%s\x00", r[0], r[1])
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -120,6 +140,9 @@ func (s *Service) SweepDigests(ctx context.Context, now time.Time) int {
 		if wrote == digestPerTick {
 			break
 		}
+		if v, ok := s.digestFailed.Load(botID); ok && now.Before(v.(time.Time)) {
+			continue // a digest that failed is not retried, and billed, every tick
+		}
 		var d db.MemoryDigest
 		s.db.Where("bot_id = ?", botID).Limit(1).Find(&d)
 		if d.Text != "" && now.Sub(d.UpdatedAt) < digestQuiet {
@@ -135,8 +158,10 @@ func (s *Service) SweepDigests(ctx context.Context, now time.Time) int {
 			if _, provider := err.(models.ProviderError); provider {
 				return wrote
 			}
+			s.digestFailed.Store(botID, now.Add(digestQuiet))
 			continue
 		}
+		s.digestFailed.Delete(botID)
 		row := db.MemoryDigest{BotID: botID, Key: key, Text: text, UpdatedAt: now}
 		s.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "bot_id"}}, UpdateAll: true}).Create(&row)
 		wrote++
