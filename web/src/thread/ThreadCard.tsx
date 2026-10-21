@@ -27,7 +27,6 @@ export function ThreadCard({ botId, card }: { botId: string; card: DashboardCard
         place="thread"
         onSubmit={(c, values) => guard(() => ui.submitDashboardCard({ botId, id: c.id, valuesJson: JSON.stringify(values) }))}
         onDismiss={(c, suppressKind) => guard(() => ui.dismissDashboardCard({ botId, id: c.id, suppressKind }))}
-        onSetup={(c, index, outcome) => guard(() => ui.resolveCardSetup({ botId, id: c.id, index, outcome }))}
       />
       {err ? <p className="px-1 text-[12px] text-vermilion">{err}</p> : null}
     </div>

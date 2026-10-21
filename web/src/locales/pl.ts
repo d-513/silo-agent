@@ -1696,6 +1696,12 @@ const pl: Record<string, string> = {
   "{{count}} subagents at work_few": "{{count}} subagenty pracują",
   "{{count}} subagents at work_many": "{{count}} subagentów pracuje",
   "{{count}} subagents at work_other": "{{count}} subagenta pracuje",
+  "Connector": "Konektor",
+  "Drive": "Dysk",
+  "Default rule": "Domyślna reguła",
+  "Also chat tools": "Także jako narzędzia czatu",
+  "Yes": "Tak",
+  "No": "Nie",
 };
 
 export default pl;

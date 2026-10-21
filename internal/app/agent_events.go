@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"silo.agent/internal/app/dashboard"
+	"silo.agent/internal/app/setup"
 	"strings"
 	"time"
 
@@ -39,8 +40,11 @@ func (a *App) emitMeta(botID, chatID, runID, kind, body, tool, meta string) {
 	}
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: kind, Body: body, Tool: tool, Meta: meta, CreatedAt: time.Now()})
 	ev := &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: kind, Body: body, Tool: tool}
-	if kind == dashboard.CardKind {
+	switch kind {
+	case dashboard.CardKind:
 		ev.Card = a.Dashboard.CardProto(body)
+	case setup.Kind:
+		ev.SetupOffer = a.Setup.Proto(body)
 	}
 	a.Bus.Publish(botID, ev)
 }

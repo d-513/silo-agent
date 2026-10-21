@@ -27,6 +27,18 @@ export const card: Handler = (out, e, key) => {
   if (e.card) out.push({ key, type: "card", card: e.card, createdAt: e.createdAt });
 };
 
+// offer is a setup the Bot offered in this chat; offerState is the owner
+// answering it.
+export const offer: Handler = (out, e, key) => {
+  if (e.setupOffer) out.push({ key, type: "offer", offer: e.setupOffer });
+};
+
+export const offerState: Handler = (out, e) => {
+  const o = e.setupOffer;
+  if (!o) return;
+  for (const b of out) if (b.type === "offer" && b.offer.id === o.id) b.offer = o;
+};
+
 // cardState is a card in the chat changing (answered, put away, a setup
 // done): every block that shows it takes the new state.
 export const cardState: Handler = (out, e) => {

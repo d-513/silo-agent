@@ -291,6 +291,23 @@ def set_proactivity(level: str) -> dict:
     return call("bot", "set_proactivity", {"level": level})
 
 
+def offer_setup(kind: str, target: str, why: str | None = None, options: dict | None = None) -> dict:
+    """Offer the owner a connector, channel or drive from Silo's catalog, as a card.
+
+    `kind` is "connector" (target = library identifier), "channel" (adapter)
+    or "drive" (provider). `options` fills in the add form: name, a
+    connector's default_mode/expose_completion, a channel's inbound/prompt, a
+    drive's read_only, and plain fields such as an email address; never a
+    secret or an address. You are told when the owner sets it up or skips it.
+    """
+    args: dict = {"kind": kind, "target": target}
+    if why is not None:
+        args["why"] = why
+    if options is not None:
+        args["options"] = options
+    return call("bot", "offer_setup", args)
+
+
 def ask_owner(
     text: str,
     title: str | None = None,
@@ -302,10 +319,8 @@ def ask_owner(
 
     In a chat it shows there; from an automation or a channel it goes to the
     main chat (when the owner allows it) and waits on the Dashboard either way.
-    `blocks` are display blocks, form controls (each with a `name`) and setup
-    offers: {"type": "setup", "kind": "connector"|"channel"|"drive",
-    "target": <library identifier, adapter or provider>, "prefill": {...},
-    "why": "..."}. Their answer comes back as their next message.
+    `blocks` are display blocks and form controls (each with a `name`). Their
+    answer comes back as their next message.
     """
     args: dict = {"text": text}
     for k, v in (("title", title), ("blocks", blocks), ("submit_label", submit_label), ("key", key)):

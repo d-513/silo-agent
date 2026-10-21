@@ -33,11 +33,13 @@ export function ChannelForm({
   // A new channel was made (instead of going back).
   onSaved?: (ch: Channel) => void;
 }) {
-  const [name, setName] = useState(channel?.name ?? "");
-  const [enabled, setEnabled] = useState(channel?.enabled ?? true);
-  const [inbound, setInbound] = useState(channel?.inbound ?? true);
-  const [prompt, setPrompt] = useState(channel?.prompt ?? "");
-  const [config, setConfig] = useState<Record<string, string>>(() => ({ ...(prefill ?? {}), ...(channel?.config ?? {}) }));
+  // A setup offer fills in the form's own options and the adapter's plain fields.
+  const { name: preName, enabled: preEnabled, inbound: preInbound, prompt: prePrompt, ...preConfig } = prefill ?? {};
+  const [name, setName] = useState(channel?.name ?? preName ?? "");
+  const [enabled, setEnabled] = useState(channel?.enabled ?? preEnabled !== "false");
+  const [inbound, setInbound] = useState(channel?.inbound ?? preInbound !== "false");
+  const [prompt, setPrompt] = useState(channel?.prompt ?? prePrompt ?? "");
+  const [config, setConfig] = useState<Record<string, string>>(() => ({ ...preConfig, ...(channel?.config ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const saver = useSave();

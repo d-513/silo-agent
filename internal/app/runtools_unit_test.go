@@ -41,7 +41,9 @@ func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 			t.Errorf("%s resolves as a chat tool by default", name)
 		}
 	}
-	if n := len(a.toolsFor("bot", nil)); n > 28 {
+	// 30: the loop, plus the tools that hand the turn to the human in the
+	// chat (ask_owner, offer_setup, the approvals that outlive a cell).
+	if n := len(a.toolsFor("bot", nil)); n > 30 {
 		t.Errorf("%d tools offered by default; the list was meant to stay small", n)
 	}
 

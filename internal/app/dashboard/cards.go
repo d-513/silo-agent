@@ -4,18 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
-	"time"
-
-	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/quote"
-	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/textx"
 )
@@ -29,7 +23,8 @@ const CardKind = "card"
 // it changes (answered, dismissed, a setup done): body is the card's id.
 const CardStateKind = "card_state"
 
-// cleanBlocks is normalizeBlocks plus the checks a setup block needs.
+// cleanBlocks is normalizeBlocks; a setup offer is its own tool now
+// (offer_setup), not a block.
 func (s *Service) cleanBlocks(raw any) (string, error) {
 	norm, err := normalizeBlocks(raw)
 	if err != nil {
@@ -37,20 +32,12 @@ func (s *Service) cleanBlocks(raw any) (string, error) {
 	}
 	var blocks []map[string]any
 	_ = json.Unmarshal([]byte(norm), &blocks)
-	setups := false
 	for _, blk := range blocks {
 		if blk["type"] == "setup" {
-			if err := s.checkSetup(blk); err != nil {
-				return "", err
-			}
-			setups = true
+			return "", errors.New("a card has no setup block; offer it with offer_setup")
 		}
 	}
-	if !setups {
-		return norm, nil
-	}
-	out, _ := json.Marshal(blocks)
-	return string(out), nil
+	return norm, nil
 }
 
 // askOwner is the ask_owner tool: a question for the owner, with an optional
@@ -164,51 +151,4 @@ func (s *Service) answerIn(c *db.DashboardCard) string {
 		return ""
 	}
 	return ch.ID
-}
-
-// ResolveCardSetup records what the owner did with one setup block and tells
-// the Bot, so it carries on: "I set up Email." starts (or joins) a run in the
-// card's chat.
-func (s *Service) ResolveCardSetup(ctx context.Context, req *connect.Request[v1.ResolveCardSetupRequest]) (*connect.Response[v1.DashboardCard], error) {
-	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId())
-	if err != nil {
-		return nil, err
-	}
-	outcome := req.Msg.GetOutcome()
-	if outcome != setupDone && outcome != setupSkipped {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("outcome is done or skipped"))
-	}
-	i := int(req.Msg.GetIndex())
-	label, ok := setupLabel(c, i)
-	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no setup block at that index"))
-	}
-	state := map[string]string{}
-	_ = json.Unmarshal([]byte(c.SetupJSON), &state)
-	key := strconv.Itoa(i)
-	if state[key] == outcome {
-		return connect.NewResponse(protoCard(c)), nil
-	}
-	state[key] = outcome
-	raw, _ := json.Marshal(state)
-	c.SetupJSON = string(raw)
-	c.UpdatedAt = time.Now()
-	s.db.Model(&db.DashboardCard{}).Where("id = ?", c.ID).Updates(map[string]any{"setup_json": c.SetupJSON, "updated_at": c.UpdatedAt})
-	s.cardChanged(c)
-
-	turn := fmt.Sprintf("I set up **%s**.", label)
-	if outcome == setupSkipped {
-		turn = fmt.Sprintf("I'll skip **%s** for now.", label)
-	}
-	if chat := s.answerIn(c); chat != "" {
-		if _, err := s.host.StartOrInject(c.BotID, chat, turn, run.Extra{}, nil); err != nil {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-		}
-	} else {
-		q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: feed.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
-		if _, _, err := s.quoteChat(c.BotID, c.Title, q, turn, false); err != nil {
-			return nil, err
-		}
-	}
-	return connect.NewResponse(protoCard(c)), nil
 }

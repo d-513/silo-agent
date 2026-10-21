@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/app/dashboard"
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
@@ -279,6 +280,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})
 	a.Dashboard.Drop(b.ID)
+	a.Setup.Drop(b.ID)
 	a.Tunnels.Drop(b.ID)
 	a.Artifacts.Drop(b.ID)
 	a.Mail.Drop(b.ID)
@@ -530,6 +532,8 @@ func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 		out.Card = a.Dashboard.CardProto(r.Body)
 	case r.Kind == quote.Kind:
 		out.Card = a.Dashboard.CardProto(quote.CardOf(r))
+	case r.Kind == setup.Kind:
+		out.SetupOffer = a.Setup.Proto(r.Body)
 	}
 	return out
 }
@@ -552,6 +556,12 @@ func (a *App) Proactive(botID string) bool {
 	var b db.Bot
 	a.DB.Select("proactivity").Where("id = ?", botID).Limit(1).Find(&b)
 	return b.Proactivity == proactiveActive
+}
+
+// OfferChanged sends a chat's viewers a setup offer as it stands now: a
+// transient event, never persisted or replayed.
+func (a *App) OfferChanged(botID, chatID string, o *v1.SetupOffer) {
+	a.Bus.Publish(botID, &v1.RunEvent{ChatId: chatID, Kind: setup.StateKind, Body: o.GetId(), SetupOffer: o})
 }
 
 // CardChanged sends a chat's viewers a card as it stands now: a transient

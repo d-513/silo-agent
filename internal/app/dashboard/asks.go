@@ -174,7 +174,6 @@ func protoCard(c *db.DashboardCard) *v1.DashboardCard {
 		Priority: int32(c.Priority), BlocksJson: blocks, SubmitLabel: submit, Status: c.Status,
 		SourceKind: c.SourceKind, SourceName: c.SourceName, ChatId: c.ChatID,
 		CreatedAt: c.CreatedAt.Format(time.RFC3339), UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Read: c.ReadAt != nil,
-		SetupJson: c.SetupJSON,
 	}
 }
 
@@ -198,6 +197,16 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 	}
 	c.Status = "dismissed"
 	s.cardChanged(c)
+	// A question put aside in a chat is an answer too: the Bot carries on.
+	if in := s.answerIn(c); in != "" {
+		turn := fmt.Sprintf("Not now for your question “%s”.", c.Title)
+		if suppress {
+			turn = fmt.Sprintf("Please don't ask me about “%s” again.", c.Title)
+		}
+		if _, err := s.host.StartOrInject(c.BotID, in, turn, run.Extra{}, nil); err != nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+	}
 	if suppress && s.memory != nil {
 		topic := c.Title
 		if c.Key != "" {

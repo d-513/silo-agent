@@ -141,8 +141,8 @@ const (
 	UIDismissDashboardCardProcedure = "/silo.v1.UI/DismissDashboardCard"
 	// UISubmitDashboardCardProcedure is the fully-qualified name of the UI's SubmitDashboardCard RPC.
 	UISubmitDashboardCardProcedure = "/silo.v1.UI/SubmitDashboardCard"
-	// UIResolveCardSetupProcedure is the fully-qualified name of the UI's ResolveCardSetup RPC.
-	UIResolveCardSetupProcedure = "/silo.v1.UI/ResolveCardSetup"
+	// UIResolveSetupOfferProcedure is the fully-qualified name of the UI's ResolveSetupOffer RPC.
+	UIResolveSetupOfferProcedure = "/silo.v1.UI/ResolveSetupOffer"
 	// UIRefreshWidgetProcedure is the fully-qualified name of the UI's RefreshWidget RPC.
 	UIRefreshWidgetProcedure = "/silo.v1.UI/RefreshWidget"
 	// UISetWidgetStateProcedure is the fully-qualified name of the UI's SetWidgetState RPC.
@@ -480,7 +480,7 @@ type UIClient interface {
 	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
 	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
 	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
-	ResolveCardSetup(context.Context, *connect.Request[v1.ResolveCardSetupRequest]) (*connect.Response[v1.DashboardCard], error)
+	ResolveSetupOffer(context.Context, *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error)
 	// Widgets: what the Bot keeps on the Dashboard and code keeps current.
 	RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error)
 	SetWidgetState(context.Context, *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error)
@@ -973,10 +973,10 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
 			connect.WithClientOptions(opts...),
 		),
-		resolveCardSetup: connect.NewClient[v1.ResolveCardSetupRequest, v1.DashboardCard](
+		resolveSetupOffer: connect.NewClient[v1.ResolveSetupOfferRequest, v1.SetupOffer](
 			httpClient,
-			baseURL+UIResolveCardSetupProcedure,
-			connect.WithSchema(uIMethods.ByName("ResolveCardSetup")),
+			baseURL+UIResolveSetupOfferProcedure,
+			connect.WithSchema(uIMethods.ByName("ResolveSetupOffer")),
 			connect.WithClientOptions(opts...),
 		),
 		refreshWidget: connect.NewClient[v1.RefreshWidgetRequest, v1.DashboardWidget](
@@ -1781,7 +1781,7 @@ type uIClient struct {
 	markDashboardRead        *connect.Client[v1.MarkDashboardReadRequest, v1.MarkDashboardReadResponse]
 	dismissDashboardCard     *connect.Client[v1.DismissDashboardCardRequest, v1.DismissDashboardCardResponse]
 	submitDashboardCard      *connect.Client[v1.SubmitDashboardCardRequest, v1.SubmitDashboardCardResponse]
-	resolveCardSetup         *connect.Client[v1.ResolveCardSetupRequest, v1.DashboardCard]
+	resolveSetupOffer        *connect.Client[v1.ResolveSetupOfferRequest, v1.SetupOffer]
 	refreshWidget            *connect.Client[v1.RefreshWidgetRequest, v1.DashboardWidget]
 	setWidgetState           *connect.Client[v1.SetWidgetStateRequest, v1.DashboardWidget]
 	runWidgetAction          *connect.Client[v1.RunWidgetActionRequest, v1.RunWidgetActionResponse]
@@ -2173,9 +2173,9 @@ func (c *uIClient) SubmitDashboardCard(ctx context.Context, req *connect.Request
 	return c.submitDashboardCard.CallUnary(ctx, req)
 }
 
-// ResolveCardSetup calls silo.v1.UI.ResolveCardSetup.
-func (c *uIClient) ResolveCardSetup(ctx context.Context, req *connect.Request[v1.ResolveCardSetupRequest]) (*connect.Response[v1.DashboardCard], error) {
-	return c.resolveCardSetup.CallUnary(ctx, req)
+// ResolveSetupOffer calls silo.v1.UI.ResolveSetupOffer.
+func (c *uIClient) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error) {
+	return c.resolveSetupOffer.CallUnary(ctx, req)
 }
 
 // RefreshWidget calls silo.v1.UI.RefreshWidget.
@@ -2884,7 +2884,7 @@ type UIHandler interface {
 	MarkDashboardRead(context.Context, *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error)
 	DismissDashboardCard(context.Context, *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error)
 	SubmitDashboardCard(context.Context, *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error)
-	ResolveCardSetup(context.Context, *connect.Request[v1.ResolveCardSetupRequest]) (*connect.Response[v1.DashboardCard], error)
+	ResolveSetupOffer(context.Context, *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error)
 	// Widgets: what the Bot keeps on the Dashboard and code keeps current.
 	RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error)
 	SetWidgetState(context.Context, *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error)
@@ -3373,10 +3373,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SubmitDashboardCard")),
 		connect.WithHandlerOptions(opts...),
 	)
-	uIResolveCardSetupHandler := connect.NewUnaryHandler(
-		UIResolveCardSetupProcedure,
-		svc.ResolveCardSetup,
-		connect.WithSchema(uIMethods.ByName("ResolveCardSetup")),
+	uIResolveSetupOfferHandler := connect.NewUnaryHandler(
+		UIResolveSetupOfferProcedure,
+		svc.ResolveSetupOffer,
+		connect.WithSchema(uIMethods.ByName("ResolveSetupOffer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIRefreshWidgetHandler := connect.NewUnaryHandler(
@@ -4231,8 +4231,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDismissDashboardCardHandler.ServeHTTP(w, r)
 		case UISubmitDashboardCardProcedure:
 			uISubmitDashboardCardHandler.ServeHTTP(w, r)
-		case UIResolveCardSetupProcedure:
-			uIResolveCardSetupHandler.ServeHTTP(w, r)
+		case UIResolveSetupOfferProcedure:
+			uIResolveSetupOfferHandler.ServeHTTP(w, r)
 		case UIRefreshWidgetProcedure:
 			uIRefreshWidgetHandler.ServeHTTP(w, r)
 		case UISetWidgetStateProcedure:
@@ -4702,8 +4702,8 @@ func (UnimplementedUIHandler) SubmitDashboardCard(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SubmitDashboardCard is not implemented"))
 }
 
-func (UnimplementedUIHandler) ResolveCardSetup(context.Context, *connect.Request[v1.ResolveCardSetupRequest]) (*connect.Response[v1.DashboardCard], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ResolveCardSetup is not implemented"))
+func (UnimplementedUIHandler) ResolveSetupOffer(context.Context, *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ResolveSetupOffer is not implemented"))
 }
 
 func (UnimplementedUIHandler) RefreshWidget(context.Context, *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error) {

@@ -1,4 +1,4 @@
-import type { DashboardCard, DashboardWidget } from "../gen/silo/v1/ui_pb";
+import type { DashboardCard, DashboardWidget, SetupOffer } from "../gen/silo/v1/ui_pb";
 
 export type Attachment = { name: string; path: string; size: number };
 
@@ -31,6 +31,8 @@ export type Ev = {
   // A card (and a quote of one, and a card_state update): the card as it
   // stands.
   card?: DashboardCard;
+  // A setup offer (and a setup_state update): the offer as it stands.
+  setupOffer?: SetupOffer;
   at?: number;
   createdAt?: string;
 };
@@ -139,6 +141,8 @@ export type Block =
   // An ask shown in the chat: the Bot's question as a card answered in
   // place. `asked` when it came from elsewhere (an automation) into this chat.
   | { key: string; type: "card"; card: DashboardCard; asked?: boolean; createdAt?: string }
+  // Something the Bot offers to add (a connector, channel or drive).
+  | { key: string; type: "offer"; offer: SetupOffer }
   // A slash command's mark in the thread: the context started over here
   // (/clear), or `count` messages were deleted for good (/wipe).
   | { key: string; type: "boundary"; kind: "cleared" | "wiped"; count: number; createdAt?: string }

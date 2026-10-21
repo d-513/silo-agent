@@ -44,6 +44,7 @@ function toEv(ev: RunEvent): Ev {
     quotes: ev.quotes.length ? ev.quotes.map(quoteFromProto) : undefined,
     quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
     card: ev.card,
+    setupOffer: ev.setupOffer,
   };
 }
 

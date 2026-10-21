@@ -8,6 +8,7 @@ import { rowState, rowVerb } from "./FoldRow";
 import { isBotScratch, PresentFile, QuietPreview } from "./Present";
 import type { ConnectorMarks } from "./toolIcons";
 import { asStr, parseToolArgs, toolAction, toolMeta } from "./toolInfo";
+import { OfferCard } from "../setup/OfferCard";
 import { ThreadCard } from "./ThreadCard";
 import { ToolInput, ToolResult, ToolRow } from "./ToolRow";
 import { t } from "../i18n.ts";
@@ -145,6 +146,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "report") return <SubagentReport text={b.text} agents={b.agents} href={c.agentHref} />;
   if (b.type === "quote") return <Opened text={b.text} source={b.source} quoted={b.quoted} createdAt={b.createdAt} />;
   if (b.type === "card") return <ThreadCard botId={c.botId} card={b.card} />;
+  if (b.type === "offer") return <OfferCard botId={c.botId} offer={b.offer} />;
   if (b.type === "boundary") return <Boundary kind={b.kind} count={b.count} />;
   if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && c.sending} />;
   if (b.type === "tool") return renderTool(b, c);

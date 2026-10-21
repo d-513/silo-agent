@@ -454,12 +454,27 @@ func (a *App) toolDefs() []tool.Def {
 			Run: text(a.proactivityTool),
 		},
 		{
+			Name:        "offer_setup",
+			Description: "Offer the owner something to add from Silo's catalog, as a card in this chat with its logo: a library connector (target = its identifier: email, calendar, gmail, github, …), a channel (telegram, whatsapp, discord) or a drive (gdrive, onedrive, dropbox, …). They open Silo's own form with the options you fill in and submit it; you are told when they set it up or skip it. Give only the target for the form's defaults. Offer several in one turn if they fit; your turn ends with the offers.",
+			Params: tool.Object(map[string]any{
+				"kind":    map[string]any{"type": "string", "enum": []string{"connector", "channel", "drive"}},
+				"target":  map[string]any{"type": "string", "description": "library identifier, channel adapter or drive provider"},
+				"why":     map[string]any{"type": "string", "description": "one line on what it lets you do for them"},
+				"options": map[string]any{"type": "object", "description": "form values to fill in (strings; booleans as true/false): name; a connector's default_mode (allow/ask/deny) and expose_completion; a channel's inbound, enabled and prompt; a drive's read_only; and the provider's own plain fields such as an email address. Never a secret or an address"},
+			}, "kind", "target"),
+			Connector: security.Bot, Action: "offer_setup",
+			ExposeCompletion: true, ExposePython: true, LeadOnly: true,
+			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
+				return a.Setup.Tool(ctx, c.Bot, c.RunID, c.Args)
+			}),
+		},
+		{
 			Name:        "ask_owner",
-			Description: "Ask the owner something only they can answer or decide, as a card they answer in place: a question, optional display blocks and form controls, and setup offers. In this chat it shows here; from an automation or a channel it goes to the main chat (when the owner allows that) and always waits on the Dashboard. Their answer comes back as their next message. Use the Feed for news that needs no answer.",
+			Description: "Ask the owner something only they can answer or decide, as a card they answer in place: a question, optional display blocks and form controls. To suggest adding a connector, channel or drive use offer_setup. In this chat it shows here; from an automation or a channel it goes to the main chat (when the owner allows that) and always waits on the Dashboard. Their answer comes back as their next message. Use the Feed for news that needs no answer.",
 			Params: tool.Object(map[string]any{
 				"text":         map[string]any{"type": "string", "description": "the question, a sentence or two, markdown"},
 				"title":        map[string]any{"type": "string", "description": "a short heading (default: the first line of text)"},
-				"blocks":       map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "display blocks (markdown, kv, metrics, diff), form controls (switch, select, segmented, checkboxes, input, textarea; each with a name) and setup offers ({type: setup, kind: connector|channel|drive, target, prefill, why})"},
+				"blocks":       map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "display blocks (markdown, kv, metrics, diff) and form controls (switch, select, segmented, checkboxes, input, textarea; each with a name)"},
 				"submit_label": map[string]any{"type": "string", "description": "the submit button's label; omit for a card with only setup offers"},
 				"key":          map[string]any{"type": "string", "description": "stable key: asking again with it updates the open card"},
 			}, "text"),

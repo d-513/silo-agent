@@ -31,10 +31,12 @@ export function useDriveForm({
 }) {
   const editing = !!drive;
   const [draft, setDraft] = useState<Drive | undefined>(drive);
-  const [values, setValues] = useState<Record<string, string>>(() => ({ ...(prefill ?? {}), ...(drive?.options ?? {}) }));
+  // A setup offer fills in the form's own options and the provider's plain fields.
+  const { name: preName, read_only: preReadOnly, ...preValues } = prefill ?? {};
+  const [values, setValues] = useState<Record<string, string>>(() => ({ ...preValues, ...(drive?.options ?? {}) }));
   const [secrets, setSecrets] = useState<Record<string, string>>({});
-  const [name, setName] = useState(drive?.name ?? uniqueName(tpl.title, taken));
-  const [readOnly, setReadOnly] = useState(drive?.readOnly ?? false);
+  const [name, setName] = useState(drive?.name ?? (preName && !taken.has(preName) ? preName : uniqueName(tpl.title, taken)));
+  const [readOnly, setReadOnly] = useState(drive?.readOnly ?? preReadOnly === "true");
   const [err, setErr] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authErr, setAuthErr] = useState("");

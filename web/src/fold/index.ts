@@ -14,6 +14,8 @@ const handlers: Record<string, text.Handler> = {
   feed_quote: text.feedQuote,
   card: text.card,
   card_state: text.cardState,
+  setup_offer: text.offer,
+  setup_state: text.offerState,
   thinking_chunk: text.thinkingChunk,
   thinking: text.thinking,
   chunk: text.chunk,

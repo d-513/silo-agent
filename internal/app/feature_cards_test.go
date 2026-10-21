@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -14,19 +13,16 @@ import (
 	"silo.agent/internal/llm/dummy"
 )
 
-// A question asked in a chat is a card in that chat; a setup offer in it
-// keeps only what Silo's catalog allows, and the owner's answer follows the
-// card into the same chat with no quote.
+// A question asked in a chat is a card there and ends the turn; the owner's
+// answer follows the card into the same chat with no quote, and putting it
+// away tells the Bot too.
 func TestAskOwnerInChat(t *testing.T) {
 	dummy.Reset()
-	blocks := `[{"type":"segmented","name":"when","options":["morning","evening"]},` +
-		`{"type":"setup","kind":"connector","target":"email","why":"to read your mail",` +
-		`"prefill":{"address":"me@example.com","provider":"gmail","imap_host":"evil.example","imap_port":"1","password":"hunter2","made_up":"x"}}]`
+	blocks := `[{"type":"segmented","name":"when","options":["morning","evening"]}]`
 	dummy.Script("Test_ask1",
 		memCall("ask_owner", `{"text":"When should I send your digest?","submit_label":"Save","blocks":`+blocks+`}`),
-		dummy.Turn{Text: "asked"},
-		dummy.Turn{Text: "got your answer"},
-		dummy.Turn{Text: "now I can read your mail"},
+		memCall("ask_owner", `{"text":"And on weekends?"}`),
+		dummy.Turn{Text: "fine, weekdays only"},
 	)
 	h := apptest.New(t)
 	id := h.CreateBot("Asker").GetId()
@@ -42,13 +38,6 @@ func TestAskOwnerInChat(t *testing.T) {
 	h.DB.Where("bot_id = ?", id).First(&c)
 	if c.ChatID != main || c.Status != "open" || c.Summary != "When should I send your digest?" {
 		t.Fatalf("card %+v", c)
-	}
-	var got []map[string]any
-	_ = json.Unmarshal([]byte(c.BlocksJSON), &got)
-	setup := got[1]
-	prefill, _ := setup["prefill"].(map[string]any)
-	if setup["label"] == "" || len(prefill) != 2 || prefill["address"] != "me@example.com" || prefill["provider"] != "gmail" {
-		t.Fatalf("setup block kept %+v", setup)
 	}
 	if ev, ok := find(h.ChatEvents(main), "card"); !ok || ev.Body != c.ID {
 		t.Fatalf("no card event in the chat: %+v", ev)
@@ -68,49 +57,75 @@ func TestAskOwnerInChat(t *testing.T) {
 		}
 	}
 
-	res, err := h.Client.ResolveCardSetup(h.Ctx(), connect.NewRequest(&v1.ResolveCardSetupRequest{BotId: id, Id: c.ID, Index: 1, Outcome: "done"}))
-	if err != nil {
+	var second db.DashboardCard
+	h.DB.Where("bot_id = ? AND status = ?", id, "open").First(&second)
+	if second.ID == "" || second.ID == c.ID {
+		t.Fatalf("no second question: %+v", second)
+	}
+	if _, err := h.Client.DismissDashboardCard(h.Ctx(), connect.NewRequest(&v1.DismissDashboardCardRequest{BotId: id, Id: second.ID})); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(res.Msg.GetSetupJson(), `"1":"done"`) {
-		t.Fatalf("setup state %q", res.Msg.GetSetupJson())
-	}
+	waitUserTurn(t, h, main, "Not now for your question")
+}
+
+func waitUserTurn(t *testing.T, h *apptest.H, chat, want string) {
+	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		user := h.LastUserEvent(main)
-		if strings.Contains(user.Body, "I set up **") {
-			break
+		if ev, ok := h.FindLastUserEvent(chat); ok && strings.Contains(ev.Body, want) {
+			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("the Bot was told %q", user.Body)
+			ev, _ := h.FindLastUserEvent(chat)
+			t.Fatalf("the Bot was told %q, want %q", ev.Body, want)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if _, err := h.Client.ResolveCardSetup(h.Ctx(), connect.NewRequest(&v1.ResolveCardSetupRequest{BotId: id, Id: c.ID, Index: 0, Outcome: "done"})); err == nil {
-		t.Fatal("a form control resolved as a setup")
-	}
 }
 
-// A setup offer names a catalog entry or nothing.
-func TestAskOwnerRefusesUnknownSetup(t *testing.T) {
+// An offer is a card of its own: a catalog entry, with the form's values the
+// Bot filled in. Nothing else can be filled in, and the owner's answer
+// reaches the Bot.
+func TestOfferSetup(t *testing.T) {
 	dummy.Reset()
-	dummy.Script("Test_ask2",
-		memCall("ask_owner", `{"text":"Connect this?","blocks":[{"type":"setup","kind":"connector","target":"https://evil.example/mcp"}]}`),
-		dummy.Turn{Text: "done"},
+	dummy.Script("Test_offer1",
+		memCall("offer_setup", `{"kind":"connector","target":"https://evil.example/mcp"}`),
+		memCall("offer_setup", `{"kind":"connector","target":"email","options":{"imap_host":"evil.example","password":"hunter2"}}`),
+		memCall("offer_setup", `{"kind":"connector","target":"email","why":"to read your mail","options":{"address":"me@example.com","default_mode":"ask","expose_completion":true,"name":"My mail"}}`),
+		dummy.Turn{Text: "ok, later then"},
 	)
 	h := apptest.New(t)
-	id := h.CreateBot("Careful").GetId()
-	run, _ := h.Send(id, h.FirstChat(id), "Test_ask2_Input")
-	evs := h.WaitRun(run)
-	res, _ := find(evs, "tool_result")
-	if !strings.Contains(res.Body, "no connector") {
-		t.Fatalf("result %q", res.Body)
+	id := h.CreateBot("Offerer").GetId()
+	main := h.FirstChat(id)
+	run, _ := h.Send(id, main, "Test_offer1_Input")
+	var results []string
+	for _, ev := range h.WaitRun(run) {
+		switch ev.Kind {
+		case "tool_result":
+			results = append(results, ev.Body)
+		case "assistant", "section":
+			t.Fatalf("the Bot kept talking after its offer: %q", ev.Body)
+		}
 	}
-	var n int64
-	h.DB.Model(&db.DashboardCard{}).Where("bot_id = ?", id).Count(&n)
-	if n != 0 {
-		t.Fatal("a card with an unknown target was saved")
+	if len(results) != 3 || !strings.Contains(results[0], "no connector") || !strings.Contains(results[1], "cannot be filled in") {
+		t.Fatalf("results %q", results)
 	}
+	var o db.SetupOffer
+	if err := h.DB.Where("bot_id = ?", id).First(&o).Error; err != nil {
+		t.Fatal(err)
+	}
+	if o.ChatID != main || o.Status != "open" || o.Label == "" || !strings.Contains(o.ValuesJSON, `"expose_completion":"true"`) || !strings.Contains(o.ValuesJSON, `"address":"me@example.com"`) {
+		t.Fatalf("offer %+v", o)
+	}
+	if ev, ok := find(h.ChatEvents(main), "setup_offer"); !ok || ev.Body != o.ID {
+		t.Fatalf("no offer in the chat: %+v", ev)
+	}
+
+	res, err := h.Client.ResolveSetupOffer(h.Ctx(), connect.NewRequest(&v1.ResolveSetupOfferRequest{BotId: id, Id: o.ID, Outcome: "skipped"}))
+	if err != nil || res.Msg.GetStatus() != "skipped" {
+		t.Fatalf("resolve: %v %+v", err, res)
+	}
+	waitUserTurn(t, h, main, "Not now for **")
 }
 
 // From an automation the question goes to the main chat only when the owner

@@ -1620,6 +1620,12 @@ const de: Record<string, string> = {
   "Working now": "Arbeitet gerade",
   "{{count}} subagents at work_one": "{{count}} Subagent arbeitet",
   "{{count}} subagents at work_other": "{{count}} Subagenten arbeiten",
+  "Connector": "Connector",
+  "Drive": "Laufwerk",
+  "Default rule": "Standardregel",
+  "Also chat tools": "Auch als Chat-Werkzeuge",
+  "Yes": "Ja",
+  "No": "Nein",
 };
 
 export default de;

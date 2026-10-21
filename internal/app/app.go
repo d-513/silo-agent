@@ -39,6 +39,7 @@ import (
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/pause"
+	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/app/tunnels"
@@ -228,6 +229,7 @@ type App struct {
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
+	Setup       *setup.Service
 	// Slash is the slash commands a human types in a conversation.
 	Slash *command.Registry
 }
@@ -274,6 +276,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	}
 	a.Feed = feed.New(a.DB, a)
 	a.Pause = pause.New(a.DB)
+	a.Setup = setup.New(a.DB, a)
 	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)

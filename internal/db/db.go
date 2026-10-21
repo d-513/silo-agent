@@ -594,10 +594,26 @@ type DashboardCard struct {
 	RunID       string
 	ReadAt      *time.Time
 	DismissedAt *time.Time
-	// SetupJSON is what the owner did with each setup block, by index.
-	SetupJSON string    `gorm:"not null;default:'{}'"`
-	CreatedAt time.Time `gorm:"index"`
-	UpdatedAt time.Time `gorm:"index"`
+	CreatedAt   time.Time `gorm:"index"`
+	UpdatedAt   time.Time `gorm:"index"`
+}
+
+// SetupOffer is the Bot offering its owner something to add from the
+// catalog (internal/app/setup): a connector, a channel or a drive, with the
+// form's values it filled in. Status is open, done or skipped.
+type SetupOffer struct {
+	ID         string `gorm:"primaryKey"`
+	BotID      string `gorm:"index"`
+	ChatID     string `gorm:"index"`
+	RunID      string
+	Kind       string
+	Target     string
+	Label      string
+	Why        string
+	ValuesJSON string `gorm:"not null;default:'{}'"`
+	Status     string `gorm:"not null;default:'open'"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // DashboardWidget is one view a Bot keeps on its Dashboard. The Bot writes the
@@ -838,7 +854,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
 		&Drive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

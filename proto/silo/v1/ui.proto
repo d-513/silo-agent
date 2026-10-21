@@ -90,7 +90,7 @@ service UI {
   rpc MarkDashboardRead(MarkDashboardReadRequest) returns (MarkDashboardReadResponse);
   rpc DismissDashboardCard(DismissDashboardCardRequest) returns (DismissDashboardCardResponse);
   rpc SubmitDashboardCard(SubmitDashboardCardRequest) returns (SubmitDashboardCardResponse);
-  rpc ResolveCardSetup(ResolveCardSetupRequest) returns (DashboardCard);
+  rpc ResolveSetupOffer(ResolveSetupOfferRequest) returns (SetupOffer);
   // Widgets: what the Bot keeps on the Dashboard and code keeps current.
   rpc RefreshWidget(RefreshWidgetRequest) returns (DashboardWidget);
   rpc SetWidgetState(SetWidgetStateRequest) returns (DashboardWidget);
@@ -1028,18 +1028,35 @@ message DashboardCard {
   string created_at = 15;
   string updated_at = 16;
   bool read = 17;
-  // What the owner did with each setup block, by block index: {"2": "done"}.
-  string setup_json = 18;
 }
 
-// ResolveCardSetup records what the owner did with one setup block of a card
-// (index into its blocks) and tells the Bot in the card's chat.
-message ResolveCardSetupRequest {
+// SetupOffer is the Bot offering something from the catalog to add: a
+// library connector (target = its identifier), a channel adapter or a drive
+// provider, with the add form's values it filled in.
+message SetupOffer {
+  string id = 1;
+  // connector, channel or drive.
+  string kind = 2;
+  string target = 3;
+  // The catalog's name for it.
+  string label = 4;
+  string why = 5;
+  // The form's values the Bot filled in: plain fields and options such as
+  // name, default_mode, expose_completion, read_only ("true"/"false").
+  map<string, string> options = 6;
+  // open, done or skipped.
+  string status = 7;
+  string chat_id = 8;
+  string created_at = 9;
+}
+
+// ResolveSetupOffer records what the owner did with an offer and tells the
+// Bot in its chat.
+message ResolveSetupOfferRequest {
   string bot_id = 1;
   string id = 2;
-  int32 index = 3;
   // done or skipped.
-  string outcome = 4;
+  string outcome = 3;
 }
 
 message ListDashboardRequest {
@@ -1604,6 +1621,8 @@ message RunEvent {
   Quoted quoted = 10;
   // On a card event (and a quote of a card): the card as it stands now.
   DashboardCard card = 11;
+  // On a setup_offer event (and setup_state): the offer as it stands now.
+  SetupOffer setup_offer = 12;
 }
 
 // Quoted is the thing a chat opened from: a Feed post, a Dashboard widget as

@@ -1,6 +1,7 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { X } from "lucide-react";
 import { useContext, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ui } from "../api";
 import { BotPageCtx } from "../bot/context";
 import { Btn } from "../Btn";
@@ -9,24 +10,24 @@ import { ChannelSetup } from "../channels/ChannelSetup";
 import { ConnectorModal } from "../connectors/ConnectorModal";
 import { ConnectorFields, draftFrom, specOf, type ConnectorDraft } from "../connectors/form";
 import { nextCopyName } from "../connectors/model";
-import type { SetupBlock } from "../dashboardLayout";
 import { DriveForm } from "../drives/DriveForm";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
-import { UI, type Channel } from "../gen/silo/v1/ui_pb";
+import { UI, type Channel, type SetupOffer } from "../gen/silo/v1/ui_pb";
 import { reload } from "../query";
 import { t } from "../i18n.ts";
 
 // SetupModal is a Bot's setup offer opened: Silo's own add form for that
-// connector, channel or drive, with the Bot's plain fields filled in, over the
-// page. The owner submits it; onDone says it was added.
-export function SetupModal({ botId, offer, onClose, onDone }: { botId: string; offer: SetupBlock; onClose: () => void; onDone: () => void }) {
-  if (offer.kind === "connector") return <ConnectorSetup botId={botId} offer={offer} onClose={onClose} onDone={onDone} />;
-  if (offer.kind === "channel") return <ChannelSetupFlow botId={botId} offer={offer} onClose={onClose} onDone={onDone} />;
-  return <DriveSetup botId={botId} offer={offer} onClose={onClose} onDone={onDone} />;
+// connector, channel or drive, with the values the Bot filled in, over the
+// whole page (a portal: never inside the card that opened it). The owner
+// submits it; onDone says it was added.
+export function SetupModal({ botId, offer, onClose, onDone }: { botId: string; offer: SetupOffer; onClose: () => void; onDone: () => void }) {
+  const props = { botId, offer, onClose, onDone };
+  const body = offer.kind === "connector" ? <ConnectorSetup {...props} /> : offer.kind === "channel" ? <ChannelSetupFlow {...props} /> : <DriveSetup {...props} />;
+  return createPortal(body, document.body);
 }
 
-type Props = { botId: string; offer: SetupBlock; onClose: () => void; onDone: () => void };
+type Props = { botId: string; offer: SetupOffer; onClose: () => void; onDone: () => void };
 
 // Sheet is the wide overlay the page-sized forms (channels, drives) sit in.
 function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
@@ -63,10 +64,17 @@ function ConnectorSetup({ botId, offer, onClose, onDone }: Props) {
     draft ??
     (() => {
       const d = draftFrom(preset);
+      const o = offer.options;
       const fields = new Set(d.fields.filter((f) => !f.secret).map((f) => f.key));
       const config = { ...d.config };
-      for (const [k, v] of Object.entries(offer.prefill ?? {})) if (fields.has(k)) config[k] = v;
-      return { ...d, config, name: nextCopyName(preset.name, attachedQ.data.connectors.map((x) => x.connector?.name ?? "")) };
+      for (const [k, v] of Object.entries(o)) if (fields.has(k)) config[k] = v;
+      return {
+        ...d,
+        config,
+        name: nextCopyName(o.name || preset.name, attachedQ.data.connectors.map((x) => x.connector?.name ?? "")),
+        defaultMode: o.default_mode || d.defaultMode,
+        exposeCompletion: o.expose_completion ? o.expose_completion === "true" : d.exposeCompletion,
+      };
     })();
 
   async function submit(e: React.FormEvent) {
@@ -126,7 +134,7 @@ function ChannelSetupFlow({ botId, offer, onClose, onDone }: Props) {
         <ChannelForm
           botId={botId}
           adapter={adapter}
-          prefill={offer.prefill}
+          prefill={offer.options}
           onBack={onClose}
           onSaved={(ch) => {
             void reload(UI.method.listBotChannels, { botId });
@@ -152,7 +160,7 @@ function DriveSetup({ botId, offer, onClose, onDone }: Props) {
         botId={botId}
         t={tpl}
         taken={taken}
-        prefill={offer.prefill}
+        prefill={offer.options}
         onDone={onClose}
         onSaved={() => {
           void reload(UI.method.listDrives, { botId });
