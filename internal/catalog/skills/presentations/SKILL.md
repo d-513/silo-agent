@@ -1,6 +1,6 @@
 ---
 name: presentations
-description: Works with PowerPoint/OpenDocument decks (.pptx, .odp) in the workspace — read slide text, speaker notes, tables, and embedded media with python-pptx, and create or edit decks with python-pptx (text, tables, charts, images, notes). Use when the user uploads or points at a slide deck, or wants a presentation produced. This machine has no LibreOffice, so read and build the pieces rather than rasterizing a slide on the machine.
+description: Works with PowerPoint/OpenDocument decks (.pptx, .odp) in the workspace — read slide text, speaker notes, tables, and embedded media with python-pptx, and build themed decks with a ready slide kit (title, section, points, numbers, chart, image, table, quote) that also renders a proof of every slide to look at. Use when the user uploads or points at a slide deck, or wants a presentation produced.
 metadata:
   silo_seed: presentations
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Chat uploads land in `tmp/`, wiped on every machine start. Paths are relative to `/workspace`. User-facing decks go under `/workspace`; scratch under `bot/`.
 
-`python-pptx` reads and writes `.pptx`. There is **no LibreOffice** on this machine, so you cannot rasterize a slide to pixels yourself — extract text/notes/media in Python instead. The web console renders `.pptx` slides directly for the human in both `present` and `artifact` cards.
+`python-pptx` reads and writes `.pptx`. There is **no LibreOffice** on this machine, so an uploaded deck cannot be rasterized — extract text/notes/media in Python instead. Decks you build with `slides.py` (below) come with a proof you can see. The web console renders `.pptx` slides for the human in `present` and `artifact` cards; it draws native pptx charts only as placeholders, so put charts in as images.
 
 ## Read: slide text and speaker notes
 
@@ -35,7 +35,42 @@ with zipfile.ZipFile("tmp/deck.pptx") as z:
     print([n for n in z.namelist() if n.startswith("ppt/media/")])
 ```
 
-## Create: a deck from scratch
+## Create: a themed deck (default)
+
+Read `DESIGN.md` in this skill once per task. Build with the slide kit; it lays out every slide on one grid in a theme (`ink`, `garden`, `ember`) and warns about overlong titles, more than 5 bullets, or crowded tables.
+
+```python
+import sys; sys.path.insert(0, "/opt/silo/skills/presentations/scripts")
+import theme
+from slides import Deck
+import matplotlib.pyplot as plt
+
+t = theme.mpl("ink")                                     # chart in the deck's colours
+fig, ax = plt.subplots(figsize=(11, 4.4)); ax.plot(["Jul", "Aug", "Sep"], [94.2, 95.3, 96.2], marker="o")
+fig.savefig("bot/chart.png")
+
+d = Deck("ink")
+d.title("Q3 operations review", "Northwind Logistics · 21 October 2026")
+d.section("01", "Delivery")
+d.points("On-time delivery is back above target", ["New carrier moves 38% of regional parcels", "Late deliveries fell from 6.9% to 3.8%"], kicker="Delivery")
+d.stats("The quarter in three numbers", [("96.2%", "On-time delivery", "+3.1 pts"), ("€1.84m", "Warehouse cost", "−6%")])
+d.chart("Delivery recovered every month", "bot/chart.png", note="Share of parcels on time")
+d.table("Cost by site", [["Site", "Q2", "Q3"], ["Lyon", "€812k", "€706k"]], numeric=(1, 2))
+d.image("The new Lyon site", "bot/site.jpg", caption="Opened 2 September")
+d.quote("The best quarter for delivery since 2019.", "Head of operations")
+d.end("Questions", "ops@northwind.example")
+d.save("/workspace/deck.pptx")      # prints warnings and the proof sheet path
+```
+
+Slide titles are the message ("Costs fell 6%"), not the topic ("Costs"). One idea per slide; 3–5 bullets; speaker notes via `notes="…"` on any method.
+
+## Check: look at it before you present it
+
+`save` writes `bot/proof/<name>-sheet.png` (every slide, drawn from the same layout with the box's fonts). `present` it, fix clipped or crowded slides, weak titles and empty-looking slides, save again, then hand over the deck.
+
+## Create: a deck by hand (python-pptx)
+
+For layouts the kit does not cover. Use the theme's colours and fonts (`theme.get("ink")`) rather than python-pptx defaults.
 
 Blank template, 16:9. Layouts: `0` title slide, `1` title + content, `5` title only, `6` blank.
 
@@ -59,7 +94,7 @@ slide.notes_slide.notes_text_frame.text = "Speaker notes for this slide."
 prs.save("/workspace/deck.pptx")
 ```
 
-Style a run with `run = p.runs[0]; run.font.bold = True; run.font.size = Pt(18)`. Add a slide per point; do not cram.
+Style a run with `run = p.runs[0]; run.font.bold = True; run.font.size = Pt(18)`. Add a slide per point; do not cram. There is no proof for hand-built slides, so keep them simple.
 
 ## Create: tables, charts, and images
 

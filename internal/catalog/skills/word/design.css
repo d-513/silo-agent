@@ -1,0 +1,111 @@
+/* Silo document design system (shared by the pdf, word and presentations skills).
+   Pick a theme with a class on <html>: theme-ink (default), theme-garden, theme-ember.
+   Written for WeasyPrint 57: var() only in longhands (border-top-color, not border-top),
+   no CSS grid, no gap; use tables, floats, flex with margins, or columns. */
+
+:root, .theme-ink {
+  --paper: #ffffff;
+  --ink: #1b1f24;
+  --muted: #5b6470;
+  --rule: #d9dde2;
+  --tint: #f3f5f8;
+  --accent: #1f4e8c;
+  --accent-soft: #e6edf7;
+  --accent-2: #7a8ca6;
+  --display: "Inter Display", "Inter", "Noto Sans", sans-serif;
+  --sans: "Inter", "Noto Sans", sans-serif;
+  --serif: "Linux Libertine O", "Noto Serif", serif;
+  --body: var(--sans);
+}
+.theme-garden {
+  --paper: #fbf8f1;
+  --ink: #23241f;
+  --muted: #66665c;
+  --rule: #ddd6c6;
+  --tint: #f2ecdf;
+  --accent: #2e6b4f;
+  --accent-soft: #e2ece4;
+  --accent-2: #b5893a;
+  --display: "EB Garamond 12", "EB Garamond", "Linux Libertine O", "Noto Serif", serif;
+  --body: var(--serif);
+}
+.theme-ember {
+  --paper: #fffaf5;
+  --ink: #26201c;
+  --muted: #6e625a;
+  --rule: #e5d9cd;
+  --tint: #f7eee5;
+  --accent: #b4532a;
+  --accent-soft: #f6e3d8;
+  --accent-2: #3d5a6c;
+  --display: "Linux Libertine Display O", "Linux Libertine O", "Noto Serif", serif;
+  --body: var(--sans);
+}
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 24mm 20mm;
+  background-color: var(--paper);
+  @bottom-left { content: string(doctitle); font-family: var(--sans); font-size: 7.5pt; color: var(--muted); }
+  @bottom-right { content: counter(page) " / " counter(pages); font-family: var(--sans); font-size: 7.5pt; color: var(--muted); }
+}
+@page cover { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+
+html { background-color: var(--paper); }
+body {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 10pt;
+  line-height: 1.5;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  hyphens: auto;
+}
+
+/* Type scale: 7.5 / 9 / 10 / 12.5 / 16 / 22 / 34 / 48 pt */
+h1, h2, h3, h4 { font-family: var(--display); color: var(--ink); line-height: 1.15; margin: 0; break-after: avoid; }
+h1 { font-size: 22pt; font-weight: 600; margin: 0 0 6mm; string-set: doctitle content(); }
+/* The footer title: an h1 sets it; a positioned or composed page sets it with data-title="…". */
+[data-title] { string-set: doctitle attr(data-title); }
+h2 { font-size: 16pt; font-weight: 600; margin: 9mm 0 3mm; }
+h3 { font-size: 12.5pt; font-weight: 600; margin: 6mm 0 2mm; }
+h4 { font-family: var(--sans); font-size: 9pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 5mm 0 1.5mm; }
+p { margin: 0 0 3mm; orphans: 3; widows: 3; }
+.lede { font-size: 12.5pt; line-height: 1.45; color: var(--ink); margin-bottom: 6mm; }
+.kicker { font-family: var(--sans); font-size: 7.5pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 2mm; }
+.muted, small, figcaption { color: var(--muted); }
+small, figcaption, .caption { font-family: var(--sans); font-size: 7.5pt; line-height: 1.4; }
+a { color: var(--accent); text-decoration: none; }
+strong { font-weight: 600; }
+ul, ol { margin: 0 0 3mm; padding-left: 5mm; }
+li { margin-bottom: 1mm; }
+li::marker { color: var(--accent); }
+hr { border: 0; border-top-width: .5pt; border-top-style: solid; border-top-color: var(--rule); margin: 6mm 0; }
+
+/* Numbers that matter */
+.stats { display: flex; margin: 4mm 0 6mm; }
+.stat { flex: 1; margin-right: 5mm; border-top-width: 1.5pt; border-top-style: solid; border-top-color: var(--accent); padding-top: 2.5mm; }
+.stat:last-child { margin-right: 0; }
+.stat .value { font-family: var(--display); font-size: 22pt; font-weight: 600; line-height: 1.1; }
+.stat .label { font-family: var(--sans); font-size: 7.5pt; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.stat .delta { font-family: var(--sans); font-size: 8pt; color: var(--accent); }
+
+/* Tables: horizontal rules only, right-aligned numbers */
+table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 8.5pt; margin: 2mm 0 5mm; }
+thead th { text-align: left; font-weight: 600; color: var(--muted); font-size: 7.5pt; letter-spacing: .04em; text-transform: uppercase; border-bottom-width: 1pt; border-bottom-style: solid; border-bottom-color: var(--ink); padding: 0 3mm 1.5mm 0; }
+td { padding: 1.8mm 3mm 1.8mm 0; border-bottom-width: .5pt; border-bottom-style: solid; border-bottom-color: var(--rule); vertical-align: top; }
+td.num, th.num { text-align: right; padding-right: 0; }
+tr.total td { font-weight: 600; border-top-width: 1pt; border-top-style: solid; border-top-color: var(--ink); border-bottom: 0; }
+tr { break-inside: avoid; }
+
+/* Figures and callouts */
+figure { margin: 3mm 0 6mm; break-inside: avoid; }
+figure img { width: 100%; display: block; }
+figcaption { margin-top: 1.5mm; }
+.callout { background-color: var(--accent-soft); border-left-width: 2pt; border-left-style: solid; border-left-color: var(--accent); padding: 3mm 4mm; margin: 4mm 0 6mm; break-inside: avoid; }
+.callout p:last-child { margin: 0; }
+blockquote { margin: 5mm 0; padding: 0 0 0 5mm; border-left-width: 1.5pt; border-left-style: solid; border-left-color: var(--accent); font-family: var(--display); font-size: 14pt; line-height: 1.35; font-style: italic; }
+.pullquote { font-family: var(--display); font-size: 16pt; line-height: 1.3; font-style: italic; color: var(--accent); border-top-width: 1pt; border-top-style: solid; border-top-color: var(--accent); border-bottom-width: 1pt; border-bottom-style: solid; border-bottom-color: var(--accent); padding: 3mm 0; margin: 4mm 0; break-inside: avoid; }
+.two-col { columns: 2; column-gap: 7mm; }
+.page-break { break-before: page; }
+.avoid-break { break-inside: avoid; }

@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- Itinerary template (trip, event programme, conference agenda). Copy to bot/, replace the content.
+     One .day per day; a day never splits across pages. Keep the essentials box on page 1.
+     Theme: theme-ember (default here) | theme-garden | theme-ink.
+     Render + proof: python3 /opt/silo/skills/pdf/scripts/render.py bot/itinerary.html /workspace/itinerary.pdf -->
+<html lang="en" class="theme-ember">
+<head>
+<meta charset="utf-8">
+<title>Lisbon, 6–9 March</title>
+<link rel="stylesheet" href="/opt/silo/skills/pdf/design.css">
+<style>
+  @page { margin: 16mm 18mm 18mm 18mm; }
+  .head { margin-bottom: 6mm; padding-bottom: 5mm; border-bottom-width: 1pt; border-bottom-style: solid; border-bottom-color: var(--ink); }
+  .head h1 { font-size: 36pt; font-weight: 400; line-height: 1; margin: 0 0 2mm; }
+  .head .lede { margin: 0; color: var(--muted); }
+  .essentials { background-color: var(--tint); padding: 4mm 5mm; margin-bottom: 7mm; }
+  .essentials table { margin: 0; font-size: 8.5pt; }
+  .essentials td { border-bottom-width: 0; padding: 1mm 4mm 1mm 0; }
+  .essentials td.k { width: 22mm; font-weight: 600; color: var(--accent); text-transform: uppercase; font-size: 7pt; letter-spacing: .08em; padding-top: 1.4mm; }
+  .day { break-inside: avoid; margin-bottom: 7mm; }
+  .day h2 { font-size: 18pt; font-weight: 400; margin: 0 0 1mm; }
+  .day h2 .date { font-family: var(--sans); font-size: 8pt; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-left: 3mm; }
+  .day .theme { color: var(--muted); font-style: italic; margin-bottom: 2mm; }
+  .plan { font-size: 9pt; margin-bottom: 0; }
+  .plan td.t { width: 15mm; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .plan td.what strong { display: block; font-weight: 600; }
+  .plan td.what span { color: var(--muted); }
+  .plan td.note { width: 38mm; color: var(--muted); font-size: 8pt; text-align: right; padding-right: 0; }
+</style>
+</head>
+<body>
+<header class="head">
+  <p class="kicker">Itinerary · 4 days · 2 adults</p>
+  <h1>Lisbon, 6–9 March</h1>
+  <p class="lede">Old town on foot, a day in Sintra, and the best custard tart we can find.</p>
+</header>
+
+<section class="essentials">
+  <table>
+    <tr><td class="k">Flights</td><td>TP 1335 out Thu 6 Mar 07:05 → 09:40 · TP 1336 back Sun 9 Mar 18:15 → 22:05 · ref. QX7P2L</td></tr>
+    <tr><td class="k">Stay</td><td>Casa do Largo, Rua de São Tomé 21, Alfama · check-in 15:00 · +351 21 555 0123</td></tr>
+    <tr><td class="k">Getting about</td><td>Viva Viagem card (€1.80 a ride) for metro, trams 28 and 15, and the Sintra train from Rossio</td></tr>
+    <tr><td class="k">Weather</td><td>15–18 °C, showers likely Saturday: bring a light rain jacket</td></tr>
+  </table>
+</section>
+
+<section class="day">
+  <h2>Thursday<span class="date">6 March</span></h2>
+  <p class="theme">Arrive and wander Alfama.</p>
+  <table class="plan">
+    <tr><td class="t">09:40</td><td class="what"><strong>Land, metro to Santa Apolónia</strong><span>Red line from the airport, 25 minutes</span></td><td class="note">Bags at the flat from 11:00</td></tr>
+    <tr><td class="t">12:30</td><td class="what"><strong>Lunch at Taberna Sal Grosso</strong><span>Small and busy; walk-in only</span></td><td class="note">Closed Sundays</td></tr>
+    <tr><td class="t">15:00</td><td class="what"><strong>Castelo de São Jorge</strong><span>Views over the river; the walls take an hour</span></td><td class="note">€15 each, online</td></tr>
+    <tr><td class="t">20:00</td><td class="what"><strong>Fado at Clube de Fado</strong><span>Dinner and three sets</span></td><td class="note">Booked, ref. 4471</td></tr>
+  </table>
+</section>
+
+<section class="day">
+  <h2>Friday<span class="date">7 March</span></h2>
+  <p class="theme">Belém and the river.</p>
+  <table class="plan">
+    <tr><td class="t">09:30</td><td class="what"><strong>Tram 15 to Belém</strong><span>From Praça da Figueira, 30 minutes</span></td><td class="note">Board at the first stop</td></tr>
+    <tr><td class="t">10:00</td><td class="what"><strong>Jerónimos Monastery</strong><span>The cloister first, before the groups arrive</span></td><td class="note">€12 each</td></tr>
+    <tr><td class="t">12:00</td><td class="what"><strong>Pastéis de Belém</strong><span>Take a table inside rather than queue for takeaway</span></td><td class="note">Cash or card</td></tr>
+    <tr><td class="t">14:30</td><td class="what"><strong>MAAT and the riverside walk</strong><span>Back along the water to Cais do Sodré</span></td><td class="note">4 km, flat</td></tr>
+  </table>
+</section>
+
+<section class="day">
+  <h2>Saturday<span class="date">8 March</span></h2>
+  <p class="theme">Sintra for the day.</p>
+  <table class="plan">
+    <tr><td class="t">08:41</td><td class="what"><strong>Train from Rossio to Sintra</strong><span>40 minutes; sit on the left for the hills</span></td><td class="note">Viva Viagem card</td></tr>
+    <tr><td class="t">10:00</td><td class="what"><strong>Pena Palace</strong><span>Timed entry; the park can wait until after</span></td><td class="note">10:00 slot, €20 each</td></tr>
+    <tr><td class="t">13:30</td><td class="what"><strong>Lunch at Tascantiga</strong><span>Petiscos in the old town</span></td><td class="note">Book for 13:30</td></tr>
+    <tr><td class="t">15:00</td><td class="what"><strong>Quinta da Regaleira</strong><span>The initiation well; bring a torch</span></td><td class="note">€15 each</td></tr>
+  </table>
+</section>
+
+<section class="day">
+  <h2>Sunday<span class="date">9 March</span></h2>
+  <p class="theme">Markets and home.</p>
+  <table class="plan">
+    <tr><td class="t">10:00</td><td class="what"><strong>LX Factory market</strong><span>Books, ceramics, coffee</span></td><td class="note">Sundays only</td></tr>
+    <tr><td class="t">13:00</td><td class="what"><strong>Time Out Market</strong><span>Lunch from several stalls</span></td><td class="note">Busy from 12:30</td></tr>
+    <tr><td class="t">15:45</td><td class="what"><strong>Collect bags, metro to the airport</strong><span>Leave the flat by 15:45 for the 18:15 flight</span></td><td class="note">Key in the lock box</td></tr>
+  </table>
+</section>
+</body>
+</html>

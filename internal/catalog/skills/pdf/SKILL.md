@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Works with PDF files in the workspace — read and extract with poppler (pdftotext, pdftoppm, pdfinfo, pdfimages) and pypdf, and create, assemble, or edit with reportlab, img2pdf, weasyprint, and pypdf. Use when the user uploads or points at a .pdf, or wants a report, invoice, letter, chart, or document produced as a PDF.
+description: Works with PDF files in the workspace — read and extract with poppler (pdftotext, pdftoppm, pdfinfo, pdfimages) and pypdf; create designed PDFs from ready HTML templates (report, newsletter, one-pager, itinerary) rendered with weasyprint and proofed as page images; assemble or edit with pypdf, img2pdf, reportlab. Use when the user uploads or points at a .pdf, or wants a report, newsletter, flyer, itinerary, invoice, letter, or any document produced as a PDF.
 metadata:
   silo_seed: pdf
 ---
@@ -53,9 +53,38 @@ print(subprocess.run(["tesseract", "bot/scan-1.png", "-"], capture_output=True, 
 
 Images: `pdfimages -png tmp/report.pdf bot/img`, then `present` one. Simple tables: `pdftotext -layout`; for complex layouts, rasterize and read the pixels.
 
-## Create: text, tables, reports (reportlab)
+## Create: a designed PDF (default for anything a person will read)
 
-`reportlab` builds multi-page PDFs from paragraphs, tables, and images without a browser or LaTeX. This is the default for invoices, reports, and letters.
+Start from a template, never a blank page. Read `DESIGN.md` in this skill once per task (themes, type scale, what to avoid).
+
+| Template (`/opt/silo/skills/pdf/templates/`) | Use for | Theme |
+|---|---|---|
+| `report.html` | reports, reviews, proposals over 2 pages: cover, key numbers, sections, tables | `ink` |
+| `newsletter.html` | family/club/team newsletters: masthead, lead story with photo, sidebar, two sheets | `garden` |
+| `onepager.html` | brief, proposal, product sheet, flyer: must fit one page | `ink` |
+| `itinerary.html` | trips, event programmes, agendas: essentials box, one block per day | `ember` |
+
+1. Copy the template to `bot/<name>.html`; replace the sample text, keep the structure and class names. Switch theme with the class on `<html>` (`theme-ink`, `theme-garden`, `theme-ember`). Images go next to the HTML or by absolute path.
+2. Charts: `sys.path.insert(0, "/opt/silo/skills/pdf/scripts"); import theme; t = theme.mpl("ink")`, plot, `savefig("bot/chart.png")`, then `<figure><img src="chart.png"><figcaption>…</figcaption></figure>`.
+3. Render and proof (step below is not optional).
+
+```python
+import subprocess
+print(subprocess.run(["python3", "/opt/silo/skills/pdf/scripts/render.py", "bot/report.html", "/workspace/report.pdf"],
+                     capture_output=True, text=True).stdout)
+```
+
+## Check: look at it before you present it
+
+`render.py` writes `bot/proof/<name>-sheet.png` (every page as a thumbnail) and prints warnings (fallback fonts, a near-empty last page, CSS it ignored). Always:
+
+1. `present bot/proof/<name>-sheet.png` (you get the pixels). For detail, rerun with `--page N` and present `bot/proof/<name>-pN.png`.
+2. Fix what you see: overflowing or clipped text, a heading stranded at a page foot, an almost-empty last page, cramped or empty areas, wrong fonts, unreadable chart labels. Rerun.
+3. Only when the proof is clean, `present` the final PDF. `render.py some.pdf` proofs any PDF, including reportlab output.
+
+## Create: programmatic PDFs (reportlab)
+
+`reportlab` suits bulk or very regular output (hundreds of invoices, labels). It cannot use the OTF design fonts and defaults to Helvetica, so prefer the HTML path for anything that should look designed; still proof it with `render.py`.
 
 ```python
 from reportlab.lib import colors
@@ -89,13 +118,13 @@ subprocess.run(["pandoc", "tmp/notes.md", "-o", "bot/notes.html", "--standalone"
 subprocess.run(["weasyprint", "bot/notes.html", "/workspace/notes.pdf"], check=True)
 ```
 
-Or from Python directly: `from weasyprint import HTML; HTML(string="<h1>Hi</h1>").write_pdf("/workspace/out.pdf")`. Use `@page { size: A4; margin: 2cm; }` for margins.
+Add `-c /opt/silo/skills/pdf/design.css` to the pandoc call so it does not look like a bare web page. Or from Python: `from weasyprint import HTML; HTML(filename="bot/x.html").write_pdf("/workspace/out.pdf")`. WeasyPrint here is v57: no CSS grid or `gap`, and `var()` only in longhand properties.
 
 ## Create: chart PDFs (matplotlib)
 
 ```python
-import matplotlib
-matplotlib.use("Agg")
+import sys; sys.path.insert(0, "/opt/silo/skills/pdf/scripts")
+import theme; theme.mpl("ink")
 import matplotlib.pyplot as plt
 plt.plot([1, 2, 3], [2, 4, 9])
 plt.savefig("/workspace/chart.pdf", bbox_inches="tight")
@@ -132,4 +161,4 @@ Split by writing one page per `PdfWriter`; rotate with `page.rotate(90)`; encryp
 
 ## Output
 
-Write user-facing PDFs to `/workspace` and `present` the relative path (a folio). Do not paste a whole PDF's text into chat; summarize and point at the file.
+Write user-facing PDFs to `/workspace` and `present` the relative path (a folio) only after the proof check above. Do not paste a whole PDF's text into chat; summarize and point at the file.

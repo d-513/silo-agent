@@ -1,0 +1,88 @@
+<!doctype html>
+<!-- Report template. Copy to bot/, replace the sample content, keep the structure.
+     Theme: class on <html> = theme-ink | theme-garden | theme-ember.
+     Render + proof: python3 /opt/silo/skills/pdf/scripts/render.py bot/report.html /workspace/report.pdf -->
+<html lang="en" class="theme-ink">
+<head>
+<meta charset="utf-8">
+<title>Quarterly Operations Review</title>
+<link rel="stylesheet" href="/opt/silo/skills/pdf/design.css">
+<style>
+  .cover { page: cover; height: 297mm; position: relative; background-color: var(--paper); }
+  .cover .band { position: absolute; top: 0; left: 0; width: 100%; height: 120mm; background-color: var(--accent); }
+  .cover .band .kicker { color: var(--accent-soft); position: absolute; left: 20mm; top: 24mm; }
+  .cover .title { position: absolute; left: 20mm; right: 30mm; top: 132mm; }
+  .cover .title h1 { font-size: 40pt; line-height: 1.05; letter-spacing: -.01em; margin: 0 0 6mm; }
+  .cover .title .lede { color: var(--muted); max-width: 130mm; }
+  .cover .meta { position: absolute; left: 20mm; right: 20mm; bottom: 22mm; border-top-width: .75pt; border-top-style: solid; border-top-color: var(--rule); padding-top: 3mm; font-family: var(--sans); font-size: 8pt; color: var(--muted); }
+  .cover .meta span { display: inline-block; width: 55mm; }
+  .cover .meta b { display: block; color: var(--ink); font-weight: 600; }
+  .summary { border-top-width: 1.5pt; border-top-style: solid; border-top-color: var(--ink); padding-top: 4mm; }
+  main h2 .num { color: var(--accent); margin-right: 3mm; }
+</style>
+</head>
+<body>
+
+<section class="cover" data-title="Quarterly Operations Review · Q3 2026">
+  <div class="band"><p class="kicker">Northwind Logistics · Operations</p></div>
+  <div class="title">
+    <h1>Quarterly Operations Review</h1>
+    <p class="lede">Q3 2026: on-time delivery recovered to 96%, warehouse costs fell for the second quarter running, and two risks need a decision before December.</p>
+  </div>
+  <div class="meta">
+    <span><b>Prepared for</b>Leadership team</span>
+    <span><b>Period</b>July – September 2026</span>
+    <span><b>Date</b>21 October 2026</span>
+  </div>
+</section>
+
+<main>
+  <p class="kicker">Summary</p>
+  <h2 style="margin-top:0">The quarter in three numbers</h2>
+  <div class="stats">
+    <div class="stat"><div class="value">96.2%</div><div class="label">On-time delivery</div><div class="delta">+3.1 pts vs Q2</div></div>
+    <div class="stat"><div class="value">€1.84m</div><div class="label">Warehouse cost</div><div class="delta">−6% vs Q2</div></div>
+    <div class="stat"><div class="value">14</div><div class="label">Open incidents</div><div class="delta">down from 23</div></div>
+  </div>
+  <p class="lede">Delivery performance is back above target after the summer carrier change. The savings came from consolidating two Lyon sites; the remaining risk is peak-season staffing.</p>
+
+  <div class="callout"><p><strong>Decision needed:</strong> approve 40 seasonal hires for Lyon by 15 November, or accept an estimated 2-point drop in on-time delivery during December.</p></div>
+
+  <h2><span class="num">01</span>Delivery</h2>
+  <p>On-time delivery rose every month of the quarter. Most of the gain came from the new regional carrier, which now handles 38% of parcels outside the three largest cities.</p>
+  <figure>
+    <!-- Chart: make it with matplotlib in the theme colours (see DESIGN.md), save bot/chart-delivery.png at 200 dpi. -->
+    <div style="height:55mm;background-color:var(--tint);"></div>
+    <figcaption>Figure 1. On-time delivery by month, share of parcels delivered within the promised window.</figcaption>
+  </figure>
+
+  <h2><span class="num">02</span>Costs</h2>
+  <table>
+    <thead><tr><th>Site</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Change</th></tr></thead>
+    <tbody>
+      <tr><td>Lyon (merged)</td><td class="num">€812k</td><td class="num">€706k</td><td class="num">−13%</td></tr>
+      <tr><td>Marseille</td><td class="num">€544k</td><td class="num">€551k</td><td class="num">+1%</td></tr>
+      <tr><td>Toulouse</td><td class="num">€601k</td><td class="num">€583k</td><td class="num">−3%</td></tr>
+      <tr class="total"><td>Total</td><td class="num">€1,957k</td><td class="num">€1,840k</td><td class="num">−6%</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">03</span>Risks</h2>
+  <h3>Peak-season staffing</h3>
+  <p>Lyon carries 45% more volume in December. Without seasonal hires the site runs at 118% of capacity for three weeks.</p>
+  <h3>Carrier concentration</h3>
+  <p>One carrier now moves over a third of regional parcels. A second contract would cost about €40k a year and remove the single point of failure.</p>
+
+  <h2><span class="num">04</span>Next steps</h2>
+  <table>
+    <thead><tr><th>Action</th><th>Owner</th><th>Due</th></tr></thead>
+    <tbody>
+      <tr><td>Approve seasonal hiring plan for Lyon</td><td>COO</td><td>15 Nov</td></tr>
+      <tr><td>Tender a second regional carrier</td><td>Procurement</td><td>30 Nov</td></tr>
+      <tr><td>Report December on-time delivery weekly</td><td>Operations</td><td>From 1 Dec</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Figures are unaudited management accounts. Delivery data from the carrier portals, exported 18 October 2026.</p>
+</main>
+</body>
+</html>

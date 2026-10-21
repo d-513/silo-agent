@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- One-pager template (project brief, proposal, product sheet, event flyer). Copy to bot/, replace the content.
+     It must fit ONE page: the proof warns at two. Cut words before shrinking type.
+     Theme: theme-ink (default) | theme-garden | theme-ember.
+     Render + proof: python3 /opt/silo/skills/pdf/scripts/render.py bot/onepager.html /workspace/onepager.pdf -->
+<html lang="en" class="theme-ink">
+<head>
+<meta charset="utf-8">
+<title>Riverside Library Makerspace</title>
+<link rel="stylesheet" href="/opt/silo/skills/pdf/design.css">
+<style>
+  @page { margin: 16mm 18mm 18mm 18mm; }
+  .head { border-left-width: 3pt; border-left-style: solid; border-left-color: var(--accent); padding-left: 6mm; margin-bottom: 8mm; }
+  .head h1 { font-size: 30pt; line-height: 1.05; letter-spacing: -.01em; margin: 0 0 3mm; }
+  .head .lede { margin: 0; color: var(--muted); max-width: 140mm; }
+  .cols { margin-top: 2mm; }
+  .col { float: left; width: 84mm; }
+  .col + .col { float: right; }
+  .clear { clear: both; }
+  .col h2 { font-size: 13pt; margin: 0 0 2mm; }
+  .steps { margin-top: 7mm; padding-top: 4mm; border-top-width: 1pt; border-top-style: solid; border-top-color: var(--ink); }
+  .steps h2 { font-size: 13pt; margin: 0 0 3mm; }
+  .steps table td.when { width: 28mm; font-weight: 600; color: var(--accent); }
+  .ask { background-color: var(--accent); color: var(--paper); padding: 5mm 6mm; margin-top: 6mm; }
+  .ask p { margin: 0; font-size: 11.5pt; line-height: 1.4; }
+  .ask .kicker { color: var(--accent-soft); margin-bottom: 1.5mm; }
+  .contact { margin-top: 4mm; font-family: var(--sans); font-size: 8pt; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="head" data-title="Riverside Library Makerspace · proposal">
+  <p class="kicker">Proposal · Riverside Library</p>
+  <h1>A makerspace in the old reading room</h1>
+  <p class="lede">Turn 80 m² that sits empty five days a week into a free workshop with 3D printers, sewing machines and repair tools, open to every library card holder.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="value">€48k</div><div class="label">One-off cost</div></div>
+  <div class="stat"><div class="value">€9k</div><div class="label">Per year to run</div></div>
+  <div class="stat"><div class="value">1,200</div><div class="label">Visits in year one</div></div>
+</div>
+
+<div class="cols">
+  <div class="col">
+    <h2>The problem</h2>
+    <p>The reading room averages six visitors a day since the study area moved upstairs. Meanwhile the nearest public workshop is 40 minutes away by bus, and the repair café has a waiting list of three months.</p>
+    <h4>What people asked for</h4>
+    <ul>
+      <li>Somewhere to fix things instead of replacing them</li>
+      <li>Tools nobody owns at home: printers, a laser cutter</li>
+      <li>Weekend sessions for children and teenagers</li>
+    </ul>
+  </div>
+  <div class="col">
+    <h2>The plan</h2>
+    <p>Fit out the room with four workbenches, two 3D printers, a small laser cutter and four sewing machines. Volunteers from the repair café run supervised sessions; tools that need training are booked after a 30-minute induction.</p>
+    <div class="callout"><p>Two local firms have offered €20k of the fit-out in exchange for naming the benches.</p></div>
+  </div>
+  <div class="clear"></div>
+</div>
+
+<div class="steps">
+  <h2>Timeline</h2>
+  <table>
+    <tbody>
+      <tr><td class="when">January</td><td>Council approval and sponsor agreements signed</td></tr>
+      <tr><td class="when">February</td><td>Electrical work, ventilation for the laser cutter, benches built</td></tr>
+      <tr><td class="when">March</td><td>Volunteer training; soft opening on Saturdays</td></tr>
+      <tr><td class="when">April</td><td>Full opening, Wednesday to Saturday</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="ask">
+  <p class="kicker">What we need from you</p>
+  <p>Approve €28k from the 2027 capital budget at the December meeting.</p>
+</div>
+<p class="contact">Anna Kowalczyk, branch manager · anna.k@riverside-library.example · 0161 555 0142</p>
+</body>
+</html>

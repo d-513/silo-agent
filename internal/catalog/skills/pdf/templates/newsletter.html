@@ -1,0 +1,143 @@
+<!doctype html>
+<!-- Newsletter template (family, club, school, team). Copy to bot/, replace the sample content.
+     Photos: <img class="photo" src="photo.jpg"> (path relative to this HTML file); keep a caption.
+     Each <section class="sheet"> is one page and must fit it: if the proof shows a sheet spilling,
+     cut or shorten a story rather than shrink the type. Two sheets is the sweet spot.
+     Theme: theme-garden (warm, default here) | theme-ember | theme-ink.
+     Render + proof: python3 /opt/silo/skills/pdf/scripts/render.py bot/newsletter.html /workspace/newsletter.pdf -->
+<html lang="en" class="theme-garden">
+<head>
+<meta charset="utf-8">
+<title>The Harbour Street Herald</title>
+<link rel="stylesheet" href="/opt/silo/skills/pdf/design.css">
+<style>
+  @page { margin: 14mm 16mm 18mm 16mm; }
+  body { font-size: 10pt; line-height: 1.48; }
+  .masthead { text-align: center; padding-bottom: 3mm; margin-bottom: 6mm;
+    border-bottom-width: 2.5pt; border-bottom-style: double; border-bottom-color: var(--ink); }
+  .masthead .name { font-family: var(--display); font-size: 46pt; line-height: 1; letter-spacing: -.01em; margin: 0 0 3mm; string-set: doctitle content(); }
+  .masthead .issue { font-family: var(--sans); font-size: 7.5pt; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+    border-top-width: .5pt; border-top-style: solid; border-top-color: var(--rule); padding-top: 2mm; }
+  .masthead .issue span { margin: 0 4mm; }
+  .sheet { break-after: page; }
+  .sheet:last-child { break-after: auto; }
+  .main { float: left; width: 116mm; }
+  .side { float: right; width: 54mm; hyphens: manual; }
+  .clear { clear: both; }
+  .lead h2 { font-size: 26pt; line-height: 1.08; font-weight: 500; margin: 0 0 3mm; }
+  .lead .lede { font-size: 12pt; font-style: italic; color: var(--muted); }
+  .photo { width: 100%; display: block; }
+  .photo-ph { height: 62mm; background-color: var(--tint); }
+  .photo-ph.small { height: 38mm; }
+  .main .body { columns: 2; column-gap: 6mm; text-align: left; }
+  .leadin { font-family: var(--sans); font-size: 8pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  .side .box { background-color: var(--tint); padding: 4mm; margin-bottom: 5mm; }
+  .side h4 { margin-top: 0; color: var(--accent); }
+  .dates { width: 100%; font-size: 8.5pt; margin: 0; }
+  .dates td { border-bottom-color: var(--rule); padding: 1.5mm 2mm 1.5mm 0; }
+  .dates td.d { font-weight: 600; white-space: nowrap; color: var(--accent); width: 13mm; }
+  .story h3 { font-size: 16pt; font-weight: 500; margin: 0 0 2mm; }
+  .story { margin-bottom: 6mm; break-inside: avoid; }
+  .row { margin-top: 6mm; padding-top: 5mm; border-top-width: .5pt; border-top-style: solid; border-top-color: var(--rule); }
+  .row .half { float: left; width: 84mm; }
+  .row .half + .half { float: right; }
+  .recipe ol { padding-left: 4.5mm; }
+  .masthead.small { text-align: left; border-bottom-width: .75pt; border-bottom-style: solid; padding-bottom: 0; margin-bottom: 0; }
+  .masthead.small .issue { border-top-width: 0; padding-top: 0; }
+  .masthead.small .issue span:first-child { margin-left: 0; }
+  .row.first { margin-top: 0; border-top-width: 0; }
+  .row figure { margin-bottom: 0; }
+  .signoff { margin-top: 8mm; text-align: center; font-family: var(--display); font-style: italic; font-size: 13pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section class="sheet">
+<header class="masthead">
+  <p class="name">The Harbour Street Herald</p>
+  <p class="issue"><span>The Nowak family</span>·<span>Autumn 2026</span>·<span>Issue 7</span></p>
+</header>
+
+<div class="main">
+  <article class="lead">
+    <p class="kicker">Big news</p>
+    <h2>Zosia rides without stabilisers, and nobody fell into the lake</h2>
+    <p class="lede">Three Saturdays, one borrowed helmet and a great deal of shouting from the bank.</p>
+    <figure>
+      <div class="photo-ph"></div>
+      <figcaption>Zosia, triumphant, on the path by the boathouse. Photo: Grandpa Jan.</figcaption>
+    </figure>
+    <div class="body">
+      <p><span class="leadin">It started as a bribe:</span> one ice cream for every lap of the pond without anyone holding the saddle. By the second Saturday the bribe had turned into a negotiation, and by the third Zosia had stopped asking for ice cream and started asking to go faster.</p>
+      <p>The stabilisers now hang in the garage next to Tomek's old ones, which tells you something about how long this family keeps things. Next stop: the long loop round the reservoir, with snacks.</p>
+      <p>Thank you to everyone who came to cheer, and especially to Auntie Ola, who ran the whole of the last lap beside her in wellies.</p>
+    </div>
+  </article>
+</div>
+
+<aside class="side">
+  <div class="box">
+    <h4>For the calendar</h4>
+    <table class="dates">
+      <tr><td class="d">2 Nov</td><td>Pierogi day at Babcia's, 1 pm</td></tr>
+      <tr><td class="d">15 Nov</td><td>Tomek's school concert</td></tr>
+      <tr><td class="d">29 Nov</td><td>Advent wreath making</td></tr>
+      <tr><td class="d">24 Dec</td><td>Wigilia at ours, 5 pm</td></tr>
+    </table>
+  </div>
+  <div class="box">
+    <h4>Birthdays</h4>
+    <p style="margin:0">Grandpa Jan turns 70 on 9 November. Cards to the usual address; he says he wants nothing, so send photos.</p>
+  </div>
+  <p class="pullquote">“Is it still a lake if you can see the bottom?”</p>
+  <p class="caption">Tomek, age 9, on the reservoir in October.</p>
+</aside>
+<div class="clear"></div>
+</section>
+
+<section class="sheet">
+<header class="masthead small"><p class="issue"><span>The Harbour Street Herald</span>·<span>Autumn 2026</span>·<span>Page 2</span></p></header>
+<div class="row first">
+  <div class="half story">
+    <p class="kicker">Around the house</p>
+    <h3>The kitchen is finished (mostly)</h3>
+    <p>Eleven weeks, two plumbers and one cupboard door that still will not close. The new window over the sink looks straight at the apple tree, which is exactly what we wanted.</p>
+    <figure><div class="photo-ph"></div><figcaption>Before and after, from the garden door.</figcaption></figure>
+  </div>
+  <div class="half story recipe">
+    <p class="kicker">From Babcia's kitchen</p>
+    <h3>Apple cake, the quick way</h3>
+    <ol>
+      <li>Rub 200 g flour, 100 g butter and 80 g sugar to crumbs.</li>
+      <li>Press half into a tin; cover with 1 kg grated apples and cinnamon.</li>
+      <li>Scatter the rest on top and bake 50 minutes at 180 °C.</li>
+    </ol>
+    <p class="muted">Serves eight, or four if Tomek is home.</p>
+  </div>
+  <div class="clear"></div>
+</div>
+
+<div class="row">
+  <div class="half story">
+    <p class="kicker">Little wins</p>
+    <h3>What went right this season</h3>
+    <ul>
+      <li>Tomek finished his first chapter book, <em>The Wind on the Moon</em>, in four nights.</li>
+      <li>Marek's tomatoes: 14 kg, most of them now sauce.</li>
+      <li>Kasia ran the autumn 10 km in 58 minutes, three better than last year.</li>
+      <li>The cat came home after two days, smug and slightly damp.</li>
+    </ul>
+  </div>
+  <div class="half story">
+    <p class="kicker">Over to you</p>
+    <h3>Send us your news</h3>
+    <p>The winter issue goes out in mid-December. Photos, recipes, terrible jokes and small victories are all welcome; reply to the family chat or post them to Kasia by 5 December.</p>
+    <p class="pullquote">Next issue: the great Christmas tree vote.</p>
+  </div>
+  <div class="clear"></div>
+</div>
+
+<p class="signoff">With love from Harbour Street — Kasia, Marek, Tomek &amp; Zosia</p>
+</section>
+</body>
+</html>

@@ -25,6 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # does not rebuild the big one above.
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-pol \
     && rm -rf /var/lib/apt/lists/*
+# Design typefaces for the document skills (catalog pdf/word/presentations,
+# DESIGN.md): Inter + Inter Display (sans), EB Garamond (display serif), Linux
+# Libertine O / Biolinum (book serif). Their own layer, so a font change does
+# not rebuild the big one above.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-inter fonts-ebgaramond fonts-linuxlibertine \
+    && rm -rf /var/lib/apt/lists/*
 # git: the worker keeps the workspace history (change tracking) in a shadow
 # repository, and the Bot gets it for its own projects. Its own layer, for the
 # same reason.
