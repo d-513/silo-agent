@@ -119,6 +119,42 @@ export function BlockRenderer({
     case "segmented": {
       const opts = normalizeOptions(block.options);
       const val = typeof values[block.name] === "string" ? (values[block.name] as string) : (opts[0]?.value ?? "");
+      // A segment holds a word or two on one line; anything longer is a list
+      // of radio rows, which has room for a sentence and a hint.
+      if (opts.length > 4 || opts.some((o) => o.hint || o.label.length > 18)) {
+        return (
+          <Field label={block.label} hint={block.hint}>
+            <div role="radiogroup" aria-label={block.label} className="space-y-1.5">
+              {opts.map((o) => {
+                const on = o.value === val;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    disabled={disabled}
+                    onClick={() => onChange(block.name, o.value)}
+                    className="flex w-full items-center gap-2.5 rounded-control bg-well/60 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-well"
+                  >
+                    <span
+                      className={`grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors ${
+                        on ? "bg-ink" : "bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
+                      }`}
+                    >
+                      {on ? <span className="h-1.5 w-1.5 rounded-full bg-on-ink" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium leading-4">{o.label}</span>
+                      {o.hint ? <span className="mt-0.5 block text-[11.5px] text-ink-3">{o.hint}</span> : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+        );
+      }
       return (
         <Field label={block.label} hint={block.hint}>
           <ChipRadio
