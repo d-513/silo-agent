@@ -398,6 +398,12 @@ const (
 	UISaveDriveProcedure = "/silo.v1.UI/SaveDrive"
 	// UIDeleteDriveProcedure is the fully-qualified name of the UI's DeleteDrive RPC.
 	UIDeleteDriveProcedure = "/silo.v1.UI/DeleteDrive"
+	// UIListSpaceDrivesProcedure is the fully-qualified name of the UI's ListSpaceDrives RPC.
+	UIListSpaceDrivesProcedure = "/silo.v1.UI/ListSpaceDrives"
+	// UIGrantDriveProcedure is the fully-qualified name of the UI's GrantDrive RPC.
+	UIGrantDriveProcedure = "/silo.v1.UI/GrantDrive"
+	// UIRevokeDriveProcedure is the fully-qualified name of the UI's RevokeDrive RPC.
+	UIRevokeDriveProcedure = "/silo.v1.UI/RevokeDrive"
 	// UIBeginDriveAuthProcedure is the fully-qualified name of the UI's BeginDriveAuth RPC.
 	UIBeginDriveAuthProcedure = "/silo.v1.UI/BeginDriveAuth"
 	// UIPickDriveOptionsProcedure is the fully-qualified name of the UI's PickDriveOptions RPC.
@@ -671,6 +677,12 @@ type UIClient interface {
 	ListDrives(context.Context, *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
 	SaveDrive(context.Context, *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error)
 	DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error)
+	// A Workspace's drives, for its Customize hub and a Bot's From the
+	// workspace list; and giving one to a Bot of the same Workspace, or taking
+	// it away.
+	ListSpaceDrives(context.Context, *connect.Request[v1.ListSpaceDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
+	GrantDrive(context.Context, *connect.Request[v1.GrantDriveRequest]) (*connect.Response[v1.Drive], error)
+	RevokeDrive(context.Context, *connect.Request[v1.RevokeDriveRequest]) (*connect.Response[v1.RevokeDriveResponse], error)
 	BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error)
 	PickDriveOptions(context.Context, *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error)
 	BrowseDrive(context.Context, *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error)
@@ -1776,6 +1788,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("DeleteDrive")),
 			connect.WithClientOptions(opts...),
 		),
+		listSpaceDrives: connect.NewClient[v1.ListSpaceDrivesRequest, v1.ListDrivesResponse](
+			httpClient,
+			baseURL+UIListSpaceDrivesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSpaceDrives")),
+			connect.WithClientOptions(opts...),
+		),
+		grantDrive: connect.NewClient[v1.GrantDriveRequest, v1.Drive](
+			httpClient,
+			baseURL+UIGrantDriveProcedure,
+			connect.WithSchema(uIMethods.ByName("GrantDrive")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeDrive: connect.NewClient[v1.RevokeDriveRequest, v1.RevokeDriveResponse](
+			httpClient,
+			baseURL+UIRevokeDriveProcedure,
+			connect.WithSchema(uIMethods.ByName("RevokeDrive")),
+			connect.WithClientOptions(opts...),
+		),
 		beginDriveAuth: connect.NewClient[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse](
 			httpClient,
 			baseURL+UIBeginDriveAuthProcedure,
@@ -1992,6 +2022,9 @@ type uIClient struct {
 	listDrives               *connect.Client[v1.ListDrivesRequest, v1.ListDrivesResponse]
 	saveDrive                *connect.Client[v1.SaveDriveRequest, v1.Drive]
 	deleteDrive              *connect.Client[v1.DeleteDriveRequest, v1.DeleteDriveResponse]
+	listSpaceDrives          *connect.Client[v1.ListSpaceDrivesRequest, v1.ListDrivesResponse]
+	grantDrive               *connect.Client[v1.GrantDriveRequest, v1.Drive]
+	revokeDrive              *connect.Client[v1.RevokeDriveRequest, v1.RevokeDriveResponse]
 	beginDriveAuth           *connect.Client[v1.BeginDriveAuthRequest, v1.BeginDriveAuthResponse]
 	pickDriveOptions         *connect.Client[v1.PickDriveOptionsRequest, v1.PickDriveOptionsResponse]
 	browseDrive              *connect.Client[v1.BrowseDriveRequest, v1.BrowseDriveResponse]
@@ -2904,6 +2937,21 @@ func (c *uIClient) DeleteDrive(ctx context.Context, req *connect.Request[v1.Dele
 	return c.deleteDrive.CallUnary(ctx, req)
 }
 
+// ListSpaceDrives calls silo.v1.UI.ListSpaceDrives.
+func (c *uIClient) ListSpaceDrives(ctx context.Context, req *connect.Request[v1.ListSpaceDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	return c.listSpaceDrives.CallUnary(ctx, req)
+}
+
+// GrantDrive calls silo.v1.UI.GrantDrive.
+func (c *uIClient) GrantDrive(ctx context.Context, req *connect.Request[v1.GrantDriveRequest]) (*connect.Response[v1.Drive], error) {
+	return c.grantDrive.CallUnary(ctx, req)
+}
+
+// RevokeDrive calls silo.v1.UI.RevokeDrive.
+func (c *uIClient) RevokeDrive(ctx context.Context, req *connect.Request[v1.RevokeDriveRequest]) (*connect.Response[v1.RevokeDriveResponse], error) {
+	return c.revokeDrive.CallUnary(ctx, req)
+}
+
 // BeginDriveAuth calls silo.v1.UI.BeginDriveAuth.
 func (c *uIClient) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
 	return c.beginDriveAuth.CallUnary(ctx, req)
@@ -3190,6 +3238,12 @@ type UIHandler interface {
 	ListDrives(context.Context, *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
 	SaveDrive(context.Context, *connect.Request[v1.SaveDriveRequest]) (*connect.Response[v1.Drive], error)
 	DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error)
+	// A Workspace's drives, for its Customize hub and a Bot's From the
+	// workspace list; and giving one to a Bot of the same Workspace, or taking
+	// it away.
+	ListSpaceDrives(context.Context, *connect.Request[v1.ListSpaceDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error)
+	GrantDrive(context.Context, *connect.Request[v1.GrantDriveRequest]) (*connect.Response[v1.Drive], error)
+	RevokeDrive(context.Context, *connect.Request[v1.RevokeDriveRequest]) (*connect.Response[v1.RevokeDriveResponse], error)
 	BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error)
 	PickDriveOptions(context.Context, *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error)
 	BrowseDrive(context.Context, *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error)
@@ -4291,6 +4345,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("DeleteDrive")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListSpaceDrivesHandler := connect.NewUnaryHandler(
+		UIListSpaceDrivesProcedure,
+		svc.ListSpaceDrives,
+		connect.WithSchema(uIMethods.ByName("ListSpaceDrives")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGrantDriveHandler := connect.NewUnaryHandler(
+		UIGrantDriveProcedure,
+		svc.GrantDrive,
+		connect.WithSchema(uIMethods.ByName("GrantDrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRevokeDriveHandler := connect.NewUnaryHandler(
+		UIRevokeDriveProcedure,
+		svc.RevokeDrive,
+		connect.WithSchema(uIMethods.ByName("RevokeDrive")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIBeginDriveAuthHandler := connect.NewUnaryHandler(
 		UIBeginDriveAuthProcedure,
 		svc.BeginDriveAuth,
@@ -4685,6 +4757,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISaveDriveHandler.ServeHTTP(w, r)
 		case UIDeleteDriveProcedure:
 			uIDeleteDriveHandler.ServeHTTP(w, r)
+		case UIListSpaceDrivesProcedure:
+			uIListSpaceDrivesHandler.ServeHTTP(w, r)
+		case UIGrantDriveProcedure:
+			uIGrantDriveHandler.ServeHTTP(w, r)
+		case UIRevokeDriveProcedure:
+			uIRevokeDriveHandler.ServeHTTP(w, r)
 		case UIBeginDriveAuthProcedure:
 			uIBeginDriveAuthHandler.ServeHTTP(w, r)
 		case UIPickDriveOptionsProcedure:
@@ -5426,6 +5504,18 @@ func (UnimplementedUIHandler) SaveDrive(context.Context, *connect.Request[v1.Sav
 
 func (UnimplementedUIHandler) DeleteDrive(context.Context, *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteDrive is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSpaceDrives(context.Context, *connect.Request[v1.ListSpaceDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaceDrives is not implemented"))
+}
+
+func (UnimplementedUIHandler) GrantDrive(context.Context, *connect.Request[v1.GrantDriveRequest]) (*connect.Response[v1.Drive], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GrantDrive is not implemented"))
+}
+
+func (UnimplementedUIHandler) RevokeDrive(context.Context, *connect.Request[v1.RevokeDriveRequest]) (*connect.Response[v1.RevokeDriveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RevokeDrive is not implemented"))
 }
 
 func (UnimplementedUIHandler) BeginDriveAuth(context.Context, *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {

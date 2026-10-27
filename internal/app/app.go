@@ -285,6 +285,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Spaces = space.New(a.DB)
 	a.Spaces.OnDelete(a.Skills.DropSpace)
 	a.Spaces.OnDelete(a.Connectors.DropSpace)
+	a.Spaces.OnDelete(a.Drives.DropSpace)
 	a.Setup = setup.New(a.DB, a)
 	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)

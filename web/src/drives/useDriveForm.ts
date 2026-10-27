@@ -13,6 +13,8 @@ import { t } from "../i18n.ts";
 // and test the connection (again on its own once a connection field changes).
 export function useDriveForm({
   botId,
+  spaceId = "",
+  botIds,
   t: tpl,
   drive,
   taken,
@@ -20,7 +22,11 @@ export function useDriveForm({
   prefill,
   onSaved,
 }: {
+  // The Bot the form was opened from ("" from the Workspace's hub), its
+  // Workspace, and the other Bots a new drive goes to.
   botId: string;
+  spaceId?: string;
+  botIds?: string[];
   t: DriveTemplate;
   drive?: Drive;
   taken: Set<string>;
@@ -79,30 +85,31 @@ export function useDriveForm({
   const sync = useCallback(async (): Promise<Drive> => {
     const cur = draftRef.current;
     if (cur && !cur.draft) return cur;
-    const d = await ui.saveDrive({ botId, id: cur?.id ?? "", template: tpl.key, draft: true, readOnly, options: options() });
+    const d = await ui.saveDrive({ botId, spaceId, id: cur?.id ?? "", template: tpl.key, draft: true, readOnly, options: options() });
     setDraft(d);
     draftRef.current = d;
     return d;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botId, tpl.key, readOnly, values, secrets]);
+  }, [botId, spaceId, tpl.key, readOnly, values, secrets]);
 
   const reloadDraft = useCallback(async () => {
     const cur = draftRef.current;
     if (!cur) return;
-    const r = await ui.listDrives({ botId, draftId: cur.draft ? cur.id : "" });
+    const r = botId ? await ui.listDrives({ botId, draftId: cur.draft ? cur.id : "" }) : await ui.listSpaceDrives({ spaceId, draftId: cur.draft ? cur.id : "" });
     const fresh = r.drives.find((x) => x.id === cur.id);
     if (fresh) {
       setDraft(fresh);
       setValues((m) => ({ ...fresh.options, ...m, ...Object.fromEntries(Object.entries(fresh.options).filter(([k]) => !m[k])) }));
     }
-  }, [botId]);
+  }, [botId, spaceId]);
 
   // The sign-in popup posts back when it is done; polling covers a lost message.
-  const polled = useQuery(UI.method.listDrives, authBusy && draft ? { botId, draftId: draft.draft ? draft.id : "" } : skipToken, {
-    refetchInterval: 2000,
-    // The sign-in happens in another window, so keep asking while this one is behind it.
-    refetchIntervalInBackground: true,
-  });
+  // The sign-in happens in another window, so keep asking while this one is behind it.
+  const pollOpts = { refetchInterval: 2000, refetchIntervalInBackground: true };
+  const draftId = draft?.draft ? draft.id : "";
+  const botPolled = useQuery(UI.method.listDrives, authBusy && draft && botId ? { botId, draftId } : skipToken, pollOpts);
+  const spacePolled = useQuery(UI.method.listSpaceDrives, authBusy && draft && !botId ? { spaceId, draftId } : skipToken, pollOpts);
+  const polled = botId ? botPolled : spacePolled;
   useEffect(() => {
     const cur = draftRef.current;
     const fresh = cur && polled.data?.drives.find((x) => x.id === cur.id);
@@ -211,6 +218,8 @@ export function useDriveForm({
         const cur = draftRef.current;
         await ui.saveDrive({
           botId,
+          spaceId,
+          botIds: botIds ?? [],
           id: cur?.id ?? "",
           template: tpl.key,
           name,

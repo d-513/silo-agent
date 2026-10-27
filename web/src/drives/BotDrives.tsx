@@ -18,6 +18,14 @@ import { Trans } from "../Trans.tsx";
 
 const POPULAR = ["gdrive", "onedrive", "dropbox", "box", "pcloud", "nextcloud", "s3", "r2", "b2", "sftp"];
 
+// A Workspace's drives: the add form's names (unique per Workspace), an
+// edit's drive as it is (a Bot's view carries its own mount's read-only), and
+// what a Bot can be given. Asked only of someone who may build there.
+export function useSpaceDrives(spaceId: string, on = true) {
+  const q = useQuery(UI.method.listSpaceDrives, { spaceId, draftId: "" }, { enabled: on && !!spaceId, refetchInterval: 6000, retry: false });
+  return q.data?.drives ?? null;
+}
+
 // A Bot's drives and the provider templates, shared by the pages of the
 // Drives tab (each a route in router.tsx).
 function useDrives(botId: string) {
@@ -55,35 +63,59 @@ function useDrives(botId: string) {
 
 // /bots/$botId/drives/new: the provider gallery.
 export function DriveNew({ botId, admin }: { botId: string; admin: boolean }) {
+  const navigate = useNavigate();
   const { templates, back } = useDrives(botId);
-  return templates ? <Gallery botId={botId} templates={templates} admin={admin} onBack={back} /> : <Loading onBack={back} />;
+  return templates ? (
+    <Gallery templates={templates} admin={admin} onPick={(key) => void navigate({ to: "/bots/$botId/drives/new/$template", params: { botId, template: key } })} onBack={back} />
+  ) : (
+    <Loading onBack={back} />
+  );
 }
 
-// /bots/$botId/drives/new/$template: the form for a new drive.
-export function DriveAdd({ botId, template }: { botId: string; template: string }) {
+// /bots/$botId/drives/new/$template: the form for a new drive. It is added to
+// the Bot's Workspace and mounted in this Bot.
+export function DriveAdd({ botId, spaceId, template }: { botId: string; spaceId: string; template: string }) {
   const { templates, drives, byKey, taken, back } = useDrives(botId);
+  const space = useSpaceDrives(spaceId);
+  const names = useMemo(() => new Set([...taken, ...(space ?? []).map((d) => d.name)]), [taken, space]);
   const t = byKey.get(template);
   if (!templates || !drives) return <Loading onBack={back} />;
   if (!t) return <Missing onBack={back} />;
-  return <DriveForm key={t.key} botId={botId} t={t} taken={taken} onDone={back} />;
+  return <DriveForm key={t.key} botId={botId} t={t} taken={names} onDone={back} />;
 }
 
-// /bots/$botId/drives/$driveId: edit a drive.
-export function DriveEdit({ botId, driveId }: { botId: string; driveId: string }) {
-  const { templates, drives, byKey, taken, back } = useDrives(botId);
-  if (!templates || !drives) return <Loading onBack={back} />;
-  const d = drives.find((x) => x.id === driveId);
+// /bots/$botId/drives/$driveId: edit a drive. It is the Workspace's, so the
+// form shows it as it is there, not as this Bot mounts it.
+export function DriveEdit({ botId, spaceId, driveId }: { botId: string; spaceId: string; driveId: string }) {
+  const { templates, byKey, back } = useDrives(botId);
+  const space = useSpaceDrives(spaceId);
+  if (!templates || !space) return <Loading onBack={back} />;
+  const d = space.find((x) => x.id === driveId);
   const t = d && byKey.get(d.template);
   if (!d || !t) return <Missing onBack={back} />;
+  const taken = new Set(space.filter((x) => x.id !== d.id).map((x) => x.name));
   return <DriveForm key={d.id} botId={botId} t={t} drive={d} taken={taken} onDone={back} />;
 }
 
-// /bots/$botId/drives: the Bot's drives.
-export function DrivesList({ botId }: { botId: string }) {
+// /bots/$botId/drives: the Bot's drives, and the Workspace's others it can
+// be given.
+export function DrivesList({ botId, spaceId, manage }: { botId: string; spaceId: string; manage: boolean }) {
   const navigate = useNavigate();
   const { templates, drives, bindOk, loadErr, refresh, gallery, byKey } = useDrives(botId);
+  const space = useSpaceDrives(spaceId, manage);
   const [actErr, setErr] = useState("");
   const err = actErr || loadErr;
+  const others = useMemo(() => (space && drives ? space.filter((d) => !drives.some((x) => x.id === d.id)) : []), [space, drives]);
+
+  async function give(d: Drive, readOnly: boolean) {
+    setErr("");
+    try {
+      await ui.grantDrive({ botId, driveId: d.id, readOnly });
+      await Promise.all([refresh(), reload(UI.method.listSpaceDrives, { spaceId })]);
+    } catch (e) {
+      setErr(fail(e));
+    }
+  }
 
   async function reconnect(d: Drive) {
     const w = window.open("about:blank", "silo-drive-auth", "width=520,height=720");
@@ -112,7 +144,7 @@ export function DrivesList({ botId }: { botId: string }) {
             <Trans i18nKey="Cloud storage and file servers, mounted as folders in <code>/workspace/drives</code>. The Bot works on them like any file. Sign-ins and passwords stay on the Silo server." components={{ code: <code className="font-mono text-[12.5px] text-ink" /> }} />
           </p>
         </div>
-        {drives && drives.length > 0 ? (
+        {manage && drives && drives.length > 0 ? (
           <button type="button" className={btnClass("primary")} onClick={gallery}>
             <Plus size={15} />{t("Add drive")}
           </button>
@@ -148,6 +180,8 @@ export function DrivesList({ botId }: { botId: string }) {
               <p className="text-[13px] text-ink-2">{t("Give the Bot a folder from somewhere else.")}</p>
             </div>
           </div>
+          {manage ? (
+          <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {POPULAR.map((k) => byKey.get(k))
               .filter((t): t is DriveTemplate => !!t)
@@ -166,14 +200,59 @@ export function DrivesList({ botId }: { botId: string }) {
           <button type="button" className="mt-4 flex items-center gap-1 text-[13px] font-medium text-cobalt hover:text-cobalt-deep" onClick={gallery}>
             {t("All {{count}} providers", { count: templates.length })} <ChevronRight size={14} />
           </button>
+          </>
+          ) : null}
         </div>
       ) : (
         <ul className="space-y-2.5">
           {drives.map((d) => (
-            <DriveRow key={d.id} botId={botId} d={d} t={byKey.get(d.template)} onReconnect={() => void reconnect(d)} onRemoved={() => void refresh()} />
+            <DriveRow
+              key={d.id}
+              botId={botId}
+              d={d}
+              t={byKey.get(d.template)}
+              onReconnect={() => void reconnect(d)}
+              onRemoved={() => void Promise.all([refresh(), reload(UI.method.listSpaceDrives, { spaceId })])}
+            />
           ))}
         </ul>
       )}
+
+      {others.length > 0 ? (
+        <section className="mt-8">
+          <h3 className="text-[13.5px] font-medium text-ink">{t("From the workspace")}</h3>
+          <p className="mt-0.5 text-[12.5px] text-ink-3">{t("Drives added for other Bots in this workspace. Give one to this Bot to mount it here too.")}</p>
+          <ul className="mt-3 space-y-2">
+            {others.map((d) => {
+              const tpl = byKey.get(d.template);
+              return (
+                <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-card bg-well px-4 py-3">
+                  <DriveMark svg={tpl?.iconSvg} size={32} className="bg-surface" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[13.5px] font-medium text-ink">{d.name}</span>
+                      <span className="text-[12px] text-ink-3">{tpl?.title ?? d.template}</span>
+                      {d.readOnly ? <span className="rounded-sm bg-surface px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t("Read-only")}</span> : null}
+                    </div>
+                    {d.createdBy ? <p className="truncate text-[12px] text-ink-3">{t("Added by {{who}}", { who: d.createdBy })}</p> : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {d.readOnly ? null : (
+                      <Btn kind="ghost" size="sm" type="button" onClick={() => void give(d, true)}>
+                        {t("Add read-only")}
+                      </Btn>
+                    )}
+                    <Btn kind="secondary" size="sm" type="button" onClick={() => void give(d, false)}>
+                      <Plus size={13} />
+                      {t("Add to this Bot")}
+                    </Btn>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

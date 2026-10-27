@@ -125,7 +125,7 @@ func (s *Service) ListDriveChanges(ctx context.Context, req *connect.Request[v1.
 		return connect.NewResponse(out), nil
 	}
 	var drives int64
-	s.db.Model(&db.Drive{}).Where("bot_id = ? AND draft = ?", b.ID, false).Count(&drives)
+	s.db.Model(&db.BotDrive{}).Where("bot_id = ?", b.ID).Count(&drives)
 	out.HasDrives = drives > 0
 	var rows []db.DriveChange
 	if err := s.db.Where("bot_id = ?", b.ID).Order("seq DESC").Limit(driveList).Find(&rows).Error; err != nil {

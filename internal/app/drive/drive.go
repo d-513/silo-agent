@@ -180,19 +180,63 @@ func (s *Service) driveSpec(d *db.Drive) (*v1.DriveSpec, *drives.Template, error
 	return spec, t, nil
 }
 
-func (s *Service) setDriveState(id, state, detail string) {
+// setMountState records how one Bot's mount of a drive is doing.
+func (s *Service) setMountState(botID, driveID, state, detail string) {
 	if s.db == nil {
 		return
 	}
-	s.db.Model(&db.Drive{}).Where("id = ? AND draft = ?", id, false).
+	s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND drive_id = ?", botID, driveID).
 		Updates(map[string]any{"state": state, "state_detail": textx.ClipRunes(detail, 500)})
 }
 
-// BotDrives lists a Bot's saved (non-draft) drives.
+// BotDrives lists the drives granted to a Bot as it mounts them: read-only
+// when the drive or the grant is, with that mount's state.
 func (s *Service) BotDrives(botID string) []db.Drive {
-	var out []db.Drive
-	s.db.Where("bot_id = ? AND draft = ?", botID, false).Order("name").Find(&out)
+	var rows []struct {
+		db.Drive
+		GrantReadOnly bool
+		GrantState    string
+		GrantDetail   string
+	}
+	s.db.Model(&db.Drive{}).
+		Select("drives.*, g.read_only AS grant_read_only, g.state AS grant_state, g.state_detail AS grant_detail").
+		Joins("JOIN bot_drives g ON g.drive_id = drives.id").
+		Where("g.bot_id = ? AND drives.draft = ?", botID, false).Order("drives.name").Scan(&rows)
+	out := make([]db.Drive, 0, len(rows))
+	for _, r := range rows {
+		d := r.Drive
+		d.ReadOnly = d.ReadOnly || r.GrantReadOnly
+		d.State, d.StateDetail = r.GrantState, r.GrantDetail
+		out = append(out, d)
+	}
 	return out
+}
+
+// grantees are the Bots a drive is granted to.
+func (s *Service) grantees(driveID string) []string {
+	var out []string
+	s.db.Model(&db.BotDrive{}).Where("drive_id = ?", driveID).Order("created_at").Pluck("bot_id", &out)
+	return out
+}
+
+// applyAll remounts a drive in every Bot it is granted to: after an edit, a
+// sign-in, or a token another Bot's sidecar refreshed.
+func (s *Service) applyAll(driveID string) {
+	for _, b := range s.grantees(driveID) {
+		s.applyDrives(b)
+	}
+}
+
+// listVia is the Bot whose sidecar lists a drive for the add or edit form: a
+// draft's own, else one it is granted to.
+func (s *Service) listVia(d *db.Drive) string {
+	if d.BotID != "" {
+		return d.BotID
+	}
+	if g := s.grantees(d.ID); len(g) > 0 {
+		return g[0]
+	}
+	return ""
 }
 
 // renderApply builds the desired set. A drive that cannot render (an admin
@@ -208,12 +252,12 @@ func (s *Service) renderApply(botID string) *v1.DriveApply {
 				state = m.State()
 			}
 			if d.State != state || d.StateDetail != detail {
-				s.setDriveState(d.ID, state, detail)
+				s.setMountState(botID, d.ID, state, detail)
 			}
 			continue
 		}
 		if d.State == drives.StateNeedsSetup || d.State == drives.StateNeedsAuth || d.State == drives.StateNeedsInput || d.State == "" {
-			s.setDriveState(d.ID, driveMounting, "")
+			s.setMountState(botID, d.ID, driveMounting, "")
 		}
 		out.Drives = append(out.Drives, spec)
 	}
@@ -334,24 +378,36 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 	return err
 }
 
+// granted loads a drive granted to the Bot, or nil.
+func (s *Service) granted(botID, driveID string) *db.Drive {
+	var d db.Drive
+	s.db.Model(&db.Drive{}).Joins("JOIN bot_drives g ON g.drive_id = drives.id").
+		Where("drives.id = ? AND g.bot_id = ?", driveID, botID).Limit(1).Find(&d)
+	if d.ID == "" {
+		return nil
+	}
+	return &d
+}
+
 // driveUp handles one frame from a sidecar. Every write is scoped to the
-// session's Bot so a sidecar can only touch its own drives.
+// session's Bot so a sidecar can only touch the drives granted to it.
 func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 	switch b := up.GetBody().(type) {
 	case *v1.DriveUp_Status:
 		st := b.Status
-		var d db.Drive
-		if s.db.Where("id = ? AND bot_id = ?", st.GetId(), sess.botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
+		if s.granted(sess.botID, st.GetId()) == nil {
 			return
 		}
-		s.setDriveState(d.ID, st.GetState(), st.GetDetail())
+		s.setMountState(sess.botID, st.GetId(), st.GetState(), st.GetDetail())
 	case *v1.DriveUp_Changes:
-		var d db.Drive
-		if s.db.Where("id = ? AND bot_id = ?", b.Changes.GetId(), sess.botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
+		d := s.granted(sess.botID, b.Changes.GetId())
+		if d == nil {
 			return
 		}
+		// The journal is the mounting Bot's: what was written through it.
+		d.BotID = sess.botID
 		if s.OnChange != nil && len(b.Changes.GetChanges()) > 0 {
-			s.OnChange(&d, b.Changes.GetChanges())
+			s.OnChange(d, b.Changes.GetChanges())
 		}
 	case *v1.DriveUp_Token:
 		s.saveDriveToken(sess.botID, b.Token.GetId(), b.Token.GetToken())
@@ -366,15 +422,22 @@ func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 	}
 }
 
-// saveDriveToken stores a token rclone refreshed. Only a token that parses is
-// kept: a truncated write must not replace a working one.
+// saveDriveToken stores a token one Bot's rclone refreshed, and hands it to
+// every other Bot the drive is mounted in: a provider that rotates refresh
+// tokens has invalidated the one they hold. Only a token that parses is kept:
+// a truncated write must not replace a working one.
 func (s *Service) saveDriveToken(botID, driveID, tok string) {
 	if _, err := drives.ParseToken(tok); err != nil {
 		return
 	}
-	var d db.Drive
-	if s.db.Where("id = ? AND bot_id = ?", driveID, botID).Limit(1).Find(&d).Error != nil || d.ID == "" {
-		return
+	d := s.granted(botID, driveID)
+	if d == nil {
+		// A draft lists through the Bot it was started from.
+		var draft db.Drive
+		if s.db.Where("id = ? AND bot_id = ? AND draft = ?", driveID, botID, true).Limit(1).Find(&draft); draft.ID == "" {
+			return
+		}
+		d = &draft
 	}
 	sec := decodeSecrets(d.SecretsJSON)
 	if sec.Dynamic["token"] == tok {
@@ -382,6 +445,11 @@ func (s *Service) saveDriveToken(botID, driveID, tok string) {
 	}
 	sec.Dynamic["token"] = tok
 	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", mustJSONString(sec))
+	for _, other := range s.grantees(d.ID) {
+		if other != botID {
+			s.applyDrives(other)
+		}
+	}
 }
 
 type driveHostCtxKey struct{}
@@ -513,7 +581,7 @@ func (s *Service) EnsureBg(botID string) {
 		if _, err := s.ensureDrives(ctx, botID, false); err != nil {
 			log.Printf("drives bot=%s: %v", botID, err)
 			for _, d := range s.BotDrives(botID) {
-				s.setDriveState(d.ID, driveError, err.Error())
+				s.setMountState(botID, d.ID, driveError, err.Error())
 			}
 		}
 	}()
@@ -534,7 +602,11 @@ func (s *Service) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.
 	if err != nil {
 		return nil, err
 	}
-	sess, err := s.ensureDrives(ctx, d.BotID, true)
+	via := s.listVia(d)
+	if via == "" {
+		return nil, errors.New("give the drive to a Bot first: its machine is what reads the drive")
+	}
+	sess, err := s.ensureDrives(ctx, via, true)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +632,7 @@ func (s *Service) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.
 		return nil, errors.New("the drive sidecar disconnected")
 	case res := <-w:
 		if tok := res.GetToken(); tok != "" {
-			s.saveDriveToken(d.BotID, d.ID, tok)
+			s.saveDriveToken(via, d.ID, tok)
 		}
 		return res, nil
 	}
@@ -576,7 +648,7 @@ func (s *Service) Stop(ctx context.Context, botID string) {
 		_ = s.docker.Stop(ctx, dockerx.DriveName(botID))
 	}
 	if s.db != nil {
-		s.db.Model(&db.Drive{}).Where("bot_id = ? AND draft = ? AND state IN ?", botID, false,
+		s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND state IN ?", botID,
 			[]string{driveMounting, driveMounted}).Updates(map[string]any{"state": driveStopped, "state_detail": ""})
 	}
 }
@@ -599,7 +671,10 @@ func (s *Service) Drop(ctx context.Context, botID string) {
 		}
 	}
 	s.db.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
-	s.db.Where("bot_id = ?", botID).Delete(&db.Drive{})
+	// The drives are the Workspace's: the Bot's grants go, and the drafts
+	// that listed through it.
+	s.db.Where("bot_id = ?", botID).Delete(&db.BotDrive{})
+	s.db.Where("bot_id = ? AND draft = ?", botID, true).Delete(&db.Drive{})
 	if dir := s.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "drives", botID))
 	}
@@ -647,6 +722,17 @@ func (s *Service) RemoveSidecar(ctx context.Context, botID string) {
 		s.docker.DropDrive(ctx, botID, host.ContainerID)
 	}
 	s.db.Where("bot_id = ?", botID).Delete(&db.DriveHost{})
-	s.db.Model(&db.Drive{}).Where("bot_id = ? AND draft = ?", botID, false).
+	s.db.Model(&db.BotDrive{}).Where("bot_id = ?", botID).
 		Updates(map[string]any{"state": driveStopped, "state_detail": ""})
+}
+
+// DropSpace deletes a Workspace's drives, for a Workspace that is going (its
+// Bots, and so the grants, are gone already).
+func (s *Service) DropSpace(spaceID string) {
+	var ids []string
+	s.db.Model(&db.Drive{}).Where("space_id = ?", spaceID).Pluck("id", &ids)
+	if len(ids) > 0 {
+		s.db.Where("drive_id IN ?", ids).Delete(&db.BotDrive{})
+	}
+	s.db.Where("space_id = ?", spaceID).Delete(&db.Drive{})
 }

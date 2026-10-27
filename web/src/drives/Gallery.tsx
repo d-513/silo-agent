@@ -8,7 +8,7 @@ import type { DriveTemplate } from "../gen/silo/v1/ui_pb";
 import { CATEGORY_LABEL, DriveMark } from "./DriveMark";
 import { t } from "../i18n.ts";
 
-export function Gallery({ botId, templates, admin, onBack }: { botId: string; templates: DriveTemplate[]; admin: boolean; onBack: () => void }) {
+export function Gallery({ templates, admin, onPick, onBack }: { templates: DriveTemplate[]; admin: boolean; onPick: (key: string) => void; onBack: () => void }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const shown = useMemo(() => {
@@ -42,7 +42,7 @@ export function Gallery({ botId, templates, admin, onBack }: { botId: string; te
                       tpl.available || admin ? "hover:-translate-y-px hover:shadow-float active:scale-[.995]" : "cursor-default"
                     }`}
                     onClick={() => {
-                      if (tpl.available) void navigate({ to: "/bots/$botId/drives/new/$template", params: { botId, template: tpl.key } });
+                      if (tpl.available) onPick(tpl.key);
                       else if (admin) void navigate({ to: "/admin/drives" });
                     }}
                   >

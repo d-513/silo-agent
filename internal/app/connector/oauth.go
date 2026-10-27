@@ -309,5 +309,3 @@ func (s *Service) AwaitOAuth(state string, ttl time.Duration, complete func(ctx 
 		s.mu.Unlock()
 	})
 }
-
-

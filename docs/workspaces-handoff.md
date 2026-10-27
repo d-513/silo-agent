@@ -249,8 +249,8 @@ Changed:
 - `connectors`:
   - `+ space_id`, `+ created_by`, `+ lent_by`, `+ shared`.
   - A Workspace connection has `space_id` set and `bot_id` empty.
-  - The OAuth token, `ToolsJSON` and the auth status move here from
-    `BotConnector`.
+  - The OAuth token moves here from `BotConnector`. `ToolsJSON` and the
+    auth status stay on the grant (as built: see Tools, status and rules).
 - `bot_connectors` becomes the grant. It keeps what is per Bot:
   - the MCP session key,
   - the STDIO sidecar,
@@ -568,11 +568,12 @@ person, leaving, and deleting or disabling a user:
 - `TestConnectorSecretVarsArePerBot` covers this.
 
 **Tools, status and rules:**
-- `ToolsJSON` and the auth status belong to server + auth, so they live on the
-  connection.
-  - One refresh serves every grant, then `PushTools` runs for each granted
-    Bot.
-  - `storeTools` prunes the rules of every granted Bot.
+- **As built, `ToolsJSON` and the auth status stay per grant**, not on the
+  connection as first planned: `${secrets.NAME}` resolves per Bot, so two
+  Bots' sessions on one connection can reach different accounts and list
+  different tools. Each grant refreshes its own session (`refreshGrants`
+  re-drives them all after a sign-in or an edit) and `PushTools` runs per
+  Bot; `storeTools` prunes that Bot's rules.
 - **Renaming a connection moves its rules** (`<old-slug>.*` → `<new-slug>.*`)
   for every granted Bot.
   - Today a rename loses them to `sweepRules`. That is a bug, and with sharing

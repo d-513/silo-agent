@@ -213,7 +213,8 @@ export function ConnectorsRoute() {
 }
 
 export function DrivesRoute() {
-  return <DrivesList botId={useBotPage().id} />;
+  const p = useBotPage();
+  return <DrivesList botId={p.id} spaceId={p.bot.spaceId} manage={p.bot.role === "manage"} />;
 }
 
 export function DriveNewRoute() {
@@ -223,12 +224,14 @@ export function DriveNewRoute() {
 
 export function DriveAddRoute() {
   const { template } = useParams({ from: "/_authed/bots/$botId/_customize/drives/new/$template" });
-  return <DriveAdd botId={useBotPage().id} template={template} />;
+  const p = useBotPage();
+  return <DriveAdd botId={p.id} spaceId={p.bot.spaceId} template={template} />;
 }
 
 export function DriveRoute() {
   const { driveId } = useParams({ from: "/_authed/bots/$botId/_customize/drives/$driveId" });
-  return <DriveEdit botId={useBotPage().id} driveId={driveId} />;
+  const p = useBotPage();
+  return <DriveEdit botId={p.id} spaceId={p.bot.spaceId} driveId={driveId} />;
 }
 
 export function ChannelsRoute() {

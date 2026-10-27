@@ -80,7 +80,7 @@ func (s *Service) driveSystem(key string) map[string]string {
 func (s *Service) protoDrive(d *db.Drive) *v1.Drive {
 	out := &v1.Drive{
 		Id: d.ID, BotId: d.BotID, Name: d.Name, Template: d.Template, ReadOnly: d.ReadOnly, Draft: d.Draft,
-		State: d.State, StateDetail: d.StateDetail, Options: decodeMap(d.OptionsJSON),
+		State: d.State, StateDetail: d.StateDetail, Options: decodeMap(d.OptionsJSON), SpaceId: d.SpaceID, Shared: d.Shared,
 	}
 	if !d.Draft {
 		out.Path = Path(d.Name)
@@ -108,6 +108,8 @@ func (s *Service) ListDriveTemplates(ctx context.Context, _ *connect.Request[v1.
 	return connect.NewResponse(out), nil
 }
 
+// ListDrives lists the drives granted to a Bot, as it mounts them, and the
+// add form's draft started from it.
 func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
 	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
@@ -115,12 +117,12 @@ func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDr
 	}
 	out := &v1.ListDrivesResponse{BindOk: true}
 	for _, d := range s.BotDrives(b.ID) {
-		out.Drives = append(out.Drives, s.protoDrive(&d))
+		out.Drives = append(out.Drives, s.spaceDrive(ctx, &d))
 	}
 	if id := req.Msg.GetDraftId(); id != "" {
 		var d db.Drive
-		if s.db.Where("id = ? AND bot_id = ? AND draft = ?", id, b.ID, true).Limit(1).Find(&d); d.ID != "" {
-			out.Drives = append(out.Drives, s.protoDrive(&d))
+		if s.db.Where("id = ? AND space_id = ? AND draft = ?", id, b.SpaceID, true).Limit(1).Find(&d); d.ID != "" {
+			out.Drives = append(out.Drives, s.spaceDrive(ctx, &d))
 		}
 	}
 	// A box created before drives existed has no /workspace/drives bind; it
@@ -133,13 +135,68 @@ func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDr
 	return connect.NewResponse(out), nil
 }
 
-// ownDrive loads a drive the signed-in user owns through its Bot.
-func (s *Service) ownDrive(ctx context.Context, id string, need access.Need) (*db.Drive, *drives.Template, error) {
+// ListSpaceDrives lists a Workspace's drives (and the hub's draft).
+func (s *Service) ListSpaceDrives(ctx context.Context, req *connect.Request[v1.ListSpaceDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
+	sp, _, err := access.Space(ctx, s.db, req.Msg.GetSpaceId(), access.Build)
+	if err != nil {
+		return nil, err
+	}
+	var rows []db.Drive
+	s.db.Where("space_id = ? AND (draft = ? OR id = ?)", sp.ID, false, req.Msg.GetDraftId()).Order("name").Find(&rows)
+	out := &v1.ListDrivesResponse{BindOk: true}
+	for i := range rows {
+		out.Drives = append(out.Drives, s.spaceDrive(ctx, &rows[i]))
+	}
+	return connect.NewResponse(out), nil
+}
+
+// spaceDrive is a drive with what its Workspace knows about it: who uses it,
+// who added it, whose account it reaches, and whether the caller may edit it.
+func (s *Service) spaceDrive(ctx context.Context, d *db.Drive) *v1.Drive {
+	out := s.protoDrive(d)
+	u := access.User(ctx)
+	for _, b := range s.grantees(d.ID) {
+		if u != nil && access.BotRole(s.db, b, u.ID) != "" {
+			out.UsedBy = append(out.UsedBy, b)
+		} else {
+			out.UsedByHidden++
+		}
+	}
+	out.CreatedBy, out.LentBy = s.email(d.CreatedBy), s.email(d.LentBy)
+	out.CanEdit = s.canEdit(ctx, d) == nil
+	return out
+}
+
+func (s *Service) email(userID string) string {
+	if userID == "" {
+		return ""
+	}
+	var u db.User
+	s.db.Select("email").Where("id = ?", userID).Limit(1).Find(&u)
+	return u.Email
+}
+
+// canEdit says whether the caller may change or delete a drive: who added
+// it, or an admin of its Workspace. The change reaches every Bot that mounts
+// it, so managing one of them is not enough.
+func (s *Service) canEdit(ctx context.Context, d *db.Drive) error {
+	_, role, err := access.Space(ctx, s.db, d.SpaceID, access.Build)
+	if err != nil {
+		return err
+	}
+	if u := access.User(ctx); u != nil && (d.CreatedBy == u.ID || access.Rank(role) >= access.Admin) {
+		return nil
+	}
+	return connect.NewError(connect.CodePermissionDenied, errors.New("only whoever added this drive, or an admin of the workspace, can change it"))
+}
+
+// ownDrive loads a drive the caller may change.
+func (s *Service) ownDrive(ctx context.Context, id string) (*db.Drive, *drives.Template, error) {
 	var d db.Drive
 	if s.db.Where("id = ?", id).Limit(1).Find(&d); d.ID == "" {
 		return nil, nil, connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
 	}
-	if _, err := access.Bot(ctx, s.db, d.BotID, need); err != nil {
+	if err := s.canEdit(ctx, &d); err != nil {
 		return nil, nil, err
 	}
 	t, ok := s.templates().Get(d.Template)
@@ -147,6 +204,74 @@ func (s *Service) ownDrive(ctx context.Context, id string, need access.Need) (*d
 		return nil, nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("unknown drive type %q", d.Template))
 	}
 	return &d, t, nil
+}
+
+// readsAccount says whether the caller may look into the drive's account
+// (browse its folders, pick from its lists): its lender, or with no lender,
+// whoever may edit it. An admin may not browse someone else's files.
+func (s *Service) readsAccount(ctx context.Context, d *db.Drive) error {
+	if d.LentBy == "" {
+		return nil
+	}
+	if u := access.User(ctx); u != nil && u.ID == d.LentBy {
+		return nil
+	}
+	return connect.NewError(connect.CodePermissionDenied, errors.New("only whoever signed this drive in can look into it"))
+}
+
+// GrantDrive mounts a Workspace drive in one of its Bots.
+func (s *Service) GrantDrive(ctx context.Context, req *connect.Request[v1.GrantDriveRequest]) (*connect.Response[v1.Drive], error) {
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
+	if err != nil {
+		return nil, err
+	}
+	var d db.Drive
+	if s.db.Where("id = ? AND draft = ?", req.Msg.GetDriveId(), false).Limit(1).Find(&d); d.ID == "" {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
+	}
+	if err := s.grant(b.ID, &d, req.Msg.GetReadOnly()); err != nil {
+		return nil, err
+	}
+	s.applyDrives(b.ID)
+	return connect.NewResponse(s.spaceDrive(ctx, &d)), nil
+}
+
+// grant gives a drive to a Bot of its Workspace (read-only when asked).
+func (s *Service) grant(botID string, d *db.Drive, readOnly bool) error {
+	var b db.Bot
+	if s.db.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" || b.SpaceID == "" || b.SpaceID != d.SpaceID {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the drive are in different workspaces"))
+	}
+	var n int64
+	s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND drive_id = ?", botID, d.ID).Count(&n)
+	if n > 0 {
+		s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND drive_id = ?", botID, d.ID).Update("read_only", readOnly)
+		return nil
+	}
+	return s.db.Create(&db.BotDrive{BotID: botID, DriveID: d.ID, ReadOnly: readOnly, State: driveMounting, CreatedAt: time.Now()}).Error
+}
+
+// RevokeDrive unmounts a drive from one Bot; the drive stays in the
+// Workspace.
+func (s *Service) RevokeDrive(ctx context.Context, req *connect.Request[v1.RevokeDriveRequest]) (*connect.Response[v1.RevokeDriveResponse], error) {
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Administer)
+	if err != nil {
+		return nil, err
+	}
+	res := s.db.Where("bot_id = ? AND drive_id = ?", b.ID, req.Msg.GetDriveId()).Delete(&db.BotDrive{})
+	if res.RowsAffected == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the Bot does not mount that drive"))
+	}
+	s.revoked(b.ID, req.Msg.GetDriveId())
+	return connect.NewResponse(&v1.RevokeDriveResponse{}), nil
+}
+
+// revoked unmounts what a Bot lost and drops its cache of it.
+func (s *Service) revoked(botID, driveID string) {
+	s.applyDrives(botID)
+	if dir := s.cfg().DataDir; dir != "" {
+		_ = os.RemoveAll(filepath.Join(dir, "drives", botID, "cache", driveID))
+	}
 }
 
 // checkUserValue validates one answer against its field type.
@@ -207,7 +332,7 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 	var d *db.Drive
 	var t *drives.Template
 	if m.GetId() == "" {
-		b, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage)
+		spaceID, via, err := s.draftPlace(ctx, m.GetBotId(), m.GetSpaceId())
 		if err != nil {
 			return nil, err
 		}
@@ -216,13 +341,25 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown drive type %q", m.GetTemplate()))
 		}
 		id := ids.New()
-		d = &db.Drive{ID: id, BotID: b.ID, Template: tt.Key, Draft: true, Name: "~" + id, State: driveDraft}
+		d = &db.Drive{ID: id, SpaceID: spaceID, BotID: via, CreatedBy: access.User(ctx).ID, Template: tt.Key, Draft: true, Name: "~" + id, State: driveDraft}
 		t = tt
 	} else {
 		var err error
-		if d, t, err = s.ownDrive(ctx, m.GetId(), access.Manage); err != nil {
+		if d, t, err = s.ownDrive(ctx, m.GetId()); err != nil {
 			return nil, err
 		}
+	}
+	// Every Bot it is to go to is one the caller manages in its Workspace.
+	grantTo := []string{}
+	for _, id := range m.GetBotIds() {
+		b, err := access.Bot(ctx, s.db, id, access.Manage)
+		if err != nil {
+			return nil, err
+		}
+		if b.SpaceID != d.SpaceID {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the drive are in different workspaces"))
+		}
+		grantTo = append(grantTo, b.ID)
 	}
 
 	opts := map[string]string{}
@@ -252,6 +389,10 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 	for _, k := range m.GetClearSecrets() {
 		delete(sec.User, k)
 	}
+	// Credentials typed in now are the typist's to lend.
+	if mustJSONString(sec.User) != mustJSONString(decodeSecrets(d.SecretsJSON).User) && len(sec.User) > 0 {
+		d.LentBy = access.User(ctx).ID
+	}
 	d.OptionsJSON = mustJSONString(opts)
 	d.SecretsJSON = mustJSONString(sec)
 	d.ReadOnly = m.GetReadOnly()
@@ -263,9 +404,9 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a drive name is lowercase letters, digits, and dashes (up to 40)"))
 		}
 		var clash int64
-		s.db.Model(&db.Drive{}).Where("bot_id = ? AND name = ? AND id <> ?", d.BotID, name, d.ID).Count(&clash)
+		s.db.Model(&db.Drive{}).Where("space_id = ? AND name = ? AND id <> ?", d.SpaceID, name, d.ID).Count(&clash)
 		if clash > 0 {
-			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("this Bot already has a drive named %q", name))
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("this workspace already has a drive named %q", name))
 		}
 		// Adding a drive must be complete: a system value an admin later
 		// removes is fine (the row says so), but the owner's own part is not.
@@ -280,33 +421,66 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 			d.State = driveMounting
 			d.StateDetail = ""
 		}
+		// A draft started from a Bot goes to that Bot; a saved drive lists
+		// through the Bots it is granted to.
+		if wasDraft && d.BotID != "" && !slices.Contains(grantTo, d.BotID) {
+			grantTo = append([]string{d.BotID}, grantTo...)
+		}
+		d.BotID = ""
 	}
 	if err := s.db.Save(d).Error; err != nil {
 		return nil, err
 	}
 	if !d.Draft {
-		s.applyDrives(d.BotID)
+		for _, b := range grantTo {
+			if err := s.grant(b, d, false); err != nil {
+				return nil, err
+			}
+		}
+		s.applyAll(d.ID)
 	}
-	return connect.NewResponse(s.protoDrive(d)), nil
+	return connect.NewResponse(s.spaceDrive(ctx, d)), nil
+}
+
+// draftPlace is where a new drive is started: the Workspace of the Bot it is
+// added from (which lists it), or the one the hub names, listed through a Bot
+// the caller manages there if there is one.
+func (s *Service) draftPlace(ctx context.Context, botID, spaceID string) (string, string, error) {
+	if botID != "" {
+		b, err := access.Bot(ctx, s.db, botID, access.Manage)
+		if err != nil {
+			return "", "", err
+		}
+		return b.SpaceID, b.ID, nil
+	}
+	sp, _, err := access.Space(ctx, s.db, spaceID, access.Build)
+	if err != nil {
+		return "", "", err
+	}
+	var via string
+	s.db.Model(&db.Bot{}).Joins("JOIN bot_access a ON a.bot_id = bots.id").
+		Where("bots.space_id = ? AND a.user_id = ? AND a.role = ?", sp.ID, access.User(ctx).ID, access.RoleManage).
+		Order("bots.created_at").Limit(1).Pluck("bots.id", &via)
+	return sp.ID, via, nil
 }
 
 func (s *Service) DeleteDrive(ctx context.Context, req *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
-	d, _, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
+	d, _, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
+	// It goes from every Bot that mounts it.
+	bots := s.grantees(d.ID)
+	s.db.Where("drive_id = ?", d.ID).Delete(&db.BotDrive{})
 	s.db.Delete(&db.Drive{}, "id = ?", d.ID)
-	if !d.Draft {
-		s.applyDrives(d.BotID)
-	}
-	if dir := s.cfg().DataDir; dir != "" {
-		_ = os.RemoveAll(filepath.Join(dir, "drives", d.BotID, "cache", d.ID))
+	for _, b := range bots {
+		s.revoked(b, d.ID)
 	}
 	return connect.NewResponse(&v1.DeleteDriveResponse{}), nil
 }
 
 func (s *Service) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -322,16 +496,16 @@ func (s *Service) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.Be
 		}
 		return nil, err
 	}
-	driveID := d.ID
+	driveID, starter := d.ID, access.User(ctx).ID
 	s.host.AwaitOAuth(state, driveAuthTTL, func(ctx context.Context, q url.Values) error {
-		return s.completeDriveAuth(ctx, driveID, redirect, q)
+		return s.completeDriveAuth(ctx, driveID, starter, redirect, q)
 	})
 	return connect.NewResponse(&v1.BeginDriveAuthResponse{Url: u}), nil
 }
 
 // completeDriveAuth finishes a sign-in: token exchange, account label and
 // other lookups, auto-picks, then a remount if the drive is live.
-func (s *Service) completeDriveAuth(ctx context.Context, driveID, redirect string, q url.Values) error {
+func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter, redirect string, q url.Values) error {
 	if e := q.Get("error"); e != "" {
 		if d := q.Get("error_description"); d != "" {
 			return errors.New(d)
@@ -382,12 +556,14 @@ func (s *Service) completeDriveAuth(ctx context.Context, driveID, redirect strin
 	}
 	sec := decodeSecrets(d.SecretsJSON)
 	sec.Dynamic = dyn
+	// The account is now the drive's, lent by whoever signed in.
 	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{
 		"secrets_json": mustJSONString(sec),
 		"options_json": mustJSONString(opts),
+		"lent_by":      starter,
 	})
 	if !d.Draft {
-		s.applyDrives(d.BotID)
+		s.applyAll(d.ID)
 	}
 	return nil
 }
@@ -407,7 +583,7 @@ func (s *Service) freshDriveToken(ctx context.Context, d *db.Drive, t *drives.Te
 	d.SecretsJSON = mustJSONString(sec)
 	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", d.SecretsJSON)
 	if !d.Draft {
-		s.applyDrives(d.BotID)
+		s.applyAll(d.ID)
 	}
 	return nil
 }
@@ -429,8 +605,11 @@ func driveErr(t *drives.Template, err error) error {
 }
 
 func (s *Service) PickDriveOptions(ctx context.Context, req *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.readsAccount(ctx, d); err != nil {
 		return nil, err
 	}
 	if err := s.freshDriveToken(ctx, d, t); err != nil {
@@ -448,8 +627,11 @@ func (s *Service) PickDriveOptions(ctx context.Context, req *connect.Request[v1.
 }
 
 func (s *Service) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.readsAccount(ctx, d); err != nil {
 		return nil, err
 	}
 	if err := s.freshDriveToken(ctx, d, t); err != nil {

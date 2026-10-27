@@ -56,7 +56,7 @@ import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePag
 //     /  /new                      to the same page in the current Workspace
 //     /w/new                       a new Workspace
 //     /w/$spaceId[/new|/settings]  a Workspace's Bots, New Bot in it, its settings
-//     /w/$spaceId/customize/       what its Bots share: connectors  skills (/skills goes there)
+//     /w/$spaceId/customize/       what its Bots share: connectors  skills (/skills goes there)  drives[/new[/$template]|/$driveId]
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
@@ -145,6 +145,11 @@ const spaceConnectors = createRoute({
   component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors"),
 });
 const spaceSkills = createRoute({ getParentRoute: () => spaceCustomize, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
+const spaceDrives = createRoute({ getParentRoute: () => spaceCustomize, path: "drives", component: Outlet });
+const spaceDrivesIndex = createRoute({ getParentRoute: () => spaceDrives, path: "/", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDrives") });
+const spaceDriveNew = createRoute({ getParentRoute: () => spaceDrives, path: "new", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveNew") });
+const spaceDriveAdd = createRoute({ getParentRoute: () => spaceDrives, path: "new/$template", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveAdd") });
+const spaceDrive = createRoute({ getParentRoute: () => spaceDrives, path: "$driveId", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveEdit") });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
@@ -289,7 +294,7 @@ const routeTree = root.addChildren([
     space,
     spaceNewBot,
     spaceSettings,
-    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills]),
+    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive])]),
     skills,
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),

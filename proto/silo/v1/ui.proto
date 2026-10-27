@@ -284,6 +284,12 @@ service UI {
   rpc ListDrives(ListDrivesRequest) returns (ListDrivesResponse);
   rpc SaveDrive(SaveDriveRequest) returns (Drive);
   rpc DeleteDrive(DeleteDriveRequest) returns (DeleteDriveResponse);
+  // A Workspace's drives, for its Customize hub and a Bot's From the
+  // workspace list; and giving one to a Bot of the same Workspace, or taking
+  // it away.
+  rpc ListSpaceDrives(ListSpaceDrivesRequest) returns (ListDrivesResponse);
+  rpc GrantDrive(GrantDriveRequest) returns (Drive);
+  rpc RevokeDrive(RevokeDriveRequest) returns (RevokeDriveResponse);
   rpc BeginDriveAuth(BeginDriveAuthRequest) returns (BeginDriveAuthResponse);
   rpc PickDriveOptions(PickDriveOptionsRequest) returns (PickDriveOptionsResponse);
   rpc BrowseDrive(BrowseDriveRequest) returns (BrowseDriveResponse);
@@ -3096,6 +3102,20 @@ message Drive {
   bool connected = 12;
   // Where the Bot sees it.
   string path = 13;
+  // A drive is its Workspace's, mounted in the Bots it is granted to. Seen
+  // through a Bot (ListDrives), read_only, state and state_detail are that
+  // Bot's mount (read-only when the drive or the grant is); seen in the
+  // Workspace (ListSpaceDrives), they are the drive's own. used_by are the
+  // Bots it is granted to that the caller is on, and how many others; who
+  // added it and whose account it reaches (emails); whether the caller may
+  // edit or delete it (who added it, or a Workspace admin).
+  string space_id = 14;
+  repeated string used_by = 15;
+  int32 used_by_hidden = 16;
+  string created_by = 17;
+  string lent_by = 18;
+  bool shared = 19;
+  bool can_edit = 20;
 }
 
 message ListDriveTemplatesRequest {}
@@ -3121,6 +3141,9 @@ message ListDrivesResponse {
   string unavailable = 3;
 }
 
+// SaveDriveRequest creates a drive (no id: a draft in bot_id's Workspace, or
+// space_id's from the hub) or changes one. The final save of a draft grants
+// it to the Bot it was started from and to every Bot in bot_ids.
 message SaveDriveRequest {
   string bot_id = 1;
   // Empty creates.
@@ -3134,7 +3157,29 @@ message SaveDriveRequest {
   // that secret, and a secret key left out keeps its stored value.
   map<string, string> options = 7;
   repeated string clear_secrets = 8;
+  string space_id = 9;
+  repeated string bot_ids = 10;
 }
+
+message ListSpaceDrivesRequest {
+  string space_id = 1;
+  // Include the add form's draft with this id.
+  string draft_id = 2;
+}
+
+message GrantDriveRequest {
+  string bot_id = 1;
+  string drive_id = 2;
+  // Mount it read-only in this Bot even when the drive is not.
+  bool read_only = 3;
+}
+
+message RevokeDriveRequest {
+  string bot_id = 1;
+  string drive_id = 2;
+}
+
+message RevokeDriveResponse {}
 
 message DeleteDriveRequest {
   string id = 1;

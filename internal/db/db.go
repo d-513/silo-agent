@@ -454,10 +454,17 @@ type BotConnector struct {
 // the template declares them: plain user answers in OptionsJSON, secret user
 // answers and every dynamic value (OAuth token, account label) in SecretsJSON,
 // which never leaves the CP except rendered into the drive sidecar's env.
+//
+// A drive is its Workspace's (SpaceID; names are unique there) and mounts in
+// the Bots it is granted to (BotDrive). BotID is the Bot whose sidecar a
+// draft lists through; a saved drive has none. State is the drive's own (a
+// draft, or what it lacks to render); each Bot's mount has its state on its
+// grant.
 type Drive struct {
 	ID       string `gorm:"primaryKey"`
-	BotID    string `gorm:"index;uniqueIndex:bot_drive_name"`
-	Name     string `gorm:"uniqueIndex:bot_drive_name"`
+	SpaceID  string `gorm:"not null;default:'';index;uniqueIndex:space_drive_name"`
+	BotID    string `gorm:"index"`
+	Name     string `gorm:"uniqueIndex:space_drive_name"`
 	Template string
 	ReadOnly bool
 	// Draft rows exist while the add form signs in, tests, and browses; they
@@ -467,8 +474,26 @@ type Drive struct {
 	SecretsJSON string
 	State       string
 	StateDetail string
+	// CreatedBy added the drive; LentBy is whose account it reaches (who
+	// signed it in or typed its credentials). Shared is the lender's say-so.
+	CreatedBy string `gorm:"not null;default:''"`
+	LentBy    string `gorm:"not null;default:''"`
+	Shared    bool   `gorm:"not null;default:false"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// BotDrive grants a drive to a Bot: its sidecar mounts it at
+// /workspace/drives/<name>, read-only when the drive or the grant is. State
+// and StateDetail are that mount's (mounting, mounted, error, stopped, or
+// what the drive lacks).
+type BotDrive struct {
+	BotID       string `gorm:"primaryKey"`
+	DriveID     string `gorm:"primaryKey;index"`
+	ReadOnly    bool   `gorm:"not null;default:false"`
+	State       string `gorm:"not null;default:''"`
+	StateDetail string `gorm:"not null;default:''"`
 	CreatedAt   time.Time
-	UpdatedAt   time.Time
 }
 
 // DriveChange is one line of a Bot's drive journal: something written, deleted
@@ -934,7 +959,7 @@ func Models() []any {
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
-		&Drive{}, &DriveHost{}, &DriveChange{},
+		&Drive{}, &BotDrive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},
 		&Artifact{}, &ArtifactVersion{}, &ArtifactShare{}, &ArtifactView{},

@@ -1743,6 +1743,17 @@ const pl: Record<string, string> = {
   "Add one from the library or connect your own MCP server, then choose which Bots can use it.": "Dodaj jeden z biblioteki albo podłącz własny serwer MCP, a potem wybierz, które Boty mogą go używać.",
   "Remove from {{bots}} too": "Usunąć też z: {{bots}}",
   "Add to workspace": "Dodaj do przestrzeni roboczej",
+  "From the workspace": "Z przestrzeni roboczej",
+  "Drives added for other Bots in this workspace. Give one to this Bot to mount it here too.": "Dyski dodane dla innych Botów w tej przestrzeni roboczej. Daj jeden temu Botowi, aby zamontować go także tutaj.",
+  "Added by {{who}}": "Dodał(a) {{who}}",
+  "Add read-only": "Dodaj tylko do odczytu",
+  "Add to this Bot": "Dodaj do tego Bota",
+  "The drive is the workspace’s. Editing it changes it for every Bot that mounts it.": "Dysk należy do przestrzeni roboczej. Edycja zmienia go dla każdego Bota, który go montuje.",
+  "Connect cloud storage or a file server once for the whole workspace, then choose which Bots mount it in <code>/workspace/drives</code>. Sign-ins and passwords stay on the Silo server.": "Połącz chmurę lub serwer plików raz dla całej przestrzeni roboczej, a potem wybierz, które Boty montują go w <code>/workspace/drives</code>. Logowania i hasła zostają na serwerze Silo.",
+  "No drives in this workspace yet": "W tej przestrzeni roboczej nie ma jeszcze dysków",
+  "Add one, then choose which Bots mount it.": "Dodaj dysk, a potem wybierz, które Boty go montują.",
+  "Delete drive": "Usuń dysk",
+  "Unmount from every Bot and delete": "Odmontuj ze wszystkich Botów i usuń",
 };
 
 export default pl;

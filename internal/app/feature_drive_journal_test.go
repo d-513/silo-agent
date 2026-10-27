@@ -192,6 +192,8 @@ func TestDriveJournalIsBoundedAndDistrustsTheSidecar(t *testing.T) {
 	if err := f.h.DB.First(&d, "id = ?", f.drive.GetId()).Error; err != nil {
 		t.Fatal(err)
 	}
+	// The journal is the mounting Bot's.
+	d.BotID = f.botID
 	rec := f.h.App.Changes.RecordDrive
 
 	// What a sidecar sends is cleaned, not believed: an unknown op and an

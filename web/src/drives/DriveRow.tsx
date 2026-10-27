@@ -14,6 +14,8 @@ export function DriveRow({ botId, d, t: tpl, onReconnect, onRemoved }: { botId: 
   const navigate = useNavigate();
   const look = driveLook(d.state);
   const attention = look.lamp === "needs_you";
+  // The other Bots of the Workspace that mount it too.
+  const also = d.usedBy.filter((id) => id !== botId).length + d.usedByHidden;
   return (
     <li
       className={`relative flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-card transition-shadow duration-[160ms] ease-quiet hover:shadow-float sm:flex-row sm:items-center ${
@@ -27,6 +29,13 @@ export function DriveRow({ botId, d, t: tpl, onReconnect, onRemoved }: { botId: 
             <span className="text-card-title text-ink">{d.name}</span>
             <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{tpl?.title ?? d.template}</span>
             {d.readOnly ? <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t("Read-only")}</span> : null}
+            {also > 0 ? (
+              <Tip content={<p className="max-w-[280px] text-[12.5px]">{t("The drive is the workspace’s. Editing it changes it for every Bot that mounts it.")}</p>}>
+                <span tabIndex={0} className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-[11px] font-medium text-cobalt outline-none">
+                  {t("Also in {{count}} Bots", { count: also })}
+                </span>
+              </Tip>
+            ) : null}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
             <code className="truncate font-mono text-[12px] text-ink-2">{d.path}</code>
@@ -47,7 +56,7 @@ export function DriveRow({ botId, d, t: tpl, onReconnect, onRemoved }: { botId: 
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1 self-end sm:self-center">
-        {d.state === "needs_auth" ? (
+        {d.state === "needs_auth" && d.canEdit ? (
           <Btn kind="primary" size="sm" type="button" onClick={onReconnect}>
             <RefreshCw size={13} className="breathe" />{t("Reconnect")}
           </Btn>
@@ -56,18 +65,20 @@ export function DriveRow({ botId, d, t: tpl, onReconnect, onRemoved }: { botId: 
             <FolderOpen size={14} />{t("Open in Files")}
           </Btn>
         ) : null}
-        <Btn kind="ghost" size="sm" iconOnly type="button" aria-label={t("Edit {{name}}", { name: d.name })} title={t("Edit")} onClick={() => void navigate({ to: "/bots/$botId/drives/$driveId", params: { botId, driveId: d.id } })}>
-          <Pencil size={14} />
-        </Btn>
+        {d.canEdit ? (
+          <Btn kind="ghost" size="sm" iconOnly type="button" aria-label={t("Edit {{name}}", { name: d.name })} title={t("Edit")} onClick={() => void navigate({ to: "/bots/$botId/drives/$driveId", params: { botId, driveId: d.id } })}>
+            <Pencil size={14} />
+          </Btn>
+        ) : null}
         <ArmedButton
           kind="ghost"
           size="sm"
           iconOnly
-          title={t("Remove drive")}
+          title={t("Remove from this Bot")}
           armedLabel={t("Click again to remove")}
           icon={<Trash2 size={14} />}
           onConfirm={async () => {
-            await ui.deleteDrive({ id: d.id });
+            await ui.revokeDrive({ botId, driveId: d.id });
             onRemoved();
           }}
         />

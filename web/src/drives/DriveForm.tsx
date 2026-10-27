@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronRight, CircleCheck, RefreshCw, Trash2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,6 +21,9 @@ import { Trans } from "../Trans.tsx";
 // The add/edit drive page: connect, choose what to mount, name and access.
 export function DriveForm({
   botId,
+  spaceId = "",
+  botIds,
+  extra,
   t: tpl,
   drive,
   taken,
@@ -28,6 +32,10 @@ export function DriveForm({
   onSaved,
 }: {
   botId: string;
+  spaceId?: string;
+  botIds?: string[];
+  // extra closes the form before its buttons (the hub's Which Bots step).
+  extra?: ReactNode;
   t: DriveTemplate;
   drive?: Drive;
   taken: Set<string>;
@@ -39,7 +47,7 @@ export function DriveForm({
     editing, draft, values, setValues, secrets, name, setName, readOnly, setReadOnly, err, authBusy, authErr, test, saver,
     oauth, connectVars, mountVars, advancedVars, connected, requiredMissing, set, setSecret, signIn, runTest, browse, pickLoader,
     nameOk, canSave, save, pathPreview,
-  } = useDriveForm({ botId, t: tpl, drive, taken, onDone, prefill, onSaved });
+  } = useDriveForm({ botId, spaceId, botIds, t: tpl, drive, taken, onDone, prefill, onSaved });
   const varInputs = (vars: typeof connectVars) =>
     vars.map((v) => (
       <VarInput
@@ -176,6 +184,8 @@ export function DriveForm({
             </details>
           ) : null}
         </Step>
+
+        {extra}
 
         {err ? <ErrorWell>{err}</ErrorWell> : null}
 

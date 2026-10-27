@@ -101,7 +101,7 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 	chatID := h.FirstChat(bot.Id)
 	approval := db.Approval{ID: ids.New(), BotID: bot.Id, Connector: "bot", Action: "soul", Status: "pending", CreatedAt: time.Now()}
 	conn := db.Connector{ID: ids.New(), Kind: catalog.KindCustom, SpaceID: bot.SpaceId, Name: "Mine", Transport: "http", HTTPURL: "http://127.0.0.1:1/mcp"}
-	drive := db.Drive{ID: ids.New(), BotID: bot.Id, Name: "box", Template: "webdav"}
+	drive := db.Drive{ID: ids.New(), SpaceID: bot.SpaceId, Name: "box", Template: "webdav"}
 	for _, row := range []any{&approval, &conn, &drive} {
 		if err := h.DB.Create(row).Error; err != nil {
 			t.Fatal(err)
@@ -114,6 +114,8 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 				return bot.Id
 			case "connector_id":
 				return conn.ID
+			case "drive_id":
+				return drive.ID
 			case "chat_id":
 				return chatID
 			case "space_id":
