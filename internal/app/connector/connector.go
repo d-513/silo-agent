@@ -346,7 +346,7 @@ func (s *Service) DeleteConnector(ctx context.Context, req *connect.Request[v1.D
 }
 
 func (s *Service) ListBotConnectors(ctx context.Context, req *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	var rows []db.BotConnector
@@ -364,7 +364,7 @@ func (s *Service) ListBotConnectors(ctx context.Context, req *connect.Request[v1
 
 func (s *Service) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Manage); err != nil {
 		return nil, err
 	}
 	var lib db.Connector
@@ -380,7 +380,7 @@ func (s *Service) AttachConnector(ctx context.Context, req *connect.Request[v1.A
 
 func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	m := req.Msg
-	if _, err := access.OwnBot(ctx, s.db, m.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	admin := access.User(ctx) != nil && access.User(ctx).Admin
@@ -497,7 +497,7 @@ func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.He
 }
 
 func (s *Service) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
@@ -524,7 +524,7 @@ func (s *Service) DetachConnector(ctx context.Context, req *connect.Request[v1.D
 }
 
 func (s *Service) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
@@ -734,7 +734,7 @@ func (s *Service) slugTaken(botID, name, exceptID string) bool {
 
 func (s *Service) editConnector(ctx context.Context, row *db.Connector) error {
 	if row.Kind == catalog.KindCustom && row.BotID != "" {
-		_, err := access.OwnBot(ctx, s.db, row.BotID)
+		_, err := access.Bot(ctx, s.db, row.BotID, access.Manage)
 		return err
 	}
 	return access.RequireAdmin(ctx)

@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
@@ -191,11 +192,11 @@ func (a *App) StopChatLive(botID, chatID string) {
 // EditMessage truncates the chat at the last user message and re-sends the
 // edited text as a fresh turn.
 func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}
@@ -231,11 +232,11 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 
 // DeleteMessage truncates the chat at the last user message and stops there.
 func (a *App) DeleteMessage(ctx context.Context, req *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}
@@ -258,11 +259,11 @@ func (a *App) DeleteMessage(ctx context.Context, req *connect.Request[v1.DeleteM
 
 // DivergeChat copies the context before a message into a new chat.
 func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}
@@ -282,11 +283,11 @@ func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeCh
 // CompactChat starts a manual compaction run for a web chat. A message sent
 // while it runs is injected and answered after the summary.
 func (a *App) CompactChat(ctx context.Context, req *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}

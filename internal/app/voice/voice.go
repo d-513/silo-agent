@@ -107,7 +107,7 @@ func (s *Service) CanTranscribe(modelID string) error {
 // and the text goes back into the composer for the human to edit. It needs no
 // worker, so it works while the box is down.
 func (s *Service) Transcribe(ctx context.Context, req *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

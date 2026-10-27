@@ -17,8 +17,11 @@ import (
 	"silo.agent/internal/llm"
 )
 
-func (a *App) ownChat(ctx context.Context, botID, chatID string) (*db.Chat, error) {
-	return access.OwnBotRow[db.Chat](ctx, a.DB, botID, chatID, "chat")
+// chat loads a chat of the Bot the caller may do what need says with
+// (access.Chat).
+func (a *App) chat(ctx context.Context, botID, chatID string, need access.ChatNeed) (*db.Chat, error) {
+	c, _, err := access.Chat(ctx, a.DB, botID, chatID, need)
+	return c, err
 }
 
 // writableChat refuses conversation edits on an automation's log: its runs are
@@ -47,7 +50,7 @@ func (a *App) mainChat(botID string) (*db.Chat, error) {
 var errMainChat = connect.NewError(connect.CodeFailedPrecondition, errors.New("the main chat cannot be deleted or renamed; /clear or /wipe it instead"))
 
 func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	q := a.DB.Where("bot_id = ?", req.Msg.GetBotId())
@@ -69,7 +72,7 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 }
 
 func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	c, err := chats.New(a.DB, req.Msg.GetBotId(), "")
@@ -80,7 +83,7 @@ func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChat
 }
 
 func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error) {
-	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Write)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +103,7 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 }
 
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
-	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Read)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +131,7 @@ func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChat
 // ListModels returns the operator's model allowlist for the chat model picker.
 // It is available to any owner of the Bot, not just admins.
 func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +146,7 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 
 // SetChatModel persists a per-chat model override. It must be in the allowlist.
 func (a *App) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {
-	c, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId())
+	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}

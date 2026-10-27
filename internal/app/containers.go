@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -59,7 +60,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 }
 
 func (a *App) ListBotContainers(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.BotContainers], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,7 @@ func (a *App) ListBotContainers(ctx context.Context, req *connect.Request[v1.Get
 // drive sidecar, and MCP sidecars go; the workspace, drives, connectors, and
 // the drive cache stay, and each container is made again on its next use.
 func (a *App) RemoveBotContainers(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}

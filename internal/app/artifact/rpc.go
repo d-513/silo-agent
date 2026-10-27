@@ -46,7 +46,7 @@ func rpcErr(err error) error {
 // ListArtifacts returns a Bot's live artifacts, newest update first, with all
 // of their versions and where each card came from.
 func (s *Service) ListArtifacts(ctx context.Context, req *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *Service) ListArtifacts(ctx context.Context, req *connect.Request[v1.Lis
 // DeleteArtifact removes an artifact card, its versions, any public links to
 // it, and its pinned bytes on the Bot's machine.
 func (s *Service) DeleteArtifact(ctx context.Context, req *connect.Request[v1.DeleteArtifactRequest]) (*connect.Response[v1.DeleteArtifactResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *Service) DeleteArtifact(ctx context.Context, req *connect.Request[v1.De
 
 // GetArtifact is a card's versions and, for the asked one, its files.
 func (s *Service) GetArtifact(ctx context.Context, req *connect.Request[v1.GetArtifactRequest]) (*connect.Response[v1.GetArtifactResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *Service) GetArtifact(ctx context.Context, req *connect.Request[v1.GetAr
 
 // ReadArtifactFile is one file of a version, as it was pinned.
 func (s *Service) ReadArtifactFile(ctx context.Context, req *connect.Request[v1.ReadArtifactFileRequest]) (*connect.Response[v1.ReadArtifactFileResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *Service) ReadArtifactFile(ctx context.Context, req *connect.Request[v1.
 
 // OpenArtifactApp is the address of one app version for the signed-in owner.
 func (s *Service) OpenArtifactApp(ctx context.Context, req *connect.Request[v1.OpenArtifactAppRequest]) (*connect.Response[v1.OpenArtifactAppResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func (s *Service) OpenArtifactApp(ctx context.Context, req *connect.Request[v1.O
 	if sess == nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("sign in again"))
 	}
-	u, err := s.appURL(art, v, b.UserID, sess.ID)
+	u, err := s.appURL(art, v, sess.UserID, sess.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
@@ -266,7 +266,7 @@ func (s *Service) shareProto(sh *db.ArtifactShare) *v1.ArtifactShare {
 // ShareArtifact makes a public link to one version. It is the owner's button
 // only: no tool and no rule lets a Bot publish.
 func (s *Service) ShareArtifact(ctx context.Context, req *connect.Request[v1.ShareArtifactRequest]) (*connect.Response[v1.ArtifactShare], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (s *Service) ShareArtifact(ctx context.Context, req *connect.Request[v1.Sha
 }
 
 func (s *Service) ListArtifactShares(ctx context.Context, req *connect.Request[v1.ListArtifactSharesRequest]) (*connect.Response[v1.ListArtifactSharesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (s *Service) ListArtifactShares(ctx context.Context, req *connect.Request[v
 }
 
 func (s *Service) DeleteArtifactShare(ctx context.Context, req *connect.Request[v1.DeleteArtifactShareRequest]) (*connect.Response[v1.DeleteArtifactShareResponse], error) {
-	sh, err := access.OwnBotRow[db.ArtifactShare](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "shared link")
+	sh, err := access.Row[db.ArtifactShare](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "shared link", access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (s *Service) DeleteArtifactShare(ctx context.Context, req *connect.Request[
 // SaveSkill is the Save skill action on a skill card: it installs the version
 // the card shows as a personal skill and emits the card again as saved.
 func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

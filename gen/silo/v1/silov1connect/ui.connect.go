@@ -77,6 +77,16 @@ const (
 	UIDeleteInviteProcedure = "/silo.v1.UI/DeleteInvite"
 	// UICheckOIDCProcedure is the fully-qualified name of the UI's CheckOIDC RPC.
 	UICheckOIDCProcedure = "/silo.v1.UI/CheckOIDC"
+	// UIListSpacesProcedure is the fully-qualified name of the UI's ListSpaces RPC.
+	UIListSpacesProcedure = "/silo.v1.UI/ListSpaces"
+	// UIGetSpaceProcedure is the fully-qualified name of the UI's GetSpace RPC.
+	UIGetSpaceProcedure = "/silo.v1.UI/GetSpace"
+	// UICreateSpaceProcedure is the fully-qualified name of the UI's CreateSpace RPC.
+	UICreateSpaceProcedure = "/silo.v1.UI/CreateSpace"
+	// UIUpdateSpaceProcedure is the fully-qualified name of the UI's UpdateSpace RPC.
+	UIUpdateSpaceProcedure = "/silo.v1.UI/UpdateSpace"
+	// UIDeleteSpaceProcedure is the fully-qualified name of the UI's DeleteSpace RPC.
+	UIDeleteSpaceProcedure = "/silo.v1.UI/DeleteSpace"
 	// UIListBotsProcedure is the fully-qualified name of the UI's ListBots RPC.
 	UIListBotsProcedure = "/silo.v1.UI/ListBots"
 	// UICreateBotProcedure is the fully-qualified name of the UI's CreateBot RPC.
@@ -427,6 +437,16 @@ type UIClient interface {
 	// CheckOIDC asks the configured OIDC provider for its discovery document,
 	// with the saved settings.
 	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
+	// Workspaces: the containers of Bots, the people who use them, and what
+	// their Bots share. ListSpaces is the caller's memberships, and makes their
+	// first Workspace if they own none.
+	ListSpaces(context.Context, *connect.Request[v1.ListSpacesRequest]) (*connect.Response[v1.ListSpacesResponse], error)
+	GetSpace(context.Context, *connect.Request[v1.GetSpaceRequest]) (*connect.Response[v1.Space], error)
+	CreateSpace(context.Context, *connect.Request[v1.CreateSpaceRequest]) (*connect.Response[v1.Space], error)
+	UpdateSpace(context.Context, *connect.Request[v1.UpdateSpaceRequest]) (*connect.Response[v1.Space], error)
+	// DeleteSpace is the owner's, refused while the Workspace has Bots and for
+	// the owner's last Workspace.
+	DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -785,6 +805,36 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UICheckOIDCProcedure,
 			connect.WithSchema(uIMethods.ByName("CheckOIDC")),
+			connect.WithClientOptions(opts...),
+		),
+		listSpaces: connect.NewClient[v1.ListSpacesRequest, v1.ListSpacesResponse](
+			httpClient,
+			baseURL+UIListSpacesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSpaces")),
+			connect.WithClientOptions(opts...),
+		),
+		getSpace: connect.NewClient[v1.GetSpaceRequest, v1.Space](
+			httpClient,
+			baseURL+UIGetSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		createSpace: connect.NewClient[v1.CreateSpaceRequest, v1.Space](
+			httpClient,
+			baseURL+UICreateSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSpace: connect.NewClient[v1.UpdateSpaceRequest, v1.Space](
+			httpClient,
+			baseURL+UIUpdateSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSpace: connect.NewClient[v1.DeleteSpaceRequest, v1.DeleteSpaceResponse](
+			httpClient,
+			baseURL+UIDeleteSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteSpace")),
 			connect.WithClientOptions(opts...),
 		),
 		listBots: connect.NewClient[v1.ListBotsRequest, v1.ListBotsResponse](
@@ -1750,6 +1800,11 @@ type uIClient struct {
 	createInvite             *connect.Client[v1.CreateInviteRequest, v1.Invite]
 	deleteInvite             *connect.Client[v1.DeleteInviteRequest, v1.DeleteInviteResponse]
 	checkOIDC                *connect.Client[v1.CheckOIDCRequest, v1.CheckOIDCResponse]
+	listSpaces               *connect.Client[v1.ListSpacesRequest, v1.ListSpacesResponse]
+	getSpace                 *connect.Client[v1.GetSpaceRequest, v1.Space]
+	createSpace              *connect.Client[v1.CreateSpaceRequest, v1.Space]
+	updateSpace              *connect.Client[v1.UpdateSpaceRequest, v1.Space]
+	deleteSpace              *connect.Client[v1.DeleteSpaceRequest, v1.DeleteSpaceResponse]
 	listBots                 *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBot                *connect.Client[v1.CreateBotRequest, v1.Bot]
 	updateBot                *connect.Client[v1.UpdateBotRequest, v1.Bot]
@@ -2016,6 +2071,31 @@ func (c *uIClient) DeleteInvite(ctx context.Context, req *connect.Request[v1.Del
 // CheckOIDC calls silo.v1.UI.CheckOIDC.
 func (c *uIClient) CheckOIDC(ctx context.Context, req *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
 	return c.checkOIDC.CallUnary(ctx, req)
+}
+
+// ListSpaces calls silo.v1.UI.ListSpaces.
+func (c *uIClient) ListSpaces(ctx context.Context, req *connect.Request[v1.ListSpacesRequest]) (*connect.Response[v1.ListSpacesResponse], error) {
+	return c.listSpaces.CallUnary(ctx, req)
+}
+
+// GetSpace calls silo.v1.UI.GetSpace.
+func (c *uIClient) GetSpace(ctx context.Context, req *connect.Request[v1.GetSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return c.getSpace.CallUnary(ctx, req)
+}
+
+// CreateSpace calls silo.v1.UI.CreateSpace.
+func (c *uIClient) CreateSpace(ctx context.Context, req *connect.Request[v1.CreateSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return c.createSpace.CallUnary(ctx, req)
+}
+
+// UpdateSpace calls silo.v1.UI.UpdateSpace.
+func (c *uIClient) UpdateSpace(ctx context.Context, req *connect.Request[v1.UpdateSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return c.updateSpace.CallUnary(ctx, req)
+}
+
+// DeleteSpace calls silo.v1.UI.DeleteSpace.
+func (c *uIClient) DeleteSpace(ctx context.Context, req *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error) {
+	return c.deleteSpace.CallUnary(ctx, req)
 }
 
 // ListBots calls silo.v1.UI.ListBots.
@@ -2831,6 +2911,16 @@ type UIHandler interface {
 	// CheckOIDC asks the configured OIDC provider for its discovery document,
 	// with the saved settings.
 	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
+	// Workspaces: the containers of Bots, the people who use them, and what
+	// their Bots share. ListSpaces is the caller's memberships, and makes their
+	// first Workspace if they own none.
+	ListSpaces(context.Context, *connect.Request[v1.ListSpacesRequest]) (*connect.Response[v1.ListSpacesResponse], error)
+	GetSpace(context.Context, *connect.Request[v1.GetSpaceRequest]) (*connect.Response[v1.Space], error)
+	CreateSpace(context.Context, *connect.Request[v1.CreateSpaceRequest]) (*connect.Response[v1.Space], error)
+	UpdateSpace(context.Context, *connect.Request[v1.UpdateSpaceRequest]) (*connect.Response[v1.Space], error)
+	// DeleteSpace is the owner's, refused while the Workspace has Bots and for
+	// the owner's last Workspace.
+	DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -3185,6 +3275,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UICheckOIDCProcedure,
 		svc.CheckOIDC,
 		connect.WithSchema(uIMethods.ByName("CheckOIDC")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSpacesHandler := connect.NewUnaryHandler(
+		UIListSpacesProcedure,
+		svc.ListSpaces,
+		connect.WithSchema(uIMethods.ByName("ListSpaces")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetSpaceHandler := connect.NewUnaryHandler(
+		UIGetSpaceProcedure,
+		svc.GetSpace,
+		connect.WithSchema(uIMethods.ByName("GetSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateSpaceHandler := connect.NewUnaryHandler(
+		UICreateSpaceProcedure,
+		svc.CreateSpace,
+		connect.WithSchema(uIMethods.ByName("CreateSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateSpaceHandler := connect.NewUnaryHandler(
+		UIUpdateSpaceProcedure,
+		svc.UpdateSpace,
+		connect.WithSchema(uIMethods.ByName("UpdateSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteSpaceHandler := connect.NewUnaryHandler(
+		UIDeleteSpaceProcedure,
+		svc.DeleteSpace,
+		connect.WithSchema(uIMethods.ByName("DeleteSpace")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListBotsHandler := connect.NewUnaryHandler(
@@ -4169,6 +4289,16 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteInviteHandler.ServeHTTP(w, r)
 		case UICheckOIDCProcedure:
 			uICheckOIDCHandler.ServeHTTP(w, r)
+		case UIListSpacesProcedure:
+			uIListSpacesHandler.ServeHTTP(w, r)
+		case UIGetSpaceProcedure:
+			uIGetSpaceHandler.ServeHTTP(w, r)
+		case UICreateSpaceProcedure:
+			uICreateSpaceHandler.ServeHTTP(w, r)
+		case UIUpdateSpaceProcedure:
+			uIUpdateSpaceHandler.ServeHTTP(w, r)
+		case UIDeleteSpaceProcedure:
+			uIDeleteSpaceHandler.ServeHTTP(w, r)
 		case UIListBotsProcedure:
 			uIListBotsHandler.ServeHTTP(w, r)
 		case UICreateBotProcedure:
@@ -4576,6 +4706,26 @@ func (UnimplementedUIHandler) DeleteInvite(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CheckOIDC is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSpaces(context.Context, *connect.Request[v1.ListSpacesRequest]) (*connect.Response[v1.ListSpacesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaces is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSpace(context.Context, *connect.Request[v1.GetSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateSpace(context.Context, *connect.Request[v1.CreateSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateSpace(context.Context, *connect.Request[v1.UpdateSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteSpace is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {

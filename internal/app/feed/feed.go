@@ -114,7 +114,7 @@ func feedLabel(p *db.FeedPost) string {
 }
 
 func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeedRequest]) (*connect.Response[v1.ListFeedResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	var rows []db.FeedPost
@@ -127,7 +127,7 @@ func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeed
 }
 
 func (s *Service) MarkFeedRead(ctx context.Context, req *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	now := time.Now()
@@ -151,12 +151,12 @@ func (s *Service) UnreadPosts(botID string, n int) []*v1.FeedPost {
 	return out
 }
 
-func (s *Service) ownPost(ctx context.Context, botID, id string) (*db.FeedPost, error) {
-	return access.OwnBotRow[db.FeedPost](ctx, s.db, botID, id, "feed post")
+func (s *Service) ownPost(ctx context.Context, botID, id string, need access.Need) (*db.FeedPost, error) {
+	return access.Row[db.FeedPost](ctx, s.db, botID, id, "feed post", need)
 }
 
 func (s *Service) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.DeleteFeedPostRequest]) (*connect.Response[v1.DeleteFeedPostResponse], error) {
-	p, err := s.ownPost(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	p, err := s.ownPost(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (s *Service) DeleteFeedPost(ctx context.Context, req *connect.Request[v1.De
 // reply running there, a chat of its own) so the human can reply to it. The
 // post stays in the Feed.
 func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.QuoteFeedPostRequest]) (*connect.Response[v1.QuoteFeedPostResponse], error) {
-	p, err := s.ownPost(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	p, err := s.ownPost(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

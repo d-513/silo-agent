@@ -144,21 +144,21 @@ func (s *Service) DeleteSkill(ctx context.Context, req *connect.Request[v1.Delet
 	}
 	q := s.db.Where("kind = ? AND name = ?", kind, name)
 	if kind == skills.KindPersonal {
-		q = q.Where("bot_id IN (?)", s.db.Model(&db.Bot{}).Select("id").Where("user_id = ?", userID))
+		q = q.Where("bot_id IN (?)", s.db.Model(&db.Bot{}).Select("id").Where("created_by = ?", userID))
 	}
 	q.Delete(&db.BotSkill{})
 	return connect.NewResponse(&v1.DeleteSkillResponse{}), nil
 }
 
 func (s *Service) ListBotSkills(ctx context.Context, req *connect.Request[v1.ListBotSkillsRequest]) (*connect.Response[v1.ListBotSkillsResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
 	s.EnsureDefaults(b.ID)
 	out := &v1.ListBotSkillsResponse{}
 	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindLibrary, "")...)
-	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindPersonal, b.UserID)...)
+	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindPersonal, b.CreatedBy)...)
 	return connect.NewResponse(out), nil
 }
 
@@ -185,7 +185,7 @@ func (s *Service) botSkillRows(b *db.Bot, kind, userID string) []*v1.BotSkill {
 }
 
 func (s *Service) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBotSkillRequest]) (*connect.Response[v1.BotSkill], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s *Service) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBo
 	}
 	userID := ""
 	if kind == skills.KindPersonal {
-		userID = b.UserID
+		userID = b.CreatedBy
 	}
 	root := skills.RootFor(s.DataDir(), kind, userID)
 	info, err := skills.Load(filepath.Join(root, name))
@@ -344,7 +344,7 @@ func (s *Service) Enabled(botID string) []skills.Info {
 	for _, r := range rows {
 		userID := ""
 		if r.Kind == skills.KindPersonal {
-			userID = bot.UserID
+			userID = bot.CreatedBy
 		}
 		info, err := skills.Load(filepath.Join(skills.RootFor(s.DataDir(), r.Kind, userID), r.Name))
 		if err != nil {
@@ -447,7 +447,7 @@ func (s *Service) InstallFiles(bot *db.Bot, files map[string][]byte) (string, er
 	if err != nil {
 		return "", err
 	}
-	root := skills.PersonalDir(s.DataDir(), bot.UserID)
+	root := skills.PersonalDir(s.DataDir(), bot.CreatedBy)
 	if skills.Exists(root, m.Name) {
 		return "", fmt.Errorf("personal skill %s already exists", m.Name)
 	}

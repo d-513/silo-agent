@@ -44,7 +44,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Service) downloadVersion(w http.ResponseWriter, r *http.Request, u *db.User) {
 	q := r.URL.Query()
 	ctx := access.WithUser(r.Context(), u)
-	b, err := access.OwnBot(ctx, s.db, strings.TrimSpace(q.Get("bot_id")))
+	b, err := access.Bot(ctx, s.db, strings.TrimSpace(q.Get("bot_id")), access.Use)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

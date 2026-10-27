@@ -508,12 +508,12 @@ func (s *Service) protoAutomation(au *db.Automation) *v1.Automation {
 	}
 }
 
-func (s *Service) ownAutomation(ctx context.Context, botID, id string) (*db.Automation, error) {
-	return access.OwnBotRow[db.Automation](ctx, s.db, botID, id, "automation")
+func (s *Service) ownAutomation(ctx context.Context, botID, id string, need access.Need) (*db.Automation, error) {
+	return access.Row[db.Automation](ctx, s.db, botID, id, "automation", need)
 }
 
 func (s *Service) ListAutomations(ctx context.Context, req *connect.Request[v1.ListAutomationsRequest]) (*connect.Response[v1.ListAutomationsResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	out := &v1.ListAutomationsResponse{}
@@ -525,7 +525,7 @@ func (s *Service) ListAutomations(ctx context.Context, req *connect.Request[v1.L
 }
 
 func (s *Service) CreateAutomation(ctx context.Context, req *connect.Request[v1.CreateAutomationRequest]) (*connect.Response[v1.Automation], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	m := req.Msg
@@ -539,7 +539,7 @@ func (s *Service) CreateAutomation(ctx context.Context, req *connect.Request[v1.
 
 func (s *Service) UpdateAutomation(ctx context.Context, req *connect.Request[v1.UpdateAutomationRequest]) (*connect.Response[v1.Automation], error) {
 	m := req.Msg
-	au, err := s.ownAutomation(ctx, m.GetBotId(), m.GetId())
+	au, err := s.ownAutomation(ctx, m.GetBotId(), m.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +552,7 @@ func (s *Service) UpdateAutomation(ctx context.Context, req *connect.Request[v1.
 }
 
 func (s *Service) DeleteAutomation(ctx context.Context, req *connect.Request[v1.DeleteAutomationRequest]) (*connect.Response[v1.DeleteAutomationResponse], error) {
-	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -564,7 +564,7 @@ func (s *Service) DeleteAutomation(ctx context.Context, req *connect.Request[v1.
 
 // RunAutomation fires an automation now, outside its schedule.
 func (s *Service) RunAutomation(ctx context.Context, req *connect.Request[v1.RunAutomationRequest]) (*connect.Response[v1.RunAutomationResponse], error) {
-	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	au, err := s.ownAutomation(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}

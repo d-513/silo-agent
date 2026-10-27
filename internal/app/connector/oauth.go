@@ -25,7 +25,7 @@ import (
 )
 
 func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector

@@ -159,3 +159,23 @@ func (h *H) waitConnector(botID string, match func(*v1.BotConnector) bool) *v1.B
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+// Person makes a user who is not an admin and signs them in on a browser of
+// their own, for tests of what one person may do with another's things.
+func (h *H) Person(email string) (silov1connect.UIClient, *http.Client, *db.User) {
+	h.T.Helper()
+	const password = "person-pass"
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		h.T.Fatalf("person %s: %v", email, err)
+	}
+	u := db.User{ID: ids.New(), Email: email, PasswordHash: hash, CreatedAt: time.Now()}
+	if err := h.DB.Create(&u).Error; err != nil {
+		h.T.Fatalf("person %s: %v", email, err)
+	}
+	c, hc := h.Browser()
+	if _, err := c.SignIn(h.Ctx(), connect.NewRequest(&v1.SignInRequest{Email: email, Password: password})); err != nil {
+		h.T.Fatalf("person %s signs in: %v", email, err)
+	}
+	return c, hc, &u
+}

@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -101,8 +102,15 @@ func (h *H) SeedBot(name string) string {
 	h.T.Helper()
 	u := h.AdminUser()
 	id := TestBotPrefix + ids.New()[:12]
-	b := db.Bot{ID: id, UserID: u.ID, Name: name, Status: "stopped", CreatedAt: time.Now()}
+	sp, err := h.App.Spaces.Home(u)
+	if err != nil {
+		h.T.Fatalf("seed bot: %v", err)
+	}
+	b := db.Bot{ID: id, SpaceID: sp.ID, CreatedBy: u.ID, Name: name, Status: "stopped", CreatedAt: time.Now()}
 	if err := h.DB.Create(&b).Error; err != nil {
+		h.T.Fatalf("seed bot: %v", err)
+	}
+	if err := h.App.Spaces.Admit(id, u.ID, access.RoleManage); err != nil {
 		h.T.Fatalf("seed bot: %v", err)
 	}
 	if err := h.DB.Create(&db.Chat{ID: ids.New(), BotID: id, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error; err != nil {

@@ -146,8 +146,8 @@ func (s *Service) view(f db.KnowledgeFolder) *v1.KnowledgeFolder {
 	return out
 }
 
-func (s *Service) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db.KnowledgeFolder, error) {
-	b, err := access.OwnBot(ctx, s.db, botID)
+func (s *Service) ownFolder(ctx context.Context, botID, id string, need access.Need) (*db.Bot, *db.KnowledgeFolder, error) {
+	b, err := access.Bot(ctx, s.db, botID, need)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -161,7 +161,7 @@ func (s *Service) ownFolder(ctx context.Context, botID, id string) (*db.Bot, *db
 // --- RPCs ---
 
 func (s *Service) ListKnowledge(ctx context.Context, req *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *Service) ListKnowledge(ctx context.Context, req *connect.Request[v1.Lis
 }
 
 func (s *Service) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v1.AddKnowledgeFolderRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (s *Service) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v
 }
 
 func (s *Service) RemoveKnowledgeFolder(ctx context.Context, req *connect.Request[v1.RemoveKnowledgeFolderRequest]) (*connect.Response[v1.RemoveKnowledgeFolderResponse], error) {
-	_, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	_, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (s *Service) RemoveKnowledgeFolder(ctx context.Context, req *connect.Reques
 }
 
 func (s *Service) SyncKnowledge(ctx context.Context, req *connect.Request[v1.SyncKnowledgeRequest]) (*connect.Response[v1.KnowledgeFolder], error) {
-	b, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	b, f, err := s.ownFolder(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (s *Service) SyncKnowledge(ctx context.Context, req *connect.Request[v1.Syn
 }
 
 func (s *Service) SearchKnowledge(ctx context.Context, req *connect.Request[v1.SearchKnowledgeRequest]) (*connect.Response[v1.SearchKnowledgeResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

@@ -319,7 +319,7 @@ func (r row) proto(sources []Source, pending bool) *v1.Change {
 }
 
 func (s *Service) ListChanges(ctx context.Context, req *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (s *Service) ListChanges(ctx context.Context, req *connect.Request[v1.ListC
 }
 
 func (s *Service) ListChangeFiles(ctx context.Context, req *connect.Request[v1.ListChangeFilesRequest]) (*connect.Response[v1.ListChangeFilesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +396,7 @@ func (s *Service) ListChangeFiles(ctx context.Context, req *connect.Request[v1.L
 }
 
 func (s *Service) GetChangePatch(ctx context.Context, req *connect.Request[v1.GetChangePatchRequest]) (*connect.Response[v1.GetChangePatchResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +430,7 @@ func (s *Service) GetChangePatch(ctx context.Context, req *connect.Request[v1.Ge
 // undone the same way. A file whose content the history never kept (over the
 // size cap, a nested repository) is left as it is and reported.
 func (s *Service) RestoreChange(ctx context.Context, req *connect.Request[v1.RestoreChangeRequest]) (*connect.Response[v1.RestoreChangeResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

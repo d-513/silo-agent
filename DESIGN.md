@@ -373,11 +373,11 @@ No bounce, and no overshoot beyond the settle curve.
 ### Rail
 
 - 64px wide on `well`, with no right border. From the top:
-  - The Silo mark (`ink`, 26px) over "Silo" at 11/600.
-  - Bots.
+  - The **Workspace tile** over "Silo" at 11/600: a 32px `well` square with a `line` ring and the Workspace's one or two letters in `ink` 13/600. Pressing it opens a `shadow-slip` menu beside the rail (under the top bar when narrow): a `label-caps` "Workspaces" head, one 40px row per Workspace (a 24px tile, the name in 13.5/500, a `well` role chip unless it is the user's own, the current one with the 3px `cobalt` bar), a hairline, **New workspace** and **Workspace settings** (admins).
+  - Bots (this Workspace's home).
   - A 24px hairline.
-  - Crests, 28px each in 40px hit areas with `control` radius.
-  - `+` for New Bot.
+  - The Workspace's crests, 28px each in 40px hit areas with `control` radius.
+  - `+` for New Bot in this Workspace (not for a guest).
   - Spacer.
   - Admin (wrench, admins only), the theme toggle (moon in the light, sun in the dark), then the account avatar (an `ink` circle with an `on-ink` initial).
 - The active item is a `surface` well with a `line` ring and a 3px `cobalt` bar on the left edge. Hover fills `pressed`. There are no labels, only `title` tooltips.

@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
@@ -448,11 +449,11 @@ func (a *App) restChat(chatID string, now time.Time) {
 // --- RPC ---
 
 func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := a.ownChat(ctx, b.ID, req.Msg.GetChatId())
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}

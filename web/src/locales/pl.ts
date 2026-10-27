@@ -129,7 +129,6 @@ const pl: Record<string, string> = {
   "No Bots yet": "Nie ma jeszcze Botów",
   "A Bot is its own machine. It does not share files with the others.": "Bot to osobna maszyna. Nie dzieli plików z pozostałymi.",
   "Changes": "Zmiany",
-  "Workspace": "Obszar roboczy",
   "Start the Bot to see what changed in /workspace.": "Uruchom Bota, aby zobaczyć, co zmieniło się w /workspace.",
   "This change is no longer in the history.": "Tej zmiany nie ma już w historii.",
   "Open Containers": "Otwórz Kontenery",
@@ -1706,6 +1705,18 @@ const pl: Record<string, string> = {
   "No": "Nie",
   "Not now for these": "Na razie żadne z tych",
   "Change the board…": "Zmień coś na pulpicie…",
+  "Letters on its tile": "Litery na kafelku",
+  "New workspace": "Nowa przestrzeń robocza",
+  "A workspace holds Bots and what they share. Each Bot still has its own machine.": "Przestrzeń robocza mieści Boty i to, co współdzielą. Każdy Bot nadal ma własną maszynę.",
+  "Create workspace": "Utwórz przestrzeń roboczą",
+  "Workspace settings": "Ustawienia przestrzeni roboczej",
+  "Delete workspace": "Usuń przestrzeń roboczą",
+  "Only an empty workspace can go, and never your last one. Move or delete its Bots first.": "Usunąć można tylko pustą przestrzeń roboczą i nigdy ostatnią. Najpierw przenieś lub usuń jej Boty.",
+  "Admin_role": "Administrator",
+  "Member_role": "Członek",
+  "Guest_role": "Gość",
+  "Workspace: {{name}}": "Przestrzeń robocza: {{name}}",
+  "Workspaces": "Przestrzenie robocze",
 };
 
 export default pl;

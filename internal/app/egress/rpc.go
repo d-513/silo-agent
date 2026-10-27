@@ -28,7 +28,7 @@ const patternMax = 200
 // editable here) over the Bot's own, and the switch for anything that is not
 // HTTP.
 func (s *Service) GetBotNetwork(ctx context.Context, req *connect.Request[v1.GetBotNetworkRequest]) (*connect.Response[v1.BotNetwork], error) {
-	bot, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	bot, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (s *Service) GetBotNetwork(ctx context.Context, req *connect.Request[v1.Get
 // AddHostPattern adds one entry to the Bot's own list.
 func (s *Service) AddHostPattern(ctx context.Context, req *connect.Request[v1.AddHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
 	m := req.Msg
-	bot, err := access.OwnBot(ctx, s.db, m.GetBotId())
+	bot, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s *Service) AddHostPattern(ctx context.Context, req *connect.Request[v1.Ad
 // RemoveHostPattern drops one of the Bot's own entries.
 func (s *Service) RemoveHostPattern(ctx context.Context, req *connect.Request[v1.RemoveHostPatternRequest]) (*connect.Response[v1.BotNetwork], error) {
 	m := req.Msg
-	bot, err := access.OwnBot(ctx, s.db, m.GetBotId())
+	bot, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s *Service) RemoveHostPattern(ctx context.Context, req *connect.Request[v1
 // SetOtherProtocols turns SOCKS5 on or off for this Bot's box: what lets it
 // reach something that is not HTTP at all.
 func (s *Service) SetOtherProtocols(ctx context.Context, req *connect.Request[v1.SetOtherProtocolsRequest]) (*connect.Response[v1.BotNetwork], error) {
-	bot, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	bot, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}

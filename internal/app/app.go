@@ -42,6 +42,7 @@ import (
 	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/skill"
+	"silo.agent/internal/app/space"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/app/tunnels"
 	"silo.agent/internal/app/voice"
@@ -230,6 +231,8 @@ type App struct {
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
+	// Spaces is Workspaces: the containers of Bots and their people.
+	Spaces      *space.Service
 	Proactivity *proactivity.Service
 	Setup       *setup.Service
 	// Slash is the slash commands a human types in a conversation.
@@ -279,6 +282,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	}
 	a.Feed = feed.New(a.DB, a)
 	a.Pause = pause.New(a.DB)
+	a.Spaces = space.New(a.DB)
 	a.Setup = setup.New(a.DB, a)
 	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)

@@ -239,7 +239,7 @@ func (s *Service) RecallTool(ctx context.Context, botID, query string, k int) (s
 }
 
 func (s *Service) ListMemories(ctx context.Context, req *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	var rows []db.Memory
@@ -262,7 +262,7 @@ func Proto(m db.Memory) *v1.Memory {
 
 func (s *Service) SearchMemories(ctx context.Context, req *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Use); err != nil {
 		return nil, err
 	}
 	k := int(req.Msg.GetLimit())
@@ -298,7 +298,7 @@ func (s *Service) SearchMemories(ctx context.Context, req *connect.Request[v1.Se
 }
 
 func (s *Service) DeleteMemory(ctx context.Context, req *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	if _, err := s.Forget(req.Msg.GetBotId(), req.Msg.GetId()); err != nil {

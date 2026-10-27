@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
 import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
@@ -16,6 +16,7 @@ function randomCrest() {
 }
 
 export function NewBotPage() {
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/new" });
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -30,7 +31,7 @@ export function NewBotPage() {
     setErr("");
     try {
       // The Bot starts in this device's time zone and follows it from here.
-      const b = await ui.createBot({ name: name.trim(), crest, description: description.trim(), timeZone: deviceZone(), interview });
+      const b = await ui.createBot({ spaceId, name: name.trim(), crest, description: description.trim(), timeZone: deviceZone(), interview });
       void reload(UI.method.listBots);
       void nav({ to: "/bots/$botId/run", params: { botId: b.id } });
     } catch (ex) {
@@ -87,7 +88,7 @@ export function NewBotPage() {
           <Btn kind="primary" type="submit" disabled={busy || !name.trim()}>
             {busy ? t("Creating…") : t("Create Bot")}
           </Btn>
-          <Link to="/" className={btnClass("secondary")}>
+          <Link to="/w/$spaceId" params={{ spaceId }} className={btnClass("secondary")}>
             {t("Cancel")}
           </Link>
         </div>

@@ -73,7 +73,7 @@ func (s *Service) AuditSummary(ctx context.Context, req *connect.Request[v1.Audi
 // MarkAuditRead clears the Bot's badge. It answers the summary so the caller
 // has the fresh counts.
 func (s *Service) MarkAuditRead(ctx context.Context, req *connect.Request[v1.MarkAuditReadRequest]) (*connect.Response[v1.AuditSummaryResponse], error) {
-	bot, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	bot, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (s *Service) scope(ctx context.Context, botID string) error {
 	if botID == "" {
 		return access.RequireAdmin(ctx)
 	}
-	_, err := access.OwnBot(ctx, s.db, botID)
+	_, err := access.Bot(ctx, s.db, botID, access.Manage)
 	return err
 }
 

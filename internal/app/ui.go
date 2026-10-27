@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -34,6 +35,7 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 	connected := a.Hub.Connected(b.ID)
 	return &v1.Bot{
 		Id:              b.ID,
+		SpaceId:         b.SpaceID,
 		Name:            b.Name,
 		Status:          DeriveStatus(connected, running, b.Status),
 		LastTask:        b.LastTask,
@@ -59,17 +61,30 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 }
 
 func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
-	return a.protoBot(b, a.live(ctx, b))
+	p := a.protoBot(b, a.live(ctx, b))
+	if u := access.User(ctx); u != nil {
+		p.Role = access.BotRole(a.DB, b.ID, u.ID)
+	}
+	return p
 }
 
-func (a *App) ownBot(ctx context.Context, id string) (*db.Bot, error) {
-	return access.OwnBot(ctx, a.DB, id)
+// bot loads a Bot the caller may do what need says with (access.Bot).
+func (a *App) bot(ctx context.Context, id string, need access.Need) (*db.Bot, error) {
+	return access.Bot(ctx, a.DB, id, need)
 }
 
-func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {
+// ListBots lists the Bots the caller is on: in one Workspace, or in all.
+func (a *App) ListBots(ctx context.Context, req *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {
 	u := access.User(ctx)
+	q := a.DB.Joins("JOIN bot_access a ON a.bot_id = bots.id AND a.user_id = ?", u.ID)
+	if id := req.Msg.GetSpaceId(); id != "" {
+		if _, _, err := access.Space(ctx, a.DB, id, access.View); err != nil {
+			return nil, err
+		}
+		q = q.Where("bots.space_id = ?", id)
+	}
 	var bots []db.Bot
-	if err := a.DB.Where("user_id = ?", u.ID).Order("created_at desc").Find(&bots).Error; err != nil {
+	if err := q.Order("bots.created_at desc").Find(&bots).Error; err != nil {
 		return nil, err
 	}
 	out := &v1.ListBotsResponse{}
@@ -84,6 +99,11 @@ func (a *App) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsReques
 
 func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error) {
 	u := access.User(ctx)
+	// Where first: a request for someone else's Workspace learns nothing more.
+	sp, err := a.Spaces.ForNewBot(ctx, req.Msg.GetSpaceId())
+	if err != nil {
+		return nil, err
+	}
 	name := req.Msg.GetName()
 	if name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
@@ -95,7 +115,8 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	}
 	b := db.Bot{
 		ID:          id,
-		UserID:      u.ID,
+		SpaceID:     sp.ID,
+		CreatedBy:   u.ID,
 		Name:        name,
 		Description: clipDesc(req.Msg.GetDescription()),
 		Soul:        defaultSoul,
@@ -108,7 +129,14 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		Crest:     crest,
 		CreatedAt: time.Now(),
 	}
-	if err := a.DB.Create(&b).Error; err != nil {
+	err = a.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&b).Error; err != nil {
+			return err
+		}
+		// Whoever makes a Bot manages it.
+		return tx.Create(&db.BotAccess{BotID: id, UserID: u.ID, Role: access.RoleManage, CreatedAt: b.CreatedAt}).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 	main, err := a.mainChat(id)
@@ -130,7 +158,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 }
 
 func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +227,7 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 }
 
 func (a *App) GetBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +235,7 @@ func (a *App) GetBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]
 }
 
 func (a *App) GetContainer(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Container], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +262,7 @@ func (a *App) GetContainer(ctx context.Context, req *connect.Request[v1.GetBotRe
 }
 
 func (a *App) StartBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +283,7 @@ func (a *App) ResetContainer(ctx context.Context, req *connect.Request[v1.GetBot
 // takeDown runs down (halt the box, or remove it) on the user's Bot and returns
 // the Bot as stopped.
 func (a *App) takeDown(ctx context.Context, id string, down func(context.Context, *db.Bot)) (*connect.Response[v1.Bot], error) {
-	b, err := a.ownBot(ctx, id)
+	b, err := a.bot(ctx, id, access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +294,7 @@ func (a *App) takeDown(ctx context.Context, id string, down func(context.Context
 }
 
 func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetId())
+	b, err := a.bot(ctx, req.Msg.GetId(), access.Administer)
 	if err != nil {
 		return nil, err
 	}
@@ -317,6 +345,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.Drives.Drop(ctx, b.ID)
 	a.Egress.Drop(ctx, b.ID)
+	a.Spaces.DropBot(b.ID)
 	a.DB.Delete(b)
 	if dir := a.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "bots", b.ID))
@@ -324,7 +353,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 }
 
 func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +395,7 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		}
 		ch = main
 	} else {
-		owned, cerr := a.ownChat(ctx, b.ID, chatID)
+		owned, cerr := a.chat(ctx, b.ID, chatID, access.Write)
 		if cerr != nil {
 			return nil, cerr
 		}
@@ -390,7 +419,7 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 func (a *App) sendCommand(ctx context.Context, b *db.Bot, chatID string, p command.Parsed, confirmed bool) (*connect.Response[v1.SendResponse], error) {
 	out := &v1.SendResponse{Command: p.Def.Name}
 	if chatID != "" {
-		ch, err := a.ownChat(ctx, b.ID, chatID)
+		ch, err := a.chat(ctx, b.ID, chatID, access.Write)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +470,7 @@ func cleanAttachments(in []*v1.Attachment) []*v1.Attachment {
 }
 
 func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +478,7 @@ func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunReques
 	if chatID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("chat_id required"))
 	}
-	if _, err := a.ownChat(ctx, b.ID, chatID); err != nil {
+	if _, err := a.chat(ctx, b.ID, chatID, access.Read); err != nil {
 		return nil, err
 	}
 	a.stopChat(b.ID, chatID)
@@ -459,7 +488,7 @@ func (a *App) StopRun(ctx context.Context, req *connect.Request[v1.StopRunReques
 }
 
 func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRequest], stream *connect.ServerStream[v1.RunEvent]) error {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return err
 	}
 	botID := req.Msg.GetBotId()
@@ -586,12 +615,12 @@ func (a *App) threadPage(runQ any, beforeSeq int64) (start int64, more bool) {
 // ListChatEvents is the page of a thread before the oldest event the client
 // has.
 func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
-	b, err := a.ownBot(ctx, req.Msg.GetBotId())
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
 	chatID := req.Msg.GetChatId()
-	if _, err := a.ownChat(ctx, b.ID, chatID); err != nil {
+	if _, err := a.chat(ctx, b.ID, chatID, access.Read); err != nil {
 		return nil, err
 	}
 	runQ := a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", b.ID, chatID)

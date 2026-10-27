@@ -1,9 +1,10 @@
 import { Plus } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useBots } from "./bots";
 import { btnClass } from "./Btn";
 import { Crest } from "./Crest";
 import { Lamp, StatusWord } from "./Lamp";
+import { canBuild, useSpaces } from "./space/spaces";
 import { t } from "./i18n.ts";
 
 function FolioSkeleton() {
@@ -19,21 +20,29 @@ function FolioSkeleton() {
   );
 }
 
+// BotsPage is a Workspace's home: the Bots in it the user is on.
 export function BotsPage() {
-  const { bots, err } = useBots();
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId" });
+  const { bots: all, err } = useBots();
+  const { spaces } = useSpaces();
+  const space = spaces?.find((s) => s.id === spaceId);
+  const bots = all?.filter((b) => b.spaceId === spaceId) ?? null;
   const loading = bots === null;
   const empty = !loading && bots.length === 0;
+  const build = canBuild(space?.role);
   return (
     <div className="p-4 wide:p-7">
       {!empty ? (
         <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-title">{t("Bots")}</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-title">{space?.name ?? t("Bots")}</h1>
             <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{t("Machines you can open.")}</p>
           </div>
-          <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} />{t("New Bot")}
-          </Link>
+          {build ? (
+            <Link to="/w/$spaceId/new" params={{ spaceId }} className={btnClass("primary")}>
+              <Plus size={16} />{t("New Bot")}
+            </Link>
+          ) : null}
         </div>
       ) : null}
       {err && (
@@ -51,9 +60,11 @@ export function BotsPage() {
         <div className="rise pt-[12vh]">
           <p className="mb-2 text-[40px] leading-[48px] font-medium tracking-[-0.02em]">{t("No Bots yet")}</p>
           <p className="mb-7 text-[14px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
-          <Link to="/new" className={btnClass("primary")}>
-            <Plus size={16} />{t("New Bot")}
-          </Link>
+          {build ? (
+            <Link to="/w/$spaceId/new" params={{ spaceId }} className={btnClass("primary")}>
+              <Plus size={16} />{t("New Bot")}
+            </Link>
+          ) : null}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">

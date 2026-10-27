@@ -23,7 +23,7 @@ import (
 )
 
 func (a *App) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var secs []db.Secret
@@ -52,7 +52,7 @@ func protoSecret(s *db.Secret) *v1.SecretMeta {
 }
 
 func (a *App) AddSecret(ctx context.Context, req *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	if req.Msg.GetName() == "" || req.Msg.GetValue() == "" {
@@ -71,7 +71,7 @@ func (a *App) AddSecret(ctx context.Context, req *connect.Request[v1.AddSecretRe
 }
 
 func (a *App) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSecretRequest]) (*connect.Response[v1.SecretMeta], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var s db.Secret
@@ -249,7 +249,7 @@ func (a *App) forgetMask(botID string) {
 }
 
 func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var sec db.Secret
@@ -263,7 +263,7 @@ func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSe
 }
 
 func (a *App) ListApprovals(ctx context.Context, req *connect.Request[v1.ListApprovalsRequest]) (*connect.Response[v1.ListApprovalsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	var rows []db.Approval
@@ -317,7 +317,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	if _, err := a.ownBot(ctx, row.BotID); err != nil {
+	if _, err := a.bot(ctx, row.BotID, access.Use); err != nil {
 		return nil, err
 	}
 	dec := security.Vote(req.Msg.GetDecision())

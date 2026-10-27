@@ -43,6 +43,7 @@ import { NewBotPage } from "./NewBotPage";
 import { PaneFallback } from "./PaneFallback";
 import { AccountRoute, Shell } from "./Shell";
 import { SignIn } from "./SignIn";
+import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
 // or it does not exist: nothing parses a path by hand, and every Link and
@@ -51,7 +52,10 @@ import { SignIn } from "./SignIn";
 //   /signin
 //   /invite/$token                 an admin's invite or password-reset link (signed out)
 //   _authed                        the rail; signed out goes to /signin
-//     /  /new  /skills  /account
+//     /  /new                      to the same page in the current Workspace
+//     /w/new                       a new Workspace
+//     /w/$spaceId[/new|/settings]  a Workspace's Bots, New Bot in it, its settings
+//     /skills  /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
 //       users[/invite|/$userId]
@@ -118,8 +122,12 @@ const authed = createRoute({
   component: Shell,
 });
 
-const home = createRoute({ getParentRoute: () => authed, path: "/", component: BotsPage });
-const newBot = createRoute({ getParentRoute: () => authed, path: "new", component: NewBotPage });
+const home = createRoute({ getParentRoute: () => authed, path: "/", component: () => <SpaceRedirect to="home" /> });
+const newBot = createRoute({ getParentRoute: () => authed, path: "new", component: () => <SpaceRedirect to="new" /> });
+const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", component: NewSpacePage });
+const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: BotsPage });
+const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
+const spaceSettings = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/settings", component: SpaceSettingsPage });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SkillHub") });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
@@ -261,6 +269,10 @@ const routeTree = root.addChildren([
   authed.addChildren([
     home,
     newBot,
+    newSpace,
+    space,
+    spaceNewBot,
+    spaceSettings,
     skills,
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),

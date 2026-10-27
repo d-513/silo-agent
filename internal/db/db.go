@@ -77,9 +77,48 @@ type RecoveryCode struct {
 	UsedAt *time.Time
 }
 
+// Space is a Workspace: a container of Bots, the people who use them, and the
+// connectors, skills and drives they share. The code says space because
+// "workspace" is the Bot's /workspace; the UI says Workspace.
+type Space struct {
+	ID   string `gorm:"primaryKey"`
+	Name string
+	// Mark is the one or two letters on the Workspace's tile.
+	Mark      string
+	CreatedAt time.Time
+}
+
+// SpaceMember is one person in a Workspace. Role is owner, admin, member or
+// guest; a Workspace has exactly one owner (the space_owner index).
+type SpaceMember struct {
+	SpaceID   string `gorm:"primaryKey"`
+	UserID    string `gorm:"primaryKey;index"`
+	Role      string `gorm:"not null"`
+	InvitedBy string `gorm:"not null;default:''"`
+	CreatedAt time.Time
+}
+
+// BotAccess is one person on a Bot: Role manage or use. A Bot always has a
+// manager. FeedReadAt and DashboardSeenAt are that person's read state.
+type BotAccess struct {
+	BotID           string `gorm:"primaryKey"`
+	UserID          string `gorm:"primaryKey;index"`
+	Role            string `gorm:"not null"`
+	FeedReadAt      *time.Time
+	DashboardSeenAt *time.Time
+	CreatedAt       time.Time
+}
+
+// TableName keeps the plan's name; GORM would say bot_accesses.
+func (BotAccess) TableName() string { return "bot_access" }
+
 type Bot struct {
-	ID          string `gorm:"primaryKey"`
-	UserID      string `gorm:"index"`
+	ID string `gorm:"primaryKey"`
+	// SpaceID is the Workspace the Bot is in.
+	SpaceID string `gorm:"not null;default:'';index"`
+	// CreatedBy is who made the Bot. It is not who may use it: that is
+	// bot_access.
+	CreatedBy   string `gorm:"not null;default:'';index"`
 	Name        string
 	Description string
 	Soul        string
@@ -866,7 +905,7 @@ type MailBody struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &BotAccess{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
@@ -943,6 +982,8 @@ func Migrate(gdb *gorm.DB) error {
 		pinnedIndex,
 		// One main chat per Bot: chats.Main relies on it to lose a race.
 		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main ON chats (bot_id) WHERE main",
+		// One owner per Workspace: a transfer demotes the old one first.
+		"CREATE UNIQUE INDEX IF NOT EXISTS space_owner ON space_members (space_id) WHERE role = 'owner'",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
 		// 'simple' keeps the keyword half language-neutral: names, part
 		// numbers and error codes match exactly in any language.

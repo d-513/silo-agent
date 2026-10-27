@@ -11,7 +11,6 @@ import (
 
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
-	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 )
 
@@ -50,8 +49,7 @@ func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*w
 		return nil, nil, "", false
 	}
 	botID := r.URL.Query().Get("bot")
-	var b db.Bot
-	if err := a.DB.First(&b, "id = ? AND user_id = ?", botID, u.ID).Error; err != nil {
+	if !access.CanUse(a.DB, botID, u.ID) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return nil, nil, "", false
 	}

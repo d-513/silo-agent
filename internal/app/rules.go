@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/connector"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -20,7 +21,7 @@ import (
 
 func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := a.ownBot(ctx, botID); err != nil {
+	if _, err := a.bot(ctx, botID, access.Manage); err != nil {
 		return nil, err
 	}
 	a.sweepRules(botID)
@@ -112,7 +113,7 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 
 func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleRequest]) (*connect.Response[v1.Rule], error) {
 	m := req.Msg
-	if _, err := a.ownBot(ctx, m.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, m.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	// A request that names an output and no decision is about the output

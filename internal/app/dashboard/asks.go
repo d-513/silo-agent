@@ -212,14 +212,14 @@ func protoCard(c *db.DashboardCard) *v1.DashboardCard {
 	}
 }
 
-func (s *Service) ownCard(ctx context.Context, botID, id string) (*db.DashboardCard, error) {
-	return access.OwnBotRow[db.DashboardCard](ctx, s.db, botID, id, "dashboard card")
+func (s *Service) ownCard(ctx context.Context, botID, id string, need access.Need) (*db.DashboardCard, error) {
+	return access.Row[db.DashboardCard](ctx, s.db, botID, id, "dashboard card", need)
 }
 
 // DismissDashboardCard puts an ask away; suppress_kind also saves a memory so
 // the Bot does not propose that topic again.
 func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request[v1.DismissDashboardCardRequest]) (*connect.Response[v1.DismissDashboardCardResponse], error) {
-	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (s *Service) claim(c *db.DashboardCard, status string, more map[string]any)
 // SubmitDashboardCard opens a chat quoting the ask and starts a run with the
 // owner's chosen values as the message.
 func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[v1.SubmitDashboardCardRequest]) (*connect.Response[v1.SubmitDashboardCardResponse], error) {
-	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	c, err := s.ownCard(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

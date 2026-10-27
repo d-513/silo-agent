@@ -100,9 +100,7 @@ func (s *Service) granted(r *http.Request, t *db.Tunnel) bool {
 	if live != 1 {
 		return false
 	}
-	var n int64
-	s.db.Model(&db.Bot{}).Where("id = ? AND user_id = ?", t.BotID, g.UserID).Count(&n)
-	return n == 1
+	return access.CanUse(s.db, t.BotID, g.UserID)
 }
 
 // askToSignIn answers a private tunnel's request that has no grant: a page load
@@ -150,16 +148,15 @@ func (s *Service) ServeAuth(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, s.cfg().TunnelURL(t.Name)+authPath+"?"+q.Encode(), http.StatusFound)
 }
 
+// ownerDisabled reports whether the tunnel's Bot is suspended: no enabled
+// manager. Its tunnels answer 404, public ones too.
 func (s *Service) ownerDisabled(t *db.Tunnel) bool {
-	var n int64
-	s.db.Model(&db.Bot{}).Joins("JOIN users ON users.id = bots.user_id").Where("bots.id = ? AND users.disabled = ?", t.BotID, true).Count(&n)
-	return n > 0
+	return access.Suspended(s.db, t.BotID)
 }
 
+// owns reports whether the user may use the tunnel's Bot.
 func (s *Service) owns(userID string, t *db.Tunnel) bool {
-	var n int64
-	s.db.Model(&db.Bot{}).Where("id = ? AND user_id = ?", t.BotID, userID).Count(&n)
-	return n == 1
+	return access.BotRole(s.db, t.BotID, userID) != ""
 }
 
 // redeem is the tunnel origin's half: it trades a ticket for a grant cookie.

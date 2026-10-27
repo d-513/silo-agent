@@ -184,7 +184,7 @@ func (s *Service) proto(t *db.Tunnel) *v1.Tunnel {
 }
 
 func (s *Service) ListTunnels(ctx context.Context, req *connect.Request[v1.ListTunnelsRequest]) (*connect.Response[v1.ListTunnelsResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	rows, err := s.ForBot(req.Msg.GetBotId())
@@ -200,7 +200,7 @@ func (s *Service) ListTunnels(ctx context.Context, req *connect.Request[v1.ListT
 }
 
 func (s *Service) CreateTunnel(ctx context.Context, req *connect.Request[v1.CreateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	t, created, err := s.Declare(req.Msg.GetBotId(), int(req.Msg.GetPort()), req.Msg.GetPublic(), "owner")
@@ -214,7 +214,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *connect.Request[v1.Crea
 }
 
 func (s *Service) UpdateTunnel(ctx context.Context, req *connect.Request[v1.UpdateTunnelRequest]) (*connect.Response[v1.Tunnel], error) {
-	t, err := access.OwnBotRow[db.Tunnel](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "tunnel")
+	t, err := access.Row[db.Tunnel](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "tunnel", access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (s *Service) UpdateTunnel(ctx context.Context, req *connect.Request[v1.Upda
 }
 
 func (s *Service) DeleteTunnel(ctx context.Context, req *connect.Request[v1.DeleteTunnelRequest]) (*connect.Response[v1.DeleteTunnelResponse], error) {
-	t, err := access.OwnBotRow[db.Tunnel](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "tunnel")
+	t, err := access.Row[db.Tunnel](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "tunnel", access.Manage)
 	if err != nil {
 		return nil, err
 	}

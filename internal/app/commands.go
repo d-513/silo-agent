@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/command"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
@@ -423,7 +424,7 @@ func (a *App) cmdHelp(ctx context.Context, c command.Call) (command.Result, erro
 
 // ListCommands is the commands the composer offers.
 func (a *App) ListCommands(ctx context.Context, req *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error) {
-	if _, err := a.ownBot(ctx, req.Msg.GetBotId()); err != nil {
+	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	out := &v1.ListCommandsResponse{}

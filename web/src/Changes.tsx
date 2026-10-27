@@ -70,7 +70,7 @@ export function ChangesPane({
           <div className="mb-3 flex shrink-0">
             <TabPills>
               <TabPill on={!drives} onClick={() => setView("workspace")}>
-                {t("Workspace")}
+                {t("Files")}
               </TabPill>
               <TabPill on={drives} onClick={() => setView("drives")}>
                 {t("Drives")}

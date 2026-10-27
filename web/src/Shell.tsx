@@ -10,7 +10,8 @@ import { isSignedOut } from "./errors";
 import { Lamp } from "./Lamp";
 import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
-import { SiloMark } from "./SiloMark";
+import { canBuild, useCurrentSpace } from "./space/spaces";
+import { SpaceTile } from "./space/SpaceTile";
 import { flipTheme, setTheme, useTheme } from "./theme";
 import { t } from "./i18n.ts";
 
@@ -55,24 +56,35 @@ type Page = "bots" | "admin" | "account" | "skills";
 function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
   const { admin, email, setSession } = useAuth();
   const { bots } = useBots();
+  const { space, spaces } = useCurrentSpace();
   const loc = useLocation();
-  const homeActive = page === "bots" && !activeBotId && loc.pathname !== "/new";
+  const spaceHome = space ? `/w/${space.id}` : "";
+  const newBotPath = space ? `/w/${space.id}/new` : "";
+  const homeActive = page === "bots" && !activeBotId && loc.pathname === spaceHome;
   const initial = (email.trim()[0] ?? "?").toUpperCase();
+  // The rail holds the Bots of the Workspace the console is in.
+  const here = (bots ?? []).filter((b) => b.spaceId === space?.id);
   return (
     <aside className="flex shrink-0 bg-well max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center">
-      <SiloMark />
+      <SpaceTile space={space} spaces={spaces} />
       <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
-        <Link to="/" title={t("Bots")} className={railHit(homeActive)}>
-          {railBar(homeActive)}
-          <LayoutGrid size={20} />
-        </Link>
+        {space ? (
+          <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Bots")} className={railHit(homeActive)}>
+            {railBar(homeActive)}
+            <LayoutGrid size={20} />
+          </Link>
+        ) : (
+          <span className={railHit(false)}>
+            <LayoutGrid size={20} />
+          </span>
+        )}
         <Link to="/skills" title={t("Skills")} className={railHit(page === "skills")}>
           {railBar(page === "skills")}
           <Book size={20} />
         </Link>
         <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />
         <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 gap-1 max-wide:flex-row max-wide:items-center max-wide:py-1 wide:flex-col wide:items-center wide:overflow-x-hidden wide:overflow-y-auto wide:px-3 wide:py-0.5">
-          {(bots ?? []).map((b) => {
+          {here.map((b) => {
             const on = b.id === activeBotId;
             return (
               <Link
@@ -90,10 +102,12 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
               </Link>
             );
           })}
-          <Link to="/new" title={t("New Bot")} className={railHit(loc.pathname === "/new")}>
-            {railBar(loc.pathname === "/new")}
-            <Plus size={20} />
-          </Link>
+          {space && canBuild(space.role) ? (
+            <Link to="/w/$spaceId/new" params={{ spaceId: space.id }} title={t("New Bot")} className={railHit(loc.pathname === newBotPath)}>
+              {railBar(loc.pathname === newBotPath)}
+              <Plus size={20} />
+            </Link>
+          ) : null}
         </div>
       </nav>
       <div className="flex items-center gap-1 max-wide:pr-2 wide:mb-4 wide:flex-col">

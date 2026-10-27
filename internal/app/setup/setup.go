@@ -321,7 +321,7 @@ func proto(o *db.SetupOffer) *v1.SetupOffer {
 // few is one message, not one each: "I set up **Email**. Not now for
 // **Calendar**, **Telegram**."
 func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1.ResolveSetupOfferRequest]) (*connect.Response[v1.SetupOffer], error) {
-	o, err := access.OwnBotRow[db.SetupOffer](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "setup offer")
+	o, err := access.Row[db.SetupOffer](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetId(), "setup offer", access.Use)
 	if err != nil {
 		return nil, err
 	}

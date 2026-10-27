@@ -224,9 +224,9 @@ func (s *Service) Reconcile() {
 		return
 	}
 	var chans []db.Channel
-	// A disabled user's Bots do not listen; Resume starts them again.
-	paused := s.db.Model(&db.Bot{}).Select("bots.id").Joins("JOIN users ON users.id = bots.user_id").Where("users.disabled = ?", true)
-	s.db.Where("enabled = ? AND bot_id NOT IN (?)", true, paused).Find(&chans)
+	// A suspended Bot (no enabled manager) does not listen; Resume starts it
+	// again.
+	s.db.Where("enabled = ? AND bot_id NOT IN (?)", true, access.SuspendedBots(s.db)).Find(&chans)
 	for i := range chans {
 		c := chans[i]
 		s.startChannel(&c)
@@ -500,7 +500,7 @@ func (s *Service) ListChannelAdapters(ctx context.Context, _ *connect.Request[v1
 }
 
 func (s *Service) ListBotChannels(ctx context.Context, req *connect.Request[v1.ListBotChannelsRequest]) (*connect.Response[v1.ListBotChannelsResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	out := &v1.ListBotChannelsResponse{}
@@ -513,7 +513,7 @@ func (s *Service) ListBotChannels(ctx context.Context, req *connect.Request[v1.L
 }
 
 func (s *Service) CreateChannel(ctx context.Context, req *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.Channel], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	ad, ok := channels.Lookup(req.Msg.GetAdapter())
@@ -545,7 +545,7 @@ func (s *Service) CreateChannel(ctx context.Context, req *connect.Request[v1.Cre
 }
 
 func (s *Service) UpdateChannel(ctx context.Context, req *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.Channel], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var ch db.Channel
@@ -579,7 +579,7 @@ func (s *Service) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upd
 }
 
 func (s *Service) DeleteChannel(ctx context.Context, req *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var ch db.Channel
@@ -637,7 +637,7 @@ func (s *Service) removeSession(ch *db.Channel) {
 }
 
 func (s *Service) ChannelAction(ctx context.Context, req *connect.Request[v1.ChannelActionRequest]) (*connect.Response[v1.ChannelActionResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	var ch db.Channel

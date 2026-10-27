@@ -41,12 +41,12 @@ func (a *App) protoSubagent(sa *db.Subagent) *v1.Subagent {
 	return out
 }
 
-func (a *App) ownSubagent(ctx context.Context, botID, id string) (*db.Subagent, error) {
-	return access.OwnBotRow[db.Subagent](ctx, a.DB, botID, id, "subagent")
+func (a *App) subagent(ctx context.Context, botID, id string) (*db.Subagent, error) {
+	return access.Row[db.Subagent](ctx, a.DB, botID, id, "subagent", access.Use)
 }
 
 func (a *App) ListSubagents(ctx context.Context, req *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error) {
-	if _, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId()); err != nil {
+	if _, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Read); err != nil {
 		return nil, err
 	}
 	out := &v1.ListSubagentsResponse{}
@@ -58,7 +58,7 @@ func (a *App) ListSubagents(ctx context.Context, req *connect.Request[v1.ListSub
 }
 
 func (a *App) GetSubagent(ctx context.Context, req *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error) {
-	sa, err := a.ownSubagent(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	sa, err := a.subagent(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (a *App) GetSubagent(ctx context.Context, req *connect.Request[v1.GetSubage
 // StopSubagent is the human stopping one subagent. The lead is told (woken if
 // idle) so it can adjust its plan.
 func (a *App) StopSubagent(ctx context.Context, req *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error) {
-	sa, err := a.ownSubagent(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	sa, err := a.subagent(ctx, req.Msg.GetBotId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -87,14 +87,14 @@ func (a *App) protoBoard(chatID string) *v1.Taskboard {
 }
 
 func (a *App) GetTaskboard(ctx context.Context, req *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
-	if _, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId()); err != nil {
+	if _, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Read); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(a.protoBoard(a.boardChat(req.Msg.GetChatId()))), nil
 }
 
 func (a *App) ClearTaskboard(ctx context.Context, req *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
-	if _, err := a.ownChat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId()); err != nil {
+	if _, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Write); err != nil {
 		return nil, err
 	}
 	board := a.boardChat(req.Msg.GetChatId())

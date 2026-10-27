@@ -51,13 +51,13 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID, name string, arg
 	return "", fmt.Errorf("unknown tool %s", name)
 }
 
-func (s *Service) ownWidget(ctx context.Context, botID, id string) (*db.DashboardWidget, error) {
-	return access.OwnBotRow[db.DashboardWidget](ctx, s.db, botID, id, "widget")
+func (s *Service) ownWidget(ctx context.Context, botID, id string, need access.Need) (*db.DashboardWidget, error) {
+	return access.Row[db.DashboardWidget](ctx, s.db, botID, id, "widget", need)
 }
 
 // RefreshWidget runs a widget's probe now, for the owner looking at it.
 func (s *Service) RefreshWidget(ctx context.Context, req *connect.Request[v1.RefreshWidgetRequest]) (*connect.Response[v1.DashboardWidget], error) {
-	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func pressed(err error, stopped string) error {
 // SetWidgetState stores what the owner set in place, such as checked items.
 // It runs nothing; the Bot reads it the next time it looks.
 func (s *Service) SetWidgetState(ctx context.Context, req *connect.Request[v1.SetWidgetStateRequest]) (*connect.Response[v1.DashboardWidget], error) {
-	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *Service) SetWidgetState(ctx context.Context, req *connect.Request[v1.Se
 // action executes the widget's approved code on the box; a hand action opens
 // a chat that quotes the widget.
 func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.RunWidgetActionRequest]) (*connect.Response[v1.RunWidgetActionResponse], error) {
-	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func handTurn(a *action, args string) string {
 // its place and size whatever the Bot suggests later.
 func (s *Service) ArrangeDashboard(ctx context.Context, req *connect.Request[v1.ArrangeDashboardRequest]) (*connect.Response[v1.ArrangeDashboardResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Manage); err != nil {
 		return nil, err
 	}
 	for _, p := range req.Msg.GetPlaces() {
@@ -196,7 +196,7 @@ func (s *Service) ArrangeDashboard(ctx context.Context, req *connect.Request[v1.
 
 // RemoveWidget is the owner taking a widget off the board.
 func (s *Service) RemoveWidget(ctx context.Context, req *connect.Request[v1.RemoveWidgetRequest]) (*connect.Response[v1.RemoveWidgetResponse], error) {
-	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	w, err := s.ownWidget(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (s *Service) RemoveWidget(ctx context.Context, req *connect.Request[v1.Remo
 // a run already curating takes them in.
 func (s *Service) AskDashboard(ctx context.Context, req *connect.Request[v1.AskDashboardRequest]) (*connect.Response[v1.AskDashboardResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Use); err != nil {
 		return nil, err
 	}
 	text := strings.TrimSpace(req.Msg.GetText())

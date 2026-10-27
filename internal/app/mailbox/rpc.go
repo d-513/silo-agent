@@ -47,14 +47,14 @@ func protoMail(m *db.MailMessage, full bool) *v1.Mail {
 	return out
 }
 
-func (s *Service) ownMail(ctx context.Context, botID, id string) (*db.MailMessage, error) {
-	return access.OwnBotRow[db.MailMessage](ctx, s.db, botID, id, "message")
+func (s *Service) ownMail(ctx context.Context, botID, id string, need access.Need) (*db.MailMessage, error) {
+	return access.Row[db.MailMessage](ctx, s.db, botID, id, "message", need)
 }
 
 // ListMail is the Bot's mailbox and what is in it, newest first. Bodies are
 // left out; GetMail has them.
 func (s *Service) ListMail(ctx context.Context, req *connect.Request[v1.ListMailRequest]) (*connect.Response[v1.ListMailResponse], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
 	box, err := s.Box(req.Msg.GetBotId())
@@ -75,7 +75,7 @@ func (s *Service) ListMail(ctx context.Context, req *connect.Request[v1.ListMail
 // GetMail is one message with its body. The owner looking does not mark it
 // read: read means the Bot has seen it.
 func (s *Service) GetMail(ctx context.Context, req *connect.Request[v1.GetMailRequest]) (*connect.Response[v1.Mail], error) {
-	m, err := s.ownMail(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	m, err := s.ownMail(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (s *Service) GetMail(ctx context.Context, req *connect.Request[v1.GetMailRe
 }
 
 func (s *Service) DeleteMail(ctx context.Context, req *connect.Request[v1.DeleteMailRequest]) (*connect.Response[v1.DeleteMailResponse], error) {
-	m, err := s.ownMail(ctx, req.Msg.GetBotId(), req.Msg.GetId())
+	m, err := s.ownMail(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *Service) DeleteMail(ctx context.Context, req *connect.Request[v1.Delete
 
 // UpdateMailbox sets whether, and for whom, new mail wakes the Bot.
 func (s *Service) UpdateMailbox(ctx context.Context, req *connect.Request[v1.UpdateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	box, err := s.Box(req.Msg.GetBotId())
@@ -119,7 +119,7 @@ func (s *Service) UpdateMailbox(ctx context.Context, req *connect.Request[v1.Upd
 
 // RotateMailbox replaces the Bot's address.
 func (s *Service) RotateMailbox(ctx context.Context, req *connect.Request[v1.RotateMailboxRequest]) (*connect.Response[v1.Mailbox], error) {
-	if _, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId()); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
 		return nil, err
 	}
 	if err := s.usable(); err != nil {
@@ -144,7 +144,7 @@ func (s *Service) ServeRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	m, err := s.ownMail(access.WithUser(r.Context(), u), strings.TrimSpace(q.Get("bot_id")), strings.TrimSpace(q.Get("id")))
+	m, err := s.ownMail(access.WithUser(r.Context(), u), strings.TrimSpace(q.Get("bot_id")), strings.TrimSpace(q.Get("id")), access.Use)
 	if err != nil {
 		http.NotFound(w, r)
 		return

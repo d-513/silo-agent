@@ -60,7 +60,7 @@ func (s *Service) Call(ctx context.Context, botID string, cmd *v1.Cmd) (string, 
 }
 
 func (s *Service) ListFiles(ctx context.Context, req *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (s *Service) ListFiles(ctx context.Context, req *connect.Request[v1.ListFil
 }
 
 func (s *Service) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (s *Service) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFile
 }
 
 func (s *Service) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirRequest]) (*connect.Response[v1.FileOpResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *Service) Mkdir(ctx context.Context, req *connect.Request[v1.MkdirReques
 }
 
 func (s *Service) RemoveFile(ctx context.Context, req *connect.Request[v1.RemoveFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (s *Service) RemoveFile(ctx context.Context, req *connect.Request[v1.Remove
 const PutMax = 50 << 20
 
 func (s *Service) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRequest]) (*connect.Response[v1.FileOpResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

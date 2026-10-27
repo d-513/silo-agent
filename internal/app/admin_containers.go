@@ -98,6 +98,13 @@ func (a *App) ListAdminContainers(ctx context.Context, req *connect.Request[v1.L
 	if err := a.DB.Model(&db.Bot{}).Order("created_at").Find(&bots).Error; err != nil {
 		return nil, err
 	}
+	// A Bot is listed under the owner of its Workspace.
+	var owners []db.SpaceMember
+	a.DB.Where("role = ?", access.RoleOwner).Find(&owners)
+	ownerOf := make(map[string]string, len(owners))
+	for _, m := range owners {
+		ownerOf[m.SpaceID] = m.UserID
+	}
 
 	// Each Bot gets its group up front, so leftover sidecars can land there.
 	userGroups := map[string]*v1.AdminUserGroup{}
@@ -105,10 +112,11 @@ func (a *App) ListAdminContainers(ctx context.Context, req *connect.Request[v1.L
 	var groupOrder []*v1.AdminUserGroup
 	for i := range bots {
 		b := &bots[i]
-		ug := userGroups[b.UserID]
+		owner := ownerOf[b.SpaceID]
+		ug := userGroups[owner]
 		if ug == nil {
-			ug = &v1.AdminUserGroup{UserId: b.UserID, Email: emails[b.UserID]}
-			userGroups[b.UserID] = ug
+			ug = &v1.AdminUserGroup{UserId: owner, Email: emails[owner]}
+			userGroups[owner] = ug
 			groupOrder = append(groupOrder, ug)
 		}
 		bg := &v1.AdminBotGroup{BotId: b.ID, BotName: b.Name, Status: b.Status}

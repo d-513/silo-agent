@@ -28,7 +28,7 @@ func (s *Service) ListUsers(ctx context.Context, _ *connect.Request[v1.ListUsers
 		UserID string
 		N      int32
 	}
-	if err := s.db.Model(&db.Bot{}).Select("user_id, count(*) AS n").Group("user_id").Scan(&counts).Error; err != nil {
+	if err := s.db.Model(&db.BotAccess{}).Where("role = ?", access.RoleManage).Select("user_id, count(*) AS n").Group("user_id").Scan(&counts).Error; err != nil {
 		return nil, err
 	}
 	bots := map[string]int32{}

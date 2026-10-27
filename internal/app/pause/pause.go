@@ -69,7 +69,7 @@ func (s *Service) Drop(botID string) error {
 }
 
 func (s *Service) SetDesktopPaused(ctx context.Context, req *connect.Request[v1.SetDesktopPausedRequest]) (*connect.Response[v1.SetDesktopPausedResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

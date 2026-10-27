@@ -37,6 +37,17 @@ service UI {
   // with the saved settings.
   rpc CheckOIDC(CheckOIDCRequest) returns (CheckOIDCResponse);
 
+  // Workspaces: the containers of Bots, the people who use them, and what
+  // their Bots share. ListSpaces is the caller's memberships, and makes their
+  // first Workspace if they own none.
+  rpc ListSpaces(ListSpacesRequest) returns (ListSpacesResponse);
+  rpc GetSpace(GetSpaceRequest) returns (Space);
+  rpc CreateSpace(CreateSpaceRequest) returns (Space);
+  rpc UpdateSpace(UpdateSpaceRequest) returns (Space);
+  // DeleteSpace is the owner's, refused while the Workspace has Bots and for
+  // the owner's last Workspace.
+  rpc DeleteSpace(DeleteSpaceRequest) returns (DeleteSpaceResponse);
+
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
   rpc UpdateBot(UpdateBotRequest) returns (Bot);
@@ -527,7 +538,55 @@ message Bot {
   bool heartbeat_custom = 22;
   // Activity is what the Bot is doing right now: one row per live run.
   repeated BotActivity activity = 23;
+  // SpaceId is the Workspace the Bot is in.
+  string space_id = 24;
+  // Role is the caller's on the Bot: manage or use.
+  string role = 25;
 }
+
+// Space is a Workspace as the caller sees it.
+message Space {
+  string id = 1;
+  string name = 2;
+  // Mark is the one or two letters on its tile.
+  string mark = 3;
+  // Role is the caller's: owner, admin, member or guest.
+  string role = 4;
+  // Bots counts the Bots in it the caller is on.
+  int32 bots = 5;
+  // People counts its members.
+  int32 people = 6;
+  string created_at = 7;
+}
+
+message ListSpacesRequest {}
+
+message ListSpacesResponse {
+  repeated Space spaces = 1;
+}
+
+message GetSpaceRequest {
+  string id = 1;
+}
+
+message CreateSpaceRequest {
+  string name = 1;
+  // Empty takes the name's initials.
+  string mark = 2;
+}
+
+message UpdateSpaceRequest {
+  string id = 1;
+  string name = 2;
+  // Empty takes the name's initials.
+  string mark = 3;
+}
+
+message DeleteSpaceRequest {
+  string id = 1;
+}
+
+message DeleteSpaceResponse {}
 
 // BotActivity is one live run of a Bot, for the sidebar's status line.
 message BotActivity {
@@ -542,7 +601,10 @@ message BotActivity {
   string lead_chat_id = 5;
 }
 
-message ListBotsRequest {}
+message ListBotsRequest {
+  // The Workspace to list; empty lists every Bot the caller is on.
+  string space_id = 1;
+}
 
 message ListBotsResponse {
   repeated Bot bots = 1;
@@ -556,6 +618,8 @@ message CreateBotRequest {
   string time_zone = 4;
   // interview opens the main chat with the Bot getting to know its owner.
   bool interview = 5;
+  // The Workspace to make it in; empty is the caller's first own one.
+  string space_id = 6;
 }
 
 message UpdateBotRequest {

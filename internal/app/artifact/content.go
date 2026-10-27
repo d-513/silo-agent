@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/tunnels"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/config"
@@ -107,10 +108,7 @@ func (s *Service) viewed(tok, label string) (*db.Artifact, *db.ArtifactVersion, 
 	if live != 1 {
 		return nil, nil, false
 	}
-	var owner int64
-	s.db.Model(&db.Bot{}).Joins("JOIN users ON users.id = bots.user_id").
-		Where("bots.id = ? AND bots.user_id = ? AND users.disabled = ?", view.BotID, view.UserID, false).Count(&owner)
-	if owner != 1 {
+	if !access.CanUse(s.db, view.BotID, view.UserID) {
 		return nil, nil, false
 	}
 	var v db.ArtifactVersion
@@ -320,10 +318,9 @@ func (s *Service) ServeShare(w http.ResponseWriter, r *http.Request, label strin
 	serveBytes(w, path.Base(file), data, true)
 }
 
+// ownerDisabled reports whether the Bot is suspended: no enabled manager.
 func (s *Service) ownerDisabled(botID string) bool {
-	var n int64
-	s.db.Model(&db.Bot{}).Joins("JOIN users ON users.id = bots.user_id").Where("bots.id = ? AND users.disabled = ?", botID, true).Count(&n)
-	return n > 0
+	return access.Suspended(s.db, botID)
 }
 
 func (s *Service) touchShare(sh *db.ArtifactShare) {

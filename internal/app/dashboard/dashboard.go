@@ -103,7 +103,7 @@ func (s *Service) Open(botID string) int32 {
 // places, and the Dashboard automation's state for the meta line.
 func (s *Service) ListDashboard(ctx context.Context, req *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Use); err != nil {
 		return nil, err
 	}
 	out := &v1.ListDashboardResponse{}
@@ -131,7 +131,7 @@ func (s *Service) ListDashboard(ctx context.Context, req *connect.Request[v1.Lis
 // widgets all count as seen.
 func (s *Service) MarkDashboardRead(ctx context.Context, req *connect.Request[v1.MarkDashboardReadRequest]) (*connect.Response[v1.MarkDashboardReadResponse], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.OwnBot(ctx, s.db, botID); err != nil {
+	if _, err := access.Bot(ctx, s.db, botID, access.Use); err != nil {
 		return nil, err
 	}
 	now := time.Now()

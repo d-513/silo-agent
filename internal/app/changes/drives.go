@@ -115,7 +115,7 @@ func (s *Service) Drop(botID string) {
 }
 
 func (s *Service) ListDriveChanges(ctx context.Context, req *connect.Request[v1.ListDriveChangesRequest]) (*connect.Response[v1.ListDriveChangesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}

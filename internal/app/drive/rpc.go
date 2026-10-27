@@ -109,7 +109,7 @@ func (s *Service) ListDriveTemplates(ctx context.Context, _ *connect.Request[v1.
 }
 
 func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDrivesRequest]) (*connect.Response[v1.ListDrivesResponse], error) {
-	b, err := access.OwnBot(ctx, s.db, req.Msg.GetBotId())
+	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
 		return nil, err
 	}
@@ -134,12 +134,12 @@ func (s *Service) ListDrives(ctx context.Context, req *connect.Request[v1.ListDr
 }
 
 // ownDrive loads a drive the signed-in user owns through its Bot.
-func (s *Service) ownDrive(ctx context.Context, id string) (*db.Drive, *drives.Template, error) {
+func (s *Service) ownDrive(ctx context.Context, id string, need access.Need) (*db.Drive, *drives.Template, error) {
 	var d db.Drive
 	if s.db.Where("id = ?", id).Limit(1).Find(&d); d.ID == "" {
 		return nil, nil, connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
 	}
-	if _, err := access.OwnBot(ctx, s.db, d.BotID); err != nil {
+	if _, err := access.Bot(ctx, s.db, d.BotID, need); err != nil {
 		return nil, nil, err
 	}
 	t, ok := s.templates().Get(d.Template)
@@ -207,7 +207,7 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 	var d *db.Drive
 	var t *drives.Template
 	if m.GetId() == "" {
-		b, err := access.OwnBot(ctx, s.db, m.GetBotId())
+		b, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +220,7 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 		t = tt
 	} else {
 		var err error
-		if d, t, err = s.ownDrive(ctx, m.GetId()); err != nil {
+		if d, t, err = s.ownDrive(ctx, m.GetId(), access.Manage); err != nil {
 			return nil, err
 		}
 	}
@@ -291,7 +291,7 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 }
 
 func (s *Service) DeleteDrive(ctx context.Context, req *connect.Request[v1.DeleteDriveRequest]) (*connect.Response[v1.DeleteDriveResponse], error) {
-	d, _, err := s.ownDrive(ctx, req.Msg.GetId())
+	d, _, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +306,7 @@ func (s *Service) DeleteDrive(ctx context.Context, req *connect.Request[v1.Delet
 }
 
 func (s *Service) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.BeginDriveAuthRequest]) (*connect.Response[v1.BeginDriveAuthResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +429,7 @@ func driveErr(t *drives.Template, err error) error {
 }
 
 func (s *Service) PickDriveOptions(ctx context.Context, req *connect.Request[v1.PickDriveOptionsRequest]) (*connect.Response[v1.PickDriveOptionsResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (s *Service) PickDriveOptions(ctx context.Context, req *connect.Request[v1.
 }
 
 func (s *Service) BrowseDrive(ctx context.Context, req *connect.Request[v1.BrowseDriveRequest]) (*connect.Response[v1.BrowseDriveResponse], error) {
-	d, t, err := s.ownDrive(ctx, req.Msg.GetId())
+	d, t, err := s.ownDrive(ctx, req.Msg.GetId(), access.Manage)
 	if err != nil {
 		return nil, err
 	}
