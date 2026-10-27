@@ -360,7 +360,7 @@ func TestDeleteUserRemovesEverythingTheyOwn(t *testing.T) {
 	if err := os.MkdirAll(botDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	skillDir := filepath.Join(skills.PersonalDir(dir, u.GetId()), "mine")
+	skillDir := filepath.Join(skills.SpaceDir(dir, bot.Msg.GetSpaceId()), "mine")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

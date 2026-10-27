@@ -43,6 +43,7 @@ import { NewBotPage } from "./NewBotPage";
 import { PaneFallback } from "./PaneFallback";
 import { AccountRoute, Shell } from "./Shell";
 import { SignIn } from "./SignIn";
+import { SpaceCustomizeLayout } from "./space/Customize";
 import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
@@ -55,7 +56,8 @@ import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePag
 //     /  /new                      to the same page in the current Workspace
 //     /w/new                       a new Workspace
 //     /w/$spaceId[/new|/settings]  a Workspace's Bots, New Bot in it, its settings
-//     /skills  /account
+//     /w/$spaceId/customize/skills what its Bots share (/skills goes here)
+//     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
 //       users[/invite|/$userId]
@@ -128,7 +130,16 @@ const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", comp
 const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: BotsPage });
 const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
 const spaceSettings = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/settings", component: SpaceSettingsPage });
-const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SkillHub") });
+const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
+const spaceCustomize = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/customize", component: SpaceCustomizeLayout });
+const spaceCustomizeIndex = createRoute({
+  getParentRoute: () => spaceCustomize,
+  path: "/",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/w/$spaceId/customize/skills", params });
+  },
+});
+const spaceSkills = createRoute({ getParentRoute: () => spaceCustomize, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
@@ -273,6 +284,7 @@ const routeTree = root.addChildren([
     space,
     spaceNewBot,
     spaceSettings,
+    spaceCustomize.addChildren([spaceCustomizeIndex, spaceSkills]),
     skills,
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),

@@ -485,7 +485,7 @@ func TestOutboundBlocksWhatAUserPointsInside(t *testing.T) {
 		w.Write([]byte("---\nname: planted\ndescription: d\n---\nbody\n"))
 	}))
 	defer skillSrv.Close()
-	_, err = h.Client.InstallSkill(h.Ctx(), connect.NewRequest(&v1.InstallSkillRequest{Scope: "personal", Url: skillSrv.URL + "/SKILL.md"}))
+	_, err = h.Client.InstallSkill(h.Ctx(), connect.NewRequest(&v1.InstallSkillRequest{Scope: "space", SpaceId: bot.GetSpaceId(), Url: skillSrv.URL + "/SKILL.md"}))
 	if err == nil || !strings.Contains(err.Error(), "private network") {
 		t.Fatalf("a skill was downloaded from loopback: %v", err)
 	}

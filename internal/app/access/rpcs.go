@@ -25,6 +25,10 @@ const (
 	// AdminOrBotManage is an instance admin for the installation's rows (the
 	// library, the whole audit) and BotManage for a Bot's.
 	AdminOrBotManage RPCNeed = "admin|bot:manage"
+	// SpaceOrLibrary is a Workspace's things (scope "space": SpaceBuild to
+	// list and change, SpaceView to read a file) or the site library's (any
+	// user reads it, an instance admin changes it).
+	SpaceOrLibrary RPCNeed = "space|library"
 )
 
 // RPCs declares who may call each UI RPC. The handlers enforce it themselves
@@ -184,13 +188,13 @@ var RPCs = map[string]RPCNeed{
 	"StartConnectorAuth":       BotManage,
 	"SeedConnectors":           InstanceAdmin,
 	"SeedSkills":               InstanceAdmin,
-	"ListSkills":               SignedIn,
-	"InstallSkill":             SignedIn,
-	"DeleteSkill":              SignedIn,
+	"ListSkills":               SpaceOrLibrary,
+	"InstallSkill":             SpaceOrLibrary,
+	"DeleteSkill":              SpaceOrLibrary,
 	"ListBotSkills":            BotUse,
 	"SetBotSkill":              BotManage,
-	"ListSkillFiles":           SignedIn,
-	"ReadSkillFile":            SignedIn,
+	"ListSkillFiles":           SpaceOrLibrary,
+	"ReadSkillFile":            SpaceOrLibrary,
 	"SaveSkill":                BotUse,
 	"ListArtifacts":            BotUse,
 	"DeleteArtifact":           BotManage,

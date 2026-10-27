@@ -375,6 +375,7 @@ No bounce, and no overshoot beyond the settle curve.
 - 64px wide on `well`, with no right border. From the top:
   - The **Workspace tile** over "Silo" at 11/600: a 32px `well` square with a `line` ring and the Workspace's one or two letters in `ink` 13/600. Pressing it opens a `shadow-slip` menu beside the rail (under the top bar when narrow): a `label-caps` "Workspaces" head, one 40px row per Workspace (a 24px tile, the name in 13.5/500, a `well` role chip unless it is the user's own, the current one with the 3px `cobalt` bar), a hairline, **New workspace** and **Workspace settings** (admins).
   - Bots (this Workspace's home).
+  - **Customize** (blocks): the Workspace's hub at `/w/$spaceId/customize`, the section-tab frame (56px head, tabs, sliding underline) over what its Bots share. Not for a guest.
   - A 24px hairline.
   - The Workspace's crests, 28px each in 40px hit areas with `control` radius.
   - `+` for New Bot in this Workspace (not for a guest).

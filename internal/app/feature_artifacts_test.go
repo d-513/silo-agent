@@ -182,7 +182,8 @@ func TestSaveSkillInstallsThePinnedVersion(t *testing.T) {
 	if _, err := h.Client.SaveSkill(h.Ctx(), connect.NewRequest(&v1.SaveSkillRequest{BotId: bot.GetId(), ArtifactId: card.ArtifactID, Version: 1, RunId: runID})); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(h.DataDir, "skills", "users", userID(t, h), "my-skill", "SKILL.md"))
+	// Saved into the Bot's Workspace, recorded as the saver's.
+	raw, err := os.ReadFile(filepath.Join(h.DataDir, "skills", "spaces", bot.GetSpaceId(), "my-skill", "SKILL.md"))
 	if err != nil || !strings.Contains(string(raw), "# v1") {
 		t.Fatalf("installed = %q, %v", raw, err)
 	}
@@ -190,15 +191,10 @@ func TestSaveSkillInstallsThePinnedVersion(t *testing.T) {
 	if last := all[len(all)-1]; last.Status != "saved" || last.ArtifactID != card.ArtifactID || last.Version != 1 {
 		t.Fatalf("saved card = %+v", last)
 	}
-}
-
-func userID(t *testing.T, h *apptest.H) string {
-	t.Helper()
-	var u db.User
-	if err := h.DB.Where("email = ?", h.Email).First(&u).Error; err != nil {
-		t.Fatal(err)
+	listed, err := h.Client.ListSkills(h.Ctx(), connect.NewRequest(&v1.ListSkillsRequest{Scope: "space", SpaceId: bot.GetSpaceId()}))
+	if err != nil || len(listed.Msg.GetSkills()) != 1 || listed.Msg.GetSkills()[0].GetInstalledBy() != h.Email || !listed.Msg.GetSkills()[0].GetCanRemove() {
+		t.Fatalf("the workspace's skills: %v %v", listed, err)
 	}
-	return u.ID
 }
 
 func contentGet(t *testing.T, h *apptest.H, host, path string) (*http.Response, string) {

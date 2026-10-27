@@ -1,4 +1,4 @@
-import { Book, LayoutGrid, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
+import { Blocks, LayoutGrid, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AccountPage } from "./account/AccountPage";
@@ -51,7 +51,7 @@ function ThemeToggle() {
   );
 }
 
-type Page = "bots" | "admin" | "account" | "skills";
+type Page = "bots" | "admin" | "account" | "customize";
 
 function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
   const { admin, email, setSession } = useAuth();
@@ -78,10 +78,12 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
             <LayoutGrid size={20} />
           </span>
         )}
-        <Link to="/skills" title={t("Skills")} className={railHit(page === "skills")}>
-          {railBar(page === "skills")}
-          <Book size={20} />
-        </Link>
+        {space && canBuild(space.role) ? (
+          <Link to="/w/$spaceId/customize" params={{ spaceId: space.id }} title={t("Customize")} className={railHit(page === "customize")}>
+            {railBar(page === "customize")}
+            <Blocks size={20} />
+          </Link>
+        ) : null}
         <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />
         <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 gap-1 max-wide:flex-row max-wide:items-center max-wide:py-1 wide:flex-col wide:items-center wide:overflow-x-hidden wide:overflow-y-auto wide:px-3 wide:py-0.5">
           {here.map((b) => {
@@ -147,7 +149,13 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
 export function Shell() {
   const { pathname } = useLocation();
   const activeBotId = pathname.match(/^\/bots\/([^/]+)/)?.[1];
-  const page: Page = pathname.startsWith("/admin") ? "admin" : pathname.startsWith("/account") ? "account" : pathname.startsWith("/skills") ? "skills" : "bots";
+  const page: Page = pathname.startsWith("/admin")
+    ? "admin"
+    : pathname.startsWith("/account")
+      ? "account"
+      : /^\/w\/[^/]+\/customize/.test(pathname)
+        ? "customize"
+        : "bots";
   // Replies with code are common: fetch the highlighter once the browser is idle.
   useEffect(() => preloadMarkdown(), []);
   return (

@@ -2626,13 +2626,21 @@ message SeedSkillsResponse {}
 message Skill {
   string name = 1;
   string description = 2;
+  // library or space.
   string kind = 3;
   string source = 4;
   bool seeded = 5;
+  // A Workspace skill: the email of who installed it, and whether the caller
+  // may remove it (they installed it, or they are an admin of the Workspace).
+  string installed_by = 6;
+  bool can_remove = 7;
 }
 
+// A skill scope is "library" (site-wide) or "space" (one Workspace's, named
+// by space_id).
 message ListSkillsRequest {
   string scope = 1;
+  string space_id = 2;
 }
 
 message ListSkillsResponse {
@@ -2644,6 +2652,7 @@ message InstallSkillRequest {
   string url = 2;
   bytes archive = 3;
   string filename = 4;
+  string space_id = 5;
 }
 
 message InstallSkillResponse {
@@ -2654,6 +2663,7 @@ message InstallSkillResponse {
 message DeleteSkillRequest {
   string scope = 1;
   string name = 2;
+  string space_id = 3;
 }
 
 message DeleteSkillResponse {}
@@ -2685,12 +2695,14 @@ message ListSkillFilesRequest {
   string scope = 1;
   string name = 2;
   string path = 3;
+  string space_id = 4;
 }
 
 message ReadSkillFileRequest {
   string scope = 1;
   string name = 2;
   string path = 3;
+  string space_id = 4;
 }
 
 message SaveSkillRequest {

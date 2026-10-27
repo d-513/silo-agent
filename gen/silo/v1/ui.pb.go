@@ -19660,12 +19660,17 @@ func (*SeedSkillsResponse) Descriptor() ([]byte, []int) {
 }
 
 type Skill struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	Kind          string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
-	Source        string                 `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
-	Seeded        bool                   `protobuf:"varint,5,opt,name=seeded,proto3" json:"seeded,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// library or space.
+	Kind   string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	Seeded bool   `protobuf:"varint,5,opt,name=seeded,proto3" json:"seeded,omitempty"`
+	// A Workspace skill: the email of who installed it, and whether the caller
+	// may remove it (they installed it, or they are an admin of the Workspace).
+	InstalledBy   string `protobuf:"bytes,6,opt,name=installed_by,json=installedBy,proto3" json:"installed_by,omitempty"`
+	CanRemove     bool   `protobuf:"varint,7,opt,name=can_remove,json=canRemove,proto3" json:"can_remove,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19735,9 +19740,26 @@ func (x *Skill) GetSeeded() bool {
 	return false
 }
 
+func (x *Skill) GetInstalledBy() string {
+	if x != nil {
+		return x.InstalledBy
+	}
+	return ""
+}
+
+func (x *Skill) GetCanRemove() bool {
+	if x != nil {
+		return x.CanRemove
+	}
+	return false
+}
+
+// A skill scope is "library" (site-wide) or "space" (one Workspace's, named
+// by space_id).
 type ListSkillsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Scope         string                 `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
+	SpaceId       string                 `protobuf:"bytes,2,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19775,6 +19797,13 @@ func (*ListSkillsRequest) Descriptor() ([]byte, []int) {
 func (x *ListSkillsRequest) GetScope() string {
 	if x != nil {
 		return x.Scope
+	}
+	return ""
+}
+
+func (x *ListSkillsRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
 	}
 	return ""
 }
@@ -19829,6 +19858,7 @@ type InstallSkillRequest struct {
 	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	Archive       []byte                 `protobuf:"bytes,3,opt,name=archive,proto3" json:"archive,omitempty"`
 	Filename      string                 `protobuf:"bytes,4,opt,name=filename,proto3" json:"filename,omitempty"`
+	SpaceId       string                 `protobuf:"bytes,5,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19891,6 +19921,13 @@ func (x *InstallSkillRequest) GetFilename() string {
 	return ""
 }
 
+func (x *InstallSkillRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
 type InstallSkillResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Installed     []string               `protobuf:"bytes,1,rep,name=installed,proto3" json:"installed,omitempty"`
@@ -19947,6 +19984,7 @@ type DeleteSkillRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Scope         string                 `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	SpaceId       string                 `protobuf:"bytes,3,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19991,6 +20029,13 @@ func (x *DeleteSkillRequest) GetScope() string {
 func (x *DeleteSkillRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *DeleteSkillRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
 	}
 	return ""
 }
@@ -20268,6 +20313,7 @@ type ListSkillFilesRequest struct {
 	Scope         string                 `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	SpaceId       string                 `protobuf:"bytes,4,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -20323,11 +20369,19 @@ func (x *ListSkillFilesRequest) GetPath() string {
 	return ""
 }
 
+func (x *ListSkillFilesRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
 type ReadSkillFileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Scope         string                 `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	SpaceId       string                 `protobuf:"bytes,4,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -20379,6 +20433,13 @@ func (x *ReadSkillFileRequest) GetName() string {
 func (x *ReadSkillFileRequest) GetPath() string {
 	if x != nil {
 		return x.Path
+	}
+	return ""
+}
+
+func (x *ReadSkillFileRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
 	}
 	return ""
 }
@@ -25982,28 +26043,34 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x15SeedConnectorsRequest\"\x18\n" +
 	"\x16SeedConnectorsResponse\"\x13\n" +
 	"\x11SeedSkillsRequest\"\x14\n" +
-	"\x12SeedSkillsResponse\"\x81\x01\n" +
+	"\x12SeedSkillsResponse\"\xc3\x01\n" +
 	"\x05Skill\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x12\n" +
 	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x16\n" +
 	"\x06source\x18\x04 \x01(\tR\x06source\x12\x16\n" +
-	"\x06seeded\x18\x05 \x01(\bR\x06seeded\")\n" +
+	"\x06seeded\x18\x05 \x01(\bR\x06seeded\x12!\n" +
+	"\finstalled_by\x18\x06 \x01(\tR\vinstalledBy\x12\x1d\n" +
+	"\n" +
+	"can_remove\x18\a \x01(\bR\tcanRemove\"D\n" +
 	"\x11ListSkillsRequest\x12\x14\n" +
-	"\x05scope\x18\x01 \x01(\tR\x05scope\"<\n" +
+	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x19\n" +
+	"\bspace_id\x18\x02 \x01(\tR\aspaceId\"<\n" +
 	"\x12ListSkillsResponse\x12&\n" +
-	"\x06skills\x18\x01 \x03(\v2\x0e.silo.v1.SkillR\x06skills\"s\n" +
+	"\x06skills\x18\x01 \x03(\v2\x0e.silo.v1.SkillR\x06skills\"\x8e\x01\n" +
 	"\x13InstallSkillRequest\x12\x14\n" +
 	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x18\n" +
 	"\aarchive\x18\x03 \x01(\fR\aarchive\x12\x1a\n" +
-	"\bfilename\x18\x04 \x01(\tR\bfilename\"N\n" +
+	"\bfilename\x18\x04 \x01(\tR\bfilename\x12\x19\n" +
+	"\bspace_id\x18\x05 \x01(\tR\aspaceId\"N\n" +
 	"\x14InstallSkillResponse\x12\x1c\n" +
 	"\tinstalled\x18\x01 \x03(\tR\tinstalled\x12\x18\n" +
-	"\askipped\x18\x02 \x03(\tR\askipped\">\n" +
+	"\askipped\x18\x02 \x03(\tR\askipped\"Y\n" +
 	"\x12DeleteSkillRequest\x12\x14\n" +
 	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\x15\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
+	"\bspace_id\x18\x03 \x01(\tR\aspaceId\"\x15\n" +
 	"\x13DeleteSkillResponse\"\x86\x01\n" +
 	"\bBotSkill\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
@@ -26019,15 +26086,17 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x18\n" +
-	"\aenabled\x18\x04 \x01(\bR\aenabled\"U\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\"p\n" +
 	"\x15ListSkillFilesRequest\x12\x14\n" +
 	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\"T\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\x12\x19\n" +
+	"\bspace_id\x18\x04 \x01(\tR\aspaceId\"o\n" +
 	"\x14ReadSkillFileRequest\x12\x14\n" +
 	"\x05scope\x18\x01 \x01(\tR\x05scope\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\"\x8f\x01\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\x12\x19\n" +
+	"\bspace_id\x18\x04 \x01(\tR\aspaceId\"\x8f\x01\n" +
 	"\x10SaveSkillRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x15\n" +

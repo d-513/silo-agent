@@ -57,7 +57,7 @@ function TabUnderline({ tab }: { tab: string }) {
   );
 }
 
-function TabStrip({ children, tab }: { children: ReactNode; tab: string }) {
+export function TabStrip({ children, tab }: { children: ReactNode; tab: string }) {
   return (
     <FadeScroll className="min-h-0 flex-1 self-stretch" innerClass="flex h-full items-stretch gap-0.5">
       {children}

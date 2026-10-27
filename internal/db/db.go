@@ -112,6 +112,16 @@ type BotAccess struct {
 // TableName keeps the plan's name; GORM would say bot_accesses.
 func (BotAccess) TableName() string { return "bot_access" }
 
+// SpaceSkill records who installed one of a Workspace's skills. The body is
+// on disk (data/skills/spaces/<space>/<name>); which Bots use it is
+// bot_skills.
+type SpaceSkill struct {
+	SpaceID     string `gorm:"primaryKey"`
+	Name        string `gorm:"primaryKey"`
+	InstalledBy string `gorm:"not null;default:''"`
+	CreatedAt   time.Time
+}
+
 type Bot struct {
 	ID string `gorm:"primaryKey"`
 	// SpaceID is the Workspace the Bot is in.
@@ -905,7 +915,7 @@ type MailBody struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &BotAccess{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},

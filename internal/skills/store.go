@@ -39,13 +39,15 @@ func LibraryDir(dataDir string) string {
 	return filepath.Join(dataDir, "skills", "library")
 }
 
-func PersonalDir(dataDir, userID string) string {
-	return filepath.Join(dataDir, "skills", "users", userID)
+// SpaceDir holds one Workspace's skills.
+func SpaceDir(dataDir, spaceID string) string {
+	return filepath.Join(dataDir, "skills", "spaces", spaceID)
 }
 
-func RootFor(dataDir, kind, userID string) string {
-	if kind == KindPersonal {
-		return PersonalDir(dataDir, userID)
+// RootFor is where skills of a kind live: the library, or the Workspace's.
+func RootFor(dataDir, kind, spaceID string) string {
+	if kind == KindSpace {
+		return SpaceDir(dataDir, spaceID)
 	}
 	return LibraryDir(dataDir)
 }

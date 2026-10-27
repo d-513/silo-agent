@@ -11,7 +11,7 @@ const zipLimit = 10 << 20;
 // Where a skill comes from: a GitHub URL or owner/repo, or a zip dropped on
 // the panel or picked from disk. A well band, not a card, so it reads as a
 // tool above the list rather than another skill.
-export function InstallPanel({ scope, onDone }: { scope: "library" | "personal"; onDone: () => void }) {
+export function InstallPanel({ scope, spaceId = "", onDone }: { scope: "library" | "space"; spaceId?: string; onDone: () => void }) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -34,7 +34,7 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
     setNote("");
     setBusy(true);
     try {
-      report(await ui.installSkill({ scope, url: url.trim() }));
+      report(await ui.installSkill({ scope, spaceId, url: url.trim() }));
       setUrl("");
     } catch (ex) {
       setErr(fail(ex));
@@ -53,7 +53,7 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
     }
     setBusy(true);
     try {
-      report(await ui.installSkill({ scope, archive: new Uint8Array(await f.arrayBuffer()), filename: f.name }));
+      report(await ui.installSkill({ scope, spaceId, archive: new Uint8Array(await f.arrayBuffer()), filename: f.name }));
     } catch (ex) {
       setErr(fail(ex));
     } finally {
@@ -91,7 +91,7 @@ export function InstallPanel({ scope, onDone }: { scope: "library" | "personal";
               ? t("Drop the zip to install it.")
               : scope === "library"
                 ? t("Paste a GitHub URL or owner/repo, or drop a skill zip. Every Bot can then enable it.")
-                : t("Paste a GitHub URL or owner/repo, or drop a skill zip here. It stays yours until you enable it on a Bot.")}
+                : t("Paste a GitHub URL or owner/repo, or drop a skill zip here. It is switched on in the Bots you manage here; switch it off in any of them.")}
           </p>
           <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={(e) => void go(e)}>
             <input

@@ -1,7 +1,8 @@
-// Package skill is the skill library the Bots draw on: skill bodies on the
-// control plane's disk (library and personal), which ones each Bot has enabled,
-// the install, delete and file-browse RPCs, syncing the enabled set into the
-// Bot's machine, and turning a workspace folder into a personal skill.
+// Package skill is the skills the Bots draw on: skill bodies on the control
+// plane's disk (the site-wide library, and each Workspace's own), which ones
+// each Bot has enabled, the install, delete and file-browse RPCs, syncing the
+// enabled set into the Bot's machine, and saving a Bot's skill card into its
+// Workspace.
 package skill
 
 import (
@@ -22,6 +23,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/space"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
@@ -59,35 +61,83 @@ func (s *Service) SeedSkills(ctx context.Context, _ *connect.Request[v1.SeedSkil
 	return connect.NewResponse(&v1.SeedSkillsResponse{}), nil
 }
 
-func skillScope(scope string, u *db.User) (kind, userID string, err error) {
-	switch strings.ToLower(strings.TrimSpace(scope)) {
+// scope is where a request's skills live: the library (anyone reads it, an
+// admin changes it) or a Workspace the caller has need in. spaceID is the
+// Workspace's id, empty for the library; role is the caller's there.
+type scope struct {
+	kind, spaceID, role string
+}
+
+func (s *Service) skillScope(ctx context.Context, name, spaceID string, need access.SpaceNeed) (scope, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	switch name {
 	case "", skills.KindLibrary:
-		return skills.KindLibrary, "", nil
-	case skills.KindPersonal:
-		if u == nil || u.ID == "" {
-			return "", "", connect.NewError(connect.CodeUnauthenticated, errors.New("sign in"))
+		return scope{kind: skills.KindLibrary}, nil
+	case skills.KindSpace, "personal":
+		// "personal" is a client from before Workspaces (iOS): the caller's
+		// own first Workspace.
+		if name == "personal" && spaceID == "" {
+			if u := access.User(ctx); u != nil {
+				spaceID = space.HomeID(s.db, u.ID)
+			}
 		}
-		return skills.KindPersonal, u.ID, nil
+		sp, role, err := access.Space(ctx, s.db, spaceID, need)
+		if err != nil {
+			return scope{}, err
+		}
+		return scope{kind: skills.KindSpace, spaceID: sp.ID, role: role}, nil
 	default:
-		return "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("scope is library or personal"))
+		return scope{}, connect.NewError(connect.CodeInvalidArgument, errors.New("scope is library or space"))
 	}
 }
 
+// root is the directory the scope's skills are in.
+func (s *Service) root(sc scope) string {
+	return skills.RootFor(s.DataDir(), sc.kind, sc.spaceID)
+}
+
 func (s *Service) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
-	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
+	sc, err := s.skillScope(ctx, req.Msg.GetScope(), req.Msg.GetSpaceId(), access.Build)
 	if err != nil {
 		return nil, err
 	}
-	root := skills.RootFor(s.DataDir(), kind, userID)
-	rows, err := skills.List(root, kind)
+	rows, err := skills.List(s.root(sc), sc.kind)
 	if err != nil {
 		return nil, err
 	}
+	installers := s.installers(sc.spaceID)
+	userID := access.User(ctx).ID
 	out := &v1.ListSkillsResponse{}
 	for _, r := range rows {
-		out.Skills = append(out.Skills, protoSkill(r))
+		p := protoSkill(r)
+		if sc.kind == skills.KindSpace {
+			by := installers[r.Name]
+			p.InstalledBy = by.email
+			p.CanRemove = by.userID == userID || access.Rank(sc.role) >= access.Admin
+		}
+		out.Skills = append(out.Skills, p)
 	}
 	return connect.NewResponse(out), nil
+}
+
+type installer struct{ userID, email string }
+
+// installers maps a Workspace's skills to who installed them.
+func (s *Service) installers(spaceID string) map[string]installer {
+	out := map[string]installer{}
+	if spaceID == "" {
+		return out
+	}
+	var rows []struct {
+		Name, InstalledBy, Email string
+	}
+	s.db.Model(&db.SpaceSkill{}).Select("space_skills.name, space_skills.installed_by, users.email").
+		Joins("LEFT JOIN users ON users.id = space_skills.installed_by").
+		Where("space_skills.space_id = ?", spaceID).Scan(&rows)
+	for _, r := range rows {
+		out[r.Name] = installer{userID: r.InstalledBy, email: r.Email}
+	}
+	return out
 }
 
 func protoSkill(r skills.Info) *v1.Skill {
@@ -99,16 +149,16 @@ func protoSkill(r skills.Info) *v1.Skill {
 
 func (s *Service) InstallSkill(ctx context.Context, req *connect.Request[v1.InstallSkillRequest]) (*connect.Response[v1.InstallSkillResponse], error) {
 	u := access.User(ctx)
-	kind, userID, err := skillScope(req.Msg.GetScope(), u)
+	sc, err := s.skillScope(ctx, req.Msg.GetScope(), req.Msg.GetSpaceId(), access.Build)
 	if err != nil {
 		return nil, err
 	}
-	if kind == skills.KindLibrary {
+	if sc.kind == skills.KindLibrary {
 		if err := access.RequireAdmin(ctx); err != nil {
 			return nil, err
 		}
 	}
-	root := skills.RootFor(s.DataDir(), kind, userID)
+	root := s.root(sc)
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
 	}
@@ -125,28 +175,105 @@ func (s *Service) InstallSkill(ctx context.Context, req *connect.Request[v1.Inst
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if sc.kind == skills.KindSpace {
+		// A new Workspace skill is on in every Bot its installer manages
+		// there; each can switch it off.
+		bots := s.managedIn(sc.spaceID, u.ID)
+		for _, name := range got.Installed {
+			s.recordInstall(sc.spaceID, name, u.ID)
+			for _, b := range bots {
+				s.enable(b, skills.KindSpace, name)
+			}
+		}
+		for _, b := range bots {
+			go s.Push(b)
+		}
+	}
 	return connect.NewResponse(&v1.InstallSkillResponse{Installed: got.Installed, Skipped: got.Skipped}), nil
 }
 
+// recordInstall notes who installed a Workspace skill.
+func (s *Service) recordInstall(spaceID, name, userID string) {
+	s.db.Where("space_id = ? AND name = ?", spaceID, name).Delete(&db.SpaceSkill{})
+	s.db.Create(&db.SpaceSkill{SpaceID: spaceID, Name: name, InstalledBy: userID, CreatedAt: time.Now()})
+}
+
+// managedIn is the ids of the Bots in the Workspace the user manages.
+func (s *Service) managedIn(spaceID, userID string) []string {
+	var ids []string
+	s.db.Model(&db.Bot{}).Joins("JOIN bot_access a ON a.bot_id = bots.id").
+		Where("bots.space_id = ? AND a.user_id = ? AND a.role = ?", spaceID, userID, access.RoleManage).
+		Pluck("bots.id", &ids)
+	return ids
+}
+
+// enable switches a skill on in a Bot, unless the Bot already has one of that
+// name on from the other kind (a name is one skill in the prompt).
+func (s *Service) enable(botID, kind, name string) {
+	var clash int64
+	s.db.Model(&db.BotSkill{}).Where("bot_id = ? AND name = ? AND enabled = ? AND kind <> ?", botID, name, true, kind).Count(&clash)
+	if clash > 0 {
+		return
+	}
+	var row db.BotSkill
+	s.db.Where("bot_id = ? AND kind = ? AND name = ?", botID, kind, name).Limit(1).Find(&row)
+	if row.ID != "" {
+		s.db.Model(&row).Update("enabled", true)
+		return
+	}
+	s.db.Create(&db.BotSkill{ID: ids.New(), BotID: botID, Kind: kind, Name: name, Enabled: true, CreatedAt: time.Now()})
+}
+
+// EnableSpace switches every skill of the Bot's Workspace on in a new Bot.
+func (s *Service) EnableSpace(botID string) {
+	var b db.Bot
+	if s.db.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" || s.DataDir() == "" {
+		return
+	}
+	rows, err := skills.List(skills.SpaceDir(s.DataDir(), b.SpaceID), skills.KindSpace)
+	if err != nil {
+		return
+	}
+	for _, r := range rows {
+		s.enable(b.ID, skills.KindSpace, r.Name)
+	}
+}
+
+// DropSpace deletes a Workspace's skills, for a Workspace that is going.
+func (s *Service) DropSpace(spaceID string) {
+	s.db.Where("space_id = ?", spaceID).Delete(&db.SpaceSkill{})
+	if dir := s.DataDir(); dir != "" && spaceID != "" {
+		_ = os.RemoveAll(skills.SpaceDir(dir, spaceID))
+	}
+}
+
 func (s *Service) DeleteSkill(ctx context.Context, req *connect.Request[v1.DeleteSkillRequest]) (*connect.Response[v1.DeleteSkillResponse], error) {
-	kind, userID, err := skillScope(req.Msg.GetScope(), access.User(ctx))
+	sc, err := s.skillScope(ctx, req.Msg.GetScope(), req.Msg.GetSpaceId(), access.Build)
 	if err != nil {
 		return nil, err
 	}
-	if kind == skills.KindLibrary {
+	name := strings.TrimSpace(req.Msg.GetName())
+	if sc.kind == skills.KindLibrary {
 		if err := access.RequireAdmin(ctx); err != nil {
 			return nil, err
 		}
+	} else if access.Rank(sc.role) < access.Admin && s.installers(sc.spaceID)[name].userID != access.User(ctx).ID {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only whoever installed it, or an admin of the workspace, can remove this skill"))
 	}
-	name := strings.TrimSpace(req.Msg.GetName())
-	if err := skills.Delete(skills.RootFor(s.DataDir(), kind, userID), name); err != nil {
+	if err := skills.Delete(s.root(sc), name); err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	q := s.db.Where("kind = ? AND name = ?", kind, name)
-	if kind == skills.KindPersonal {
-		q = q.Where("bot_id IN (?)", s.db.Model(&db.Bot{}).Select("id").Where("created_by = ?", userID))
+	q := s.db.Where("kind = ? AND name = ?", sc.kind, name)
+	if sc.kind == skills.KindSpace {
+		q = q.Where("bot_id IN (?)", s.db.Model(&db.Bot{}).Select("id").Where("space_id = ?", sc.spaceID))
+		s.db.Where("space_id = ? AND name = ?", sc.spaceID, name).Delete(&db.SpaceSkill{})
 	}
+	var touched []string
+	s.db.Model(&db.BotSkill{}).Where(q).Where("enabled = ?", true).Distinct().Pluck("bot_id", &touched)
 	q.Delete(&db.BotSkill{})
+	for _, b := range touched {
+		go s.Push(b)
+	}
 	return connect.NewResponse(&v1.DeleteSkillResponse{}), nil
 }
 
@@ -157,13 +284,13 @@ func (s *Service) ListBotSkills(ctx context.Context, req *connect.Request[v1.Lis
 	}
 	s.EnsureDefaults(b.ID)
 	out := &v1.ListBotSkillsResponse{}
-	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindLibrary, "")...)
-	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindPersonal, b.CreatedBy)...)
+	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindLibrary)...)
+	out.Skills = append(out.Skills, s.botSkillRows(b, skills.KindSpace)...)
 	return connect.NewResponse(out), nil
 }
 
-func (s *Service) botSkillRows(b *db.Bot, kind, userID string) []*v1.BotSkill {
-	root := skills.RootFor(s.DataDir(), kind, userID)
+func (s *Service) botSkillRows(b *db.Bot, kind string) []*v1.BotSkill {
+	root := skills.RootFor(s.DataDir(), kind, b.SpaceID)
 	rows, err := skills.List(root, kind)
 	if err != nil {
 		return nil
@@ -191,17 +318,13 @@ func (s *Service) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBo
 	}
 	kind := strings.ToLower(strings.TrimSpace(req.Msg.GetKind()))
 	name := strings.TrimSpace(req.Msg.GetName())
-	if kind != skills.KindLibrary && kind != skills.KindPersonal {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind is library or personal"))
+	if kind != skills.KindLibrary && kind != skills.KindSpace {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind is library or space"))
 	}
 	if err := skills.ValidName(name); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	userID := ""
-	if kind == skills.KindPersonal {
-		userID = b.CreatedBy
-	}
-	root := skills.RootFor(s.DataDir(), kind, userID)
+	root := skills.RootFor(s.DataDir(), kind, b.SpaceID)
 	info, err := skills.Load(filepath.Join(root, name))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("skill not found"))
@@ -234,8 +357,10 @@ func (s *Service) SetBotSkill(ctx context.Context, req *connect.Request[v1.SetBo
 
 const skillBrowseLimit = 2 << 20
 
-func (s *Service) skillRoot(ctx context.Context, scope, name string) (root string, err error) {
-	kind, userID, err := skillScope(scope, access.User(ctx))
+// skillRoot is the directory of a skill the caller may read: the library's,
+// or one in a Workspace they are in (a guest may look at what their Bots use).
+func (s *Service) skillRoot(ctx context.Context, scopeName, spaceID, name string) (root string, err error) {
+	sc, err := s.skillScope(ctx, scopeName, spaceID, access.View)
 	if err != nil {
 		return "", err
 	}
@@ -243,7 +368,7 @@ func (s *Service) skillRoot(ctx context.Context, scope, name string) (root strin
 	if err := skills.ValidName(name); err != nil {
 		return "", connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	root = skills.RootFor(s.DataDir(), kind, userID)
+	root = s.root(sc)
 	if !skills.Exists(root, name) {
 		return "", connect.NewError(connect.CodeNotFound, errors.New("skill not found"))
 	}
@@ -251,7 +376,7 @@ func (s *Service) skillRoot(ctx context.Context, scope, name string) (root strin
 }
 
 func (s *Service) ListSkillFiles(ctx context.Context, req *connect.Request[v1.ListSkillFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
-	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
+	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetSpaceId(), req.Msg.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +398,7 @@ func (s *Service) ListSkillFiles(ctx context.Context, req *connect.Request[v1.Li
 }
 
 func (s *Service) ReadSkillFile(ctx context.Context, req *connect.Request[v1.ReadSkillFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
-	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetName())
+	root, err := s.skillRoot(ctx, req.Msg.GetScope(), req.Msg.GetSpaceId(), req.Msg.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -342,11 +467,7 @@ func (s *Service) Enabled(botID string) []skills.Info {
 	var out []skills.Info
 	seen := map[string]bool{}
 	for _, r := range rows {
-		userID := ""
-		if r.Kind == skills.KindPersonal {
-			userID = bot.CreatedBy
-		}
-		info, err := skills.Load(filepath.Join(skills.RootFor(s.DataDir(), r.Kind, userID), r.Name))
+		info, err := skills.Load(filepath.Join(skills.RootFor(s.DataDir(), r.Kind, bot.SpaceID), r.Name))
 		if err != nil {
 			continue
 		}
@@ -422,23 +543,10 @@ func (s *Service) Read(botID, name, rel string) (string, error) {
 	return string(b) + "\n\n" + note, nil
 }
 
-// Propose installs a workspace folder holding a SKILL.md as a personal skill
-// of the Bot's owner and enables it on the Bot.
-func (s *Service) Propose(ctx context.Context, bot *db.Bot, rel string) (string, error) {
-	rel = strings.TrimSpace(strings.TrimPrefix(rel, "/"))
-	if rel == "" {
-		return "", errors.New("path required")
-	}
-	files, err := s.PullTree(ctx, bot.ID, rel)
-	if err != nil {
-		return "", err
-	}
-	return s.InstallFiles(bot, files)
-}
-
 // InstallFiles installs a skill's files (path to bytes, SKILL.md at the top)
-// as a personal skill of the Bot's owner and enables it on the Bot.
-func (s *Service) InstallFiles(bot *db.Bot, files map[string][]byte) (string, error) {
+// as a skill of the Bot's Workspace, installed by userID, and enables it on
+// the Bot.
+func (s *Service) InstallFiles(bot *db.Bot, userID string, files map[string][]byte) (string, error) {
 	md, ok := files["SKILL.md"]
 	if !ok {
 		return "", errors.New("directory must contain SKILL.md")
@@ -447,9 +555,9 @@ func (s *Service) InstallFiles(bot *db.Bot, files map[string][]byte) (string, er
 	if err != nil {
 		return "", err
 	}
-	root := skills.PersonalDir(s.DataDir(), bot.CreatedBy)
+	root := skills.SpaceDir(s.DataDir(), bot.SpaceID)
 	if skills.Exists(root, m.Name) {
-		return "", fmt.Errorf("personal skill %s already exists", m.Name)
+		return "", fmt.Errorf("the workspace already has a skill named %s", m.Name)
 	}
 	dst := filepath.Join(root, m.Name)
 	if err := os.MkdirAll(dst, 0o700); err != nil {
@@ -476,17 +584,18 @@ func (s *Service) InstallFiles(bot *db.Bot, files map[string][]byte) (string, er
 		_ = os.RemoveAll(dst)
 		return "", err
 	}
+	s.recordInstall(bot.SpaceID, info.Name, userID)
 	var clash db.BotSkill
 	s.db.Where("bot_id = ? AND name = ? AND enabled = ?", bot.ID, info.Name, true).Limit(1).Find(&clash)
-	if clash.ID != "" && clash.Kind != skills.KindPersonal {
-		return fmt.Sprintf("installed personal skill %s; not enabled (name already on from %s)", info.Name, clash.Kind), nil
+	if clash.ID != "" && clash.Kind != skills.KindSpace {
+		return fmt.Sprintf("installed workspace skill %s; not enabled (name already on from %s)", info.Name, clash.Kind), nil
 	}
-	row := db.BotSkill{ID: ids.New(), BotID: bot.ID, Kind: skills.KindPersonal, Name: info.Name, Enabled: true, CreatedAt: time.Now()}
+	row := db.BotSkill{ID: ids.New(), BotID: bot.ID, Kind: skills.KindSpace, Name: info.Name, Enabled: true, CreatedAt: time.Now()}
 	if err := s.db.Create(&row).Error; err != nil {
 		return "", err
 	}
 	go s.Push(bot.ID)
-	return "installed personal skill " + info.Name, nil
+	return "installed workspace skill " + info.Name, nil
 }
 
 // Proposal describes a workspace folder offered as a skill.

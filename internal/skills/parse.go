@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	KindLibrary  = "library"
-	KindPersonal = "personal"
-	DefaultName  = "product-self-knowledge"
+	// KindLibrary is the site-wide library; KindSpace one Workspace's own.
+	KindLibrary = "library"
+	KindSpace   = "space"
+	DefaultName = "product-self-knowledge"
 )
 
 type Meta struct {

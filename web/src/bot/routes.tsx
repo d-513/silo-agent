@@ -263,9 +263,10 @@ export function TunnelsRoute() {
 }
 
 export function SkillsRoute() {
+  const { id, bot } = useBotPage();
   return (
     <ScrollPane>
-      <BotSkills botId={useBotPage().id} />
+      <BotSkills botId={id} spaceId={bot.spaceId} />
     </ScrollPane>
   );
 }

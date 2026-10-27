@@ -116,6 +116,10 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 				return chatID
 			case "space_id":
 				return bot.SpaceId
+			case "scope":
+				if access.RPCs[method] == access.SpaceOrLibrary {
+					return "space"
+				}
 			case "id":
 				switch method {
 				case "DecideApproval":
@@ -148,7 +152,7 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 		switch access.RPCs[name] {
 		case access.BotUse, access.BotManage, access.BotAdminister, access.ChatRead, access.ChatWrite, access.AdminOrBotManage:
 			want = []string{access.NoBot}
-		case access.SpaceView, access.SpaceBuild, access.SpaceAdmin, access.SpaceOwn:
+		case access.SpaceView, access.SpaceBuild, access.SpaceAdmin, access.SpaceOwn, access.SpaceOrLibrary:
 			want = []string{access.NoSpace}
 		case access.InstanceAdmin:
 			want = []string{}

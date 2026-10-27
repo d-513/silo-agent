@@ -33,7 +33,13 @@ var homeNames = map[string]string{"en": "Personal", "pl": "Osobisty", "de": "Per
 // Service is the Workspaces domain.
 type Service struct {
 	db *gorm.DB
+	// dropped are told a Workspace's id once its rows are gone, so the
+	// domains that keep things per Workspace (skills on disk) drop theirs.
+	dropped []func(spaceID string)
 }
+
+// OnDelete registers what else goes when a Workspace is deleted.
+func (s *Service) OnDelete(fn func(spaceID string)) { s.dropped = append(s.dropped, fn) }
 
 // New makes the Workspaces domain.
 func New(gdb *gorm.DB) *Service { return &Service{db: gdb} }
@@ -95,6 +101,17 @@ func (s *Service) Create(userID, name, mark string) (*db.Space, error) {
 		return nil, err
 	}
 	return &sp, nil
+}
+
+// HomeID is the id of the user's first own Workspace, or "" if they own none.
+// It is what a client from before Workspaces means by "mine" (the iOS app's
+// personal skills).
+func HomeID(gdb *gorm.DB, userID string) string {
+	var id string
+	gdb.Model(&db.SpaceMember{}).Joins("JOIN spaces ON spaces.id = space_members.space_id").
+		Where("space_members.user_id = ? AND space_members.role = ?", userID, access.RoleOwner).
+		Order("spaces.created_at, spaces.id").Limit(1).Pluck("spaces.id", &id)
+	return id
 }
 
 // Home is the user's first own Workspace, made if they own none: every user
@@ -165,12 +182,19 @@ func (s *Service) Alone(userID string) []db.Space {
 // Delete removes an empty Workspace and its members. The caller has moved
 // or dropped its Bots.
 func (s *Service) Delete(spaceID string) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("space_id = ?", spaceID).Delete(&db.SpaceMember{}).Error; err != nil {
 			return err
 		}
 		return tx.Where("id = ?", spaceID).Delete(&db.Space{}).Error
 	})
+	if err != nil {
+		return err
+	}
+	for _, fn := range s.dropped {
+		fn(spaceID)
+	}
+	return nil
 }
 
 // Forget removes the user from every Workspace and Bot they are still in.

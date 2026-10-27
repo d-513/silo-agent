@@ -1,7 +1,7 @@
 import { BookOpen, Check, RotateCcw, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { fail } from "./errors";
@@ -92,6 +92,7 @@ export function SkillRows({
 }: {
   rows: Skill[];
   columns?: 1 | 2;
+  // onRemove offers Remove on the rows the server says the caller may remove.
   onRemove?: (name: string) => void;
   onOpen: (s: Skill) => void;
 }) {
@@ -106,7 +107,7 @@ export function SkillRows({
           catalog={s.seeded}
           onOpen={() => onOpen(s)}
           actions={
-            onRemove ? (
+            onRemove && (s.kind === "library" || s.canRemove) ? (
               <ArmedButton
                 kind="ghost"
                 size="sm"
@@ -124,8 +125,8 @@ export function SkillRows({
   );
 }
 
-function SkillPeek({ scope, name, onClose }: { scope: string; name: string; onClose: () => void }) {
-  const source = useMemo(() => skillSource(scope, name), [scope, name]);
+function SkillPeek({ scope, name, spaceId = "", onClose }: { scope: string; name: string; spaceId?: string; onClose: () => void }) {
+  const source = useMemo(() => skillSource(scope, name, spaceId), [scope, name, spaceId]);
   return <SkillBrowserOverlay key={scope + name} source={source} onClose={onClose} />;
 }
 
@@ -177,24 +178,28 @@ export function AdminSkills() {
   );
 }
 
-type Scope = "personal" | "library";
+type Scope = "space" | "library";
 
-export function SkillHub() {
-  const [scope, setScope] = useState<Scope>("personal");
-  const personalQ = useQuery(UI.method.listSkills, { scope: "personal" });
+// SpaceSkills is the Workspace's Skills tab in Customize: its own skills,
+// which its Bots switch on, and the site-wide library beside them.
+export function SpaceSkills() {
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/customize/skills" });
+  const [scope, setScope] = useState<Scope>("space");
+  const spaceQ = useQuery(UI.method.listSkills, { scope: "space", spaceId });
   const libraryQ = useQuery(UI.method.listSkills, { scope: "library" });
-  const lists: Record<Scope, Skill[]> | null = personalQ.data && libraryQ.data ? { personal: personalQ.data.skills, library: libraryQ.data.skills } : null;
+  const lists: Record<Scope, Skill[]> | null = spaceQ.data && libraryQ.data ? { space: spaceQ.data.skills, library: libraryQ.data.skills } : null;
   const [search, setSearch] = useState("");
   const [actErr, setErr] = useState("");
-  const failed = personalQ.error ?? libraryQ.error;
+  const failed = spaceQ.error ?? libraryQ.error;
   const err = actErr || (failed ? fail(failed) : "");
   const [open, setOpen] = useState("");
   const load = () => reload(UI.method.listSkills);
   async function remove(name: string) {
     setErr("");
     try {
-      await ui.deleteSkill({ scope: "personal", name });
+      await ui.deleteSkill({ scope: "space", spaceId, name });
       await load();
+      void reload(UI.method.listBotSkills);
     } catch (e) {
       setErr(fail(e));
     }
@@ -209,15 +214,15 @@ export function SkillHub() {
   return (
     <div className={widePage}>
       <Header title={t("Skills")}>
-        {t("Skills are instructions and scripts a Bot loads when a task calls for them. Personal skills are yours; Library skills are site-wide. Enable either on a Bot's Skills tab.")}
+        {t("Skills are instructions and scripts a Bot loads when a task calls for them. Workspace skills belong to this workspace; Library skills are site-wide. Switch either on in a Bot's Skills tab.")}
       </Header>
 
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <TabPills>
-          <TabPill on={scope === "personal"} onClick={() => setScope("personal")} count={lists?.personal.length}>
-            <span>{t("Personal")}</span>
+          <TabPill on={scope === "space"} onClick={() => setScope("space")} count={lists?.space.length}>
+            <span>{t("Workspace")}</span>
           </TabPill>
           <TabPill on={scope === "library"} onClick={() => setScope("library")} count={lists?.library.length}>
             <span>{t("Library")}</span>
@@ -226,28 +231,37 @@ export function SkillHub() {
         <ToolbarSearch value={search} onChange={setSearch} placeholder={t("Search skills...")} />
       </div>
 
-      {scope === "personal" ? <InstallPanel scope="personal" onDone={() => void load()} /> : null}
+      {scope === "space" ? (
+        <InstallPanel
+          scope="space"
+          spaceId={spaceId}
+          onDone={() => {
+            void load();
+            void reload(UI.method.listBotSkills);
+          }}
+        />
+      ) : null}
 
       {lists === null ? (
         err ? null : <SkeletonCards />
       ) : all.length === 0 ? (
-        scope === "personal" ? (
+        scope === "space" ? (
           <EmptyState
-            title={t("No personal skills yet")}
+            title={t("No workspace skills yet")}
             actions={
               <Btn kind="secondary" type="button" onClick={() => setScope("library")}>
                 {t("Browse the Library")}
               </Btn>
             }
           >
-            {t("Install one above to teach your Bots something new, or see what the Library already offers.")}
+            {t("Install one above to teach this workspace's Bots something new, or see what the Library already offers.")}
           </EmptyState>
         ) : (
           <EmptyState title={t("The Library is empty")}>{t("An admin can add site-wide skills in Admin → Skills Library.")}</EmptyState>
         )
       ) : shown.length === 0 ? (
         <NoMatch search={search} onClear={() => setSearch("")} />
-      ) : scope === "personal" ? (
+      ) : scope === "space" ? (
         <SkillRows rows={shown} onRemove={(n) => void remove(n)} onOpen={onOpen} />
       ) : catalog.length > 0 && added.length > 0 ? (
         <div className="space-y-7">
@@ -261,12 +275,12 @@ export function SkillHub() {
       ) : (
         <SkillRows rows={shown} onOpen={onOpen} />
       )}
-      {open ? <SkillPeek scope={scope} name={open} onClose={() => setOpen("")} /> : null}
+      {open ? <SkillPeek scope={scope} name={open} spaceId={spaceId} onClose={() => setOpen("")} /> : null}
     </div>
   );
 }
 
-export function BotSkills({ botId }: { botId: string }) {
+export function BotSkills({ botId, spaceId }: { botId: string; spaceId: string }) {
   const q = useQuery(UI.method.listBotSkills, { botId });
   const rows = q.data?.skills ?? null;
   const [search, setSearch] = useState("");
@@ -285,7 +299,7 @@ export function BotSkills({ botId }: { botId: string }) {
   }
   const shown = filterSkills(rows ?? [], search);
   const library = shown.filter((s) => s.kind === "library");
-  const personal = shown.filter((s) => s.kind === "personal");
+  const space = shown.filter((s) => s.kind === "space");
   const on = (rows ?? []).filter((s) => s.enabled).length;
   return (
     <div className={widePage}>
@@ -312,11 +326,14 @@ export function BotSkills({ botId }: { botId: string }) {
             <div className="space-y-7">
               <Group title={t("Library")} rows={library} empty={t("No Library skills yet. An admin adds them in Admin → Skills Library.")} onToggle={(s) => void toggle(s)} onOpen={setOpen} />
               <Group
-                title={t("Personal")}
-                rows={personal}
+                title={t("Workspace")}
+                rows={space}
                 empty={
                   <>
-                    <Trans i18nKey="You have no personal skills. Install one in the <link>Skill Hub</link>." components={{ link: <Link to="/skills" className="font-medium text-cobalt hover:underline" /> }} />
+                    <Trans
+                      i18nKey="This workspace has no skills of its own yet. Install one in the workspace's <link>Customize</link>."
+                      components={{ link: <Link to="/w/$spaceId/customize/skills" params={{ spaceId }} className="font-medium text-cobalt hover:underline" /> }}
+                    />
                   </>
                 }
                 onToggle={(s) => void toggle(s)}
@@ -326,7 +343,7 @@ export function BotSkills({ botId }: { botId: string }) {
           )}
         </>
       )}
-      {open ? <SkillPeek scope={open.kind} name={open.name} onClose={() => setOpen(null)} /> : null}
+      {open ? <SkillPeek scope={open.kind} name={open.name} spaceId={spaceId} onClose={() => setOpen(null)} /> : null}
     </div>
   );
 }

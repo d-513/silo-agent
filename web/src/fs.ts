@@ -77,15 +77,16 @@ export function botSource(botId: string): FsSource {
   };
 }
 
-export function skillSource(scope: string, name: string): FsSource {
+/** A skill's files: the library's, or a Workspace's (`spaceId`). */
+export function skillSource(scope: string, name: string, spaceId = ""): FsSource {
   return {
     rootLabel: name,
     async list(path) {
-      const r = await ui.listSkillFiles({ scope, name, path });
+      const r = await ui.listSkillFiles({ scope, spaceId, name, path });
       return r.entries.map((e) => asEntry(e));
     },
     async read(path) {
-      return asFile(await ui.readSkillFile({ scope, name, path }));
+      return asFile(await ui.readSkillFile({ scope, spaceId, name, path }));
     },
   };
 }

@@ -144,6 +144,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		return nil, err
 	}
 	a.Skills.EnsureDefaults(id)
+	a.Skills.EnableSpace(id)
 	a.Automations.EnsurePinned(id)
 	a.Connectors.AttachDefaults(ctx, id)
 	if err := a.ensureRunning(ctx, &b); err != nil {

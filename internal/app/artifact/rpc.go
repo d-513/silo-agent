@@ -319,10 +319,14 @@ func (s *Service) DeleteArtifactShare(ctx context.Context, req *connect.Request[
 }
 
 // SaveSkill is the Save skill action on a skill card: it installs the version
-// the card shows as a personal skill and emits the card again as saved.
+// the card shows as a skill of the Bot's Workspace and emits the card again as
+// saved. A guest of the Workspace can use the Bot but not add to its skills.
 func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSkillRequest]) (*connect.Response[v1.SaveSkillResponse], error) {
 	b, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use)
 	if err != nil {
+		return nil, err
+	}
+	if _, _, err := access.Space(ctx, s.db, b.SpaceID, access.Build); err != nil {
 		return nil, err
 	}
 	art, v, err := s.version(b.ID, req.Msg.GetArtifactId(), int(req.Msg.GetVersion()))
@@ -340,7 +344,7 @@ func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSki
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if _, err := s.skills.InstallFiles(b, files); err != nil {
+	if _, err := s.skills.InstallFiles(b, access.User(ctx).ID, files); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	runID := strings.TrimSpace(req.Msg.GetRunId())
@@ -350,7 +354,7 @@ func (s *Service) SaveSkill(ctx context.Context, req *connect.Request[v1.SaveSki
 	if runID != "" {
 		info := Info{
 			Type: TypeSkill, ArtifactID: art.ID, Version: v.N, Name: m.Name, Title: titleOr(art.Title, m.Name), Path: art.Path,
-			Scope: skills.KindPersonal, Status: "saved", Size: v.Size, Kind: v.Kind, Pinned: v.Blob != "", Files: len(files),
+			Scope: skills.KindSpace, Status: "saved", Size: v.Size, Kind: v.Kind, Pinned: v.Blob != "", Files: len(files),
 		}
 		if v.Preview != "" {
 			_ = json.Unmarshal([]byte(v.Preview), &info.Preview)

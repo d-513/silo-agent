@@ -1,6 +1,11 @@
 package app_test
 
 import (
+	"archive/zip"
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -10,6 +15,7 @@ import (
 	"silo.agent/internal/app/space"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/skills"
 )
 
 func TestEveryUserHasAWorkspace(t *testing.T) {
@@ -175,5 +181,145 @@ func TestMark(t *testing.T) {
 		if got := space.Mark(c.name, c.given); got != c.want {
 			t.Errorf("Mark(%q, %q) = %q, want %q", c.name, c.given, got, c.want)
 		}
+	}
+}
+
+// skillZip is a zip of one skill folder.
+func skillZip(t *testing.T, name string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create(name + "/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(w, "---\nname: %s\ndescription: does %s\n---\nbody\n", name, name)
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func spaceSkillsOn(t *testing.T, h *apptest.H, botID string) map[string]bool {
+	t.Helper()
+	res, err := h.Client.ListBotSkills(h.Ctx(), rq(&v1.ListBotSkillsRequest{BotId: botID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	on := map[string]bool{}
+	for _, s := range res.Msg.GetSkills() {
+		if s.GetKind() == skills.KindSpace {
+			on[s.GetName()] = s.GetEnabled()
+		}
+	}
+	return on
+}
+
+func TestWorkspaceSkills(t *testing.T) {
+	h := apptest.New(t)
+	scout := h.CreateBot("Scout")
+	ws := scout.GetSpaceId()
+	other, err := h.Client.CreateSpace(h.Ctx(), rq(&v1.CreateSpaceRequest{Name: "Elsewhere"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	away, err := h.Client.CreateBot(h.Ctx(), rq(&v1.CreateBotRequest{Name: "Away", SpaceId: other.Msg.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := h.Client.InstallSkill(h.Ctx(), rq(&v1.InstallSkillRequest{Scope: "space", SpaceId: ws, Archive: skillZip(t, "triage"), Filename: "triage.zip"}))
+	if err != nil || len(got.Msg.GetInstalled()) != 1 {
+		t.Fatalf("install: %v %v", got, err)
+	}
+	// On in the Workspace's Bots its installer manages, and nowhere else.
+	if on := spaceSkillsOn(t, h, scout.GetId()); !on["triage"] {
+		t.Fatalf("Scout's workspace skills: %v", on)
+	}
+	if on := spaceSkillsOn(t, h, away.Msg.GetId()); len(on) != 0 {
+		t.Fatalf("a Bot of another workspace sees %v", on)
+	}
+	// A Bot made later in the Workspace starts with it on.
+	late, err := h.Client.CreateBot(h.Ctx(), rq(&v1.CreateBotRequest{Name: "Late", SpaceId: ws}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if on := spaceSkillsOn(t, h, late.Msg.GetId()); !on["triage"] {
+		t.Fatalf("a new Bot's workspace skills: %v", on)
+	}
+	listed, _ := h.Client.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "space", SpaceId: ws}))
+	if len(listed.Msg.GetSkills()) != 1 || listed.Msg.GetSkills()[0].GetInstalledBy() != h.Email {
+		t.Fatalf("listed: %v", listed.Msg.GetSkills())
+	}
+	files, err := h.Client.ListSkillFiles(h.Ctx(), rq(&v1.ListSkillFilesRequest{Scope: "space", SpaceId: ws, Name: "triage"}))
+	if err != nil || len(files.Msg.GetEntries()) != 1 {
+		t.Fatalf("files: %v %v", files, err)
+	}
+
+	// Removing it takes it off every Bot of the Workspace.
+	if _, err := h.Client.DeleteSkill(h.Ctx(), rq(&v1.DeleteSkillRequest{Scope: "space", SpaceId: ws, Name: "triage"})); err != nil {
+		t.Fatal(err)
+	}
+	var left int64
+	h.DB.Model(&db.BotSkill{}).Where("kind = ? AND name = ?", skills.KindSpace, "triage").Count(&left)
+	if left != 0 {
+		t.Fatalf("%d Bots still have a removed skill", left)
+	}
+
+	// A Workspace's skills go with it.
+	h.Client.InstallSkill(h.Ctx(), rq(&v1.InstallSkillRequest{Scope: "space", SpaceId: other.Msg.GetId(), Archive: skillZip(t, "notes"), Filename: "notes.zip"}))
+	dir := skills.SpaceDir(h.DataDir, other.Msg.GetId())
+	if _, err := os.Stat(filepath.Join(dir, "notes", "SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
+	h.Client.DeleteBot(h.Ctx(), rq(&v1.GetBotRequest{Id: away.Msg.GetId()}))
+	if _, err := h.Client.DeleteSpace(h.Ctx(), rq(&v1.DeleteSpaceRequest{Id: other.Msg.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("a deleted workspace's skills are still on disk: %v", err)
+	}
+}
+
+func TestOnlyTheInstallerOrAnAdminRemovesASkill(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Scout")
+	ws := bot.GetSpaceId()
+	if _, err := h.Client.InstallSkill(h.Ctx(), rq(&v1.InstallSkillRequest{Scope: "space", SpaceId: ws, Archive: skillZip(t, "triage"), Filename: "t.zip"})); err != nil {
+		t.Fatal(err)
+	}
+	member, _, u := h.Person("member@test.local")
+	h.DB.Create(&db.SpaceMember{SpaceID: ws, UserID: u.ID, Role: access.RoleMember})
+	listed, err := member.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "space", SpaceId: ws}))
+	if err != nil || len(listed.Msg.GetSkills()) != 1 || listed.Msg.GetSkills()[0].GetCanRemove() {
+		t.Fatalf("a member sees the skill, without Remove: %v %v", listed, err)
+	}
+	if _, err := member.DeleteSkill(h.Ctx(), rq(&v1.DeleteSkillRequest{Scope: "space", SpaceId: ws, Name: "triage"})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("a member removing someone else's skill: %v", err)
+	}
+	guest, _, g := h.Person("guest@test.local")
+	h.DB.Create(&db.SpaceMember{SpaceID: ws, UserID: g.ID, Role: access.RoleGuest})
+	if _, err := guest.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "space", SpaceId: ws})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("a guest listing the hub: %v", err)
+	}
+	if _, err := guest.ListSkillFiles(h.Ctx(), rq(&v1.ListSkillFilesRequest{Scope: "space", SpaceId: ws, Name: "triage"})); err != nil {
+		t.Fatalf("a guest reading a skill's files: %v", err)
+	}
+}
+
+// The iOS app from before Workspaces asks for "personal" skills: they are its
+// user's own first Workspace's.
+func TestPersonalScopeIsTheHomeWorkspace(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Scout")
+	if _, err := h.Client.InstallSkill(h.Ctx(), rq(&v1.InstallSkillRequest{Scope: "personal", Archive: skillZip(t, "legacy"), Filename: "l.zip"})); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := h.Client.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "space", SpaceId: bot.GetSpaceId()}))
+	if err != nil || len(listed.Msg.GetSkills()) != 1 || listed.Msg.GetSkills()[0].GetName() != "legacy" {
+		t.Fatalf("a personal install lands in the home workspace: %v %v", listed, err)
+	}
+	if res, err := h.Client.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "personal"})); err != nil || len(res.Msg.GetSkills()) != 1 {
+		t.Fatalf("listing personal: %v %v", res, err)
 	}
 }

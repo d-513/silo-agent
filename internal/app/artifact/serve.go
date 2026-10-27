@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/space"
 	"silo.agent/internal/app/workspace"
 	siloauth "silo.agent/internal/auth"
 	"silo.agent/internal/channels"
@@ -24,7 +25,7 @@ import (
 // ServeHTTP answers the console's downloads (cookie auth):
 //
 //	/artifacts/download?bot_id&artifact_id&v  one version: a file, or a folder as a zip
-//	/artifacts/skill.zip?scope&name           a library or personal skill
+//	/artifacts/skill.zip?scope&space_id&name  a library or Workspace skill
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	u, err := siloauth.UserFromRequest(s.db, r, s.cfg().HostCookies())
 	if err != nil {
@@ -130,17 +131,29 @@ func (s *Service) downloadSkillZip(w http.ResponseWriter, r *http.Request, u *db
 	name := strings.TrimSpace(q.Get("name"))
 	scope := strings.ToLower(strings.TrimSpace(q.Get("scope")))
 	if scope == "" {
-		scope = skills.KindPersonal
+		scope = skills.KindSpace
 	}
-	if scope != skills.KindLibrary && scope != skills.KindPersonal {
-		http.Error(w, "scope is library or personal", http.StatusBadRequest)
+	if scope == "personal" {
+		// A link from before Workspaces (iOS): the user's own first one.
+		scope = skills.KindSpace
+		if q.Get("space_id") == "" {
+			q.Set("space_id", space.HomeID(s.db, u.ID))
+		}
+	}
+	if scope != skills.KindLibrary && scope != skills.KindSpace {
+		http.Error(w, "scope is library or space", http.StatusBadRequest)
 		return
 	}
-	userID := ""
-	if scope == skills.KindPersonal {
-		userID = u.ID
+	spaceID := ""
+	if scope == skills.KindSpace {
+		sp, _, err := access.Space(access.WithUser(r.Context(), u), s.db, q.Get("space_id"), access.View)
+		if err != nil {
+			http.Error(w, "skill not found", http.StatusNotFound)
+			return
+		}
+		spaceID = sp.ID
 	}
-	root := skills.RootFor(s.skills.DataDir(), scope, userID)
+	root := skills.RootFor(s.skills.DataDir(), scope, spaceID)
 	if !skills.Exists(root, name) {
 		http.Error(w, "skill not found", http.StatusNotFound)
 		return

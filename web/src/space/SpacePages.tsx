@@ -14,16 +14,15 @@ import { markOf } from "./pick.ts";
 import { forgetSpace, useCurrentSpace } from "./spaces";
 import { SpaceMark } from "./SpaceTile";
 
-// SpaceRedirect is / and /new: the same page in the Workspace the console is
-// in (the one last opened here, else the first).
-export function SpaceRedirect({ to }: { to: "home" | "new" }) {
+// SpaceRedirect is /, /new and /skills: the same page in the Workspace the
+// console is in (the one last opened here, else the first).
+export function SpaceRedirect({ to }: { to: "home" | "new" | "skills" }) {
   const { space } = useCurrentSpace();
   if (!space) return <PaneFallback />;
-  return to === "new" ? (
-    <Navigate to="/w/$spaceId/new" params={{ spaceId: space.id }} replace />
-  ) : (
-    <Navigate to="/w/$spaceId" params={{ spaceId: space.id }} replace />
-  );
+  const params = { spaceId: space.id };
+  if (to === "new") return <Navigate to="/w/$spaceId/new" params={params} replace />;
+  if (to === "skills") return <Navigate to="/w/$spaceId/customize/skills" params={params} replace />;
+  return <Navigate to="/w/$spaceId" params={params} replace />;
 }
 
 // The name and letters of a Workspace, with its tile as it will look.

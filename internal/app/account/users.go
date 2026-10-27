@@ -2,7 +2,6 @@ package account
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"connectrpc.com/connect"
@@ -12,7 +11,6 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
-	"silo.agent/internal/skills"
 )
 
 // ListUsers is every account, oldest first, and the invite links still out.
@@ -135,10 +133,8 @@ func (s *Service) DeleteUser(ctx context.Context, req *connect.Request[v1.Delete
 	if err := auth.EndUserSessions(s.db, u.ID, ""); err != nil {
 		return nil, err
 	}
+	// Their Workspaces go with their Bots (and those Workspaces' skills).
 	s.host.DropUserBots(ctx, u.ID)
-	if dir := s.cfg().DataDir; dir != "" {
-		_ = os.RemoveAll(skills.PersonalDir(dir, u.ID))
-	}
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("user_id = ?", u.ID).Delete(&db.RecoveryCode{}).Error; err != nil {
 			return err
