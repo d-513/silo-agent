@@ -79,7 +79,7 @@ type Request struct {
 // outside any run. A Bot with no policy, a model that fails or an answer that
 // is not clear all ask.
 func (s *Service) Judge(ctx context.Context, bot *db.Bot, chatID, conn, action, argsJSON string) string {
-	policy := JoinPolicies(s.cfg().Rules.ApprovalPolicy, bot.AutoApprove)
+	policy := JoinPolicies(s.cfg().Rules.ApprovalPolicy, bot.AutoApprove, SpacePolicy(s.db, bot.SpaceID, false))
 	if policy == "" {
 		return security.Ask
 	}
@@ -103,16 +103,52 @@ func (s *Service) Judge(ctx context.Context, bot *db.Bot, chatID, conn, action, 
 // JoinPolicies puts the operator's policy text before the Bot owner's, when
 // there is any: the gate and the output filter read both, and the operator's
 // word stands first. Each part is named, so a reader knows who said what.
-func JoinPolicies(operator, owner string) string {
+// A Workspace's text (optional, last for callers from before Workspaces)
+// sits between the operator's and the owner's.
+func JoinPolicies(operator, owner string, workspace ...string) string {
 	op, own := strings.TrimSpace(operator), strings.TrimSpace(owner)
-	switch {
-	case op == "":
-		return own
-	case own == "":
-		return "The operator's policy:\n" + op
-	default:
-		return "The operator's policy:\n" + op + "\n\nThe owner's policy:\n" + own
+	ws := ""
+	if len(workspace) > 0 {
+		ws = strings.TrimSpace(workspace[0])
 	}
+	if ws == "" {
+		switch {
+		case op == "":
+			return own
+		case own == "":
+			return "The operator's policy:\n" + op
+		default:
+			return "The operator's policy:\n" + op + "\n\nThe owner's policy:\n" + own
+		}
+	}
+	var parts []string
+	if op != "" {
+		parts = append(parts, "The operator's policy:\n"+op)
+	}
+	parts = append(parts, "The workspace's policy:\n"+ws)
+	if own != "" {
+		parts = append(parts, "The owner's policy:\n"+own)
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+// SpacePolicy is a Workspace's policy text, for the output filter.
+func (s *Service) SpacePolicy(spaceID string, output bool) string {
+	return SpacePolicy(s.db, spaceID, output)
+}
+
+// SpacePolicy is a Workspace's approval policy text (output: its output
+// policy), "" when it has none.
+func SpacePolicy(gdb *gorm.DB, spaceID string, output bool) string {
+	if spaceID == "" || gdb == nil {
+		return ""
+	}
+	var sp db.Space
+	gdb.Select("approval_policy", "output_policy").Where("id = ?", spaceID).Limit(1).Find(&sp)
+	if output {
+		return sp.OutputPolicy
+	}
+	return sp.ApprovalPolicy
 }
 
 // request gathers what the gate is shown about one action.

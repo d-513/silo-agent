@@ -182,6 +182,7 @@ func (s *Service) SetSpaceRole(ctx context.Context, req *connect.Request[v1.SetS
 		return nil, err
 	}
 	m.Role = role
+	access.Activity(s.db, sp.ID, access.User(ctx).ID, access.RoleChanged, access.Email(s.db, m.UserID), "", role)
 	return connect.NewResponse(s.person(sp.ID, &m, access.User(ctx).ID)), nil
 }
 
@@ -203,6 +204,7 @@ func (s *Service) TransferSpace(ctx context.Context, req *connect.Request[v1.Tra
 	if err != nil {
 		return nil, err
 	}
+	access.Activity(s.db, sp.ID, me, access.RoleChanged, access.Email(s.db, req.Msg.GetUserId()), "", access.RoleOwner)
 	return connect.NewResponse(s.view(sp, access.RoleAdmin, me)), nil
 }
 
@@ -343,6 +345,11 @@ func (s *Service) Remove(ctx context.Context, spaceID, userID, by string, plan [
 		}
 	}
 	who := access.Email(s.db, userID)
+	if by == userID {
+		access.Activity(s.db, spaceID, userID, access.Left, who, "", "")
+	} else {
+		access.Activity(s.db, spaceID, by, access.Removed, who, "", "")
+	}
 	for _, k := range s.kinds() {
 		for _, l := range s.lenders[k].Lent(spaceID, userID) {
 			s.lenders[k].Unlend(ctx, l, fmt.Sprintf("Signed out: %s left the workspace.", who))
@@ -517,6 +524,11 @@ func (s *Service) SetLendShared(ctx context.Context, req *connect.Request[v1.Set
 		}
 	}
 	lender.SetShared(id, req.Msg.GetShared())
+	detail := "personal"
+	if req.Msg.GetShared() {
+		detail = "shared"
+	}
+	access.Activity(s.db, spaceID, l.LentBy, access.Lent, l.Name, "", detail)
 	return connect.NewResponse(&v1.SetLendSharedResponse{}), nil
 }
 

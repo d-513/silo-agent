@@ -88,6 +88,7 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 		_ = sess.Close()
 		// The sign-in is now the connection's, lent by whoever made it.
 		s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{"lent_by": starter, "shared": shared})
+		access.Activity(s.db, c.SpaceID, starter, access.SignedInTo, c.Name, "", "connector")
 		s.refreshGrants(c.ID)
 	}()
 	select {

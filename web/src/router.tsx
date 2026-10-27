@@ -142,6 +142,8 @@ const spacePeople = createRoute({ getParentRoute: () => spaceSettings, path: "pe
 const spacePeopleIndex = createRoute({ getParentRoute: () => spacePeople, path: "/", component: SpacePeople });
 const spaceInvite = createRoute({ getParentRoute: () => spacePeople, path: "invite", component: SpaceInvitePage });
 const spacePerson = createRoute({ getParentRoute: () => spacePeople, path: "$userId", component: SpaceRemovePage });
+const spaceRules = createRoute({ getParentRoute: () => spaceSettings, path: "rules", component: lazyRouteComponent(() => import("./space/SpaceRules"), "SpaceRules") });
+const spaceActivity = createRoute({ getParentRoute: () => spaceSettings, path: "activity", component: lazyRouteComponent(() => import("./space/SpaceRules"), "SpaceActivityPage") });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
 const spaceCustomize = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/customize", component: SpaceCustomizeLayout });
 const spaceCustomizeIndex = createRoute({
@@ -307,7 +309,7 @@ const routeTree = root.addChildren([
     newSpace,
     space,
     spaceNewBot,
-    spaceSettings.addChildren([spaceGeneral, spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson])]),
+    spaceSettings.addChildren([spaceGeneral, spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson]), spaceRules, spaceActivity]),
     spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive])]),
     skills,
     account,

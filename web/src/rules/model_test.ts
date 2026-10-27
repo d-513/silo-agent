@@ -1,5 +1,6 @@
 import { eq } from "../testing.ts";
-import { countRules, filterSections, sectionDecision, sideSections, withDecision, withSectionDecision } from "./model.ts";
+import assert from "node:assert/strict";
+import { countRules, ruleFloor, filterSections, sectionDecision, sideSections, withDecision, withSectionDecision } from "./model.ts";
 
 const rule = (connector: string, action: string, title: string, decision: string) => ({ connector, action, title, decision }) as any;
 const section = (id: string, title: string, rules: any[]) => ({ id, title, summary: "", rules }) as any;
@@ -49,3 +50,12 @@ eq(flagged[0].rules.map((r) => [r.decision, r.output]), [["allow", "flag"], ["al
 const held = withSectionDecision(both, "gh", "withhold", "output");
 eq(held[2].rules.map((r) => [r.decision, r.output]), [["allow", "withhold"], ["ask", "withhold"]], "a section's output rules, call rules untouched");
 eq(withSectionDecision(both, "secrets", "check", "output")[1].rules[0].output, "", "a rule with no output side gets none");
+
+{
+  // The stricter locked layer holds the floor, and says who it is.
+  const base = { locked: false, operatorDecision: "", operatorOutput: "", spaceLocked: false, spaceDecision: "", spaceOutput: "" };
+  assert.deepEqual(ruleFloor({ ...base }, "decision"), { mode: "", by: "" });
+  assert.deepEqual(ruleFloor({ ...base, locked: true, operatorDecision: "ask" }, "decision"), { mode: "ask", by: "operator" });
+  assert.deepEqual(ruleFloor({ ...base, spaceLocked: true, spaceDecision: "deny", locked: true, operatorDecision: "ask" }, "decision"), { mode: "deny", by: "workspace" });
+  assert.deepEqual(ruleFloor({ ...base, spaceLocked: false, spaceDecision: "deny" }, "decision"), { mode: "", by: "" });
+}

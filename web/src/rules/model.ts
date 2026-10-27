@@ -59,13 +59,25 @@ export function strictness(mode: string, side: Side = "decision"): number {
   return (side === "output" ? outputRank : callRank)[mode] ?? 2;
 }
 
-// floorOf is the operator's locked value for a side of a section: the strictest
-// one among its rules, or "" when the operator holds none of them.
+type Floored = Pick<Rule, "locked" | "operatorDecision" | "operatorOutput" | "spaceLocked" | "spaceDecision" | "spaceOutput">;
+
+// ruleFloor is the locked value a rule's side may not go below, and who
+// holds it: the operator or the Workspace, the stricter of the two; "" when
+// neither holds it.
+export function ruleFloor(r: Floored, side: Side): { mode: string; by: "operator" | "workspace" | "" } {
+  const op = r.locked ? (side === "output" ? r.operatorOutput : r.operatorDecision) : "";
+  const ws = r.spaceLocked ? (side === "output" ? r.spaceOutput : r.spaceDecision) : "";
+  if (ws && (!op || strictness(ws, side) > strictness(op, side))) return { mode: ws, by: "workspace" };
+  if (op) return { mode: op, by: "operator" };
+  return { mode: "", by: "" };
+}
+
+// floorOf is the locked value for a side of a section: the strictest one
+// among its rules, or "" when nobody holds any of them.
 export function floorOf(s: RuleSection, side: Side): string {
   let floor = "";
   for (const r of s.rules) {
-    if (!r.locked) continue;
-    const v = side === "output" ? r.operatorOutput : r.operatorDecision;
+    const v = ruleFloor(r, side).mode;
     if (v && (floor === "" || strictness(v, side) > strictness(floor, side))) floor = v;
   }
   return floor;

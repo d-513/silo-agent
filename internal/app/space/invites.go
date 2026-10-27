@@ -142,6 +142,7 @@ func (s *Service) JoinSpace(ctx context.Context, req *connect.Request[v1.JoinSpa
 	if err := s.db.Create(&db.SpaceMember{SpaceID: sp.ID, UserID: u.ID, Role: inv.Role, InvitedBy: inv.CreatedBy, CreatedAt: time.Now()}).Error; err != nil {
 		return nil, err
 	}
+	access.Activity(s.db, sp.ID, u.ID, access.Joined, u.Email, "", inv.Role)
 	out.Space = s.view(&sp, inv.Role, u.ID)
 	return connect.NewResponse(out), nil
 }

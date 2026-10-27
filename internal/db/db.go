@@ -84,8 +84,26 @@ type Space struct {
 	ID   string `gorm:"primaryKey"`
 	Name string
 	// Mark is the one or two letters on the Workspace's tile.
-	Mark      string
-	CreatedAt time.Time
+	Mark string
+	// ApprovalPolicy and OutputPolicy are the Workspace's policy texts, read
+	// after the operator's and before each Bot's own.
+	ApprovalPolicy string `gorm:"not null;default:''"`
+	OutputPolicy   string `gorm:"not null;default:''"`
+	CreatedAt      time.Time
+}
+
+// SpaceRule is the Workspace's layer of the rules engine, between the
+// operator's (OperatorRule) and each of its Bots' (Rule): a locked row is a
+// floor no Bot of the Workspace may loosen, an unlocked one a default.
+type SpaceRule struct {
+	ID        string `gorm:"primaryKey"`
+	SpaceID   string `gorm:"uniqueIndex:space_rule"`
+	Connector string `gorm:"uniqueIndex:space_rule"`
+	Action    string `gorm:"uniqueIndex:space_rule"`
+	Decision  string `gorm:"not null;default:''"`
+	Output    string `gorm:"not null;default:''"`
+	Locked    bool   `gorm:"not null;default:false"`
+	UpdatedAt time.Time
 }
 
 // SpaceMember is one person in a Workspace. Role is owner, admin, member or
@@ -406,8 +424,14 @@ type AuditEvent struct {
 	ConnectorID string
 	// RunID and ChatID are the run at work on the Bot when it happened, when
 	// exactly one was; empty means it was outside a run.
-	RunID     string
-	ChatID    string
+	RunID  string
+	ChatID string
+	// SpaceID and ActorUser mark a Workspace event (a join, a grant, a Bot
+	// made): its Activity, which the Workspace's admins read. Subject is
+	// what it was about (a person, a connector).
+	SpaceID   string    `gorm:"not null;default:'';index"`
+	ActorUser string    `gorm:"not null;default:''"`
+	Subject   string    `gorm:"not null;default:''"`
 	CreatedAt time.Time `gorm:"index"`
 }
 
@@ -984,7 +1008,7 @@ type MailBody struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &SpaceInvite{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &SpaceInvite{}, &SpaceRule{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},

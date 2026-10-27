@@ -83,45 +83,68 @@ func (a *App) operatorRule(conn, action string) (db.OperatorRule, bool) {
 	return star, starSet
 }
 
-// layeredDecision combines the owner's call rule for an action with the
-// operator's. A locked operator row is a floor: the stricter value wins. An
-// unlocked one is only a default, so it applies while the owner has no rule.
-func (a *App) layeredDecision(botID, conn, action string) (string, bool) {
-	bot, botSet := a.botRule(botID, conn, action)
-	op, opSet := a.operatorRule(conn, action)
-	opVal := ""
-	if opSet {
-		opVal = op.Decision
+// spaceRule is the row of the Bot's Workspace for an action, the action's own
+// or the connector's *.
+func (a *App) spaceRule(botID, conn, action string) (db.SpaceRule, bool) {
+	actions := []string{action}
+	if action != security.Star {
+		actions = append(actions, security.Star)
 	}
-	switch {
-	case opVal != "" && op.Locked && botSet:
-		return security.Stricter(bot, opVal), true
-	case botSet:
-		return bot, true
-	case opVal != "":
-		return opVal, true
+	var rows []db.SpaceRule
+	a.DB.Where("space_id = (?) AND connector = ? AND action IN ?",
+		a.DB.Model(&db.Bot{}).Select("space_id").Where("id = ?", botID), conn, actions).Find(&rows)
+	var star db.SpaceRule
+	var starSet bool
+	for _, r := range rows {
+		if r.Action == action {
+			return r, true
+		}
+		star, starSet = r, true
 	}
-	return "", false
+	return star, starSet
 }
 
-// layeredOutput is the output rule in effect for an action: the owner's, then
-// the operator's, with a locked operator row the floor.
+// floor is one layer above the owner's: its value for the side asked, and
+// whether it is locked.
+type floor struct {
+	value  string
+	locked bool
+}
+
+// layer combines the owner's value with the layers above it, nearest first
+// (the Workspace's, then the operator's). An unlocked layer is a default the
+// nearer ones override; a locked one is a floor, so the stricter value wins.
+func layer(own string, ownSet bool, floors []floor, stricter func(a, b string) string) (string, bool) {
+	val, set := own, ownSet
+	for _, f := range floors {
+		if !set && f.value != "" {
+			val, set = f.value, true
+		}
+	}
+	for _, f := range floors {
+		if f.locked && f.value != "" && set {
+			val = stricter(val, f.value)
+		}
+	}
+	return val, set
+}
+
+// layeredDecision is the call rule in effect for an action: the owner's,
+// then the Workspace's, then the operator's, with each locked layer a floor.
+func (a *App) layeredDecision(botID, conn, action string) (string, bool) {
+	bot, botSet := a.botRule(botID, conn, action)
+	sp, _ := a.spaceRule(botID, conn, action)
+	op, _ := a.operatorRule(conn, action)
+	return layer(bot, botSet, []floor{{sp.Decision, sp.Locked}, {op.Decision, op.Locked}}, security.Stricter)
+}
+
+// layeredOutput is the output rule in effect for an action, layered the same
+// way.
 func (a *App) layeredOutput(botID, conn, action string) (string, bool) {
 	bot := a.botOutput(botID, conn, action)
-	op, opSet := a.operatorRule(conn, action)
-	opVal := ""
-	if opSet {
-		opVal = op.Output
-	}
-	switch {
-	case opVal != "" && op.Locked && bot != "":
-		return security.StricterOutput(bot, opVal), true
-	case bot != "":
-		return bot, true
-	case opVal != "":
-		return opVal, true
-	}
-	return "", false
+	sp, _ := a.spaceRule(botID, conn, action)
+	op, _ := a.operatorRule(conn, action)
+	return layer(bot, bot != "", []floor{{sp.Output, sp.Locked}, {op.Output, op.Locked}}, security.StricterOutput)
 }
 
 // ListOperatorRules lists the installation's rule rows and its policy text.

@@ -121,6 +121,17 @@ func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleReques
 	setDecision := m.Output == nil || m.GetDecision() != ""
 	// A locked operator row is the floor: the owner may tighten it, never
 	// loosen it. Refused here, so the UI cannot be talked around.
+	// So is a locked row of the Bot's Workspace.
+	if sp, ok := a.spaceRule(m.GetBotId(), m.GetConnector(), m.GetAction()); ok && sp.Locked {
+		if setDecision && sp.Decision != "" && security.Looser(security.Rule(m.GetDecision()), sp.Decision) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+				"your workspace holds %s.%s at %s", m.GetConnector(), m.GetAction(), modeWord(sp.Decision)))
+		}
+		if m.Output != nil && sp.Output != "" && security.LooserOutput(security.Output(m.GetOutput()), sp.Output) {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+				"your workspace holds %s.%s results at %s", m.GetConnector(), m.GetAction(), outputWord(sp.Output)))
+		}
+	}
 	if op, ok := a.operatorRule(m.GetConnector(), m.GetAction()); ok && op.Locked {
 		if setDecision && op.Decision != "" && security.Looser(security.Rule(m.GetDecision()), op.Decision) {
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
@@ -280,6 +291,9 @@ func (a *App) effectiveRule(botID, conn, action, title string, stored map[string
 	}
 	if op, ok := a.operatorRule(conn, action); ok {
 		r.OperatorDecision, r.OperatorOutput, r.Locked = op.Decision, op.Output, op.Locked
+	}
+	if sp, ok := a.spaceRule(botID, conn, action); ok {
+		r.SpaceDecision, r.SpaceOutput, r.SpaceLocked = sp.Decision, sp.Output, sp.Locked
 	}
 	return r
 }

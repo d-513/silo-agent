@@ -192,6 +192,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err != nil {
 		return nil, err
 	}
+	access.Activity(a.DB, sp.ID, u.ID, access.BotCreated, b.Name, id, "")
 	a.Skills.EnsureDefaults(id)
 	a.Skills.EnableSpace(id, req.Msg.GetSkillsOff()...)
 	a.Automations.EnsurePinned(id)
@@ -351,6 +352,8 @@ func (a *App) DeleteBot(ctx context.Context, req *connect.Request[v1.GetBotReque
 		return nil, err
 	}
 	a.dropBot(ctx, b)
+	// After the drop, and on no Bot: the drop takes the Bot's own audit rows.
+	access.Activity(a.DB, b.SpaceID, access.User(ctx).ID, access.BotDeleted, b.Name, "", "")
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
 

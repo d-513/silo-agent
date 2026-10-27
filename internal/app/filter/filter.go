@@ -111,6 +111,8 @@ type Call struct {
 type Service struct {
 	cfg    func() config.Config
 	source func(chatID string) approval.Source
+	// space is a Workspace's output policy text.
+	space  func(spaceID string) string
 	judges map[string]Judge
 
 	mu    sync.Mutex
@@ -124,7 +126,7 @@ type cached struct {
 
 func New(cfg func() config.Config, m *models.Service, a *approval.Service) *Service {
 	return &Service{
-		cfg: cfg, source: a.Source,
+		cfg: cfg, source: a.Source, space: func(id string) string { return a.SpacePolicy(id, true) },
 		judges: map[string]Judge{
 			llm.KindText:     textJudge{cfg: cfg, models: m},
 			llm.KindDecision: decisionJudge{models: m},
@@ -145,7 +147,11 @@ func Policy(bot *db.Bot) string {
 // policy is what a result is judged by: the operator's text before the Bot's
 // own policy (or the built-in one).
 func (s *Service) policy(bot *db.Bot) string {
-	return approval.JoinPolicies(s.cfg().Rules.OutputPolicy, Policy(bot))
+	ws := ""
+	if s.space != nil {
+		ws = s.space(bot.SpaceID)
+	}
+	return approval.JoinPolicies(s.cfg().Rules.OutputPolicy, Policy(bot), ws)
 }
 
 // Check judges one result. It never fails: whatever keeps a model from giving

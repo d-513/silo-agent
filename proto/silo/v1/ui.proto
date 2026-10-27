@@ -78,6 +78,16 @@ service UI {
   // their identity: shared, any Bot of the Workspace may get it; personal
   // (the default), only Bots they alone use.
   rpc SetLendShared(SetLendSharedRequest) returns (SetLendSharedResponse);
+  // The Workspace's layer of the rules engine, between the operator's and
+  // each Bot's (a locked row is a floor no Bot of it may loosen), and its
+  // policy texts, read after the operator's and before the Bot's.
+  rpc ListSpaceRules(ListSpaceRulesRequest) returns (ListSpaceRulesResponse);
+  rpc SetSpaceRule(SetSpaceRuleRequest) returns (OperatorRule);
+  rpc DeleteSpaceRule(DeleteSpaceRuleRequest) returns (DeleteSpaceRuleResponse);
+  rpc UpdateSpacePolicy(UpdateSpacePolicyRequest) returns (ListSpaceRulesResponse);
+  // What happened in the Workspace: people, Bots made and deleted, grants,
+  // sign-ins and lending. Never what a Bot did with a grant.
+  rpc ListSpaceActivity(ListSpaceActivityRequest) returns (ListSpaceActivityResponse);
 
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
@@ -852,6 +862,62 @@ message SetLendSharedRequest {
 }
 
 message SetLendSharedResponse {}
+
+message ListSpaceRulesRequest {
+  string space_id = 1;
+}
+
+message ListSpaceRulesResponse {
+  repeated OperatorRule rules = 1;
+  string approval_policy = 2;
+  string output_policy = 3;
+}
+
+message SetSpaceRuleRequest {
+  string space_id = 1;
+  string connector = 2;
+  string action = 3;
+  string decision = 4;
+  string output = 5;
+  bool locked = 6;
+}
+
+message DeleteSpaceRuleRequest {
+  string space_id = 1;
+  string connector = 2;
+  string action = 3;
+}
+
+message DeleteSpaceRuleResponse {}
+
+message UpdateSpacePolicyRequest {
+  string space_id = 1;
+  string approval_policy = 2;
+  string output_policy = 3;
+}
+
+message ListSpaceActivityRequest {
+  string space_id = 1;
+}
+
+// SpaceActivity is one thing that happened in a Workspace.
+message SpaceActivity {
+  string id = 1;
+  // Who did it (email); empty for Silo itself.
+  string actor = 2;
+  // joined, left, removed, role_changed, bot_created, bot_deleted, granted,
+  // revoked, lent, signed_in, signed_out.
+  string kind = 3;
+  // What it was about: a person, a Bot, a connector or drive.
+  string subject = 4;
+  string bot_name = 5;
+  string detail = 6;
+  string created_at = 7;
+}
+
+message ListSpaceActivityResponse {
+  repeated SpaceActivity events = 1;
+}
 
 // OtherBot is a Bot of the Workspace the caller (an admin) is not on: enough
 // to know it is there and to delete it, nothing that opens it.
@@ -2242,6 +2308,10 @@ message Rule {
   string operator_decision = 8;
   string operator_output = 9;
   bool locked = 10;
+  // The Bot's Workspace's layer, likewise.
+  string space_decision = 11;
+  string space_output = 12;
+  bool space_locked = 13;
 }
 
 message RuleSection {

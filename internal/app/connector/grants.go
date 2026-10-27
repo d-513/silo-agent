@@ -284,6 +284,7 @@ func (s *Service) GrantConnector(ctx context.Context, req *connect.Request[v1.Gr
 	if err != nil {
 		return nil, err
 	}
+	access.Activity(s.db, c.SpaceID, access.User(ctx).ID, access.Granted, c.Name, row.BotID, "connector")
 	return connect.NewResponse(s.grantProto(ctx, row, c)), nil
 }
 
@@ -296,6 +297,9 @@ func (s *Service) RevokeConnector(ctx context.Context, req *connect.Request[v1.R
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("the Bot does not use that connector"))
 	}
 	s.revoke(ctx, &row)
+	if c, err := s.connection(row.ConnectorID); err == nil {
+		access.Activity(s.db, c.SpaceID, access.User(ctx).ID, access.Revoked, c.Name, row.BotID, "connector")
+	}
 	return connect.NewResponse(&v1.RevokeConnectorResponse{}), nil
 }
 

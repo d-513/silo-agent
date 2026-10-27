@@ -232,6 +232,7 @@ func (s *Service) GrantDrive(ctx context.Context, req *connect.Request[v1.GrantD
 	if err := s.grant(b.ID, &d, req.Msg.GetReadOnly()); err != nil {
 		return nil, err
 	}
+	access.Activity(s.db, d.SpaceID, access.User(ctx).ID, access.Granted, d.Name, b.ID, "drive")
 	s.applyDrives(b.ID)
 	return connect.NewResponse(s.spaceDrive(ctx, &d)), nil
 }
@@ -266,6 +267,10 @@ func (s *Service) RevokeDrive(ctx context.Context, req *connect.Request[v1.Revok
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("the Bot does not mount that drive"))
 	}
 	s.revoked(b.ID, req.Msg.GetDriveId())
+	var d db.Drive
+	if s.db.Where("id = ?", req.Msg.GetDriveId()).Limit(1).Find(&d); d.ID != "" {
+		access.Activity(s.db, d.SpaceID, access.User(ctx).ID, access.Revoked, d.Name, b.ID, "drive")
+	}
 	return connect.NewResponse(&v1.RevokeDriveResponse{}), nil
 }
 
@@ -575,6 +580,9 @@ func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter string
 		"lent_by":      starter,
 		"shared":       shared,
 	})
+	if !d.Draft {
+		access.Activity(s.db, d.SpaceID, starter, access.SignedInTo, d.Name, "", "drive")
+	}
 	if !d.Draft {
 		s.applyAll(d.ID)
 	}

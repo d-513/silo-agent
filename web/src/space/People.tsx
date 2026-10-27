@@ -1,6 +1,6 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { Link, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { Link2, SlidersHorizontal, Trash2, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { History, Link2, ListChecks, SlidersHorizontal, Trash2, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { ui } from "../api";
 import { TabStrip } from "../bot/SectionTabs";
@@ -33,23 +33,32 @@ export function Initials({ email, size = 28 }: { email: string; size?: number })
   );
 }
 
-type SettingsTab = "general" | "people";
-const tabs: readonly { tab: SettingsTab; to: "/w/$spaceId/settings" | "/w/$spaceId/settings/people"; label: string; icon: LucideIcon }[] = [
+type SettingsTab = "general" | "people" | "rules" | "activity";
+const tabs: readonly {
+  tab: SettingsTab;
+  to: "/w/$spaceId/settings" | "/w/$spaceId/settings/people" | "/w/$spaceId/settings/rules" | "/w/$spaceId/settings/activity";
+  label: string;
+  icon: LucideIcon;
+  admin?: boolean;
+}[] = [
   { tab: "general", to: "/w/$spaceId/settings", label: msg("General"), icon: SlidersHorizontal },
   { tab: "people", to: "/w/$spaceId/settings/people", label: msg("People"), icon: Users },
+  { tab: "rules", to: "/w/$spaceId/settings/rules", label: msg("Rules"), icon: ListChecks, admin: true },
+  { tab: "activity", to: "/w/$spaceId/settings/activity", label: msg("Activity"), icon: History, admin: true },
 ];
 
 // The Workspace's settings: General and People, one tab each.
 export function SpaceSettingsLayout() {
   const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings" });
   const { pathname } = useLocation();
-  const open: SettingsTab = pathname.startsWith(`/w/${spaceId}/settings/people`) ? "people" : "general";
+  const admin = canAdmin(useSpaceRole(spaceId).role);
+  const open: SettingsTab = tabs.find((x) => x.tab !== "general" && pathname.startsWith(`/w/${spaceId}/settings/${x.tab}`))?.tab ?? "general";
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-4 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:px-5">
         <h1 className="hidden shrink-0 text-card-title leading-5 wide:block">{t("Workspace settings")}</h1>
         <TabStrip tab={open}>
-          {tabs.map(({ tab, to, label, icon: Icon }) => {
+          {tabs.filter((x) => admin || !x.admin).map(({ tab, to, label, icon: Icon }) => {
             const on = tab === open;
             return (
               <Link
