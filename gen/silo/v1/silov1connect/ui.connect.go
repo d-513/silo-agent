@@ -332,6 +332,12 @@ const (
 	UICreateBotConnectorProcedure = "/silo.v1.UI/CreateBotConnector"
 	// UIDetachConnectorProcedure is the fully-qualified name of the UI's DetachConnector RPC.
 	UIDetachConnectorProcedure = "/silo.v1.UI/DetachConnector"
+	// UIListSpaceConnectorsProcedure is the fully-qualified name of the UI's ListSpaceConnectors RPC.
+	UIListSpaceConnectorsProcedure = "/silo.v1.UI/ListSpaceConnectors"
+	// UIGrantConnectorProcedure is the fully-qualified name of the UI's GrantConnector RPC.
+	UIGrantConnectorProcedure = "/silo.v1.UI/GrantConnector"
+	// UIRevokeConnectorProcedure is the fully-qualified name of the UI's RevokeConnector RPC.
+	UIRevokeConnectorProcedure = "/silo.v1.UI/RevokeConnector"
 	// UIRefreshBotConnectorProcedure is the fully-qualified name of the UI's RefreshBotConnector RPC.
 	UIRefreshBotConnectorProcedure = "/silo.v1.UI/RefreshBotConnector"
 	// UIStartConnectorAuthProcedure is the fully-qualified name of the UI's StartConnectorAuth RPC.
@@ -622,7 +628,16 @@ type UIClient interface {
 	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
 	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	CreateBotConnector(context.Context, *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	// DetachConnector takes a connection away from the Bot (its grant, by id);
+	// the connection stays in the Workspace.
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
+	// A Workspace's connections, for its Customize hub and a Bot's Workspace
+	// pill.
+	ListSpaceConnectors(context.Context, *connect.Request[v1.ListSpaceConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
+	// Give a Workspace connection to a Bot of the same Workspace, or take it
+	// away from one.
+	GrantConnector(context.Context, *connect.Request[v1.GrantConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	RevokeConnector(context.Context, *connect.Request[v1.RevokeConnectorRequest]) (*connect.Response[v1.RevokeConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
 	SeedConnectors(context.Context, *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error)
@@ -1563,6 +1578,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("DetachConnector")),
 			connect.WithClientOptions(opts...),
 		),
+		listSpaceConnectors: connect.NewClient[v1.ListSpaceConnectorsRequest, v1.ListConnectorsResponse](
+			httpClient,
+			baseURL+UIListSpaceConnectorsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSpaceConnectors")),
+			connect.WithClientOptions(opts...),
+		),
+		grantConnector: connect.NewClient[v1.GrantConnectorRequest, v1.BotConnector](
+			httpClient,
+			baseURL+UIGrantConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("GrantConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeConnector: connect.NewClient[v1.RevokeConnectorRequest, v1.RevokeConnectorResponse](
+			httpClient,
+			baseURL+UIRevokeConnectorProcedure,
+			connect.WithSchema(uIMethods.ByName("RevokeConnector")),
+			connect.WithClientOptions(opts...),
+		),
 		refreshBotConnector: connect.NewClient[v1.RefreshBotConnectorRequest, v1.BotConnector](
 			httpClient,
 			baseURL+UIRefreshBotConnectorProcedure,
@@ -1926,6 +1959,9 @@ type uIClient struct {
 	attachConnector          *connect.Client[v1.AttachConnectorRequest, v1.BotConnector]
 	createBotConnector       *connect.Client[v1.CreateBotConnectorRequest, v1.BotConnector]
 	detachConnector          *connect.Client[v1.DetachConnectorRequest, v1.DetachConnectorResponse]
+	listSpaceConnectors      *connect.Client[v1.ListSpaceConnectorsRequest, v1.ListConnectorsResponse]
+	grantConnector           *connect.Client[v1.GrantConnectorRequest, v1.BotConnector]
+	revokeConnector          *connect.Client[v1.RevokeConnectorRequest, v1.RevokeConnectorResponse]
 	refreshBotConnector      *connect.Client[v1.RefreshBotConnectorRequest, v1.BotConnector]
 	startConnectorAuth       *connect.Client[v1.StartConnectorAuthRequest, v1.StartConnectorAuthResponse]
 	seedConnectors           *connect.Client[v1.SeedConnectorsRequest, v1.SeedConnectorsResponse]
@@ -2703,6 +2739,21 @@ func (c *uIClient) DetachConnector(ctx context.Context, req *connect.Request[v1.
 	return c.detachConnector.CallUnary(ctx, req)
 }
 
+// ListSpaceConnectors calls silo.v1.UI.ListSpaceConnectors.
+func (c *uIClient) ListSpaceConnectors(ctx context.Context, req *connect.Request[v1.ListSpaceConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
+	return c.listSpaceConnectors.CallUnary(ctx, req)
+}
+
+// GrantConnector calls silo.v1.UI.GrantConnector.
+func (c *uIClient) GrantConnector(ctx context.Context, req *connect.Request[v1.GrantConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return c.grantConnector.CallUnary(ctx, req)
+}
+
+// RevokeConnector calls silo.v1.UI.RevokeConnector.
+func (c *uIClient) RevokeConnector(ctx context.Context, req *connect.Request[v1.RevokeConnectorRequest]) (*connect.Response[v1.RevokeConnectorResponse], error) {
+	return c.revokeConnector.CallUnary(ctx, req)
+}
+
 // RefreshBotConnector calls silo.v1.UI.RefreshBotConnector.
 func (c *uIClient) RefreshBotConnector(ctx context.Context, req *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	return c.refreshBotConnector.CallUnary(ctx, req)
@@ -3096,7 +3147,16 @@ type UIHandler interface {
 	ListBotConnectors(context.Context, *connect.Request[v1.ListBotConnectorsRequest]) (*connect.Response[v1.ListBotConnectorsResponse], error)
 	AttachConnector(context.Context, *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	CreateBotConnector(context.Context, *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	// DetachConnector takes a connection away from the Bot (its grant, by id);
+	// the connection stays in the Workspace.
 	DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error)
+	// A Workspace's connections, for its Customize hub and a Bot's Workspace
+	// pill.
+	ListSpaceConnectors(context.Context, *connect.Request[v1.ListSpaceConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
+	// Give a Workspace connection to a Bot of the same Workspace, or take it
+	// away from one.
+	GrantConnector(context.Context, *connect.Request[v1.GrantConnectorRequest]) (*connect.Response[v1.BotConnector], error)
+	RevokeConnector(context.Context, *connect.Request[v1.RevokeConnectorRequest]) (*connect.Response[v1.RevokeConnectorResponse], error)
 	RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error)
 	StartConnectorAuth(context.Context, *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error)
 	SeedConnectors(context.Context, *connect.Request[v1.SeedConnectorsRequest]) (*connect.Response[v1.SeedConnectorsResponse], error)
@@ -4033,6 +4093,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("DetachConnector")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListSpaceConnectorsHandler := connect.NewUnaryHandler(
+		UIListSpaceConnectorsProcedure,
+		svc.ListSpaceConnectors,
+		connect.WithSchema(uIMethods.ByName("ListSpaceConnectors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGrantConnectorHandler := connect.NewUnaryHandler(
+		UIGrantConnectorProcedure,
+		svc.GrantConnector,
+		connect.WithSchema(uIMethods.ByName("GrantConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRevokeConnectorHandler := connect.NewUnaryHandler(
+		UIRevokeConnectorProcedure,
+		svc.RevokeConnector,
+		connect.WithSchema(uIMethods.ByName("RevokeConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIRefreshBotConnectorHandler := connect.NewUnaryHandler(
 		UIRefreshBotConnectorProcedure,
 		svc.RefreshBotConnector,
@@ -4541,6 +4619,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uICreateBotConnectorHandler.ServeHTTP(w, r)
 		case UIDetachConnectorProcedure:
 			uIDetachConnectorHandler.ServeHTTP(w, r)
+		case UIListSpaceConnectorsProcedure:
+			uIListSpaceConnectorsHandler.ServeHTTP(w, r)
+		case UIGrantConnectorProcedure:
+			uIGrantConnectorHandler.ServeHTTP(w, r)
+		case UIRevokeConnectorProcedure:
+			uIRevokeConnectorHandler.ServeHTTP(w, r)
 		case UIRefreshBotConnectorProcedure:
 			uIRefreshBotConnectorHandler.ServeHTTP(w, r)
 		case UIStartConnectorAuthProcedure:
@@ -5210,6 +5294,18 @@ func (UnimplementedUIHandler) CreateBotConnector(context.Context, *connect.Reque
 
 func (UnimplementedUIHandler) DetachConnector(context.Context, *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DetachConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSpaceConnectors(context.Context, *connect.Request[v1.ListSpaceConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaceConnectors is not implemented"))
+}
+
+func (UnimplementedUIHandler) GrantConnector(context.Context, *connect.Request[v1.GrantConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GrantConnector is not implemented"))
+}
+
+func (UnimplementedUIHandler) RevokeConnector(context.Context, *connect.Request[v1.RevokeConnectorRequest]) (*connect.Response[v1.RevokeConnectorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RevokeConnector is not implemented"))
 }
 
 func (UnimplementedUIHandler) RefreshBotConnector(context.Context, *connect.Request[v1.RefreshBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {

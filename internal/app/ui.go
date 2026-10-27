@@ -21,7 +21,6 @@ import (
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/workspace"
-	"silo.agent/internal/catalog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/ids"
@@ -343,7 +342,6 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 		c := ch
 		a.Channels.Delete(&c)
 	}
-	a.DB.Where("bot_id = ? AND kind = ?", b.ID, catalog.KindCustom).Delete(&db.Connector{})
 	a.Drives.Drop(ctx, b.ID)
 	a.Egress.Drop(ctx, b.ID)
 	a.Spaces.DropBot(b.ID)

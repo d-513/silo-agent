@@ -142,23 +142,6 @@ func TestRecoverOrphans(t *testing.T) {
 	}
 }
 
-func TestBackfillCopiesSharedAttachment(t *testing.T) {
-	h := apptest.New(t, apptest.WithBeforeApp(func(gdb *gorm.DB) {
-		gdb.Create(&db.Connector{ID: "lib1", Kind: "library", Name: "Old", Type: "mcp", Transport: "http", HTTPURL: "http://x", Auth: "none"})
-		gdb.Create(&db.BotConnector{ID: "bc1", BotID: "b1", ConnectorID: "lib1"})
-	}))
-	var bc db.BotConnector
-	h.DB.First(&bc, "id = ?", "bc1")
-	if bc.ConnectorID == "lib1" {
-		t.Fatal("attachment still points at the library row")
-	}
-	var inst db.Connector
-	h.DB.First(&inst, "id = ?", bc.ConnectorID)
-	if inst.Kind != "custom" || inst.SourceID != "lib1" || inst.HTTPURL != "http://x" {
-		t.Fatalf("backfilled copy %+v", inst)
-	}
-}
-
 func TestStopRun(t *testing.T) {
 	dummy.Reset()
 	dummy.Script("Test_50",

@@ -43,9 +43,9 @@ func decodeStrMap(raw string) map[string]string {
 	return out
 }
 
-// builtinConfig merges a row's plain and secret values over field defaults,
-// and carries the time zone of the Bot the copy belongs to.
-func (s *Service) builtinConfig(d builtin.Descriptor, c *db.Connector) builtin.Config {
+// builtinConfig merges a connection's plain and secret values over field
+// defaults, and carries the time zone of the Bot it runs for.
+func (s *Service) builtinConfig(d builtin.Descriptor, c *db.Connector, botID string) builtin.Config {
 	vals := decodeStrMap(c.ConfigJSON)
 	for k, v := range decodeStrMap(c.SecretsJSON) {
 		vals[k] = v
@@ -53,8 +53,8 @@ func (s *Service) builtinConfig(d builtin.Descriptor, c *db.Connector) builtin.C
 	cfg := builtin.Resolve(d, vals)
 	// The account's servers are whatever its owner typed in.
 	cfg.Net = s.cfg().OutboundPolicy()
-	if c.BotID != "" {
-		cfg.TimeZone = zone.OfBot(s.db, c.BotID).String()
+	if botID != "" {
+		cfg.TimeZone = zone.OfBot(s.db, botID).String()
 	}
 	return cfg
 }
@@ -123,7 +123,7 @@ func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *d
 		return fmt.Errorf("unknown built-in connector %q", c.Builtin)
 	}
 	d := bc.Descriptor()
-	cfg := s.builtinConfig(d, c)
+	cfg := s.builtinConfig(d, c, row.BotID)
 	if f := builtin.Missing(d, cfg); f != nil {
 		row.AuthStatus = StatusNeedsAuth
 		row.StatusDetail = "Fill in " + f.Label + " in the connector's settings."
@@ -160,7 +160,7 @@ func (s *Service) RunBuiltin(ctx context.Context, bot *db.Bot, c *db.Connector, 
 	if !ok {
 		return "", fmt.Errorf("%s has no action %q", c.Name, action)
 	}
-	cfg := s.builtinConfig(d, c)
+	cfg := s.builtinConfig(d, c, bot.ID)
 	mask := s.mask(bot.ID)
 	for k, v := range decodeStrMap(c.SecretsJSON) {
 		if f, ok := d.Field(k); ok && f.Type == builtin.FieldSecret {
@@ -235,9 +235,10 @@ func (e botEnv) WriteFile(ctx context.Context, rel string, data []byte) error {
 	return err
 }
 
-// attachBuiltin copies a builtin library preset onto a Bot with its config.
-func (s *Service) attachBuiltin(ctx context.Context, botID string, lib *db.Connector, m *v1.CreateBotConnectorRequest) (*v1.BotConnector, error) {
-	row := cloneLibrary(lib, botID)
+// builtinConnection makes a Workspace connection from a builtin library preset
+// with the config the add form gave.
+func (s *Service) builtinConnection(spaceID, userID string, lib *db.Connector, m *v1.CreateBotConnectorRequest) (*db.Connector, error) {
+	row := cloneLibrary(lib)
 	if n := strings.TrimSpace(m.GetName()); n != "" {
 		row.Name = n
 	}
@@ -256,7 +257,16 @@ func (s *Service) attachBuiltin(ctx context.Context, botID string, lib *db.Conne
 	if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return s.putBotConnector(ctx, botID, row)
+	c, err := s.createConnection(spaceID, userID, row)
+	if err != nil {
+		return nil, err
+	}
+	// Whoever filled in an account's password lends it.
+	if len(decodeStrMap(c.SecretsJSON)) > 0 {
+		c.LentBy = userID
+		s.db.Model(c).Update("lent_by", userID)
+	}
+	return c, nil
 }
 
 // libraryBuiltin loads a library row when it is a builtin preset.

@@ -87,7 +87,7 @@ func (s *Service) toolDef(link *db.BotConnector, c *db.Connector, action string)
 // server dropped it). Secrets are masked out of the result.
 func (s *Service) Call(ctx context.Context, bot *db.Bot, link *db.BotConnector, c *db.Connector, action, argsJSON string) (string, error) {
 	mask := s.mask(bot.ID)
-	if hdr, err := mcpx.HeadersFromJSON(s.ResolveConnector(c).HeadersJSON); err == nil {
+	if hdr, err := mcpx.HeadersFromJSON(s.Resolve(c, bot.ID).HeadersJSON); err == nil {
 		for _, v := range hdr {
 			mask.Add(v)
 		}

@@ -25,7 +25,7 @@ func TestResolveConnectorExpandsTechnicalFields(t *testing.T) {
 		EnvJSON:           `[{"name":"TENANT","value":"${TENANT}"},{"name":"CRED","secret":"my-secret"}]`,
 		Prompt:            "Use ${TENANT} context.",
 	}
-	got := s.ResolveConnector(c)
+	got := s.Resolve(c, "")
 
 	if got.HTTPURL != "https://acme.example.com:8443/mcp" {
 		t.Errorf("HTTPURL %q", got.HTTPURL)
@@ -70,7 +70,7 @@ func TestResolveConnectorNoVarsIsIdentity(t *testing.T) {
 	}
 	s := &Service{store: store, cfg: store.Config}
 	c := &db.Connector{HTTPURL: "https://${MISSING}.example.com"}
-	if got := s.ResolveConnector(c); got != c {
+	if got := s.Resolve(c, ""); got != c {
 		t.Fatalf("expected identity when no vars configured")
 	}
 	// With vars configured but no match, the reference is left untouched.
@@ -79,7 +79,7 @@ func TestResolveConnectorNoVarsIsIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	s2 := &Service{store: store2, cfg: store2.Config}
-	if got := s2.ResolveConnector(c); got.HTTPURL != "https://${MISSING}.example.com" {
+	if got := s2.Resolve(c, ""); got.HTTPURL != "https://${MISSING}.example.com" {
 		t.Fatalf("unknown ref should stay, got %q", got.HTTPURL)
 	}
 }

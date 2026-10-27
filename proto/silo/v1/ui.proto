@@ -238,7 +238,16 @@ service UI {
   rpc ListBotConnectors(ListBotConnectorsRequest) returns (ListBotConnectorsResponse);
   rpc AttachConnector(AttachConnectorRequest) returns (BotConnector);
   rpc CreateBotConnector(CreateBotConnectorRequest) returns (BotConnector);
+  // DetachConnector takes a connection away from the Bot (its grant, by id);
+  // the connection stays in the Workspace.
   rpc DetachConnector(DetachConnectorRequest) returns (DetachConnectorResponse);
+  // A Workspace's connections, for its Customize hub and a Bot's Workspace
+  // pill.
+  rpc ListSpaceConnectors(ListSpaceConnectorsRequest) returns (ListConnectorsResponse);
+  // Give a Workspace connection to a Bot of the same Workspace, or take it
+  // away from one.
+  rpc GrantConnector(GrantConnectorRequest) returns (BotConnector);
+  rpc RevokeConnector(RevokeConnectorRequest) returns (RevokeConnectorResponse);
   rpc RefreshBotConnector(RefreshBotConnectorRequest) returns (BotConnector);
   rpc StartConnectorAuth(StartConnectorAuthRequest) returns (StartConnectorAuthResponse);
 
@@ -2474,6 +2483,20 @@ message Connector {
   // completion tools named `<slug>__<action>`, as well as through Python's
   // `import tools`. On a library preset it is what a new copy starts with.
   bool expose_completion = 31;
+  // A Workspace's connection (kind custom): its Workspace, who added it and
+  // whose identity it carries (emails; lent_by is empty when no person's
+  // credential is in it), whether its lender shared it with the Workspace,
+  // whether an OAuth connection is signed in, the Bots it is granted to that
+  // the caller is on (used_by, Bot ids) and how many others, and whether the
+  // caller may edit or delete it (who added it, or a Workspace admin).
+  string space_id = 32;
+  string created_by = 33;
+  string lent_by = 34;
+  bool shared = 35;
+  bool signed_in = 36;
+  repeated string used_by = 37;
+  int32 used_by_hidden = 38;
+  bool can_edit = 39;
 }
 
 message ListConnectorsRequest {}
@@ -2546,6 +2569,9 @@ message DeleteConnectorRequest {
 
 message DeleteConnectorResponse {}
 
+// BotConnector is a Workspace connection granted to one Bot: the grant's id,
+// its session's status, and the other Bots it is granted to (names of those
+// the caller is on, and how many others).
 message BotConnector {
   string id = 1;
   string bot_id = 2;
@@ -2553,6 +2579,8 @@ message BotConnector {
   string auth_status = 4;
   string last_error = 5;
   string status_detail = 6;
+  repeated string also_in = 7;
+  int32 also_in_hidden = 8;
 }
 
 message ListBotConnectorsRequest {
@@ -2592,6 +2620,11 @@ message CreateBotConnectorRequest {
   map<string, string> config = 20;
   // Unset takes the library preset's value (false for a custom connector).
   optional bool expose_completion = 21;
+  // The connection is made in a Workspace: bot_id's, or space_id when added
+  // from the Workspace's hub with no Bot. It is granted to bot_id (if set)
+  // and to every Bot in bot_ids.
+  string space_id = 22;
+  repeated string bot_ids = 23;
 }
 
 message DetachConnectorRequest {
@@ -2601,14 +2634,33 @@ message DetachConnectorRequest {
 
 message DetachConnectorResponse {}
 
+message ListSpaceConnectorsRequest {
+  string space_id = 1;
+}
+
+message GrantConnectorRequest {
+  string bot_id = 1;
+  string connector_id = 2;
+}
+
+message RevokeConnectorRequest {
+  string bot_id = 1;
+  string connector_id = 2;
+}
+
+message RevokeConnectorResponse {}
+
 message RefreshBotConnectorRequest {
   string bot_id = 1;
   string id = 2;
 }
 
+// StartConnectorAuthRequest signs a connection in: through a Bot's grant
+// (bot_id + id), or from the Workspace's hub by its id (connector_id).
 message StartConnectorAuthRequest {
   string bot_id = 1;
   string id = 2;
+  string connector_id = 3;
 }
 
 message StartConnectorAuthResponse {

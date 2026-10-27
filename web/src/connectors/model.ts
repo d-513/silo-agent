@@ -1,7 +1,9 @@
 import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 
-export type TabMode = "in_use" | "library" | "custom";
+// A Bot's pills: what it uses, what else its Workspace has, the library, a
+// custom server.
+export type TabMode = "in_use" | "workspace" | "library" | "custom";
 
 // Library presets shown in the Featured band, by their `builtin` key.
 export const FEATURED = ["email", "calendar"];

@@ -29,6 +29,12 @@ const (
 	// list and change, SpaceView to read a file) or the site library's (any
 	// user reads it, an instance admin changes it).
 	SpaceOrLibrary RPCNeed = "space|library"
+	// SpaceOrBot acts on a Workspace's connection either through a Bot the
+	// caller manages (bot_id) or in the Workspace itself (space_id, Build).
+	SpaceOrBot RPCNeed = "space|bot:manage"
+	// AdminOrSpace is a library preset's (an instance admin's) or a
+	// Workspace connection's (who added it, or a Workspace admin).
+	AdminOrSpace RPCNeed = "admin|space"
 )
 
 // RPCs declares who may call each UI RPC. The handlers enforce it themselves
@@ -178,14 +184,17 @@ var RPCs = map[string]RPCNeed{
 	"ListLLMLogs":              InstanceAdmin,
 	"ListConnectors":           SignedIn,
 	"CreateConnector":          InstanceAdmin,
-	"UpdateConnector":          AdminOrBotManage,
-	"DeleteConnector":          InstanceAdmin,
+	"UpdateConnector":          AdminOrSpace,
+	"DeleteConnector":          AdminOrSpace,
 	"ListBotConnectors":        BotUse,
 	"AttachConnector":          BotManage,
-	"CreateBotConnector":       BotManage,
-	"DetachConnector":          BotManage,
+	"CreateBotConnector":       SpaceOrBot,
+	"DetachConnector":          BotAdminister,
+	"ListSpaceConnectors":      SpaceBuild,
+	"GrantConnector":           BotManage,
+	"RevokeConnector":          BotAdminister,
 	"RefreshBotConnector":      BotManage,
-	"StartConnectorAuth":       BotManage,
+	"StartConnectorAuth":       SpaceOrBot,
 	"SeedConnectors":           InstanceAdmin,
 	"SeedSkills":               InstanceAdmin,
 	"ListSkills":               SpaceOrLibrary,

@@ -56,7 +56,7 @@ import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePag
 //     /  /new                      to the same page in the current Workspace
 //     /w/new                       a new Workspace
 //     /w/$spaceId[/new|/settings]  a Workspace's Bots, New Bot in it, its settings
-//     /w/$spaceId/customize/skills what its Bots share (/skills goes here)
+//     /w/$spaceId/customize/       what its Bots share: connectors  skills (/skills goes there)
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
@@ -136,8 +136,13 @@ const spaceCustomizeIndex = createRoute({
   getParentRoute: () => spaceCustomize,
   path: "/",
   beforeLoad: ({ params }) => {
-    throw redirect({ to: "/w/$spaceId/customize/skills", params });
+    throw redirect({ to: "/w/$spaceId/customize/connectors", params });
   },
+});
+const spaceConnectors = createRoute({
+  getParentRoute: () => spaceCustomize,
+  path: "connectors",
+  component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors"),
 });
 const spaceSkills = createRoute({ getParentRoute: () => spaceCustomize, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
@@ -284,7 +289,7 @@ const routeTree = root.addChildren([
     space,
     spaceNewBot,
     spaceSettings,
-    spaceCustomize.addChildren([spaceCustomizeIndex, spaceSkills]),
+    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills]),
     skills,
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),

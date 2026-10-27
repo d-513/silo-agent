@@ -49,7 +49,7 @@ export function BotSlip({
           name={authPrompt.connector.name}
           onAuthorize={async () => {
             try {
-              await startConnectorAuth(bot.id, authPrompt.id);
+              await startConnectorAuth({ botId: bot.id, id: authPrompt.id });
               setAuthPrompt(null);
             } catch (e) {
               onError(fail(e));

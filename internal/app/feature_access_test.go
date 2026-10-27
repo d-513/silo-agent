@@ -100,7 +100,7 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 	bot := h.CreateBot("Victim")
 	chatID := h.FirstChat(bot.Id)
 	approval := db.Approval{ID: ids.New(), BotID: bot.Id, Connector: "bot", Action: "soul", Status: "pending", CreatedAt: time.Now()}
-	conn := db.Connector{ID: ids.New(), Kind: catalog.KindCustom, BotID: bot.Id, Name: "Mine", Transport: "http", HTTPURL: "http://127.0.0.1:1/mcp"}
+	conn := db.Connector{ID: ids.New(), Kind: catalog.KindCustom, SpaceID: bot.SpaceId, Name: "Mine", Transport: "http", HTTPURL: "http://127.0.0.1:1/mcp"}
 	drive := db.Drive{ID: ids.New(), BotID: bot.Id, Name: "box", Template: "webdav"}
 	for _, row := range []any{&approval, &conn, &drive} {
 		if err := h.DB.Create(row).Error; err != nil {
@@ -112,6 +112,8 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 			switch field {
 			case "bot_id":
 				return bot.Id
+			case "connector_id":
+				return conn.ID
 			case "chat_id":
 				return chatID
 			case "space_id":
@@ -124,7 +126,7 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 				switch method {
 				case "DecideApproval":
 					return approval.ID
-				case "UpdateConnector":
+				case "UpdateConnector", "DeleteConnector":
 					return conn.ID
 				case "SaveDrive", "DeleteDrive", "BeginDriveAuth", "PickDriveOptions", "BrowseDrive":
 					return drive.ID
@@ -152,8 +154,10 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 		switch access.RPCs[name] {
 		case access.BotUse, access.BotManage, access.BotAdminister, access.ChatRead, access.ChatWrite, access.AdminOrBotManage:
 			want = []string{access.NoBot}
-		case access.SpaceView, access.SpaceBuild, access.SpaceAdmin, access.SpaceOwn, access.SpaceOrLibrary:
+		case access.SpaceView, access.SpaceBuild, access.SpaceAdmin, access.SpaceOwn, access.SpaceOrLibrary, access.AdminOrSpace:
 			want = []string{access.NoSpace}
+		case access.SpaceOrBot:
+			want = []string{access.NoBot, access.NoSpace}
 		case access.InstanceAdmin:
 			want = []string{}
 		default:
@@ -174,11 +178,12 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 	}
 	for _, name := range names {
 		switch {
-		case name == "DeleteBot", name == "DeleteSpace":
+		case name == "DeleteBot", name == "DeleteSpace", name == "DeleteConnector":
 		case access.RPCs[name] == access.Public, access.RPCs[name] == access.SignedIn, access.RPCs[name] == access.InstanceAdmin:
 		default:
 			owner(name)
 		}
 	}
+	owner("DeleteConnector")
 	owner("DeleteBot")
 }

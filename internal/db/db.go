@@ -382,10 +382,14 @@ type AuditEvent struct {
 	CreatedAt time.Time `gorm:"index"`
 }
 
+// Connector is a library preset (Kind library: the operator's, site-wide) or
+// a Workspace's connection (Kind custom, SpaceID set): defined once there and
+// granted to its Bots through BotConnector. BotID is unused.
 type Connector struct {
 	ID                string `gorm:"primaryKey"`
 	Kind              string // library | custom
 	BotID             string `gorm:"index"`
+	SpaceID           string `gorm:"not null;default:'';index"`
 	SeedKey           string `gorm:"index"`
 	Identifier        string `gorm:"uniqueIndex:idx_connectors_identifier,where:identifier <> ''"` // library presets only; catalog.Identifier form
 	SourceID          string
@@ -417,16 +421,27 @@ type Connector struct {
 	Builtin     string
 	ConfigJSON  string
 	SecretsJSON string
-	CreatedAt   time.Time
+	// TokenJSON is a connection's OAuth sign-in (connector.storedToken: the
+	// token and what refreshes it), shared by every Bot it is granted to.
+	TokenJSON string `gorm:"not null;default:''"`
+	// CreatedBy added the connection to its Workspace; LentBy is whose
+	// identity it carries (who signed it in, or typed a credential into it),
+	// empty when none. A connection with a lender is Shared or personal.
+	CreatedBy string `gorm:"not null;default:''"`
+	LentBy    string `gorm:"not null;default:''"`
+	Shared    bool   `gorm:"not null;default:false"`
+	CreatedAt time.Time
 }
 
+// BotConnector grants a connection to a Bot. What is per Bot lives here: its
+// MCP session (keyed by this ID), STDIO sidecar and bridge token, the tools
+// its own session listed, and its status.
 type BotConnector struct {
 	ID              string `gorm:"primaryKey"`
 	BotID           string `gorm:"uniqueIndex:bot_connector"`
 	ConnectorID     string `gorm:"uniqueIndex:bot_connector"`
 	AuthStatus      string
 	StatusDetail    string
-	TokenJSON       string
 	ToolsJSON       string
 	LastError       string
 	ContainerID     string

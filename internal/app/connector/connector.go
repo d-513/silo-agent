@@ -60,6 +60,8 @@ type Host interface {
 	// PruneRules drops the rules of a connector's actions that no longer
 	// exist, keeping those named (see rules).
 	PruneRules(botID, slug string, keepActions []string)
+	// RenameRules moves a Bot's rules of one connector slug to another.
+	RenameRules(botID, from, to string)
 }
 
 // Service owns the connector library, each Bot's attached copies, their MCP
@@ -84,6 +86,9 @@ type Service struct {
 	closed bool
 	// locks serializes session dials and sidecar starts per connector.
 	locks sync.Map
+	// tokens holds each connection's OAuth token in memory (*tokenCell),
+	// shared by every session on it.
+	tokens sync.Map
 	// bridges are the live reverse tunnels from STDIO sidecars.
 	bridgesMu sync.Mutex
 	bridges   map[string]*bridgeTunnel
@@ -170,8 +175,8 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	m := req.Msg
 	before := row
 	if n := strings.TrimSpace(m.GetName()); n != "" {
-		if row.Kind == catalog.KindCustom && s.slugTaken(row.BotID, n, row.ID) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector on this Bot already uses that name"))
+		if row.Kind == catalog.KindCustom && s.slugTaken(row.SpaceID, n, row.ID) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a connector in this workspace already uses that name"))
 		}
 		if row.Kind == catalog.KindCustom && security.Reserved(toolsgen.Slug(n)) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that name is reserved"))
@@ -202,6 +207,10 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 			if err := applyBuiltinConfig(&row, m.GetConfig()); err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
+			// A password typed in now is the editor's to lend.
+			if row.SecretsJSON != before.SecretsJSON && len(decodeStrMap(row.SecretsJSON)) > 0 {
+				row.LentBy = access.User(ctx).ID
+			}
 		}
 		if m.GetDefaultMode() != "" {
 			row.DefaultMode = security.Rule(m.GetDefaultMode())
@@ -210,8 +219,9 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 			return nil, err
 		}
 		s.db.Save(&row)
+		s.renamed(&before, &row)
 		s.restartConnector(&row)
-		return connect.NewResponse(s.protoLibrary(&row, true)), nil
+		return connect.NewResponse(s.editedProto(ctx, &row)), nil
 	}
 	if m.GetTransport() != "" {
 		tr := strings.ToLower(m.GetTransport())
@@ -289,9 +299,35 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
+	// A credential typed in now is the editor's to lend.
+	if row.Kind == catalog.KindCustom && typedCredential(&row) && !typedCredential(&before) {
+		row.LentBy = access.User(ctx).ID
+	}
 	s.db.Save(&row)
+	s.renamed(&before, &row)
 	s.restartConnector(&row)
-	return connect.NewResponse(s.protoLibrary(&row, true)), nil
+	return connect.NewResponse(s.editedProto(ctx, &row)), nil
+}
+
+// editedProto is the answer to an edit: a library preset as the library
+// shows it, a Workspace connection as its hub does.
+func (s *Service) editedProto(ctx context.Context, c *db.Connector) *v1.Connector {
+	if c.Kind == catalog.KindCustom {
+		return s.spaceProto(ctx, c)
+	}
+	return s.protoLibrary(c, true)
+}
+
+// renamed moves every granted Bot's rules for a connection to its new slug:
+// a rename must not cost the Bots their rules.
+func (s *Service) renamed(before, after *db.Connector) {
+	from, to := toolsgen.Slug(before.Name), toolsgen.Slug(after.Name)
+	if after.Kind != catalog.KindCustom || from == to {
+		return
+	}
+	for _, g := range s.grants(after.ID) {
+		s.host.RenameRules(g.BotID, from, to)
+	}
 }
 
 // sameTarget reports whether two connectors talk to the same thing: the same
@@ -330,18 +366,22 @@ func keepOnlyGiven(row *db.Connector, headers []*v1.HeaderInput, env []*v1.EnvIn
 	return nil
 }
 
+// DeleteConnector deletes a library preset (an admin), or a Workspace's
+// connection (who added it, or a Workspace admin), which first goes from
+// every Bot it is granted to.
 func (s *Service) DeleteConnector(ctx context.Context, req *connect.Request[v1.DeleteConnectorRequest]) (*connect.Response[v1.DeleteConnectorResponse], error) {
-	if err := access.RequireAdmin(ctx); err != nil {
-		return nil, err
-	}
 	var row db.Connector
 	if err := s.db.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	if row.Kind == catalog.KindCustom {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("remove a custom connector from the Bot"))
+	if err := s.editConnector(ctx, &row); err != nil {
+		return nil, err
 	}
-	s.db.Delete(&row)
+	if row.Kind == catalog.KindCustom {
+		s.deleteConnection(ctx, &row)
+	} else {
+		s.db.Delete(&row)
+	}
 	return connect.NewResponse(&v1.DeleteConnectorResponse{}), nil
 }
 
@@ -357,40 +397,57 @@ func (s *Service) ListBotConnectors(ctx context.Context, req *connect.Request[v1
 		if s.db.First(&c, "id = ?", rows[i].ConnectorID).Error != nil {
 			continue
 		}
-		out.Connectors = append(out.Connectors, protoBotConnector(&rows[i], &c, true))
+		out.Connectors = append(out.Connectors, s.grantProto(ctx, &rows[i], &c))
 	}
 	return connect.NewResponse(out), nil
 }
 
+// AttachConnector gives a Bot a connector: a Workspace connection (a grant),
+// or a library preset, which first becomes a new connection of the Bot's
+// Workspace.
 func (s *Service) AttachConnector(ctx context.Context, req *connect.Request[v1.AttachConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
 	botID := req.Msg.GetBotId()
-	if _, err := access.Bot(ctx, s.db, botID, access.Manage); err != nil {
-		return nil, err
-	}
-	var lib db.Connector
-	if err := s.db.First(&lib, "id = ? AND kind = ?", req.Msg.GetConnectorId(), catalog.KindLibrary).Error; err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
-	}
-	out, err := s.putBotConnector(ctx, botID, cloneLibrary(&lib, botID))
+	b, err := access.Bot(ctx, s.db, botID, access.Manage)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(out), nil
-}
-
-func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
-	m := req.Msg
-	if _, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage); err != nil {
+	var src db.Connector
+	if err := s.db.First(&src, "id = ?", req.Msg.GetConnectorId()).Error; err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
+	}
+	c := &src
+	switch {
+	case src.Kind == catalog.KindLibrary:
+		if c, err = s.createConnection(b.SpaceID, access.User(ctx).ID, cloneLibrary(&src)); err != nil {
+			return nil, err
+		}
+	case src.SpaceID == "":
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
+	}
+	row, err := s.grant(botID, c)
+	if err != nil {
 		return nil, err
 	}
-	admin := access.User(ctx) != nil && access.User(ctx).Admin
+	return connect.NewResponse(s.grantProto(ctx, row, c)), nil
+}
+
+// CreateBotConnector adds a connection to a Workspace (bot_id's, or space_id
+// from the hub) and grants it to bot_id and to every Bot in bot_ids.
+func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v1.CreateBotConnectorRequest]) (*connect.Response[v1.BotConnector], error) {
+	m := req.Msg
+	spaceID, grantTo, err := s.addTargets(ctx, m.GetBotId(), m.GetSpaceId(), m.GetBotIds())
+	if err != nil {
+		return nil, err
+	}
+	userID := access.User(ctx).ID
+	admin := access.User(ctx).Admin
 	from := strings.TrimSpace(m.GetSourceId())
 	if lib := s.libraryBuiltin(from); lib != nil {
-		out, err := s.attachBuiltin(ctx, m.GetBotId(), lib, m)
+		c, err := s.builtinConnection(spaceID, userID, lib, m)
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(out), nil
+		return s.grantAll(ctx, c, m.GetBotId(), grantTo)
 	}
 	row, err := parseConnector(connectorIn{
 		Name: m.GetName(), Desc: m.GetDescription(), Category: m.GetCategory(), Transport: m.GetTransport(),
@@ -409,9 +466,63 @@ func (s *Service) CreateBotConnector(ctx context.Context, req *connect.Request[v
 	if err := s.overlayLibrary(from, &row, m.GetHeaders(), m.GetEnv(), m.ExposeCompletion == nil); err != nil {
 		return nil, err
 	}
-	out, err := s.putBotConnector(ctx, m.GetBotId(), row)
+	c, err := s.createConnection(spaceID, userID, row)
 	if err != nil {
 		return nil, err
+	}
+	return s.grantAll(ctx, c, m.GetBotId(), grantTo)
+}
+
+// addTargets is where a new connection goes and which Bots get it: a Bot's
+// Workspace when it is added from the Bot (which the caller manages), else
+// the Workspace named (where the caller may build). Every Bot it is also
+// granted to is one the caller manages in that Workspace.
+func (s *Service) addTargets(ctx context.Context, botID, spaceID string, botIDs []string) (string, []string, error) {
+	if botID != "" {
+		b, err := access.Bot(ctx, s.db, botID, access.Manage)
+		if err != nil {
+			return "", nil, err
+		}
+		spaceID = b.SpaceID
+	} else if _, _, err := access.Space(ctx, s.db, spaceID, access.Build); err != nil {
+		return "", nil, err
+	}
+	var out []string
+	for _, id := range botIDs {
+		if id == "" || id == botID || slices.Contains(out, id) {
+			continue
+		}
+		b, err := access.Bot(ctx, s.db, id, access.Manage)
+		if err != nil {
+			return "", nil, err
+		}
+		if b.SpaceID != spaceID {
+			return "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the connector are in different workspaces"))
+		}
+		out = append(out, id)
+	}
+	return spaceID, out, nil
+}
+
+// grantAll grants a new connection to the Bot it was added from and to the
+// others chosen, and answers with the first Bot's grant (or the connection
+// alone, from the hub).
+func (s *Service) grantAll(ctx context.Context, c *db.Connector, botID string, others []string) (*connect.Response[v1.BotConnector], error) {
+	out := &v1.BotConnector{Connector: s.spaceProto(ctx, c)}
+	for i, id := range append([]string{botID}, others...) {
+		if id == "" {
+			continue
+		}
+		row, err := s.grant(id, c)
+		if err != nil {
+			return nil, err
+		}
+		if i == 0 {
+			out = s.grantProto(ctx, row, c)
+		}
+	}
+	if out.Id == "" {
+		out.Connector = s.spaceProto(ctx, c)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -497,29 +608,14 @@ func (s *Service) overlayLibrary(src string, row *db.Connector, headers []*v1.He
 }
 
 func (s *Service) DetachConnector(ctx context.Context, req *connect.Request[v1.DetachConnectorRequest]) (*connect.Response[v1.DetachConnectorResponse], error) {
-	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
+	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Administer); err != nil {
 		return nil, err
 	}
 	var row db.BotConnector
 	if err := s.db.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	s.DropMCP(row.ID)
-	s.DropStdio(&row)
-	var c db.Connector
-	stdio := false
-	if s.db.First(&c, "id = ?", row.ConnectorID).Error == nil {
-		stdio = c.Transport == TransportSTDIO
-		s.host.PruneRules(row.BotID, toolsgen.Slug(c.Name), nil)
-		if c.Kind == catalog.KindCustom {
-			s.db.Delete(&c)
-		}
-	}
-	s.db.Delete(&row)
-	if stdio && s.ClientNetDrop != nil {
-		s.ClientNetDrop(ctx, row.ID)
-	}
-	go s.PushTools(row.BotID)
+	s.revoke(ctx, &row)
 	return connect.NewResponse(&v1.DetachConnectorResponse{}), nil
 }
 
@@ -535,23 +631,15 @@ func (s *Service) RefreshBotConnector(ctx context.Context, req *connect.Request[
 	if s.db.First(&c, "id = ?", row.ConnectorID).Error != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
-	if c.Auth == AuthOAuth && row.AuthStatus == StatusNeedsAuth {
-		return connect.NewResponse(&v1.BotConnector{
-			Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-			StatusDetail: row.StatusDetail,
-			Connector:    protoConnector(&c, false),
-		}), nil
+	if c.Auth == AuthOAuth && !s.signedIn(&c) {
+		return connect.NewResponse(s.grantProto(ctx, &row, &c)), nil
 	}
 	// Dropping the MCP session also closes the sidecar tunnel; its bridge
 	// reconnects and spawns a fresh child, reusing the container's npm cache.
 	s.DropMCP(row.ID)
 	s.applyInit(&row, c.Transport)
 	s.startRefresh(row.ID)
-	return connect.NewResponse(&v1.BotConnector{
-		Id: row.ID, BotId: row.BotID, AuthStatus: row.AuthStatus, LastError: row.LastError,
-		StatusDetail: row.StatusDetail,
-		Connector:    protoConnector(&c, false),
-	}), nil
+	return connect.NewResponse(s.grantProto(ctx, &row, &c)), nil
 }
 
 func (s *Service) ServeImage(w http.ResponseWriter, r *http.Request) {
@@ -600,16 +688,33 @@ func (s *Service) FindBotConnector(botID, slug string) (*db.BotConnector, *db.Co
 	return nil, nil, fmt.Errorf("unknown connector %s", slug)
 }
 
-// AttachDefaults copies onto a newly created Bot every library preset a Bot
-// starts with. It runs exactly once, from CreateBot, so a preset the human
+// AttachDefaults grants a newly created Bot every library preset a Bot starts
+// with: the Workspace's connection made from that preset when it has one
+// (two Bots with Lightpanda share the connection and keep a session each),
+// else a new one. It runs exactly once, from CreateBot, so a preset the human
 // later removes from the Bot is never silently re-added.
 func (s *Service) AttachDefaults(ctx context.Context, botID string) {
 	if s.db == nil {
 		return
 	}
+	var b db.Bot
+	if s.db.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" {
+		return
+	}
 	libs := s.defaults()
 	for i := range libs {
-		if _, err := s.putBotConnector(ctx, botID, cloneLibrary(&libs[i], botID)); err != nil {
+		var c db.Connector
+		s.db.Where("space_id = ? AND kind = ? AND source_id = ?", b.SpaceID, catalog.KindCustom, libs[i].ID).Order("created_at").Limit(1).Find(&c)
+		conn := &c
+		if c.ID == "" {
+			made, err := s.createConnection(b.SpaceID, b.CreatedBy, cloneLibrary(&libs[i]))
+			if err != nil {
+				log.Printf("default connector %s bot=%s: %v", libs[i].Name, botID, err)
+				continue
+			}
+			conn = made
+		}
+		if _, err := s.grant(botID, conn); err != nil {
 			log.Printf("default connector %s bot=%s: %v", libs[i].Name, botID, err)
 		}
 	}
@@ -667,63 +772,29 @@ func (s *Service) libraryIdentifier(typed, name, exceptID string) (string, error
 	return ident, nil
 }
 
-func (s *Service) putBotConnector(ctx context.Context, botID string, c db.Connector) (*v1.BotConnector, error) {
-	c.Name = s.uniqueName(botID, c.Name, c.ID)
-	if security.Reserved(toolsgen.Slug(c.Name)) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that name is reserved"))
-	}
-	c.Kind = catalog.KindCustom
-	c.BotID = botID
-	if c.ID == "" {
-		c.ID = ids.New()
-	}
-	if c.CreatedAt.IsZero() {
-		c.CreatedAt = time.Now()
-	}
-	if err := s.db.Create(&c).Error; err != nil {
-		return nil, err
-	}
-	st := StatusInit
-	detail := initDetail(c.Transport)
-	if c.Auth == AuthOAuth {
-		st = StatusNeedsAuth
-		detail = ""
-	}
-	row := db.BotConnector{
-		ID: ids.New(), BotID: botID, ConnectorID: c.ID,
-		AuthStatus: st, StatusDetail: detail, CreatedAt: time.Now(),
-	}
-	if err := s.db.Create(&row).Error; err != nil {
-		s.db.Delete(&c)
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("already attached"))
-	}
-	if c.Auth != AuthOAuth {
-		s.startRefresh(row.ID)
-	}
-	return protoBotConnector(&row, &c, true), nil
-}
-
-func (s *Service) uniqueName(botID, name, exceptID string) string {
+// uniqueName is name, numbered ("GitHub 2") if its slug is taken in the
+// Workspace: a connection's slug is its `tools.<slug>` in every Bot.
+func (s *Service) uniqueName(spaceID, name, exceptID string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		name = "Connector"
 	}
-	if !s.slugTaken(botID, name, exceptID) {
+	if !s.slugTaken(spaceID, name, exceptID) {
 		return name
 	}
 	for n := 2; n < 10000; n++ {
 		cand := fmt.Sprintf("%s %d", name, n)
-		if !s.slugTaken(botID, cand, exceptID) {
+		if !s.slugTaken(spaceID, cand, exceptID) {
 			return cand
 		}
 	}
 	return name + " " + ids.New()[:6]
 }
 
-func (s *Service) slugTaken(botID, name, exceptID string) bool {
+func (s *Service) slugTaken(spaceID, name, exceptID string) bool {
 	slug := toolsgen.Slug(name)
 	var rows []db.Connector
-	s.db.Where("bot_id = ?", botID).Find(&rows)
+	s.db.Where("space_id = ? AND kind = ?", spaceID, catalog.KindCustom).Find(&rows)
 	for i := range rows {
 		if rows[i].ID != exceptID && toolsgen.Slug(rows[i].Name) == slug {
 			return true
@@ -732,10 +803,12 @@ func (s *Service) slugTaken(botID, name, exceptID string) bool {
 	return false
 }
 
+// editConnector says whether the caller may change or delete a row: a
+// library preset is an instance admin's, a Workspace connection is whoever
+// added it or a Workspace admin's.
 func (s *Service) editConnector(ctx context.Context, row *db.Connector) error {
-	if row.Kind == catalog.KindCustom && row.BotID != "" {
-		_, err := access.Bot(ctx, s.db, row.BotID, access.Manage)
-		return err
+	if row.Kind == catalog.KindCustom {
+		return s.canEdit(ctx, row)
 	}
 	return access.RequireAdmin(ctx)
 }

@@ -195,11 +195,12 @@ func TestEgressConnectorSecretReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &db.Connector{
-		BotID:       bot.GetId(),
+		SpaceID:     bot.GetSpaceId(),
 		HTTPURL:     "https://api.example.com/mcp",
 		HeadersJSON: `{"Authorization":"Bearer ${secrets.API_KEY}"}`,
 	}
-	got := h.App.Connectors.ResolveConnector(c)
+	// The connection is the Workspace's; the secret is the Bot's it runs for.
+	got := h.App.Connectors.Resolve(c, bot.GetId())
 	var hdr map[string]string
 	if err := json.Unmarshal([]byte(got.HeadersJSON), &hdr); err != nil {
 		t.Fatal(err)

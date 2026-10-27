@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Btn } from "../Btn";
 import { ConnectorFields, emptyDraft, type ConnectorDraft } from "./form";
 import { t } from "../i18n.ts";
@@ -9,11 +10,14 @@ export function CustomTab({
   setDraft,
   onSubmit,
   onCancel,
+  extra,
 }: {
   draft: ConnectorDraft;
   setDraft: (d: ConnectorDraft) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
+  // extra closes the form before its buttons (the hub's Which Bots step).
+  extra?: ReactNode;
 }) {
   return (
     <div className="max-w-2xl space-y-6">
@@ -27,6 +31,7 @@ export function CustomTab({
 
         <form onSubmit={onSubmit}>
           <ConnectorFields value={draft} onChange={setDraft} />
+          {extra}
           <div className="mt-6 flex items-center gap-2.5">
             <Btn kind="primary" type="submit">
               {t("Add connector")}

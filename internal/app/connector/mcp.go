@@ -193,10 +193,10 @@ func (s *Service) MCPSession(ctx context.Context, row *db.BotConnector, c *db.Co
 		return live, nil
 	}
 	s.mu.Unlock()
-	c = s.ResolveConnector(c)
+	c = s.Resolve(c, row.BotID)
 	var h mcpauth.OAuthHandler
 	if c.Auth == AuthOAuth {
-		oh, err := s.oauthHandler(c, row, s.redirectURL(), nil)
+		oh, err := s.oauthHandler(c, s.redirectURL(), false, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -297,8 +297,9 @@ func (s *Service) operatorTarget(c *db.Connector) bool {
 	if res.Error != nil || res.RowsAffected == 0 {
 		return false
 	}
-	// Both sides resolved: c usually arrives with its variables expanded.
-	return sameTarget(s.ResolveConnector(c), s.ResolveConnector(&lib))
+	// Both sides resolved with the operator's variables: c usually arrives
+	// with its variables expanded.
+	return sameTarget(s.Resolve(c, ""), s.Resolve(&lib, ""))
 }
 
 func (s *Service) Init() {
@@ -306,24 +307,6 @@ func (s *Service) Init() {
 		return
 	}
 	s.db.Model(&db.Connector{}).Where("kind = '' OR kind IS NULL").Update("kind", catalog.KindLibrary)
-	var links []db.BotConnector
-	s.db.Find(&links)
-	for i := range links {
-		var c db.Connector
-		if s.db.First(&c, "id = ?", links[i].ConnectorID).Error != nil {
-			continue
-		}
-		if c.Kind == catalog.KindCustom && c.BotID != "" {
-			continue
-		}
-		clone := cloneLibrary(&c, links[i].BotID)
-		if err := s.db.Create(&clone).Error; err != nil {
-			log.Printf("connector backfill bot=%s: %v", links[i].BotID, err)
-			continue
-		}
-		links[i].ConnectorID = clone.ID
-		s.db.Save(&links[i])
-	}
 	if s.store != nil {
 		if err := catalog.Seed(s.db); err != nil {
 			log.Printf("connector library seed: %v", err)
@@ -400,20 +383,12 @@ func (s *Service) startRefresh(botConnectorID string) {
 	}()
 }
 
-// restartConnector re-drives a Bot's copy after an edit: a STDIO sidecar is
-// recycled, and a builtin re-checks its config.
+// restartConnector re-drives every Bot's session on a connection after an
+// edit: sessions are made again, a STDIO sidecar recycled, and a builtin
+// re-checks its config.
 func (s *Service) restartConnector(c *db.Connector) {
-	if c == nil || c.Kind != catalog.KindCustom || c.BotID == "" {
+	if c == nil || c.Kind != catalog.KindCustom {
 		return
 	}
-	var row db.BotConnector
-	if s.db.Where("connector_id = ? AND bot_id = ?", c.ID, c.BotID).Limit(1).Find(&row).Error != nil || row.ID == "" {
-		return
-	}
-	s.DropStdio(&row)
-	if c.Transport != TransportSTDIO && c.Transport != TransportBuiltin {
-		return
-	}
-	s.applyInit(&row, c.Transport)
-	s.startRefresh(row.ID)
+	s.refreshGrants(c.ID)
 }

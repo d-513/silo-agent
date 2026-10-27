@@ -171,6 +171,26 @@ func (a *App) PruneRules(botID, slug string, keepActions []string) {
 	}
 }
 
+// RenameRules moves a Bot's rules for one connector slug to another, for a
+// connection that was renamed: its rules are the same connection's. A row the
+// new slug already has wins.
+func (a *App) RenameRules(botID, from, to string) {
+	if from == to {
+		return
+	}
+	var rows []db.Rule
+	a.DB.Where("bot_id = ? AND connector = ?", botID, from).Find(&rows)
+	for i := range rows {
+		var n int64
+		a.DB.Model(&db.Rule{}).Where("bot_id = ? AND connector = ? AND action = ?", botID, to, rows[i].Action).Count(&n)
+		if n > 0 {
+			a.DB.Delete(&rows[i])
+			continue
+		}
+		a.DB.Model(&rows[i]).Update("connector", to)
+	}
+}
+
 func (a *App) sweepRules(botID string) {
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Secrets, "get").Delete(&db.Rule{})
 	a.DB.Where("bot_id = ? AND connector = ? AND action = ?", botID, security.Skills, "propose").Delete(&db.Rule{})

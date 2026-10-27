@@ -206,7 +206,7 @@ export function ConnectorsRoute() {
   return (
     <section className="min-h-0 min-w-0 flex-1 overflow-auto">
       <Suspense fallback={<PaneFallback />}>
-        <BotConnectors botId={p.id} onNeedAuth={p.needAuth} />
+        <BotConnectors botId={p.id} spaceId={p.bot.spaceId} onNeedAuth={p.needAuth} />
       </Suspense>
     </section>
   );

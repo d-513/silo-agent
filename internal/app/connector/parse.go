@@ -129,9 +129,10 @@ func checkTransport(tr string) error {
 	}
 }
 
-func cloneLibrary(lib *db.Connector, botID string) db.Connector {
+// cloneLibrary is a new Workspace connection made from a library preset.
+func cloneLibrary(lib *db.Connector) db.Connector {
 	return db.Connector{
-		ID: ids.New(), Kind: catalog.KindCustom, BotID: botID, SourceID: lib.ID,
+		ID: ids.New(), Kind: catalog.KindCustom, SourceID: lib.ID,
 		Type: lib.Type, Name: lib.Name, Description: lib.Description, Category: lib.Category,
 		Image: append([]byte(nil), lib.Image...), ImageType: lib.ImageType,
 		Transport: lib.Transport, HTTPURL: lib.HTTPURL, Auth: lib.Auth,

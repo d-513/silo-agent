@@ -1,3 +1,4 @@
+import { useQuery } from "@connectrpc/connect-query";
 import { Copy, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ui } from "../api";
@@ -5,7 +6,8 @@ import { Btn } from "../Btn";
 import { startConnectorAuth } from "../connectorAuth";
 import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } from "./form";
 import { fail } from "../errors";
-import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
+import { UI, type BotConnector, type Connector } from "../gen/silo/v1/ui_pb";
+import { reload } from "../query";
 import { widePage } from "../PageHead";
 import { Modal } from "../Modal";
 import { ConnectorToolbar } from "./ConnectorToolbar";
@@ -13,18 +15,25 @@ import { CustomTab } from "./CustomTab";
 import { InUseTab } from "./InUseTab";
 import { LibraryTab } from "./LibraryTab";
 import { attachedCount, categoriesOf, FEATURED, filterAttached, filterCatalog, groupByCategory, nextCopyName, type TabMode } from "./model";
+import { SpaceCard } from "./SpaceCard";
 import { useBotConnectors } from "./useBotConnectors";
 import { t } from "../i18n.ts";
 
 export function BotConnectors({
   botId,
+  spaceId,
   onNeedAuth,
 }: {
   botId: string;
+  spaceId: string;
   onNeedAuth: (row: BotConnector | null) => void;
 }) {
   const [err, setErr] = useState("");
-  const { attached, catalog, load } = useBotConnectors(botId, setErr);
+  const { attached, catalog, load: loadBot } = useBotConnectors(botId, setErr);
+  // The Workspace's other connections: one press gives one to this Bot.
+  const spaceQ = useQuery(UI.method.listSpaceConnectors, { spaceId }, { refetchInterval: 5000 });
+  const others = useMemo(() => (spaceQ.data?.connectors ?? []).filter((c) => !attached.some((r) => r.connector?.id === c.id)), [spaceQ.data, attached]);
+  const load = () => Promise.all([loadBot(), reload(UI.method.listSpaceConnectors, { spaceId })]);
   const [tab, setTab] = useState<TabMode>("in_use");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -120,7 +129,7 @@ export function BotConnectors({
   async function authorize(row: BotConnector) {
     setErr("");
     try {
-      await startConnectorAuth(botId, row.id);
+      await startConnectorAuth({ botId, id: row.id });
       onNeedAuth(null);
     } catch (e) {
       setErr(fail(e));
@@ -137,6 +146,18 @@ export function BotConnectors({
       setErr(fail(e));
     } finally {
       setBusy("");
+    }
+  }
+
+  async function use(c: Connector) {
+    setErr("");
+    try {
+      const row = await ui.grantConnector({ botId, connectorId: c.id });
+      await load();
+      setTab("in_use");
+      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") onNeedAuth(row);
+    } catch (e) {
+      setErr(fail(e));
     }
   }
 
@@ -175,12 +196,17 @@ export function BotConnectors({
       )}
 
       <ConnectorToolbar
+        tabs={[
+          { mode: "in_use", label: t("In Use"), count: attached.length },
+          { mode: "workspace", label: t("Workspace"), count: others.length },
+          { mode: "library", label: t("Library"), count: catalog.length },
+          { mode: "custom", label: t("Custom"), add: true },
+        ]}
         tab={tab}
         setTab={setTab}
-        attachedCount={attached.length}
-        catalogCount={catalog.length}
         search={search}
         setSearch={setSearch}
+        onAdd={() => setTab(others.length ? "workspace" : "library")}
       />
 
       {tab === "in_use" && (
@@ -198,6 +224,25 @@ export function BotConnectors({
           onViewError={setErrView}
         />
       )}
+
+      {tab === "workspace" &&
+        (others.length === 0 ? (
+          <div className="rounded-card bg-well p-6 text-[13px] text-ink-2">{t("This Bot already uses every connector in its workspace. Add a new one from the Library.")}</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {others.map((c) => (
+              <SpaceCard
+                key={c.id}
+                c={c}
+                actions={
+                  <Btn kind="primary" onClick={() => void use(c)}>
+                    {t("Use in this Bot")}
+                  </Btn>
+                }
+              />
+            ))}
+          </div>
+        ))}
 
       {tab === "library" && (
         <LibraryTab
@@ -258,11 +303,19 @@ export function BotConnectors({
       {/* POPUP: Edit Attached Connector Modal */}
       {edit && (
         <Modal onClose={() => setEdit(null)}>
-          <h3 className="mb-4 text-base font-semibold text-ink">{t("Edit connector")}</h3>
+          <h3 className="mb-1 text-base font-semibold text-ink">{t("Edit connector")}</h3>
+          {/* The connection is the Workspace's: an edit reaches every Bot that uses it. */}
+          <p className="mb-4 text-[12.5px] text-ink-2">
+            {!edit.connector?.canEdit
+              ? t("Only whoever added this connector, or an admin of the workspace, can change it.")
+              : edit.alsoIn.length || edit.alsoInHidden
+                ? t("Changes apply to every Bot that uses it: {{bots}}.", { bots: [t("this Bot"), ...edit.alsoIn].join(", ") })
+                : ""}
+          </p>
           <form onSubmit={saveEdit}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
             <div className="mt-6 flex items-center gap-2">
-              <Btn kind="primary" type="submit">
+              <Btn kind="primary" type="submit" disabled={!edit.connector?.canEdit}>
                 {t("Save changes")}
               </Btn>
               <Btn kind="ghost" type="button" onClick={() => setEdit(null)}>

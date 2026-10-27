@@ -44,18 +44,20 @@ func (s *Service) operatorVars() map[string]string {
 	return s.store.ConnectorVarMap()
 }
 
-// ResolveConnector returns a copy of c with operator connector variables
-// (${NAME}) and the Bot's own secrets (${secrets.NAME}) expanded in every
-// technical field. Unknown references are left untouched. The raw row keeps
+// Resolve returns a copy of connection c as the Bot botID reaches it, with
+// operator connector variables (${NAME}) and that Bot's own secrets
+// (${secrets.NAME}) expanded in every technical field: a Workspace's
+// connection is one definition, and a secret in it is each Bot's own. With no
+// Bot only the operator's variables are expanded. Unknown references are left untouched. The raw row keeps
 // the placeholders; only the connection path sees the resolved values, so
 // changing a variable or a secret takes effect on the next reconnect without
 // rewriting connectors. The Prompt is expanded with operator variables alone,
 // so a Bot's secrets never reach the model.
-func (s *Service) ResolveConnector(c *db.Connector) *db.Connector {
+func (s *Service) Resolve(c *db.Connector, botID string) *db.Connector {
 	if c == nil {
 		return c
 	}
-	vars := s.connectorVars(c.BotID)
+	vars := s.connectorVars(botID)
 	if len(vars) == 0 {
 		return c
 	}

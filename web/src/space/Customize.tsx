@@ -1,12 +1,13 @@
 import { Link, Outlet, useLocation, useParams } from "@tanstack/react-router";
-import { Book, type LucideIcon } from "lucide-react";
+import { Book, Plug, type LucideIcon } from "lucide-react";
 import { TabStrip } from "../bot/SectionTabs";
 import { msg, t } from "../i18n.ts";
 
 // The Workspace's Customize hub: what its Bots share, one tab per kind. Each
 // thing is kept once here and given to the Bots that may use it.
-type HubTab = "skills";
+type HubTab = "connectors" | "skills";
 const tabs: readonly { tab: HubTab; to: `/w/$spaceId/customize/${HubTab}`; label: string; icon: LucideIcon }[] = [
+  { tab: "connectors", to: "/w/$spaceId/customize/connectors", label: msg("Connectors"), icon: Plug },
   { tab: "skills", to: "/w/$spaceId/customize/skills", label: msg("Skills"), icon: Book },
 ];
 

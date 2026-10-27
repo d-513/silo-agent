@@ -45,6 +45,11 @@ export function AttachedCard({
               <McpChip transport={c.transport} />
               {isCustom(c) && <CustomChip />}
               {c.category && <CategoryChip label={c.category} />}
+              {row.alsoIn.length + row.alsoInHidden > 0 ? (
+                <span className="rounded-xs bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-2" title={row.alsoIn.join(", ")}>
+                  {t("Also in {{count}} Bots", { count: row.alsoIn.length + row.alsoInHidden })}
+                </span>
+              ) : null}
             </div>
 
             <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description || (c.transport === "http" ? c.httpUrl : c.stdioCommand)}</p>
@@ -92,7 +97,7 @@ export function AttachedCard({
             <RefreshCw size={13} className={isBusy ? "spin" : ""} />
             <span>{t("Refresh")}</span>
           </Btn>
-          <ArmedButton kind="ghost" armedLabel={t("Click again to remove")} icon={<Trash2 size={13} />} onConfirm={onDetach}>
+          <ArmedButton kind="ghost" armedLabel={t("Click again to remove")} icon={<Trash2 size={13} />} onConfirm={onDetach} title={t("Remove from this Bot")}>
             {t("Remove")}
           </ArmedButton>
         </div>

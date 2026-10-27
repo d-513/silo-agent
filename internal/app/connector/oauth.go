@@ -2,7 +2,6 @@ package connector
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,28 +23,25 @@ import (
 	"silo.agent/internal/mcpx"
 )
 
+// StartConnectorAuth signs a connection in: from the hub by its id
+// (connector_id), or from a Bot through one of its grants (bot_id + id). The
+// sign-in is the connection's, so every Bot it is granted to uses it, and it
+// acts as whoever signed in (its lender).
 func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v1.StartConnectorAuthRequest]) (*connect.Response[v1.StartConnectorAuthResponse], error) {
-	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Manage); err != nil {
+	c, err := s.authTarget(ctx, req.Msg)
+	if err != nil {
 		return nil, err
-	}
-	var row db.BotConnector
-	if err := s.db.First(&row, "id = ? AND bot_id = ?", req.Msg.GetId(), req.Msg.GetBotId()).Error; err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
-	}
-	var c db.Connector
-	if s.db.First(&c, "id = ?", row.ConnectorID).Error != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
 	}
 	if c.Auth != AuthOAuth {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("connector does not use oauth"))
 	}
-	c = *s.ResolveConnector(&c)
+	conn := *s.Resolve(c, "")
 	redirect := s.PublicURL(ctx) + "/oauth/callback"
 	starter := access.User(ctx).ID
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
-	h, err := s.oauthHandler(&c, &row, redirect, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
+	h, err := s.oauthHandler(&conn, redirect, true, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 		u := args.URL
 		// The server names this address and the browser is about to open it.
 		if !webURL(u) {
@@ -73,23 +69,20 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 	go func() {
 		cctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		sess, err := mcpx.Connect(cctx, s.dial(&c, h))
+		sess, err := mcpx.Connect(cctx, s.dial(&conn, h))
 		if err != nil {
 			err = wrapOAuth(err)
-			s.db.Model(&row).Updates(map[string]any{"auth_status": StatusErr, "last_error": err.Error()})
+			s.db.Model(&db.BotConnector{}).Where("connector_id = ?", c.ID).Updates(map[string]any{"auth_status": StatusErr, "last_error": err.Error()})
 			select {
 			case errCh <- err:
 			default:
 			}
 			return
 		}
-		defer sess.Close()
-		s.persistOAuthToken(h, &row)
-		row.AuthStatus = StatusOK
-		row.LastError = ""
-		row.StatusDetail = ""
-		s.db.Save(&row)
-		_ = s.refreshTools(cctx, &row, &c)
+		_ = sess.Close()
+		// The sign-in is now the connection's, lent by whoever made it.
+		s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Update("lent_by", starter)
+		s.refreshGrants(c.ID)
 	}()
 	select {
 	case u := <-urlCh:
@@ -101,6 +94,34 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 	case <-time.After(20 * time.Second):
 		return nil, connect.NewError(connect.CodeDeadlineExceeded, errors.New("authorization server did not start a redirect"))
 	}
+}
+
+// authTarget is the connection a sign-in is for, if the caller may sign it in:
+// one of a Workspace's (they can build there), or one granted to a Bot they
+// manage.
+func (s *Service) authTarget(ctx context.Context, m *v1.StartConnectorAuthRequest) (*db.Connector, error) {
+	if id := m.GetConnectorId(); id != "" {
+		c, err := s.connection(id)
+		if err != nil {
+			return nil, err
+		}
+		if _, _, err := access.Space(ctx, s.db, c.SpaceID, access.Build); err != nil {
+			return nil, err
+		}
+		return c, nil
+	}
+	if _, err := access.Bot(ctx, s.db, m.GetBotId(), access.Manage); err != nil {
+		return nil, err
+	}
+	var row db.BotConnector
+	if err := s.db.First(&row, "id = ? AND bot_id = ?", m.GetId(), m.GetBotId()).Error; err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	var c db.Connector
+	if s.db.First(&c, "id = ?", row.ConnectorID).Error != nil {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
+	}
+	return &c, nil
 }
 
 func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
@@ -156,16 +177,22 @@ func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
 }
 
-func (s *Service) oauthHandler(c *db.Connector, row *db.BotConnector, redirect string, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
+// oauthHandler is the OAuth side of a session on connection c. Every session
+// on the connection shares its token (connToken): the one a sign-in gets is
+// kept for all of them. fresh starts a new sign-in instead of using the one
+// kept.
+func (s *Service) oauthHandler(c *db.Connector, redirect string, fresh bool, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
 	if fetch == nil {
 		fetch = func(context.Context, *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
-			return nil, errors.New("authorization required")
+			return nil, errNoToken
 		}
 	}
+	client := s.outbound(c).Client(0)
+	shared := connToken{s: s, id: c.ID, client: client}
 	cfg := &mcpauth.AuthorizationCodeHandlerConfig{
 		// The server names its own authorization and token endpoints, so they
 		// are held to the same policy as its URL.
-		Client:                   s.outbound(c).Client(0),
+		Client:                   client,
 		RedirectURL:              redirect,
 		AuthorizationCodeFetcher: fetch,
 		RequestRefreshToken:      true,
@@ -177,41 +204,18 @@ func (s *Service) oauthHandler(c *db.Connector, row *db.BotConnector, redirect s
 				TokenEndpointAuthMethod: "none",
 			},
 		},
-		NewTokenSource: func(ctx context.Context, oc *oauth2.Config, tok *oauth2.Token) (oauth2.TokenSource, error) {
-			src := oc.TokenSource(ctx, tok)
-			return persistSrc{inner: src, save: func(t *oauth2.Token) { s.saveToken(row.ID, t) }}, nil
+		NewTokenSource: func(_ context.Context, oc *oauth2.Config, tok *oauth2.Token) (oauth2.TokenSource, error) {
+			s.keepSignIn(c.ID, oc, tok)
+			return shared, nil
 		},
 	}
 	if creds := preregisteredClient(c); creds != nil {
 		cfg.PreregisteredClient = creds
 	}
-	if tok := tokenFromJSON(row.TokenJSON); tok != nil {
-		cfg.InitialTokenSource = persistSrc{
-			inner: oauth2.ReuseTokenSource(tok, oauth2.StaticTokenSource(tok)),
-			save:  func(t *oauth2.Token) { s.saveToken(row.ID, t) },
-		}
+	if !fresh && s.signedIn(c) {
+		cfg.InitialTokenSource = shared
 	}
 	return mcpauth.NewAuthorizationCodeHandler(cfg)
-}
-
-func (s *Service) persistOAuthToken(h *mcpauth.AuthorizationCodeHandler, row *db.BotConnector) {
-	src, err := h.TokenSource(context.Background())
-	if err != nil || src == nil {
-		return
-	}
-	tok, err := src.Token()
-	if err != nil || tok == nil {
-		return
-	}
-	s.saveToken(row.ID, tok)
-	row.TokenJSON = mustJSON(tok)
-}
-
-func (s *Service) saveToken(id string, tok *oauth2.Token) {
-	if tok == nil {
-		return
-	}
-	s.db.Model(&db.BotConnector{}).Where("id = ?", id).Update("token_json", mustJSON(tok))
 }
 
 // PublicURL is the address the browser (and an OAuth provider) reaches the
@@ -306,26 +310,4 @@ func (s *Service) AwaitOAuth(state string, ttl time.Duration, complete func(ctx 
 	})
 }
 
-func tokenFromJSON(raw string) *oauth2.Token {
-	if strings.TrimSpace(raw) == "" {
-		return nil
-	}
-	var t oauth2.Token
-	if json.Unmarshal([]byte(raw), &t) != nil || t.AccessToken == "" {
-		return nil
-	}
-	return &t
-}
 
-type persistSrc struct {
-	inner oauth2.TokenSource
-	save  func(*oauth2.Token)
-}
-
-func (p persistSrc) Token() (*oauth2.Token, error) {
-	t, err := p.inner.Token()
-	if err == nil && t != nil && p.save != nil {
-		p.save(t)
-	}
-	return t, err
-}
