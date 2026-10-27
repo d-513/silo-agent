@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ui } from "./api";
 import { ArmedButton, useSave } from "./Feedback";
 import { Field, SettingGroup, SettingRow, inputClass, textareaClass } from "./Field";
+import { MoveBot } from "./space/MoveBot";
 import { SaveBar } from "./SaveBar";
 import { Select } from "./Select";
 import { UI, type Bot, type ModelOption } from "./gen/silo/v1/ui_pb";
@@ -233,6 +234,8 @@ export function SettingsPane({
       <div className="mt-6">
         {/* A Bot has a mailbox only while the operator has mail set up. */}
         {bot.mailAddress ? <MailSettings bot={bot} onError={onError} /> : null}
+
+        <MoveBot bot={bot} />
 
         <SettingGroup title={t("Dangerous")} note={t("The first click arms, the second acts. These cannot be undone from here.")} tone="danger">
           <SettingRow label={t("Reset container")} hint={t("Stops and deletes the box. Workspace and Chrome profile stay. Start Bot makes a new one.")}>

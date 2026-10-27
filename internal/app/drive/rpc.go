@@ -884,3 +884,28 @@ func (s *Service) LenderChanged(userID string) {
 		s.applyAll(id)
 	}
 }
+
+// GrantNames are the names of the drives a Bot mounts.
+func (s *Service) GrantNames(botID string) []string {
+	var out []string
+	for _, d := range s.BotDrives(botID) {
+		out = append(out, d.Name)
+	}
+	return out
+}
+
+// RevokeAll unmounts every drive from a Bot (it is moving to another
+// Workspace).
+func (s *Service) RevokeAll(botID string) {
+	ids := s.grantedIDs(botID)
+	s.db.Where("bot_id = ?", botID).Delete(&db.BotDrive{})
+	for _, id := range ids {
+		s.revoked(botID, id)
+	}
+}
+
+func (s *Service) grantedIDs(botID string) []string {
+	var out []string
+	s.db.Model(&db.BotDrive{}).Where("bot_id = ?", botID).Pluck("drive_id", &out)
+	return out
+}

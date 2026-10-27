@@ -192,7 +192,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err != nil {
 		return nil, err
 	}
-	access.Activity(a.DB, sp.ID, u.ID, access.BotCreated, b.Name, id, "")
+	access.Activity(a.DB, sp.ID, u.ID, access.BotCreated, b.Name, "", "")
 	a.Skills.EnsureDefaults(id)
 	a.Skills.EnableSpace(id, req.Msg.GetSkillsOff()...)
 	a.Automations.EnsurePinned(id)

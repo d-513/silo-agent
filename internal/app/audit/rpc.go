@@ -161,7 +161,8 @@ func (s *Service) scope(ctx context.Context, botID string) error {
 
 // filter builds the timeline's where clause from the request.
 func (s *Service) filter(m *v1.ListAuditEventsRequest) *gorm.DB {
-	q := s.db.Model(&db.AuditEvent{})
+	// A Workspace's events are its Activity, not a Bot's audit.
+	q := s.db.Model(&db.AuditEvent{}).Where("space_id = ''")
 	if id := m.GetBotId(); id != "" {
 		q = q.Where("bot_id = ?", id)
 	}
@@ -195,7 +196,7 @@ func (s *Service) summary(botID string) *v1.AuditSummaryResponse {
 		TrafficDays: int32(cfg.AuditTrafficDays()),
 	}
 	events := func() *gorm.DB {
-		q := s.db.Model(&db.AuditEvent{})
+		q := s.db.Model(&db.AuditEvent{}).Where("space_id = ''")
 		if botID != "" {
 			q = q.Where("bot_id = ?", botID)
 		}

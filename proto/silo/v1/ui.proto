@@ -88,6 +88,11 @@ service UI {
   // What happened in the Workspace: people, Bots made and deleted, grants,
   // sign-ins and lending. Never what a Bot did with a grant.
   rpc ListSpaceActivity(ListSpaceActivityRequest) returns (ListSpaceActivityResponse);
+  // Moving a Bot to another Workspace (a manager of it who may build in the
+  // target): PlanMoveBot says what it loses (its grants, its Workspace
+  // skills, the people not in the target); MoveBot does it.
+  rpc PlanMoveBot(MoveBotRequest) returns (MoveBotPlan);
+  rpc MoveBot(MoveBotRequest) returns (Bot);
 
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
@@ -894,6 +899,20 @@ message UpdateSpacePolicyRequest {
   string space_id = 1;
   string approval_policy = 2;
   string output_policy = 3;
+}
+
+message MoveBotRequest {
+  string bot_id = 1;
+  // The Workspace it goes to.
+  string space_id = 2;
+}
+
+message MoveBotPlan {
+  repeated string connectors = 1;
+  repeated string drives = 2;
+  repeated string skills = 3;
+  // People on it who are not in the target (emails): they lose it.
+  repeated string people = 4;
 }
 
 message ListSpaceActivityRequest {

@@ -127,6 +127,10 @@ const (
 	UIUpdateSpacePolicyProcedure = "/silo.v1.UI/UpdateSpacePolicy"
 	// UIListSpaceActivityProcedure is the fully-qualified name of the UI's ListSpaceActivity RPC.
 	UIListSpaceActivityProcedure = "/silo.v1.UI/ListSpaceActivity"
+	// UIPlanMoveBotProcedure is the fully-qualified name of the UI's PlanMoveBot RPC.
+	UIPlanMoveBotProcedure = "/silo.v1.UI/PlanMoveBot"
+	// UIMoveBotProcedure is the fully-qualified name of the UI's MoveBot RPC.
+	UIMoveBotProcedure = "/silo.v1.UI/MoveBot"
 	// UIListBotsProcedure is the fully-qualified name of the UI's ListBots RPC.
 	UIListBotsProcedure = "/silo.v1.UI/ListBots"
 	// UICreateBotProcedure is the fully-qualified name of the UI's CreateBot RPC.
@@ -538,6 +542,11 @@ type UIClient interface {
 	// What happened in the Workspace: people, Bots made and deleted, grants,
 	// sign-ins and lending. Never what a Bot did with a grant.
 	ListSpaceActivity(context.Context, *connect.Request[v1.ListSpaceActivityRequest]) (*connect.Response[v1.ListSpaceActivityResponse], error)
+	// Moving a Bot to another Workspace (a manager of it who may build in the
+	// target): PlanMoveBot says what it loses (its grants, its Workspace
+	// skills, the people not in the target); MoveBot does it.
+	PlanMoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.MoveBotPlan], error)
+	MoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.Bot], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -1061,6 +1070,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIListSpaceActivityProcedure,
 			connect.WithSchema(uIMethods.ByName("ListSpaceActivity")),
+			connect.WithClientOptions(opts...),
+		),
+		planMoveBot: connect.NewClient[v1.MoveBotRequest, v1.MoveBotPlan](
+			httpClient,
+			baseURL+UIPlanMoveBotProcedure,
+			connect.WithSchema(uIMethods.ByName("PlanMoveBot")),
+			connect.WithClientOptions(opts...),
+		),
+		moveBot: connect.NewClient[v1.MoveBotRequest, v1.Bot](
+			httpClient,
+			baseURL+UIMoveBotProcedure,
+			connect.WithSchema(uIMethods.ByName("MoveBot")),
 			connect.WithClientOptions(opts...),
 		),
 		listBots: connect.NewClient[v1.ListBotsRequest, v1.ListBotsResponse](
@@ -2087,6 +2108,8 @@ type uIClient struct {
 	deleteSpaceRule          *connect.Client[v1.DeleteSpaceRuleRequest, v1.DeleteSpaceRuleResponse]
 	updateSpacePolicy        *connect.Client[v1.UpdateSpacePolicyRequest, v1.ListSpaceRulesResponse]
 	listSpaceActivity        *connect.Client[v1.ListSpaceActivityRequest, v1.ListSpaceActivityResponse]
+	planMoveBot              *connect.Client[v1.MoveBotRequest, v1.MoveBotPlan]
+	moveBot                  *connect.Client[v1.MoveBotRequest, v1.Bot]
 	listBots                 *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBot                *connect.Client[v1.CreateBotRequest, v1.Bot]
 	updateBot                *connect.Client[v1.UpdateBotRequest, v1.Bot]
@@ -2484,6 +2507,16 @@ func (c *uIClient) UpdateSpacePolicy(ctx context.Context, req *connect.Request[v
 // ListSpaceActivity calls silo.v1.UI.ListSpaceActivity.
 func (c *uIClient) ListSpaceActivity(ctx context.Context, req *connect.Request[v1.ListSpaceActivityRequest]) (*connect.Response[v1.ListSpaceActivityResponse], error) {
 	return c.listSpaceActivity.CallUnary(ctx, req)
+}
+
+// PlanMoveBot calls silo.v1.UI.PlanMoveBot.
+func (c *uIClient) PlanMoveBot(ctx context.Context, req *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.MoveBotPlan], error) {
+	return c.planMoveBot.CallUnary(ctx, req)
+}
+
+// MoveBot calls silo.v1.UI.MoveBot.
+func (c *uIClient) MoveBot(ctx context.Context, req *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.Bot], error) {
+	return c.moveBot.CallUnary(ctx, req)
 }
 
 // ListBots calls silo.v1.UI.ListBots.
@@ -3378,6 +3411,11 @@ type UIHandler interface {
 	// What happened in the Workspace: people, Bots made and deleted, grants,
 	// sign-ins and lending. Never what a Bot did with a grant.
 	ListSpaceActivity(context.Context, *connect.Request[v1.ListSpaceActivityRequest]) (*connect.Response[v1.ListSpaceActivityResponse], error)
+	// Moving a Bot to another Workspace (a manager of it who may build in the
+	// target): PlanMoveBot says what it loses (its grants, its Workspace
+	// skills, the people not in the target); MoveBot does it.
+	PlanMoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.MoveBotPlan], error)
+	MoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.Bot], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -3897,6 +3935,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIListSpaceActivityProcedure,
 		svc.ListSpaceActivity,
 		connect.WithSchema(uIMethods.ByName("ListSpaceActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPlanMoveBotHandler := connect.NewUnaryHandler(
+		UIPlanMoveBotProcedure,
+		svc.PlanMoveBot,
+		connect.WithSchema(uIMethods.ByName("PlanMoveBot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIMoveBotHandler := connect.NewUnaryHandler(
+		UIMoveBotProcedure,
+		svc.MoveBot,
+		connect.WithSchema(uIMethods.ByName("MoveBot")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListBotsHandler := connect.NewUnaryHandler(
@@ -4967,6 +5017,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIUpdateSpacePolicyHandler.ServeHTTP(w, r)
 		case UIListSpaceActivityProcedure:
 			uIListSpaceActivityHandler.ServeHTTP(w, r)
+		case UIPlanMoveBotProcedure:
+			uIPlanMoveBotHandler.ServeHTTP(w, r)
+		case UIMoveBotProcedure:
+			uIMoveBotHandler.ServeHTTP(w, r)
 		case UIListBotsProcedure:
 			uIListBotsHandler.ServeHTTP(w, r)
 		case UICreateBotProcedure:
@@ -5486,6 +5540,14 @@ func (UnimplementedUIHandler) UpdateSpacePolicy(context.Context, *connect.Reques
 
 func (UnimplementedUIHandler) ListSpaceActivity(context.Context, *connect.Request[v1.ListSpaceActivityRequest]) (*connect.Response[v1.ListSpaceActivityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaceActivity is not implemented"))
+}
+
+func (UnimplementedUIHandler) PlanMoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.MoveBotPlan], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PlanMoveBot is not implemented"))
+}
+
+func (UnimplementedUIHandler) MoveBot(context.Context, *connect.Request[v1.MoveBotRequest]) (*connect.Response[v1.Bot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.MoveBot is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {

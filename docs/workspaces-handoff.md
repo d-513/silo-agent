@@ -1,5 +1,7 @@
 # Workspaces and teams: handoff
 
+> Status: phases 1 to 8 are built (see AGENTS.md, Workspaces and access). Not done yet: the iOS app's own Workspace UI (it runs on the RPC shims), "as Alice" on a connector call in the thread, and the pause refusal naming who holds the desktop.
+
 Status: plan, not started. Read AGENTS.md first.
 
 Settled with the owner:

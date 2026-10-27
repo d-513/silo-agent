@@ -1794,6 +1794,16 @@ const de: Record<string, string> = {
   "{{what}} made personal": "{{what}} persönlich gemacht",
   "Signed in to {{what}}": "Bei {{what}} angemeldet",
   "People joining and leaving, Bots made and deleted, what was given to which Bot, and sign-ins. What a Bot does with it stays with its managers.": "Personen, die beitreten und gehen, erstellte und gelöschte Bots, was welchem Bot gegeben wurde, und Anmeldungen. Was ein Bot damit tut, bleibt bei seinen Verwaltern.",
+  "Which of your Bots gets each of the workspace's connectors and drives. A switch gives or takes it at once.": "Welcher deiner Bots welchen Konnektor und welches Laufwerk des Workspace bekommt. Ein Schalter gibt oder nimmt es sofort.",
+  "The workspace has no connectors or drives yet.": "Der Workspace hat noch keine Konnektoren oder Laufwerke.",
+  "Move to another workspace": "In einen anderen Workspace verschieben",
+  "It loses what was its workspace's: {{what}}.": "Er verliert, was seinem Workspace gehörte: {{what}}.",
+  "It takes nothing of its workspace's along.": "Er nimmt nichts von seinem Workspace mit.",
+  "These people are not in the new one and lose it: {{who}}.": "Diese Personen sind nicht im neuen und verlieren ihn: {{who}}.",
+  "Its machine, files, memories, chats, rules and secrets go with it.": "Seine Maschine, Dateien, Erinnerungen, Chats, Regeln und Geheimnisse ziehen mit.",
+  "Choose a workspace": "Workspace wählen",
+  "Click again to move": "Zum Verschieben erneut klicken",
+  "Move": "Verschieben",
 };
 
 export default de;

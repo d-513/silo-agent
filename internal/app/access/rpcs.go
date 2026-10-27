@@ -89,6 +89,8 @@ var RPCs = map[string]RPCNeed{
 	"DeleteSpaceRule":          SpaceAdmin,
 	"UpdateSpacePolicy":        SpaceAdmin,
 	"ListSpaceActivity":        SpaceAdmin,
+	"PlanMoveBot":              BotManage, // and SpaceBuild in the target
+	"MoveBot":                  BotManage, // and SpaceBuild in the target
 	"ListBots":                 SignedIn,
 	"CreateBot":                SpaceBuild,
 	"UpdateBot":                BotManage,

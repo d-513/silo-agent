@@ -406,3 +406,21 @@ func (s *Service) GrantNew(botID string, ids []string) {
 		}
 	}
 }
+
+// GrantNames are the names of the connections granted to a Bot.
+func (s *Service) GrantNames(botID string) []string {
+	var out []string
+	s.db.Model(&db.Connector{}).Joins("JOIN bot_connectors g ON g.connector_id = connectors.id").
+		Where("g.bot_id = ?", botID).Order("connectors.name").Pluck("connectors.name", &out)
+	return out
+}
+
+// RevokeAll takes every connection away from a Bot (it is moving to another
+// Workspace, where none of them is).
+func (s *Service) RevokeAll(ctx context.Context, botID string) {
+	var rows []db.BotConnector
+	s.db.Where("bot_id = ?", botID).Find(&rows)
+	for i := range rows {
+		s.revoke(ctx, &rows[i])
+	}
+}

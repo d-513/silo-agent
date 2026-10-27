@@ -159,6 +159,7 @@ const spaceConnectors = createRoute({
   component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors"),
 });
 const spaceSkills = createRoute({ getParentRoute: () => spaceCustomize, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
+const spaceAccess = createRoute({ getParentRoute: () => spaceCustomize, path: "access", component: lazyRouteComponent(() => import("./space/Access"), "SpaceAccess") });
 const spaceDrives = createRoute({ getParentRoute: () => spaceCustomize, path: "drives", component: Outlet });
 const spaceDrivesIndex = createRoute({ getParentRoute: () => spaceDrives, path: "/", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDrives") });
 const spaceDriveNew = createRoute({ getParentRoute: () => spaceDrives, path: "new", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveNew") });
@@ -310,7 +311,7 @@ const routeTree = root.addChildren([
     space,
     spaceNewBot,
     spaceSettings.addChildren([spaceGeneral, spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson]), spaceRules, spaceActivity]),
-    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive])]),
+    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive]), spaceAccess]),
     skills,
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),

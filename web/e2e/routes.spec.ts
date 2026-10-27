@@ -39,6 +39,7 @@ const pages: [path: string, lit: string[]][] = [
   ["drives", ["Customize", "Drives"]],
   ["channels", ["Customize", "Channels"]],
   ["settings", ["Settings", "General"]],
+  ["people", ["Settings", "People"]],
   ["rules", ["Settings", "Rules"]],
   ["secrets", ["Settings", "Secrets"]],
   ["tunnels", ["Settings", "Tunnels & Links"]],
