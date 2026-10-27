@@ -38,7 +38,8 @@ func (a *App) setBotZone(botID, name string) (bool, error) {
 // owner pinned the Bot's. A device that names no zone, or one this server does
 // not know, changes nothing: a message is never refused over its zone.
 func (a *App) followZone(b *db.Bot, device string) {
-	if b.TimeZonePinned || device == "" || device == b.TimeZone {
+	// A Bot several people use stays put: whose device would it follow?
+	if b.TimeZonePinned || device == "" || device == b.TimeZone || a.shared(b.ID) {
 		return
 	}
 	if changed, err := a.setBotZone(b.ID, device); err == nil && changed {

@@ -93,18 +93,34 @@ func (s *Service) Tool(ctx context.Context, bot *db.Bot, runID string, args map[
 	return "posted to the Feed (" + p.ID + ")", nil
 }
 
-// Unread is how many Feed posts the owner has not read.
-func (s *Service) Unread(botID string) int32 {
+// ReadAt is the person's Feed watermark on the Bot: every post up to it is
+// read. Each person on a Bot reads its Feed for themselves.
+func (s *Service) ReadAt(botID, userID string) *time.Time {
+	var a db.BotAccess
+	s.db.Select("feed_read_at").Where("bot_id = ? AND user_id = ?", botID, userID).Limit(1).Find(&a)
+	return a.FeedReadAt
+}
+
+// unread narrows posts to the ones after a watermark.
+func unread(q *gorm.DB, readAt *time.Time) *gorm.DB {
+	if readAt == nil {
+		return q
+	}
+	return q.Where("created_at > ?", *readAt)
+}
+
+// Unread is how many Feed posts the person has not read.
+func (s *Service) Unread(botID, userID string) int32 {
 	var posts int64
-	s.db.Model(&db.FeedPost{}).Where("bot_id = ? AND read_at IS NULL", botID).Count(&posts)
+	unread(s.db.Model(&db.FeedPost{}).Where("bot_id = ?", botID), s.ReadAt(botID, userID)).Count(&posts)
 	return int32(posts)
 }
 
-// Proto is a post as the UI reads it.
-func Proto(p *db.FeedPost) *v1.FeedPost {
+// Proto is a post as the UI reads it, read or not by the watermark.
+func Proto(p *db.FeedPost, readAt *time.Time) *v1.FeedPost {
 	return &v1.FeedPost{
 		Id: p.ID, Title: p.Title, Body: p.Body, SourceKind: p.SourceKind, SourceName: p.SourceName,
-		ChatId: p.ChatID, CreatedAt: p.CreatedAt.Format(time.RFC3339), Read: p.ReadAt != nil,
+		ChatId: p.ChatID, CreatedAt: p.CreatedAt.Format(time.RFC3339), Read: readAt != nil && !p.CreatedAt.After(*readAt),
 	}
 }
 
@@ -119,9 +135,10 @@ func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeed
 	}
 	var rows []db.FeedPost
 	s.db.Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
+	readAt := s.ReadAt(req.Msg.GetBotId(), access.User(ctx).ID)
 	out := &v1.ListFeedResponse{}
 	for i := range rows {
-		out.Posts = append(out.Posts, Proto(&rows[i]))
+		out.Posts = append(out.Posts, Proto(&rows[i], readAt))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -130,23 +147,23 @@ func (s *Service) MarkFeedRead(ctx context.Context, req *connect.Request[v1.Mark
 	if _, err := access.Bot(ctx, s.db, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
-	now := time.Now()
-	s.MarkRead(req.Msg.GetBotId(), now)
+	s.MarkRead(req.Msg.GetBotId(), access.User(ctx).ID, time.Now())
 	return connect.NewResponse(&v1.MarkFeedReadResponse{}), nil
 }
 
-// MarkRead counts every post of the Bot read as of now.
-func (s *Service) MarkRead(botID string, now time.Time) {
-	s.db.Model(&db.FeedPost{}).Where("bot_id = ? AND read_at IS NULL", botID).Update("read_at", now)
+// MarkRead counts every post of the Bot read by the person as of now.
+func (s *Service) MarkRead(botID, userID string, now time.Time) {
+	s.db.Model(&db.BotAccess{}).Where("bot_id = ? AND user_id = ?", botID, userID).Update("feed_read_at", now)
 }
 
-// UnreadPosts are the newest posts the owner has not read, at most n.
-func (s *Service) UnreadPosts(botID string, n int) []*v1.FeedPost {
+// UnreadPosts are the newest posts the person has not read, at most n.
+func (s *Service) UnreadPosts(botID, userID string, n int) []*v1.FeedPost {
 	var posts []db.FeedPost
-	s.db.Where("bot_id = ? AND read_at IS NULL", botID).Order("created_at desc").Limit(n).Find(&posts)
+	readAt := s.ReadAt(botID, userID)
+	unread(s.db.Where("bot_id = ?", botID), readAt).Order("created_at desc").Limit(n).Find(&posts)
 	out := make([]*v1.FeedPost, len(posts))
 	for i := range posts {
-		out[i] = Proto(&posts[i])
+		out[i] = Proto(&posts[i], readAt)
 	}
 	return out
 }
@@ -184,12 +201,14 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 	}
 	q := quote.Quote{From: quote.FromFeed, Title: p.Title, Body: body, Source: feedLabel(p), At: p.CreatedAt}
 	placed, err := s.host.Place(run.Placement{
-		BotID: p.BotID, Title: "Re: " + strings.TrimLeft(title, "# "), Own: req.Msg.GetNewChat(),
+		BotID: p.BotID, UserID: access.User(ctx).ID, Title: "Re: " + strings.TrimLeft(title, "# "), Own: req.Msg.GetNewChat(),
 		Write: func(ch *db.Chat) (*db.RunEvent, error) { return quote.Put(s.db, ch, q) },
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.db.Model(p).Update("read_at", time.Now())
+	// Quoting is reading: the presser's watermark moves up to the post.
+	s.db.Model(&db.BotAccess{}).Where("bot_id = ? AND user_id = ? AND (feed_read_at IS NULL OR feed_read_at < ?)", p.BotID, access.User(ctx).ID, p.CreatedAt).
+		Update("feed_read_at", p.CreatedAt)
 	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(placed.Chat)}), nil
 }

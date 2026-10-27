@@ -254,8 +254,10 @@ func matrix(t *testing.T, h *apptest.H, byName map[string]protoreflect.MethodDes
 		refused map[access.RPCNeed]bool
 	}
 	people := []who{
+		// The fixture's chat is the owner's: a user of the Bot neither reads
+		// nor writes in it.
 		{"user", userHC, userID, map[access.RPCNeed]bool{
-			access.BotManage: true, access.BotAdminister: true, access.SpaceAdmin: true, access.SpaceOwn: true,
+			access.BotManage: true, access.BotAdminister: true, access.ChatRead: true, access.ChatWrite: true, access.SpaceAdmin: true, access.SpaceOwn: true,
 		}},
 		{"guest", guestHC, guestID, map[access.RPCNeed]bool{
 			access.BotUse: true, access.BotManage: true, access.BotAdminister: true, access.ChatRead: true, access.ChatWrite: true,

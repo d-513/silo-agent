@@ -71,6 +71,10 @@ type Row struct {
 type spec struct {
 	title string
 	mode  string
+	// manager marks an action that changes the Bot's standing setup (what
+	// runs unwatched, who can reach it, who it speaks as): only its managers
+	// may approve it, whoever's chat asked.
+	manager bool
 	// output is the action's output mode by default; empty passes.
 	output  string
 	hide    []string
@@ -90,16 +94,16 @@ var catalog = map[string]spec{
 	"terminal.run":         {title: "Terminal", mode: Allow, summary: want("run a shell command")},
 	"files.*":              {title: "Files", mode: Allow, summary: want("use workspace files")},
 	"desktop.*":            {title: "Desktop", mode: Allow, summary: want("use the desktop"), hide: []string{"text"}},
-	"bot.soul":             {title: "Soul", mode: Allow, summary: want("edit SOUL")},
+	"bot.soul":             {manager: true, title: "Soul", mode: Allow, summary: want("edit SOUL")},
 	"bot.remember":         {title: "Remember", mode: Allow, summary: want("save a memory")},
 	"bot.recall":           {title: "Recall", mode: Allow, summary: want("search its memories")},
 	"bot.forget":           {title: "Forget", mode: Allow, summary: want("delete a memory")},
-	"bot.set_timezone":     {title: "Set time zone", mode: Allow, summary: want("change the time zone its schedules use")},
+	"bot.set_timezone":     {manager: true, title: "Set time zone", mode: Allow, summary: want("change the time zone its schedules use")},
 	"bot.search_docs":      {title: "Search documents", mode: Allow, summary: want("search the owner's indexed documents")},
 	"bot.feed":             {title: "Post to Feed", mode: Allow, summary: want("post to your Feed")},
 	"bot.ask_owner":        {title: "Ask you", mode: Allow, summary: want("ask you a question, with a card to answer")},
 	"bot.offer_setup":      {title: "Offer a setup", mode: Allow, summary: want("offer you a connector, channel or drive to add")},
-	"bot.set_proactivity":  {title: "Set proactivity", mode: Allow, summary: want("change how much it does unasked")},
+	"bot.set_proactivity":  {manager: true, title: "Set proactivity", mode: Allow, summary: want("change how much it does unasked")},
 	"bot.dashboard_list":   {title: "Read Dashboard", mode: Allow, summary: want("read your Dashboard cards")},
 	"bot.dashboard_upsert": {title: "Update Dashboard", mode: Allow, summary: want("create or update a Dashboard card")},
 	"bot.dashboard_remove": {title: "Remove Dashboard card", mode: Allow, summary: want("remove a Dashboard card")},
@@ -116,9 +120,9 @@ var catalog = map[string]spec{
 	"model.switch":         {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
 	"model.decide":         {title: "Ask a decision model", mode: Allow, summary: want("ask a decision model typed questions"), fields: switchFields},
 	"automations.list":     {title: "List automations", mode: Allow, summary: want("list its automations")},
-	"automations.create":   {title: "Create automation", mode: Ask, summary: automationSummary("create"), fields: automationFields},
-	"automations.update":   {title: "Change automation", mode: Ask, summary: automationSummary("change"), fields: automationFields},
-	"automations.delete":   {title: "Delete automation", mode: Allow, summary: automationSummary("delete")},
+	"automations.create":   {manager: true, title: "Create automation", mode: Ask, summary: automationSummary("create"), fields: automationFields},
+	"automations.update":   {manager: true, title: "Change automation", mode: Ask, summary: automationSummary("change"), fields: automationFields},
+	"automations.delete":   {manager: true, title: "Delete automation", mode: Allow, summary: automationSummary("delete")},
 	"agents.spawn":         {title: "Start subagent", mode: Allow, summary: agentSummary("start"), fields: agentFields},
 	"agents.status":        {title: "Check subagents", mode: Allow, summary: want("check on its subagents")},
 	"agents.message":       {title: "Message subagent", mode: Allow, summary: agentSummary("message"), fields: agentFields},
@@ -130,12 +134,12 @@ var catalog = map[string]spec{
 	"tunnels.open":         {title: "Open tunnel", mode: Allow, summary: tunnelSummary("open a tunnel to"), fields: tunnelFields},
 	"tunnels.list":         {title: "List tunnels", mode: Allow, summary: want("list its tunnels")},
 	"tunnels.close":        {title: "Close tunnel", mode: Allow, summary: want("close a tunnel")},
-	"tunnels.public":       {title: "Make tunnel public", mode: Ask, summary: tunnelPublicSummary, fields: tunnelFields},
+	"tunnels.public":       {manager: true, title: "Make tunnel public", mode: Ask, summary: tunnelPublicSummary, fields: tunnelFields},
 	"mailbox.list":         {title: "List mail", mode: Allow, output: OutCheck, summary: want("list the mail in its mailbox")},
 	"mailbox.read":         {title: "Read mail", mode: Allow, output: OutCheck, summary: want("read a message from its mailbox")},
 	// One rule per channel: the action is the channel ID, so channels.* is the
 	// mode for every channel until an individual rule overrides it.
-	"channels.*": {title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
+	"channels.*": {manager: true, title: "Channel", mode: Allow, summary: channelSummary, fields: channelFields},
 }
 
 func switchSummary(args map[string]string) string {
@@ -406,6 +410,14 @@ func Describe(connector, action, argsJSON string) Prompt {
 		return p
 	}
 	return generic(connector, action, args)
+}
+
+// ManagerOnly reports whether only the Bot's managers may approve the action:
+// one that changes its standing setup, or a channel send (a channel speaks as
+// whoever linked it).
+func ManagerOnly(connector, action string) bool {
+	k, ok := lookup(connector, action)
+	return ok && k.manager
 }
 
 func lookup(connector, action string) (spec, bool) {

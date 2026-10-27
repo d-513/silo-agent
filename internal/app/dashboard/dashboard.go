@@ -107,12 +107,19 @@ func (s *Service) ListDashboard(ctx context.Context, req *connect.Request[v1.Lis
 		return nil, err
 	}
 	out := &v1.ListDashboardResponse{}
+	// What is new is new to this person: each has their own last look.
+	me := access.User(ctx).ID
+	seen := s.seenAt(botID, me)
 	for _, c := range s.openAsks(botID) {
-		out.Cards = append(out.Cards, protoCard(&c))
+		p := protoCard(&c)
+		p.Read = seen != nil && !c.UpdatedAt.After(*seen)
+		out.Cards = append(out.Cards, p)
 	}
-	out.Posts = s.feed.UnreadPosts(botID, postsMax)
+	out.Posts = s.feed.UnreadPosts(botID, me, postsMax)
 	for _, w := range s.widgets(botID) {
-		out.Widgets = append(out.Widgets, s.protoWidget(&w))
+		p := s.protoWidget(&w)
+		p.Fresh = w.ChangedAt != nil && (seen == nil || w.ChangedAt.After(*seen))
+		out.Widgets = append(out.Widgets, p)
 	}
 	if au := s.automations.Pinned(botID, Curator.Kind); au != nil {
 		out.AutomationId = au.ID
@@ -135,8 +142,15 @@ func (s *Service) MarkDashboardRead(ctx context.Context, req *connect.Request[v1
 		return nil, err
 	}
 	now := time.Now()
-	s.db.Model(&db.DashboardCard{}).Where("bot_id = ? AND status = 'open' AND read_at IS NULL", botID).Update("read_at", now)
-	s.feed.MarkRead(botID, now)
-	s.db.Model(&db.DashboardWidget{}).Where("bot_id = ?", botID).UpdateColumn("seen_at", now)
+	me := access.User(ctx).ID
+	s.db.Model(&db.BotAccess{}).Where("bot_id = ? AND user_id = ?", botID, me).Update("dashboard_seen_at", now)
+	s.feed.MarkRead(botID, me, now)
 	return connect.NewResponse(&v1.MarkDashboardReadResponse{}), nil
+}
+
+// seenAt is the person's last look at the Bot's Dashboard.
+func (s *Service) seenAt(botID, userID string) *time.Time {
+	var a db.BotAccess
+	s.db.Select("dashboard_seen_at").Where("bot_id = ? AND user_id = ?", botID, userID).Limit(1).Find(&a)
+	return a.DashboardSeenAt
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
@@ -14,20 +15,35 @@ import (
 func (a *App) Place(p run.Placement) (run.Placed, error) {
 	a.convMu.Lock()
 	defer a.convMu.Unlock()
-	main, err := chats.Main(a.DB, p.BotID)
-	if err != nil {
-		return run.Placed{}, err
+	// Whose main chat: the person who pressed; for the Bot's own doing,
+	// the one person on it. With several, the Bot writes in nobody's main
+	// chat unasked: it opens a chat of its own, or waits on the Dashboard.
+	userID := p.UserID
+	if userID == "" {
+		if people := access.People(a.DB, p.BotID); len(people) == 1 {
+			userID = people[0]
+		}
 	}
-	out := run.Placed{Chat: main, Main: !p.Own && a.LiveRunID(p.BotID, main.ID) == "" && (!p.Proactive || a.Proactive(p.BotID))}
+	var main *db.Chat
+	if userID != "" {
+		m, err := chats.Main(a.DB, p.BotID, userID)
+		if err != nil {
+			return run.Placed{}, err
+		}
+		main = m
+	}
+	out := run.Placed{Chat: main, Main: main != nil && !p.Own && a.LiveRunID(p.BotID, main.ID) == "" && (!p.Proactive || a.Proactive(p.BotID))}
 	if !out.Main {
 		if p.Title == "" {
 			return run.Placed{}, run.ErrNotMain
 		}
-		if out.Chat, err = chats.New(a.DB, p.BotID, p.Title); err != nil {
+		var err error
+		if out.Chat, err = chats.New(a.DB, p.BotID, p.UserID, p.Title); err != nil {
 			return run.Placed{}, err
 		}
 	}
 	var ev *db.RunEvent
+	var err error
 	if p.Write != nil {
 		if ev, err = p.Write(out.Chat); err != nil {
 			a.unplace(out, nil)

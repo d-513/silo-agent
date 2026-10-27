@@ -32,6 +32,16 @@ func stampUserText(text string, t time.Time, zoneName string) string {
 	return messageTimeStamp(t, zoneName) + text
 }
 
+// stampAuthored is stampUserText with the writer's name on the stamp, for a
+// message of a Bot with several people ("[bob@… · Sun, …] "). A message
+// with no author (a solo Bot's) keeps the bytes it always had.
+func stampAuthored(text string, t time.Time, zoneName, author string) string {
+	if author == "" {
+		return stampUserText(text, t, zoneName)
+	}
+	return "[" + author + " · " + strings.TrimPrefix(messageTimeStamp(t, zoneName), "[") + text
+}
+
 func (a *App) historyFromDB(chatID string) []llm.Message {
 	return a.contextFromDB(chatID).msgs
 }
@@ -247,7 +257,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 			continue
 		case "user":
 			flushTools()
-			text := stampUserText(userTurnText(ev.Body, decodeUserMeta(ev.Meta)), ev.CreatedAt, ev.Zone)
+			text := stampAuthored(userTurnText(ev.Body, decodeUserMeta(ev.Meta)), ev.CreatedAt, ev.Zone, ev.Author)
 			if n := len(msgs); n > 0 && fold == n-1 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
 				fold = -1

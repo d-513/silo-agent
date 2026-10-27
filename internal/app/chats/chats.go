@@ -28,19 +28,19 @@ func Proto(c *db.Chat) *v1.Chat {
 // MainTitle is the main chat's title; it is not renamed.
 const MainTitle = "Main"
 
-// Main is the Bot's main chat, made the first time it is asked for. The
-// caller has checked the Bot is the user's.
-func Main(gdb *gorm.DB, botID string) (*db.Chat, error) {
+// Main is a person's main chat on the Bot (each has one), made the first
+// time it is asked for. The caller has checked they are on the Bot.
+func Main(gdb *gorm.DB, botID, userID string) (*db.Chat, error) {
 	var c db.Chat
-	if gdb.Where("bot_id = ? AND main", botID).Limit(1).Find(&c); c.ID != "" {
+	if gdb.Where("bot_id = ? AND user_id = ? AND main", botID, userID).Limit(1).Find(&c); c.ID != "" {
 		return &c, nil
 	}
 	now := time.Now()
-	c = db.Chat{ID: ids.New(), BotID: botID, Main: true, Title: MainTitle, CreatedAt: now, UpdatedAt: now}
+	c = db.Chat{ID: ids.New(), BotID: botID, UserID: userID, Main: true, Title: MainTitle, CreatedAt: now, UpdatedAt: now}
 	if err := gdb.Create(&c).Error; err != nil {
-		// Made at the same moment by another caller (chats_main).
+		// Made at the same moment by another caller (chats_main_person).
 		var won db.Chat
-		if gdb.Where("bot_id = ? AND main", botID).Limit(1).Find(&won); won.ID != "" {
+		if gdb.Where("bot_id = ? AND user_id = ? AND main", botID, userID).Limit(1).Find(&won); won.ID != "" {
 			return &won, nil
 		}
 		return nil, err
@@ -54,14 +54,15 @@ const TitleMax = 120
 // NewTitle is a web chat's title until the title model names it.
 const NewTitle = "New chat"
 
-// New makes a web chat for the Bot. A blank title is NewTitle.
-func New(gdb *gorm.DB, botID, title string) (*db.Chat, error) {
+// New makes a web chat for the Bot, written in by userID ("" is the Bot's
+// own: a mail wake). A blank title is NewTitle.
+func New(gdb *gorm.DB, botID, userID, title string) (*db.Chat, error) {
 	title = textx.ClipRunes(strings.TrimSpace(strings.TrimLeft(title, "# ")), TitleMax)
 	if title == "" {
 		title = NewTitle
 	}
 	now := time.Now()
-	c := db.Chat{ID: ids.New(), BotID: botID, Title: title, CreatedAt: now, UpdatedAt: now}
+	c := db.Chat{ID: ids.New(), BotID: botID, UserID: userID, Title: title, CreatedAt: now, UpdatedAt: now}
 	if err := gdb.Create(&c).Error; err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func WebScope(q *gorm.DB) *gorm.DB {
 // now; at, when set, is its time. The chat's updated_at moves.
 func Put(gdb *gorm.DB, ch *db.Chat, origin string, ev db.RunEvent) (*db.RunEvent, error) {
 	now := time.Now()
-	r := db.Run{ID: ids.New(), BotID: ch.BotID, ChatID: ch.ID, Origin: origin, Status: "done", CreatedAt: now}
+	r := db.Run{ID: ids.New(), BotID: ch.BotID, ChatID: ch.ID, Origin: origin, Status: "done", UserID: ch.UserID, CreatedAt: now}
 	ev.ID, ev.RunID = ids.New(), r.ID
 	if ev.CreatedAt.IsZero() {
 		ev.CreatedAt = now

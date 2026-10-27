@@ -1,5 +1,5 @@
 import { ActivityStrip } from "./ActivityStrip";
-import { Blocks, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Blocks, Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
@@ -16,6 +16,8 @@ import { ActiveBar, SideLink } from "./SideNav";
 import { onCustomize, onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 import { t } from "../i18n.ts";
+import { Initials } from "../space/People";
+import { Tip } from "../Tip";
 
 // What the open chat is doing, for its lamp: waiting on you, or working.
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
@@ -48,8 +50,14 @@ export function BotSidebar({
 }) {
   // The main chat is pinned above the pages; the date groups are the side
   // chats.
-  const main = chats.find((c) => c.main);
-  const groups = useMemo(() => groupChats(chats.filter((c) => !c.main)), [chats]);
+  const main = chats.find((c) => c.main && c.mine);
+  // Your own side chats by date; on a Bot several people use, its managers
+  // also get the Team: everyone else's chats and the Bot's own, read-only.
+  const groups = useMemo(() => {
+    const own = groupChats(chats.filter((c) => c.mine && !c.main));
+    const others = chats.filter((c) => !c.mine);
+    return others.length ? [...own, { key: "team", label: t("Team"), chats: others }] : own;
+  }, [chats]);
   const picked = useGroupsPicked();
   const dashQ = useQuery(UI.method.listDashboard, { botId: id });
   const freshCount = (dashQ.data?.widgets ?? []).filter((w) => w.fresh).length + (dashQ.data?.posts ?? []).length;
@@ -113,6 +121,7 @@ export function BotSidebar({
                   status={on && busy ? (waiting ? "needs_you" : "working") : ""}
                   rename={rename}
                   onDelete={() => onDeleteChat(c.id)}
+                  team={g.key === "team"}
                 />
               );
             })}
@@ -164,6 +173,7 @@ function BotHome({
         <ActiveBar on={on} />
         <div className="flex items-center gap-3">
           <h1 className="min-w-0 flex-1 truncate text-card-title leading-6">{bot.name}</h1>
+          {bot.people.length > 1 ? <People people={bot.people} /> : null}
           <span className="flex shrink-0 items-center gap-2">
             <Lamp status={bot.status} />
             <StatusWord status={bot.status} />
@@ -186,6 +196,31 @@ function BotHome({
         </div>
       </Link>
     </div>
+  );
+}
+
+// People is the faces of a Bot several people use: up to three, then +N,
+// with everyone and their role in a Tip.
+function People({ people }: { people: Bot["people"] }) {
+  return (
+    <Tip
+      content={
+        <ul className="space-y-0.5 text-[12.5px]">
+          {people.map((p) => (
+            <li key={p.userId}>
+              {p.email} · {p.role === "manage" ? t("Can manage") : t("Can use")}
+            </li>
+          ))}
+        </ul>
+      }
+    >
+      <span tabIndex={0} className="flex shrink-0 items-center -space-x-1.5 outline-none">
+        {people.slice(0, 3).map((p) => (
+          <Initials key={p.userId} email={p.email} size={20} />
+        ))}
+        {people.length > 3 ? <span className="pl-2 text-[11px] text-ink-3">{`+${people.length - 3}`}</span> : null}
+      </span>
+    </Tip>
   );
 }
 
@@ -304,6 +339,7 @@ function ChatRow({
   status,
   rename,
   onDelete,
+  team = false,
 }: {
   botId: string;
   chat: Chat;
@@ -312,6 +348,9 @@ function ChatRow({
   status: "needs_you" | "working" | "";
   rename: ChatRename;
   onDelete: () => void;
+  // A row of the Team group: someone else's chat, or the Bot's own. It
+  // reads only: no rename, no delete.
+  team?: boolean;
 }) {
   const editing = rename.editing === chat.id;
   const ms = Date.parse(chat.updatedAt);
@@ -333,10 +372,11 @@ function ChatRow({
           title={Number.isFinite(ms) ? fullTime(new Date(ms)) : undefined}
           onDoubleClick={(e) => {
             e.preventDefault();
-            rename.begin(chat);
+            if (!team) rename.begin(chat);
           }}
           className="flex h-8 min-w-0 items-center gap-2 rounded-control pr-2 pl-3 outline-offset-[-2px]"
         >
+          {team ? chat.author ? <Initials email={chat.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} /> : null}
           <span
             className={`min-w-0 flex-1 truncate text-[13.5px] leading-5 transition-colors duration-[160ms] ease-quiet ${
               on ? "text-ink" : "text-ink-2 group-hover:text-ink"
@@ -347,7 +387,7 @@ function ChatRow({
           {status ? <Status status={status} className="shrink-0" /> : null}
         </Link>
       )}
-      {!editing && (
+      {!editing && !team && (
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 opacity-0 transition-opacity duration-[160ms] ease-quiet group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
           <button
             type="button"

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/automation"
 	"silo.agent/internal/app/channel"
 	"silo.agent/internal/app/connector"
@@ -67,6 +68,7 @@ type promptProvider func(promptContext) []promptSection
 // main SYSTEM.md always leads; append a provider here to extend the engine.
 func (a *App) promptProviders() []promptProvider {
 	return []promptProvider{
+		a.peopleSections,
 		a.memorySections,
 		a.connectorSections,
 		a.skillSections,
@@ -79,6 +81,35 @@ func (a *App) promptProviders() []promptProvider {
 		a.automationSections,
 		a.subagentSections,
 	}
+}
+
+// peopleSections tells a Bot several people use who they are, so it can
+// tell their messages apart (each carries its writer on its stamp). A Bot
+// with one person gets nothing: its prompt is as it always was. A change of
+// people rewrites the session tier, one cache miss, as a new connector does.
+func (a *App) peopleSections(pc promptContext) []promptSection {
+	people := access.People(a.DB, pc.bot.ID)
+	if len(people) < 2 {
+		return nil
+	}
+	var names []string
+	for _, id := range people {
+		n := access.Email(a.DB, id)
+		if access.BotRole(a.DB, pc.bot.ID, id) == access.RoleManage {
+			n += " (manages you)"
+		}
+		names = append(names, n)
+	}
+	return []promptSection{{title: "People", body: "People who use you: " + strings.Join(names, ", ") + ". Each message says who wrote it."}}
+}
+
+// SystemPromptText is the Bot's system prompt as one text, for tests.
+func (a *App) SystemPromptText(botID string) string {
+	var b strings.Builder
+	for _, blk := range a.buildSystemBlocks(botID) {
+		b.WriteString(blk.Text)
+	}
+	return b.String()
 }
 
 // memorySections is the Bot's memories, first among the trailing

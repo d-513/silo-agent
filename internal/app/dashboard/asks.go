@@ -315,12 +315,12 @@ func submittedTurn(c *db.DashboardCard, valuesJSON, note string) string {
 
 // quoteChat puts q in the main chat (or, asked for or with a reply running
 // there, a chat of its own) and starts a run with the owner's message.
-func (s *Service) quoteChat(botID, title string, q quote.Quote, message string, own bool) (run.Placed, error) {
+func (s *Service) quoteChat(ctx context.Context, botID, title string, q quote.Quote, message string, own bool) (run.Placed, error) {
 	if title == "" {
 		title = "Dashboard"
 	}
 	return s.host.Place(run.Placement{
-		BotID: botID, Title: title, Own: own, Message: message,
+		BotID: botID, UserID: access.User(ctx).ID, Title: title, Own: own, Message: message,
 		Write: func(ch *db.Chat) (*db.RunEvent, error) { return quote.Put(s.db, ch, q) },
 	})
 }
@@ -365,7 +365,7 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	} else {
 		q := quote.Quote{From: quote.FromAsk, Title: c.Title, Body: cardQuote(c), Source: chats.SourceLabel(c.SourceKind, c.SourceName), At: c.CreatedAt}
 		var placed run.Placed
-		placed, err = s.quoteChat(c.BotID, c.Title, q, turn, req.Msg.GetNewChat())
+		placed, err = s.quoteChat(ctx, c.BotID, c.Title, q, turn, req.Msg.GetNewChat())
 		ch, runID = placed.Chat, placed.RunID
 	}
 	if err != nil {

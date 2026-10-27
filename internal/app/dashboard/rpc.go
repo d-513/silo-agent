@@ -123,7 +123,7 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 	}
 	out := &v1.RunWidgetActionResponse{}
 	if a.Kind == "hand" {
-		placed, err := s.quoteChat(w.BotID, w.Title, widgetQuote(w), handTurn(a, args), req.Msg.GetNewChat())
+		placed, err := s.quoteChat(ctx, w.BotID, w.Title, widgetQuote(w), handTurn(a, args), req.Msg.GetNewChat())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}

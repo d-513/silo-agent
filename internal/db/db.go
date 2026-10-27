@@ -253,11 +253,16 @@ type Chat struct {
 	// SubagentID marks the hidden Chat that holds one subagent's work log.
 	// Web chat lists and Send skip these too.
 	SubagentID string `gorm:"index;default:''"`
-	// Main marks the Bot's one main chat: where its page opens, where
-	// replies to what the Bot made go, and where it asks the owner things.
-	// It cannot be deleted or renamed; /clear and /wipe keep it light.
-	Main  bool `gorm:"not null;default:false"`
-	Title string
+	// Main marks a person's main chat on the Bot (one each): where its page
+	// opens for them, where replies to what the Bot made go when they press
+	// them, and where it asks things while it has one person. It cannot be
+	// deleted or renamed; /clear and /wipe keep it light.
+	Main bool `gorm:"not null;default:false"`
+	// UserID is the chat's author: who writes in it. Empty is the Bot's own
+	// (a channel conversation, a mail wake, an automation's or subagent's
+	// log), which its managers read.
+	UserID string `gorm:"not null;default:'';index"`
+	Title  string
 	// Model is the per-chat provider/model override; empty falls back to the
 	// operator default.
 	Model string
@@ -279,6 +284,9 @@ type Run struct {
 	ChannelID string `gorm:"index"`
 	Origin    string
 	Status    string
+	// UserID is who started it; empty for a background run (an automation,
+	// a channel, a mail wake). It decides who may answer its approvals.
+	UserID    string `gorm:"not null;default:''"`
 	CreatedAt time.Time
 }
 
@@ -318,7 +326,12 @@ type RunEvent struct {
 	// is told to the model in this zone on every replay, so a Bot that
 	// changes zone never rewrites the history it already sent. Empty on
 	// events from before zones.
-	Zone      string `gorm:"not null;default:''"`
+	Zone string `gorm:"not null;default:''"`
+	// UserID is who wrote a user event. Author is their name as the model
+	// reads it, frozen when written like Zone, and set only while the Bot
+	// had more than one person: a solo Bot's history has none.
+	UserID    string `gorm:"not null;default:''"`
+	Author    string `gorm:"not null;default:''"`
 	CreatedAt time.Time
 }
 
@@ -1046,8 +1059,10 @@ func Migrate(gdb *gorm.DB) error {
 		// One Heartbeat and one Dashboard per Bot: the insert that pins them
 		// relies on this to lose a race instead of making a second.
 		pinnedIndex,
-		// One main chat per Bot: chats.Main relies on it to lose a race.
-		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main ON chats (bot_id) WHERE main",
+		// One main chat per person on a Bot: chats.Main relies on it to lose
+		// a race. (chats_main was one per Bot.)
+		"DROP INDEX IF EXISTS chats_main",
+		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main_person ON chats (bot_id, user_id) WHERE main",
 		// One owner per Workspace: a transfer demotes the old one first.
 		"CREATE UNIQUE INDEX IF NOT EXISTS space_owner ON space_members (space_id) WHERE role = 'owner'",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",

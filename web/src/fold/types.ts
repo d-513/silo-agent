@@ -22,6 +22,8 @@ export type Quote = { source: "message" | "file" | "artifact"; ref: string; labe
 export type Ev = {
   id?: string;
   kind: string;
+  // Who wrote a user message, on a Bot several people use.
+  author?: string;
   body: string;
   tool: string;
   runId?: string;
@@ -122,7 +124,7 @@ export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; t
 export type Block =
   // `from` names a non-human sender ("lead" for a subagent's brief and the
   // lead's messages to it).
-  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string }
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string; author?: string }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
   | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }

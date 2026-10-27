@@ -46,7 +46,6 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		AutoApprove:     b.AutoApprove,
 		OutputPolicy:    b.OutputPolicy,
 		Model:           b.Model,
-		FeedUnread:      a.Feed.Unread(b.ID),
 		DashboardAsks:   a.Dashboard.Open(b.ID),
 		DesktopPaused:   a.Pause.Paused(b.ID),
 		Proactivity:     b.Proactivity,
@@ -60,10 +59,18 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 	}
 }
 
+// viewBot is a Bot as one person sees it: their role, their unread Feed,
+// and (on a Bot several people use) who else is on it.
 func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
 	p := a.protoBot(b, a.live(ctx, b))
 	if u := access.User(ctx); u != nil {
 		p.Role = access.BotRole(a.DB, b.ID, u.ID)
+		p.FeedUnread = a.Feed.Unread(b.ID, u.ID)
+		if people := access.People(a.DB, b.ID); len(people) > 1 {
+			for _, id := range people {
+				p.People = append(p.People, &v1.BotPerson{UserId: id, Email: access.Email(a.DB, id), Role: access.BotRole(a.DB, b.ID, id), You: id == u.ID})
+			}
+		}
 	}
 	return p
 }
@@ -181,7 +188,7 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	if err != nil {
 		return nil, err
 	}
-	main, err := a.mainChat(id)
+	main, err := a.mainChat(id, u.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -401,6 +408,12 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 	if err != nil {
 		return nil, err
 	}
+	// Whose chat first: only its author writes in it.
+	if id := req.Msg.GetChatId(); id != "" {
+		if _, err := a.chat(ctx, b.ID, id, access.Write); err != nil {
+			return nil, err
+		}
+	}
 	text := req.Msg.GetText()
 	ex := run.Extra{Files: cleanAttachments(req.Msg.GetAttachments()), Quotes: cleanQuotes(req.Msg.GetQuotes())}
 	if text == "" && len(ex.Files) == 0 && len(ex.Quotes) == 0 {
@@ -427,13 +440,13 @@ func (a *App) Send(ctx context.Context, req *connect.Request[v1.SendRequest]) (*
 		if !llm.ValidThinking(level) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown thinking level"))
 		}
-		ch = &db.Chat{ID: ids.New(), BotID: b.ID, Title: "New chat", Model: model, Thinking: level, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+		ch = &db.Chat{ID: ids.New(), BotID: b.ID, UserID: access.User(ctx).ID, Title: "New chat", Model: model, Thinking: level, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 		if err := a.DB.Create(ch).Error; err != nil {
 			return nil, err
 		}
 		made = true
 	} else if chatID == "" {
-		main, err := a.mainChat(b.ID)
+		main, err := a.mainChat(b.ID, access.User(ctx).ID)
 		if err != nil {
 			return nil, err
 		}
@@ -538,6 +551,13 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	botID := req.Msg.GetBotId()
 	chatID := req.Msg.GetChatId()
 	after := req.Msg.GetAfterEventId()
+	if chatID != "" {
+		if _, err := a.chat(ctx, botID, chatID, access.Read); err != nil {
+			return err
+		}
+	}
+	// The whole Bot's stream carries only the chats this person reads.
+	readable := a.chatReader(botID, access.User(ctx).ID)
 	// The stream ends with the viewer's access to the Bot.
 	lost, stop := a.Gone.Lost(botID, access.User(ctx).ID)
 	defer stop()
@@ -594,6 +614,9 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 			if chatID != "" && ev.GetChatId() != chatID {
 				continue
 			}
+			if chatID == "" && ev.GetChatId() != "" && !readable(ev.GetChatId()) {
+				continue
+			}
 			if ev.GetId() != "" {
 				if _, dup := seen[ev.GetId()]; dup {
 					continue
@@ -617,7 +640,7 @@ func clipDesc(s string) string {
 // quote of one) carries the card as it stands now.
 func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 	meta := decodeUserMeta(r.Meta)
-	out := &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
+	out := &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Author: r.Author, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
 	switch {
 	case r.Kind == dashboard.CardKind:
 		out.Card = a.Dashboard.CardProto(r.Body)

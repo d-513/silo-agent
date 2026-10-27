@@ -113,7 +113,7 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 		return nil, nil
 	}
 	now := time.Now()
-	nc := db.Chat{ID: ids.New(), BotID: src.BotID, Title: src.Title, Model: src.Model, CreatedAt: now, UpdatedAt: now}
+	nc := db.Chat{ID: ids.New(), BotID: src.BotID, UserID: src.UserID, Title: src.Title, Model: src.Model, CreatedAt: now, UpdatedAt: now}
 	if err := a.DB.Create(&nc).Error; err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 			if status == "" || status == "running" {
 				status = "done"
 			}
-			nr := db.Run{ID: newRunID, BotID: e.run.BotID, ChatID: nc.ID, ChannelID: e.run.ChannelID, Origin: e.run.Origin, Status: status, CreatedAt: e.run.CreatedAt}
+			nr := db.Run{ID: newRunID, BotID: e.run.BotID, ChatID: nc.ID, ChannelID: e.run.ChannelID, Origin: e.run.Origin, Status: status, UserID: e.run.UserID, CreatedAt: e.run.CreatedAt}
 			if err := a.DB.Create(&nr).Error; err != nil {
 				return nil, err
 			}

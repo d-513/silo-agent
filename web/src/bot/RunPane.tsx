@@ -1,4 +1,7 @@
+import { Square } from "lucide-react";
 import { ui } from "../api";
+import { Btn } from "../Btn";
+import { t } from "../i18n.ts";
 import type { Artifact } from "../Artifact";
 import { useQuery } from "@connectrpc/connect-query";
 import { Composer, type Said } from "../composer/Composer";
@@ -111,37 +114,58 @@ export function RunPane({
           }}
         />
       ) : null}
-      <Composer
-        text={draft.text}
-        setText={draft.setText}
-        atts={draft.atts}
-        onRemoveAtt={(path) => draft.setAtts((xs) => xs.filter((x) => x.path !== path))}
-        quotes={draft.quotes}
-        onRemoveQuote={draft.unquote}
-        attachErr={draft.attachErr}
-        onAttach={draft.attach}
-        onSend={() => void actions.send()}
-        onStop={() => void actions.stopRun()}
-        sending={run.sending}
-        chatId={chatId}
-        fresh={fresh}
-        workerConnected={bot.workerConnected}
-        botName={bot.name}
-        models={models}
-        model={chat?.model || picked?.model || defaultModel}
-        onModel={(m) => void actions.pickModel(m)}
-        thinking={chat?.thinking ?? picked?.thinking ?? ""}
-        onThinking={(l) => void actions.pickThinking(l)}
-        usage={run.usage}
-        onCompact={() => void actions.compactChat()}
-        voice={voice}
-        onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
-        onCollect={() => ui.collectMemories({ botId: id, chatId: chatId! })}
-        commands={commands}
-        onCommand={actions.sendCommand}
-        said={said}
-        onDismissSaid={() => setSaid(null)}
-      />
+      {fresh && !chatId && bot.people.length > 1 ? (
+        <p className="mx-auto w-full max-w-[760px] px-4 pb-2 text-center text-[12px] leading-[18px] text-ink-3">
+          {t("{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.", { name: bot.name })}
+        </p>
+      ) : null}
+      {chat && !chat.mine ? (
+        <div className="mx-auto mb-4 flex w-full max-w-[760px] items-center gap-3 rounded-card bg-well px-4 py-3">
+          <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink-3">
+            {chat.author
+              ? t("{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.", { who: chat.author })
+              : t("{{name}}'s own chat. You can read it and stop it.", { name: bot.name })}
+          </p>
+          {run.sending ? (
+            <Btn kind="secondary" size="sm" onClick={() => void actions.stopRun()}>
+              <Square size={12} />
+              {t("Stop")}
+            </Btn>
+          ) : null}
+        </div>
+      ) : (
+        <Composer
+          text={draft.text}
+          setText={draft.setText}
+          atts={draft.atts}
+          onRemoveAtt={(path) => draft.setAtts((xs) => xs.filter((x) => x.path !== path))}
+          quotes={draft.quotes}
+          onRemoveQuote={draft.unquote}
+          attachErr={draft.attachErr}
+          onAttach={draft.attach}
+          onSend={() => void actions.send()}
+          onStop={() => void actions.stopRun()}
+          sending={run.sending}
+          chatId={chatId}
+          fresh={fresh}
+          workerConnected={bot.workerConnected}
+          botName={bot.name}
+          models={models}
+          model={chat?.model || picked?.model || defaultModel}
+          onModel={(m) => void actions.pickModel(m)}
+          thinking={chat?.thinking ?? picked?.thinking ?? ""}
+          onThinking={(l) => void actions.pickThinking(l)}
+          usage={run.usage}
+          onCompact={() => void actions.compactChat()}
+          voice={voice}
+          onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
+          onCollect={() => ui.collectMemories({ botId: id, chatId: chatId! })}
+          commands={commands}
+          onCommand={actions.sendCommand}
+          said={said}
+          onDismissSaid={() => setSaid(null)}
+        />
+      )}
     </>
   );
 }

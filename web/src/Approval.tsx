@@ -126,6 +126,12 @@ export function NeedYouSlip({
   );
 }
 
+// sourceOf is where an approval came from, with whose chat on a Bot several
+// people use.
+function sourceOf(a: Approval): string {
+  return a.person ? (a.source ? `${a.person} · ${a.source}` : a.person) : a.source;
+}
+
 export function ApprovalSlip({
   bot,
   approval,
@@ -141,11 +147,26 @@ export function ApprovalSlip({
   // No run: a background process (a script that outlived its command, or one
   // started from the Console) asked; it waits, but no chat is paused.
   const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
+  const source = sourceOf(approval);
+  // Someone on the Bot who does not manage it answers their own chat's call,
+  // once: Always would change a rule, which is the managers'.
+  if (approval.onceOnly && !approval.auto) {
+    return (
+      <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
+        <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
+          {t("Allow once")}
+        </Btn>
+        <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
+          {t("Deny")}
+        </Btn>
+      </NeedYouSlip>
+    );
+  }
   // An Auto rule whose model would not decide: this one call is the human's,
   // the rule is not. Changing it is a trip to Rules, never a button here.
   if (approval.auto) {
     return (
-      <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
+      <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
         <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
           {t("Allow")}
         </Btn>
@@ -162,7 +183,7 @@ export function ApprovalSlip({
     );
   }
   return (
-    <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={approval.source}>
+    <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
       <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
         {t("Allow once")}
       </Btn>
@@ -206,7 +227,7 @@ export function ApprovalCard({
         <div className="flex min-w-0 items-center gap-2 text-[12px]">
           <Lamp status="needs_you" />
           <StatusWord status="needs_you" />
-          {approval.source ? <span className="min-w-0 truncate text-ink-3">· {approval.source}</span> : null}
+          {sourceOf(approval) ? <span className="min-w-0 truncate text-ink-3">· {sourceOf(approval)}</span> : null}
         </div>
         <h3 className="mt-1.5 text-[15px] leading-5 font-medium tracking-[-0.01em] text-ink">{d.title}</h3>
         <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{d.summary}</p>
@@ -226,12 +247,12 @@ export function ApprovalCard({
           <Btn kind="primary" size="sm" onClick={() => onDecide("allow_once")}>
             {approval.auto ? t("Allow") : t("Allow once")}
           </Btn>
-          {!approval.auto ? (
+          {!approval.auto && !approval.onceOnly ? (
             <Btn kind="secondary" size="sm" onClick={() => onDecide("always")}>
               {t("Always allow this action")}
             </Btn>
           ) : null}
-          {!approval.auto && onAutoApprove ? (
+          {!approval.auto && !approval.onceOnly && onAutoApprove ? (
             <Btn
               kind="secondary"
               size="sm"

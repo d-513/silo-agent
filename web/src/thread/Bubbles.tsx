@@ -12,12 +12,14 @@ import { fmtBytes, fullTime, runWhen } from "../format";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
 import { t } from "../i18n.ts";
+import { Initials } from "../space/People";
 
 const miniBtn =
   "flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-40";
 
 export function UserBubble({
   text,
+  author,
   attachments,
   quotes,
   isLast,
@@ -28,6 +30,8 @@ export function UserBubble({
   onDiverge,
 }: {
   text: string;
+  // Who wrote it, on a Bot several people use.
+  author?: string;
   attachments?: Attachment[];
   quotes?: Quote[];
   isLast?: boolean;
@@ -89,6 +93,12 @@ export function UserBubble({
 
   return (
     <div className={`group flex w-full flex-col items-end gap-1 ${fresh ? "glide" : ""}`}>
+      {author ? (
+        <div className="flex items-center gap-1.5 text-[11.5px] text-ink-3">
+          <Initials email={author} size={18} />
+          <span>{author}</span>
+        </div>
+      ) : null}
       <div className="min-w-0 max-w-[88%] rounded-bubble rounded-br-[6px] bg-well px-4 py-2.5 text-ink sm:max-w-[80%]">
         {quotes?.length ? <QuoteList quotes={quotes} /> : null}
         <Quotable target={{ source: "message", ref: "own", label: "" }}>

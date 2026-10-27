@@ -364,7 +364,13 @@ func (a *App) cmdNew(ctx context.Context, c command.Call) (command.Result, error
 	if c.Args == "" {
 		return command.Result{NewChat: true}, nil
 	}
-	ch := db.Chat{ID: ids.New(), BotID: c.BotID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	// The new chat is whoever typed it: the author of the chat it was typed in.
+	var from db.Chat
+	a.DB.Select("user_id").Where("id = ?", c.ChatID).Limit(1).Find(&from)
+	if u := access.User(ctx); u != nil {
+		from.UserID = u.ID
+	}
+	ch := db.Chat{ID: ids.New(), BotID: c.BotID, UserID: from.UserID, Title: "New chat", CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	if err := a.DB.Create(&ch).Error; err != nil {
 		return command.Result{}, err
 	}

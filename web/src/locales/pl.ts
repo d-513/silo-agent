@@ -1851,6 +1851,12 @@ const pl: Record<string, string> = {
   "The admin you pick becomes the owner; you become an admin.": "Wybrany administrator zostaje właścicielem; ty zostajesz administratorem.",
   "Make someone an admin first: only an admin can become the owner.": "Najpierw ustaw kogoś jako administratora: tylko administrator może zostać właścicielem.",
   "Transfer": "Przekaż",
+  "Several people use this Bot, so it stays in this zone instead of following anyone's device.": "Z tego Bota korzysta kilka osób, więc zostaje w tej strefie zamiast podążać za czyimkolwiek urządzeniem.",
+  "Team": "Zespół",
+  "The Bot's own": "Własny czat Bota",
+  "{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.": "Zarządcy {{name}} mogą czytać ten czat. To, co powiesz {{name}}, może zostać zapamiętane dla wszystkich, którzy z niego korzystają.",
+  "{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.": "Czat {{who}}. Możesz go czytać i zatrzymać; pisze w nim tylko {{who}}.",
+  "{{name}}'s own chat. You can read it and stop it.": "Własny czat {{name}}. Możesz go czytać i zatrzymać.",
 };
 
 export default pl;

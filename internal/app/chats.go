@@ -36,9 +36,9 @@ func writableChat(c *db.Chat) error {
 	return nil
 }
 
-// mainChat is the Bot's main chat (made on first use).
-func (a *App) mainChat(botID string) (*db.Chat, error) {
-	c, err := chats.Main(a.DB, botID)
+// mainChat is a person's main chat on the Bot (made on first use).
+func (a *App) mainChat(botID, userID string) (*db.Chat, error) {
+	c, err := chats.Main(a.DB, botID, userID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -49,37 +49,54 @@ func (a *App) mainChat(botID string) (*db.Chat, error) {
 // standing conversation.
 var errMainChat = connect.NewError(connect.CodeFailedPrecondition, errors.New("the main chat cannot be deleted or renamed; /clear or /wipe it instead"))
 
+// ListChats is the caller's chats on the Bot and, for its managers, everyone
+// else's and the Bot's own (the thread is read-only to them).
 func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRequest]) (*connect.Response[v1.ListChatsResponse], error) {
-	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
+	if err != nil {
 		return nil, err
 	}
-	q := a.DB.Where("bot_id = ?", req.Msg.GetBotId())
+	u := access.User(ctx)
+	manager := access.BotRole(a.DB, b.ID, u.ID) == access.RoleManage
+	q := a.DB.Where("bot_id = ?", b.ID)
 	if req.Msg.GetChannelId() == "" {
-		if _, err := a.mainChat(req.Msg.GetBotId()); err != nil {
+		if _, err := a.mainChat(b.ID, u.ID); err != nil {
 			return nil, err
 		}
 		q = q.Scopes(chats.WebScope)
 	} else {
 		q = q.Where("channel_id = ?", req.Msg.GetChannelId())
 	}
+	if !manager {
+		q = q.Where("user_id = ?", u.ID)
+	}
 	var rows []db.Chat
 	q.Order("updated_at desc").Find(&rows)
 	out := &v1.ListChatsResponse{}
 	for i := range rows {
-		out.Chats = append(out.Chats, chats.Proto(&rows[i]))
+		out.Chats = append(out.Chats, a.chatProto(&rows[i], u.ID))
 	}
 	return connect.NewResponse(out), nil
+}
+
+// chatProto is a chat as one person sees it: whose it is.
+func (a *App) chatProto(c *db.Chat, userID string) *v1.Chat {
+	p := chats.Proto(c)
+	p.Mine = c.UserID == userID
+	p.Author = access.Email(a.DB, c.UserID)
+	return p
 }
 
 func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error) {
 	if _, err := a.bot(ctx, req.Msg.GetBotId(), access.Use); err != nil {
 		return nil, err
 	}
-	c, err := chats.New(a.DB, req.Msg.GetBotId(), "")
+	u := access.User(ctx)
+	c, err := chats.New(a.DB, req.Msg.GetBotId(), u.ID, "")
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(chats.Proto(c)), nil
+	return connect.NewResponse(a.chatProto(c, u.ID)), nil
 }
 
 func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error) {
@@ -99,11 +116,11 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	}
 	c.Title, c.UpdatedAt = title, time.Now()
 	a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).Updates(map[string]any{"title": c.Title, "updated_at": c.UpdatedAt})
-	return connect.NewResponse(chats.Proto(c)), nil
+	return connect.NewResponse(a.chatProto(c, access.User(ctx).ID)), nil
 }
 
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
-	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Read)
+	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Write)
 	if err != nil {
 		return nil, err
 	}

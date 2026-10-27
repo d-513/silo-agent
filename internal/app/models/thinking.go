@@ -76,7 +76,7 @@ func (s *Service) WithThinking(ctx context.Context, opts []Option) []Option {
 // even one the current model lacks: each turn fits it to the model, so the
 // choice survives a model switch.
 func (s *Service) SetChatThinking(ctx context.Context, req *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error) {
-	c, err := access.Row[db.Chat](ctx, s.db, req.Msg.GetBotId(), req.Msg.GetChatId(), "chat", access.Use)
+	c, _, err := access.Chat(ctx, s.db, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Write)
 	if err != nil {
 		return nil, err
 	}

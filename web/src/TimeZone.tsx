@@ -58,7 +58,9 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
         hint={
           <>
             {t("Automation schedules and the times this Bot reads are in it. The Bot's machine itself runs on UTC.")}
-            {bot.timeZonePinned ? null : (
+            {bot.timeZonePinned ? null : bot.people.length > 1 ? (
+              <span className="mt-1 block">{t("Several people use this Bot, so it stays in this zone instead of following anyone's device.")}</span>
+            ) : (
               <span className="mt-1 block">
                 <Trans
                   i18nKey={

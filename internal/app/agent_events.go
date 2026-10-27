@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/channels"
@@ -80,9 +81,18 @@ func (a *App) emitUser(botID, chatID, runID, body string, ex run.Extra, from str
 func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneName, body string, ex run.Extra, from string) {
 	body = a.kept(botID, body)
 	um := a.userMeta(botID, ex)
-	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: um.encode(), Zone: zoneName, CreatedAt: now})
+	// A person's message carries who wrote it; its name is frozen on it while
+	// the Bot has several people, so the model can tell them apart.
+	var userID, author string
+	if from == "" {
+		userID = a.chatAuthor(chatID)
+		if userID != "" && len(access.People(a.DB, botID)) > 1 {
+			author = access.Email(a.DB, userID)
+		}
+	}
+	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: um.encode(), Zone: zoneName, UserID: userID, Author: author, CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from,
-		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), CreatedAt: now.Format(time.RFC3339)})
+		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), CreatedAt: now.Format(time.RFC3339), Author: author})
 }
 
 // emitDelivered persists one user-visible block and, on a channel origin,

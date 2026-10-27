@@ -1767,6 +1767,12 @@ const de: Record<string, string> = {
   "The admin you pick becomes the owner; you become an admin.": "Der gewählte Admin wird Inhaber; du wirst Admin.",
   "Make someone an admin first: only an admin can become the owner.": "Mach zuerst jemanden zum Admin: Nur ein Admin kann Inhaber werden.",
   "Transfer": "Übertragen",
+  "Several people use this Bot, so it stays in this zone instead of following anyone's device.": "Mehrere Personen nutzen diesen Bot, daher bleibt er in dieser Zeitzone, statt einem Gerät zu folgen.",
+  "Team": "Team",
+  "The Bot's own": "Eigener Chat des Bots",
+  "{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.": "Die Verwalter von {{name}} können diesen Chat lesen. Was du {{name}} sagst, kann er sich für alle merken, die ihn nutzen.",
+  "{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.": "Chat von {{who}}. Du kannst ihn lesen und anhalten; nur {{who}} schreibt darin.",
+  "{{name}}'s own chat. You can read it and stop it.": "Eigener Chat von {{name}}. Du kannst ihn lesen und anhalten.",
 };
 
 export default de;

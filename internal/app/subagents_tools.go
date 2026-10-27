@@ -202,7 +202,9 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		ID: ids.New(), BotID: bot.ID, ParentChatID: leadChatID, Name: name, Goal: goal, Context: ctxText,
 		Model: model, Status: "running", Reported: true, CreatedAt: now,
 	}
-	c := db.Chat{ID: ids.New(), BotID: bot.ID, SubagentID: sa.ID, Title: name, Model: model, CreatedAt: now, UpdatedAt: now}
+	// The subagent works for whoever's chat started it: they read its log
+	// and answer its approvals.
+	c := db.Chat{ID: ids.New(), BotID: bot.ID, SubagentID: sa.ID, UserID: a.chatAuthor(sa.ParentChatID), Title: name, Model: model, CreatedAt: now, UpdatedAt: now}
 	if err := a.DB.Create(&c).Error; err != nil {
 		return "", err
 	}

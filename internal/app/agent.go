@@ -61,7 +61,9 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		origin = "compact"
 	}
 	runID := ids.New()
-	run := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", CreatedAt: time.Now()}
+	// A run is the person's whose chat it is in (only they write there);
+	// a background run is nobody's.
+	run := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", UserID: a.chatAuthor(req.ChatID), CreatedAt: time.Now()}
 	if err := a.DB.Create(&run).Error; err != nil {
 		return "", err
 	}

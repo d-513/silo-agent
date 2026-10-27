@@ -6,7 +6,7 @@ import { reportAgents, type Block, type Ev } from "./types.ts";
 export type Handler = (out: Block[], e: Ev, key: string) => void;
 
 export const user: Handler = (out, e, key) => {
-  out.push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, quotes: e.quotes, createdAt: e.createdAt, from: e.tool || undefined });
+  out.push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, quotes: e.quotes, createdAt: e.createdAt, from: e.tool || undefined, author: e.author || undefined });
 };
 
 export const subagentReport: Handler = (out, e, key) => {

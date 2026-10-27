@@ -51,7 +51,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
   }, [id, tab, chatId]);
 
   // A Bot opens on its main chat.
-  const main = chatsQ.data?.chats.find((c) => c.main)?.id;
+  const main = chatsQ.data?.chats.find((c) => c.main && c.mine)?.id;
   useEffect(() => {
     if (id && tab === "run" && !chatId && !fresh && main) void nav({ ...chatLink(id, main), replace: true });
   }, [id, tab, chatId, fresh, main, nav]);

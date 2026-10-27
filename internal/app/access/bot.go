@@ -161,7 +161,31 @@ func Chat(ctx context.Context, gdb *gorm.DB, botID, chatID string, need ChatNeed
 	if res.RowsAffected == 0 {
 		return nil, nil, notFound(NoChat)
 	}
+	u := User(ctx)
+	manager := BotRole(gdb, b.ID, u.ID) == RoleManage
+	if !CanRead(&c, u.ID, manager) {
+		return nil, nil, notFound(NoChat)
+	}
+	if need == Write && !CanWrite(&c, u.ID, manager) {
+		who := Email(gdb, c.UserID)
+		if who == "" {
+			who = "its author"
+		}
+		return nil, nil, denied(fmt.Sprintf("This is %s's chat: you can read it and stop it, and only they write in it.", who))
+	}
 	return &c, b, nil
+}
+
+// CanRead says whether a person reads a chat: its author, the Bot's
+// managers, and anyone on the Bot for an automation's log.
+func CanRead(c *db.Chat, userID string, manager bool) bool {
+	return c.UserID == userID || manager || c.AutomationID != ""
+}
+
+// CanWrite says whether a person writes in a chat: its author, and the
+// Bot's managers in one of the Bot's own (no author: a mail wake).
+func CanWrite(c *db.Chat, userID string, manager bool) bool {
+	return c.UserID == userID || (c.UserID == "" && manager)
 }
 
 // Space loads the Workspace if the signed-in user's role there is at least

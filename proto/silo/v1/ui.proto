@@ -588,6 +588,9 @@ message Bot {
   string space_id = 24;
   // Role is the caller's on the Bot: manage or use.
   string role = 25;
+  // Everyone on the Bot, when it has more than one person (the sidebar's
+  // people); empty for a Bot with one.
+  repeated BotPerson people = 26;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -1768,8 +1771,13 @@ message Chat {
   // thinking is the chosen thinking level; "" is the model's default. It is
   // fitted to each model's levels when a turn runs.
   string thinking = 6;
-  // The Bot's main chat: pinned, never deleted or renamed.
+  // A main chat: pinned, never deleted or renamed. Each person on a Bot has
+  // their own.
   bool main = 7;
+  // author is who writes in it (email); empty is the Bot's own (a mail wake,
+  // a channel). mine: the caller is its author; anyone else reads it only.
+  string author = 8;
+  bool mine = 9;
 }
 
 message ModelOption {
@@ -1972,6 +1980,8 @@ message RunEvent {
   DashboardCard card = 11;
   // On a setup_offer event (and setup_state): the offer as it stands now.
   SetupOffer setup_offer = 12;
+  // On a user event of a Bot with several people: who wrote it (email).
+  string author = 13;
 }
 
 // Quoted is the thing a chat opened from: a Feed post, a Dashboard widget as
@@ -2196,6 +2206,11 @@ message Approval {
   // asked about this one call. The slip offers Allow and Deny only: the rule
   // stays Auto whatever the vote (an `always` vote counts as `allow_once`).
   bool auto = 12;
+  // The person whose chat asked (email); empty for a background run.
+  string person = 13;
+  // What the caller may answer: true, Allow once and Deny only (they are
+  // not the Bot's manager; Always would change the rule).
+  bool once_only = 14;
 }
 
 message ListApprovalsRequest {

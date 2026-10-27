@@ -84,6 +84,9 @@ var ErrNotMain = errors.New("the main chat is not open to this now")
 // run's history and the thread never disagree about order.
 type Placement struct {
 	BotID string
+	// UserID is who pressed: the placement goes to their main chat, and a
+	// chat of its own is theirs. "" is the Bot's own doing.
+	UserID string
 	// Write puts the thing into ch (the main chat or the new one) and answers
 	// the event it wrote, which the chat's viewers are sent; nil writes
 	// nothing but the message.

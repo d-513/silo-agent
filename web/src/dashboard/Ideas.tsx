@@ -26,7 +26,7 @@ export function useOpenIdea() {
   const navigate = useNavigate();
   return (prompt: string) => {
     if (!page) return;
-    const main = page.chats.find((c) => c.main)?.id;
+    const main = page.chats.find((c) => c.main && c.mine)?.id;
     page.draft.setText((cur) => (!cur.trim() ? prompt : cur.includes(prompt) ? cur : `${cur.trimEnd()}\n\n${prompt}`));
     void navigate(chatLink(page.id, main));
   };

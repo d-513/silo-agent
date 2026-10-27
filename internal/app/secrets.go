@@ -271,13 +271,32 @@ func (a *App) ListApprovals(ctx context.Context, req *connect.Request[v1.ListApp
 	// Oldest first: the slip shows the head, so it must not reshuffle between
 	// polls when two runs ask at once.
 	a.DB.Where("bot_id = ? AND status = ?", req.Msg.GetBotId(), "pending").Order("created_at, id").Find(&rows)
+	u := access.User(ctx)
+	manager := access.BotRole(a.DB, req.Msg.GetBotId(), u.ID) == access.RoleManage
 	out := &v1.ListApprovalsResponse{}
 	for _, r := range rows {
+		// Only what the caller may answer: the Needs-you count is theirs.
+		person := a.runPerson(r.RunID)
+		if !manager && (person != u.ID || security.ManagerOnly(r.Connector, r.Action)) {
+			continue
+		}
 		p := protoApproval(&r)
 		p.Source = a.approvalSource(r.RunID)
+		p.Person = access.Email(a.DB, person)
+		p.OnceOnly = !manager
 		out.Approvals = append(out.Approvals, p)
 	}
 	return connect.NewResponse(out), nil
+}
+
+// runPerson is who started a run: "" for a background run or none.
+func (a *App) runPerson(runID string) string {
+	if runID == "" {
+		return ""
+	}
+	var r db.Run
+	a.DB.Select("user_id").Where("id = ?", runID).Limit(1).Find(&r)
+	return r.UserID
 }
 
 // approvalSource names who asked for an approval so the slip can say which
@@ -318,12 +337,23 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	if err := a.DB.First(&row, "id = ?", req.Msg.GetId()).Error; err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	if _, err := a.bot(ctx, row.BotID, access.Use); err != nil {
+	b, err := a.bot(ctx, row.BotID, access.Use)
+	if err != nil {
 		return nil, err
 	}
 	dec := security.Vote(req.Msg.GetDecision())
 	if dec == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("decision must be allow_once, always, or deny"))
+	}
+	// A person answers their own chat's approvals, once at a time; the
+	// Bot's managers answer the rest, and only they change a rule.
+	if access.BotRole(a.DB, b.ID, access.User(ctx).ID) != access.RoleManage {
+		if a.runPerson(row.RunID) != access.User(ctx).ID || security.ManagerOnly(row.Connector, row.Action) {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("this needs one of "+b.Name+"'s managers"))
+		}
+		if dec == security.Always {
+			dec = security.Once
+		}
 	}
 	// The slip of an Auto rule's approval settles one call. The rule stays
 	// Auto: a client that still offers "always" must not turn it into Allow.

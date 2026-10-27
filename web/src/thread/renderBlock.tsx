@@ -130,6 +130,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
     return (
       <UserBubble
         text={b.text}
+        author={b.author}
         attachments={b.attachments}
         quotes={b.quotes}
         isLast={b.key === c.lastUserKey}

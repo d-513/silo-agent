@@ -65,7 +65,7 @@ export function BotStrip({
       {bot.mailAddress || tab === "mail" ? <SideChip to="/bots/$botId/mail" botId={id} on={tab === "mail"} icon={Mail} label={t("Mail")} /> : null}
       <Btn kind="ghost" size="sm" iconOnly title={power} aria-label={power} className="h-10 w-10" disabled={!bot.workerConnected && starting} icon={<Power size={15} />} onClick={bot.workerConnected ? onStop : onStart} />
       {rule}
-      {[...chats.filter((c) => c.main), ...chats.filter((c) => !c.main)].map((c) => {
+      {[...chats.filter((c) => c.main && c.mine), ...chats.filter((c) => !(c.main && c.mine))].map((c) => {
         const on = tab === "run" && c.id === chatId;
         return (
           <div
