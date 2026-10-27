@@ -1,4 +1,4 @@
-import { Book, Box, HardDrive, History, Key, ListChecks, Plug, Radio, SlidersHorizontal, Waypoints, type LucideIcon } from "lucide-react";
+import { Book, Box, HardDrive, History, Key, ListChecks, Plug, Radio, SlidersHorizontal, Users, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useBotPage } from "./context";
@@ -115,6 +115,7 @@ const customize: readonly Item[] = [
 
 const settings: readonly Item[] = [
   { tab: "settings", to: "/bots/$botId/settings", label: msg("General"), icon: SlidersHorizontal },
+  { tab: "people", to: "/bots/$botId/people", label: msg("People"), icon: Users },
   { tab: "rules", to: "/bots/$botId/rules", label: msg("Rules"), icon: ListChecks },
   { tab: "secrets", to: "/bots/$botId/secrets", label: msg("Secrets"), icon: Key },
   { tab: "tunnels", to: "/bots/$botId/tunnels", label: msg("Tunnels & Links"), icon: Waypoints },

@@ -26,6 +26,7 @@ const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
 const DriveNew = lazyNamed(() => import("../drives/BotDrives"), "DriveNew");
 const DriveAdd = lazyNamed(() => import("../drives/BotDrives"), "DriveAdd");
 const DriveEdit = lazyNamed(() => import("../drives/BotDrives"), "DriveEdit");
+const BotPeople = lazyNamed(() => import("../space/BotPeople"), "BotPeople");
 const ChannelsList = lazyNamed(() => import("../channels/BotChannels"), "ChannelsList");
 const ChannelNew = lazyNamed(() => import("../channels/BotChannels"), "ChannelNew");
 const ChannelAdd = lazyNamed(() => import("../channels/BotChannels"), "ChannelAdd");
@@ -297,6 +298,15 @@ export function SettingsRoute() {
   return (
     <ScrollPane>
       <SettingsPane bot={p.bot} onError={p.onError} />
+    </ScrollPane>
+  );
+}
+
+export function PeopleRoute() {
+  const p = useBotPage();
+  return (
+    <ScrollPane>
+      <BotPeople bot={p.bot} />
     </ScrollPane>
   );
 }

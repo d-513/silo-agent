@@ -56,6 +56,14 @@ const en: Record<string, string> = {
   "{{count}} messages wiped_other": "{{count}} messages wiped",
   "{{count}} subagents at work_one": "{{count}} subagent at work",
   "{{count}} subagents at work_other": "{{count}} subagents at work",
+  "{{count}} grants_one": "{{count}} grant",
+  "{{count}} grants_other": "{{count}} grants",
+  "On {{count}} Bots_one": "On {{count}} Bot",
+  "On {{count}} Bots_other": "On {{count}} Bots",
+  "in {{count}} Bots_one": "in {{count}} Bot",
+  "in {{count}} Bots_other": "in {{count}} Bots",
+  "Also in {{count}} Bots_one": "Also in {{count}} Bot",
+  "Also in {{count}} Bots_other": "Also in {{count}} Bots",
 };
 
 export default en;

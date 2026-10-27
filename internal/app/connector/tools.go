@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/mcpx"
@@ -86,6 +87,10 @@ func (s *Service) toolDef(link *db.BotConnector, c *db.Connector, action string)
 // built-in, otherwise the connector's MCP session (redialled once when the
 // server dropped it). Secrets are masked out of the result.
 func (s *Service) Call(ctx context.Context, bot *db.Bot, link *db.BotConnector, c *db.Connector, action, argsJSON string) (string, error) {
+	// A disabled lender's identity is not lent while they cannot sign in.
+	if err := access.LenderOK(s.db, c.LentBy); err != nil {
+		return "", err
+	}
 	mask := s.mask(bot.ID)
 	if hdr, err := mcpx.HeadersFromJSON(s.Resolve(c, bot.ID).HeadersJSON); err == nil {
 		for _, v := range hdr {

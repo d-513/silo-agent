@@ -30,6 +30,7 @@ import {
   RunRoute,
   ScrollLayout,
   SecretsRoute,
+  PeopleRoute,
   SettingsRoute,
   SkillsRoute,
   TunnelsRoute,
@@ -44,6 +45,8 @@ import { PaneFallback } from "./PaneFallback";
 import { AccountRoute, Shell } from "./Shell";
 import { SignIn } from "./SignIn";
 import { SpaceCustomizeLayout } from "./space/Customize";
+import { JoinPage } from "./space/JoinPage";
+import { SpaceInvitePage, SpacePeople, SpaceRemovePage, SpaceSettingsLayout } from "./space/People";
 import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
@@ -115,6 +118,10 @@ const signin = createRoute({
 // the invited account.
 const invite = createRoute({ getParentRoute: () => root, path: "invite/$token", component: InvitePage });
 
+// A Workspace's invite link: signed in it joins, signed out it signs in (or
+// makes an account, when the operator allows) and comes back.
+const join = createRoute({ getParentRoute: () => root, path: "join/$token", component: JoinPage });
+
 const authed = createRoute({
   getParentRoute: () => root,
   id: "_authed",
@@ -129,7 +136,12 @@ const newBot = createRoute({ getParentRoute: () => authed, path: "new", componen
 const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", component: NewSpacePage });
 const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: BotsPage });
 const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
-const spaceSettings = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/settings", component: SpaceSettingsPage });
+const spaceSettings = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/settings", component: SpaceSettingsLayout });
+const spaceGeneral = createRoute({ getParentRoute: () => spaceSettings, path: "/", component: SpaceSettingsPage });
+const spacePeople = createRoute({ getParentRoute: () => spaceSettings, path: "people", component: Outlet });
+const spacePeopleIndex = createRoute({ getParentRoute: () => spacePeople, path: "/", component: SpacePeople });
+const spaceInvite = createRoute({ getParentRoute: () => spacePeople, path: "invite", component: SpaceInvitePage });
+const spacePerson = createRoute({ getParentRoute: () => spacePeople, path: "$userId", component: SpaceRemovePage });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
 const spaceCustomize = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/customize", component: SpaceCustomizeLayout });
 const spaceCustomizeIndex = createRoute({
@@ -273,6 +285,7 @@ const secrets = createRoute({ getParentRoute: () => settingsSection, path: "secr
 const rules = createRoute({ getParentRoute: () => settingsSection, path: "rules", staticData: { tab: "rules" }, component: RulesRoute });
 const container = createRoute({ getParentRoute: () => settingsSection, path: "container", staticData: { tab: "container" }, component: ContainerRoute });
 const settings = createRoute({ getParentRoute: () => settingsSection, path: "settings", staticData: { tab: "settings" }, component: SettingsRoute });
+const botPeople = createRoute({ getParentRoute: () => settingsSection, path: "people", staticData: { tab: "people" }, component: PeopleRoute });
 const botAudit = createRoute({ getParentRoute: () => settingsSection, path: "audit", staticData: { tab: "audit" }, component: AuditRoute });
 
 // Any other address goes home (and from there to Sign in when signed out).
@@ -287,13 +300,14 @@ const elsewhere = createRoute({
 const routeTree = root.addChildren([
   signin,
   invite,
+  join,
   authed.addChildren([
     home,
     newBot,
     newSpace,
     space,
     spaceNewBot,
-    spaceSettings,
+    spaceSettings.addChildren([spaceGeneral, spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson])]),
     spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive])]),
     skills,
     account,
@@ -307,7 +321,7 @@ const routeTree = root.addChildren([
         drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
         channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
       ]),
-      settingsSection.addChildren([settings, rules, secrets, tunnels, container, botAudit]),
+      settingsSection.addChildren([settings, botPeople, rules, secrets, tunnels, container, botAudit]),
       files,
       desktop,
       consoleTab,

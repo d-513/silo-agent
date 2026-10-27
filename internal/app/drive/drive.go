@@ -245,6 +245,13 @@ func (s *Service) listVia(d *db.Drive) string {
 func (s *Service) renderApply(botID string) *v1.DriveApply {
 	out := &v1.DriveApply{CacheMaxSize: strings.TrimSpace(s.cfg().Drives.CacheMaxSize)}
 	for _, d := range s.BotDrives(botID) {
+		// A disabled lender's account is not lent while they cannot sign in.
+		if err := access.LenderOK(s.db, d.LentBy); err != nil {
+			if d.State != driveError || d.StateDetail != err.Error() {
+				s.setMountState(botID, d.ID, driveError, err.Error())
+			}
+			continue
+		}
 		spec, _, err := s.driveSpec(&d)
 		if err != nil {
 			state, detail := driveError, err.Error()

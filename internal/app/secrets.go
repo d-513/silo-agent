@@ -58,7 +58,7 @@ func (a *App) AddSecret(ctx context.Context, req *connect.Request[v1.AddSecretRe
 	if req.Msg.GetName() == "" || req.Msg.GetValue() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name and value required"))
 	}
-	s := db.Secret{ID: ids.New(), BotID: req.Msg.GetBotId(), Name: req.Msg.GetName(), Value: req.Msg.GetValue(), SwapBody: req.Msg.GetSwapBody(), CreatedAt: time.Now()}
+	s := db.Secret{ID: ids.New(), BotID: req.Msg.GetBotId(), Name: req.Msg.GetName(), Value: req.Msg.GetValue(), SwapBody: req.Msg.GetSwapBody(), SetBy: access.User(ctx).ID, CreatedAt: time.Now()}
 	if err := applySecretMode(&s, req.Msg.GetMode(), req.Msg.GetHosts(), true); err != nil {
 		return nil, err
 	}
@@ -91,6 +91,7 @@ func (a *App) UpdateSecret(ctx context.Context, req *connect.Request[v1.UpdateSe
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("value required"))
 		}
 		s.Value = *req.Msg.Value
+		s.SetBy = access.User(ctx).ID
 		regenerate = true
 	}
 	if req.Msg.SwapBody != nil {

@@ -69,6 +69,21 @@ var RPCs = map[string]RPCNeed{
 	"CreateSpace":              SignedIn,
 	"UpdateSpace":              SpaceAdmin,
 	"DeleteSpace":              SpaceOwn,
+	"TransferSpace":            SpaceOwn,
+	"ListSpacePeople":          SpaceView,
+	"SetSpaceRole":             SpaceAdmin,
+	"PlanSpaceRemoval":         SpaceView, // yourself; another person needs SpaceAdmin
+	"RemoveSpacePerson":        SpaceView, // leaving; removing someone needs SpaceAdmin
+	"CreateSpaceInvite":        SpaceAdmin,
+	"ListSpaceInvites":         SpaceAdmin,
+	"DeleteSpaceInvite":        SpaceAdmin,
+	"GetSpaceInvite":           Public,
+	"JoinSpace":                Public, // signed in joins; signed out makes an account only with spaces.invite_signup
+	"ListBotPeople":            BotUse,
+	"AddBotPerson":             BotManage,
+	"SetBotRole":               BotManage,
+	"RemoveBotPerson":          BotUse,    // leaving; taking someone else off needs BotAdminister
+	"SetLendShared":            SpaceView, // and only the lender
 	"ListBots":                 SignedIn,
 	"CreateBot":                SpaceBuild,
 	"UpdateBot":                BotManage,

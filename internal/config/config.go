@@ -311,6 +311,15 @@ type Config struct {
 	Onboarding Onboarding `koanf:"onboarding"`
 	// Audit is how long the audit timeline and the traffic summaries are kept.
 	Audit Audit `koanf:"audit"`
+	// Spaces configures Workspaces.
+	Spaces Spaces `koanf:"spaces"`
+}
+
+// Spaces configures Workspaces.
+type Spaces struct {
+	// InviteSignup lets a Workspace's invite link make an account for someone
+	// who has none. Off, only the instance admin brings in new people.
+	InviteSignup bool `koanf:"invite_signup"`
 }
 
 // Audit configures retention. Both tables are swept by a background tick, so a

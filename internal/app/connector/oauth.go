@@ -35,6 +35,12 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 	if c.Auth != AuthOAuth {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("connector does not use oauth"))
 	}
+	// Whoever signs in lends their identity: a personal sign-in may only
+	// reach Bots they alone use.
+	shared := req.Msg.GetShared()
+	if err := access.CheckSignIn(s.db, c.Name, access.User(ctx).ID, shared, s.Grantees(c.ID)); err != nil {
+		return nil, err
+	}
 	conn := *s.Resolve(c, "")
 	redirect := s.PublicURL(ctx) + "/oauth/callback"
 	starter := access.User(ctx).ID
@@ -81,7 +87,7 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 		}
 		_ = sess.Close()
 		// The sign-in is now the connection's, lent by whoever made it.
-		s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Update("lent_by", starter)
+		s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{"lent_by": starter, "shared": shared})
 		s.refreshGrants(c.ID)
 	}()
 	select {

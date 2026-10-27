@@ -87,6 +87,36 @@ const (
 	UIUpdateSpaceProcedure = "/silo.v1.UI/UpdateSpace"
 	// UIDeleteSpaceProcedure is the fully-qualified name of the UI's DeleteSpace RPC.
 	UIDeleteSpaceProcedure = "/silo.v1.UI/DeleteSpace"
+	// UITransferSpaceProcedure is the fully-qualified name of the UI's TransferSpace RPC.
+	UITransferSpaceProcedure = "/silo.v1.UI/TransferSpace"
+	// UIListSpacePeopleProcedure is the fully-qualified name of the UI's ListSpacePeople RPC.
+	UIListSpacePeopleProcedure = "/silo.v1.UI/ListSpacePeople"
+	// UISetSpaceRoleProcedure is the fully-qualified name of the UI's SetSpaceRole RPC.
+	UISetSpaceRoleProcedure = "/silo.v1.UI/SetSpaceRole"
+	// UIPlanSpaceRemovalProcedure is the fully-qualified name of the UI's PlanSpaceRemoval RPC.
+	UIPlanSpaceRemovalProcedure = "/silo.v1.UI/PlanSpaceRemoval"
+	// UIRemoveSpacePersonProcedure is the fully-qualified name of the UI's RemoveSpacePerson RPC.
+	UIRemoveSpacePersonProcedure = "/silo.v1.UI/RemoveSpacePerson"
+	// UICreateSpaceInviteProcedure is the fully-qualified name of the UI's CreateSpaceInvite RPC.
+	UICreateSpaceInviteProcedure = "/silo.v1.UI/CreateSpaceInvite"
+	// UIListSpaceInvitesProcedure is the fully-qualified name of the UI's ListSpaceInvites RPC.
+	UIListSpaceInvitesProcedure = "/silo.v1.UI/ListSpaceInvites"
+	// UIDeleteSpaceInviteProcedure is the fully-qualified name of the UI's DeleteSpaceInvite RPC.
+	UIDeleteSpaceInviteProcedure = "/silo.v1.UI/DeleteSpaceInvite"
+	// UIGetSpaceInviteProcedure is the fully-qualified name of the UI's GetSpaceInvite RPC.
+	UIGetSpaceInviteProcedure = "/silo.v1.UI/GetSpaceInvite"
+	// UIJoinSpaceProcedure is the fully-qualified name of the UI's JoinSpace RPC.
+	UIJoinSpaceProcedure = "/silo.v1.UI/JoinSpace"
+	// UIListBotPeopleProcedure is the fully-qualified name of the UI's ListBotPeople RPC.
+	UIListBotPeopleProcedure = "/silo.v1.UI/ListBotPeople"
+	// UIAddBotPersonProcedure is the fully-qualified name of the UI's AddBotPerson RPC.
+	UIAddBotPersonProcedure = "/silo.v1.UI/AddBotPerson"
+	// UISetBotRoleProcedure is the fully-qualified name of the UI's SetBotRole RPC.
+	UISetBotRoleProcedure = "/silo.v1.UI/SetBotRole"
+	// UIRemoveBotPersonProcedure is the fully-qualified name of the UI's RemoveBotPerson RPC.
+	UIRemoveBotPersonProcedure = "/silo.v1.UI/RemoveBotPerson"
+	// UISetLendSharedProcedure is the fully-qualified name of the UI's SetLendShared RPC.
+	UISetLendSharedProcedure = "/silo.v1.UI/SetLendShared"
 	// UIListBotsProcedure is the fully-qualified name of the UI's ListBots RPC.
 	UIListBotsProcedure = "/silo.v1.UI/ListBots"
 	// UICreateBotProcedure is the fully-qualified name of the UI's CreateBot RPC.
@@ -459,6 +489,35 @@ type UIClient interface {
 	// DeleteSpace is the owner's, refused while the Workspace has Bots and for
 	// the owner's last Workspace.
 	DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error)
+	// TransferSpace makes an admin the owner; the old owner becomes an admin.
+	TransferSpace(context.Context, *connect.Request[v1.TransferSpaceRequest]) (*connect.Response[v1.Space], error)
+	// The people of a Workspace. Members see the list; admins change roles
+	// (an admin only among members and guests) and remove people.
+	ListSpacePeople(context.Context, *connect.Request[v1.ListSpacePeopleRequest]) (*connect.Response[v1.ListSpacePeopleResponse], error)
+	SetSpaceRole(context.Context, *connect.Request[v1.SetSpaceRoleRequest]) (*connect.Response[v1.SpacePerson], error)
+	// PlanSpaceRemoval is what removing a person (or leaving: user_id is the
+	// caller) would do: the Bots they are the last manager of, and what they
+	// lent. RemoveSpacePerson does it, with a choice for each such Bot.
+	PlanSpaceRemoval(context.Context, *connect.Request[v1.PlanSpaceRemovalRequest]) (*connect.Response[v1.SpaceRemovalPlan], error)
+	RemoveSpacePerson(context.Context, *connect.Request[v1.RemoveSpacePersonRequest]) (*connect.Response[v1.RemoveSpacePersonResponse], error)
+	// Invite links: single use, 7 days, only the hash kept. Opening one signed
+	// in joins (JoinSpace); with spaces.invite_signup on, a visitor with no
+	// account makes one there (JoinSpace with email and password).
+	CreateSpaceInvite(context.Context, *connect.Request[v1.CreateSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteLink], error)
+	ListSpaceInvites(context.Context, *connect.Request[v1.ListSpaceInvitesRequest]) (*connect.Response[v1.ListSpaceInvitesResponse], error)
+	DeleteSpaceInvite(context.Context, *connect.Request[v1.DeleteSpaceInviteRequest]) (*connect.Response[v1.DeleteSpaceInviteResponse], error)
+	GetSpaceInvite(context.Context, *connect.Request[v1.GetSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteInfo], error)
+	JoinSpace(context.Context, *connect.Request[v1.JoinSpaceRequest]) (*connect.Response[v1.JoinSpaceResponse], error)
+	// The people on a Bot: Can manage or Can use. Managers change the list;
+	// anyone may leave a Bot unless they are its last manager.
+	ListBotPeople(context.Context, *connect.Request[v1.ListBotPeopleRequest]) (*connect.Response[v1.ListBotPeopleResponse], error)
+	AddBotPerson(context.Context, *connect.Request[v1.AddBotPersonRequest]) (*connect.Response[v1.AddBotPersonResponse], error)
+	SetBotRole(context.Context, *connect.Request[v1.SetBotRoleRequest]) (*connect.Response[v1.BotPerson], error)
+	RemoveBotPerson(context.Context, *connect.Request[v1.RemoveBotPersonRequest]) (*connect.Response[v1.RemoveBotPersonResponse], error)
+	// SetLendShared is a lender's say-so on a connection or drive that carries
+	// their identity: shared, any Bot of the Workspace may get it; personal
+	// (the default), only Bots they alone use.
+	SetLendShared(context.Context, *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -862,6 +921,96 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDeleteSpaceProcedure,
 			connect.WithSchema(uIMethods.ByName("DeleteSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		transferSpace: connect.NewClient[v1.TransferSpaceRequest, v1.Space](
+			httpClient,
+			baseURL+UITransferSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("TransferSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		listSpacePeople: connect.NewClient[v1.ListSpacePeopleRequest, v1.ListSpacePeopleResponse](
+			httpClient,
+			baseURL+UIListSpacePeopleProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSpacePeople")),
+			connect.WithClientOptions(opts...),
+		),
+		setSpaceRole: connect.NewClient[v1.SetSpaceRoleRequest, v1.SpacePerson](
+			httpClient,
+			baseURL+UISetSpaceRoleProcedure,
+			connect.WithSchema(uIMethods.ByName("SetSpaceRole")),
+			connect.WithClientOptions(opts...),
+		),
+		planSpaceRemoval: connect.NewClient[v1.PlanSpaceRemovalRequest, v1.SpaceRemovalPlan](
+			httpClient,
+			baseURL+UIPlanSpaceRemovalProcedure,
+			connect.WithSchema(uIMethods.ByName("PlanSpaceRemoval")),
+			connect.WithClientOptions(opts...),
+		),
+		removeSpacePerson: connect.NewClient[v1.RemoveSpacePersonRequest, v1.RemoveSpacePersonResponse](
+			httpClient,
+			baseURL+UIRemoveSpacePersonProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveSpacePerson")),
+			connect.WithClientOptions(opts...),
+		),
+		createSpaceInvite: connect.NewClient[v1.CreateSpaceInviteRequest, v1.SpaceInviteLink](
+			httpClient,
+			baseURL+UICreateSpaceInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateSpaceInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		listSpaceInvites: connect.NewClient[v1.ListSpaceInvitesRequest, v1.ListSpaceInvitesResponse](
+			httpClient,
+			baseURL+UIListSpaceInvitesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSpaceInvites")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSpaceInvite: connect.NewClient[v1.DeleteSpaceInviteRequest, v1.DeleteSpaceInviteResponse](
+			httpClient,
+			baseURL+UIDeleteSpaceInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteSpaceInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		getSpaceInvite: connect.NewClient[v1.GetSpaceInviteRequest, v1.SpaceInviteInfo](
+			httpClient,
+			baseURL+UIGetSpaceInviteProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSpaceInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		joinSpace: connect.NewClient[v1.JoinSpaceRequest, v1.JoinSpaceResponse](
+			httpClient,
+			baseURL+UIJoinSpaceProcedure,
+			connect.WithSchema(uIMethods.ByName("JoinSpace")),
+			connect.WithClientOptions(opts...),
+		),
+		listBotPeople: connect.NewClient[v1.ListBotPeopleRequest, v1.ListBotPeopleResponse](
+			httpClient,
+			baseURL+UIListBotPeopleProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBotPeople")),
+			connect.WithClientOptions(opts...),
+		),
+		addBotPerson: connect.NewClient[v1.AddBotPersonRequest, v1.AddBotPersonResponse](
+			httpClient,
+			baseURL+UIAddBotPersonProcedure,
+			connect.WithSchema(uIMethods.ByName("AddBotPerson")),
+			connect.WithClientOptions(opts...),
+		),
+		setBotRole: connect.NewClient[v1.SetBotRoleRequest, v1.BotPerson](
+			httpClient,
+			baseURL+UISetBotRoleProcedure,
+			connect.WithSchema(uIMethods.ByName("SetBotRole")),
+			connect.WithClientOptions(opts...),
+		),
+		removeBotPerson: connect.NewClient[v1.RemoveBotPersonRequest, v1.RemoveBotPersonResponse](
+			httpClient,
+			baseURL+UIRemoveBotPersonProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveBotPerson")),
+			connect.WithClientOptions(opts...),
+		),
+		setLendShared: connect.NewClient[v1.SetLendSharedRequest, v1.SetLendSharedResponse](
+			httpClient,
+			baseURL+UISetLendSharedProcedure,
+			connect.WithSchema(uIMethods.ByName("SetLendShared")),
 			connect.WithClientOptions(opts...),
 		),
 		listBots: connect.NewClient[v1.ListBotsRequest, v1.ListBotsResponse](
@@ -1868,6 +2017,21 @@ type uIClient struct {
 	createSpace              *connect.Client[v1.CreateSpaceRequest, v1.Space]
 	updateSpace              *connect.Client[v1.UpdateSpaceRequest, v1.Space]
 	deleteSpace              *connect.Client[v1.DeleteSpaceRequest, v1.DeleteSpaceResponse]
+	transferSpace            *connect.Client[v1.TransferSpaceRequest, v1.Space]
+	listSpacePeople          *connect.Client[v1.ListSpacePeopleRequest, v1.ListSpacePeopleResponse]
+	setSpaceRole             *connect.Client[v1.SetSpaceRoleRequest, v1.SpacePerson]
+	planSpaceRemoval         *connect.Client[v1.PlanSpaceRemovalRequest, v1.SpaceRemovalPlan]
+	removeSpacePerson        *connect.Client[v1.RemoveSpacePersonRequest, v1.RemoveSpacePersonResponse]
+	createSpaceInvite        *connect.Client[v1.CreateSpaceInviteRequest, v1.SpaceInviteLink]
+	listSpaceInvites         *connect.Client[v1.ListSpaceInvitesRequest, v1.ListSpaceInvitesResponse]
+	deleteSpaceInvite        *connect.Client[v1.DeleteSpaceInviteRequest, v1.DeleteSpaceInviteResponse]
+	getSpaceInvite           *connect.Client[v1.GetSpaceInviteRequest, v1.SpaceInviteInfo]
+	joinSpace                *connect.Client[v1.JoinSpaceRequest, v1.JoinSpaceResponse]
+	listBotPeople            *connect.Client[v1.ListBotPeopleRequest, v1.ListBotPeopleResponse]
+	addBotPerson             *connect.Client[v1.AddBotPersonRequest, v1.AddBotPersonResponse]
+	setBotRole               *connect.Client[v1.SetBotRoleRequest, v1.BotPerson]
+	removeBotPerson          *connect.Client[v1.RemoveBotPersonRequest, v1.RemoveBotPersonResponse]
+	setLendShared            *connect.Client[v1.SetLendSharedRequest, v1.SetLendSharedResponse]
 	listBots                 *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBot                *connect.Client[v1.CreateBotRequest, v1.Bot]
 	updateBot                *connect.Client[v1.UpdateBotRequest, v1.Bot]
@@ -2165,6 +2329,81 @@ func (c *uIClient) UpdateSpace(ctx context.Context, req *connect.Request[v1.Upda
 // DeleteSpace calls silo.v1.UI.DeleteSpace.
 func (c *uIClient) DeleteSpace(ctx context.Context, req *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error) {
 	return c.deleteSpace.CallUnary(ctx, req)
+}
+
+// TransferSpace calls silo.v1.UI.TransferSpace.
+func (c *uIClient) TransferSpace(ctx context.Context, req *connect.Request[v1.TransferSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return c.transferSpace.CallUnary(ctx, req)
+}
+
+// ListSpacePeople calls silo.v1.UI.ListSpacePeople.
+func (c *uIClient) ListSpacePeople(ctx context.Context, req *connect.Request[v1.ListSpacePeopleRequest]) (*connect.Response[v1.ListSpacePeopleResponse], error) {
+	return c.listSpacePeople.CallUnary(ctx, req)
+}
+
+// SetSpaceRole calls silo.v1.UI.SetSpaceRole.
+func (c *uIClient) SetSpaceRole(ctx context.Context, req *connect.Request[v1.SetSpaceRoleRequest]) (*connect.Response[v1.SpacePerson], error) {
+	return c.setSpaceRole.CallUnary(ctx, req)
+}
+
+// PlanSpaceRemoval calls silo.v1.UI.PlanSpaceRemoval.
+func (c *uIClient) PlanSpaceRemoval(ctx context.Context, req *connect.Request[v1.PlanSpaceRemovalRequest]) (*connect.Response[v1.SpaceRemovalPlan], error) {
+	return c.planSpaceRemoval.CallUnary(ctx, req)
+}
+
+// RemoveSpacePerson calls silo.v1.UI.RemoveSpacePerson.
+func (c *uIClient) RemoveSpacePerson(ctx context.Context, req *connect.Request[v1.RemoveSpacePersonRequest]) (*connect.Response[v1.RemoveSpacePersonResponse], error) {
+	return c.removeSpacePerson.CallUnary(ctx, req)
+}
+
+// CreateSpaceInvite calls silo.v1.UI.CreateSpaceInvite.
+func (c *uIClient) CreateSpaceInvite(ctx context.Context, req *connect.Request[v1.CreateSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteLink], error) {
+	return c.createSpaceInvite.CallUnary(ctx, req)
+}
+
+// ListSpaceInvites calls silo.v1.UI.ListSpaceInvites.
+func (c *uIClient) ListSpaceInvites(ctx context.Context, req *connect.Request[v1.ListSpaceInvitesRequest]) (*connect.Response[v1.ListSpaceInvitesResponse], error) {
+	return c.listSpaceInvites.CallUnary(ctx, req)
+}
+
+// DeleteSpaceInvite calls silo.v1.UI.DeleteSpaceInvite.
+func (c *uIClient) DeleteSpaceInvite(ctx context.Context, req *connect.Request[v1.DeleteSpaceInviteRequest]) (*connect.Response[v1.DeleteSpaceInviteResponse], error) {
+	return c.deleteSpaceInvite.CallUnary(ctx, req)
+}
+
+// GetSpaceInvite calls silo.v1.UI.GetSpaceInvite.
+func (c *uIClient) GetSpaceInvite(ctx context.Context, req *connect.Request[v1.GetSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteInfo], error) {
+	return c.getSpaceInvite.CallUnary(ctx, req)
+}
+
+// JoinSpace calls silo.v1.UI.JoinSpace.
+func (c *uIClient) JoinSpace(ctx context.Context, req *connect.Request[v1.JoinSpaceRequest]) (*connect.Response[v1.JoinSpaceResponse], error) {
+	return c.joinSpace.CallUnary(ctx, req)
+}
+
+// ListBotPeople calls silo.v1.UI.ListBotPeople.
+func (c *uIClient) ListBotPeople(ctx context.Context, req *connect.Request[v1.ListBotPeopleRequest]) (*connect.Response[v1.ListBotPeopleResponse], error) {
+	return c.listBotPeople.CallUnary(ctx, req)
+}
+
+// AddBotPerson calls silo.v1.UI.AddBotPerson.
+func (c *uIClient) AddBotPerson(ctx context.Context, req *connect.Request[v1.AddBotPersonRequest]) (*connect.Response[v1.AddBotPersonResponse], error) {
+	return c.addBotPerson.CallUnary(ctx, req)
+}
+
+// SetBotRole calls silo.v1.UI.SetBotRole.
+func (c *uIClient) SetBotRole(ctx context.Context, req *connect.Request[v1.SetBotRoleRequest]) (*connect.Response[v1.BotPerson], error) {
+	return c.setBotRole.CallUnary(ctx, req)
+}
+
+// RemoveBotPerson calls silo.v1.UI.RemoveBotPerson.
+func (c *uIClient) RemoveBotPerson(ctx context.Context, req *connect.Request[v1.RemoveBotPersonRequest]) (*connect.Response[v1.RemoveBotPersonResponse], error) {
+	return c.removeBotPerson.CallUnary(ctx, req)
+}
+
+// SetLendShared calls silo.v1.UI.SetLendShared.
+func (c *uIClient) SetLendShared(ctx context.Context, req *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error) {
+	return c.setLendShared.CallUnary(ctx, req)
 }
 
 // ListBots calls silo.v1.UI.ListBots.
@@ -3020,6 +3259,35 @@ type UIHandler interface {
 	// DeleteSpace is the owner's, refused while the Workspace has Bots and for
 	// the owner's last Workspace.
 	DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error)
+	// TransferSpace makes an admin the owner; the old owner becomes an admin.
+	TransferSpace(context.Context, *connect.Request[v1.TransferSpaceRequest]) (*connect.Response[v1.Space], error)
+	// The people of a Workspace. Members see the list; admins change roles
+	// (an admin only among members and guests) and remove people.
+	ListSpacePeople(context.Context, *connect.Request[v1.ListSpacePeopleRequest]) (*connect.Response[v1.ListSpacePeopleResponse], error)
+	SetSpaceRole(context.Context, *connect.Request[v1.SetSpaceRoleRequest]) (*connect.Response[v1.SpacePerson], error)
+	// PlanSpaceRemoval is what removing a person (or leaving: user_id is the
+	// caller) would do: the Bots they are the last manager of, and what they
+	// lent. RemoveSpacePerson does it, with a choice for each such Bot.
+	PlanSpaceRemoval(context.Context, *connect.Request[v1.PlanSpaceRemovalRequest]) (*connect.Response[v1.SpaceRemovalPlan], error)
+	RemoveSpacePerson(context.Context, *connect.Request[v1.RemoveSpacePersonRequest]) (*connect.Response[v1.RemoveSpacePersonResponse], error)
+	// Invite links: single use, 7 days, only the hash kept. Opening one signed
+	// in joins (JoinSpace); with spaces.invite_signup on, a visitor with no
+	// account makes one there (JoinSpace with email and password).
+	CreateSpaceInvite(context.Context, *connect.Request[v1.CreateSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteLink], error)
+	ListSpaceInvites(context.Context, *connect.Request[v1.ListSpaceInvitesRequest]) (*connect.Response[v1.ListSpaceInvitesResponse], error)
+	DeleteSpaceInvite(context.Context, *connect.Request[v1.DeleteSpaceInviteRequest]) (*connect.Response[v1.DeleteSpaceInviteResponse], error)
+	GetSpaceInvite(context.Context, *connect.Request[v1.GetSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteInfo], error)
+	JoinSpace(context.Context, *connect.Request[v1.JoinSpaceRequest]) (*connect.Response[v1.JoinSpaceResponse], error)
+	// The people on a Bot: Can manage or Can use. Managers change the list;
+	// anyone may leave a Bot unless they are its last manager.
+	ListBotPeople(context.Context, *connect.Request[v1.ListBotPeopleRequest]) (*connect.Response[v1.ListBotPeopleResponse], error)
+	AddBotPerson(context.Context, *connect.Request[v1.AddBotPersonRequest]) (*connect.Response[v1.AddBotPersonResponse], error)
+	SetBotRole(context.Context, *connect.Request[v1.SetBotRoleRequest]) (*connect.Response[v1.BotPerson], error)
+	RemoveBotPerson(context.Context, *connect.Request[v1.RemoveBotPersonRequest]) (*connect.Response[v1.RemoveBotPersonResponse], error)
+	// SetLendShared is a lender's say-so on a connection or drive that carries
+	// their identity: shared, any Bot of the Workspace may get it; personal
+	// (the default), only Bots they alone use.
+	SetLendShared(context.Context, *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.Bot], error)
 	UpdateBot(context.Context, *connect.Request[v1.UpdateBotRequest]) (*connect.Response[v1.Bot], error)
@@ -3419,6 +3687,96 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteSpaceProcedure,
 		svc.DeleteSpace,
 		connect.WithSchema(uIMethods.ByName("DeleteSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uITransferSpaceHandler := connect.NewUnaryHandler(
+		UITransferSpaceProcedure,
+		svc.TransferSpace,
+		connect.WithSchema(uIMethods.ByName("TransferSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSpacePeopleHandler := connect.NewUnaryHandler(
+		UIListSpacePeopleProcedure,
+		svc.ListSpacePeople,
+		connect.WithSchema(uIMethods.ByName("ListSpacePeople")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetSpaceRoleHandler := connect.NewUnaryHandler(
+		UISetSpaceRoleProcedure,
+		svc.SetSpaceRole,
+		connect.WithSchema(uIMethods.ByName("SetSpaceRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPlanSpaceRemovalHandler := connect.NewUnaryHandler(
+		UIPlanSpaceRemovalProcedure,
+		svc.PlanSpaceRemoval,
+		connect.WithSchema(uIMethods.ByName("PlanSpaceRemoval")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveSpacePersonHandler := connect.NewUnaryHandler(
+		UIRemoveSpacePersonProcedure,
+		svc.RemoveSpacePerson,
+		connect.WithSchema(uIMethods.ByName("RemoveSpacePerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateSpaceInviteHandler := connect.NewUnaryHandler(
+		UICreateSpaceInviteProcedure,
+		svc.CreateSpaceInvite,
+		connect.WithSchema(uIMethods.ByName("CreateSpaceInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListSpaceInvitesHandler := connect.NewUnaryHandler(
+		UIListSpaceInvitesProcedure,
+		svc.ListSpaceInvites,
+		connect.WithSchema(uIMethods.ByName("ListSpaceInvites")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteSpaceInviteHandler := connect.NewUnaryHandler(
+		UIDeleteSpaceInviteProcedure,
+		svc.DeleteSpaceInvite,
+		connect.WithSchema(uIMethods.ByName("DeleteSpaceInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetSpaceInviteHandler := connect.NewUnaryHandler(
+		UIGetSpaceInviteProcedure,
+		svc.GetSpaceInvite,
+		connect.WithSchema(uIMethods.ByName("GetSpaceInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIJoinSpaceHandler := connect.NewUnaryHandler(
+		UIJoinSpaceProcedure,
+		svc.JoinSpace,
+		connect.WithSchema(uIMethods.ByName("JoinSpace")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBotPeopleHandler := connect.NewUnaryHandler(
+		UIListBotPeopleProcedure,
+		svc.ListBotPeople,
+		connect.WithSchema(uIMethods.ByName("ListBotPeople")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAddBotPersonHandler := connect.NewUnaryHandler(
+		UIAddBotPersonProcedure,
+		svc.AddBotPerson,
+		connect.WithSchema(uIMethods.ByName("AddBotPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetBotRoleHandler := connect.NewUnaryHandler(
+		UISetBotRoleProcedure,
+		svc.SetBotRole,
+		connect.WithSchema(uIMethods.ByName("SetBotRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveBotPersonHandler := connect.NewUnaryHandler(
+		UIRemoveBotPersonProcedure,
+		svc.RemoveBotPerson,
+		connect.WithSchema(uIMethods.ByName("RemoveBotPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetLendSharedHandler := connect.NewUnaryHandler(
+		UISetLendSharedProcedure,
+		svc.SetLendShared,
+		connect.WithSchema(uIMethods.ByName("SetLendShared")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListBotsHandler := connect.NewUnaryHandler(
@@ -4449,6 +4807,36 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIUpdateSpaceHandler.ServeHTTP(w, r)
 		case UIDeleteSpaceProcedure:
 			uIDeleteSpaceHandler.ServeHTTP(w, r)
+		case UITransferSpaceProcedure:
+			uITransferSpaceHandler.ServeHTTP(w, r)
+		case UIListSpacePeopleProcedure:
+			uIListSpacePeopleHandler.ServeHTTP(w, r)
+		case UISetSpaceRoleProcedure:
+			uISetSpaceRoleHandler.ServeHTTP(w, r)
+		case UIPlanSpaceRemovalProcedure:
+			uIPlanSpaceRemovalHandler.ServeHTTP(w, r)
+		case UIRemoveSpacePersonProcedure:
+			uIRemoveSpacePersonHandler.ServeHTTP(w, r)
+		case UICreateSpaceInviteProcedure:
+			uICreateSpaceInviteHandler.ServeHTTP(w, r)
+		case UIListSpaceInvitesProcedure:
+			uIListSpaceInvitesHandler.ServeHTTP(w, r)
+		case UIDeleteSpaceInviteProcedure:
+			uIDeleteSpaceInviteHandler.ServeHTTP(w, r)
+		case UIGetSpaceInviteProcedure:
+			uIGetSpaceInviteHandler.ServeHTTP(w, r)
+		case UIJoinSpaceProcedure:
+			uIJoinSpaceHandler.ServeHTTP(w, r)
+		case UIListBotPeopleProcedure:
+			uIListBotPeopleHandler.ServeHTTP(w, r)
+		case UIAddBotPersonProcedure:
+			uIAddBotPersonHandler.ServeHTTP(w, r)
+		case UISetBotRoleProcedure:
+			uISetBotRoleHandler.ServeHTTP(w, r)
+		case UIRemoveBotPersonProcedure:
+			uIRemoveBotPersonHandler.ServeHTTP(w, r)
+		case UISetLendSharedProcedure:
+			uISetLendSharedHandler.ServeHTTP(w, r)
 		case UIListBotsProcedure:
 			uIListBotsHandler.ServeHTTP(w, r)
 		case UICreateBotProcedure:
@@ -4888,6 +5276,66 @@ func (UnimplementedUIHandler) UpdateSpace(context.Context, *connect.Request[v1.U
 
 func (UnimplementedUIHandler) DeleteSpace(context.Context, *connect.Request[v1.DeleteSpaceRequest]) (*connect.Response[v1.DeleteSpaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) TransferSpace(context.Context, *connect.Request[v1.TransferSpaceRequest]) (*connect.Response[v1.Space], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.TransferSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSpacePeople(context.Context, *connect.Request[v1.ListSpacePeopleRequest]) (*connect.Response[v1.ListSpacePeopleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpacePeople is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetSpaceRole(context.Context, *connect.Request[v1.SetSpaceRoleRequest]) (*connect.Response[v1.SpacePerson], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSpaceRole is not implemented"))
+}
+
+func (UnimplementedUIHandler) PlanSpaceRemoval(context.Context, *connect.Request[v1.PlanSpaceRemovalRequest]) (*connect.Response[v1.SpaceRemovalPlan], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PlanSpaceRemoval is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveSpacePerson(context.Context, *connect.Request[v1.RemoveSpacePersonRequest]) (*connect.Response[v1.RemoveSpacePersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveSpacePerson is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateSpaceInvite(context.Context, *connect.Request[v1.CreateSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteLink], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateSpaceInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSpaceInvites(context.Context, *connect.Request[v1.ListSpaceInvitesRequest]) (*connect.Response[v1.ListSpaceInvitesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaceInvites is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteSpaceInvite(context.Context, *connect.Request[v1.DeleteSpaceInviteRequest]) (*connect.Response[v1.DeleteSpaceInviteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteSpaceInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSpaceInvite(context.Context, *connect.Request[v1.GetSpaceInviteRequest]) (*connect.Response[v1.SpaceInviteInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSpaceInvite is not implemented"))
+}
+
+func (UnimplementedUIHandler) JoinSpace(context.Context, *connect.Request[v1.JoinSpaceRequest]) (*connect.Response[v1.JoinSpaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.JoinSpace is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBotPeople(context.Context, *connect.Request[v1.ListBotPeopleRequest]) (*connect.Response[v1.ListBotPeopleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBotPeople is not implemented"))
+}
+
+func (UnimplementedUIHandler) AddBotPerson(context.Context, *connect.Request[v1.AddBotPersonRequest]) (*connect.Response[v1.AddBotPersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AddBotPerson is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetBotRole(context.Context, *connect.Request[v1.SetBotRoleRequest]) (*connect.Response[v1.BotPerson], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetBotRole is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveBotPerson(context.Context, *connect.Request[v1.RemoveBotPersonRequest]) (*connect.Response[v1.RemoveBotPersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveBotPerson is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetLendShared(context.Context, *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetLendShared is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {

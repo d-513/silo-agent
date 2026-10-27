@@ -1,3 +1,4 @@
+import { useQuery } from "@connectrpc/connect-query";
 import { Link, Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -9,6 +10,7 @@ import { ErrorWell, inputClass, SettingGroup, SettingRow } from "../Field";
 import { UI } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { PaneFallback } from "../PaneFallback";
+import { Select } from "../Select";
 import { reload } from "../query";
 import { markOf } from "./pick.ts";
 import { forgetSpace, useCurrentSpace } from "./spaces";
@@ -94,7 +96,7 @@ export function NewSpacePage() {
 }
 
 export function SpaceSettingsPage() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/" });
   const { spaces } = useCurrentSpace();
   const space = spaces?.find((s) => s.id === spaceId);
   if (!spaces) return <PaneFallback />;
@@ -139,7 +141,6 @@ function SpaceSettingsForm({ id, name: savedName, mark: savedMark, role }: { id:
 
   return (
     <div className="silo-page silo-page-wide rise">
-      <h1 className="mb-6 text-title">{t("Workspace settings")}</h1>
       <SettingGroup title={t("General")}>
         <form onSubmit={save} className="px-5 py-5">
           <NameFields name={name} mark={mark} onName={setName} onMark={setMark} />
@@ -151,6 +152,7 @@ function SpaceSettingsForm({ id, name: savedName, mark: savedMark, role }: { id:
           </div>
         </form>
       </SettingGroup>
+      <Membership id={id} role={role} />
       {role === "owner" ? (
         <SettingGroup title={t("Dangerous")} note={t("The first click arms, the second acts. These cannot be undone from here.")} tone="danger">
           <SettingRow
@@ -165,5 +167,55 @@ function SpaceSettingsForm({ id, name: savedName, mark: savedMark, role }: { id:
         </SettingGroup>
       ) : null}
     </div>
+  );
+}
+
+// Membership is leaving the Workspace (anyone but its owner) and handing it
+// to an admin (its owner).
+function Membership({ id, role }: { id: string; role: string }) {
+  const peopleQ = useQuery(UI.method.listSpacePeople, { spaceId: id });
+  const people = peopleQ.data?.people ?? [];
+  const me = people.find((p) => p.you);
+  const admins = people.filter((p) => p.role === "admin");
+  const [heir, setHeir] = useState("");
+  const [err, setErr] = useState("");
+  const pick = heir || admins[0]?.userId || "";
+  async function transfer() {
+    setErr("");
+    try {
+      await ui.transferSpace({ spaceId: id, userId: pick });
+      await Promise.all([reload(UI.method.listSpaces), reload(UI.method.listSpacePeople, { spaceId: id })]);
+    } catch (ex) {
+      setErr(fail(ex));
+    }
+  }
+  if (role !== "owner") {
+    if (!me) return null;
+    return (
+      <SettingGroup title={t("Membership")}>
+        <SettingRow label={t("Leave workspace")} hint={t("You lose access to its Bots. Bots only you manage need a new manager first.")}>
+          <Link to="/w/$spaceId/settings/people/$userId" params={{ spaceId: id, userId: me.userId }} className={btnClass("secondary")}>
+            {t("Leave…")}
+          </Link>
+        </SettingRow>
+      </SettingGroup>
+    );
+  }
+  if (people.length <= 1) return null;
+  return (
+    <SettingGroup title={t("Ownership")}>
+      <SettingRow
+        label={t("Transfer ownership")}
+        hint={admins.length ? t("The admin you pick becomes the owner; you become an admin.") : t("Make someone an admin first: only an admin can become the owner.")}
+        error={err}
+      >
+        {admins.length ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={pick} onChange={setHeir} options={admins.map((p) => ({ value: p.userId, label: p.email }))} />
+            <ArmedButton onConfirm={() => void transfer()}>{t("Transfer")}</ArmedButton>
+          </div>
+        ) : null}
+      </SettingRow>
+    </SettingGroup>
   );
 }

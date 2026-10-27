@@ -19,6 +19,8 @@ import { Trans } from "../Trans.tsx";
 import { DriveForm } from "./DriveForm";
 import { DriveMark } from "./DriveMark";
 import { Gallery } from "./Gallery";
+import { LendChip } from "../space/Lend";
+import { useSpaces } from "../space/spaces";
 
 // The Workspace's drives and the provider templates, shared by the pages of
 // the hub's Drives tab.
@@ -50,6 +52,7 @@ export function SpaceDrives() {
   const navigate = useNavigate();
   const { templates, drives, loadErr, refresh, byKey } = useHubDrives(spaceId);
   const managed = useManagedBots(spaceId) ?? [];
+  const solo = (useSpaces().spaces?.find((x) => x.id === spaceId)?.people ?? 1) <= 1;
   const [actErr, setErr] = useState("");
   const err = actErr || loadErr;
   const gallery = () => void navigate({ to: "/w/$spaceId/customize/drives/new", params: { spaceId } });
@@ -67,7 +70,7 @@ export function SpaceDrives() {
   async function reconnect(d: Drive) {
     const w = window.open("about:blank", "silo-drive-auth", "width=520,height=720");
     try {
-      const r = await ui.beginDriveAuth({ id: d.id });
+      const r = await ui.beginDriveAuth({ id: d.id, shared: d.shared });
       if (w) w.location.href = r.url;
     } catch (e) {
       w?.close();
@@ -143,8 +146,9 @@ export function SpaceDrives() {
                       {d.account ? <span className="truncate text-ink-3">· {d.account}</span> : null}
                       {d.lentBy ? <span className="truncate text-ink-3">· {t("Signed in by {{who}}", { who: d.lentBy })}</span> : null}
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
                       <UsedBy ids={d.usedBy} hidden={d.usedByHidden} />
+                      <LendChip lentBy={d.lentBy} shared={d.shared} solo={solo} onShare={(shared) => act(() => ui.setLendShared({ driveId: d.id, shared }))} />
                     </div>
                   </div>
                 </div>

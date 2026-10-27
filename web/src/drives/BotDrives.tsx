@@ -120,7 +120,7 @@ export function DrivesList({ botId, spaceId, manage }: { botId: string; spaceId:
   async function reconnect(d: Drive) {
     const w = window.open("about:blank", "silo-drive-auth", "width=520,height=720");
     try {
-      const r = await ui.beginDriveAuth({ id: d.id });
+      const r = await ui.beginDriveAuth({ id: d.id, shared: d.shared });
       if (w) w.location.href = r.url;
     } catch (e) {
       w?.close();

@@ -2724,6 +2724,1996 @@ func (*DeleteSpaceResponse) Descriptor() ([]byte, []int) {
 	return file_silo_v1_ui_proto_rawDescGZIP(), []int{46}
 }
 
+type TransferSpaceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId       string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferSpaceRequest) Reset() {
+	*x = TransferSpaceRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferSpaceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferSpaceRequest) ProtoMessage() {}
+
+func (x *TransferSpaceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferSpaceRequest.ProtoReflect.Descriptor instead.
+func (*TransferSpaceRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *TransferSpaceRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *TransferSpaceRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type SpacePerson struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email  string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	// owner, admin, member or guest.
+	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// How many of the Workspace's Bots they are on.
+	Bots int32 `protobuf:"varint,4,opt,name=bots,proto3" json:"bots,omitempty"`
+	You  bool  `protobuf:"varint,5,opt,name=you,proto3" json:"you,omitempty"`
+	// Their account is disabled by the instance admin.
+	Disabled      bool   `protobuf:"varint,6,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	JoinedAt      string `protobuf:"bytes,7,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpacePerson) Reset() {
+	*x = SpacePerson{}
+	mi := &file_silo_v1_ui_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpacePerson) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpacePerson) ProtoMessage() {}
+
+func (x *SpacePerson) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpacePerson.ProtoReflect.Descriptor instead.
+func (*SpacePerson) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *SpacePerson) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SpacePerson) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *SpacePerson) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *SpacePerson) GetBots() int32 {
+	if x != nil {
+		return x.Bots
+	}
+	return 0
+}
+
+func (x *SpacePerson) GetYou() bool {
+	if x != nil {
+		return x.You
+	}
+	return false
+}
+
+func (x *SpacePerson) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *SpacePerson) GetJoinedAt() string {
+	if x != nil {
+		return x.JoinedAt
+	}
+	return ""
+}
+
+type ListSpacePeopleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId       string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSpacePeopleRequest) Reset() {
+	*x = ListSpacePeopleRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpacePeopleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpacePeopleRequest) ProtoMessage() {}
+
+func (x *ListSpacePeopleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpacePeopleRequest.ProtoReflect.Descriptor instead.
+func (*ListSpacePeopleRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ListSpacePeopleRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+type ListSpacePeopleResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	People []*SpacePerson         `protobuf:"bytes,1,rep,name=people,proto3" json:"people,omitempty"`
+	// invite_signup: an invite link may make an account (the operator's
+	// spaces.invite_signup).
+	InviteSignup  bool `protobuf:"varint,2,opt,name=invite_signup,json=inviteSignup,proto3" json:"invite_signup,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSpacePeopleResponse) Reset() {
+	*x = ListSpacePeopleResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpacePeopleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpacePeopleResponse) ProtoMessage() {}
+
+func (x *ListSpacePeopleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpacePeopleResponse.ProtoReflect.Descriptor instead.
+func (*ListSpacePeopleResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *ListSpacePeopleResponse) GetPeople() []*SpacePerson {
+	if x != nil {
+		return x.People
+	}
+	return nil
+}
+
+func (x *ListSpacePeopleResponse) GetInviteSignup() bool {
+	if x != nil {
+		return x.InviteSignup
+	}
+	return false
+}
+
+type SetSpaceRoleRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	UserId  string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// admin, member or guest; owner moves with TransferSpace.
+	Role          string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetSpaceRoleRequest) Reset() {
+	*x = SetSpaceRoleRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetSpaceRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetSpaceRoleRequest) ProtoMessage() {}
+
+func (x *SetSpaceRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetSpaceRoleRequest.ProtoReflect.Descriptor instead.
+func (*SetSpaceRoleRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *SetSpaceRoleRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *SetSpaceRoleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SetSpaceRoleRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+type PlanSpaceRemovalRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId       string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlanSpaceRemovalRequest) Reset() {
+	*x = PlanSpaceRemovalRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlanSpaceRemovalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlanSpaceRemovalRequest) ProtoMessage() {}
+
+func (x *PlanSpaceRemovalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlanSpaceRemovalRequest.ProtoReflect.Descriptor instead.
+func (*PlanSpaceRemovalRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *PlanSpaceRemovalRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *PlanSpaceRemovalRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+// LastManaged is a Bot whose only manager is the person going. others are
+// the rest of its people, any of whom can be made its manager.
+type LastManaged struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	BotId  string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Crest  int32                  `protobuf:"varint,3,opt,name=crest,proto3" json:"crest,omitempty"`
+	Others []*BotPerson           `protobuf:"bytes,4,rep,name=others,proto3" json:"others,omitempty"`
+	// Whether the caller is on it (Take it over is for an admin who is not on
+	// it too: they become its manager).
+	CallerOn      bool `protobuf:"varint,5,opt,name=caller_on,json=callerOn,proto3" json:"caller_on,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LastManaged) Reset() {
+	*x = LastManaged{}
+	mi := &file_silo_v1_ui_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LastManaged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LastManaged) ProtoMessage() {}
+
+func (x *LastManaged) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LastManaged.ProtoReflect.Descriptor instead.
+func (*LastManaged) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *LastManaged) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *LastManaged) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *LastManaged) GetCrest() int32 {
+	if x != nil {
+		return x.Crest
+	}
+	return 0
+}
+
+func (x *LastManaged) GetOthers() []*BotPerson {
+	if x != nil {
+		return x.Others
+	}
+	return nil
+}
+
+func (x *LastManaged) GetCallerOn() bool {
+	if x != nil {
+		return x.CallerOn
+	}
+	return false
+}
+
+// Lent is a connection or drive that carries someone's identity.
+type Lent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// connector or drive.
+	Kind   string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Id     string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Shared bool   `protobuf:"varint,4,opt,name=shared,proto3" json:"shared,omitempty"`
+	// Names of the Bots it is granted to that the caller is on, and how many
+	// others.
+	Bots          []string `protobuf:"bytes,5,rep,name=bots,proto3" json:"bots,omitempty"`
+	BotsHidden    int32    `protobuf:"varint,6,opt,name=bots_hidden,json=botsHidden,proto3" json:"bots_hidden,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Lent) Reset() {
+	*x = Lent{}
+	mi := &file_silo_v1_ui_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Lent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Lent) ProtoMessage() {}
+
+func (x *Lent) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Lent.ProtoReflect.Descriptor instead.
+func (*Lent) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *Lent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *Lent) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Lent) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Lent) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
+func (x *Lent) GetBots() []string {
+	if x != nil {
+		return x.Bots
+	}
+	return nil
+}
+
+func (x *Lent) GetBotsHidden() int32 {
+	if x != nil {
+		return x.BotsHidden
+	}
+	return 0
+}
+
+type SpaceRemovalPlan struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email       string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	LastManaged []*LastManaged         `protobuf:"bytes,3,rep,name=last_managed,json=lastManaged,proto3" json:"last_managed,omitempty"`
+	// personal ones go with them; shared ones stay, signed out.
+	Lent          []*Lent `protobuf:"bytes,4,rep,name=lent,proto3" json:"lent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpaceRemovalPlan) Reset() {
+	*x = SpaceRemovalPlan{}
+	mi := &file_silo_v1_ui_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpaceRemovalPlan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpaceRemovalPlan) ProtoMessage() {}
+
+func (x *SpaceRemovalPlan) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpaceRemovalPlan.ProtoReflect.Descriptor instead.
+func (*SpaceRemovalPlan) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *SpaceRemovalPlan) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SpaceRemovalPlan) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *SpaceRemovalPlan) GetLastManaged() []*LastManaged {
+	if x != nil {
+		return x.LastManaged
+	}
+	return nil
+}
+
+func (x *SpaceRemovalPlan) GetLent() []*Lent {
+	if x != nil {
+		return x.Lent
+	}
+	return nil
+}
+
+// Handoff is what happens to a Bot whose last manager goes: "manager" makes
+// user_id its manager, "take" makes the caller its manager, "delete" deletes
+// it.
+type Handoff struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Handoff) Reset() {
+	*x = Handoff{}
+	mi := &file_silo_v1_ui_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Handoff) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Handoff) ProtoMessage() {}
+
+func (x *Handoff) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Handoff.ProtoReflect.Descriptor instead.
+func (*Handoff) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *Handoff) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *Handoff) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *Handoff) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type RemoveSpacePersonRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	// The caller's own id is leaving.
+	UserId        string     `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Plan          []*Handoff `protobuf:"bytes,3,rep,name=plan,proto3" json:"plan,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveSpacePersonRequest) Reset() {
+	*x = RemoveSpacePersonRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveSpacePersonRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveSpacePersonRequest) ProtoMessage() {}
+
+func (x *RemoveSpacePersonRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveSpacePersonRequest.ProtoReflect.Descriptor instead.
+func (*RemoveSpacePersonRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *RemoveSpacePersonRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *RemoveSpacePersonRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RemoveSpacePersonRequest) GetPlan() []*Handoff {
+	if x != nil {
+		return x.Plan
+	}
+	return nil
+}
+
+type RemoveSpacePersonResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveSpacePersonResponse) Reset() {
+	*x = RemoveSpacePersonResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveSpacePersonResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveSpacePersonResponse) ProtoMessage() {}
+
+func (x *RemoveSpacePersonResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveSpacePersonResponse.ProtoReflect.Descriptor instead.
+func (*RemoveSpacePersonResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{58}
+}
+
+type CreateSpaceInviteRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	// admin (the owner only), member or guest.
+	Role          string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSpaceInviteRequest) Reset() {
+	*x = CreateSpaceInviteRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSpaceInviteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSpaceInviteRequest) ProtoMessage() {}
+
+func (x *CreateSpaceInviteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSpaceInviteRequest.ProtoReflect.Descriptor instead.
+func (*CreateSpaceInviteRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *CreateSpaceInviteRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *CreateSpaceInviteRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+type SpaceInvite struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	CreatedBy     string                 `protobuf:"bytes,3,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt     string                 `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpaceInvite) Reset() {
+	*x = SpaceInvite{}
+	mi := &file_silo_v1_ui_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpaceInvite) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpaceInvite) ProtoMessage() {}
+
+func (x *SpaceInvite) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpaceInvite.ProtoReflect.Descriptor instead.
+func (*SpaceInvite) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *SpaceInvite) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SpaceInvite) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *SpaceInvite) GetCreatedBy() string {
+	if x != nil {
+		return x.CreatedBy
+	}
+	return ""
+}
+
+func (x *SpaceInvite) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *SpaceInvite) GetExpiresAt() string {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return ""
+}
+
+type SpaceInviteLink struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Invite *SpaceInvite           `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	// The link, shown once: only its hash is kept.
+	Url           string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpaceInviteLink) Reset() {
+	*x = SpaceInviteLink{}
+	mi := &file_silo_v1_ui_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpaceInviteLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpaceInviteLink) ProtoMessage() {}
+
+func (x *SpaceInviteLink) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpaceInviteLink.ProtoReflect.Descriptor instead.
+func (*SpaceInviteLink) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *SpaceInviteLink) GetInvite() *SpaceInvite {
+	if x != nil {
+		return x.Invite
+	}
+	return nil
+}
+
+func (x *SpaceInviteLink) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+type ListSpaceInvitesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId       string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSpaceInvitesRequest) Reset() {
+	*x = ListSpaceInvitesRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpaceInvitesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpaceInvitesRequest) ProtoMessage() {}
+
+func (x *ListSpaceInvitesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpaceInvitesRequest.ProtoReflect.Descriptor instead.
+func (*ListSpaceInvitesRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *ListSpaceInvitesRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+type ListSpaceInvitesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invites       []*SpaceInvite         `protobuf:"bytes,1,rep,name=invites,proto3" json:"invites,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSpaceInvitesResponse) Reset() {
+	*x = ListSpaceInvitesResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSpaceInvitesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSpaceInvitesResponse) ProtoMessage() {}
+
+func (x *ListSpaceInvitesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSpaceInvitesResponse.ProtoReflect.Descriptor instead.
+func (*ListSpaceInvitesResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *ListSpaceInvitesResponse) GetInvites() []*SpaceInvite {
+	if x != nil {
+		return x.Invites
+	}
+	return nil
+}
+
+type DeleteSpaceInviteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SpaceId       string                 `protobuf:"bytes,1,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteSpaceInviteRequest) Reset() {
+	*x = DeleteSpaceInviteRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteSpaceInviteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSpaceInviteRequest) ProtoMessage() {}
+
+func (x *DeleteSpaceInviteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSpaceInviteRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSpaceInviteRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *DeleteSpaceInviteRequest) GetSpaceId() string {
+	if x != nil {
+		return x.SpaceId
+	}
+	return ""
+}
+
+func (x *DeleteSpaceInviteRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteSpaceInviteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteSpaceInviteResponse) Reset() {
+	*x = DeleteSpaceInviteResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteSpaceInviteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSpaceInviteResponse) ProtoMessage() {}
+
+func (x *DeleteSpaceInviteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSpaceInviteResponse.ProtoReflect.Descriptor instead.
+func (*DeleteSpaceInviteResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{65}
+}
+
+type GetSpaceInviteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSpaceInviteRequest) Reset() {
+	*x = GetSpaceInviteRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSpaceInviteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSpaceInviteRequest) ProtoMessage() {}
+
+func (x *GetSpaceInviteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSpaceInviteRequest.ProtoReflect.Descriptor instead.
+func (*GetSpaceInviteRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *GetSpaceInviteRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type SpaceInviteInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ok, used or expired (an unknown link reads as expired).
+	State     string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	SpaceName string `protobuf:"bytes,2,opt,name=space_name,json=spaceName,proto3" json:"space_name,omitempty"`
+	SpaceMark string `protobuf:"bytes,3,opt,name=space_mark,json=spaceMark,proto3" json:"space_mark,omitempty"`
+	Role      string `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	// Who made the link (email).
+	InvitedBy string `protobuf:"bytes,5,opt,name=invited_by,json=invitedBy,proto3" json:"invited_by,omitempty"`
+	// The link may make an account for someone signed out.
+	Signup        bool `protobuf:"varint,6,opt,name=signup,proto3" json:"signup,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpaceInviteInfo) Reset() {
+	*x = SpaceInviteInfo{}
+	mi := &file_silo_v1_ui_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpaceInviteInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpaceInviteInfo) ProtoMessage() {}
+
+func (x *SpaceInviteInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpaceInviteInfo.ProtoReflect.Descriptor instead.
+func (*SpaceInviteInfo) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *SpaceInviteInfo) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *SpaceInviteInfo) GetSpaceName() string {
+	if x != nil {
+		return x.SpaceName
+	}
+	return ""
+}
+
+func (x *SpaceInviteInfo) GetSpaceMark() string {
+	if x != nil {
+		return x.SpaceMark
+	}
+	return ""
+}
+
+func (x *SpaceInviteInfo) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *SpaceInviteInfo) GetInvitedBy() string {
+	if x != nil {
+		return x.InvitedBy
+	}
+	return ""
+}
+
+func (x *SpaceInviteInfo) GetSignup() bool {
+	if x != nil {
+		return x.Signup
+	}
+	return false
+}
+
+type JoinSpaceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Token string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// Only for someone with no account, while spaces.invite_signup is on.
+	Email         string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Password      string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinSpaceRequest) Reset() {
+	*x = JoinSpaceRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinSpaceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinSpaceRequest) ProtoMessage() {}
+
+func (x *JoinSpaceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinSpaceRequest.ProtoReflect.Descriptor instead.
+func (*JoinSpaceRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *JoinSpaceRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *JoinSpaceRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *JoinSpaceRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+type JoinSpaceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Space *Space                 `protobuf:"bytes,1,opt,name=space,proto3" json:"space,omitempty"`
+	// Set when the join made an account and signed it in.
+	Email         string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Admin         bool   `protobuf:"varint,3,opt,name=admin,proto3" json:"admin,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinSpaceResponse) Reset() {
+	*x = JoinSpaceResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinSpaceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinSpaceResponse) ProtoMessage() {}
+
+func (x *JoinSpaceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinSpaceResponse.ProtoReflect.Descriptor instead.
+func (*JoinSpaceResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *JoinSpaceResponse) GetSpace() *Space {
+	if x != nil {
+		return x.Space
+	}
+	return nil
+}
+
+func (x *JoinSpaceResponse) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *JoinSpaceResponse) GetAdmin() bool {
+	if x != nil {
+		return x.Admin
+	}
+	return false
+}
+
+type BotPerson struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email  string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	// manage or use.
+	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// Their Workspace role: a guest can only use.
+	SpaceRole     string `protobuf:"bytes,4,opt,name=space_role,json=spaceRole,proto3" json:"space_role,omitempty"`
+	You           bool   `protobuf:"varint,5,opt,name=you,proto3" json:"you,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BotPerson) Reset() {
+	*x = BotPerson{}
+	mi := &file_silo_v1_ui_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BotPerson) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BotPerson) ProtoMessage() {}
+
+func (x *BotPerson) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BotPerson.ProtoReflect.Descriptor instead.
+func (*BotPerson) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *BotPerson) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *BotPerson) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *BotPerson) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *BotPerson) GetSpaceRole() string {
+	if x != nil {
+		return x.SpaceRole
+	}
+	return ""
+}
+
+func (x *BotPerson) GetYou() bool {
+	if x != nil {
+		return x.You
+	}
+	return false
+}
+
+type ListBotPeopleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotPeopleRequest) Reset() {
+	*x = ListBotPeopleRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotPeopleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotPeopleRequest) ProtoMessage() {}
+
+func (x *ListBotPeopleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotPeopleRequest.ProtoReflect.Descriptor instead.
+func (*ListBotPeopleRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ListBotPeopleRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+type ListBotPeopleResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	People []*BotPerson           `protobuf:"bytes,1,rep,name=people,proto3" json:"people,omitempty"`
+	// For a manager: the Workspace's people who are not on the Bot.
+	Candidates    []*SpacePerson `protobuf:"bytes,2,rep,name=candidates,proto3" json:"candidates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotPeopleResponse) Reset() {
+	*x = ListBotPeopleResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotPeopleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotPeopleResponse) ProtoMessage() {}
+
+func (x *ListBotPeopleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotPeopleResponse.ProtoReflect.Descriptor instead.
+func (*ListBotPeopleResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *ListBotPeopleResponse) GetPeople() []*BotPerson {
+	if x != nil {
+		return x.People
+	}
+	return nil
+}
+
+func (x *ListBotPeopleResponse) GetCandidates() []*SpacePerson {
+	if x != nil {
+		return x.Candidates
+	}
+	return nil
+}
+
+type AddBotPersonRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	BotId  string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	UserId string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// manage or use.
+	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// Sent again after the confirmation below.
+	Confirmed     bool `protobuf:"varint,4,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddBotPersonRequest) Reset() {
+	*x = AddBotPersonRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBotPersonRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBotPersonRequest) ProtoMessage() {}
+
+func (x *AddBotPersonRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBotPersonRequest.ProtoReflect.Descriptor instead.
+func (*AddBotPersonRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *AddBotPersonRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *AddBotPersonRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AddBotPersonRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AddBotPersonRequest) GetConfirmed() bool {
+	if x != nil {
+		return x.Confirmed
+	}
+	return false
+}
+
+type AddBotPersonResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Set (and nobody added) when the person would be able to have the Bot use
+	// secrets someone else set: those names. Send again with confirmed.
+	ConfirmSecrets []string   `protobuf:"bytes,1,rep,name=confirm_secrets,json=confirmSecrets,proto3" json:"confirm_secrets,omitempty"`
+	Person         *BotPerson `protobuf:"bytes,2,opt,name=person,proto3" json:"person,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AddBotPersonResponse) Reset() {
+	*x = AddBotPersonResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBotPersonResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBotPersonResponse) ProtoMessage() {}
+
+func (x *AddBotPersonResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBotPersonResponse.ProtoReflect.Descriptor instead.
+func (*AddBotPersonResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *AddBotPersonResponse) GetConfirmSecrets() []string {
+	if x != nil {
+		return x.ConfirmSecrets
+	}
+	return nil
+}
+
+func (x *AddBotPersonResponse) GetPerson() *BotPerson {
+	if x != nil {
+		return x.Person
+	}
+	return nil
+}
+
+type SetBotRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetBotRoleRequest) Reset() {
+	*x = SetBotRoleRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[75]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetBotRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetBotRoleRequest) ProtoMessage() {}
+
+func (x *SetBotRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[75]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetBotRoleRequest.ProtoReflect.Descriptor instead.
+func (*SetBotRoleRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{75}
+}
+
+func (x *SetBotRoleRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *SetBotRoleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SetBotRoleRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+type RemoveBotPersonRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	BotId string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	// The caller's own id leaves the Bot.
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveBotPersonRequest) Reset() {
+	*x = RemoveBotPersonRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveBotPersonRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveBotPersonRequest) ProtoMessage() {}
+
+func (x *RemoveBotPersonRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveBotPersonRequest.ProtoReflect.Descriptor instead.
+func (*RemoveBotPersonRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{76}
+}
+
+func (x *RemoveBotPersonRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *RemoveBotPersonRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type RemoveBotPersonResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveBotPersonResponse) Reset() {
+	*x = RemoveBotPersonResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveBotPersonResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveBotPersonResponse) ProtoMessage() {}
+
+func (x *RemoveBotPersonResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveBotPersonResponse.ProtoReflect.Descriptor instead.
+func (*RemoveBotPersonResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{77}
+}
+
+type SetLendSharedRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// One of the two.
+	ConnectorId   string `protobuf:"bytes,1,opt,name=connector_id,json=connectorId,proto3" json:"connector_id,omitempty"`
+	DriveId       string `protobuf:"bytes,2,opt,name=drive_id,json=driveId,proto3" json:"drive_id,omitempty"`
+	Shared        bool   `protobuf:"varint,3,opt,name=shared,proto3" json:"shared,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLendSharedRequest) Reset() {
+	*x = SetLendSharedRequest{}
+	mi := &file_silo_v1_ui_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLendSharedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLendSharedRequest) ProtoMessage() {}
+
+func (x *SetLendSharedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLendSharedRequest.ProtoReflect.Descriptor instead.
+func (*SetLendSharedRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *SetLendSharedRequest) GetConnectorId() string {
+	if x != nil {
+		return x.ConnectorId
+	}
+	return ""
+}
+
+func (x *SetLendSharedRequest) GetDriveId() string {
+	if x != nil {
+		return x.DriveId
+	}
+	return ""
+}
+
+func (x *SetLendSharedRequest) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
+type SetLendSharedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLendSharedResponse) Reset() {
+	*x = SetLendSharedResponse{}
+	mi := &file_silo_v1_ui_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLendSharedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLendSharedResponse) ProtoMessage() {}
+
+func (x *SetLendSharedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLendSharedResponse.ProtoReflect.Descriptor instead.
+func (*SetLendSharedResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{79}
+}
+
+// OtherBot is a Bot of the Workspace the caller (an admin) is not on: enough
+// to know it is there and to delete it, nothing that opens it.
+type OtherBot struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Crest  int32                  `protobuf:"varint,3,opt,name=crest,proto3" json:"crest,omitempty"`
+	People []string               `protobuf:"bytes,4,rep,name=people,proto3" json:"people,omitempty"`
+	// How many connectors and drives it is granted.
+	Grants        int32 `protobuf:"varint,5,opt,name=grants,proto3" json:"grants,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OtherBot) Reset() {
+	*x = OtherBot{}
+	mi := &file_silo_v1_ui_proto_msgTypes[80]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OtherBot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OtherBot) ProtoMessage() {}
+
+func (x *OtherBot) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_ui_proto_msgTypes[80]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OtherBot.ProtoReflect.Descriptor instead.
+func (*OtherBot) Descriptor() ([]byte, []int) {
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{80}
+}
+
+func (x *OtherBot) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *OtherBot) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *OtherBot) GetCrest() int32 {
+	if x != nil {
+		return x.Crest
+	}
+	return 0
+}
+
+func (x *OtherBot) GetPeople() []string {
+	if x != nil {
+		return x.People
+	}
+	return nil
+}
+
+func (x *OtherBot) GetGrants() int32 {
+	if x != nil {
+		return x.Grants
+	}
+	return 0
+}
+
 // BotActivity is one live run of a Bot, for the sidebar's status line.
 type BotActivity struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -2742,7 +4732,7 @@ type BotActivity struct {
 
 func (x *BotActivity) Reset() {
 	*x = BotActivity{}
-	mi := &file_silo_v1_ui_proto_msgTypes[47]
+	mi := &file_silo_v1_ui_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2754,7 +4744,7 @@ func (x *BotActivity) String() string {
 func (*BotActivity) ProtoMessage() {}
 
 func (x *BotActivity) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[47]
+	mi := &file_silo_v1_ui_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2767,7 +4757,7 @@ func (x *BotActivity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotActivity.ProtoReflect.Descriptor instead.
 func (*BotActivity) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{47}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *BotActivity) GetChatId() string {
@@ -2815,7 +4805,7 @@ type ListBotsRequest struct {
 
 func (x *ListBotsRequest) Reset() {
 	*x = ListBotsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[48]
+	mi := &file_silo_v1_ui_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2827,7 +4817,7 @@ func (x *ListBotsRequest) String() string {
 func (*ListBotsRequest) ProtoMessage() {}
 
 func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[48]
+	mi := &file_silo_v1_ui_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2840,7 +4830,7 @@ func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{48}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *ListBotsRequest) GetSpaceId() string {
@@ -2851,15 +4841,17 @@ func (x *ListBotsRequest) GetSpaceId() string {
 }
 
 type ListBotsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Bots          []*Bot                 `protobuf:"bytes,1,rep,name=bots,proto3" json:"bots,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Bots  []*Bot                 `protobuf:"bytes,1,rep,name=bots,proto3" json:"bots,omitempty"`
+	// For a Workspace admin listing one Workspace: its Bots they are not on.
+	Others        []*OtherBot `protobuf:"bytes,2,rep,name=others,proto3" json:"others,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListBotsResponse) Reset() {
 	*x = ListBotsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[49]
+	mi := &file_silo_v1_ui_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2871,7 +4863,7 @@ func (x *ListBotsResponse) String() string {
 func (*ListBotsResponse) ProtoMessage() {}
 
 func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[49]
+	mi := &file_silo_v1_ui_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2884,12 +4876,19 @@ func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{49}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *ListBotsResponse) GetBots() []*Bot {
 	if x != nil {
 		return x.Bots
+	}
+	return nil
+}
+
+func (x *ListBotsResponse) GetOthers() []*OtherBot {
+	if x != nil {
+		return x.Others
 	}
 	return nil
 }
@@ -2904,14 +4903,22 @@ type CreateBotRequest struct {
 	// interview opens the main chat with the Bot getting to know its owner.
 	Interview bool `protobuf:"varint,5,opt,name=interview,proto3" json:"interview,omitempty"`
 	// The Workspace to make it in; empty is the caller's first own one.
-	SpaceId       string `protobuf:"bytes,6,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	SpaceId string `protobuf:"bytes,6,opt,name=space_id,json=spaceId,proto3" json:"space_id,omitempty"`
+	// What it can use (the New Bot page sends every one ticked): the
+	// Workspace's connections and drives to grant it, and the Workspace
+	// skills to leave off. A client that sends none grants only the defaults.
+	ConnectorIds []string `protobuf:"bytes,7,rep,name=connector_ids,json=connectorIds,proto3" json:"connector_ids,omitempty"`
+	DriveIds     []string `protobuf:"bytes,8,rep,name=drive_ids,json=driveIds,proto3" json:"drive_ids,omitempty"`
+	SkillsOff    []string `protobuf:"bytes,9,rep,name=skills_off,json=skillsOff,proto3" json:"skills_off,omitempty"`
+	// Who else can use it (Can use).
+	UserIds       []string `protobuf:"bytes,10,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateBotRequest) Reset() {
 	*x = CreateBotRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[50]
+	mi := &file_silo_v1_ui_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2923,7 +4930,7 @@ func (x *CreateBotRequest) String() string {
 func (*CreateBotRequest) ProtoMessage() {}
 
 func (x *CreateBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[50]
+	mi := &file_silo_v1_ui_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2936,7 +4943,7 @@ func (x *CreateBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBotRequest.ProtoReflect.Descriptor instead.
 func (*CreateBotRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{50}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *CreateBotRequest) GetName() string {
@@ -2981,6 +4988,34 @@ func (x *CreateBotRequest) GetSpaceId() string {
 	return ""
 }
 
+func (x *CreateBotRequest) GetConnectorIds() []string {
+	if x != nil {
+		return x.ConnectorIds
+	}
+	return nil
+}
+
+func (x *CreateBotRequest) GetDriveIds() []string {
+	if x != nil {
+		return x.DriveIds
+	}
+	return nil
+}
+
+func (x *CreateBotRequest) GetSkillsOff() []string {
+	if x != nil {
+		return x.SkillsOff
+	}
+	return nil
+}
+
+func (x *CreateBotRequest) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
+}
+
 type UpdateBotRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -3004,7 +5039,7 @@ type UpdateBotRequest struct {
 
 func (x *UpdateBotRequest) Reset() {
 	*x = UpdateBotRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[51]
+	mi := &file_silo_v1_ui_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3016,7 +5051,7 @@ func (x *UpdateBotRequest) String() string {
 func (*UpdateBotRequest) ProtoMessage() {}
 
 func (x *UpdateBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[51]
+	mi := &file_silo_v1_ui_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3029,7 +5064,7 @@ func (x *UpdateBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateBotRequest.ProtoReflect.Descriptor instead.
 func (*UpdateBotRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{51}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *UpdateBotRequest) GetId() string {
@@ -3118,7 +5153,7 @@ type GetBotRequest struct {
 
 func (x *GetBotRequest) Reset() {
 	*x = GetBotRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[52]
+	mi := &file_silo_v1_ui_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3130,7 +5165,7 @@ func (x *GetBotRequest) String() string {
 func (*GetBotRequest) ProtoMessage() {}
 
 func (x *GetBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[52]
+	mi := &file_silo_v1_ui_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3143,7 +5178,7 @@ func (x *GetBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBotRequest.ProtoReflect.Descriptor instead.
 func (*GetBotRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{52}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *GetBotRequest) GetId() string {
@@ -3165,7 +5200,7 @@ type Container struct {
 
 func (x *Container) Reset() {
 	*x = Container{}
-	mi := &file_silo_v1_ui_proto_msgTypes[53]
+	mi := &file_silo_v1_ui_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3177,7 +5212,7 @@ func (x *Container) String() string {
 func (*Container) ProtoMessage() {}
 
 func (x *Container) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[53]
+	mi := &file_silo_v1_ui_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3190,7 +5225,7 @@ func (x *Container) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Container.ProtoReflect.Descriptor instead.
 func (*Container) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{53}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *Container) GetRunning() bool {
@@ -3246,7 +5281,7 @@ type BotContainer struct {
 
 func (x *BotContainer) Reset() {
 	*x = BotContainer{}
-	mi := &file_silo_v1_ui_proto_msgTypes[54]
+	mi := &file_silo_v1_ui_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3258,7 +5293,7 @@ func (x *BotContainer) String() string {
 func (*BotContainer) ProtoMessage() {}
 
 func (x *BotContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[54]
+	mi := &file_silo_v1_ui_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3271,7 +5306,7 @@ func (x *BotContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotContainer.ProtoReflect.Descriptor instead.
 func (*BotContainer) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{54}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *BotContainer) GetKind() string {
@@ -3353,7 +5388,7 @@ type BotContainers struct {
 
 func (x *BotContainers) Reset() {
 	*x = BotContainers{}
-	mi := &file_silo_v1_ui_proto_msgTypes[55]
+	mi := &file_silo_v1_ui_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3365,7 +5400,7 @@ func (x *BotContainers) String() string {
 func (*BotContainers) ProtoMessage() {}
 
 func (x *BotContainers) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[55]
+	mi := &file_silo_v1_ui_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3378,7 +5413,7 @@ func (x *BotContainers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotContainers.ProtoReflect.Descriptor instead.
 func (*BotContainers) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{55}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *BotContainers) GetContainers() []*BotContainer {
@@ -3415,7 +5450,7 @@ type AdminContainer struct {
 
 func (x *AdminContainer) Reset() {
 	*x = AdminContainer{}
-	mi := &file_silo_v1_ui_proto_msgTypes[56]
+	mi := &file_silo_v1_ui_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3427,7 +5462,7 @@ func (x *AdminContainer) String() string {
 func (*AdminContainer) ProtoMessage() {}
 
 func (x *AdminContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[56]
+	mi := &file_silo_v1_ui_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3440,7 +5475,7 @@ func (x *AdminContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminContainer.ProtoReflect.Descriptor instead.
 func (*AdminContainer) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{56}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *AdminContainer) GetKind() string {
@@ -3535,7 +5570,7 @@ type AdminNetwork struct {
 
 func (x *AdminNetwork) Reset() {
 	*x = AdminNetwork{}
-	mi := &file_silo_v1_ui_proto_msgTypes[57]
+	mi := &file_silo_v1_ui_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3547,7 +5582,7 @@ func (x *AdminNetwork) String() string {
 func (*AdminNetwork) ProtoMessage() {}
 
 func (x *AdminNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[57]
+	mi := &file_silo_v1_ui_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3560,7 +5595,7 @@ func (x *AdminNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminNetwork.ProtoReflect.Descriptor instead.
 func (*AdminNetwork) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{57}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *AdminNetwork) GetName() string {
@@ -3605,7 +5640,7 @@ type AdminBotGroup struct {
 
 func (x *AdminBotGroup) Reset() {
 	*x = AdminBotGroup{}
-	mi := &file_silo_v1_ui_proto_msgTypes[58]
+	mi := &file_silo_v1_ui_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3617,7 +5652,7 @@ func (x *AdminBotGroup) String() string {
 func (*AdminBotGroup) ProtoMessage() {}
 
 func (x *AdminBotGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[58]
+	mi := &file_silo_v1_ui_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3630,7 +5665,7 @@ func (x *AdminBotGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminBotGroup.ProtoReflect.Descriptor instead.
 func (*AdminBotGroup) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{58}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *AdminBotGroup) GetBotId() string {
@@ -3680,7 +5715,7 @@ type AdminUserGroup struct {
 
 func (x *AdminUserGroup) Reset() {
 	*x = AdminUserGroup{}
-	mi := &file_silo_v1_ui_proto_msgTypes[59]
+	mi := &file_silo_v1_ui_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3692,7 +5727,7 @@ func (x *AdminUserGroup) String() string {
 func (*AdminUserGroup) ProtoMessage() {}
 
 func (x *AdminUserGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[59]
+	mi := &file_silo_v1_ui_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3705,7 +5740,7 @@ func (x *AdminUserGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUserGroup.ProtoReflect.Descriptor instead.
 func (*AdminUserGroup) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{59}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *AdminUserGroup) GetUserId() string {
@@ -3741,7 +5776,7 @@ type AdminSystemGroup struct {
 
 func (x *AdminSystemGroup) Reset() {
 	*x = AdminSystemGroup{}
-	mi := &file_silo_v1_ui_proto_msgTypes[60]
+	mi := &file_silo_v1_ui_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3753,7 +5788,7 @@ func (x *AdminSystemGroup) String() string {
 func (*AdminSystemGroup) ProtoMessage() {}
 
 func (x *AdminSystemGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[60]
+	mi := &file_silo_v1_ui_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3766,7 +5801,7 @@ func (x *AdminSystemGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminSystemGroup.ProtoReflect.Descriptor instead.
 func (*AdminSystemGroup) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{60}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *AdminSystemGroup) GetContainers() []*AdminContainer {
@@ -3795,7 +5830,7 @@ type AdminContainers struct {
 
 func (x *AdminContainers) Reset() {
 	*x = AdminContainers{}
-	mi := &file_silo_v1_ui_proto_msgTypes[61]
+	mi := &file_silo_v1_ui_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3807,7 +5842,7 @@ func (x *AdminContainers) String() string {
 func (*AdminContainers) ProtoMessage() {}
 
 func (x *AdminContainers) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[61]
+	mi := &file_silo_v1_ui_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3820,7 +5855,7 @@ func (x *AdminContainers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminContainers.ProtoReflect.Descriptor instead.
 func (*AdminContainers) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{61}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *AdminContainers) GetRuntime() string {
@@ -3852,7 +5887,7 @@ type ListAdminContainersRequest struct {
 
 func (x *ListAdminContainersRequest) Reset() {
 	*x = ListAdminContainersRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[62]
+	mi := &file_silo_v1_ui_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3864,7 +5899,7 @@ func (x *ListAdminContainersRequest) String() string {
 func (*ListAdminContainersRequest) ProtoMessage() {}
 
 func (x *ListAdminContainersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[62]
+	mi := &file_silo_v1_ui_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3877,7 +5912,7 @@ func (x *ListAdminContainersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdminContainersRequest.ProtoReflect.Descriptor instead.
 func (*ListAdminContainersRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{62}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{96}
 }
 
 // AdminContainerActionRequest names a container by the engine name
@@ -3893,7 +5928,7 @@ type AdminContainerActionRequest struct {
 
 func (x *AdminContainerActionRequest) Reset() {
 	*x = AdminContainerActionRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[63]
+	mi := &file_silo_v1_ui_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3905,7 +5940,7 @@ func (x *AdminContainerActionRequest) String() string {
 func (*AdminContainerActionRequest) ProtoMessage() {}
 
 func (x *AdminContainerActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[63]
+	mi := &file_silo_v1_ui_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3918,7 +5953,7 @@ func (x *AdminContainerActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminContainerActionRequest.ProtoReflect.Descriptor instead.
 func (*AdminContainerActionRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{63}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *AdminContainerActionRequest) GetName() string {
@@ -3943,7 +5978,7 @@ type AdminActionResponse struct {
 
 func (x *AdminActionResponse) Reset() {
 	*x = AdminActionResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[64]
+	mi := &file_silo_v1_ui_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3955,7 +5990,7 @@ func (x *AdminActionResponse) String() string {
 func (*AdminActionResponse) ProtoMessage() {}
 
 func (x *AdminActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[64]
+	mi := &file_silo_v1_ui_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3968,7 +6003,7 @@ func (x *AdminActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminActionResponse.ProtoReflect.Descriptor instead.
 func (*AdminActionResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{64}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{98}
 }
 
 type DeleteBotResponse struct {
@@ -3979,7 +6014,7 @@ type DeleteBotResponse struct {
 
 func (x *DeleteBotResponse) Reset() {
 	*x = DeleteBotResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[65]
+	mi := &file_silo_v1_ui_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3991,7 +6026,7 @@ func (x *DeleteBotResponse) String() string {
 func (*DeleteBotResponse) ProtoMessage() {}
 
 func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[65]
+	mi := &file_silo_v1_ui_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4004,7 +6039,7 @@ func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBotResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBotResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{65}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{99}
 }
 
 // Memory is one long-term (pgvector) memory a Bot saved with `remember`.
@@ -4025,7 +6060,7 @@ type Memory struct {
 
 func (x *Memory) Reset() {
 	*x = Memory{}
-	mi := &file_silo_v1_ui_proto_msgTypes[66]
+	mi := &file_silo_v1_ui_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4037,7 +6072,7 @@ func (x *Memory) String() string {
 func (*Memory) ProtoMessage() {}
 
 func (x *Memory) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[66]
+	mi := &file_silo_v1_ui_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4050,7 +6085,7 @@ func (x *Memory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Memory.ProtoReflect.Descriptor instead.
 func (*Memory) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{66}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *Memory) GetId() string {
@@ -4104,7 +6139,7 @@ type ListMemoriesRequest struct {
 
 func (x *ListMemoriesRequest) Reset() {
 	*x = ListMemoriesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[67]
+	mi := &file_silo_v1_ui_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4116,7 +6151,7 @@ func (x *ListMemoriesRequest) String() string {
 func (*ListMemoriesRequest) ProtoMessage() {}
 
 func (x *ListMemoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[67]
+	mi := &file_silo_v1_ui_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4129,7 +6164,7 @@ func (x *ListMemoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMemoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListMemoriesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{67}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ListMemoriesRequest) GetBotId() string {
@@ -4148,7 +6183,7 @@ type ListMemoriesResponse struct {
 
 func (x *ListMemoriesResponse) Reset() {
 	*x = ListMemoriesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[68]
+	mi := &file_silo_v1_ui_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4160,7 +6195,7 @@ func (x *ListMemoriesResponse) String() string {
 func (*ListMemoriesResponse) ProtoMessage() {}
 
 func (x *ListMemoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[68]
+	mi := &file_silo_v1_ui_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4173,7 +6208,7 @@ func (x *ListMemoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMemoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListMemoriesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{68}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ListMemoriesResponse) GetMemories() []*Memory {
@@ -4197,7 +6232,7 @@ type SearchMemoriesRequest struct {
 
 func (x *SearchMemoriesRequest) Reset() {
 	*x = SearchMemoriesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[69]
+	mi := &file_silo_v1_ui_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4209,7 +6244,7 @@ func (x *SearchMemoriesRequest) String() string {
 func (*SearchMemoriesRequest) ProtoMessage() {}
 
 func (x *SearchMemoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[69]
+	mi := &file_silo_v1_ui_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4222,7 +6257,7 @@ func (x *SearchMemoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMemoriesRequest.ProtoReflect.Descriptor instead.
 func (*SearchMemoriesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{69}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *SearchMemoriesRequest) GetBotId() string {
@@ -4255,7 +6290,7 @@ type SearchMemoriesResponse struct {
 
 func (x *SearchMemoriesResponse) Reset() {
 	*x = SearchMemoriesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[70]
+	mi := &file_silo_v1_ui_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4267,7 +6302,7 @@ func (x *SearchMemoriesResponse) String() string {
 func (*SearchMemoriesResponse) ProtoMessage() {}
 
 func (x *SearchMemoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[70]
+	mi := &file_silo_v1_ui_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4280,7 +6315,7 @@ func (x *SearchMemoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMemoriesResponse.ProtoReflect.Descriptor instead.
 func (*SearchMemoriesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{70}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *SearchMemoriesResponse) GetMemories() []*Memory {
@@ -4300,7 +6335,7 @@ type DeleteMemoryRequest struct {
 
 func (x *DeleteMemoryRequest) Reset() {
 	*x = DeleteMemoryRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[71]
+	mi := &file_silo_v1_ui_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4312,7 +6347,7 @@ func (x *DeleteMemoryRequest) String() string {
 func (*DeleteMemoryRequest) ProtoMessage() {}
 
 func (x *DeleteMemoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[71]
+	mi := &file_silo_v1_ui_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4325,7 +6360,7 @@ func (x *DeleteMemoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMemoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMemoryRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{71}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *DeleteMemoryRequest) GetBotId() string {
@@ -4350,7 +6385,7 @@ type DeleteMemoryResponse struct {
 
 func (x *DeleteMemoryResponse) Reset() {
 	*x = DeleteMemoryResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[72]
+	mi := &file_silo_v1_ui_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4362,7 +6397,7 @@ func (x *DeleteMemoryResponse) String() string {
 func (*DeleteMemoryResponse) ProtoMessage() {}
 
 func (x *DeleteMemoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[72]
+	mi := &file_silo_v1_ui_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4375,7 +6410,7 @@ func (x *DeleteMemoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMemoryResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMemoryResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{72}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{106}
 }
 
 // KnowledgeFolder is a workspace folder indexed for search_docs.
@@ -4402,7 +6437,7 @@ type KnowledgeFolder struct {
 
 func (x *KnowledgeFolder) Reset() {
 	*x = KnowledgeFolder{}
-	mi := &file_silo_v1_ui_proto_msgTypes[73]
+	mi := &file_silo_v1_ui_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4414,7 +6449,7 @@ func (x *KnowledgeFolder) String() string {
 func (*KnowledgeFolder) ProtoMessage() {}
 
 func (x *KnowledgeFolder) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[73]
+	mi := &file_silo_v1_ui_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4427,7 +6462,7 @@ func (x *KnowledgeFolder) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KnowledgeFolder.ProtoReflect.Descriptor instead.
 func (*KnowledgeFolder) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{73}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *KnowledgeFolder) GetId() string {
@@ -4510,7 +6545,7 @@ type KnowledgeIssue struct {
 
 func (x *KnowledgeIssue) Reset() {
 	*x = KnowledgeIssue{}
-	mi := &file_silo_v1_ui_proto_msgTypes[74]
+	mi := &file_silo_v1_ui_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4522,7 +6557,7 @@ func (x *KnowledgeIssue) String() string {
 func (*KnowledgeIssue) ProtoMessage() {}
 
 func (x *KnowledgeIssue) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[74]
+	mi := &file_silo_v1_ui_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4535,7 +6570,7 @@ func (x *KnowledgeIssue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KnowledgeIssue.ProtoReflect.Descriptor instead.
 func (*KnowledgeIssue) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{74}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *KnowledgeIssue) GetPath() string {
@@ -4561,7 +6596,7 @@ type ListKnowledgeRequest struct {
 
 func (x *ListKnowledgeRequest) Reset() {
 	*x = ListKnowledgeRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[75]
+	mi := &file_silo_v1_ui_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4573,7 +6608,7 @@ func (x *ListKnowledgeRequest) String() string {
 func (*ListKnowledgeRequest) ProtoMessage() {}
 
 func (x *ListKnowledgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[75]
+	mi := &file_silo_v1_ui_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4586,7 +6621,7 @@ func (x *ListKnowledgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListKnowledgeRequest.ProtoReflect.Descriptor instead.
 func (*ListKnowledgeRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{75}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ListKnowledgeRequest) GetBotId() string {
@@ -4607,7 +6642,7 @@ type ListKnowledgeResponse struct {
 
 func (x *ListKnowledgeResponse) Reset() {
 	*x = ListKnowledgeResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[76]
+	mi := &file_silo_v1_ui_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4619,7 +6654,7 @@ func (x *ListKnowledgeResponse) String() string {
 func (*ListKnowledgeResponse) ProtoMessage() {}
 
 func (x *ListKnowledgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[76]
+	mi := &file_silo_v1_ui_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4632,7 +6667,7 @@ func (x *ListKnowledgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListKnowledgeResponse.ProtoReflect.Descriptor instead.
 func (*ListKnowledgeResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{76}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *ListKnowledgeResponse) GetFolders() []*KnowledgeFolder {
@@ -4659,7 +6694,7 @@ type AddKnowledgeFolderRequest struct {
 
 func (x *AddKnowledgeFolderRequest) Reset() {
 	*x = AddKnowledgeFolderRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[77]
+	mi := &file_silo_v1_ui_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4671,7 +6706,7 @@ func (x *AddKnowledgeFolderRequest) String() string {
 func (*AddKnowledgeFolderRequest) ProtoMessage() {}
 
 func (x *AddKnowledgeFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[77]
+	mi := &file_silo_v1_ui_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4684,7 +6719,7 @@ func (x *AddKnowledgeFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddKnowledgeFolderRequest.ProtoReflect.Descriptor instead.
 func (*AddKnowledgeFolderRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{77}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *AddKnowledgeFolderRequest) GetBotId() string {
@@ -4711,7 +6746,7 @@ type RemoveKnowledgeFolderRequest struct {
 
 func (x *RemoveKnowledgeFolderRequest) Reset() {
 	*x = RemoveKnowledgeFolderRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[78]
+	mi := &file_silo_v1_ui_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4723,7 +6758,7 @@ func (x *RemoveKnowledgeFolderRequest) String() string {
 func (*RemoveKnowledgeFolderRequest) ProtoMessage() {}
 
 func (x *RemoveKnowledgeFolderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[78]
+	mi := &file_silo_v1_ui_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4736,7 +6771,7 @@ func (x *RemoveKnowledgeFolderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveKnowledgeFolderRequest.ProtoReflect.Descriptor instead.
 func (*RemoveKnowledgeFolderRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{78}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *RemoveKnowledgeFolderRequest) GetBotId() string {
@@ -4761,7 +6796,7 @@ type RemoveKnowledgeFolderResponse struct {
 
 func (x *RemoveKnowledgeFolderResponse) Reset() {
 	*x = RemoveKnowledgeFolderResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[79]
+	mi := &file_silo_v1_ui_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4773,7 +6808,7 @@ func (x *RemoveKnowledgeFolderResponse) String() string {
 func (*RemoveKnowledgeFolderResponse) ProtoMessage() {}
 
 func (x *RemoveKnowledgeFolderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[79]
+	mi := &file_silo_v1_ui_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4786,7 +6821,7 @@ func (x *RemoveKnowledgeFolderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveKnowledgeFolderResponse.ProtoReflect.Descriptor instead.
 func (*RemoveKnowledgeFolderResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{79}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{113}
 }
 
 type SyncKnowledgeRequest struct {
@@ -4799,7 +6834,7 @@ type SyncKnowledgeRequest struct {
 
 func (x *SyncKnowledgeRequest) Reset() {
 	*x = SyncKnowledgeRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[80]
+	mi := &file_silo_v1_ui_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4811,7 +6846,7 @@ func (x *SyncKnowledgeRequest) String() string {
 func (*SyncKnowledgeRequest) ProtoMessage() {}
 
 func (x *SyncKnowledgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[80]
+	mi := &file_silo_v1_ui_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4824,7 +6859,7 @@ func (x *SyncKnowledgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncKnowledgeRequest.ProtoReflect.Descriptor instead.
 func (*SyncKnowledgeRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{80}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *SyncKnowledgeRequest) GetBotId() string {
@@ -4855,7 +6890,7 @@ type KnowledgeHit struct {
 
 func (x *KnowledgeHit) Reset() {
 	*x = KnowledgeHit{}
-	mi := &file_silo_v1_ui_proto_msgTypes[81]
+	mi := &file_silo_v1_ui_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4867,7 +6902,7 @@ func (x *KnowledgeHit) String() string {
 func (*KnowledgeHit) ProtoMessage() {}
 
 func (x *KnowledgeHit) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[81]
+	mi := &file_silo_v1_ui_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4880,7 +6915,7 @@ func (x *KnowledgeHit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KnowledgeHit.ProtoReflect.Descriptor instead.
 func (*KnowledgeHit) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{81}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *KnowledgeHit) GetPath() string {
@@ -4932,7 +6967,7 @@ type SearchKnowledgeRequest struct {
 
 func (x *SearchKnowledgeRequest) Reset() {
 	*x = SearchKnowledgeRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[82]
+	mi := &file_silo_v1_ui_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4944,7 +6979,7 @@ func (x *SearchKnowledgeRequest) String() string {
 func (*SearchKnowledgeRequest) ProtoMessage() {}
 
 func (x *SearchKnowledgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[82]
+	mi := &file_silo_v1_ui_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4957,7 +6992,7 @@ func (x *SearchKnowledgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchKnowledgeRequest.ProtoReflect.Descriptor instead.
 func (*SearchKnowledgeRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{82}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *SearchKnowledgeRequest) GetBotId() string {
@@ -4997,7 +7032,7 @@ type SearchKnowledgeResponse struct {
 
 func (x *SearchKnowledgeResponse) Reset() {
 	*x = SearchKnowledgeResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[83]
+	mi := &file_silo_v1_ui_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5009,7 +7044,7 @@ func (x *SearchKnowledgeResponse) String() string {
 func (*SearchKnowledgeResponse) ProtoMessage() {}
 
 func (x *SearchKnowledgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[83]
+	mi := &file_silo_v1_ui_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5022,7 +7057,7 @@ func (x *SearchKnowledgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchKnowledgeResponse.ProtoReflect.Descriptor instead.
 func (*SearchKnowledgeResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{83}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *SearchKnowledgeResponse) GetHits() []*KnowledgeHit {
@@ -5046,7 +7081,7 @@ type ChangeSource struct {
 
 func (x *ChangeSource) Reset() {
 	*x = ChangeSource{}
-	mi := &file_silo_v1_ui_proto_msgTypes[84]
+	mi := &file_silo_v1_ui_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5058,7 +7093,7 @@ func (x *ChangeSource) String() string {
 func (*ChangeSource) ProtoMessage() {}
 
 func (x *ChangeSource) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[84]
+	mi := &file_silo_v1_ui_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5071,7 +7106,7 @@ func (x *ChangeSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeSource.ProtoReflect.Descriptor instead.
 func (*ChangeSource) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{84}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *ChangeSource) GetKind() string {
@@ -5119,7 +7154,7 @@ type Change struct {
 
 func (x *Change) Reset() {
 	*x = Change{}
-	mi := &file_silo_v1_ui_proto_msgTypes[85]
+	mi := &file_silo_v1_ui_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5131,7 +7166,7 @@ func (x *Change) String() string {
 func (*Change) ProtoMessage() {}
 
 func (x *Change) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[85]
+	mi := &file_silo_v1_ui_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5144,7 +7179,7 @@ func (x *Change) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Change.ProtoReflect.Descriptor instead.
 func (*Change) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{85}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *Change) GetId() string {
@@ -5239,7 +7274,7 @@ type ChangeFile struct {
 
 func (x *ChangeFile) Reset() {
 	*x = ChangeFile{}
-	mi := &file_silo_v1_ui_proto_msgTypes[86]
+	mi := &file_silo_v1_ui_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5251,7 +7286,7 @@ func (x *ChangeFile) String() string {
 func (*ChangeFile) ProtoMessage() {}
 
 func (x *ChangeFile) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[86]
+	mi := &file_silo_v1_ui_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5264,7 +7299,7 @@ func (x *ChangeFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeFile.ProtoReflect.Descriptor instead.
 func (*ChangeFile) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{86}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *ChangeFile) GetPath() string {
@@ -5339,7 +7374,7 @@ type ListChangesRequest struct {
 
 func (x *ListChangesRequest) Reset() {
 	*x = ListChangesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[87]
+	mi := &file_silo_v1_ui_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5351,7 +7386,7 @@ func (x *ListChangesRequest) String() string {
 func (*ListChangesRequest) ProtoMessage() {}
 
 func (x *ListChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[87]
+	mi := &file_silo_v1_ui_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5364,7 +7399,7 @@ func (x *ListChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangesRequest.ProtoReflect.Descriptor instead.
 func (*ListChangesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{87}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *ListChangesRequest) GetBotId() string {
@@ -5393,7 +7428,7 @@ type ListChangesResponse struct {
 
 func (x *ListChangesResponse) Reset() {
 	*x = ListChangesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[88]
+	mi := &file_silo_v1_ui_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5405,7 +7440,7 @@ func (x *ListChangesResponse) String() string {
 func (*ListChangesResponse) ProtoMessage() {}
 
 func (x *ListChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[88]
+	mi := &file_silo_v1_ui_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5418,7 +7453,7 @@ func (x *ListChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangesResponse.ProtoReflect.Descriptor instead.
 func (*ListChangesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{88}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *ListChangesResponse) GetState() string {
@@ -5484,7 +7519,7 @@ type DriveChangeEntry struct {
 
 func (x *DriveChangeEntry) Reset() {
 	*x = DriveChangeEntry{}
-	mi := &file_silo_v1_ui_proto_msgTypes[89]
+	mi := &file_silo_v1_ui_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5496,7 +7531,7 @@ func (x *DriveChangeEntry) String() string {
 func (*DriveChangeEntry) ProtoMessage() {}
 
 func (x *DriveChangeEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[89]
+	mi := &file_silo_v1_ui_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5509,7 +7544,7 @@ func (x *DriveChangeEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveChangeEntry.ProtoReflect.Descriptor instead.
 func (*DriveChangeEntry) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{89}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *DriveChangeEntry) GetId() string {
@@ -5577,7 +7612,7 @@ type ListDriveChangesRequest struct {
 
 func (x *ListDriveChangesRequest) Reset() {
 	*x = ListDriveChangesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[90]
+	mi := &file_silo_v1_ui_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5589,7 +7624,7 @@ func (x *ListDriveChangesRequest) String() string {
 func (*ListDriveChangesRequest) ProtoMessage() {}
 
 func (x *ListDriveChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[90]
+	mi := &file_silo_v1_ui_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5602,7 +7637,7 @@ func (x *ListDriveChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriveChangesRequest.ProtoReflect.Descriptor instead.
 func (*ListDriveChangesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{90}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *ListDriveChangesRequest) GetBotId() string {
@@ -5627,7 +7662,7 @@ type ListDriveChangesResponse struct {
 
 func (x *ListDriveChangesResponse) Reset() {
 	*x = ListDriveChangesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[91]
+	mi := &file_silo_v1_ui_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5639,7 +7674,7 @@ func (x *ListDriveChangesResponse) String() string {
 func (*ListDriveChangesResponse) ProtoMessage() {}
 
 func (x *ListDriveChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[91]
+	mi := &file_silo_v1_ui_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5652,7 +7687,7 @@ func (x *ListDriveChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriveChangesResponse.ProtoReflect.Descriptor instead.
 func (*ListDriveChangesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{91}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *ListDriveChangesResponse) GetState() string {
@@ -5694,7 +7729,7 @@ type ListChangeFilesRequest struct {
 
 func (x *ListChangeFilesRequest) Reset() {
 	*x = ListChangeFilesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[92]
+	mi := &file_silo_v1_ui_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5706,7 +7741,7 @@ func (x *ListChangeFilesRequest) String() string {
 func (*ListChangeFilesRequest) ProtoMessage() {}
 
 func (x *ListChangeFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[92]
+	mi := &file_silo_v1_ui_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5719,7 +7754,7 @@ func (x *ListChangeFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangeFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListChangeFilesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{92}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *ListChangeFilesRequest) GetBotId() string {
@@ -5753,7 +7788,7 @@ type ListChangeFilesResponse struct {
 
 func (x *ListChangeFilesResponse) Reset() {
 	*x = ListChangeFilesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[93]
+	mi := &file_silo_v1_ui_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5765,7 +7800,7 @@ func (x *ListChangeFilesResponse) String() string {
 func (*ListChangeFilesResponse) ProtoMessage() {}
 
 func (x *ListChangeFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[93]
+	mi := &file_silo_v1_ui_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5778,7 +7813,7 @@ func (x *ListChangeFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangeFilesResponse.ProtoReflect.Descriptor instead.
 func (*ListChangeFilesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{93}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *ListChangeFilesResponse) GetFiles() []*ChangeFile {
@@ -5808,7 +7843,7 @@ type GetChangePatchRequest struct {
 
 func (x *GetChangePatchRequest) Reset() {
 	*x = GetChangePatchRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[94]
+	mi := &file_silo_v1_ui_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5820,7 +7855,7 @@ func (x *GetChangePatchRequest) String() string {
 func (*GetChangePatchRequest) ProtoMessage() {}
 
 func (x *GetChangePatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[94]
+	mi := &file_silo_v1_ui_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5833,7 +7868,7 @@ func (x *GetChangePatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChangePatchRequest.ProtoReflect.Descriptor instead.
 func (*GetChangePatchRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{94}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *GetChangePatchRequest) GetBotId() string {
@@ -5883,7 +7918,7 @@ type GetChangePatchResponse struct {
 
 func (x *GetChangePatchResponse) Reset() {
 	*x = GetChangePatchResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[95]
+	mi := &file_silo_v1_ui_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5895,7 +7930,7 @@ func (x *GetChangePatchResponse) String() string {
 func (*GetChangePatchResponse) ProtoMessage() {}
 
 func (x *GetChangePatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[95]
+	mi := &file_silo_v1_ui_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5908,7 +7943,7 @@ func (x *GetChangePatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChangePatchResponse.ProtoReflect.Descriptor instead.
 func (*GetChangePatchResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{95}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *GetChangePatchResponse) GetPatch() string {
@@ -5947,7 +7982,7 @@ type RestoreChangeRequest struct {
 
 func (x *RestoreChangeRequest) Reset() {
 	*x = RestoreChangeRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[96]
+	mi := &file_silo_v1_ui_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5959,7 +7994,7 @@ func (x *RestoreChangeRequest) String() string {
 func (*RestoreChangeRequest) ProtoMessage() {}
 
 func (x *RestoreChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[96]
+	mi := &file_silo_v1_ui_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5972,7 +8007,7 @@ func (x *RestoreChangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreChangeRequest.ProtoReflect.Descriptor instead.
 func (*RestoreChangeRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{96}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *RestoreChangeRequest) GetBotId() string {
@@ -6023,7 +8058,7 @@ type RestoreSkip struct {
 
 func (x *RestoreSkip) Reset() {
 	*x = RestoreSkip{}
-	mi := &file_silo_v1_ui_proto_msgTypes[97]
+	mi := &file_silo_v1_ui_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6035,7 +8070,7 @@ func (x *RestoreSkip) String() string {
 func (*RestoreSkip) ProtoMessage() {}
 
 func (x *RestoreSkip) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[97]
+	mi := &file_silo_v1_ui_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6048,7 +8083,7 @@ func (x *RestoreSkip) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreSkip.ProtoReflect.Descriptor instead.
 func (*RestoreSkip) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{97}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *RestoreSkip) GetPath() string {
@@ -6077,7 +8112,7 @@ type RestoreChangeResponse struct {
 
 func (x *RestoreChangeResponse) Reset() {
 	*x = RestoreChangeResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[98]
+	mi := &file_silo_v1_ui_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6089,7 +8124,7 @@ func (x *RestoreChangeResponse) String() string {
 func (*RestoreChangeResponse) ProtoMessage() {}
 
 func (x *RestoreChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[98]
+	mi := &file_silo_v1_ui_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6102,7 +8137,7 @@ func (x *RestoreChangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreChangeResponse.ProtoReflect.Descriptor instead.
 func (*RestoreChangeResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{98}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *RestoreChangeResponse) GetRestored() int32 {
@@ -6145,7 +8180,7 @@ type FeedPost struct {
 
 func (x *FeedPost) Reset() {
 	*x = FeedPost{}
-	mi := &file_silo_v1_ui_proto_msgTypes[99]
+	mi := &file_silo_v1_ui_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6157,7 +8192,7 @@ func (x *FeedPost) String() string {
 func (*FeedPost) ProtoMessage() {}
 
 func (x *FeedPost) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[99]
+	mi := &file_silo_v1_ui_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6170,7 +8205,7 @@ func (x *FeedPost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedPost.ProtoReflect.Descriptor instead.
 func (*FeedPost) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{99}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *FeedPost) GetId() string {
@@ -6238,7 +8273,7 @@ type ListFeedRequest struct {
 
 func (x *ListFeedRequest) Reset() {
 	*x = ListFeedRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[100]
+	mi := &file_silo_v1_ui_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6250,7 +8285,7 @@ func (x *ListFeedRequest) String() string {
 func (*ListFeedRequest) ProtoMessage() {}
 
 func (x *ListFeedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[100]
+	mi := &file_silo_v1_ui_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6263,7 +8298,7 @@ func (x *ListFeedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{100}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *ListFeedRequest) GetBotId() string {
@@ -6282,7 +8317,7 @@ type ListFeedResponse struct {
 
 func (x *ListFeedResponse) Reset() {
 	*x = ListFeedResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[101]
+	mi := &file_silo_v1_ui_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6294,7 +8329,7 @@ func (x *ListFeedResponse) String() string {
 func (*ListFeedResponse) ProtoMessage() {}
 
 func (x *ListFeedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[101]
+	mi := &file_silo_v1_ui_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6307,7 +8342,7 @@ func (x *ListFeedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{101}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *ListFeedResponse) GetPosts() []*FeedPost {
@@ -6328,7 +8363,7 @@ type SetDesktopPausedRequest struct {
 
 func (x *SetDesktopPausedRequest) Reset() {
 	*x = SetDesktopPausedRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[102]
+	mi := &file_silo_v1_ui_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6340,7 +8375,7 @@ func (x *SetDesktopPausedRequest) String() string {
 func (*SetDesktopPausedRequest) ProtoMessage() {}
 
 func (x *SetDesktopPausedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[102]
+	mi := &file_silo_v1_ui_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6353,7 +8388,7 @@ func (x *SetDesktopPausedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDesktopPausedRequest.ProtoReflect.Descriptor instead.
 func (*SetDesktopPausedRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{102}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *SetDesktopPausedRequest) GetBotId() string {
@@ -6379,7 +8414,7 @@ type SetDesktopPausedResponse struct {
 
 func (x *SetDesktopPausedResponse) Reset() {
 	*x = SetDesktopPausedResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[103]
+	mi := &file_silo_v1_ui_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6391,7 +8426,7 @@ func (x *SetDesktopPausedResponse) String() string {
 func (*SetDesktopPausedResponse) ProtoMessage() {}
 
 func (x *SetDesktopPausedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[103]
+	mi := &file_silo_v1_ui_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6404,7 +8439,7 @@ func (x *SetDesktopPausedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDesktopPausedResponse.ProtoReflect.Descriptor instead.
 func (*SetDesktopPausedResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{103}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *SetDesktopPausedResponse) GetPaused() bool {
@@ -6423,7 +8458,7 @@ type MarkFeedReadRequest struct {
 
 func (x *MarkFeedReadRequest) Reset() {
 	*x = MarkFeedReadRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[104]
+	mi := &file_silo_v1_ui_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6435,7 +8470,7 @@ func (x *MarkFeedReadRequest) String() string {
 func (*MarkFeedReadRequest) ProtoMessage() {}
 
 func (x *MarkFeedReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[104]
+	mi := &file_silo_v1_ui_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6448,7 +8483,7 @@ func (x *MarkFeedReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkFeedReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkFeedReadRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{104}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *MarkFeedReadRequest) GetBotId() string {
@@ -6466,7 +8501,7 @@ type MarkFeedReadResponse struct {
 
 func (x *MarkFeedReadResponse) Reset() {
 	*x = MarkFeedReadResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[105]
+	mi := &file_silo_v1_ui_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6478,7 +8513,7 @@ func (x *MarkFeedReadResponse) String() string {
 func (*MarkFeedReadResponse) ProtoMessage() {}
 
 func (x *MarkFeedReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[105]
+	mi := &file_silo_v1_ui_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6491,7 +8526,7 @@ func (x *MarkFeedReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkFeedReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkFeedReadResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{105}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{139}
 }
 
 type DeleteFeedPostRequest struct {
@@ -6504,7 +8539,7 @@ type DeleteFeedPostRequest struct {
 
 func (x *DeleteFeedPostRequest) Reset() {
 	*x = DeleteFeedPostRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[106]
+	mi := &file_silo_v1_ui_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6516,7 +8551,7 @@ func (x *DeleteFeedPostRequest) String() string {
 func (*DeleteFeedPostRequest) ProtoMessage() {}
 
 func (x *DeleteFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[106]
+	mi := &file_silo_v1_ui_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6529,7 +8564,7 @@ func (x *DeleteFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*DeleteFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{106}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *DeleteFeedPostRequest) GetBotId() string {
@@ -6554,7 +8589,7 @@ type DeleteFeedPostResponse struct {
 
 func (x *DeleteFeedPostResponse) Reset() {
 	*x = DeleteFeedPostResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[107]
+	mi := &file_silo_v1_ui_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6566,7 +8601,7 @@ func (x *DeleteFeedPostResponse) String() string {
 func (*DeleteFeedPostResponse) ProtoMessage() {}
 
 func (x *DeleteFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[107]
+	mi := &file_silo_v1_ui_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6579,7 +8614,7 @@ func (x *DeleteFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*DeleteFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{107}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{141}
 }
 
 // QuoteFeedPost starts a new chat whose context is the quoted post.
@@ -6595,7 +8630,7 @@ type QuoteFeedPostRequest struct {
 
 func (x *QuoteFeedPostRequest) Reset() {
 	*x = QuoteFeedPostRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[108]
+	mi := &file_silo_v1_ui_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6607,7 +8642,7 @@ func (x *QuoteFeedPostRequest) String() string {
 func (*QuoteFeedPostRequest) ProtoMessage() {}
 
 func (x *QuoteFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[108]
+	mi := &file_silo_v1_ui_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6620,7 +8655,7 @@ func (x *QuoteFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuoteFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*QuoteFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{108}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *QuoteFeedPostRequest) GetBotId() string {
@@ -6653,7 +8688,7 @@ type QuoteFeedPostResponse struct {
 
 func (x *QuoteFeedPostResponse) Reset() {
 	*x = QuoteFeedPostResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[109]
+	mi := &file_silo_v1_ui_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6665,7 +8700,7 @@ func (x *QuoteFeedPostResponse) String() string {
 func (*QuoteFeedPostResponse) ProtoMessage() {}
 
 func (x *QuoteFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[109]
+	mi := &file_silo_v1_ui_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6678,7 +8713,7 @@ func (x *QuoteFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuoteFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*QuoteFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{109}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *QuoteFeedPostResponse) GetChat() *Chat {
@@ -6718,7 +8753,7 @@ type DashboardCard struct {
 
 func (x *DashboardCard) Reset() {
 	*x = DashboardCard{}
-	mi := &file_silo_v1_ui_proto_msgTypes[110]
+	mi := &file_silo_v1_ui_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6730,7 +8765,7 @@ func (x *DashboardCard) String() string {
 func (*DashboardCard) ProtoMessage() {}
 
 func (x *DashboardCard) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[110]
+	mi := &file_silo_v1_ui_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6743,7 +8778,7 @@ func (x *DashboardCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardCard.ProtoReflect.Descriptor instead.
 func (*DashboardCard) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{110}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *DashboardCard) GetId() string {
@@ -6876,7 +8911,7 @@ type SetupOffer struct {
 
 func (x *SetupOffer) Reset() {
 	*x = SetupOffer{}
-	mi := &file_silo_v1_ui_proto_msgTypes[111]
+	mi := &file_silo_v1_ui_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6888,7 +8923,7 @@ func (x *SetupOffer) String() string {
 func (*SetupOffer) ProtoMessage() {}
 
 func (x *SetupOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[111]
+	mi := &file_silo_v1_ui_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6901,7 +8936,7 @@ func (x *SetupOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetupOffer.ProtoReflect.Descriptor instead.
 func (*SetupOffer) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{111}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *SetupOffer) GetId() string {
@@ -6983,7 +9018,7 @@ type ResolveSetupOfferRequest struct {
 
 func (x *ResolveSetupOfferRequest) Reset() {
 	*x = ResolveSetupOfferRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[112]
+	mi := &file_silo_v1_ui_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6995,7 +9030,7 @@ func (x *ResolveSetupOfferRequest) String() string {
 func (*ResolveSetupOfferRequest) ProtoMessage() {}
 
 func (x *ResolveSetupOfferRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[112]
+	mi := &file_silo_v1_ui_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7008,7 +9043,7 @@ func (x *ResolveSetupOfferRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveSetupOfferRequest.ProtoReflect.Descriptor instead.
 func (*ResolveSetupOfferRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{112}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *ResolveSetupOfferRequest) GetBotId() string {
@@ -7048,7 +9083,7 @@ type ListDashboardRequest struct {
 
 func (x *ListDashboardRequest) Reset() {
 	*x = ListDashboardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[113]
+	mi := &file_silo_v1_ui_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7060,7 +9095,7 @@ func (x *ListDashboardRequest) String() string {
 func (*ListDashboardRequest) ProtoMessage() {}
 
 func (x *ListDashboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[113]
+	mi := &file_silo_v1_ui_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7073,7 +9108,7 @@ func (x *ListDashboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDashboardRequest.ProtoReflect.Descriptor instead.
 func (*ListDashboardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{113}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *ListDashboardRequest) GetBotId() string {
@@ -7103,7 +9138,7 @@ type ListDashboardResponse struct {
 
 func (x *ListDashboardResponse) Reset() {
 	*x = ListDashboardResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[114]
+	mi := &file_silo_v1_ui_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7115,7 +9150,7 @@ func (x *ListDashboardResponse) String() string {
 func (*ListDashboardResponse) ProtoMessage() {}
 
 func (x *ListDashboardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[114]
+	mi := &file_silo_v1_ui_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7128,7 +9163,7 @@ func (x *ListDashboardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDashboardResponse.ProtoReflect.Descriptor instead.
 func (*ListDashboardResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{114}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *ListDashboardResponse) GetCards() []*DashboardCard {
@@ -7238,7 +9273,7 @@ type DashboardWidget struct {
 
 func (x *DashboardWidget) Reset() {
 	*x = DashboardWidget{}
-	mi := &file_silo_v1_ui_proto_msgTypes[115]
+	mi := &file_silo_v1_ui_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7250,7 +9285,7 @@ func (x *DashboardWidget) String() string {
 func (*DashboardWidget) ProtoMessage() {}
 
 func (x *DashboardWidget) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[115]
+	mi := &file_silo_v1_ui_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7263,7 +9298,7 @@ func (x *DashboardWidget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardWidget.ProtoReflect.Descriptor instead.
 func (*DashboardWidget) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{115}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *DashboardWidget) GetId() string {
@@ -7416,7 +9451,7 @@ type RefreshWidgetRequest struct {
 
 func (x *RefreshWidgetRequest) Reset() {
 	*x = RefreshWidgetRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[116]
+	mi := &file_silo_v1_ui_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7428,7 +9463,7 @@ func (x *RefreshWidgetRequest) String() string {
 func (*RefreshWidgetRequest) ProtoMessage() {}
 
 func (x *RefreshWidgetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[116]
+	mi := &file_silo_v1_ui_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7441,7 +9476,7 @@ func (x *RefreshWidgetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshWidgetRequest.ProtoReflect.Descriptor instead.
 func (*RefreshWidgetRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{116}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *RefreshWidgetRequest) GetBotId() string {
@@ -7470,7 +9505,7 @@ type SetWidgetStateRequest struct {
 
 func (x *SetWidgetStateRequest) Reset() {
 	*x = SetWidgetStateRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[117]
+	mi := &file_silo_v1_ui_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7482,7 +9517,7 @@ func (x *SetWidgetStateRequest) String() string {
 func (*SetWidgetStateRequest) ProtoMessage() {}
 
 func (x *SetWidgetStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[117]
+	mi := &file_silo_v1_ui_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7495,7 +9530,7 @@ func (x *SetWidgetStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWidgetStateRequest.ProtoReflect.Descriptor instead.
 func (*SetWidgetStateRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{117}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *SetWidgetStateRequest) GetBotId() string {
@@ -7535,7 +9570,7 @@ type RunWidgetActionRequest struct {
 
 func (x *RunWidgetActionRequest) Reset() {
 	*x = RunWidgetActionRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[118]
+	mi := &file_silo_v1_ui_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7547,7 +9582,7 @@ func (x *RunWidgetActionRequest) String() string {
 func (*RunWidgetActionRequest) ProtoMessage() {}
 
 func (x *RunWidgetActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[118]
+	mi := &file_silo_v1_ui_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7560,7 +9595,7 @@ func (x *RunWidgetActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunWidgetActionRequest.ProtoReflect.Descriptor instead.
 func (*RunWidgetActionRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{118}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *RunWidgetActionRequest) GetBotId() string {
@@ -7610,7 +9645,7 @@ type RunWidgetActionResponse struct {
 
 func (x *RunWidgetActionResponse) Reset() {
 	*x = RunWidgetActionResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[119]
+	mi := &file_silo_v1_ui_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7622,7 +9657,7 @@ func (x *RunWidgetActionResponse) String() string {
 func (*RunWidgetActionResponse) ProtoMessage() {}
 
 func (x *RunWidgetActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[119]
+	mi := &file_silo_v1_ui_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7635,7 +9670,7 @@ func (x *RunWidgetActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunWidgetActionResponse.ProtoReflect.Descriptor instead.
 func (*RunWidgetActionResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{119}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *RunWidgetActionResponse) GetWidget() *DashboardWidget {
@@ -7671,7 +9706,7 @@ type WidgetPlace struct {
 
 func (x *WidgetPlace) Reset() {
 	*x = WidgetPlace{}
-	mi := &file_silo_v1_ui_proto_msgTypes[120]
+	mi := &file_silo_v1_ui_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7683,7 +9718,7 @@ func (x *WidgetPlace) String() string {
 func (*WidgetPlace) ProtoMessage() {}
 
 func (x *WidgetPlace) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[120]
+	mi := &file_silo_v1_ui_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7696,7 +9731,7 @@ func (x *WidgetPlace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WidgetPlace.ProtoReflect.Descriptor instead.
 func (*WidgetPlace) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{120}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *WidgetPlace) GetId() string {
@@ -7737,7 +9772,7 @@ type ArrangeDashboardRequest struct {
 
 func (x *ArrangeDashboardRequest) Reset() {
 	*x = ArrangeDashboardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[121]
+	mi := &file_silo_v1_ui_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7749,7 +9784,7 @@ func (x *ArrangeDashboardRequest) String() string {
 func (*ArrangeDashboardRequest) ProtoMessage() {}
 
 func (x *ArrangeDashboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[121]
+	mi := &file_silo_v1_ui_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7762,7 +9797,7 @@ func (x *ArrangeDashboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArrangeDashboardRequest.ProtoReflect.Descriptor instead.
 func (*ArrangeDashboardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{121}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *ArrangeDashboardRequest) GetBotId() string {
@@ -7787,7 +9822,7 @@ type ArrangeDashboardResponse struct {
 
 func (x *ArrangeDashboardResponse) Reset() {
 	*x = ArrangeDashboardResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[122]
+	mi := &file_silo_v1_ui_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7799,7 +9834,7 @@ func (x *ArrangeDashboardResponse) String() string {
 func (*ArrangeDashboardResponse) ProtoMessage() {}
 
 func (x *ArrangeDashboardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[122]
+	mi := &file_silo_v1_ui_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7812,7 +9847,7 @@ func (x *ArrangeDashboardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArrangeDashboardResponse.ProtoReflect.Descriptor instead.
 func (*ArrangeDashboardResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{122}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{156}
 }
 
 type RemoveWidgetRequest struct {
@@ -7825,7 +9860,7 @@ type RemoveWidgetRequest struct {
 
 func (x *RemoveWidgetRequest) Reset() {
 	*x = RemoveWidgetRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[123]
+	mi := &file_silo_v1_ui_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7837,7 +9872,7 @@ func (x *RemoveWidgetRequest) String() string {
 func (*RemoveWidgetRequest) ProtoMessage() {}
 
 func (x *RemoveWidgetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[123]
+	mi := &file_silo_v1_ui_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7850,7 +9885,7 @@ func (x *RemoveWidgetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveWidgetRequest.ProtoReflect.Descriptor instead.
 func (*RemoveWidgetRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{123}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *RemoveWidgetRequest) GetBotId() string {
@@ -7875,7 +9910,7 @@ type RemoveWidgetResponse struct {
 
 func (x *RemoveWidgetResponse) Reset() {
 	*x = RemoveWidgetResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[124]
+	mi := &file_silo_v1_ui_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7887,7 +9922,7 @@ func (x *RemoveWidgetResponse) String() string {
 func (*RemoveWidgetResponse) ProtoMessage() {}
 
 func (x *RemoveWidgetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[124]
+	mi := &file_silo_v1_ui_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7900,7 +9935,7 @@ func (x *RemoveWidgetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveWidgetResponse.ProtoReflect.Descriptor instead.
 func (*RemoveWidgetResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{124}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{158}
 }
 
 type AskDashboardRequest struct {
@@ -7915,7 +9950,7 @@ type AskDashboardRequest struct {
 
 func (x *AskDashboardRequest) Reset() {
 	*x = AskDashboardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[125]
+	mi := &file_silo_v1_ui_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7927,7 +9962,7 @@ func (x *AskDashboardRequest) String() string {
 func (*AskDashboardRequest) ProtoMessage() {}
 
 func (x *AskDashboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[125]
+	mi := &file_silo_v1_ui_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7940,7 +9975,7 @@ func (x *AskDashboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskDashboardRequest.ProtoReflect.Descriptor instead.
 func (*AskDashboardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{125}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *AskDashboardRequest) GetBotId() string {
@@ -7974,7 +10009,7 @@ type AskDashboardResponse struct {
 
 func (x *AskDashboardResponse) Reset() {
 	*x = AskDashboardResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[126]
+	mi := &file_silo_v1_ui_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7986,7 +10021,7 @@ func (x *AskDashboardResponse) String() string {
 func (*AskDashboardResponse) ProtoMessage() {}
 
 func (x *AskDashboardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[126]
+	mi := &file_silo_v1_ui_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7999,7 +10034,7 @@ func (x *AskDashboardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskDashboardResponse.ProtoReflect.Descriptor instead.
 func (*AskDashboardResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{126}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *AskDashboardResponse) GetRunId() string {
@@ -8025,7 +10060,7 @@ type MarkDashboardReadRequest struct {
 
 func (x *MarkDashboardReadRequest) Reset() {
 	*x = MarkDashboardReadRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[127]
+	mi := &file_silo_v1_ui_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8037,7 +10072,7 @@ func (x *MarkDashboardReadRequest) String() string {
 func (*MarkDashboardReadRequest) ProtoMessage() {}
 
 func (x *MarkDashboardReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[127]
+	mi := &file_silo_v1_ui_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8050,7 +10085,7 @@ func (x *MarkDashboardReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkDashboardReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkDashboardReadRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{127}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *MarkDashboardReadRequest) GetBotId() string {
@@ -8068,7 +10103,7 @@ type MarkDashboardReadResponse struct {
 
 func (x *MarkDashboardReadResponse) Reset() {
 	*x = MarkDashboardReadResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[128]
+	mi := &file_silo_v1_ui_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8080,7 +10115,7 @@ func (x *MarkDashboardReadResponse) String() string {
 func (*MarkDashboardReadResponse) ProtoMessage() {}
 
 func (x *MarkDashboardReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[128]
+	mi := &file_silo_v1_ui_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8093,7 +10128,7 @@ func (x *MarkDashboardReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkDashboardReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkDashboardReadResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{128}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{162}
 }
 
 type DismissDashboardCardRequest struct {
@@ -8108,7 +10143,7 @@ type DismissDashboardCardRequest struct {
 
 func (x *DismissDashboardCardRequest) Reset() {
 	*x = DismissDashboardCardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[129]
+	mi := &file_silo_v1_ui_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8120,7 +10155,7 @@ func (x *DismissDashboardCardRequest) String() string {
 func (*DismissDashboardCardRequest) ProtoMessage() {}
 
 func (x *DismissDashboardCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[129]
+	mi := &file_silo_v1_ui_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8133,7 +10168,7 @@ func (x *DismissDashboardCardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DismissDashboardCardRequest.ProtoReflect.Descriptor instead.
 func (*DismissDashboardCardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{129}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *DismissDashboardCardRequest) GetBotId() string {
@@ -8165,7 +10200,7 @@ type DismissDashboardCardResponse struct {
 
 func (x *DismissDashboardCardResponse) Reset() {
 	*x = DismissDashboardCardResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[130]
+	mi := &file_silo_v1_ui_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8177,7 +10212,7 @@ func (x *DismissDashboardCardResponse) String() string {
 func (*DismissDashboardCardResponse) ProtoMessage() {}
 
 func (x *DismissDashboardCardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[130]
+	mi := &file_silo_v1_ui_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8190,7 +10225,7 @@ func (x *DismissDashboardCardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DismissDashboardCardResponse.ProtoReflect.Descriptor instead.
 func (*DismissDashboardCardResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{130}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{164}
 }
 
 type SubmitDashboardCardRequest struct {
@@ -8209,7 +10244,7 @@ type SubmitDashboardCardRequest struct {
 
 func (x *SubmitDashboardCardRequest) Reset() {
 	*x = SubmitDashboardCardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[131]
+	mi := &file_silo_v1_ui_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8221,7 +10256,7 @@ func (x *SubmitDashboardCardRequest) String() string {
 func (*SubmitDashboardCardRequest) ProtoMessage() {}
 
 func (x *SubmitDashboardCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[131]
+	mi := &file_silo_v1_ui_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8234,7 +10269,7 @@ func (x *SubmitDashboardCardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitDashboardCardRequest.ProtoReflect.Descriptor instead.
 func (*SubmitDashboardCardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{131}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{165}
 }
 
 func (x *SubmitDashboardCardRequest) GetBotId() string {
@@ -8282,7 +10317,7 @@ type SubmitDashboardCardResponse struct {
 
 func (x *SubmitDashboardCardResponse) Reset() {
 	*x = SubmitDashboardCardResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[132]
+	mi := &file_silo_v1_ui_proto_msgTypes[166]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8294,7 +10329,7 @@ func (x *SubmitDashboardCardResponse) String() string {
 func (*SubmitDashboardCardResponse) ProtoMessage() {}
 
 func (x *SubmitDashboardCardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[132]
+	mi := &file_silo_v1_ui_proto_msgTypes[166]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8307,7 +10342,7 @@ func (x *SubmitDashboardCardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitDashboardCardResponse.ProtoReflect.Descriptor instead.
 func (*SubmitDashboardCardResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{132}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{166}
 }
 
 func (x *SubmitDashboardCardResponse) GetChat() *Chat {
@@ -8345,7 +10380,7 @@ type Tunnel struct {
 
 func (x *Tunnel) Reset() {
 	*x = Tunnel{}
-	mi := &file_silo_v1_ui_proto_msgTypes[133]
+	mi := &file_silo_v1_ui_proto_msgTypes[167]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8357,7 +10392,7 @@ func (x *Tunnel) String() string {
 func (*Tunnel) ProtoMessage() {}
 
 func (x *Tunnel) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[133]
+	mi := &file_silo_v1_ui_proto_msgTypes[167]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8370,7 +10405,7 @@ func (x *Tunnel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tunnel.ProtoReflect.Descriptor instead.
 func (*Tunnel) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{133}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{167}
 }
 
 func (x *Tunnel) GetId() string {
@@ -8438,7 +10473,7 @@ type ListTunnelsRequest struct {
 
 func (x *ListTunnelsRequest) Reset() {
 	*x = ListTunnelsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[134]
+	mi := &file_silo_v1_ui_proto_msgTypes[168]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8450,7 +10485,7 @@ func (x *ListTunnelsRequest) String() string {
 func (*ListTunnelsRequest) ProtoMessage() {}
 
 func (x *ListTunnelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[134]
+	mi := &file_silo_v1_ui_proto_msgTypes[168]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8463,7 +10498,7 @@ func (x *ListTunnelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTunnelsRequest.ProtoReflect.Descriptor instead.
 func (*ListTunnelsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{134}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{168}
 }
 
 func (x *ListTunnelsRequest) GetBotId() string {
@@ -8489,7 +10524,7 @@ type ListTunnelsResponse struct {
 
 func (x *ListTunnelsResponse) Reset() {
 	*x = ListTunnelsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[135]
+	mi := &file_silo_v1_ui_proto_msgTypes[169]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8501,7 +10536,7 @@ func (x *ListTunnelsResponse) String() string {
 func (*ListTunnelsResponse) ProtoMessage() {}
 
 func (x *ListTunnelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[135]
+	mi := &file_silo_v1_ui_proto_msgTypes[169]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8514,7 +10549,7 @@ func (x *ListTunnelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTunnelsResponse.ProtoReflect.Descriptor instead.
 func (*ListTunnelsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{135}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{169}
 }
 
 func (x *ListTunnelsResponse) GetTunnels() []*Tunnel {
@@ -8556,7 +10591,7 @@ type CreateTunnelRequest struct {
 
 func (x *CreateTunnelRequest) Reset() {
 	*x = CreateTunnelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[136]
+	mi := &file_silo_v1_ui_proto_msgTypes[170]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8568,7 +10603,7 @@ func (x *CreateTunnelRequest) String() string {
 func (*CreateTunnelRequest) ProtoMessage() {}
 
 func (x *CreateTunnelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[136]
+	mi := &file_silo_v1_ui_proto_msgTypes[170]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8581,7 +10616,7 @@ func (x *CreateTunnelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTunnelRequest.ProtoReflect.Descriptor instead.
 func (*CreateTunnelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{136}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{170}
 }
 
 func (x *CreateTunnelRequest) GetBotId() string {
@@ -8616,7 +10651,7 @@ type UpdateTunnelRequest struct {
 
 func (x *UpdateTunnelRequest) Reset() {
 	*x = UpdateTunnelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[137]
+	mi := &file_silo_v1_ui_proto_msgTypes[171]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8628,7 +10663,7 @@ func (x *UpdateTunnelRequest) String() string {
 func (*UpdateTunnelRequest) ProtoMessage() {}
 
 func (x *UpdateTunnelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[137]
+	mi := &file_silo_v1_ui_proto_msgTypes[171]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8641,7 +10676,7 @@ func (x *UpdateTunnelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTunnelRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTunnelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{137}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{171}
 }
 
 func (x *UpdateTunnelRequest) GetBotId() string {
@@ -8675,7 +10710,7 @@ type DeleteTunnelRequest struct {
 
 func (x *DeleteTunnelRequest) Reset() {
 	*x = DeleteTunnelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[138]
+	mi := &file_silo_v1_ui_proto_msgTypes[172]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8687,7 +10722,7 @@ func (x *DeleteTunnelRequest) String() string {
 func (*DeleteTunnelRequest) ProtoMessage() {}
 
 func (x *DeleteTunnelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[138]
+	mi := &file_silo_v1_ui_proto_msgTypes[172]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8700,7 +10735,7 @@ func (x *DeleteTunnelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTunnelRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTunnelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{138}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{172}
 }
 
 func (x *DeleteTunnelRequest) GetBotId() string {
@@ -8725,7 +10760,7 @@ type DeleteTunnelResponse struct {
 
 func (x *DeleteTunnelResponse) Reset() {
 	*x = DeleteTunnelResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[139]
+	mi := &file_silo_v1_ui_proto_msgTypes[173]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8737,7 +10772,7 @@ func (x *DeleteTunnelResponse) String() string {
 func (*DeleteTunnelResponse) ProtoMessage() {}
 
 func (x *DeleteTunnelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[139]
+	mi := &file_silo_v1_ui_proto_msgTypes[173]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8750,7 +10785,7 @@ func (x *DeleteTunnelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTunnelResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTunnelResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{139}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{173}
 }
 
 // Mailbox is a Bot's receive-only address and what it does with new mail.
@@ -8776,7 +10811,7 @@ type Mailbox struct {
 
 func (x *Mailbox) Reset() {
 	*x = Mailbox{}
-	mi := &file_silo_v1_ui_proto_msgTypes[140]
+	mi := &file_silo_v1_ui_proto_msgTypes[174]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8788,7 +10823,7 @@ func (x *Mailbox) String() string {
 func (*Mailbox) ProtoMessage() {}
 
 func (x *Mailbox) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[140]
+	mi := &file_silo_v1_ui_proto_msgTypes[174]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8801,7 +10836,7 @@ func (x *Mailbox) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mailbox.ProtoReflect.Descriptor instead.
 func (*Mailbox) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{140}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{174}
 }
 
 func (x *Mailbox) GetState() string {
@@ -8858,7 +10893,7 @@ type MailAttachment struct {
 
 func (x *MailAttachment) Reset() {
 	*x = MailAttachment{}
-	mi := &file_silo_v1_ui_proto_msgTypes[141]
+	mi := &file_silo_v1_ui_proto_msgTypes[175]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8870,7 +10905,7 @@ func (x *MailAttachment) String() string {
 func (*MailAttachment) ProtoMessage() {}
 
 func (x *MailAttachment) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[141]
+	mi := &file_silo_v1_ui_proto_msgTypes[175]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8883,7 +10918,7 @@ func (x *MailAttachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MailAttachment.ProtoReflect.Descriptor instead.
 func (*MailAttachment) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{141}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{175}
 }
 
 func (x *MailAttachment) GetIndex() int32 {
@@ -8943,7 +10978,7 @@ type Mail struct {
 
 func (x *Mail) Reset() {
 	*x = Mail{}
-	mi := &file_silo_v1_ui_proto_msgTypes[142]
+	mi := &file_silo_v1_ui_proto_msgTypes[176]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8955,7 +10990,7 @@ func (x *Mail) String() string {
 func (*Mail) ProtoMessage() {}
 
 func (x *Mail) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[142]
+	mi := &file_silo_v1_ui_proto_msgTypes[176]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8968,7 +11003,7 @@ func (x *Mail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mail.ProtoReflect.Descriptor instead.
 func (*Mail) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{142}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{176}
 }
 
 func (x *Mail) GetId() string {
@@ -9085,7 +11120,7 @@ type ListMailRequest struct {
 
 func (x *ListMailRequest) Reset() {
 	*x = ListMailRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[143]
+	mi := &file_silo_v1_ui_proto_msgTypes[177]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9097,7 +11132,7 @@ func (x *ListMailRequest) String() string {
 func (*ListMailRequest) ProtoMessage() {}
 
 func (x *ListMailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[143]
+	mi := &file_silo_v1_ui_proto_msgTypes[177]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9110,7 +11145,7 @@ func (x *ListMailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMailRequest.ProtoReflect.Descriptor instead.
 func (*ListMailRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{143}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{177}
 }
 
 func (x *ListMailRequest) GetBotId() string {
@@ -9130,7 +11165,7 @@ type ListMailResponse struct {
 
 func (x *ListMailResponse) Reset() {
 	*x = ListMailResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[144]
+	mi := &file_silo_v1_ui_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9142,7 +11177,7 @@ func (x *ListMailResponse) String() string {
 func (*ListMailResponse) ProtoMessage() {}
 
 func (x *ListMailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[144]
+	mi := &file_silo_v1_ui_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9155,7 +11190,7 @@ func (x *ListMailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMailResponse.ProtoReflect.Descriptor instead.
 func (*ListMailResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{144}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{178}
 }
 
 func (x *ListMailResponse) GetMailbox() *Mailbox {
@@ -9182,7 +11217,7 @@ type GetMailRequest struct {
 
 func (x *GetMailRequest) Reset() {
 	*x = GetMailRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[145]
+	mi := &file_silo_v1_ui_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9194,7 +11229,7 @@ func (x *GetMailRequest) String() string {
 func (*GetMailRequest) ProtoMessage() {}
 
 func (x *GetMailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[145]
+	mi := &file_silo_v1_ui_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9207,7 +11242,7 @@ func (x *GetMailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMailRequest.ProtoReflect.Descriptor instead.
 func (*GetMailRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{145}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{179}
 }
 
 func (x *GetMailRequest) GetBotId() string {
@@ -9234,7 +11269,7 @@ type DeleteMailRequest struct {
 
 func (x *DeleteMailRequest) Reset() {
 	*x = DeleteMailRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[146]
+	mi := &file_silo_v1_ui_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9246,7 +11281,7 @@ func (x *DeleteMailRequest) String() string {
 func (*DeleteMailRequest) ProtoMessage() {}
 
 func (x *DeleteMailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[146]
+	mi := &file_silo_v1_ui_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9259,7 +11294,7 @@ func (x *DeleteMailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMailRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMailRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{146}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{180}
 }
 
 func (x *DeleteMailRequest) GetBotId() string {
@@ -9284,7 +11319,7 @@ type DeleteMailResponse struct {
 
 func (x *DeleteMailResponse) Reset() {
 	*x = DeleteMailResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[147]
+	mi := &file_silo_v1_ui_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9296,7 +11331,7 @@ func (x *DeleteMailResponse) String() string {
 func (*DeleteMailResponse) ProtoMessage() {}
 
 func (x *DeleteMailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[147]
+	mi := &file_silo_v1_ui_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9309,7 +11344,7 @@ func (x *DeleteMailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMailResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMailResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{147}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{181}
 }
 
 type UpdateMailboxRequest struct {
@@ -9323,7 +11358,7 @@ type UpdateMailboxRequest struct {
 
 func (x *UpdateMailboxRequest) Reset() {
 	*x = UpdateMailboxRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[148]
+	mi := &file_silo_v1_ui_proto_msgTypes[182]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9335,7 +11370,7 @@ func (x *UpdateMailboxRequest) String() string {
 func (*UpdateMailboxRequest) ProtoMessage() {}
 
 func (x *UpdateMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[148]
+	mi := &file_silo_v1_ui_proto_msgTypes[182]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9348,7 +11383,7 @@ func (x *UpdateMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMailboxRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{148}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{182}
 }
 
 func (x *UpdateMailboxRequest) GetBotId() string {
@@ -9382,7 +11417,7 @@ type RotateMailboxRequest struct {
 
 func (x *RotateMailboxRequest) Reset() {
 	*x = RotateMailboxRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[149]
+	mi := &file_silo_v1_ui_proto_msgTypes[183]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9394,7 +11429,7 @@ func (x *RotateMailboxRequest) String() string {
 func (*RotateMailboxRequest) ProtoMessage() {}
 
 func (x *RotateMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[149]
+	mi := &file_silo_v1_ui_proto_msgTypes[183]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9407,7 +11442,7 @@ func (x *RotateMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateMailboxRequest.ProtoReflect.Descriptor instead.
 func (*RotateMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{149}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{183}
 }
 
 func (x *RotateMailboxRequest) GetBotId() string {
@@ -9448,7 +11483,7 @@ type Automation struct {
 
 func (x *Automation) Reset() {
 	*x = Automation{}
-	mi := &file_silo_v1_ui_proto_msgTypes[150]
+	mi := &file_silo_v1_ui_proto_msgTypes[184]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9460,7 +11495,7 @@ func (x *Automation) String() string {
 func (*Automation) ProtoMessage() {}
 
 func (x *Automation) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[150]
+	mi := &file_silo_v1_ui_proto_msgTypes[184]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9473,7 +11508,7 @@ func (x *Automation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Automation.ProtoReflect.Descriptor instead.
 func (*Automation) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{150}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{184}
 }
 
 func (x *Automation) GetId() string {
@@ -9583,7 +11618,7 @@ type ListAutomationsRequest struct {
 
 func (x *ListAutomationsRequest) Reset() {
 	*x = ListAutomationsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[151]
+	mi := &file_silo_v1_ui_proto_msgTypes[185]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9595,7 +11630,7 @@ func (x *ListAutomationsRequest) String() string {
 func (*ListAutomationsRequest) ProtoMessage() {}
 
 func (x *ListAutomationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[151]
+	mi := &file_silo_v1_ui_proto_msgTypes[185]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9608,7 +11643,7 @@ func (x *ListAutomationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAutomationsRequest.ProtoReflect.Descriptor instead.
 func (*ListAutomationsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{151}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{185}
 }
 
 func (x *ListAutomationsRequest) GetBotId() string {
@@ -9627,7 +11662,7 @@ type ListAutomationsResponse struct {
 
 func (x *ListAutomationsResponse) Reset() {
 	*x = ListAutomationsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[152]
+	mi := &file_silo_v1_ui_proto_msgTypes[186]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9639,7 +11674,7 @@ func (x *ListAutomationsResponse) String() string {
 func (*ListAutomationsResponse) ProtoMessage() {}
 
 func (x *ListAutomationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[152]
+	mi := &file_silo_v1_ui_proto_msgTypes[186]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9652,7 +11687,7 @@ func (x *ListAutomationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAutomationsResponse.ProtoReflect.Descriptor instead.
 func (*ListAutomationsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{152}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{186}
 }
 
 func (x *ListAutomationsResponse) GetAutomations() []*Automation {
@@ -9675,7 +11710,7 @@ type CreateAutomationRequest struct {
 
 func (x *CreateAutomationRequest) Reset() {
 	*x = CreateAutomationRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[153]
+	mi := &file_silo_v1_ui_proto_msgTypes[187]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9687,7 +11722,7 @@ func (x *CreateAutomationRequest) String() string {
 func (*CreateAutomationRequest) ProtoMessage() {}
 
 func (x *CreateAutomationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[153]
+	mi := &file_silo_v1_ui_proto_msgTypes[187]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9700,7 +11735,7 @@ func (x *CreateAutomationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAutomationRequest.ProtoReflect.Descriptor instead.
 func (*CreateAutomationRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{153}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{187}
 }
 
 func (x *CreateAutomationRequest) GetBotId() string {
@@ -9752,7 +11787,7 @@ type UpdateAutomationRequest struct {
 
 func (x *UpdateAutomationRequest) Reset() {
 	*x = UpdateAutomationRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[154]
+	mi := &file_silo_v1_ui_proto_msgTypes[188]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9764,7 +11799,7 @@ func (x *UpdateAutomationRequest) String() string {
 func (*UpdateAutomationRequest) ProtoMessage() {}
 
 func (x *UpdateAutomationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[154]
+	mi := &file_silo_v1_ui_proto_msgTypes[188]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9777,7 +11812,7 @@ func (x *UpdateAutomationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAutomationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAutomationRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{154}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{188}
 }
 
 func (x *UpdateAutomationRequest) GetBotId() string {
@@ -9832,7 +11867,7 @@ type DeleteAutomationRequest struct {
 
 func (x *DeleteAutomationRequest) Reset() {
 	*x = DeleteAutomationRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[155]
+	mi := &file_silo_v1_ui_proto_msgTypes[189]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9844,7 +11879,7 @@ func (x *DeleteAutomationRequest) String() string {
 func (*DeleteAutomationRequest) ProtoMessage() {}
 
 func (x *DeleteAutomationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[155]
+	mi := &file_silo_v1_ui_proto_msgTypes[189]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9857,7 +11892,7 @@ func (x *DeleteAutomationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAutomationRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAutomationRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{155}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{189}
 }
 
 func (x *DeleteAutomationRequest) GetBotId() string {
@@ -9882,7 +11917,7 @@ type DeleteAutomationResponse struct {
 
 func (x *DeleteAutomationResponse) Reset() {
 	*x = DeleteAutomationResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[156]
+	mi := &file_silo_v1_ui_proto_msgTypes[190]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9894,7 +11929,7 @@ func (x *DeleteAutomationResponse) String() string {
 func (*DeleteAutomationResponse) ProtoMessage() {}
 
 func (x *DeleteAutomationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[156]
+	mi := &file_silo_v1_ui_proto_msgTypes[190]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9907,7 +11942,7 @@ func (x *DeleteAutomationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAutomationResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAutomationResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{156}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{190}
 }
 
 type RunAutomationRequest struct {
@@ -9920,7 +11955,7 @@ type RunAutomationRequest struct {
 
 func (x *RunAutomationRequest) Reset() {
 	*x = RunAutomationRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[157]
+	mi := &file_silo_v1_ui_proto_msgTypes[191]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9932,7 +11967,7 @@ func (x *RunAutomationRequest) String() string {
 func (*RunAutomationRequest) ProtoMessage() {}
 
 func (x *RunAutomationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[157]
+	mi := &file_silo_v1_ui_proto_msgTypes[191]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9945,7 +11980,7 @@ func (x *RunAutomationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunAutomationRequest.ProtoReflect.Descriptor instead.
 func (*RunAutomationRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{157}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{191}
 }
 
 func (x *RunAutomationRequest) GetBotId() string {
@@ -9972,7 +12007,7 @@ type RunAutomationResponse struct {
 
 func (x *RunAutomationResponse) Reset() {
 	*x = RunAutomationResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[158]
+	mi := &file_silo_v1_ui_proto_msgTypes[192]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9984,7 +12019,7 @@ func (x *RunAutomationResponse) String() string {
 func (*RunAutomationResponse) ProtoMessage() {}
 
 func (x *RunAutomationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[158]
+	mi := &file_silo_v1_ui_proto_msgTypes[192]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9997,7 +12032,7 @@ func (x *RunAutomationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunAutomationResponse.ProtoReflect.Descriptor instead.
 func (*RunAutomationResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{158}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{192}
 }
 
 func (x *RunAutomationResponse) GetRunId() string {
@@ -10032,7 +12067,7 @@ type Chat struct {
 
 func (x *Chat) Reset() {
 	*x = Chat{}
-	mi := &file_silo_v1_ui_proto_msgTypes[159]
+	mi := &file_silo_v1_ui_proto_msgTypes[193]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10044,7 +12079,7 @@ func (x *Chat) String() string {
 func (*Chat) ProtoMessage() {}
 
 func (x *Chat) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[159]
+	mi := &file_silo_v1_ui_proto_msgTypes[193]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10057,7 +12092,7 @@ func (x *Chat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Chat.ProtoReflect.Descriptor instead.
 func (*Chat) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{159}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{193}
 }
 
 func (x *Chat) GetId() string {
@@ -10127,7 +12162,7 @@ type ModelOption struct {
 
 func (x *ModelOption) Reset() {
 	*x = ModelOption{}
-	mi := &file_silo_v1_ui_proto_msgTypes[160]
+	mi := &file_silo_v1_ui_proto_msgTypes[194]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10139,7 +12174,7 @@ func (x *ModelOption) String() string {
 func (*ModelOption) ProtoMessage() {}
 
 func (x *ModelOption) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[160]
+	mi := &file_silo_v1_ui_proto_msgTypes[194]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10152,7 +12187,7 @@ func (x *ModelOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelOption.ProtoReflect.Descriptor instead.
 func (*ModelOption) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{160}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{194}
 }
 
 func (x *ModelOption) GetId() string {
@@ -10199,7 +12234,7 @@ type ListModelsRequest struct {
 
 func (x *ListModelsRequest) Reset() {
 	*x = ListModelsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[161]
+	mi := &file_silo_v1_ui_proto_msgTypes[195]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10211,7 +12246,7 @@ func (x *ListModelsRequest) String() string {
 func (*ListModelsRequest) ProtoMessage() {}
 
 func (x *ListModelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[161]
+	mi := &file_silo_v1_ui_proto_msgTypes[195]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10224,7 +12259,7 @@ func (x *ListModelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelsRequest.ProtoReflect.Descriptor instead.
 func (*ListModelsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{161}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{195}
 }
 
 func (x *ListModelsRequest) GetBotId() string {
@@ -10248,7 +12283,7 @@ type ListModelsResponse struct {
 
 func (x *ListModelsResponse) Reset() {
 	*x = ListModelsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[162]
+	mi := &file_silo_v1_ui_proto_msgTypes[196]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10260,7 +12295,7 @@ func (x *ListModelsResponse) String() string {
 func (*ListModelsResponse) ProtoMessage() {}
 
 func (x *ListModelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[162]
+	mi := &file_silo_v1_ui_proto_msgTypes[196]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10273,7 +12308,7 @@ func (x *ListModelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelsResponse.ProtoReflect.Descriptor instead.
 func (*ListModelsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{162}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{196}
 }
 
 func (x *ListModelsResponse) GetModels() []*ModelOption {
@@ -10318,7 +12353,7 @@ type TranscribeRequest struct {
 
 func (x *TranscribeRequest) Reset() {
 	*x = TranscribeRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[163]
+	mi := &file_silo_v1_ui_proto_msgTypes[197]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10330,7 +12365,7 @@ func (x *TranscribeRequest) String() string {
 func (*TranscribeRequest) ProtoMessage() {}
 
 func (x *TranscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[163]
+	mi := &file_silo_v1_ui_proto_msgTypes[197]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10343,7 +12378,7 @@ func (x *TranscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranscribeRequest.ProtoReflect.Descriptor instead.
 func (*TranscribeRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{163}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{197}
 }
 
 func (x *TranscribeRequest) GetBotId() string {
@@ -10383,7 +12418,7 @@ type TranscribeResponse struct {
 
 func (x *TranscribeResponse) Reset() {
 	*x = TranscribeResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[164]
+	mi := &file_silo_v1_ui_proto_msgTypes[198]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10395,7 +12430,7 @@ func (x *TranscribeResponse) String() string {
 func (*TranscribeResponse) ProtoMessage() {}
 
 func (x *TranscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[164]
+	mi := &file_silo_v1_ui_proto_msgTypes[198]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10408,7 +12443,7 @@ func (x *TranscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranscribeResponse.ProtoReflect.Descriptor instead.
 func (*TranscribeResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{164}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{198}
 }
 
 func (x *TranscribeResponse) GetText() string {
@@ -10429,7 +12464,7 @@ type SetChatModelRequest struct {
 
 func (x *SetChatModelRequest) Reset() {
 	*x = SetChatModelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[165]
+	mi := &file_silo_v1_ui_proto_msgTypes[199]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10441,7 +12476,7 @@ func (x *SetChatModelRequest) String() string {
 func (*SetChatModelRequest) ProtoMessage() {}
 
 func (x *SetChatModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[165]
+	mi := &file_silo_v1_ui_proto_msgTypes[199]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10454,7 +12489,7 @@ func (x *SetChatModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetChatModelRequest.ProtoReflect.Descriptor instead.
 func (*SetChatModelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{165}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{199}
 }
 
 func (x *SetChatModelRequest) GetBotId() string {
@@ -10489,7 +12524,7 @@ type SetChatThinkingRequest struct {
 
 func (x *SetChatThinkingRequest) Reset() {
 	*x = SetChatThinkingRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[166]
+	mi := &file_silo_v1_ui_proto_msgTypes[200]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10501,7 +12536,7 @@ func (x *SetChatThinkingRequest) String() string {
 func (*SetChatThinkingRequest) ProtoMessage() {}
 
 func (x *SetChatThinkingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[166]
+	mi := &file_silo_v1_ui_proto_msgTypes[200]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10514,7 +12549,7 @@ func (x *SetChatThinkingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetChatThinkingRequest.ProtoReflect.Descriptor instead.
 func (*SetChatThinkingRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{166}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{200}
 }
 
 func (x *SetChatThinkingRequest) GetBotId() string {
@@ -10550,7 +12585,7 @@ type ListChatsRequest struct {
 
 func (x *ListChatsRequest) Reset() {
 	*x = ListChatsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[167]
+	mi := &file_silo_v1_ui_proto_msgTypes[201]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10562,7 +12597,7 @@ func (x *ListChatsRequest) String() string {
 func (*ListChatsRequest) ProtoMessage() {}
 
 func (x *ListChatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[167]
+	mi := &file_silo_v1_ui_proto_msgTypes[201]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10575,7 +12610,7 @@ func (x *ListChatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatsRequest.ProtoReflect.Descriptor instead.
 func (*ListChatsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{167}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{201}
 }
 
 func (x *ListChatsRequest) GetBotId() string {
@@ -10601,7 +12636,7 @@ type ListChatsResponse struct {
 
 func (x *ListChatsResponse) Reset() {
 	*x = ListChatsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[168]
+	mi := &file_silo_v1_ui_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10613,7 +12648,7 @@ func (x *ListChatsResponse) String() string {
 func (*ListChatsResponse) ProtoMessage() {}
 
 func (x *ListChatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[168]
+	mi := &file_silo_v1_ui_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10626,7 +12661,7 @@ func (x *ListChatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatsResponse.ProtoReflect.Descriptor instead.
 func (*ListChatsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{168}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{202}
 }
 
 func (x *ListChatsResponse) GetChats() []*Chat {
@@ -10645,7 +12680,7 @@ type CreateChatRequest struct {
 
 func (x *CreateChatRequest) Reset() {
 	*x = CreateChatRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[169]
+	mi := &file_silo_v1_ui_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10657,7 +12692,7 @@ func (x *CreateChatRequest) String() string {
 func (*CreateChatRequest) ProtoMessage() {}
 
 func (x *CreateChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[169]
+	mi := &file_silo_v1_ui_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10670,7 +12705,7 @@ func (x *CreateChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateChatRequest.ProtoReflect.Descriptor instead.
 func (*CreateChatRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{169}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *CreateChatRequest) GetBotId() string {
@@ -10691,7 +12726,7 @@ type RenameChatRequest struct {
 
 func (x *RenameChatRequest) Reset() {
 	*x = RenameChatRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[170]
+	mi := &file_silo_v1_ui_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10703,7 +12738,7 @@ func (x *RenameChatRequest) String() string {
 func (*RenameChatRequest) ProtoMessage() {}
 
 func (x *RenameChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[170]
+	mi := &file_silo_v1_ui_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10716,7 +12751,7 @@ func (x *RenameChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameChatRequest.ProtoReflect.Descriptor instead.
 func (*RenameChatRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{170}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *RenameChatRequest) GetBotId() string {
@@ -10750,7 +12785,7 @@ type DeleteChatRequest struct {
 
 func (x *DeleteChatRequest) Reset() {
 	*x = DeleteChatRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[171]
+	mi := &file_silo_v1_ui_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10762,7 +12797,7 @@ func (x *DeleteChatRequest) String() string {
 func (*DeleteChatRequest) ProtoMessage() {}
 
 func (x *DeleteChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[171]
+	mi := &file_silo_v1_ui_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10775,7 +12810,7 @@ func (x *DeleteChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChatRequest.ProtoReflect.Descriptor instead.
 func (*DeleteChatRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{171}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *DeleteChatRequest) GetBotId() string {
@@ -10800,7 +12835,7 @@ type DeleteChatResponse struct {
 
 func (x *DeleteChatResponse) Reset() {
 	*x = DeleteChatResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[172]
+	mi := &file_silo_v1_ui_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10812,7 +12847,7 @@ func (x *DeleteChatResponse) String() string {
 func (*DeleteChatResponse) ProtoMessage() {}
 
 func (x *DeleteChatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[172]
+	mi := &file_silo_v1_ui_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10825,7 +12860,7 @@ func (x *DeleteChatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChatResponse.ProtoReflect.Descriptor instead.
 func (*DeleteChatResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{172}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{206}
 }
 
 type Attachment struct {
@@ -10840,7 +12875,7 @@ type Attachment struct {
 
 func (x *Attachment) Reset() {
 	*x = Attachment{}
-	mi := &file_silo_v1_ui_proto_msgTypes[173]
+	mi := &file_silo_v1_ui_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10852,7 +12887,7 @@ func (x *Attachment) String() string {
 func (*Attachment) ProtoMessage() {}
 
 func (x *Attachment) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[173]
+	mi := &file_silo_v1_ui_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10865,7 +12900,7 @@ func (x *Attachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attachment.ProtoReflect.Descriptor instead.
 func (*Attachment) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{173}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{207}
 }
 
 func (x *Attachment) GetName() string {
@@ -10916,7 +12951,7 @@ type Quote struct {
 
 func (x *Quote) Reset() {
 	*x = Quote{}
-	mi := &file_silo_v1_ui_proto_msgTypes[174]
+	mi := &file_silo_v1_ui_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10928,7 +12963,7 @@ func (x *Quote) String() string {
 func (*Quote) ProtoMessage() {}
 
 func (x *Quote) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[174]
+	mi := &file_silo_v1_ui_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10941,7 +12976,7 @@ func (x *Quote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Quote.ProtoReflect.Descriptor instead.
 func (*Quote) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{174}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *Quote) GetSource() string {
@@ -11008,7 +13043,7 @@ type SendRequest struct {
 
 func (x *SendRequest) Reset() {
 	*x = SendRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[175]
+	mi := &file_silo_v1_ui_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11020,7 +13055,7 @@ func (x *SendRequest) String() string {
 func (*SendRequest) ProtoMessage() {}
 
 func (x *SendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[175]
+	mi := &file_silo_v1_ui_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11033,7 +13068,7 @@ func (x *SendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendRequest.ProtoReflect.Descriptor instead.
 func (*SendRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{175}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *SendRequest) GetBotId() string {
@@ -11129,7 +13164,7 @@ type SendResponse struct {
 
 func (x *SendResponse) Reset() {
 	*x = SendResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[176]
+	mi := &file_silo_v1_ui_proto_msgTypes[210]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11141,7 +13176,7 @@ func (x *SendResponse) String() string {
 func (*SendResponse) ProtoMessage() {}
 
 func (x *SendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[176]
+	mi := &file_silo_v1_ui_proto_msgTypes[210]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11154,7 +13189,7 @@ func (x *SendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendResponse.ProtoReflect.Descriptor instead.
 func (*SendResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{176}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{210}
 }
 
 func (x *SendResponse) GetRunId() string {
@@ -11222,7 +13257,7 @@ type Command struct {
 
 func (x *Command) Reset() {
 	*x = Command{}
-	mi := &file_silo_v1_ui_proto_msgTypes[177]
+	mi := &file_silo_v1_ui_proto_msgTypes[211]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11234,7 +13269,7 @@ func (x *Command) String() string {
 func (*Command) ProtoMessage() {}
 
 func (x *Command) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[177]
+	mi := &file_silo_v1_ui_proto_msgTypes[211]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11247,7 +13282,7 @@ func (x *Command) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Command.ProtoReflect.Descriptor instead.
 func (*Command) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{177}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{211}
 }
 
 func (x *Command) GetName() string {
@@ -11294,7 +13329,7 @@ type ListCommandsRequest struct {
 
 func (x *ListCommandsRequest) Reset() {
 	*x = ListCommandsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[178]
+	mi := &file_silo_v1_ui_proto_msgTypes[212]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11306,7 +13341,7 @@ func (x *ListCommandsRequest) String() string {
 func (*ListCommandsRequest) ProtoMessage() {}
 
 func (x *ListCommandsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[178]
+	mi := &file_silo_v1_ui_proto_msgTypes[212]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11319,7 +13354,7 @@ func (x *ListCommandsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommandsRequest.ProtoReflect.Descriptor instead.
 func (*ListCommandsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{178}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{212}
 }
 
 func (x *ListCommandsRequest) GetBotId() string {
@@ -11338,7 +13373,7 @@ type ListCommandsResponse struct {
 
 func (x *ListCommandsResponse) Reset() {
 	*x = ListCommandsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[179]
+	mi := &file_silo_v1_ui_proto_msgTypes[213]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11350,7 +13385,7 @@ func (x *ListCommandsResponse) String() string {
 func (*ListCommandsResponse) ProtoMessage() {}
 
 func (x *ListCommandsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[179]
+	mi := &file_silo_v1_ui_proto_msgTypes[213]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11363,7 +13398,7 @@ func (x *ListCommandsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommandsResponse.ProtoReflect.Descriptor instead.
 func (*ListCommandsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{179}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{213}
 }
 
 func (x *ListCommandsResponse) GetCommands() []*Command {
@@ -11385,7 +13420,7 @@ type ListChatEventsRequest struct {
 
 func (x *ListChatEventsRequest) Reset() {
 	*x = ListChatEventsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[180]
+	mi := &file_silo_v1_ui_proto_msgTypes[214]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11397,7 +13432,7 @@ func (x *ListChatEventsRequest) String() string {
 func (*ListChatEventsRequest) ProtoMessage() {}
 
 func (x *ListChatEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[180]
+	mi := &file_silo_v1_ui_proto_msgTypes[214]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11410,7 +13445,7 @@ func (x *ListChatEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListChatEventsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{180}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{214}
 }
 
 func (x *ListChatEventsRequest) GetBotId() string {
@@ -11445,7 +13480,7 @@ type ListChatEventsResponse struct {
 
 func (x *ListChatEventsResponse) Reset() {
 	*x = ListChatEventsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[181]
+	mi := &file_silo_v1_ui_proto_msgTypes[215]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11457,7 +13492,7 @@ func (x *ListChatEventsResponse) String() string {
 func (*ListChatEventsResponse) ProtoMessage() {}
 
 func (x *ListChatEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[181]
+	mi := &file_silo_v1_ui_proto_msgTypes[215]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11470,7 +13505,7 @@ func (x *ListChatEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChatEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListChatEventsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{181}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{215}
 }
 
 func (x *ListChatEventsResponse) GetEvents() []*RunEvent {
@@ -11497,7 +13532,7 @@ type StopRunRequest struct {
 
 func (x *StopRunRequest) Reset() {
 	*x = StopRunRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[182]
+	mi := &file_silo_v1_ui_proto_msgTypes[216]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11509,7 +13544,7 @@ func (x *StopRunRequest) String() string {
 func (*StopRunRequest) ProtoMessage() {}
 
 func (x *StopRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[182]
+	mi := &file_silo_v1_ui_proto_msgTypes[216]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11522,7 +13557,7 @@ func (x *StopRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRunRequest.ProtoReflect.Descriptor instead.
 func (*StopRunRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{182}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{216}
 }
 
 func (x *StopRunRequest) GetBotId() string {
@@ -11547,7 +13582,7 @@ type StopRunResponse struct {
 
 func (x *StopRunResponse) Reset() {
 	*x = StopRunResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[183]
+	mi := &file_silo_v1_ui_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11559,7 +13594,7 @@ func (x *StopRunResponse) String() string {
 func (*StopRunResponse) ProtoMessage() {}
 
 func (x *StopRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[183]
+	mi := &file_silo_v1_ui_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11572,7 +13607,7 @@ func (x *StopRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRunResponse.ProtoReflect.Descriptor instead.
 func (*StopRunResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{183}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{217}
 }
 
 type StreamRunRequest struct {
@@ -11586,7 +13621,7 @@ type StreamRunRequest struct {
 
 func (x *StreamRunRequest) Reset() {
 	*x = StreamRunRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[184]
+	mi := &file_silo_v1_ui_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11598,7 +13633,7 @@ func (x *StreamRunRequest) String() string {
 func (*StreamRunRequest) ProtoMessage() {}
 
 func (x *StreamRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[184]
+	mi := &file_silo_v1_ui_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11611,7 +13646,7 @@ func (x *StreamRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamRunRequest.ProtoReflect.Descriptor instead.
 func (*StreamRunRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{184}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *StreamRunRequest) GetBotId() string {
@@ -11661,7 +13696,7 @@ type RunEvent struct {
 
 func (x *RunEvent) Reset() {
 	*x = RunEvent{}
-	mi := &file_silo_v1_ui_proto_msgTypes[185]
+	mi := &file_silo_v1_ui_proto_msgTypes[219]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11673,7 +13708,7 @@ func (x *RunEvent) String() string {
 func (*RunEvent) ProtoMessage() {}
 
 func (x *RunEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[185]
+	mi := &file_silo_v1_ui_proto_msgTypes[219]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11686,7 +13721,7 @@ func (x *RunEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunEvent.ProtoReflect.Descriptor instead.
 func (*RunEvent) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{185}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{219}
 }
 
 func (x *RunEvent) GetRunId() string {
@@ -11788,7 +13823,7 @@ type Quoted struct {
 
 func (x *Quoted) Reset() {
 	*x = Quoted{}
-	mi := &file_silo_v1_ui_proto_msgTypes[186]
+	mi := &file_silo_v1_ui_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11800,7 +13835,7 @@ func (x *Quoted) String() string {
 func (*Quoted) ProtoMessage() {}
 
 func (x *Quoted) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[186]
+	mi := &file_silo_v1_ui_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11813,7 +13848,7 @@ func (x *Quoted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Quoted.ProtoReflect.Descriptor instead.
 func (*Quoted) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{186}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *Quoted) GetFrom() string {
@@ -11856,7 +13891,7 @@ type EditMessageRequest struct {
 
 func (x *EditMessageRequest) Reset() {
 	*x = EditMessageRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[187]
+	mi := &file_silo_v1_ui_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11868,7 +13903,7 @@ func (x *EditMessageRequest) String() string {
 func (*EditMessageRequest) ProtoMessage() {}
 
 func (x *EditMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[187]
+	mi := &file_silo_v1_ui_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11881,7 +13916,7 @@ func (x *EditMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditMessageRequest.ProtoReflect.Descriptor instead.
 func (*EditMessageRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{187}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{221}
 }
 
 func (x *EditMessageRequest) GetBotId() string {
@@ -11945,7 +13980,7 @@ type DeleteMessageRequest struct {
 
 func (x *DeleteMessageRequest) Reset() {
 	*x = DeleteMessageRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[188]
+	mi := &file_silo_v1_ui_proto_msgTypes[222]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11957,7 +13992,7 @@ func (x *DeleteMessageRequest) String() string {
 func (*DeleteMessageRequest) ProtoMessage() {}
 
 func (x *DeleteMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[188]
+	mi := &file_silo_v1_ui_proto_msgTypes[222]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11970,7 +14005,7 @@ func (x *DeleteMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMessageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMessageRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{188}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{222}
 }
 
 func (x *DeleteMessageRequest) GetBotId() string {
@@ -12002,7 +14037,7 @@ type DeleteMessageResponse struct {
 
 func (x *DeleteMessageResponse) Reset() {
 	*x = DeleteMessageResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[189]
+	mi := &file_silo_v1_ui_proto_msgTypes[223]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12014,7 +14049,7 @@ func (x *DeleteMessageResponse) String() string {
 func (*DeleteMessageResponse) ProtoMessage() {}
 
 func (x *DeleteMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[189]
+	mi := &file_silo_v1_ui_proto_msgTypes[223]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12027,7 +14062,7 @@ func (x *DeleteMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMessageResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMessageResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{189}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{223}
 }
 
 // DivergeChat copies the context before a message into a new chat.
@@ -12042,7 +14077,7 @@ type DivergeChatRequest struct {
 
 func (x *DivergeChatRequest) Reset() {
 	*x = DivergeChatRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[190]
+	mi := &file_silo_v1_ui_proto_msgTypes[224]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12054,7 +14089,7 @@ func (x *DivergeChatRequest) String() string {
 func (*DivergeChatRequest) ProtoMessage() {}
 
 func (x *DivergeChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[190]
+	mi := &file_silo_v1_ui_proto_msgTypes[224]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12067,7 +14102,7 @@ func (x *DivergeChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DivergeChatRequest.ProtoReflect.Descriptor instead.
 func (*DivergeChatRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{190}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{224}
 }
 
 func (x *DivergeChatRequest) GetBotId() string {
@@ -12100,7 +14135,7 @@ type DivergeChatResponse struct {
 
 func (x *DivergeChatResponse) Reset() {
 	*x = DivergeChatResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[191]
+	mi := &file_silo_v1_ui_proto_msgTypes[225]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12112,7 +14147,7 @@ func (x *DivergeChatResponse) String() string {
 func (*DivergeChatResponse) ProtoMessage() {}
 
 func (x *DivergeChatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[191]
+	mi := &file_silo_v1_ui_proto_msgTypes[225]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12125,7 +14160,7 @@ func (x *DivergeChatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DivergeChatResponse.ProtoReflect.Descriptor instead.
 func (*DivergeChatResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{191}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{225}
 }
 
 func (x *DivergeChatResponse) GetChat() *Chat {
@@ -12148,7 +14183,7 @@ type CompactChatRequest struct {
 
 func (x *CompactChatRequest) Reset() {
 	*x = CompactChatRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[192]
+	mi := &file_silo_v1_ui_proto_msgTypes[226]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12160,7 +14195,7 @@ func (x *CompactChatRequest) String() string {
 func (*CompactChatRequest) ProtoMessage() {}
 
 func (x *CompactChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[192]
+	mi := &file_silo_v1_ui_proto_msgTypes[226]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12173,7 +14208,7 @@ func (x *CompactChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactChatRequest.ProtoReflect.Descriptor instead.
 func (*CompactChatRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{192}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{226}
 }
 
 func (x *CompactChatRequest) GetBotId() string {
@@ -12199,7 +14234,7 @@ type CompactChatResponse struct {
 
 func (x *CompactChatResponse) Reset() {
 	*x = CompactChatResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[193]
+	mi := &file_silo_v1_ui_proto_msgTypes[227]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12211,7 +14246,7 @@ func (x *CompactChatResponse) String() string {
 func (*CompactChatResponse) ProtoMessage() {}
 
 func (x *CompactChatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[193]
+	mi := &file_silo_v1_ui_proto_msgTypes[227]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12224,7 +14259,7 @@ func (x *CompactChatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactChatResponse.ProtoReflect.Descriptor instead.
 func (*CompactChatResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{193}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{227}
 }
 
 func (x *CompactChatResponse) GetRunId() string {
@@ -12246,7 +14281,7 @@ type CollectMemoriesRequest struct {
 
 func (x *CollectMemoriesRequest) Reset() {
 	*x = CollectMemoriesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[194]
+	mi := &file_silo_v1_ui_proto_msgTypes[228]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12258,7 +14293,7 @@ func (x *CollectMemoriesRequest) String() string {
 func (*CollectMemoriesRequest) ProtoMessage() {}
 
 func (x *CollectMemoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[194]
+	mi := &file_silo_v1_ui_proto_msgTypes[228]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12271,7 +14306,7 @@ func (x *CollectMemoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CollectMemoriesRequest.ProtoReflect.Descriptor instead.
 func (*CollectMemoriesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{194}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{228}
 }
 
 func (x *CollectMemoriesRequest) GetBotId() string {
@@ -12303,7 +14338,7 @@ type CollectMemoriesResponse struct {
 
 func (x *CollectMemoriesResponse) Reset() {
 	*x = CollectMemoriesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[195]
+	mi := &file_silo_v1_ui_proto_msgTypes[229]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12315,7 +14350,7 @@ func (x *CollectMemoriesResponse) String() string {
 func (*CollectMemoriesResponse) ProtoMessage() {}
 
 func (x *CollectMemoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[195]
+	mi := &file_silo_v1_ui_proto_msgTypes[229]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12328,7 +14363,7 @@ func (x *CollectMemoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CollectMemoriesResponse.ProtoReflect.Descriptor instead.
 func (*CollectMemoriesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{195}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{229}
 }
 
 func (x *CollectMemoriesResponse) GetSaved() int32 {
@@ -12395,7 +14430,7 @@ type Subagent struct {
 
 func (x *Subagent) Reset() {
 	*x = Subagent{}
-	mi := &file_silo_v1_ui_proto_msgTypes[196]
+	mi := &file_silo_v1_ui_proto_msgTypes[230]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12407,7 +14442,7 @@ func (x *Subagent) String() string {
 func (*Subagent) ProtoMessage() {}
 
 func (x *Subagent) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[196]
+	mi := &file_silo_v1_ui_proto_msgTypes[230]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12420,7 +14455,7 @@ func (x *Subagent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subagent.ProtoReflect.Descriptor instead.
 func (*Subagent) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{196}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{230}
 }
 
 func (x *Subagent) GetId() string {
@@ -12539,7 +14574,7 @@ type ListSubagentsRequest struct {
 
 func (x *ListSubagentsRequest) Reset() {
 	*x = ListSubagentsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[197]
+	mi := &file_silo_v1_ui_proto_msgTypes[231]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12551,7 +14586,7 @@ func (x *ListSubagentsRequest) String() string {
 func (*ListSubagentsRequest) ProtoMessage() {}
 
 func (x *ListSubagentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[197]
+	mi := &file_silo_v1_ui_proto_msgTypes[231]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12564,7 +14599,7 @@ func (x *ListSubagentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubagentsRequest.ProtoReflect.Descriptor instead.
 func (*ListSubagentsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{197}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{231}
 }
 
 func (x *ListSubagentsRequest) GetBotId() string {
@@ -12590,7 +14625,7 @@ type ListSubagentsResponse struct {
 
 func (x *ListSubagentsResponse) Reset() {
 	*x = ListSubagentsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[198]
+	mi := &file_silo_v1_ui_proto_msgTypes[232]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12602,7 +14637,7 @@ func (x *ListSubagentsResponse) String() string {
 func (*ListSubagentsResponse) ProtoMessage() {}
 
 func (x *ListSubagentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[198]
+	mi := &file_silo_v1_ui_proto_msgTypes[232]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12615,7 +14650,7 @@ func (x *ListSubagentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubagentsResponse.ProtoReflect.Descriptor instead.
 func (*ListSubagentsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{198}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{232}
 }
 
 func (x *ListSubagentsResponse) GetSubagents() []*Subagent {
@@ -12635,7 +14670,7 @@ type GetSubagentRequest struct {
 
 func (x *GetSubagentRequest) Reset() {
 	*x = GetSubagentRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[199]
+	mi := &file_silo_v1_ui_proto_msgTypes[233]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12647,7 +14682,7 @@ func (x *GetSubagentRequest) String() string {
 func (*GetSubagentRequest) ProtoMessage() {}
 
 func (x *GetSubagentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[199]
+	mi := &file_silo_v1_ui_proto_msgTypes[233]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12660,7 +14695,7 @@ func (x *GetSubagentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubagentRequest.ProtoReflect.Descriptor instead.
 func (*GetSubagentRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{199}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{233}
 }
 
 func (x *GetSubagentRequest) GetBotId() string {
@@ -12687,7 +14722,7 @@ type StopSubagentRequest struct {
 
 func (x *StopSubagentRequest) Reset() {
 	*x = StopSubagentRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[200]
+	mi := &file_silo_v1_ui_proto_msgTypes[234]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12699,7 +14734,7 @@ func (x *StopSubagentRequest) String() string {
 func (*StopSubagentRequest) ProtoMessage() {}
 
 func (x *StopSubagentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[200]
+	mi := &file_silo_v1_ui_proto_msgTypes[234]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12712,7 +14747,7 @@ func (x *StopSubagentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopSubagentRequest.ProtoReflect.Descriptor instead.
 func (*StopSubagentRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{200}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{234}
 }
 
 func (x *StopSubagentRequest) GetBotId() string {
@@ -12737,7 +14772,7 @@ type StopSubagentResponse struct {
 
 func (x *StopSubagentResponse) Reset() {
 	*x = StopSubagentResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[201]
+	mi := &file_silo_v1_ui_proto_msgTypes[235]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12749,7 +14784,7 @@ func (x *StopSubagentResponse) String() string {
 func (*StopSubagentResponse) ProtoMessage() {}
 
 func (x *StopSubagentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[201]
+	mi := &file_silo_v1_ui_proto_msgTypes[235]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12762,7 +14797,7 @@ func (x *StopSubagentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopSubagentResponse.ProtoReflect.Descriptor instead.
 func (*StopSubagentResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{201}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{235}
 }
 
 type TaskItem struct {
@@ -12781,7 +14816,7 @@ type TaskItem struct {
 
 func (x *TaskItem) Reset() {
 	*x = TaskItem{}
-	mi := &file_silo_v1_ui_proto_msgTypes[202]
+	mi := &file_silo_v1_ui_proto_msgTypes[236]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12793,7 +14828,7 @@ func (x *TaskItem) String() string {
 func (*TaskItem) ProtoMessage() {}
 
 func (x *TaskItem) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[202]
+	mi := &file_silo_v1_ui_proto_msgTypes[236]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12806,7 +14841,7 @@ func (x *TaskItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskItem.ProtoReflect.Descriptor instead.
 func (*TaskItem) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{202}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{236}
 }
 
 func (x *TaskItem) GetN() int32 {
@@ -12869,7 +14904,7 @@ type Taskboard struct {
 
 func (x *Taskboard) Reset() {
 	*x = Taskboard{}
-	mi := &file_silo_v1_ui_proto_msgTypes[203]
+	mi := &file_silo_v1_ui_proto_msgTypes[237]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12881,7 +14916,7 @@ func (x *Taskboard) String() string {
 func (*Taskboard) ProtoMessage() {}
 
 func (x *Taskboard) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[203]
+	mi := &file_silo_v1_ui_proto_msgTypes[237]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12894,7 +14929,7 @@ func (x *Taskboard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Taskboard.ProtoReflect.Descriptor instead.
 func (*Taskboard) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{203}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{237}
 }
 
 func (x *Taskboard) GetChatId() string {
@@ -12922,7 +14957,7 @@ type GetTaskboardRequest struct {
 
 func (x *GetTaskboardRequest) Reset() {
 	*x = GetTaskboardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[204]
+	mi := &file_silo_v1_ui_proto_msgTypes[238]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12934,7 +14969,7 @@ func (x *GetTaskboardRequest) String() string {
 func (*GetTaskboardRequest) ProtoMessage() {}
 
 func (x *GetTaskboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[204]
+	mi := &file_silo_v1_ui_proto_msgTypes[238]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12947,7 +14982,7 @@ func (x *GetTaskboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskboardRequest.ProtoReflect.Descriptor instead.
 func (*GetTaskboardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{204}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{238}
 }
 
 func (x *GetTaskboardRequest) GetBotId() string {
@@ -12974,7 +15009,7 @@ type ClearTaskboardRequest struct {
 
 func (x *ClearTaskboardRequest) Reset() {
 	*x = ClearTaskboardRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[205]
+	mi := &file_silo_v1_ui_proto_msgTypes[239]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12986,7 +15021,7 @@ func (x *ClearTaskboardRequest) String() string {
 func (*ClearTaskboardRequest) ProtoMessage() {}
 
 func (x *ClearTaskboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[205]
+	mi := &file_silo_v1_ui_proto_msgTypes[239]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12999,7 +15034,7 @@ func (x *ClearTaskboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearTaskboardRequest.ProtoReflect.Descriptor instead.
 func (*ClearTaskboardRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{205}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{239}
 }
 
 func (x *ClearTaskboardRequest) GetBotId() string {
@@ -13037,7 +15072,7 @@ type SecretMeta struct {
 
 func (x *SecretMeta) Reset() {
 	*x = SecretMeta{}
-	mi := &file_silo_v1_ui_proto_msgTypes[206]
+	mi := &file_silo_v1_ui_proto_msgTypes[240]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13049,7 +15084,7 @@ func (x *SecretMeta) String() string {
 func (*SecretMeta) ProtoMessage() {}
 
 func (x *SecretMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[206]
+	mi := &file_silo_v1_ui_proto_msgTypes[240]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13062,7 +15097,7 @@ func (x *SecretMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretMeta.ProtoReflect.Descriptor instead.
 func (*SecretMeta) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{206}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{240}
 }
 
 func (x *SecretMeta) GetId() string {
@@ -13130,7 +15165,7 @@ type ListSecretsRequest struct {
 
 func (x *ListSecretsRequest) Reset() {
 	*x = ListSecretsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[207]
+	mi := &file_silo_v1_ui_proto_msgTypes[241]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13142,7 +15177,7 @@ func (x *ListSecretsRequest) String() string {
 func (*ListSecretsRequest) ProtoMessage() {}
 
 func (x *ListSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[207]
+	mi := &file_silo_v1_ui_proto_msgTypes[241]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13155,7 +15190,7 @@ func (x *ListSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSecretsRequest.ProtoReflect.Descriptor instead.
 func (*ListSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{207}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{241}
 }
 
 func (x *ListSecretsRequest) GetBotId() string {
@@ -13174,7 +15209,7 @@ type ListSecretsResponse struct {
 
 func (x *ListSecretsResponse) Reset() {
 	*x = ListSecretsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[208]
+	mi := &file_silo_v1_ui_proto_msgTypes[242]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13186,7 +15221,7 @@ func (x *ListSecretsResponse) String() string {
 func (*ListSecretsResponse) ProtoMessage() {}
 
 func (x *ListSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[208]
+	mi := &file_silo_v1_ui_proto_msgTypes[242]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13199,7 +15234,7 @@ func (x *ListSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSecretsResponse.ProtoReflect.Descriptor instead.
 func (*ListSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{208}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{242}
 }
 
 func (x *ListSecretsResponse) GetSecrets() []*SecretMeta {
@@ -13224,7 +15259,7 @@ type AddSecretRequest struct {
 
 func (x *AddSecretRequest) Reset() {
 	*x = AddSecretRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[209]
+	mi := &file_silo_v1_ui_proto_msgTypes[243]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13236,7 +15271,7 @@ func (x *AddSecretRequest) String() string {
 func (*AddSecretRequest) ProtoMessage() {}
 
 func (x *AddSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[209]
+	mi := &file_silo_v1_ui_proto_msgTypes[243]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13249,7 +15284,7 @@ func (x *AddSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddSecretRequest.ProtoReflect.Descriptor instead.
 func (*AddSecretRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{209}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{243}
 }
 
 func (x *AddSecretRequest) GetBotId() string {
@@ -13309,7 +15344,7 @@ type UpdateSecretRequest struct {
 
 func (x *UpdateSecretRequest) Reset() {
 	*x = UpdateSecretRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[210]
+	mi := &file_silo_v1_ui_proto_msgTypes[244]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13321,7 +15356,7 @@ func (x *UpdateSecretRequest) String() string {
 func (*UpdateSecretRequest) ProtoMessage() {}
 
 func (x *UpdateSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[210]
+	mi := &file_silo_v1_ui_proto_msgTypes[244]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13334,7 +15369,7 @@ func (x *UpdateSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSecretRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSecretRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{210}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{244}
 }
 
 func (x *UpdateSecretRequest) GetBotId() string {
@@ -13396,7 +15431,7 @@ type DeleteSecretRequest struct {
 
 func (x *DeleteSecretRequest) Reset() {
 	*x = DeleteSecretRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[211]
+	mi := &file_silo_v1_ui_proto_msgTypes[245]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13408,7 +15443,7 @@ func (x *DeleteSecretRequest) String() string {
 func (*DeleteSecretRequest) ProtoMessage() {}
 
 func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[211]
+	mi := &file_silo_v1_ui_proto_msgTypes[245]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13421,7 +15456,7 @@ func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSecretRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSecretRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{211}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{245}
 }
 
 func (x *DeleteSecretRequest) GetBotId() string {
@@ -13446,7 +15481,7 @@ type DeleteSecretResponse struct {
 
 func (x *DeleteSecretResponse) Reset() {
 	*x = DeleteSecretResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[212]
+	mi := &file_silo_v1_ui_proto_msgTypes[246]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13458,7 +15493,7 @@ func (x *DeleteSecretResponse) String() string {
 func (*DeleteSecretResponse) ProtoMessage() {}
 
 func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[212]
+	mi := &file_silo_v1_ui_proto_msgTypes[246]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13471,7 +15506,7 @@ func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSecretResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSecretResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{212}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{246}
 }
 
 type ApprovalField struct {
@@ -13484,7 +15519,7 @@ type ApprovalField struct {
 
 func (x *ApprovalField) Reset() {
 	*x = ApprovalField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[213]
+	mi := &file_silo_v1_ui_proto_msgTypes[247]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13496,7 +15531,7 @@ func (x *ApprovalField) String() string {
 func (*ApprovalField) ProtoMessage() {}
 
 func (x *ApprovalField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[213]
+	mi := &file_silo_v1_ui_proto_msgTypes[247]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13509,7 +15544,7 @@ func (x *ApprovalField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalField.ProtoReflect.Descriptor instead.
 func (*ApprovalField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{213}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{247}
 }
 
 func (x *ApprovalField) GetLabel() string {
@@ -13552,7 +15587,7 @@ type Approval struct {
 
 func (x *Approval) Reset() {
 	*x = Approval{}
-	mi := &file_silo_v1_ui_proto_msgTypes[214]
+	mi := &file_silo_v1_ui_proto_msgTypes[248]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13564,7 +15599,7 @@ func (x *Approval) String() string {
 func (*Approval) ProtoMessage() {}
 
 func (x *Approval) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[214]
+	mi := &file_silo_v1_ui_proto_msgTypes[248]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13577,7 +15612,7 @@ func (x *Approval) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Approval.ProtoReflect.Descriptor instead.
 func (*Approval) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{214}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{248}
 }
 
 func (x *Approval) GetId() string {
@@ -13673,7 +15708,7 @@ type ListApprovalsRequest struct {
 
 func (x *ListApprovalsRequest) Reset() {
 	*x = ListApprovalsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[215]
+	mi := &file_silo_v1_ui_proto_msgTypes[249]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13685,7 +15720,7 @@ func (x *ListApprovalsRequest) String() string {
 func (*ListApprovalsRequest) ProtoMessage() {}
 
 func (x *ListApprovalsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[215]
+	mi := &file_silo_v1_ui_proto_msgTypes[249]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13698,7 +15733,7 @@ func (x *ListApprovalsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListApprovalsRequest.ProtoReflect.Descriptor instead.
 func (*ListApprovalsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{215}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{249}
 }
 
 func (x *ListApprovalsRequest) GetBotId() string {
@@ -13717,7 +15752,7 @@ type ListApprovalsResponse struct {
 
 func (x *ListApprovalsResponse) Reset() {
 	*x = ListApprovalsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[216]
+	mi := &file_silo_v1_ui_proto_msgTypes[250]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13729,7 +15764,7 @@ func (x *ListApprovalsResponse) String() string {
 func (*ListApprovalsResponse) ProtoMessage() {}
 
 func (x *ListApprovalsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[216]
+	mi := &file_silo_v1_ui_proto_msgTypes[250]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13742,7 +15777,7 @@ func (x *ListApprovalsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListApprovalsResponse.ProtoReflect.Descriptor instead.
 func (*ListApprovalsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{216}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{250}
 }
 
 func (x *ListApprovalsResponse) GetApprovals() []*Approval {
@@ -13762,7 +15797,7 @@ type DecideApprovalRequest struct {
 
 func (x *DecideApprovalRequest) Reset() {
 	*x = DecideApprovalRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[217]
+	mi := &file_silo_v1_ui_proto_msgTypes[251]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13774,7 +15809,7 @@ func (x *DecideApprovalRequest) String() string {
 func (*DecideApprovalRequest) ProtoMessage() {}
 
 func (x *DecideApprovalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[217]
+	mi := &file_silo_v1_ui_proto_msgTypes[251]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13787,7 +15822,7 @@ func (x *DecideApprovalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideApprovalRequest.ProtoReflect.Descriptor instead.
 func (*DecideApprovalRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{217}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{251}
 }
 
 func (x *DecideApprovalRequest) GetId() string {
@@ -13827,7 +15862,7 @@ type Rule struct {
 
 func (x *Rule) Reset() {
 	*x = Rule{}
-	mi := &file_silo_v1_ui_proto_msgTypes[218]
+	mi := &file_silo_v1_ui_proto_msgTypes[252]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13839,7 +15874,7 @@ func (x *Rule) String() string {
 func (*Rule) ProtoMessage() {}
 
 func (x *Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[218]
+	mi := &file_silo_v1_ui_proto_msgTypes[252]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13852,7 +15887,7 @@ func (x *Rule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rule.ProtoReflect.Descriptor instead.
 func (*Rule) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{218}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{252}
 }
 
 func (x *Rule) GetId() string {
@@ -13940,7 +15975,7 @@ type RuleSection struct {
 
 func (x *RuleSection) Reset() {
 	*x = RuleSection{}
-	mi := &file_silo_v1_ui_proto_msgTypes[219]
+	mi := &file_silo_v1_ui_proto_msgTypes[253]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13952,7 +15987,7 @@ func (x *RuleSection) String() string {
 func (*RuleSection) ProtoMessage() {}
 
 func (x *RuleSection) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[219]
+	mi := &file_silo_v1_ui_proto_msgTypes[253]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13965,7 +16000,7 @@ func (x *RuleSection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuleSection.ProtoReflect.Descriptor instead.
 func (*RuleSection) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{219}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{253}
 }
 
 func (x *RuleSection) GetId() string {
@@ -14012,7 +16047,7 @@ type ListRulesRequest struct {
 
 func (x *ListRulesRequest) Reset() {
 	*x = ListRulesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[220]
+	mi := &file_silo_v1_ui_proto_msgTypes[254]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14024,7 +16059,7 @@ func (x *ListRulesRequest) String() string {
 func (*ListRulesRequest) ProtoMessage() {}
 
 func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[220]
+	mi := &file_silo_v1_ui_proto_msgTypes[254]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14037,7 +16072,7 @@ func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListRulesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{220}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{254}
 }
 
 func (x *ListRulesRequest) GetBotId() string {
@@ -14063,7 +16098,7 @@ type ListRulesResponse struct {
 
 func (x *ListRulesResponse) Reset() {
 	*x = ListRulesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[221]
+	mi := &file_silo_v1_ui_proto_msgTypes[255]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14075,7 +16110,7 @@ func (x *ListRulesResponse) String() string {
 func (*ListRulesResponse) ProtoMessage() {}
 
 func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[221]
+	mi := &file_silo_v1_ui_proto_msgTypes[255]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14088,7 +16123,7 @@ func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListRulesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{221}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{255}
 }
 
 func (x *ListRulesResponse) GetRules() []*Rule {
@@ -14135,7 +16170,7 @@ type SetRuleRequest struct {
 
 func (x *SetRuleRequest) Reset() {
 	*x = SetRuleRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[222]
+	mi := &file_silo_v1_ui_proto_msgTypes[256]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14147,7 +16182,7 @@ func (x *SetRuleRequest) String() string {
 func (*SetRuleRequest) ProtoMessage() {}
 
 func (x *SetRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[222]
+	mi := &file_silo_v1_ui_proto_msgTypes[256]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14160,7 +16195,7 @@ func (x *SetRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetRuleRequest.ProtoReflect.Descriptor instead.
 func (*SetRuleRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{222}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{256}
 }
 
 func (x *SetRuleRequest) GetBotId() string {
@@ -14215,7 +16250,7 @@ type OperatorRule struct {
 
 func (x *OperatorRule) Reset() {
 	*x = OperatorRule{}
-	mi := &file_silo_v1_ui_proto_msgTypes[223]
+	mi := &file_silo_v1_ui_proto_msgTypes[257]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14227,7 +16262,7 @@ func (x *OperatorRule) String() string {
 func (*OperatorRule) ProtoMessage() {}
 
 func (x *OperatorRule) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[223]
+	mi := &file_silo_v1_ui_proto_msgTypes[257]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14240,7 +16275,7 @@ func (x *OperatorRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperatorRule.ProtoReflect.Descriptor instead.
 func (*OperatorRule) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{223}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{257}
 }
 
 func (x *OperatorRule) GetConnector() string {
@@ -14286,7 +16321,7 @@ type ListOperatorRulesRequest struct {
 
 func (x *ListOperatorRulesRequest) Reset() {
 	*x = ListOperatorRulesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[224]
+	mi := &file_silo_v1_ui_proto_msgTypes[258]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14298,7 +16333,7 @@ func (x *ListOperatorRulesRequest) String() string {
 func (*ListOperatorRulesRequest) ProtoMessage() {}
 
 func (x *ListOperatorRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[224]
+	mi := &file_silo_v1_ui_proto_msgTypes[258]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14311,7 +16346,7 @@ func (x *ListOperatorRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOperatorRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListOperatorRulesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{224}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{258}
 }
 
 type ListOperatorRulesResponse struct {
@@ -14327,7 +16362,7 @@ type ListOperatorRulesResponse struct {
 
 func (x *ListOperatorRulesResponse) Reset() {
 	*x = ListOperatorRulesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[225]
+	mi := &file_silo_v1_ui_proto_msgTypes[259]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14339,7 +16374,7 @@ func (x *ListOperatorRulesResponse) String() string {
 func (*ListOperatorRulesResponse) ProtoMessage() {}
 
 func (x *ListOperatorRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[225]
+	mi := &file_silo_v1_ui_proto_msgTypes[259]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14352,7 +16387,7 @@ func (x *ListOperatorRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOperatorRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListOperatorRulesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{225}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{259}
 }
 
 func (x *ListOperatorRulesResponse) GetRules() []*OperatorRule {
@@ -14391,7 +16426,7 @@ type SetOperatorRuleRequest struct {
 
 func (x *SetOperatorRuleRequest) Reset() {
 	*x = SetOperatorRuleRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[226]
+	mi := &file_silo_v1_ui_proto_msgTypes[260]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14403,7 +16438,7 @@ func (x *SetOperatorRuleRequest) String() string {
 func (*SetOperatorRuleRequest) ProtoMessage() {}
 
 func (x *SetOperatorRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[226]
+	mi := &file_silo_v1_ui_proto_msgTypes[260]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14416,7 +16451,7 @@ func (x *SetOperatorRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetOperatorRuleRequest.ProtoReflect.Descriptor instead.
 func (*SetOperatorRuleRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{226}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{260}
 }
 
 func (x *SetOperatorRuleRequest) GetConnector() string {
@@ -14464,7 +16499,7 @@ type DeleteOperatorRuleRequest struct {
 
 func (x *DeleteOperatorRuleRequest) Reset() {
 	*x = DeleteOperatorRuleRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[227]
+	mi := &file_silo_v1_ui_proto_msgTypes[261]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14476,7 +16511,7 @@ func (x *DeleteOperatorRuleRequest) String() string {
 func (*DeleteOperatorRuleRequest) ProtoMessage() {}
 
 func (x *DeleteOperatorRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[227]
+	mi := &file_silo_v1_ui_proto_msgTypes[261]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14489,7 +16524,7 @@ func (x *DeleteOperatorRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteOperatorRuleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteOperatorRuleRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{227}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{261}
 }
 
 func (x *DeleteOperatorRuleRequest) GetConnector() string {
@@ -14514,7 +16549,7 @@ type DeleteOperatorRuleResponse struct {
 
 func (x *DeleteOperatorRuleResponse) Reset() {
 	*x = DeleteOperatorRuleResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[228]
+	mi := &file_silo_v1_ui_proto_msgTypes[262]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14526,7 +16561,7 @@ func (x *DeleteOperatorRuleResponse) String() string {
 func (*DeleteOperatorRuleResponse) ProtoMessage() {}
 
 func (x *DeleteOperatorRuleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[228]
+	mi := &file_silo_v1_ui_proto_msgTypes[262]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14539,7 +16574,7 @@ func (x *DeleteOperatorRuleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteOperatorRuleResponse.ProtoReflect.Descriptor instead.
 func (*DeleteOperatorRuleResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{228}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{262}
 }
 
 type FileEntry struct {
@@ -14555,7 +16590,7 @@ type FileEntry struct {
 
 func (x *FileEntry) Reset() {
 	*x = FileEntry{}
-	mi := &file_silo_v1_ui_proto_msgTypes[229]
+	mi := &file_silo_v1_ui_proto_msgTypes[263]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14567,7 +16602,7 @@ func (x *FileEntry) String() string {
 func (*FileEntry) ProtoMessage() {}
 
 func (x *FileEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[229]
+	mi := &file_silo_v1_ui_proto_msgTypes[263]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14580,7 +16615,7 @@ func (x *FileEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileEntry.ProtoReflect.Descriptor instead.
 func (*FileEntry) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{229}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{263}
 }
 
 func (x *FileEntry) GetName() string {
@@ -14628,7 +16663,7 @@ type ListFilesRequest struct {
 
 func (x *ListFilesRequest) Reset() {
 	*x = ListFilesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[230]
+	mi := &file_silo_v1_ui_proto_msgTypes[264]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14640,7 +16675,7 @@ func (x *ListFilesRequest) String() string {
 func (*ListFilesRequest) ProtoMessage() {}
 
 func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[230]
+	mi := &file_silo_v1_ui_proto_msgTypes[264]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14653,7 +16688,7 @@ func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListFilesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{230}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{264}
 }
 
 func (x *ListFilesRequest) GetBotId() string {
@@ -14679,7 +16714,7 @@ type ListFilesResponse struct {
 
 func (x *ListFilesResponse) Reset() {
 	*x = ListFilesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[231]
+	mi := &file_silo_v1_ui_proto_msgTypes[265]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14691,7 +16726,7 @@ func (x *ListFilesResponse) String() string {
 func (*ListFilesResponse) ProtoMessage() {}
 
 func (x *ListFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[231]
+	mi := &file_silo_v1_ui_proto_msgTypes[265]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14704,7 +16739,7 @@ func (x *ListFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFilesResponse.ProtoReflect.Descriptor instead.
 func (*ListFilesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{231}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{265}
 }
 
 func (x *ListFilesResponse) GetEntries() []*FileEntry {
@@ -14724,7 +16759,7 @@ type ReadFileRequest struct {
 
 func (x *ReadFileRequest) Reset() {
 	*x = ReadFileRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[232]
+	mi := &file_silo_v1_ui_proto_msgTypes[266]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14736,7 +16771,7 @@ func (x *ReadFileRequest) String() string {
 func (*ReadFileRequest) ProtoMessage() {}
 
 func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[232]
+	mi := &file_silo_v1_ui_proto_msgTypes[266]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14749,7 +16784,7 @@ func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadFileRequest.ProtoReflect.Descriptor instead.
 func (*ReadFileRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{232}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{266}
 }
 
 func (x *ReadFileRequest) GetBotId() string {
@@ -14780,7 +16815,7 @@ type ReadFileResponse struct {
 
 func (x *ReadFileResponse) Reset() {
 	*x = ReadFileResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[233]
+	mi := &file_silo_v1_ui_proto_msgTypes[267]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14792,7 +16827,7 @@ func (x *ReadFileResponse) String() string {
 func (*ReadFileResponse) ProtoMessage() {}
 
 func (x *ReadFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[233]
+	mi := &file_silo_v1_ui_proto_msgTypes[267]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14805,7 +16840,7 @@ func (x *ReadFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadFileResponse.ProtoReflect.Descriptor instead.
 func (*ReadFileResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{233}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{267}
 }
 
 func (x *ReadFileResponse) GetName() string {
@@ -14860,7 +16895,7 @@ type MkdirRequest struct {
 
 func (x *MkdirRequest) Reset() {
 	*x = MkdirRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[234]
+	mi := &file_silo_v1_ui_proto_msgTypes[268]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14872,7 +16907,7 @@ func (x *MkdirRequest) String() string {
 func (*MkdirRequest) ProtoMessage() {}
 
 func (x *MkdirRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[234]
+	mi := &file_silo_v1_ui_proto_msgTypes[268]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14885,7 +16920,7 @@ func (x *MkdirRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MkdirRequest.ProtoReflect.Descriptor instead.
 func (*MkdirRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{234}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{268}
 }
 
 func (x *MkdirRequest) GetBotId() string {
@@ -14912,7 +16947,7 @@ type RemoveFileRequest struct {
 
 func (x *RemoveFileRequest) Reset() {
 	*x = RemoveFileRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[235]
+	mi := &file_silo_v1_ui_proto_msgTypes[269]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14924,7 +16959,7 @@ func (x *RemoveFileRequest) String() string {
 func (*RemoveFileRequest) ProtoMessage() {}
 
 func (x *RemoveFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[235]
+	mi := &file_silo_v1_ui_proto_msgTypes[269]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14937,7 +16972,7 @@ func (x *RemoveFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveFileRequest.ProtoReflect.Descriptor instead.
 func (*RemoveFileRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{235}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{269}
 }
 
 func (x *RemoveFileRequest) GetBotId() string {
@@ -14965,7 +17000,7 @@ type PutFileRequest struct {
 
 func (x *PutFileRequest) Reset() {
 	*x = PutFileRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[236]
+	mi := &file_silo_v1_ui_proto_msgTypes[270]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14977,7 +17012,7 @@ func (x *PutFileRequest) String() string {
 func (*PutFileRequest) ProtoMessage() {}
 
 func (x *PutFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[236]
+	mi := &file_silo_v1_ui_proto_msgTypes[270]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14990,7 +17025,7 @@ func (x *PutFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutFileRequest.ProtoReflect.Descriptor instead.
 func (*PutFileRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{236}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{270}
 }
 
 func (x *PutFileRequest) GetBotId() string {
@@ -15022,7 +17057,7 @@ type FileOpResponse struct {
 
 func (x *FileOpResponse) Reset() {
 	*x = FileOpResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[237]
+	mi := &file_silo_v1_ui_proto_msgTypes[271]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15034,7 +17069,7 @@ func (x *FileOpResponse) String() string {
 func (*FileOpResponse) ProtoMessage() {}
 
 func (x *FileOpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[237]
+	mi := &file_silo_v1_ui_proto_msgTypes[271]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15047,7 +17082,7 @@ func (x *FileOpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileOpResponse.ProtoReflect.Descriptor instead.
 func (*FileOpResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{237}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{271}
 }
 
 type ConfigField struct {
@@ -15065,7 +17100,7 @@ type ConfigField struct {
 
 func (x *ConfigField) Reset() {
 	*x = ConfigField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[238]
+	mi := &file_silo_v1_ui_proto_msgTypes[272]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15077,7 +17112,7 @@ func (x *ConfigField) String() string {
 func (*ConfigField) ProtoMessage() {}
 
 func (x *ConfigField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[238]
+	mi := &file_silo_v1_ui_proto_msgTypes[272]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15090,7 +17125,7 @@ func (x *ConfigField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigField.ProtoReflect.Descriptor instead.
 func (*ConfigField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{238}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{272}
 }
 
 func (x *ConfigField) GetKey() string {
@@ -15169,7 +17204,7 @@ type Settings struct {
 
 func (x *Settings) Reset() {
 	*x = Settings{}
-	mi := &file_silo_v1_ui_proto_msgTypes[239]
+	mi := &file_silo_v1_ui_proto_msgTypes[273]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15181,7 +17216,7 @@ func (x *Settings) String() string {
 func (*Settings) ProtoMessage() {}
 
 func (x *Settings) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[239]
+	mi := &file_silo_v1_ui_proto_msgTypes[273]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15194,7 +17229,7 @@ func (x *Settings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Settings.ProtoReflect.Descriptor instead.
 func (*Settings) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{239}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{273}
 }
 
 func (x *Settings) GetFields() []*ConfigField {
@@ -15304,7 +17339,7 @@ type Provider struct {
 
 func (x *Provider) Reset() {
 	*x = Provider{}
-	mi := &file_silo_v1_ui_proto_msgTypes[240]
+	mi := &file_silo_v1_ui_proto_msgTypes[274]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15316,7 +17351,7 @@ func (x *Provider) String() string {
 func (*Provider) ProtoMessage() {}
 
 func (x *Provider) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[240]
+	mi := &file_silo_v1_ui_proto_msgTypes[274]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15329,7 +17364,7 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provider.ProtoReflect.Descriptor instead.
 func (*Provider) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{240}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{274}
 }
 
 func (x *Provider) GetId() string {
@@ -15394,7 +17429,7 @@ type ProviderField struct {
 
 func (x *ProviderField) Reset() {
 	*x = ProviderField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[241]
+	mi := &file_silo_v1_ui_proto_msgTypes[275]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15406,7 +17441,7 @@ func (x *ProviderField) String() string {
 func (*ProviderField) ProtoMessage() {}
 
 func (x *ProviderField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[241]
+	mi := &file_silo_v1_ui_proto_msgTypes[275]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15419,7 +17454,7 @@ func (x *ProviderField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProviderField.ProtoReflect.Descriptor instead.
 func (*ProviderField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{241}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{275}
 }
 
 func (x *ProviderField) GetKey() string {
@@ -15469,7 +17504,7 @@ type SetModelsRequest struct {
 
 func (x *SetModelsRequest) Reset() {
 	*x = SetModelsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[242]
+	mi := &file_silo_v1_ui_proto_msgTypes[276]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15481,7 +17516,7 @@ func (x *SetModelsRequest) String() string {
 func (*SetModelsRequest) ProtoMessage() {}
 
 func (x *SetModelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[242]
+	mi := &file_silo_v1_ui_proto_msgTypes[276]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15494,7 +17529,7 @@ func (x *SetModelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetModelsRequest.ProtoReflect.Descriptor instead.
 func (*SetModelsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{242}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{276}
 }
 
 func (x *SetModelsRequest) GetModels() []string {
@@ -15523,7 +17558,7 @@ type ListProviderModelsRequest struct {
 
 func (x *ListProviderModelsRequest) Reset() {
 	*x = ListProviderModelsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[243]
+	mi := &file_silo_v1_ui_proto_msgTypes[277]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15535,7 +17570,7 @@ func (x *ListProviderModelsRequest) String() string {
 func (*ListProviderModelsRequest) ProtoMessage() {}
 
 func (x *ListProviderModelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[243]
+	mi := &file_silo_v1_ui_proto_msgTypes[277]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15548,7 +17583,7 @@ func (x *ListProviderModelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProviderModelsRequest.ProtoReflect.Descriptor instead.
 func (*ListProviderModelsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{243}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{277}
 }
 
 func (x *ListProviderModelsRequest) GetProvider() string {
@@ -15574,7 +17609,7 @@ type ProviderModel struct {
 
 func (x *ProviderModel) Reset() {
 	*x = ProviderModel{}
-	mi := &file_silo_v1_ui_proto_msgTypes[244]
+	mi := &file_silo_v1_ui_proto_msgTypes[278]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15586,7 +17621,7 @@ func (x *ProviderModel) String() string {
 func (*ProviderModel) ProtoMessage() {}
 
 func (x *ProviderModel) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[244]
+	mi := &file_silo_v1_ui_proto_msgTypes[278]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15599,7 +17634,7 @@ func (x *ProviderModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProviderModel.ProtoReflect.Descriptor instead.
 func (*ProviderModel) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{244}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{278}
 }
 
 func (x *ProviderModel) GetId() string {
@@ -15639,7 +17674,7 @@ type ListProviderModelsResponse struct {
 
 func (x *ListProviderModelsResponse) Reset() {
 	*x = ListProviderModelsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[245]
+	mi := &file_silo_v1_ui_proto_msgTypes[279]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15651,7 +17686,7 @@ func (x *ListProviderModelsResponse) String() string {
 func (*ListProviderModelsResponse) ProtoMessage() {}
 
 func (x *ListProviderModelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[245]
+	mi := &file_silo_v1_ui_proto_msgTypes[279]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15664,7 +17699,7 @@ func (x *ListProviderModelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProviderModelsResponse.ProtoReflect.Descriptor instead.
 func (*ListProviderModelsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{245}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{279}
 }
 
 func (x *ListProviderModelsResponse) GetModels() []*ProviderModel {
@@ -15688,7 +17723,7 @@ type ConnectorVar struct {
 
 func (x *ConnectorVar) Reset() {
 	*x = ConnectorVar{}
-	mi := &file_silo_v1_ui_proto_msgTypes[246]
+	mi := &file_silo_v1_ui_proto_msgTypes[280]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15700,7 +17735,7 @@ func (x *ConnectorVar) String() string {
 func (*ConnectorVar) ProtoMessage() {}
 
 func (x *ConnectorVar) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[246]
+	mi := &file_silo_v1_ui_proto_msgTypes[280]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15713,7 +17748,7 @@ func (x *ConnectorVar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectorVar.ProtoReflect.Descriptor instead.
 func (*ConnectorVar) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{246}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{280}
 }
 
 func (x *ConnectorVar) GetName() string {
@@ -15753,7 +17788,7 @@ type SetConnectorVarsRequest struct {
 
 func (x *SetConnectorVarsRequest) Reset() {
 	*x = SetConnectorVarsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[247]
+	mi := &file_silo_v1_ui_proto_msgTypes[281]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15765,7 +17800,7 @@ func (x *SetConnectorVarsRequest) String() string {
 func (*SetConnectorVarsRequest) ProtoMessage() {}
 
 func (x *SetConnectorVarsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[247]
+	mi := &file_silo_v1_ui_proto_msgTypes[281]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15778,7 +17813,7 @@ func (x *SetConnectorVarsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetConnectorVarsRequest.ProtoReflect.Descriptor instead.
 func (*SetConnectorVarsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{247}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{281}
 }
 
 func (x *SetConnectorVarsRequest) GetConnectorVars() []*ConnectorVar {
@@ -15803,7 +17838,7 @@ type AutoenableConnectors struct {
 
 func (x *AutoenableConnectors) Reset() {
 	*x = AutoenableConnectors{}
-	mi := &file_silo_v1_ui_proto_msgTypes[248]
+	mi := &file_silo_v1_ui_proto_msgTypes[282]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15815,7 +17850,7 @@ func (x *AutoenableConnectors) String() string {
 func (*AutoenableConnectors) ProtoMessage() {}
 
 func (x *AutoenableConnectors) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[248]
+	mi := &file_silo_v1_ui_proto_msgTypes[282]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15828,7 +17863,7 @@ func (x *AutoenableConnectors) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutoenableConnectors.ProtoReflect.Descriptor instead.
 func (*AutoenableConnectors) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{248}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{282}
 }
 
 func (x *AutoenableConnectors) GetIdentifiers() []string {
@@ -15861,7 +17896,7 @@ type SetAutoenableConnectorsRequest struct {
 
 func (x *SetAutoenableConnectorsRequest) Reset() {
 	*x = SetAutoenableConnectorsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[249]
+	mi := &file_silo_v1_ui_proto_msgTypes[283]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15873,7 +17908,7 @@ func (x *SetAutoenableConnectorsRequest) String() string {
 func (*SetAutoenableConnectorsRequest) ProtoMessage() {}
 
 func (x *SetAutoenableConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[249]
+	mi := &file_silo_v1_ui_proto_msgTypes[283]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15886,7 +17921,7 @@ func (x *SetAutoenableConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAutoenableConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*SetAutoenableConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{249}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{283}
 }
 
 func (x *SetAutoenableConnectorsRequest) GetIdentifiers() []string {
@@ -15908,7 +17943,7 @@ type SearchEngine struct {
 
 func (x *SearchEngine) Reset() {
 	*x = SearchEngine{}
-	mi := &file_silo_v1_ui_proto_msgTypes[250]
+	mi := &file_silo_v1_ui_proto_msgTypes[284]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15920,7 +17955,7 @@ func (x *SearchEngine) String() string {
 func (*SearchEngine) ProtoMessage() {}
 
 func (x *SearchEngine) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[250]
+	mi := &file_silo_v1_ui_proto_msgTypes[284]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15933,7 +17968,7 @@ func (x *SearchEngine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchEngine.ProtoReflect.Descriptor instead.
 func (*SearchEngine) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{250}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{284}
 }
 
 func (x *SearchEngine) GetId() string {
@@ -15978,7 +18013,7 @@ type SearchEngineField struct {
 
 func (x *SearchEngineField) Reset() {
 	*x = SearchEngineField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[251]
+	mi := &file_silo_v1_ui_proto_msgTypes[285]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15990,7 +18025,7 @@ func (x *SearchEngineField) String() string {
 func (*SearchEngineField) ProtoMessage() {}
 
 func (x *SearchEngineField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[251]
+	mi := &file_silo_v1_ui_proto_msgTypes[285]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16003,7 +18038,7 @@ func (x *SearchEngineField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchEngineField.ProtoReflect.Descriptor instead.
 func (*SearchEngineField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{251}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{285}
 }
 
 func (x *SearchEngineField) GetKey() string {
@@ -16056,7 +18091,7 @@ type GetSettingsRequest struct {
 
 func (x *GetSettingsRequest) Reset() {
 	*x = GetSettingsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[252]
+	mi := &file_silo_v1_ui_proto_msgTypes[286]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16068,7 +18103,7 @@ func (x *GetSettingsRequest) String() string {
 func (*GetSettingsRequest) ProtoMessage() {}
 
 func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[252]
+	mi := &file_silo_v1_ui_proto_msgTypes[286]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16081,7 +18116,7 @@ func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{252}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{286}
 }
 
 type PutSettingsRequest struct {
@@ -16094,7 +18129,7 @@ type PutSettingsRequest struct {
 
 func (x *PutSettingsRequest) Reset() {
 	*x = PutSettingsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[253]
+	mi := &file_silo_v1_ui_proto_msgTypes[287]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16106,7 +18141,7 @@ func (x *PutSettingsRequest) String() string {
 func (*PutSettingsRequest) ProtoMessage() {}
 
 func (x *PutSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[253]
+	mi := &file_silo_v1_ui_proto_msgTypes[287]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16119,7 +18154,7 @@ func (x *PutSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutSettingsRequest.ProtoReflect.Descriptor instead.
 func (*PutSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{253}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{287}
 }
 
 func (x *PutSettingsRequest) GetFields() map[string]string {
@@ -16182,7 +18217,7 @@ type AuditEvent struct {
 
 func (x *AuditEvent) Reset() {
 	*x = AuditEvent{}
-	mi := &file_silo_v1_ui_proto_msgTypes[254]
+	mi := &file_silo_v1_ui_proto_msgTypes[288]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16194,7 +18229,7 @@ func (x *AuditEvent) String() string {
 func (*AuditEvent) ProtoMessage() {}
 
 func (x *AuditEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[254]
+	mi := &file_silo_v1_ui_proto_msgTypes[288]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16207,7 +18242,7 @@ func (x *AuditEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditEvent.ProtoReflect.Descriptor instead.
 func (*AuditEvent) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{254}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{288}
 }
 
 func (x *AuditEvent) GetId() string {
@@ -16387,7 +18422,7 @@ type ListAuditEventsRequest struct {
 
 func (x *ListAuditEventsRequest) Reset() {
 	*x = ListAuditEventsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[255]
+	mi := &file_silo_v1_ui_proto_msgTypes[289]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16399,7 +18434,7 @@ func (x *ListAuditEventsRequest) String() string {
 func (*ListAuditEventsRequest) ProtoMessage() {}
 
 func (x *ListAuditEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[255]
+	mi := &file_silo_v1_ui_proto_msgTypes[289]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16412,7 +18447,7 @@ func (x *ListAuditEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListAuditEventsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{255}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{289}
 }
 
 func (x *ListAuditEventsRequest) GetBotId() string {
@@ -16490,7 +18525,7 @@ type ListAuditEventsResponse struct {
 
 func (x *ListAuditEventsResponse) Reset() {
 	*x = ListAuditEventsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[256]
+	mi := &file_silo_v1_ui_proto_msgTypes[290]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16502,7 +18537,7 @@ func (x *ListAuditEventsResponse) String() string {
 func (*ListAuditEventsResponse) ProtoMessage() {}
 
 func (x *ListAuditEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[256]
+	mi := &file_silo_v1_ui_proto_msgTypes[290]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16515,7 +18550,7 @@ func (x *ListAuditEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListAuditEventsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{256}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{290}
 }
 
 func (x *ListAuditEventsResponse) GetEvents() []*AuditEvent {
@@ -16549,7 +18584,7 @@ type AuditSummaryRequest struct {
 
 func (x *AuditSummaryRequest) Reset() {
 	*x = AuditSummaryRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[257]
+	mi := &file_silo_v1_ui_proto_msgTypes[291]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16561,7 +18596,7 @@ func (x *AuditSummaryRequest) String() string {
 func (*AuditSummaryRequest) ProtoMessage() {}
 
 func (x *AuditSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[257]
+	mi := &file_silo_v1_ui_proto_msgTypes[291]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16574,7 +18609,7 @@ func (x *AuditSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditSummaryRequest.ProtoReflect.Descriptor instead.
 func (*AuditSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{257}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{291}
 }
 
 func (x *AuditSummaryRequest) GetBotId() string {
@@ -16604,7 +18639,7 @@ type AuditSummaryResponse struct {
 
 func (x *AuditSummaryResponse) Reset() {
 	*x = AuditSummaryResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[258]
+	mi := &file_silo_v1_ui_proto_msgTypes[292]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16616,7 +18651,7 @@ func (x *AuditSummaryResponse) String() string {
 func (*AuditSummaryResponse) ProtoMessage() {}
 
 func (x *AuditSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[258]
+	mi := &file_silo_v1_ui_proto_msgTypes[292]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16629,7 +18664,7 @@ func (x *AuditSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditSummaryResponse.ProtoReflect.Descriptor instead.
 func (*AuditSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{258}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{292}
 }
 
 func (x *AuditSummaryResponse) GetTotal() int32 {
@@ -16697,7 +18732,7 @@ type MarkAuditReadRequest struct {
 
 func (x *MarkAuditReadRequest) Reset() {
 	*x = MarkAuditReadRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[259]
+	mi := &file_silo_v1_ui_proto_msgTypes[293]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16709,7 +18744,7 @@ func (x *MarkAuditReadRequest) String() string {
 func (*MarkAuditReadRequest) ProtoMessage() {}
 
 func (x *MarkAuditReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[259]
+	mi := &file_silo_v1_ui_proto_msgTypes[293]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16722,7 +18757,7 @@ func (x *MarkAuditReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkAuditReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkAuditReadRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{259}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{293}
 }
 
 func (x *MarkAuditReadRequest) GetBotId() string {
@@ -16751,7 +18786,7 @@ type TrafficRow struct {
 
 func (x *TrafficRow) Reset() {
 	*x = TrafficRow{}
-	mi := &file_silo_v1_ui_proto_msgTypes[260]
+	mi := &file_silo_v1_ui_proto_msgTypes[294]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16763,7 +18798,7 @@ func (x *TrafficRow) String() string {
 func (*TrafficRow) ProtoMessage() {}
 
 func (x *TrafficRow) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[260]
+	mi := &file_silo_v1_ui_proto_msgTypes[294]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16776,7 +18811,7 @@ func (x *TrafficRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrafficRow.ProtoReflect.Descriptor instead.
 func (*TrafficRow) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{260}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{294}
 }
 
 func (x *TrafficRow) GetBotId() string {
@@ -16854,7 +18889,7 @@ type ListTrafficRequest struct {
 
 func (x *ListTrafficRequest) Reset() {
 	*x = ListTrafficRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[261]
+	mi := &file_silo_v1_ui_proto_msgTypes[295]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16866,7 +18901,7 @@ func (x *ListTrafficRequest) String() string {
 func (*ListTrafficRequest) ProtoMessage() {}
 
 func (x *ListTrafficRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[261]
+	mi := &file_silo_v1_ui_proto_msgTypes[295]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16879,7 +18914,7 @@ func (x *ListTrafficRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTrafficRequest.ProtoReflect.Descriptor instead.
 func (*ListTrafficRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{261}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{295}
 }
 
 func (x *ListTrafficRequest) GetBotId() string {
@@ -16912,7 +18947,7 @@ type ListTrafficResponse struct {
 
 func (x *ListTrafficResponse) Reset() {
 	*x = ListTrafficResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[262]
+	mi := &file_silo_v1_ui_proto_msgTypes[296]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16924,7 +18959,7 @@ func (x *ListTrafficResponse) String() string {
 func (*ListTrafficResponse) ProtoMessage() {}
 
 func (x *ListTrafficResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[262]
+	mi := &file_silo_v1_ui_proto_msgTypes[296]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16937,7 +18972,7 @@ func (x *ListTrafficResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTrafficResponse.ProtoReflect.Descriptor instead.
 func (*ListTrafficResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{262}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{296}
 }
 
 func (x *ListTrafficResponse) GetRows() []*TrafficRow {
@@ -16962,7 +18997,7 @@ type HostPattern struct {
 
 func (x *HostPattern) Reset() {
 	*x = HostPattern{}
-	mi := &file_silo_v1_ui_proto_msgTypes[263]
+	mi := &file_silo_v1_ui_proto_msgTypes[297]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16974,7 +19009,7 @@ func (x *HostPattern) String() string {
 func (*HostPattern) ProtoMessage() {}
 
 func (x *HostPattern) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[263]
+	mi := &file_silo_v1_ui_proto_msgTypes[297]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16987,7 +19022,7 @@ func (x *HostPattern) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HostPattern.ProtoReflect.Descriptor instead.
 func (*HostPattern) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{263}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{297}
 }
 
 func (x *HostPattern) GetKind() string {
@@ -17024,7 +19059,7 @@ type BotNetwork struct {
 
 func (x *BotNetwork) Reset() {
 	*x = BotNetwork{}
-	mi := &file_silo_v1_ui_proto_msgTypes[264]
+	mi := &file_silo_v1_ui_proto_msgTypes[298]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17036,7 +19071,7 @@ func (x *BotNetwork) String() string {
 func (*BotNetwork) ProtoMessage() {}
 
 func (x *BotNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[264]
+	mi := &file_silo_v1_ui_proto_msgTypes[298]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17049,7 +19084,7 @@ func (x *BotNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotNetwork.ProtoReflect.Descriptor instead.
 func (*BotNetwork) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{264}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{298}
 }
 
 func (x *BotNetwork) GetPatterns() []*HostPattern {
@@ -17082,7 +19117,7 @@ type GetBotNetworkRequest struct {
 
 func (x *GetBotNetworkRequest) Reset() {
 	*x = GetBotNetworkRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[265]
+	mi := &file_silo_v1_ui_proto_msgTypes[299]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17094,7 +19129,7 @@ func (x *GetBotNetworkRequest) String() string {
 func (*GetBotNetworkRequest) ProtoMessage() {}
 
 func (x *GetBotNetworkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[265]
+	mi := &file_silo_v1_ui_proto_msgTypes[299]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17107,7 +19142,7 @@ func (x *GetBotNetworkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBotNetworkRequest.ProtoReflect.Descriptor instead.
 func (*GetBotNetworkRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{265}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{299}
 }
 
 func (x *GetBotNetworkRequest) GetBotId() string {
@@ -17129,7 +19164,7 @@ type AddHostPatternRequest struct {
 
 func (x *AddHostPatternRequest) Reset() {
 	*x = AddHostPatternRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[266]
+	mi := &file_silo_v1_ui_proto_msgTypes[300]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17141,7 +19176,7 @@ func (x *AddHostPatternRequest) String() string {
 func (*AddHostPatternRequest) ProtoMessage() {}
 
 func (x *AddHostPatternRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[266]
+	mi := &file_silo_v1_ui_proto_msgTypes[300]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17154,7 +19189,7 @@ func (x *AddHostPatternRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddHostPatternRequest.ProtoReflect.Descriptor instead.
 func (*AddHostPatternRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{266}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{300}
 }
 
 func (x *AddHostPatternRequest) GetBotId() string {
@@ -17189,7 +19224,7 @@ type RemoveHostPatternRequest struct {
 
 func (x *RemoveHostPatternRequest) Reset() {
 	*x = RemoveHostPatternRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[267]
+	mi := &file_silo_v1_ui_proto_msgTypes[301]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17201,7 +19236,7 @@ func (x *RemoveHostPatternRequest) String() string {
 func (*RemoveHostPatternRequest) ProtoMessage() {}
 
 func (x *RemoveHostPatternRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[267]
+	mi := &file_silo_v1_ui_proto_msgTypes[301]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17214,7 +19249,7 @@ func (x *RemoveHostPatternRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveHostPatternRequest.ProtoReflect.Descriptor instead.
 func (*RemoveHostPatternRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{267}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{301}
 }
 
 func (x *RemoveHostPatternRequest) GetBotId() string {
@@ -17248,7 +19283,7 @@ type SetOtherProtocolsRequest struct {
 
 func (x *SetOtherProtocolsRequest) Reset() {
 	*x = SetOtherProtocolsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[268]
+	mi := &file_silo_v1_ui_proto_msgTypes[302]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17260,7 +19295,7 @@ func (x *SetOtherProtocolsRequest) String() string {
 func (*SetOtherProtocolsRequest) ProtoMessage() {}
 
 func (x *SetOtherProtocolsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[268]
+	mi := &file_silo_v1_ui_proto_msgTypes[302]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17273,7 +19308,7 @@ func (x *SetOtherProtocolsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetOtherProtocolsRequest.ProtoReflect.Descriptor instead.
 func (*SetOtherProtocolsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{268}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{302}
 }
 
 func (x *SetOtherProtocolsRequest) GetBotId() string {
@@ -17305,7 +19340,7 @@ type FeedStatus struct {
 
 func (x *FeedStatus) Reset() {
 	*x = FeedStatus{}
-	mi := &file_silo_v1_ui_proto_msgTypes[269]
+	mi := &file_silo_v1_ui_proto_msgTypes[303]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17317,7 +19352,7 @@ func (x *FeedStatus) String() string {
 func (*FeedStatus) ProtoMessage() {}
 
 func (x *FeedStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[269]
+	mi := &file_silo_v1_ui_proto_msgTypes[303]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17330,7 +19365,7 @@ func (x *FeedStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedStatus.ProtoReflect.Descriptor instead.
 func (*FeedStatus) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{269}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{303}
 }
 
 func (x *FeedStatus) GetId() string {
@@ -17384,7 +19419,7 @@ type EgressStatus struct {
 
 func (x *EgressStatus) Reset() {
 	*x = EgressStatus{}
-	mi := &file_silo_v1_ui_proto_msgTypes[270]
+	mi := &file_silo_v1_ui_proto_msgTypes[304]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17396,7 +19431,7 @@ func (x *EgressStatus) String() string {
 func (*EgressStatus) ProtoMessage() {}
 
 func (x *EgressStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[270]
+	mi := &file_silo_v1_ui_proto_msgTypes[304]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17409,7 +19444,7 @@ func (x *EgressStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EgressStatus.ProtoReflect.Descriptor instead.
 func (*EgressStatus) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{270}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{304}
 }
 
 func (x *EgressStatus) GetEnabled() bool {
@@ -17462,7 +19497,7 @@ type GetEgressStatusRequest struct {
 
 func (x *GetEgressStatusRequest) Reset() {
 	*x = GetEgressStatusRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[271]
+	mi := &file_silo_v1_ui_proto_msgTypes[305]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17474,7 +19509,7 @@ func (x *GetEgressStatusRequest) String() string {
 func (*GetEgressStatusRequest) ProtoMessage() {}
 
 func (x *GetEgressStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[271]
+	mi := &file_silo_v1_ui_proto_msgTypes[305]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17487,7 +19522,7 @@ func (x *GetEgressStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEgressStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetEgressStatusRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{271}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{305}
 }
 
 type RotateEgressCARequest struct {
@@ -17498,7 +19533,7 @@ type RotateEgressCARequest struct {
 
 func (x *RotateEgressCARequest) Reset() {
 	*x = RotateEgressCARequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[272]
+	mi := &file_silo_v1_ui_proto_msgTypes[306]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17510,7 +19545,7 @@ func (x *RotateEgressCARequest) String() string {
 func (*RotateEgressCARequest) ProtoMessage() {}
 
 func (x *RotateEgressCARequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[272]
+	mi := &file_silo_v1_ui_proto_msgTypes[306]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17523,7 +19558,7 @@ func (x *RotateEgressCARequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateEgressCARequest.ProtoReflect.Descriptor instead.
 func (*RotateEgressCARequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{272}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{306}
 }
 
 type LLMLog struct {
@@ -17547,7 +19582,7 @@ type LLMLog struct {
 
 func (x *LLMLog) Reset() {
 	*x = LLMLog{}
-	mi := &file_silo_v1_ui_proto_msgTypes[273]
+	mi := &file_silo_v1_ui_proto_msgTypes[307]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17559,7 +19594,7 @@ func (x *LLMLog) String() string {
 func (*LLMLog) ProtoMessage() {}
 
 func (x *LLMLog) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[273]
+	mi := &file_silo_v1_ui_proto_msgTypes[307]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17572,7 +19607,7 @@ func (x *LLMLog) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMLog.ProtoReflect.Descriptor instead.
 func (*LLMLog) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{273}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{307}
 }
 
 func (x *LLMLog) GetId() string {
@@ -17669,7 +19704,7 @@ type ListLLMLogsRequest struct {
 
 func (x *ListLLMLogsRequest) Reset() {
 	*x = ListLLMLogsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[274]
+	mi := &file_silo_v1_ui_proto_msgTypes[308]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17681,7 +19716,7 @@ func (x *ListLLMLogsRequest) String() string {
 func (*ListLLMLogsRequest) ProtoMessage() {}
 
 func (x *ListLLMLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[274]
+	mi := &file_silo_v1_ui_proto_msgTypes[308]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17694,7 +19729,7 @@ func (x *ListLLMLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLLMLogsRequest.ProtoReflect.Descriptor instead.
 func (*ListLLMLogsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{274}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{308}
 }
 
 func (x *ListLLMLogsRequest) GetBotId() string {
@@ -17715,7 +19750,7 @@ type ListLLMLogsResponse struct {
 
 func (x *ListLLMLogsResponse) Reset() {
 	*x = ListLLMLogsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[275]
+	mi := &file_silo_v1_ui_proto_msgTypes[309]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17727,7 +19762,7 @@ func (x *ListLLMLogsResponse) String() string {
 func (*ListLLMLogsResponse) ProtoMessage() {}
 
 func (x *ListLLMLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[275]
+	mi := &file_silo_v1_ui_proto_msgTypes[309]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17740,7 +19775,7 @@ func (x *ListLLMLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLLMLogsResponse.ProtoReflect.Descriptor instead.
 func (*ListLLMLogsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{275}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{309}
 }
 
 func (x *ListLLMLogsResponse) GetLogs() []*LLMLog {
@@ -17766,7 +19801,7 @@ type HeaderKey struct {
 
 func (x *HeaderKey) Reset() {
 	*x = HeaderKey{}
-	mi := &file_silo_v1_ui_proto_msgTypes[276]
+	mi := &file_silo_v1_ui_proto_msgTypes[310]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17778,7 +19813,7 @@ func (x *HeaderKey) String() string {
 func (*HeaderKey) ProtoMessage() {}
 
 func (x *HeaderKey) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[276]
+	mi := &file_silo_v1_ui_proto_msgTypes[310]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17791,7 +19826,7 @@ func (x *HeaderKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeaderKey.ProtoReflect.Descriptor instead.
 func (*HeaderKey) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{276}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{310}
 }
 
 func (x *HeaderKey) GetName() string {
@@ -17812,7 +19847,7 @@ type EnvKey struct {
 
 func (x *EnvKey) Reset() {
 	*x = EnvKey{}
-	mi := &file_silo_v1_ui_proto_msgTypes[277]
+	mi := &file_silo_v1_ui_proto_msgTypes[311]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17824,7 +19859,7 @@ func (x *EnvKey) String() string {
 func (*EnvKey) ProtoMessage() {}
 
 func (x *EnvKey) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[277]
+	mi := &file_silo_v1_ui_proto_msgTypes[311]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17837,7 +19872,7 @@ func (x *EnvKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvKey.ProtoReflect.Descriptor instead.
 func (*EnvKey) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{277}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{311}
 }
 
 func (x *EnvKey) GetName() string {
@@ -17872,7 +19907,7 @@ type EnvInput struct {
 
 func (x *EnvInput) Reset() {
 	*x = EnvInput{}
-	mi := &file_silo_v1_ui_proto_msgTypes[278]
+	mi := &file_silo_v1_ui_proto_msgTypes[312]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17884,7 +19919,7 @@ func (x *EnvInput) String() string {
 func (*EnvInput) ProtoMessage() {}
 
 func (x *EnvInput) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[278]
+	mi := &file_silo_v1_ui_proto_msgTypes[312]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17897,7 +19932,7 @@ func (x *EnvInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvInput.ProtoReflect.Descriptor instead.
 func (*EnvInput) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{278}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{312}
 }
 
 func (x *EnvInput) GetName() string {
@@ -17986,7 +20021,7 @@ type Connector struct {
 
 func (x *Connector) Reset() {
 	*x = Connector{}
-	mi := &file_silo_v1_ui_proto_msgTypes[279]
+	mi := &file_silo_v1_ui_proto_msgTypes[313]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17998,7 +20033,7 @@ func (x *Connector) String() string {
 func (*Connector) ProtoMessage() {}
 
 func (x *Connector) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[279]
+	mi := &file_silo_v1_ui_proto_msgTypes[313]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18011,7 +20046,7 @@ func (x *Connector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connector.ProtoReflect.Descriptor instead.
 func (*Connector) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{279}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{313}
 }
 
 func (x *Connector) GetId() string {
@@ -18295,7 +20330,7 @@ type ListConnectorsRequest struct {
 
 func (x *ListConnectorsRequest) Reset() {
 	*x = ListConnectorsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[280]
+	mi := &file_silo_v1_ui_proto_msgTypes[314]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18307,7 +20342,7 @@ func (x *ListConnectorsRequest) String() string {
 func (*ListConnectorsRequest) ProtoMessage() {}
 
 func (x *ListConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[280]
+	mi := &file_silo_v1_ui_proto_msgTypes[314]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18320,7 +20355,7 @@ func (x *ListConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*ListConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{280}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{314}
 }
 
 type ListConnectorsResponse struct {
@@ -18332,7 +20367,7 @@ type ListConnectorsResponse struct {
 
 func (x *ListConnectorsResponse) Reset() {
 	*x = ListConnectorsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[281]
+	mi := &file_silo_v1_ui_proto_msgTypes[315]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18344,7 +20379,7 @@ func (x *ListConnectorsResponse) String() string {
 func (*ListConnectorsResponse) ProtoMessage() {}
 
 func (x *ListConnectorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[281]
+	mi := &file_silo_v1_ui_proto_msgTypes[315]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18357,7 +20392,7 @@ func (x *ListConnectorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectorsResponse.ProtoReflect.Descriptor instead.
 func (*ListConnectorsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{281}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{315}
 }
 
 func (x *ListConnectorsResponse) GetConnectors() []*Connector {
@@ -18377,7 +20412,7 @@ type HeaderInput struct {
 
 func (x *HeaderInput) Reset() {
 	*x = HeaderInput{}
-	mi := &file_silo_v1_ui_proto_msgTypes[282]
+	mi := &file_silo_v1_ui_proto_msgTypes[316]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18389,7 +20424,7 @@ func (x *HeaderInput) String() string {
 func (*HeaderInput) ProtoMessage() {}
 
 func (x *HeaderInput) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[282]
+	mi := &file_silo_v1_ui_proto_msgTypes[316]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18402,7 +20437,7 @@ func (x *HeaderInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeaderInput.ProtoReflect.Descriptor instead.
 func (*HeaderInput) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{282}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{316}
 }
 
 func (x *HeaderInput) GetName() string {
@@ -18448,7 +20483,7 @@ type CreateConnectorRequest struct {
 
 func (x *CreateConnectorRequest) Reset() {
 	*x = CreateConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[283]
+	mi := &file_silo_v1_ui_proto_msgTypes[317]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18460,7 +20495,7 @@ func (x *CreateConnectorRequest) String() string {
 func (*CreateConnectorRequest) ProtoMessage() {}
 
 func (x *CreateConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[283]
+	mi := &file_silo_v1_ui_proto_msgTypes[317]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18473,7 +20508,7 @@ func (x *CreateConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateConnectorRequest.ProtoReflect.Descriptor instead.
 func (*CreateConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{283}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{317}
 }
 
 func (x *CreateConnectorRequest) GetName() string {
@@ -18650,7 +20685,7 @@ type UpdateConnectorRequest struct {
 
 func (x *UpdateConnectorRequest) Reset() {
 	*x = UpdateConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[284]
+	mi := &file_silo_v1_ui_proto_msgTypes[318]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18662,7 +20697,7 @@ func (x *UpdateConnectorRequest) String() string {
 func (*UpdateConnectorRequest) ProtoMessage() {}
 
 func (x *UpdateConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[284]
+	mi := &file_silo_v1_ui_proto_msgTypes[318]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18675,7 +20710,7 @@ func (x *UpdateConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConnectorRequest.ProtoReflect.Descriptor instead.
 func (*UpdateConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{284}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{318}
 }
 
 func (x *UpdateConnectorRequest) GetId() string {
@@ -18848,7 +20883,7 @@ type DeleteConnectorRequest struct {
 
 func (x *DeleteConnectorRequest) Reset() {
 	*x = DeleteConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[285]
+	mi := &file_silo_v1_ui_proto_msgTypes[319]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18860,7 +20895,7 @@ func (x *DeleteConnectorRequest) String() string {
 func (*DeleteConnectorRequest) ProtoMessage() {}
 
 func (x *DeleteConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[285]
+	mi := &file_silo_v1_ui_proto_msgTypes[319]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18873,7 +20908,7 @@ func (x *DeleteConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteConnectorRequest.ProtoReflect.Descriptor instead.
 func (*DeleteConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{285}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{319}
 }
 
 func (x *DeleteConnectorRequest) GetId() string {
@@ -18891,7 +20926,7 @@ type DeleteConnectorResponse struct {
 
 func (x *DeleteConnectorResponse) Reset() {
 	*x = DeleteConnectorResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[286]
+	mi := &file_silo_v1_ui_proto_msgTypes[320]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18903,7 +20938,7 @@ func (x *DeleteConnectorResponse) String() string {
 func (*DeleteConnectorResponse) ProtoMessage() {}
 
 func (x *DeleteConnectorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[286]
+	mi := &file_silo_v1_ui_proto_msgTypes[320]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18916,7 +20951,7 @@ func (x *DeleteConnectorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteConnectorResponse.ProtoReflect.Descriptor instead.
 func (*DeleteConnectorResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{286}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{320}
 }
 
 // BotConnector is a Workspace connection granted to one Bot: the grant's id,
@@ -18938,7 +20973,7 @@ type BotConnector struct {
 
 func (x *BotConnector) Reset() {
 	*x = BotConnector{}
-	mi := &file_silo_v1_ui_proto_msgTypes[287]
+	mi := &file_silo_v1_ui_proto_msgTypes[321]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18950,7 +20985,7 @@ func (x *BotConnector) String() string {
 func (*BotConnector) ProtoMessage() {}
 
 func (x *BotConnector) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[287]
+	mi := &file_silo_v1_ui_proto_msgTypes[321]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18963,7 +20998,7 @@ func (x *BotConnector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotConnector.ProtoReflect.Descriptor instead.
 func (*BotConnector) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{287}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{321}
 }
 
 func (x *BotConnector) GetId() string {
@@ -19031,7 +21066,7 @@ type ListBotConnectorsRequest struct {
 
 func (x *ListBotConnectorsRequest) Reset() {
 	*x = ListBotConnectorsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[288]
+	mi := &file_silo_v1_ui_proto_msgTypes[322]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19043,7 +21078,7 @@ func (x *ListBotConnectorsRequest) String() string {
 func (*ListBotConnectorsRequest) ProtoMessage() {}
 
 func (x *ListBotConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[288]
+	mi := &file_silo_v1_ui_proto_msgTypes[322]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19056,7 +21091,7 @@ func (x *ListBotConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{288}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{322}
 }
 
 func (x *ListBotConnectorsRequest) GetBotId() string {
@@ -19075,7 +21110,7 @@ type ListBotConnectorsResponse struct {
 
 func (x *ListBotConnectorsResponse) Reset() {
 	*x = ListBotConnectorsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[289]
+	mi := &file_silo_v1_ui_proto_msgTypes[323]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19087,7 +21122,7 @@ func (x *ListBotConnectorsResponse) String() string {
 func (*ListBotConnectorsResponse) ProtoMessage() {}
 
 func (x *ListBotConnectorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[289]
+	mi := &file_silo_v1_ui_proto_msgTypes[323]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19100,7 +21135,7 @@ func (x *ListBotConnectorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotConnectorsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotConnectorsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{289}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{323}
 }
 
 func (x *ListBotConnectorsResponse) GetConnectors() []*BotConnector {
@@ -19120,7 +21155,7 @@ type AttachConnectorRequest struct {
 
 func (x *AttachConnectorRequest) Reset() {
 	*x = AttachConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[290]
+	mi := &file_silo_v1_ui_proto_msgTypes[324]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19132,7 +21167,7 @@ func (x *AttachConnectorRequest) String() string {
 func (*AttachConnectorRequest) ProtoMessage() {}
 
 func (x *AttachConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[290]
+	mi := &file_silo_v1_ui_proto_msgTypes[324]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19145,7 +21180,7 @@ func (x *AttachConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachConnectorRequest.ProtoReflect.Descriptor instead.
 func (*AttachConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{290}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{324}
 }
 
 func (x *AttachConnectorRequest) GetBotId() string {
@@ -19198,7 +21233,7 @@ type CreateBotConnectorRequest struct {
 
 func (x *CreateBotConnectorRequest) Reset() {
 	*x = CreateBotConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[291]
+	mi := &file_silo_v1_ui_proto_msgTypes[325]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19210,7 +21245,7 @@ func (x *CreateBotConnectorRequest) String() string {
 func (*CreateBotConnectorRequest) ProtoMessage() {}
 
 func (x *CreateBotConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[291]
+	mi := &file_silo_v1_ui_proto_msgTypes[325]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19223,7 +21258,7 @@ func (x *CreateBotConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBotConnectorRequest.ProtoReflect.Descriptor instead.
 func (*CreateBotConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{291}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{325}
 }
 
 func (x *CreateBotConnectorRequest) GetBotId() string {
@@ -19397,7 +21432,7 @@ type DetachConnectorRequest struct {
 
 func (x *DetachConnectorRequest) Reset() {
 	*x = DetachConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[292]
+	mi := &file_silo_v1_ui_proto_msgTypes[326]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19409,7 +21444,7 @@ func (x *DetachConnectorRequest) String() string {
 func (*DetachConnectorRequest) ProtoMessage() {}
 
 func (x *DetachConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[292]
+	mi := &file_silo_v1_ui_proto_msgTypes[326]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19422,7 +21457,7 @@ func (x *DetachConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetachConnectorRequest.ProtoReflect.Descriptor instead.
 func (*DetachConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{292}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{326}
 }
 
 func (x *DetachConnectorRequest) GetBotId() string {
@@ -19447,7 +21482,7 @@ type DetachConnectorResponse struct {
 
 func (x *DetachConnectorResponse) Reset() {
 	*x = DetachConnectorResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[293]
+	mi := &file_silo_v1_ui_proto_msgTypes[327]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19459,7 +21494,7 @@ func (x *DetachConnectorResponse) String() string {
 func (*DetachConnectorResponse) ProtoMessage() {}
 
 func (x *DetachConnectorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[293]
+	mi := &file_silo_v1_ui_proto_msgTypes[327]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19472,7 +21507,7 @@ func (x *DetachConnectorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DetachConnectorResponse.ProtoReflect.Descriptor instead.
 func (*DetachConnectorResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{293}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{327}
 }
 
 type ListSpaceConnectorsRequest struct {
@@ -19484,7 +21519,7 @@ type ListSpaceConnectorsRequest struct {
 
 func (x *ListSpaceConnectorsRequest) Reset() {
 	*x = ListSpaceConnectorsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[294]
+	mi := &file_silo_v1_ui_proto_msgTypes[328]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19496,7 +21531,7 @@ func (x *ListSpaceConnectorsRequest) String() string {
 func (*ListSpaceConnectorsRequest) ProtoMessage() {}
 
 func (x *ListSpaceConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[294]
+	mi := &file_silo_v1_ui_proto_msgTypes[328]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19509,7 +21544,7 @@ func (x *ListSpaceConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpaceConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*ListSpaceConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{294}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{328}
 }
 
 func (x *ListSpaceConnectorsRequest) GetSpaceId() string {
@@ -19529,7 +21564,7 @@ type GrantConnectorRequest struct {
 
 func (x *GrantConnectorRequest) Reset() {
 	*x = GrantConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[295]
+	mi := &file_silo_v1_ui_proto_msgTypes[329]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19541,7 +21576,7 @@ func (x *GrantConnectorRequest) String() string {
 func (*GrantConnectorRequest) ProtoMessage() {}
 
 func (x *GrantConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[295]
+	mi := &file_silo_v1_ui_proto_msgTypes[329]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19554,7 +21589,7 @@ func (x *GrantConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantConnectorRequest.ProtoReflect.Descriptor instead.
 func (*GrantConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{295}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{329}
 }
 
 func (x *GrantConnectorRequest) GetBotId() string {
@@ -19581,7 +21616,7 @@ type RevokeConnectorRequest struct {
 
 func (x *RevokeConnectorRequest) Reset() {
 	*x = RevokeConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[296]
+	mi := &file_silo_v1_ui_proto_msgTypes[330]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19593,7 +21628,7 @@ func (x *RevokeConnectorRequest) String() string {
 func (*RevokeConnectorRequest) ProtoMessage() {}
 
 func (x *RevokeConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[296]
+	mi := &file_silo_v1_ui_proto_msgTypes[330]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19606,7 +21641,7 @@ func (x *RevokeConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeConnectorRequest.ProtoReflect.Descriptor instead.
 func (*RevokeConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{296}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{330}
 }
 
 func (x *RevokeConnectorRequest) GetBotId() string {
@@ -19631,7 +21666,7 @@ type RevokeConnectorResponse struct {
 
 func (x *RevokeConnectorResponse) Reset() {
 	*x = RevokeConnectorResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[297]
+	mi := &file_silo_v1_ui_proto_msgTypes[331]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19643,7 +21678,7 @@ func (x *RevokeConnectorResponse) String() string {
 func (*RevokeConnectorResponse) ProtoMessage() {}
 
 func (x *RevokeConnectorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[297]
+	mi := &file_silo_v1_ui_proto_msgTypes[331]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19656,7 +21691,7 @@ func (x *RevokeConnectorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeConnectorResponse.ProtoReflect.Descriptor instead.
 func (*RevokeConnectorResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{297}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{331}
 }
 
 type RefreshBotConnectorRequest struct {
@@ -19669,7 +21704,7 @@ type RefreshBotConnectorRequest struct {
 
 func (x *RefreshBotConnectorRequest) Reset() {
 	*x = RefreshBotConnectorRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[298]
+	mi := &file_silo_v1_ui_proto_msgTypes[332]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19681,7 +21716,7 @@ func (x *RefreshBotConnectorRequest) String() string {
 func (*RefreshBotConnectorRequest) ProtoMessage() {}
 
 func (x *RefreshBotConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[298]
+	mi := &file_silo_v1_ui_proto_msgTypes[332]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19694,7 +21729,7 @@ func (x *RefreshBotConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshBotConnectorRequest.ProtoReflect.Descriptor instead.
 func (*RefreshBotConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{298}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{332}
 }
 
 func (x *RefreshBotConnectorRequest) GetBotId() string {
@@ -19714,17 +21749,20 @@ func (x *RefreshBotConnectorRequest) GetId() string {
 // StartConnectorAuthRequest signs a connection in: through a Bot's grant
 // (bot_id + id), or from the Workspace's hub by its id (connector_id).
 type StartConnectorAuthRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BotId         string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	ConnectorId   string                 `protobuf:"bytes,3,opt,name=connector_id,json=connectorId,proto3" json:"connector_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BotId       string                 `protobuf:"bytes,1,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Id          string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	ConnectorId string                 `protobuf:"bytes,3,opt,name=connector_id,json=connectorId,proto3" json:"connector_id,omitempty"`
+	// Who can use this sign-in: false (Only my Bots) lets it reach only Bots
+	// the signer alone uses; true, any Bot of the Workspace.
+	Shared        bool `protobuf:"varint,4,opt,name=shared,proto3" json:"shared,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartConnectorAuthRequest) Reset() {
 	*x = StartConnectorAuthRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[299]
+	mi := &file_silo_v1_ui_proto_msgTypes[333]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19736,7 +21774,7 @@ func (x *StartConnectorAuthRequest) String() string {
 func (*StartConnectorAuthRequest) ProtoMessage() {}
 
 func (x *StartConnectorAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[299]
+	mi := &file_silo_v1_ui_proto_msgTypes[333]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19749,7 +21787,7 @@ func (x *StartConnectorAuthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartConnectorAuthRequest.ProtoReflect.Descriptor instead.
 func (*StartConnectorAuthRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{299}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{333}
 }
 
 func (x *StartConnectorAuthRequest) GetBotId() string {
@@ -19773,6 +21811,13 @@ func (x *StartConnectorAuthRequest) GetConnectorId() string {
 	return ""
 }
 
+func (x *StartConnectorAuthRequest) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
 type StartConnectorAuthResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AuthorizeUrl  string                 `protobuf:"bytes,1,opt,name=authorize_url,json=authorizeUrl,proto3" json:"authorize_url,omitempty"`
@@ -19782,7 +21827,7 @@ type StartConnectorAuthResponse struct {
 
 func (x *StartConnectorAuthResponse) Reset() {
 	*x = StartConnectorAuthResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[300]
+	mi := &file_silo_v1_ui_proto_msgTypes[334]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19794,7 +21839,7 @@ func (x *StartConnectorAuthResponse) String() string {
 func (*StartConnectorAuthResponse) ProtoMessage() {}
 
 func (x *StartConnectorAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[300]
+	mi := &file_silo_v1_ui_proto_msgTypes[334]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19807,7 +21852,7 @@ func (x *StartConnectorAuthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartConnectorAuthResponse.ProtoReflect.Descriptor instead.
 func (*StartConnectorAuthResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{300}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{334}
 }
 
 func (x *StartConnectorAuthResponse) GetAuthorizeUrl() string {
@@ -19825,7 +21870,7 @@ type SeedConnectorsRequest struct {
 
 func (x *SeedConnectorsRequest) Reset() {
 	*x = SeedConnectorsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[301]
+	mi := &file_silo_v1_ui_proto_msgTypes[335]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19837,7 +21882,7 @@ func (x *SeedConnectorsRequest) String() string {
 func (*SeedConnectorsRequest) ProtoMessage() {}
 
 func (x *SeedConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[301]
+	mi := &file_silo_v1_ui_proto_msgTypes[335]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19850,7 +21895,7 @@ func (x *SeedConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*SeedConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{301}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{335}
 }
 
 type SeedConnectorsResponse struct {
@@ -19861,7 +21906,7 @@ type SeedConnectorsResponse struct {
 
 func (x *SeedConnectorsResponse) Reset() {
 	*x = SeedConnectorsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[302]
+	mi := &file_silo_v1_ui_proto_msgTypes[336]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19873,7 +21918,7 @@ func (x *SeedConnectorsResponse) String() string {
 func (*SeedConnectorsResponse) ProtoMessage() {}
 
 func (x *SeedConnectorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[302]
+	mi := &file_silo_v1_ui_proto_msgTypes[336]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19886,7 +21931,7 @@ func (x *SeedConnectorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedConnectorsResponse.ProtoReflect.Descriptor instead.
 func (*SeedConnectorsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{302}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{336}
 }
 
 type SeedSkillsRequest struct {
@@ -19897,7 +21942,7 @@ type SeedSkillsRequest struct {
 
 func (x *SeedSkillsRequest) Reset() {
 	*x = SeedSkillsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[303]
+	mi := &file_silo_v1_ui_proto_msgTypes[337]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19909,7 +21954,7 @@ func (x *SeedSkillsRequest) String() string {
 func (*SeedSkillsRequest) ProtoMessage() {}
 
 func (x *SeedSkillsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[303]
+	mi := &file_silo_v1_ui_proto_msgTypes[337]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19922,7 +21967,7 @@ func (x *SeedSkillsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedSkillsRequest.ProtoReflect.Descriptor instead.
 func (*SeedSkillsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{303}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{337}
 }
 
 type SeedSkillsResponse struct {
@@ -19933,7 +21978,7 @@ type SeedSkillsResponse struct {
 
 func (x *SeedSkillsResponse) Reset() {
 	*x = SeedSkillsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[304]
+	mi := &file_silo_v1_ui_proto_msgTypes[338]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19945,7 +21990,7 @@ func (x *SeedSkillsResponse) String() string {
 func (*SeedSkillsResponse) ProtoMessage() {}
 
 func (x *SeedSkillsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[304]
+	mi := &file_silo_v1_ui_proto_msgTypes[338]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19958,7 +22003,7 @@ func (x *SeedSkillsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedSkillsResponse.ProtoReflect.Descriptor instead.
 func (*SeedSkillsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{304}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{338}
 }
 
 type Skill struct {
@@ -19979,7 +22024,7 @@ type Skill struct {
 
 func (x *Skill) Reset() {
 	*x = Skill{}
-	mi := &file_silo_v1_ui_proto_msgTypes[305]
+	mi := &file_silo_v1_ui_proto_msgTypes[339]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19991,7 +22036,7 @@ func (x *Skill) String() string {
 func (*Skill) ProtoMessage() {}
 
 func (x *Skill) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[305]
+	mi := &file_silo_v1_ui_proto_msgTypes[339]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20004,7 +22049,7 @@ func (x *Skill) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Skill.ProtoReflect.Descriptor instead.
 func (*Skill) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{305}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{339}
 }
 
 func (x *Skill) GetName() string {
@@ -20068,7 +22113,7 @@ type ListSkillsRequest struct {
 
 func (x *ListSkillsRequest) Reset() {
 	*x = ListSkillsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[306]
+	mi := &file_silo_v1_ui_proto_msgTypes[340]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20080,7 +22125,7 @@ func (x *ListSkillsRequest) String() string {
 func (*ListSkillsRequest) ProtoMessage() {}
 
 func (x *ListSkillsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[306]
+	mi := &file_silo_v1_ui_proto_msgTypes[340]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20093,7 +22138,7 @@ func (x *ListSkillsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSkillsRequest.ProtoReflect.Descriptor instead.
 func (*ListSkillsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{306}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{340}
 }
 
 func (x *ListSkillsRequest) GetScope() string {
@@ -20119,7 +22164,7 @@ type ListSkillsResponse struct {
 
 func (x *ListSkillsResponse) Reset() {
 	*x = ListSkillsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[307]
+	mi := &file_silo_v1_ui_proto_msgTypes[341]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20131,7 +22176,7 @@ func (x *ListSkillsResponse) String() string {
 func (*ListSkillsResponse) ProtoMessage() {}
 
 func (x *ListSkillsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[307]
+	mi := &file_silo_v1_ui_proto_msgTypes[341]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20144,7 +22189,7 @@ func (x *ListSkillsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSkillsResponse.ProtoReflect.Descriptor instead.
 func (*ListSkillsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{307}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{341}
 }
 
 func (x *ListSkillsResponse) GetSkills() []*Skill {
@@ -20167,7 +22212,7 @@ type InstallSkillRequest struct {
 
 func (x *InstallSkillRequest) Reset() {
 	*x = InstallSkillRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[308]
+	mi := &file_silo_v1_ui_proto_msgTypes[342]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20179,7 +22224,7 @@ func (x *InstallSkillRequest) String() string {
 func (*InstallSkillRequest) ProtoMessage() {}
 
 func (x *InstallSkillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[308]
+	mi := &file_silo_v1_ui_proto_msgTypes[342]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20192,7 +22237,7 @@ func (x *InstallSkillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallSkillRequest.ProtoReflect.Descriptor instead.
 func (*InstallSkillRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{308}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{342}
 }
 
 func (x *InstallSkillRequest) GetScope() string {
@@ -20240,7 +22285,7 @@ type InstallSkillResponse struct {
 
 func (x *InstallSkillResponse) Reset() {
 	*x = InstallSkillResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[309]
+	mi := &file_silo_v1_ui_proto_msgTypes[343]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20252,7 +22297,7 @@ func (x *InstallSkillResponse) String() string {
 func (*InstallSkillResponse) ProtoMessage() {}
 
 func (x *InstallSkillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[309]
+	mi := &file_silo_v1_ui_proto_msgTypes[343]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20265,7 +22310,7 @@ func (x *InstallSkillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallSkillResponse.ProtoReflect.Descriptor instead.
 func (*InstallSkillResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{309}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{343}
 }
 
 func (x *InstallSkillResponse) GetInstalled() []string {
@@ -20293,7 +22338,7 @@ type DeleteSkillRequest struct {
 
 func (x *DeleteSkillRequest) Reset() {
 	*x = DeleteSkillRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[310]
+	mi := &file_silo_v1_ui_proto_msgTypes[344]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20305,7 +22350,7 @@ func (x *DeleteSkillRequest) String() string {
 func (*DeleteSkillRequest) ProtoMessage() {}
 
 func (x *DeleteSkillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[310]
+	mi := &file_silo_v1_ui_proto_msgTypes[344]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20318,7 +22363,7 @@ func (x *DeleteSkillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSkillRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSkillRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{310}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{344}
 }
 
 func (x *DeleteSkillRequest) GetScope() string {
@@ -20350,7 +22395,7 @@ type DeleteSkillResponse struct {
 
 func (x *DeleteSkillResponse) Reset() {
 	*x = DeleteSkillResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[311]
+	mi := &file_silo_v1_ui_proto_msgTypes[345]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20362,7 +22407,7 @@ func (x *DeleteSkillResponse) String() string {
 func (*DeleteSkillResponse) ProtoMessage() {}
 
 func (x *DeleteSkillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[311]
+	mi := &file_silo_v1_ui_proto_msgTypes[345]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20375,7 +22420,7 @@ func (x *DeleteSkillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSkillResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSkillResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{311}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{345}
 }
 
 type BotSkill struct {
@@ -20391,7 +22436,7 @@ type BotSkill struct {
 
 func (x *BotSkill) Reset() {
 	*x = BotSkill{}
-	mi := &file_silo_v1_ui_proto_msgTypes[312]
+	mi := &file_silo_v1_ui_proto_msgTypes[346]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20403,7 +22448,7 @@ func (x *BotSkill) String() string {
 func (*BotSkill) ProtoMessage() {}
 
 func (x *BotSkill) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[312]
+	mi := &file_silo_v1_ui_proto_msgTypes[346]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20416,7 +22461,7 @@ func (x *BotSkill) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotSkill.ProtoReflect.Descriptor instead.
 func (*BotSkill) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{312}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{346}
 }
 
 func (x *BotSkill) GetName() string {
@@ -20463,7 +22508,7 @@ type ListBotSkillsRequest struct {
 
 func (x *ListBotSkillsRequest) Reset() {
 	*x = ListBotSkillsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[313]
+	mi := &file_silo_v1_ui_proto_msgTypes[347]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20475,7 +22520,7 @@ func (x *ListBotSkillsRequest) String() string {
 func (*ListBotSkillsRequest) ProtoMessage() {}
 
 func (x *ListBotSkillsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[313]
+	mi := &file_silo_v1_ui_proto_msgTypes[347]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20488,7 +22533,7 @@ func (x *ListBotSkillsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotSkillsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotSkillsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{313}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{347}
 }
 
 func (x *ListBotSkillsRequest) GetBotId() string {
@@ -20507,7 +22552,7 @@ type ListBotSkillsResponse struct {
 
 func (x *ListBotSkillsResponse) Reset() {
 	*x = ListBotSkillsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[314]
+	mi := &file_silo_v1_ui_proto_msgTypes[348]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20519,7 +22564,7 @@ func (x *ListBotSkillsResponse) String() string {
 func (*ListBotSkillsResponse) ProtoMessage() {}
 
 func (x *ListBotSkillsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[314]
+	mi := &file_silo_v1_ui_proto_msgTypes[348]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20532,7 +22577,7 @@ func (x *ListBotSkillsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotSkillsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotSkillsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{314}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{348}
 }
 
 func (x *ListBotSkillsResponse) GetSkills() []*BotSkill {
@@ -20554,7 +22599,7 @@ type SetBotSkillRequest struct {
 
 func (x *SetBotSkillRequest) Reset() {
 	*x = SetBotSkillRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[315]
+	mi := &file_silo_v1_ui_proto_msgTypes[349]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20566,7 +22611,7 @@ func (x *SetBotSkillRequest) String() string {
 func (*SetBotSkillRequest) ProtoMessage() {}
 
 func (x *SetBotSkillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[315]
+	mi := &file_silo_v1_ui_proto_msgTypes[349]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20579,7 +22624,7 @@ func (x *SetBotSkillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBotSkillRequest.ProtoReflect.Descriptor instead.
 func (*SetBotSkillRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{315}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{349}
 }
 
 func (x *SetBotSkillRequest) GetBotId() string {
@@ -20622,7 +22667,7 @@ type ListSkillFilesRequest struct {
 
 func (x *ListSkillFilesRequest) Reset() {
 	*x = ListSkillFilesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[316]
+	mi := &file_silo_v1_ui_proto_msgTypes[350]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20634,7 +22679,7 @@ func (x *ListSkillFilesRequest) String() string {
 func (*ListSkillFilesRequest) ProtoMessage() {}
 
 func (x *ListSkillFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[316]
+	mi := &file_silo_v1_ui_proto_msgTypes[350]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20647,7 +22692,7 @@ func (x *ListSkillFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSkillFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListSkillFilesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{316}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{350}
 }
 
 func (x *ListSkillFilesRequest) GetScope() string {
@@ -20690,7 +22735,7 @@ type ReadSkillFileRequest struct {
 
 func (x *ReadSkillFileRequest) Reset() {
 	*x = ReadSkillFileRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[317]
+	mi := &file_silo_v1_ui_proto_msgTypes[351]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20702,7 +22747,7 @@ func (x *ReadSkillFileRequest) String() string {
 func (*ReadSkillFileRequest) ProtoMessage() {}
 
 func (x *ReadSkillFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[317]
+	mi := &file_silo_v1_ui_proto_msgTypes[351]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20715,7 +22760,7 @@ func (x *ReadSkillFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadSkillFileRequest.ProtoReflect.Descriptor instead.
 func (*ReadSkillFileRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{317}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{351}
 }
 
 func (x *ReadSkillFileRequest) GetScope() string {
@@ -20761,7 +22806,7 @@ type SaveSkillRequest struct {
 
 func (x *SaveSkillRequest) Reset() {
 	*x = SaveSkillRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[318]
+	mi := &file_silo_v1_ui_proto_msgTypes[352]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20773,7 +22818,7 @@ func (x *SaveSkillRequest) String() string {
 func (*SaveSkillRequest) ProtoMessage() {}
 
 func (x *SaveSkillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[318]
+	mi := &file_silo_v1_ui_proto_msgTypes[352]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20786,7 +22831,7 @@ func (x *SaveSkillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveSkillRequest.ProtoReflect.Descriptor instead.
 func (*SaveSkillRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{318}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{352}
 }
 
 func (x *SaveSkillRequest) GetBotId() string {
@@ -20833,7 +22878,7 @@ type SaveSkillResponse struct {
 
 func (x *SaveSkillResponse) Reset() {
 	*x = SaveSkillResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[319]
+	mi := &file_silo_v1_ui_proto_msgTypes[353]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20845,7 +22890,7 @@ func (x *SaveSkillResponse) String() string {
 func (*SaveSkillResponse) ProtoMessage() {}
 
 func (x *SaveSkillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[319]
+	mi := &file_silo_v1_ui_proto_msgTypes[353]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20858,7 +22903,7 @@ func (x *SaveSkillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveSkillResponse.ProtoReflect.Descriptor instead.
 func (*SaveSkillResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{319}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{353}
 }
 
 func (x *SaveSkillResponse) GetName() string {
@@ -20892,7 +22937,7 @@ type ArtifactVersion struct {
 
 func (x *ArtifactVersion) Reset() {
 	*x = ArtifactVersion{}
-	mi := &file_silo_v1_ui_proto_msgTypes[320]
+	mi := &file_silo_v1_ui_proto_msgTypes[354]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20904,7 +22949,7 @@ func (x *ArtifactVersion) String() string {
 func (*ArtifactVersion) ProtoMessage() {}
 
 func (x *ArtifactVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[320]
+	mi := &file_silo_v1_ui_proto_msgTypes[354]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20917,7 +22962,7 @@ func (x *ArtifactVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactVersion.ProtoReflect.Descriptor instead.
 func (*ArtifactVersion) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{320}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{354}
 }
 
 func (x *ArtifactVersion) GetN() int32 {
@@ -21031,7 +23076,7 @@ type ArtifactItem struct {
 
 func (x *ArtifactItem) Reset() {
 	*x = ArtifactItem{}
-	mi := &file_silo_v1_ui_proto_msgTypes[321]
+	mi := &file_silo_v1_ui_proto_msgTypes[355]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21043,7 +23088,7 @@ func (x *ArtifactItem) String() string {
 func (*ArtifactItem) ProtoMessage() {}
 
 func (x *ArtifactItem) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[321]
+	mi := &file_silo_v1_ui_proto_msgTypes[355]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21056,7 +23101,7 @@ func (x *ArtifactItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactItem.ProtoReflect.Descriptor instead.
 func (*ArtifactItem) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{321}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{355}
 }
 
 func (x *ArtifactItem) GetId() string {
@@ -21152,7 +23197,7 @@ type ListArtifactsRequest struct {
 
 func (x *ListArtifactsRequest) Reset() {
 	*x = ListArtifactsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[322]
+	mi := &file_silo_v1_ui_proto_msgTypes[356]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21164,7 +23209,7 @@ func (x *ListArtifactsRequest) String() string {
 func (*ListArtifactsRequest) ProtoMessage() {}
 
 func (x *ListArtifactsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[322]
+	mi := &file_silo_v1_ui_proto_msgTypes[356]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21177,7 +23222,7 @@ func (x *ListArtifactsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtifactsRequest.ProtoReflect.Descriptor instead.
 func (*ListArtifactsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{322}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{356}
 }
 
 func (x *ListArtifactsRequest) GetBotId() string {
@@ -21196,7 +23241,7 @@ type ListArtifactsResponse struct {
 
 func (x *ListArtifactsResponse) Reset() {
 	*x = ListArtifactsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[323]
+	mi := &file_silo_v1_ui_proto_msgTypes[357]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21208,7 +23253,7 @@ func (x *ListArtifactsResponse) String() string {
 func (*ListArtifactsResponse) ProtoMessage() {}
 
 func (x *ListArtifactsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[323]
+	mi := &file_silo_v1_ui_proto_msgTypes[357]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21221,7 +23266,7 @@ func (x *ListArtifactsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtifactsResponse.ProtoReflect.Descriptor instead.
 func (*ListArtifactsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{323}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{357}
 }
 
 func (x *ListArtifactsResponse) GetArtifacts() []*ArtifactItem {
@@ -21241,7 +23286,7 @@ type DeleteArtifactRequest struct {
 
 func (x *DeleteArtifactRequest) Reset() {
 	*x = DeleteArtifactRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[324]
+	mi := &file_silo_v1_ui_proto_msgTypes[358]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21253,7 +23298,7 @@ func (x *DeleteArtifactRequest) String() string {
 func (*DeleteArtifactRequest) ProtoMessage() {}
 
 func (x *DeleteArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[324]
+	mi := &file_silo_v1_ui_proto_msgTypes[358]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21266,7 +23311,7 @@ func (x *DeleteArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteArtifactRequest.ProtoReflect.Descriptor instead.
 func (*DeleteArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{324}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{358}
 }
 
 func (x *DeleteArtifactRequest) GetBotId() string {
@@ -21291,7 +23336,7 @@ type DeleteArtifactResponse struct {
 
 func (x *DeleteArtifactResponse) Reset() {
 	*x = DeleteArtifactResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[325]
+	mi := &file_silo_v1_ui_proto_msgTypes[359]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21303,7 +23348,7 @@ func (x *DeleteArtifactResponse) String() string {
 func (*DeleteArtifactResponse) ProtoMessage() {}
 
 func (x *DeleteArtifactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[325]
+	mi := &file_silo_v1_ui_proto_msgTypes[359]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21316,7 +23361,7 @@ func (x *DeleteArtifactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteArtifactResponse.ProtoReflect.Descriptor instead.
 func (*DeleteArtifactResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{325}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{359}
 }
 
 type ArtifactEntry struct {
@@ -21329,7 +23374,7 @@ type ArtifactEntry struct {
 
 func (x *ArtifactEntry) Reset() {
 	*x = ArtifactEntry{}
-	mi := &file_silo_v1_ui_proto_msgTypes[326]
+	mi := &file_silo_v1_ui_proto_msgTypes[360]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21341,7 +23386,7 @@ func (x *ArtifactEntry) String() string {
 func (*ArtifactEntry) ProtoMessage() {}
 
 func (x *ArtifactEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[326]
+	mi := &file_silo_v1_ui_proto_msgTypes[360]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21354,7 +23399,7 @@ func (x *ArtifactEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactEntry.ProtoReflect.Descriptor instead.
 func (*ArtifactEntry) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{326}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{360}
 }
 
 func (x *ArtifactEntry) GetPath() string {
@@ -21383,7 +23428,7 @@ type GetArtifactRequest struct {
 
 func (x *GetArtifactRequest) Reset() {
 	*x = GetArtifactRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[327]
+	mi := &file_silo_v1_ui_proto_msgTypes[361]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21395,7 +23440,7 @@ func (x *GetArtifactRequest) String() string {
 func (*GetArtifactRequest) ProtoMessage() {}
 
 func (x *GetArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[327]
+	mi := &file_silo_v1_ui_proto_msgTypes[361]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21408,7 +23453,7 @@ func (x *GetArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArtifactRequest.ProtoReflect.Descriptor instead.
 func (*GetArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{327}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{361}
 }
 
 func (x *GetArtifactRequest) GetBotId() string {
@@ -21452,7 +23497,7 @@ type GetArtifactResponse struct {
 
 func (x *GetArtifactResponse) Reset() {
 	*x = GetArtifactResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[328]
+	mi := &file_silo_v1_ui_proto_msgTypes[362]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21464,7 +23509,7 @@ func (x *GetArtifactResponse) String() string {
 func (*GetArtifactResponse) ProtoMessage() {}
 
 func (x *GetArtifactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[328]
+	mi := &file_silo_v1_ui_proto_msgTypes[362]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21477,7 +23522,7 @@ func (x *GetArtifactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArtifactResponse.ProtoReflect.Descriptor instead.
 func (*GetArtifactResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{328}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{362}
 }
 
 func (x *GetArtifactResponse) GetId() string {
@@ -21556,7 +23601,7 @@ type ReadArtifactFileRequest struct {
 
 func (x *ReadArtifactFileRequest) Reset() {
 	*x = ReadArtifactFileRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[329]
+	mi := &file_silo_v1_ui_proto_msgTypes[363]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21568,7 +23613,7 @@ func (x *ReadArtifactFileRequest) String() string {
 func (*ReadArtifactFileRequest) ProtoMessage() {}
 
 func (x *ReadArtifactFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[329]
+	mi := &file_silo_v1_ui_proto_msgTypes[363]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21581,7 +23626,7 @@ func (x *ReadArtifactFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadArtifactFileRequest.ProtoReflect.Descriptor instead.
 func (*ReadArtifactFileRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{329}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{363}
 }
 
 func (x *ReadArtifactFileRequest) GetBotId() string {
@@ -21623,7 +23668,7 @@ type ReadArtifactFileResponse struct {
 
 func (x *ReadArtifactFileResponse) Reset() {
 	*x = ReadArtifactFileResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[330]
+	mi := &file_silo_v1_ui_proto_msgTypes[364]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21635,7 +23680,7 @@ func (x *ReadArtifactFileResponse) String() string {
 func (*ReadArtifactFileResponse) ProtoMessage() {}
 
 func (x *ReadArtifactFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[330]
+	mi := &file_silo_v1_ui_proto_msgTypes[364]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21648,7 +23693,7 @@ func (x *ReadArtifactFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadArtifactFileResponse.ProtoReflect.Descriptor instead.
 func (*ReadArtifactFileResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{330}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{364}
 }
 
 func (x *ReadArtifactFileResponse) GetName() string {
@@ -21683,7 +23728,7 @@ type OpenArtifactAppRequest struct {
 
 func (x *OpenArtifactAppRequest) Reset() {
 	*x = OpenArtifactAppRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[331]
+	mi := &file_silo_v1_ui_proto_msgTypes[365]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21695,7 +23740,7 @@ func (x *OpenArtifactAppRequest) String() string {
 func (*OpenArtifactAppRequest) ProtoMessage() {}
 
 func (x *OpenArtifactAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[331]
+	mi := &file_silo_v1_ui_proto_msgTypes[365]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21708,7 +23753,7 @@ func (x *OpenArtifactAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenArtifactAppRequest.ProtoReflect.Descriptor instead.
 func (*OpenArtifactAppRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{331}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{365}
 }
 
 func (x *OpenArtifactAppRequest) GetBotId() string {
@@ -21741,7 +23786,7 @@ type OpenArtifactAppResponse struct {
 
 func (x *OpenArtifactAppResponse) Reset() {
 	*x = OpenArtifactAppResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[332]
+	mi := &file_silo_v1_ui_proto_msgTypes[366]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21753,7 +23798,7 @@ func (x *OpenArtifactAppResponse) String() string {
 func (*OpenArtifactAppResponse) ProtoMessage() {}
 
 func (x *OpenArtifactAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[332]
+	mi := &file_silo_v1_ui_proto_msgTypes[366]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21766,7 +23811,7 @@ func (x *OpenArtifactAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenArtifactAppResponse.ProtoReflect.Descriptor instead.
 func (*OpenArtifactAppResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{332}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{366}
 }
 
 func (x *OpenArtifactAppResponse) GetUrl() string {
@@ -21792,7 +23837,7 @@ type ArtifactShare struct {
 
 func (x *ArtifactShare) Reset() {
 	*x = ArtifactShare{}
-	mi := &file_silo_v1_ui_proto_msgTypes[333]
+	mi := &file_silo_v1_ui_proto_msgTypes[367]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21804,7 +23849,7 @@ func (x *ArtifactShare) String() string {
 func (*ArtifactShare) ProtoMessage() {}
 
 func (x *ArtifactShare) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[333]
+	mi := &file_silo_v1_ui_proto_msgTypes[367]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21817,7 +23862,7 @@ func (x *ArtifactShare) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactShare.ProtoReflect.Descriptor instead.
 func (*ArtifactShare) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{333}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{367}
 }
 
 func (x *ArtifactShare) GetId() string {
@@ -21887,7 +23932,7 @@ type ShareArtifactRequest struct {
 
 func (x *ShareArtifactRequest) Reset() {
 	*x = ShareArtifactRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[334]
+	mi := &file_silo_v1_ui_proto_msgTypes[368]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21899,7 +23944,7 @@ func (x *ShareArtifactRequest) String() string {
 func (*ShareArtifactRequest) ProtoMessage() {}
 
 func (x *ShareArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[334]
+	mi := &file_silo_v1_ui_proto_msgTypes[368]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21912,7 +23957,7 @@ func (x *ShareArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShareArtifactRequest.ProtoReflect.Descriptor instead.
 func (*ShareArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{334}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{368}
 }
 
 func (x *ShareArtifactRequest) GetBotId() string {
@@ -21947,7 +23992,7 @@ type ListArtifactSharesRequest struct {
 
 func (x *ListArtifactSharesRequest) Reset() {
 	*x = ListArtifactSharesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[335]
+	mi := &file_silo_v1_ui_proto_msgTypes[369]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21959,7 +24004,7 @@ func (x *ListArtifactSharesRequest) String() string {
 func (*ListArtifactSharesRequest) ProtoMessage() {}
 
 func (x *ListArtifactSharesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[335]
+	mi := &file_silo_v1_ui_proto_msgTypes[369]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21972,7 +24017,7 @@ func (x *ListArtifactSharesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtifactSharesRequest.ProtoReflect.Descriptor instead.
 func (*ListArtifactSharesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{335}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{369}
 }
 
 func (x *ListArtifactSharesRequest) GetBotId() string {
@@ -22000,7 +24045,7 @@ type ListArtifactSharesResponse struct {
 
 func (x *ListArtifactSharesResponse) Reset() {
 	*x = ListArtifactSharesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[336]
+	mi := &file_silo_v1_ui_proto_msgTypes[370]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22012,7 +24057,7 @@ func (x *ListArtifactSharesResponse) String() string {
 func (*ListArtifactSharesResponse) ProtoMessage() {}
 
 func (x *ListArtifactSharesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[336]
+	mi := &file_silo_v1_ui_proto_msgTypes[370]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22025,7 +24070,7 @@ func (x *ListArtifactSharesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtifactSharesResponse.ProtoReflect.Descriptor instead.
 func (*ListArtifactSharesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{336}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{370}
 }
 
 func (x *ListArtifactSharesResponse) GetShares() []*ArtifactShare {
@@ -22052,7 +24097,7 @@ type DeleteArtifactShareRequest struct {
 
 func (x *DeleteArtifactShareRequest) Reset() {
 	*x = DeleteArtifactShareRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[337]
+	mi := &file_silo_v1_ui_proto_msgTypes[371]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22064,7 +24109,7 @@ func (x *DeleteArtifactShareRequest) String() string {
 func (*DeleteArtifactShareRequest) ProtoMessage() {}
 
 func (x *DeleteArtifactShareRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[337]
+	mi := &file_silo_v1_ui_proto_msgTypes[371]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22077,7 +24122,7 @@ func (x *DeleteArtifactShareRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteArtifactShareRequest.ProtoReflect.Descriptor instead.
 func (*DeleteArtifactShareRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{337}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{371}
 }
 
 func (x *DeleteArtifactShareRequest) GetBotId() string {
@@ -22102,7 +24147,7 @@ type DeleteArtifactShareResponse struct {
 
 func (x *DeleteArtifactShareResponse) Reset() {
 	*x = DeleteArtifactShareResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[338]
+	mi := &file_silo_v1_ui_proto_msgTypes[372]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22114,7 +24159,7 @@ func (x *DeleteArtifactShareResponse) String() string {
 func (*DeleteArtifactShareResponse) ProtoMessage() {}
 
 func (x *DeleteArtifactShareResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[338]
+	mi := &file_silo_v1_ui_proto_msgTypes[372]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22127,7 +24172,7 @@ func (x *DeleteArtifactShareResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteArtifactShareResponse.ProtoReflect.Descriptor instead.
 func (*DeleteArtifactShareResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{338}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{372}
 }
 
 type ChannelFieldOption struct {
@@ -22140,7 +24185,7 @@ type ChannelFieldOption struct {
 
 func (x *ChannelFieldOption) Reset() {
 	*x = ChannelFieldOption{}
-	mi := &file_silo_v1_ui_proto_msgTypes[339]
+	mi := &file_silo_v1_ui_proto_msgTypes[373]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22152,7 +24197,7 @@ func (x *ChannelFieldOption) String() string {
 func (*ChannelFieldOption) ProtoMessage() {}
 
 func (x *ChannelFieldOption) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[339]
+	mi := &file_silo_v1_ui_proto_msgTypes[373]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22165,7 +24210,7 @@ func (x *ChannelFieldOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelFieldOption.ProtoReflect.Descriptor instead.
 func (*ChannelFieldOption) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{339}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{373}
 }
 
 func (x *ChannelFieldOption) GetValue() string {
@@ -22199,7 +24244,7 @@ type ChannelField struct {
 
 func (x *ChannelField) Reset() {
 	*x = ChannelField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[340]
+	mi := &file_silo_v1_ui_proto_msgTypes[374]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22211,7 +24256,7 @@ func (x *ChannelField) String() string {
 func (*ChannelField) ProtoMessage() {}
 
 func (x *ChannelField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[340]
+	mi := &file_silo_v1_ui_proto_msgTypes[374]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22224,7 +24269,7 @@ func (x *ChannelField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelField.ProtoReflect.Descriptor instead.
 func (*ChannelField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{340}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{374}
 }
 
 func (x *ChannelField) GetKey() string {
@@ -22295,7 +24340,7 @@ type ChannelAdapterAction struct {
 
 func (x *ChannelAdapterAction) Reset() {
 	*x = ChannelAdapterAction{}
-	mi := &file_silo_v1_ui_proto_msgTypes[341]
+	mi := &file_silo_v1_ui_proto_msgTypes[375]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22307,7 +24352,7 @@ func (x *ChannelAdapterAction) String() string {
 func (*ChannelAdapterAction) ProtoMessage() {}
 
 func (x *ChannelAdapterAction) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[341]
+	mi := &file_silo_v1_ui_proto_msgTypes[375]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22320,7 +24365,7 @@ func (x *ChannelAdapterAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelAdapterAction.ProtoReflect.Descriptor instead.
 func (*ChannelAdapterAction) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{341}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{375}
 }
 
 func (x *ChannelAdapterAction) GetKey() string {
@@ -22367,7 +24412,7 @@ type ChannelAdapter struct {
 
 func (x *ChannelAdapter) Reset() {
 	*x = ChannelAdapter{}
-	mi := &file_silo_v1_ui_proto_msgTypes[342]
+	mi := &file_silo_v1_ui_proto_msgTypes[376]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22379,7 +24424,7 @@ func (x *ChannelAdapter) String() string {
 func (*ChannelAdapter) ProtoMessage() {}
 
 func (x *ChannelAdapter) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[342]
+	mi := &file_silo_v1_ui_proto_msgTypes[376]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22392,7 +24437,7 @@ func (x *ChannelAdapter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelAdapter.ProtoReflect.Descriptor instead.
 func (*ChannelAdapter) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{342}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{376}
 }
 
 func (x *ChannelAdapter) GetSlug() string {
@@ -22464,7 +24509,7 @@ type ChannelState struct {
 
 func (x *ChannelState) Reset() {
 	*x = ChannelState{}
-	mi := &file_silo_v1_ui_proto_msgTypes[343]
+	mi := &file_silo_v1_ui_proto_msgTypes[377]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22476,7 +24521,7 @@ func (x *ChannelState) String() string {
 func (*ChannelState) ProtoMessage() {}
 
 func (x *ChannelState) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[343]
+	mi := &file_silo_v1_ui_proto_msgTypes[377]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22489,7 +24534,7 @@ func (x *ChannelState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelState.ProtoReflect.Descriptor instead.
 func (*ChannelState) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{343}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{377}
 }
 
 func (x *ChannelState) GetKind() string {
@@ -22550,7 +24595,7 @@ type Channel struct {
 
 func (x *Channel) Reset() {
 	*x = Channel{}
-	mi := &file_silo_v1_ui_proto_msgTypes[344]
+	mi := &file_silo_v1_ui_proto_msgTypes[378]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22562,7 +24607,7 @@ func (x *Channel) String() string {
 func (*Channel) ProtoMessage() {}
 
 func (x *Channel) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[344]
+	mi := &file_silo_v1_ui_proto_msgTypes[378]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22575,7 +24620,7 @@ func (x *Channel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Channel.ProtoReflect.Descriptor instead.
 func (*Channel) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{344}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{378}
 }
 
 func (x *Channel) GetId() string {
@@ -22691,7 +24736,7 @@ type ListChannelAdaptersRequest struct {
 
 func (x *ListChannelAdaptersRequest) Reset() {
 	*x = ListChannelAdaptersRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[345]
+	mi := &file_silo_v1_ui_proto_msgTypes[379]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22703,7 +24748,7 @@ func (x *ListChannelAdaptersRequest) String() string {
 func (*ListChannelAdaptersRequest) ProtoMessage() {}
 
 func (x *ListChannelAdaptersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[345]
+	mi := &file_silo_v1_ui_proto_msgTypes[379]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22716,7 +24761,7 @@ func (x *ListChannelAdaptersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChannelAdaptersRequest.ProtoReflect.Descriptor instead.
 func (*ListChannelAdaptersRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{345}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{379}
 }
 
 type ListChannelAdaptersResponse struct {
@@ -22728,7 +24773,7 @@ type ListChannelAdaptersResponse struct {
 
 func (x *ListChannelAdaptersResponse) Reset() {
 	*x = ListChannelAdaptersResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[346]
+	mi := &file_silo_v1_ui_proto_msgTypes[380]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22740,7 +24785,7 @@ func (x *ListChannelAdaptersResponse) String() string {
 func (*ListChannelAdaptersResponse) ProtoMessage() {}
 
 func (x *ListChannelAdaptersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[346]
+	mi := &file_silo_v1_ui_proto_msgTypes[380]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22753,7 +24798,7 @@ func (x *ListChannelAdaptersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChannelAdaptersResponse.ProtoReflect.Descriptor instead.
 func (*ListChannelAdaptersResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{346}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{380}
 }
 
 func (x *ListChannelAdaptersResponse) GetAdapters() []*ChannelAdapter {
@@ -22772,7 +24817,7 @@ type ListBotChannelsRequest struct {
 
 func (x *ListBotChannelsRequest) Reset() {
 	*x = ListBotChannelsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[347]
+	mi := &file_silo_v1_ui_proto_msgTypes[381]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22784,7 +24829,7 @@ func (x *ListBotChannelsRequest) String() string {
 func (*ListBotChannelsRequest) ProtoMessage() {}
 
 func (x *ListBotChannelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[347]
+	mi := &file_silo_v1_ui_proto_msgTypes[381]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22797,7 +24842,7 @@ func (x *ListBotChannelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotChannelsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotChannelsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{347}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{381}
 }
 
 func (x *ListBotChannelsRequest) GetBotId() string {
@@ -22816,7 +24861,7 @@ type ListBotChannelsResponse struct {
 
 func (x *ListBotChannelsResponse) Reset() {
 	*x = ListBotChannelsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[348]
+	mi := &file_silo_v1_ui_proto_msgTypes[382]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22828,7 +24873,7 @@ func (x *ListBotChannelsResponse) String() string {
 func (*ListBotChannelsResponse) ProtoMessage() {}
 
 func (x *ListBotChannelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[348]
+	mi := &file_silo_v1_ui_proto_msgTypes[382]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22841,7 +24886,7 @@ func (x *ListBotChannelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotChannelsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotChannelsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{348}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{382}
 }
 
 func (x *ListBotChannelsResponse) GetChannels() []*Channel {
@@ -22869,7 +24914,7 @@ type CreateChannelRequest struct {
 
 func (x *CreateChannelRequest) Reset() {
 	*x = CreateChannelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[349]
+	mi := &file_silo_v1_ui_proto_msgTypes[383]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22881,7 +24926,7 @@ func (x *CreateChannelRequest) String() string {
 func (*CreateChannelRequest) ProtoMessage() {}
 
 func (x *CreateChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[349]
+	mi := &file_silo_v1_ui_proto_msgTypes[383]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22894,7 +24939,7 @@ func (x *CreateChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateChannelRequest.ProtoReflect.Descriptor instead.
 func (*CreateChannelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{349}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{383}
 }
 
 func (x *CreateChannelRequest) GetBotId() string {
@@ -22985,7 +25030,7 @@ type UpdateChannelRequest struct {
 
 func (x *UpdateChannelRequest) Reset() {
 	*x = UpdateChannelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[350]
+	mi := &file_silo_v1_ui_proto_msgTypes[384]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22997,7 +25042,7 @@ func (x *UpdateChannelRequest) String() string {
 func (*UpdateChannelRequest) ProtoMessage() {}
 
 func (x *UpdateChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[350]
+	mi := &file_silo_v1_ui_proto_msgTypes[384]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23010,7 +25055,7 @@ func (x *UpdateChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateChannelRequest.ProtoReflect.Descriptor instead.
 func (*UpdateChannelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{350}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{384}
 }
 
 func (x *UpdateChannelRequest) GetBotId() string {
@@ -23093,7 +25138,7 @@ type DeleteChannelRequest struct {
 
 func (x *DeleteChannelRequest) Reset() {
 	*x = DeleteChannelRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[351]
+	mi := &file_silo_v1_ui_proto_msgTypes[385]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23105,7 +25150,7 @@ func (x *DeleteChannelRequest) String() string {
 func (*DeleteChannelRequest) ProtoMessage() {}
 
 func (x *DeleteChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[351]
+	mi := &file_silo_v1_ui_proto_msgTypes[385]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23118,7 +25163,7 @@ func (x *DeleteChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChannelRequest.ProtoReflect.Descriptor instead.
 func (*DeleteChannelRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{351}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{385}
 }
 
 func (x *DeleteChannelRequest) GetBotId() string {
@@ -23143,7 +25188,7 @@ type DeleteChannelResponse struct {
 
 func (x *DeleteChannelResponse) Reset() {
 	*x = DeleteChannelResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[352]
+	mi := &file_silo_v1_ui_proto_msgTypes[386]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23155,7 +25200,7 @@ func (x *DeleteChannelResponse) String() string {
 func (*DeleteChannelResponse) ProtoMessage() {}
 
 func (x *DeleteChannelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[352]
+	mi := &file_silo_v1_ui_proto_msgTypes[386]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23168,7 +25213,7 @@ func (x *DeleteChannelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChannelResponse.ProtoReflect.Descriptor instead.
 func (*DeleteChannelResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{352}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{386}
 }
 
 type ChannelActionRequest struct {
@@ -23183,7 +25228,7 @@ type ChannelActionRequest struct {
 
 func (x *ChannelActionRequest) Reset() {
 	*x = ChannelActionRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[353]
+	mi := &file_silo_v1_ui_proto_msgTypes[387]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23195,7 +25240,7 @@ func (x *ChannelActionRequest) String() string {
 func (*ChannelActionRequest) ProtoMessage() {}
 
 func (x *ChannelActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[353]
+	mi := &file_silo_v1_ui_proto_msgTypes[387]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23208,7 +25253,7 @@ func (x *ChannelActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelActionRequest.ProtoReflect.Descriptor instead.
 func (*ChannelActionRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{353}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{387}
 }
 
 func (x *ChannelActionRequest) GetBotId() string {
@@ -23248,7 +25293,7 @@ type ChannelActionResponse struct {
 
 func (x *ChannelActionResponse) Reset() {
 	*x = ChannelActionResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[354]
+	mi := &file_silo_v1_ui_proto_msgTypes[388]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23260,7 +25305,7 @@ func (x *ChannelActionResponse) String() string {
 func (*ChannelActionResponse) ProtoMessage() {}
 
 func (x *ChannelActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[354]
+	mi := &file_silo_v1_ui_proto_msgTypes[388]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23273,7 +25318,7 @@ func (x *ChannelActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelActionResponse.ProtoReflect.Descriptor instead.
 func (*ChannelActionResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{354}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{388}
 }
 
 func (x *ChannelActionResponse) GetState() *ChannelState {
@@ -23296,7 +25341,7 @@ type DriveOption struct {
 
 func (x *DriveOption) Reset() {
 	*x = DriveOption{}
-	mi := &file_silo_v1_ui_proto_msgTypes[355]
+	mi := &file_silo_v1_ui_proto_msgTypes[389]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23308,7 +25353,7 @@ func (x *DriveOption) String() string {
 func (*DriveOption) ProtoMessage() {}
 
 func (x *DriveOption) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[355]
+	mi := &file_silo_v1_ui_proto_msgTypes[389]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23321,7 +25366,7 @@ func (x *DriveOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveOption.ProtoReflect.Descriptor instead.
 func (*DriveOption) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{355}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{389}
 }
 
 func (x *DriveOption) GetValue() string {
@@ -23377,7 +25422,7 @@ type DriveVar struct {
 
 func (x *DriveVar) Reset() {
 	*x = DriveVar{}
-	mi := &file_silo_v1_ui_proto_msgTypes[356]
+	mi := &file_silo_v1_ui_proto_msgTypes[390]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23389,7 +25434,7 @@ func (x *DriveVar) String() string {
 func (*DriveVar) ProtoMessage() {}
 
 func (x *DriveVar) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[356]
+	mi := &file_silo_v1_ui_proto_msgTypes[390]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23402,7 +25447,7 @@ func (x *DriveVar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveVar.ProtoReflect.Descriptor instead.
 func (*DriveVar) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{356}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{390}
 }
 
 func (x *DriveVar) GetKey() string {
@@ -23528,7 +25573,7 @@ type DriveTemplate struct {
 
 func (x *DriveTemplate) Reset() {
 	*x = DriveTemplate{}
-	mi := &file_silo_v1_ui_proto_msgTypes[357]
+	mi := &file_silo_v1_ui_proto_msgTypes[391]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23540,7 +25585,7 @@ func (x *DriveTemplate) String() string {
 func (*DriveTemplate) ProtoMessage() {}
 
 func (x *DriveTemplate) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[357]
+	mi := &file_silo_v1_ui_proto_msgTypes[391]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23553,7 +25598,7 @@ func (x *DriveTemplate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveTemplate.ProtoReflect.Descriptor instead.
 func (*DriveTemplate) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{357}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{391}
 }
 
 func (x *DriveTemplate) GetKey() string {
@@ -23681,7 +25726,7 @@ type Drive struct {
 
 func (x *Drive) Reset() {
 	*x = Drive{}
-	mi := &file_silo_v1_ui_proto_msgTypes[358]
+	mi := &file_silo_v1_ui_proto_msgTypes[392]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23693,7 +25738,7 @@ func (x *Drive) String() string {
 func (*Drive) ProtoMessage() {}
 
 func (x *Drive) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[358]
+	mi := &file_silo_v1_ui_proto_msgTypes[392]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23706,7 +25751,7 @@ func (x *Drive) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Drive.ProtoReflect.Descriptor instead.
 func (*Drive) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{358}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{392}
 }
 
 func (x *Drive) GetId() string {
@@ -23857,7 +25902,7 @@ type ListDriveTemplatesRequest struct {
 
 func (x *ListDriveTemplatesRequest) Reset() {
 	*x = ListDriveTemplatesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[359]
+	mi := &file_silo_v1_ui_proto_msgTypes[393]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23869,7 +25914,7 @@ func (x *ListDriveTemplatesRequest) String() string {
 func (*ListDriveTemplatesRequest) ProtoMessage() {}
 
 func (x *ListDriveTemplatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[359]
+	mi := &file_silo_v1_ui_proto_msgTypes[393]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23882,7 +25927,7 @@ func (x *ListDriveTemplatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriveTemplatesRequest.ProtoReflect.Descriptor instead.
 func (*ListDriveTemplatesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{359}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{393}
 }
 
 type ListDriveTemplatesResponse struct {
@@ -23896,7 +25941,7 @@ type ListDriveTemplatesResponse struct {
 
 func (x *ListDriveTemplatesResponse) Reset() {
 	*x = ListDriveTemplatesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[360]
+	mi := &file_silo_v1_ui_proto_msgTypes[394]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23908,7 +25953,7 @@ func (x *ListDriveTemplatesResponse) String() string {
 func (*ListDriveTemplatesResponse) ProtoMessage() {}
 
 func (x *ListDriveTemplatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[360]
+	mi := &file_silo_v1_ui_proto_msgTypes[394]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23921,7 +25966,7 @@ func (x *ListDriveTemplatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriveTemplatesResponse.ProtoReflect.Descriptor instead.
 func (*ListDriveTemplatesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{360}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{394}
 }
 
 func (x *ListDriveTemplatesResponse) GetTemplates() []*DriveTemplate {
@@ -23949,7 +25994,7 @@ type ListDrivesRequest struct {
 
 func (x *ListDrivesRequest) Reset() {
 	*x = ListDrivesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[361]
+	mi := &file_silo_v1_ui_proto_msgTypes[395]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23961,7 +26006,7 @@ func (x *ListDrivesRequest) String() string {
 func (*ListDrivesRequest) ProtoMessage() {}
 
 func (x *ListDrivesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[361]
+	mi := &file_silo_v1_ui_proto_msgTypes[395]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23974,7 +26019,7 @@ func (x *ListDrivesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDrivesRequest.ProtoReflect.Descriptor instead.
 func (*ListDrivesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{361}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{395}
 }
 
 func (x *ListDrivesRequest) GetBotId() string {
@@ -24005,7 +26050,7 @@ type ListDrivesResponse struct {
 
 func (x *ListDrivesResponse) Reset() {
 	*x = ListDrivesResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[362]
+	mi := &file_silo_v1_ui_proto_msgTypes[396]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24017,7 +26062,7 @@ func (x *ListDrivesResponse) String() string {
 func (*ListDrivesResponse) ProtoMessage() {}
 
 func (x *ListDrivesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[362]
+	mi := &file_silo_v1_ui_proto_msgTypes[396]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24030,7 +26075,7 @@ func (x *ListDrivesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDrivesResponse.ProtoReflect.Descriptor instead.
 func (*ListDrivesResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{362}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{396}
 }
 
 func (x *ListDrivesResponse) GetDrives() []*Drive {
@@ -24079,7 +26124,7 @@ type SaveDriveRequest struct {
 
 func (x *SaveDriveRequest) Reset() {
 	*x = SaveDriveRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[363]
+	mi := &file_silo_v1_ui_proto_msgTypes[397]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24091,7 +26136,7 @@ func (x *SaveDriveRequest) String() string {
 func (*SaveDriveRequest) ProtoMessage() {}
 
 func (x *SaveDriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[363]
+	mi := &file_silo_v1_ui_proto_msgTypes[397]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24104,7 +26149,7 @@ func (x *SaveDriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveDriveRequest.ProtoReflect.Descriptor instead.
 func (*SaveDriveRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{363}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{397}
 }
 
 func (x *SaveDriveRequest) GetBotId() string {
@@ -24188,7 +26233,7 @@ type ListSpaceDrivesRequest struct {
 
 func (x *ListSpaceDrivesRequest) Reset() {
 	*x = ListSpaceDrivesRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[364]
+	mi := &file_silo_v1_ui_proto_msgTypes[398]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24200,7 +26245,7 @@ func (x *ListSpaceDrivesRequest) String() string {
 func (*ListSpaceDrivesRequest) ProtoMessage() {}
 
 func (x *ListSpaceDrivesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[364]
+	mi := &file_silo_v1_ui_proto_msgTypes[398]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24213,7 +26258,7 @@ func (x *ListSpaceDrivesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpaceDrivesRequest.ProtoReflect.Descriptor instead.
 func (*ListSpaceDrivesRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{364}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{398}
 }
 
 func (x *ListSpaceDrivesRequest) GetSpaceId() string {
@@ -24242,7 +26287,7 @@ type GrantDriveRequest struct {
 
 func (x *GrantDriveRequest) Reset() {
 	*x = GrantDriveRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[365]
+	mi := &file_silo_v1_ui_proto_msgTypes[399]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24254,7 +26299,7 @@ func (x *GrantDriveRequest) String() string {
 func (*GrantDriveRequest) ProtoMessage() {}
 
 func (x *GrantDriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[365]
+	mi := &file_silo_v1_ui_proto_msgTypes[399]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24267,7 +26312,7 @@ func (x *GrantDriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantDriveRequest.ProtoReflect.Descriptor instead.
 func (*GrantDriveRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{365}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{399}
 }
 
 func (x *GrantDriveRequest) GetBotId() string {
@@ -24301,7 +26346,7 @@ type RevokeDriveRequest struct {
 
 func (x *RevokeDriveRequest) Reset() {
 	*x = RevokeDriveRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[366]
+	mi := &file_silo_v1_ui_proto_msgTypes[400]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24313,7 +26358,7 @@ func (x *RevokeDriveRequest) String() string {
 func (*RevokeDriveRequest) ProtoMessage() {}
 
 func (x *RevokeDriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[366]
+	mi := &file_silo_v1_ui_proto_msgTypes[400]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24326,7 +26371,7 @@ func (x *RevokeDriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeDriveRequest.ProtoReflect.Descriptor instead.
 func (*RevokeDriveRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{366}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{400}
 }
 
 func (x *RevokeDriveRequest) GetBotId() string {
@@ -24351,7 +26396,7 @@ type RevokeDriveResponse struct {
 
 func (x *RevokeDriveResponse) Reset() {
 	*x = RevokeDriveResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[367]
+	mi := &file_silo_v1_ui_proto_msgTypes[401]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24363,7 +26408,7 @@ func (x *RevokeDriveResponse) String() string {
 func (*RevokeDriveResponse) ProtoMessage() {}
 
 func (x *RevokeDriveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[367]
+	mi := &file_silo_v1_ui_proto_msgTypes[401]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24376,7 +26421,7 @@ func (x *RevokeDriveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeDriveResponse.ProtoReflect.Descriptor instead.
 func (*RevokeDriveResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{367}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{401}
 }
 
 type DeleteDriveRequest struct {
@@ -24388,7 +26433,7 @@ type DeleteDriveRequest struct {
 
 func (x *DeleteDriveRequest) Reset() {
 	*x = DeleteDriveRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[368]
+	mi := &file_silo_v1_ui_proto_msgTypes[402]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24400,7 +26445,7 @@ func (x *DeleteDriveRequest) String() string {
 func (*DeleteDriveRequest) ProtoMessage() {}
 
 func (x *DeleteDriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[368]
+	mi := &file_silo_v1_ui_proto_msgTypes[402]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24413,7 +26458,7 @@ func (x *DeleteDriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDriveRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDriveRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{368}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{402}
 }
 
 func (x *DeleteDriveRequest) GetId() string {
@@ -24431,7 +26476,7 @@ type DeleteDriveResponse struct {
 
 func (x *DeleteDriveResponse) Reset() {
 	*x = DeleteDriveResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[369]
+	mi := &file_silo_v1_ui_proto_msgTypes[403]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24443,7 +26488,7 @@ func (x *DeleteDriveResponse) String() string {
 func (*DeleteDriveResponse) ProtoMessage() {}
 
 func (x *DeleteDriveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[369]
+	mi := &file_silo_v1_ui_proto_msgTypes[403]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24456,19 +26501,21 @@ func (x *DeleteDriveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDriveResponse.ProtoReflect.Descriptor instead.
 func (*DeleteDriveResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{369}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{403}
 }
 
 type BeginDriveAuthRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// As StartConnectorAuthRequest.shared.
+	Shared        bool `protobuf:"varint,2,opt,name=shared,proto3" json:"shared,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BeginDriveAuthRequest) Reset() {
 	*x = BeginDriveAuthRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[370]
+	mi := &file_silo_v1_ui_proto_msgTypes[404]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24480,7 +26527,7 @@ func (x *BeginDriveAuthRequest) String() string {
 func (*BeginDriveAuthRequest) ProtoMessage() {}
 
 func (x *BeginDriveAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[370]
+	mi := &file_silo_v1_ui_proto_msgTypes[404]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24493,7 +26540,7 @@ func (x *BeginDriveAuthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginDriveAuthRequest.ProtoReflect.Descriptor instead.
 func (*BeginDriveAuthRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{370}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{404}
 }
 
 func (x *BeginDriveAuthRequest) GetId() string {
@@ -24501,6 +26548,13 @@ func (x *BeginDriveAuthRequest) GetId() string {
 		return x.Id
 	}
 	return ""
+}
+
+func (x *BeginDriveAuthRequest) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
 }
 
 type BeginDriveAuthResponse struct {
@@ -24512,7 +26566,7 @@ type BeginDriveAuthResponse struct {
 
 func (x *BeginDriveAuthResponse) Reset() {
 	*x = BeginDriveAuthResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[371]
+	mi := &file_silo_v1_ui_proto_msgTypes[405]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24524,7 +26578,7 @@ func (x *BeginDriveAuthResponse) String() string {
 func (*BeginDriveAuthResponse) ProtoMessage() {}
 
 func (x *BeginDriveAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[371]
+	mi := &file_silo_v1_ui_proto_msgTypes[405]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24537,7 +26591,7 @@ func (x *BeginDriveAuthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginDriveAuthResponse.ProtoReflect.Descriptor instead.
 func (*BeginDriveAuthResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{371}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{405}
 }
 
 func (x *BeginDriveAuthResponse) GetUrl() string {
@@ -24557,7 +26611,7 @@ type PickDriveOptionsRequest struct {
 
 func (x *PickDriveOptionsRequest) Reset() {
 	*x = PickDriveOptionsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[372]
+	mi := &file_silo_v1_ui_proto_msgTypes[406]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24569,7 +26623,7 @@ func (x *PickDriveOptionsRequest) String() string {
 func (*PickDriveOptionsRequest) ProtoMessage() {}
 
 func (x *PickDriveOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[372]
+	mi := &file_silo_v1_ui_proto_msgTypes[406]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24582,7 +26636,7 @@ func (x *PickDriveOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PickDriveOptionsRequest.ProtoReflect.Descriptor instead.
 func (*PickDriveOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{372}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{406}
 }
 
 func (x *PickDriveOptionsRequest) GetId() string {
@@ -24608,7 +26662,7 @@ type PickDriveOptionsResponse struct {
 
 func (x *PickDriveOptionsResponse) Reset() {
 	*x = PickDriveOptionsResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[373]
+	mi := &file_silo_v1_ui_proto_msgTypes[407]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24620,7 +26674,7 @@ func (x *PickDriveOptionsResponse) String() string {
 func (*PickDriveOptionsResponse) ProtoMessage() {}
 
 func (x *PickDriveOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[373]
+	mi := &file_silo_v1_ui_proto_msgTypes[407]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24633,7 +26687,7 @@ func (x *PickDriveOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PickDriveOptionsResponse.ProtoReflect.Descriptor instead.
 func (*PickDriveOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{373}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{407}
 }
 
 func (x *PickDriveOptionsResponse) GetOptions() []*DriveOption {
@@ -24653,7 +26707,7 @@ type BrowseDriveRequest struct {
 
 func (x *BrowseDriveRequest) Reset() {
 	*x = BrowseDriveRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[374]
+	mi := &file_silo_v1_ui_proto_msgTypes[408]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24665,7 +26719,7 @@ func (x *BrowseDriveRequest) String() string {
 func (*BrowseDriveRequest) ProtoMessage() {}
 
 func (x *BrowseDriveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[374]
+	mi := &file_silo_v1_ui_proto_msgTypes[408]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24678,7 +26732,7 @@ func (x *BrowseDriveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowseDriveRequest.ProtoReflect.Descriptor instead.
 func (*BrowseDriveRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{374}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{408}
 }
 
 func (x *BrowseDriveRequest) GetId() string {
@@ -24705,7 +26759,7 @@ type BrowseDriveDir struct {
 
 func (x *BrowseDriveDir) Reset() {
 	*x = BrowseDriveDir{}
-	mi := &file_silo_v1_ui_proto_msgTypes[375]
+	mi := &file_silo_v1_ui_proto_msgTypes[409]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24717,7 +26771,7 @@ func (x *BrowseDriveDir) String() string {
 func (*BrowseDriveDir) ProtoMessage() {}
 
 func (x *BrowseDriveDir) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[375]
+	mi := &file_silo_v1_ui_proto_msgTypes[409]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24730,7 +26784,7 @@ func (x *BrowseDriveDir) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowseDriveDir.ProtoReflect.Descriptor instead.
 func (*BrowseDriveDir) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{375}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{409}
 }
 
 func (x *BrowseDriveDir) GetName() string {
@@ -24756,7 +26810,7 @@ type BrowseDriveResponse struct {
 
 func (x *BrowseDriveResponse) Reset() {
 	*x = BrowseDriveResponse{}
-	mi := &file_silo_v1_ui_proto_msgTypes[376]
+	mi := &file_silo_v1_ui_proto_msgTypes[410]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24768,7 +26822,7 @@ func (x *BrowseDriveResponse) String() string {
 func (*BrowseDriveResponse) ProtoMessage() {}
 
 func (x *BrowseDriveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[376]
+	mi := &file_silo_v1_ui_proto_msgTypes[410]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24781,7 +26835,7 @@ func (x *BrowseDriveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowseDriveResponse.ProtoReflect.Descriptor instead.
 func (*BrowseDriveResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{376}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{410}
 }
 
 func (x *BrowseDriveResponse) GetDirs() []*BrowseDriveDir {
@@ -24811,7 +26865,7 @@ type DriveSystemField struct {
 
 func (x *DriveSystemField) Reset() {
 	*x = DriveSystemField{}
-	mi := &file_silo_v1_ui_proto_msgTypes[377]
+	mi := &file_silo_v1_ui_proto_msgTypes[411]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24823,7 +26877,7 @@ func (x *DriveSystemField) String() string {
 func (*DriveSystemField) ProtoMessage() {}
 
 func (x *DriveSystemField) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[377]
+	mi := &file_silo_v1_ui_proto_msgTypes[411]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24836,7 +26890,7 @@ func (x *DriveSystemField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveSystemField.ProtoReflect.Descriptor instead.
 func (*DriveSystemField) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{377}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{411}
 }
 
 func (x *DriveSystemField) GetKey() string {
@@ -24920,7 +26974,7 @@ type DriveProviderSettings struct {
 
 func (x *DriveProviderSettings) Reset() {
 	*x = DriveProviderSettings{}
-	mi := &file_silo_v1_ui_proto_msgTypes[378]
+	mi := &file_silo_v1_ui_proto_msgTypes[412]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24932,7 +26986,7 @@ func (x *DriveProviderSettings) String() string {
 func (*DriveProviderSettings) ProtoMessage() {}
 
 func (x *DriveProviderSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[378]
+	mi := &file_silo_v1_ui_proto_msgTypes[412]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24945,7 +26999,7 @@ func (x *DriveProviderSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveProviderSettings.ProtoReflect.Descriptor instead.
 func (*DriveProviderSettings) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{378}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{412}
 }
 
 func (x *DriveProviderSettings) GetTemplate() string {
@@ -24979,7 +27033,7 @@ type DriveSettings struct {
 
 func (x *DriveSettings) Reset() {
 	*x = DriveSettings{}
-	mi := &file_silo_v1_ui_proto_msgTypes[379]
+	mi := &file_silo_v1_ui_proto_msgTypes[413]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24991,7 +27045,7 @@ func (x *DriveSettings) String() string {
 func (*DriveSettings) ProtoMessage() {}
 
 func (x *DriveSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[379]
+	mi := &file_silo_v1_ui_proto_msgTypes[413]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25004,7 +27058,7 @@ func (x *DriveSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriveSettings.ProtoReflect.Descriptor instead.
 func (*DriveSettings) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{379}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{413}
 }
 
 func (x *DriveSettings) GetProviders() []*DriveProviderSettings {
@@ -25029,7 +27083,7 @@ type GetDriveSettingsRequest struct {
 
 func (x *GetDriveSettingsRequest) Reset() {
 	*x = GetDriveSettingsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[380]
+	mi := &file_silo_v1_ui_proto_msgTypes[414]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25041,7 +27095,7 @@ func (x *GetDriveSettingsRequest) String() string {
 func (*GetDriveSettingsRequest) ProtoMessage() {}
 
 func (x *GetDriveSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[380]
+	mi := &file_silo_v1_ui_proto_msgTypes[414]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25054,7 +27108,7 @@ func (x *GetDriveSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDriveSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetDriveSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{380}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{414}
 }
 
 type PutDriveSettingsRequest struct {
@@ -25068,7 +27122,7 @@ type PutDriveSettingsRequest struct {
 
 func (x *PutDriveSettingsRequest) Reset() {
 	*x = PutDriveSettingsRequest{}
-	mi := &file_silo_v1_ui_proto_msgTypes[381]
+	mi := &file_silo_v1_ui_proto_msgTypes[415]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25080,7 +27134,7 @@ func (x *PutDriveSettingsRequest) String() string {
 func (*PutDriveSettingsRequest) ProtoMessage() {}
 
 func (x *PutDriveSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_ui_proto_msgTypes[381]
+	mi := &file_silo_v1_ui_proto_msgTypes[415]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25093,7 +27147,7 @@ func (x *PutDriveSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutDriveSettingsRequest.ProtoReflect.Descriptor instead.
 func (*PutDriveSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_ui_proto_rawDescGZIP(), []int{381}
+	return file_silo_v1_ui_proto_rawDescGZIP(), []int{415}
 }
 
 func (x *PutDriveSettingsRequest) GetTemplate() string {
@@ -25292,7 +27346,142 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04mark\x18\x03 \x01(\tR\x04mark\"$\n" +
 	"\x12DeleteSpaceRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
-	"\x13DeleteSpaceResponse\"\x86\x01\n" +
+	"\x13DeleteSpaceResponse\"J\n" +
+	"\x14TransferSpaceRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xaf\x01\n" +
+	"\vSpacePerson\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x12\n" +
+	"\x04bots\x18\x04 \x01(\x05R\x04bots\x12\x10\n" +
+	"\x03you\x18\x05 \x01(\bR\x03you\x12\x1a\n" +
+	"\bdisabled\x18\x06 \x01(\bR\bdisabled\x12\x1b\n" +
+	"\tjoined_at\x18\a \x01(\tR\bjoinedAt\"3\n" +
+	"\x16ListSpacePeopleRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\"l\n" +
+	"\x17ListSpacePeopleResponse\x12,\n" +
+	"\x06people\x18\x01 \x03(\v2\x14.silo.v1.SpacePersonR\x06people\x12#\n" +
+	"\rinvite_signup\x18\x02 \x01(\bR\finviteSignup\"]\n" +
+	"\x13SetSpaceRoleRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\"M\n" +
+	"\x17PlanSpaceRemovalRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x97\x01\n" +
+	"\vLastManaged\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05crest\x18\x03 \x01(\x05R\x05crest\x12*\n" +
+	"\x06others\x18\x04 \x03(\v2\x12.silo.v1.BotPersonR\x06others\x12\x1b\n" +
+	"\tcaller_on\x18\x05 \x01(\bR\bcallerOn\"\x8b\x01\n" +
+	"\x04Lent\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
+	"\x06shared\x18\x04 \x01(\bR\x06shared\x12\x12\n" +
+	"\x04bots\x18\x05 \x03(\tR\x04bots\x12\x1f\n" +
+	"\vbots_hidden\x18\x06 \x01(\x05R\n" +
+	"botsHidden\"\x9d\x01\n" +
+	"\x10SpaceRemovalPlan\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x127\n" +
+	"\flast_managed\x18\x03 \x03(\v2\x14.silo.v1.LastManagedR\vlastManaged\x12!\n" +
+	"\x04lent\x18\x04 \x03(\v2\r.silo.v1.LentR\x04lent\"Q\n" +
+	"\aHandoff\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"t\n" +
+	"\x18RemoveSpacePersonRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12$\n" +
+	"\x04plan\x18\x03 \x03(\v2\x10.silo.v1.HandoffR\x04plan\"\x1b\n" +
+	"\x19RemoveSpacePersonResponse\"I\n" +
+	"\x18CreateSpaceInviteRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\"\x8e\x01\n" +
+	"\vSpaceInvite\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"created_by\x18\x03 \x01(\tR\tcreatedBy\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\tR\texpiresAt\"Q\n" +
+	"\x0fSpaceInviteLink\x12,\n" +
+	"\x06invite\x18\x01 \x01(\v2\x14.silo.v1.SpaceInviteR\x06invite\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\"4\n" +
+	"\x17ListSpaceInvitesRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\"J\n" +
+	"\x18ListSpaceInvitesResponse\x12.\n" +
+	"\ainvites\x18\x01 \x03(\v2\x14.silo.v1.SpaceInviteR\ainvites\"E\n" +
+	"\x18DeleteSpaceInviteRequest\x12\x19\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\x1b\n" +
+	"\x19DeleteSpaceInviteResponse\"-\n" +
+	"\x15GetSpaceInviteRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xb0\x01\n" +
+	"\x0fSpaceInviteInfo\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1d\n" +
+	"\n" +
+	"space_name\x18\x02 \x01(\tR\tspaceName\x12\x1d\n" +
+	"\n" +
+	"space_mark\x18\x03 \x01(\tR\tspaceMark\x12\x12\n" +
+	"\x04role\x18\x04 \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"invited_by\x18\x05 \x01(\tR\tinvitedBy\x12\x16\n" +
+	"\x06signup\x18\x06 \x01(\bR\x06signup\"Z\n" +
+	"\x10JoinSpaceRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"e\n" +
+	"\x11JoinSpaceResponse\x12$\n" +
+	"\x05space\x18\x01 \x01(\v2\x0e.silo.v1.SpaceR\x05space\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
+	"\x05admin\x18\x03 \x01(\bR\x05admin\"\x7f\n" +
+	"\tBotPerson\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"space_role\x18\x04 \x01(\tR\tspaceRole\x12\x10\n" +
+	"\x03you\x18\x05 \x01(\bR\x03you\"-\n" +
+	"\x14ListBotPeopleRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"y\n" +
+	"\x15ListBotPeopleResponse\x12*\n" +
+	"\x06people\x18\x01 \x03(\v2\x12.silo.v1.BotPersonR\x06people\x124\n" +
+	"\n" +
+	"candidates\x18\x02 \x03(\v2\x14.silo.v1.SpacePersonR\n" +
+	"candidates\"w\n" +
+	"\x13AddBotPersonRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1c\n" +
+	"\tconfirmed\x18\x04 \x01(\bR\tconfirmed\"k\n" +
+	"\x14AddBotPersonResponse\x12'\n" +
+	"\x0fconfirm_secrets\x18\x01 \x03(\tR\x0econfirmSecrets\x12*\n" +
+	"\x06person\x18\x02 \x01(\v2\x12.silo.v1.BotPersonR\x06person\"W\n" +
+	"\x11SetBotRoleRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\"H\n" +
+	"\x16RemoveBotPersonRequest\x12\x15\n" +
+	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x19\n" +
+	"\x17RemoveBotPersonResponse\"l\n" +
+	"\x14SetLendSharedRequest\x12!\n" +
+	"\fconnector_id\x18\x01 \x01(\tR\vconnectorId\x12\x19\n" +
+	"\bdrive_id\x18\x02 \x01(\tR\adriveId\x12\x16\n" +
+	"\x06shared\x18\x03 \x01(\bR\x06shared\"\x17\n" +
+	"\x15SetLendSharedResponse\"t\n" +
+	"\bOtherBot\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05crest\x18\x03 \x01(\x05R\x05crest\x12\x16\n" +
+	"\x06people\x18\x04 \x03(\tR\x06people\x12\x16\n" +
+	"\x06grants\x18\x05 \x01(\x05R\x06grants\"\x86\x01\n" +
 	"\vBotActivity\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
@@ -25301,16 +27490,23 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\flead_chat_id\x18\x05 \x01(\tR\n" +
 	"leadChatId\",\n" +
 	"\x0fListBotsRequest\x12\x19\n" +
-	"\bspace_id\x18\x01 \x01(\tR\aspaceId\"4\n" +
+	"\bspace_id\x18\x01 \x01(\tR\aspaceId\"_\n" +
 	"\x10ListBotsResponse\x12 \n" +
-	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\"\xb4\x01\n" +
+	"\x04bots\x18\x01 \x03(\v2\f.silo.v1.BotR\x04bots\x12)\n" +
+	"\x06others\x18\x02 \x03(\v2\x11.silo.v1.OtherBotR\x06others\"\xb0\x02\n" +
 	"\x10CreateBotRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x02 \x01(\x05R\x05crest\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
 	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\x12\x1c\n" +
 	"\tinterview\x18\x05 \x01(\bR\tinterview\x12\x19\n" +
-	"\bspace_id\x18\x06 \x01(\tR\aspaceId\"\xc0\x03\n" +
+	"\bspace_id\x18\x06 \x01(\tR\aspaceId\x12#\n" +
+	"\rconnector_ids\x18\a \x03(\tR\fconnectorIds\x12\x1b\n" +
+	"\tdrive_ids\x18\b \x03(\tR\bdriveIds\x12\x1d\n" +
+	"\n" +
+	"skills_off\x18\t \x03(\tR\tskillsOff\x12\x19\n" +
+	"\buser_ids\x18\n" +
+	" \x03(\tR\auserIds\"\xc0\x03\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -26643,11 +28839,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x17RevokeConnectorResponse\"C\n" +
 	"\x1aRefreshBotConnectorRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"}\n" +
 	"\x19StartConnectorAuthRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12!\n" +
-	"\fconnector_id\x18\x03 \x01(\tR\vconnectorId\"A\n" +
+	"\fconnector_id\x18\x03 \x01(\tR\vconnectorId\x12\x16\n" +
+	"\x06shared\x18\x04 \x01(\bR\x06shared\"A\n" +
 	"\x1aStartConnectorAuthResponse\x12#\n" +
 	"\rauthorize_url\x18\x01 \x01(\tR\fauthorizeUrl\"\x17\n" +
 	"\x15SeedConnectorsRequest\"\x18\n" +
@@ -27047,9 +29244,10 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x13RevokeDriveResponse\"$\n" +
 	"\x12DeleteDriveRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
-	"\x13DeleteDriveResponse\"'\n" +
+	"\x13DeleteDriveResponse\"?\n" +
 	"\x15BeginDriveAuthRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"*\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06shared\x18\x02 \x01(\bR\x06shared\"*\n" +
 	"\x16BeginDriveAuthResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\";\n" +
 	"\x17PickDriveOptionsRequest\x12\x0e\n" +
@@ -27095,7 +29293,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x19CONFIG_SOURCE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONFIG_SOURCE_DEFAULT\x10\x01\x12\x16\n" +
 	"\x12CONFIG_SOURCE_YAML\x10\x02\x12\x15\n" +
-	"\x11CONFIG_SOURCE_ENV\x10\x032\x98m\n" +
+	"\x11CONFIG_SOURCE_ENV\x10\x032\xb7v\n" +
 	"\x02UI\x129\n" +
 	"\x06SignIn\x12\x16.silo.v1.SignInRequest\x1a\x17.silo.v1.SignInResponse\x12<\n" +
 	"\aSignOut\x12\x17.silo.v1.SignOutRequest\x1a\x18.silo.v1.SignOutResponse\x12-\n" +
@@ -27126,7 +29324,23 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bGetSpace\x12\x18.silo.v1.GetSpaceRequest\x1a\x0e.silo.v1.Space\x12:\n" +
 	"\vCreateSpace\x12\x1b.silo.v1.CreateSpaceRequest\x1a\x0e.silo.v1.Space\x12:\n" +
 	"\vUpdateSpace\x12\x1b.silo.v1.UpdateSpaceRequest\x1a\x0e.silo.v1.Space\x12H\n" +
-	"\vDeleteSpace\x12\x1b.silo.v1.DeleteSpaceRequest\x1a\x1c.silo.v1.DeleteSpaceResponse\x12?\n" +
+	"\vDeleteSpace\x12\x1b.silo.v1.DeleteSpaceRequest\x1a\x1c.silo.v1.DeleteSpaceResponse\x12>\n" +
+	"\rTransferSpace\x12\x1d.silo.v1.TransferSpaceRequest\x1a\x0e.silo.v1.Space\x12T\n" +
+	"\x0fListSpacePeople\x12\x1f.silo.v1.ListSpacePeopleRequest\x1a .silo.v1.ListSpacePeopleResponse\x12B\n" +
+	"\fSetSpaceRole\x12\x1c.silo.v1.SetSpaceRoleRequest\x1a\x14.silo.v1.SpacePerson\x12O\n" +
+	"\x10PlanSpaceRemoval\x12 .silo.v1.PlanSpaceRemovalRequest\x1a\x19.silo.v1.SpaceRemovalPlan\x12Z\n" +
+	"\x11RemoveSpacePerson\x12!.silo.v1.RemoveSpacePersonRequest\x1a\".silo.v1.RemoveSpacePersonResponse\x12P\n" +
+	"\x11CreateSpaceInvite\x12!.silo.v1.CreateSpaceInviteRequest\x1a\x18.silo.v1.SpaceInviteLink\x12W\n" +
+	"\x10ListSpaceInvites\x12 .silo.v1.ListSpaceInvitesRequest\x1a!.silo.v1.ListSpaceInvitesResponse\x12Z\n" +
+	"\x11DeleteSpaceInvite\x12!.silo.v1.DeleteSpaceInviteRequest\x1a\".silo.v1.DeleteSpaceInviteResponse\x12J\n" +
+	"\x0eGetSpaceInvite\x12\x1e.silo.v1.GetSpaceInviteRequest\x1a\x18.silo.v1.SpaceInviteInfo\x12B\n" +
+	"\tJoinSpace\x12\x19.silo.v1.JoinSpaceRequest\x1a\x1a.silo.v1.JoinSpaceResponse\x12N\n" +
+	"\rListBotPeople\x12\x1d.silo.v1.ListBotPeopleRequest\x1a\x1e.silo.v1.ListBotPeopleResponse\x12K\n" +
+	"\fAddBotPerson\x12\x1c.silo.v1.AddBotPersonRequest\x1a\x1d.silo.v1.AddBotPersonResponse\x12<\n" +
+	"\n" +
+	"SetBotRole\x12\x1a.silo.v1.SetBotRoleRequest\x1a\x12.silo.v1.BotPerson\x12T\n" +
+	"\x0fRemoveBotPerson\x12\x1f.silo.v1.RemoveBotPersonRequest\x1a .silo.v1.RemoveBotPersonResponse\x12N\n" +
+	"\rSetLendShared\x12\x1d.silo.v1.SetLendSharedRequest\x1a\x1e.silo.v1.SetLendSharedResponse\x12?\n" +
 	"\bListBots\x12\x18.silo.v1.ListBotsRequest\x1a\x19.silo.v1.ListBotsResponse\x124\n" +
 	"\tCreateBot\x12\x19.silo.v1.CreateBotRequest\x1a\f.silo.v1.Bot\x124\n" +
 	"\tUpdateBot\x12\x19.silo.v1.UpdateBotRequest\x1a\f.silo.v1.Bot\x12.\n" +
@@ -27314,7 +29528,7 @@ func file_silo_v1_ui_proto_rawDescGZIP() []byte {
 }
 
 var file_silo_v1_ui_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_silo_v1_ui_proto_msgTypes = make([]protoimpl.MessageInfo, 399)
+var file_silo_v1_ui_proto_msgTypes = make([]protoimpl.MessageInfo, 433)
 var file_silo_v1_ui_proto_goTypes = []any{
 	(ConfigSource)(0),                      // 0: silo.v1.ConfigSource
 	(*SignInRequest)(nil),                  // 1: silo.v1.SignInRequest
@@ -27364,358 +29578,392 @@ var file_silo_v1_ui_proto_goTypes = []any{
 	(*UpdateSpaceRequest)(nil),             // 45: silo.v1.UpdateSpaceRequest
 	(*DeleteSpaceRequest)(nil),             // 46: silo.v1.DeleteSpaceRequest
 	(*DeleteSpaceResponse)(nil),            // 47: silo.v1.DeleteSpaceResponse
-	(*BotActivity)(nil),                    // 48: silo.v1.BotActivity
-	(*ListBotsRequest)(nil),                // 49: silo.v1.ListBotsRequest
-	(*ListBotsResponse)(nil),               // 50: silo.v1.ListBotsResponse
-	(*CreateBotRequest)(nil),               // 51: silo.v1.CreateBotRequest
-	(*UpdateBotRequest)(nil),               // 52: silo.v1.UpdateBotRequest
-	(*GetBotRequest)(nil),                  // 53: silo.v1.GetBotRequest
-	(*Container)(nil),                      // 54: silo.v1.Container
-	(*BotContainer)(nil),                   // 55: silo.v1.BotContainer
-	(*BotContainers)(nil),                  // 56: silo.v1.BotContainers
-	(*AdminContainer)(nil),                 // 57: silo.v1.AdminContainer
-	(*AdminNetwork)(nil),                   // 58: silo.v1.AdminNetwork
-	(*AdminBotGroup)(nil),                  // 59: silo.v1.AdminBotGroup
-	(*AdminUserGroup)(nil),                 // 60: silo.v1.AdminUserGroup
-	(*AdminSystemGroup)(nil),               // 61: silo.v1.AdminSystemGroup
-	(*AdminContainers)(nil),                // 62: silo.v1.AdminContainers
-	(*ListAdminContainersRequest)(nil),     // 63: silo.v1.ListAdminContainersRequest
-	(*AdminContainerActionRequest)(nil),    // 64: silo.v1.AdminContainerActionRequest
-	(*AdminActionResponse)(nil),            // 65: silo.v1.AdminActionResponse
-	(*DeleteBotResponse)(nil),              // 66: silo.v1.DeleteBotResponse
-	(*Memory)(nil),                         // 67: silo.v1.Memory
-	(*ListMemoriesRequest)(nil),            // 68: silo.v1.ListMemoriesRequest
-	(*ListMemoriesResponse)(nil),           // 69: silo.v1.ListMemoriesResponse
-	(*SearchMemoriesRequest)(nil),          // 70: silo.v1.SearchMemoriesRequest
-	(*SearchMemoriesResponse)(nil),         // 71: silo.v1.SearchMemoriesResponse
-	(*DeleteMemoryRequest)(nil),            // 72: silo.v1.DeleteMemoryRequest
-	(*DeleteMemoryResponse)(nil),           // 73: silo.v1.DeleteMemoryResponse
-	(*KnowledgeFolder)(nil),                // 74: silo.v1.KnowledgeFolder
-	(*KnowledgeIssue)(nil),                 // 75: silo.v1.KnowledgeIssue
-	(*ListKnowledgeRequest)(nil),           // 76: silo.v1.ListKnowledgeRequest
-	(*ListKnowledgeResponse)(nil),          // 77: silo.v1.ListKnowledgeResponse
-	(*AddKnowledgeFolderRequest)(nil),      // 78: silo.v1.AddKnowledgeFolderRequest
-	(*RemoveKnowledgeFolderRequest)(nil),   // 79: silo.v1.RemoveKnowledgeFolderRequest
-	(*RemoveKnowledgeFolderResponse)(nil),  // 80: silo.v1.RemoveKnowledgeFolderResponse
-	(*SyncKnowledgeRequest)(nil),           // 81: silo.v1.SyncKnowledgeRequest
-	(*KnowledgeHit)(nil),                   // 82: silo.v1.KnowledgeHit
-	(*SearchKnowledgeRequest)(nil),         // 83: silo.v1.SearchKnowledgeRequest
-	(*SearchKnowledgeResponse)(nil),        // 84: silo.v1.SearchKnowledgeResponse
-	(*ChangeSource)(nil),                   // 85: silo.v1.ChangeSource
-	(*Change)(nil),                         // 86: silo.v1.Change
-	(*ChangeFile)(nil),                     // 87: silo.v1.ChangeFile
-	(*ListChangesRequest)(nil),             // 88: silo.v1.ListChangesRequest
-	(*ListChangesResponse)(nil),            // 89: silo.v1.ListChangesResponse
-	(*DriveChangeEntry)(nil),               // 90: silo.v1.DriveChangeEntry
-	(*ListDriveChangesRequest)(nil),        // 91: silo.v1.ListDriveChangesRequest
-	(*ListDriveChangesResponse)(nil),       // 92: silo.v1.ListDriveChangesResponse
-	(*ListChangeFilesRequest)(nil),         // 93: silo.v1.ListChangeFilesRequest
-	(*ListChangeFilesResponse)(nil),        // 94: silo.v1.ListChangeFilesResponse
-	(*GetChangePatchRequest)(nil),          // 95: silo.v1.GetChangePatchRequest
-	(*GetChangePatchResponse)(nil),         // 96: silo.v1.GetChangePatchResponse
-	(*RestoreChangeRequest)(nil),           // 97: silo.v1.RestoreChangeRequest
-	(*RestoreSkip)(nil),                    // 98: silo.v1.RestoreSkip
-	(*RestoreChangeResponse)(nil),          // 99: silo.v1.RestoreChangeResponse
-	(*FeedPost)(nil),                       // 100: silo.v1.FeedPost
-	(*ListFeedRequest)(nil),                // 101: silo.v1.ListFeedRequest
-	(*ListFeedResponse)(nil),               // 102: silo.v1.ListFeedResponse
-	(*SetDesktopPausedRequest)(nil),        // 103: silo.v1.SetDesktopPausedRequest
-	(*SetDesktopPausedResponse)(nil),       // 104: silo.v1.SetDesktopPausedResponse
-	(*MarkFeedReadRequest)(nil),            // 105: silo.v1.MarkFeedReadRequest
-	(*MarkFeedReadResponse)(nil),           // 106: silo.v1.MarkFeedReadResponse
-	(*DeleteFeedPostRequest)(nil),          // 107: silo.v1.DeleteFeedPostRequest
-	(*DeleteFeedPostResponse)(nil),         // 108: silo.v1.DeleteFeedPostResponse
-	(*QuoteFeedPostRequest)(nil),           // 109: silo.v1.QuoteFeedPostRequest
-	(*QuoteFeedPostResponse)(nil),          // 110: silo.v1.QuoteFeedPostResponse
-	(*DashboardCard)(nil),                  // 111: silo.v1.DashboardCard
-	(*SetupOffer)(nil),                     // 112: silo.v1.SetupOffer
-	(*ResolveSetupOfferRequest)(nil),       // 113: silo.v1.ResolveSetupOfferRequest
-	(*ListDashboardRequest)(nil),           // 114: silo.v1.ListDashboardRequest
-	(*ListDashboardResponse)(nil),          // 115: silo.v1.ListDashboardResponse
-	(*DashboardWidget)(nil),                // 116: silo.v1.DashboardWidget
-	(*RefreshWidgetRequest)(nil),           // 117: silo.v1.RefreshWidgetRequest
-	(*SetWidgetStateRequest)(nil),          // 118: silo.v1.SetWidgetStateRequest
-	(*RunWidgetActionRequest)(nil),         // 119: silo.v1.RunWidgetActionRequest
-	(*RunWidgetActionResponse)(nil),        // 120: silo.v1.RunWidgetActionResponse
-	(*WidgetPlace)(nil),                    // 121: silo.v1.WidgetPlace
-	(*ArrangeDashboardRequest)(nil),        // 122: silo.v1.ArrangeDashboardRequest
-	(*ArrangeDashboardResponse)(nil),       // 123: silo.v1.ArrangeDashboardResponse
-	(*RemoveWidgetRequest)(nil),            // 124: silo.v1.RemoveWidgetRequest
-	(*RemoveWidgetResponse)(nil),           // 125: silo.v1.RemoveWidgetResponse
-	(*AskDashboardRequest)(nil),            // 126: silo.v1.AskDashboardRequest
-	(*AskDashboardResponse)(nil),           // 127: silo.v1.AskDashboardResponse
-	(*MarkDashboardReadRequest)(nil),       // 128: silo.v1.MarkDashboardReadRequest
-	(*MarkDashboardReadResponse)(nil),      // 129: silo.v1.MarkDashboardReadResponse
-	(*DismissDashboardCardRequest)(nil),    // 130: silo.v1.DismissDashboardCardRequest
-	(*DismissDashboardCardResponse)(nil),   // 131: silo.v1.DismissDashboardCardResponse
-	(*SubmitDashboardCardRequest)(nil),     // 132: silo.v1.SubmitDashboardCardRequest
-	(*SubmitDashboardCardResponse)(nil),    // 133: silo.v1.SubmitDashboardCardResponse
-	(*Tunnel)(nil),                         // 134: silo.v1.Tunnel
-	(*ListTunnelsRequest)(nil),             // 135: silo.v1.ListTunnelsRequest
-	(*ListTunnelsResponse)(nil),            // 136: silo.v1.ListTunnelsResponse
-	(*CreateTunnelRequest)(nil),            // 137: silo.v1.CreateTunnelRequest
-	(*UpdateTunnelRequest)(nil),            // 138: silo.v1.UpdateTunnelRequest
-	(*DeleteTunnelRequest)(nil),            // 139: silo.v1.DeleteTunnelRequest
-	(*DeleteTunnelResponse)(nil),           // 140: silo.v1.DeleteTunnelResponse
-	(*Mailbox)(nil),                        // 141: silo.v1.Mailbox
-	(*MailAttachment)(nil),                 // 142: silo.v1.MailAttachment
-	(*Mail)(nil),                           // 143: silo.v1.Mail
-	(*ListMailRequest)(nil),                // 144: silo.v1.ListMailRequest
-	(*ListMailResponse)(nil),               // 145: silo.v1.ListMailResponse
-	(*GetMailRequest)(nil),                 // 146: silo.v1.GetMailRequest
-	(*DeleteMailRequest)(nil),              // 147: silo.v1.DeleteMailRequest
-	(*DeleteMailResponse)(nil),             // 148: silo.v1.DeleteMailResponse
-	(*UpdateMailboxRequest)(nil),           // 149: silo.v1.UpdateMailboxRequest
-	(*RotateMailboxRequest)(nil),           // 150: silo.v1.RotateMailboxRequest
-	(*Automation)(nil),                     // 151: silo.v1.Automation
-	(*ListAutomationsRequest)(nil),         // 152: silo.v1.ListAutomationsRequest
-	(*ListAutomationsResponse)(nil),        // 153: silo.v1.ListAutomationsResponse
-	(*CreateAutomationRequest)(nil),        // 154: silo.v1.CreateAutomationRequest
-	(*UpdateAutomationRequest)(nil),        // 155: silo.v1.UpdateAutomationRequest
-	(*DeleteAutomationRequest)(nil),        // 156: silo.v1.DeleteAutomationRequest
-	(*DeleteAutomationResponse)(nil),       // 157: silo.v1.DeleteAutomationResponse
-	(*RunAutomationRequest)(nil),           // 158: silo.v1.RunAutomationRequest
-	(*RunAutomationResponse)(nil),          // 159: silo.v1.RunAutomationResponse
-	(*Chat)(nil),                           // 160: silo.v1.Chat
-	(*ModelOption)(nil),                    // 161: silo.v1.ModelOption
-	(*ListModelsRequest)(nil),              // 162: silo.v1.ListModelsRequest
-	(*ListModelsResponse)(nil),             // 163: silo.v1.ListModelsResponse
-	(*TranscribeRequest)(nil),              // 164: silo.v1.TranscribeRequest
-	(*TranscribeResponse)(nil),             // 165: silo.v1.TranscribeResponse
-	(*SetChatModelRequest)(nil),            // 166: silo.v1.SetChatModelRequest
-	(*SetChatThinkingRequest)(nil),         // 167: silo.v1.SetChatThinkingRequest
-	(*ListChatsRequest)(nil),               // 168: silo.v1.ListChatsRequest
-	(*ListChatsResponse)(nil),              // 169: silo.v1.ListChatsResponse
-	(*CreateChatRequest)(nil),              // 170: silo.v1.CreateChatRequest
-	(*RenameChatRequest)(nil),              // 171: silo.v1.RenameChatRequest
-	(*DeleteChatRequest)(nil),              // 172: silo.v1.DeleteChatRequest
-	(*DeleteChatResponse)(nil),             // 173: silo.v1.DeleteChatResponse
-	(*Attachment)(nil),                     // 174: silo.v1.Attachment
-	(*Quote)(nil),                          // 175: silo.v1.Quote
-	(*SendRequest)(nil),                    // 176: silo.v1.SendRequest
-	(*SendResponse)(nil),                   // 177: silo.v1.SendResponse
-	(*Command)(nil),                        // 178: silo.v1.Command
-	(*ListCommandsRequest)(nil),            // 179: silo.v1.ListCommandsRequest
-	(*ListCommandsResponse)(nil),           // 180: silo.v1.ListCommandsResponse
-	(*ListChatEventsRequest)(nil),          // 181: silo.v1.ListChatEventsRequest
-	(*ListChatEventsResponse)(nil),         // 182: silo.v1.ListChatEventsResponse
-	(*StopRunRequest)(nil),                 // 183: silo.v1.StopRunRequest
-	(*StopRunResponse)(nil),                // 184: silo.v1.StopRunResponse
-	(*StreamRunRequest)(nil),               // 185: silo.v1.StreamRunRequest
-	(*RunEvent)(nil),                       // 186: silo.v1.RunEvent
-	(*Quoted)(nil),                         // 187: silo.v1.Quoted
-	(*EditMessageRequest)(nil),             // 188: silo.v1.EditMessageRequest
-	(*DeleteMessageRequest)(nil),           // 189: silo.v1.DeleteMessageRequest
-	(*DeleteMessageResponse)(nil),          // 190: silo.v1.DeleteMessageResponse
-	(*DivergeChatRequest)(nil),             // 191: silo.v1.DivergeChatRequest
-	(*DivergeChatResponse)(nil),            // 192: silo.v1.DivergeChatResponse
-	(*CompactChatRequest)(nil),             // 193: silo.v1.CompactChatRequest
-	(*CompactChatResponse)(nil),            // 194: silo.v1.CompactChatResponse
-	(*CollectMemoriesRequest)(nil),         // 195: silo.v1.CollectMemoriesRequest
-	(*CollectMemoriesResponse)(nil),        // 196: silo.v1.CollectMemoriesResponse
-	(*Subagent)(nil),                       // 197: silo.v1.Subagent
-	(*ListSubagentsRequest)(nil),           // 198: silo.v1.ListSubagentsRequest
-	(*ListSubagentsResponse)(nil),          // 199: silo.v1.ListSubagentsResponse
-	(*GetSubagentRequest)(nil),             // 200: silo.v1.GetSubagentRequest
-	(*StopSubagentRequest)(nil),            // 201: silo.v1.StopSubagentRequest
-	(*StopSubagentResponse)(nil),           // 202: silo.v1.StopSubagentResponse
-	(*TaskItem)(nil),                       // 203: silo.v1.TaskItem
-	(*Taskboard)(nil),                      // 204: silo.v1.Taskboard
-	(*GetTaskboardRequest)(nil),            // 205: silo.v1.GetTaskboardRequest
-	(*ClearTaskboardRequest)(nil),          // 206: silo.v1.ClearTaskboardRequest
-	(*SecretMeta)(nil),                     // 207: silo.v1.SecretMeta
-	(*ListSecretsRequest)(nil),             // 208: silo.v1.ListSecretsRequest
-	(*ListSecretsResponse)(nil),            // 209: silo.v1.ListSecretsResponse
-	(*AddSecretRequest)(nil),               // 210: silo.v1.AddSecretRequest
-	(*UpdateSecretRequest)(nil),            // 211: silo.v1.UpdateSecretRequest
-	(*DeleteSecretRequest)(nil),            // 212: silo.v1.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),           // 213: silo.v1.DeleteSecretResponse
-	(*ApprovalField)(nil),                  // 214: silo.v1.ApprovalField
-	(*Approval)(nil),                       // 215: silo.v1.Approval
-	(*ListApprovalsRequest)(nil),           // 216: silo.v1.ListApprovalsRequest
-	(*ListApprovalsResponse)(nil),          // 217: silo.v1.ListApprovalsResponse
-	(*DecideApprovalRequest)(nil),          // 218: silo.v1.DecideApprovalRequest
-	(*Rule)(nil),                           // 219: silo.v1.Rule
-	(*RuleSection)(nil),                    // 220: silo.v1.RuleSection
-	(*ListRulesRequest)(nil),               // 221: silo.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),              // 222: silo.v1.ListRulesResponse
-	(*SetRuleRequest)(nil),                 // 223: silo.v1.SetRuleRequest
-	(*OperatorRule)(nil),                   // 224: silo.v1.OperatorRule
-	(*ListOperatorRulesRequest)(nil),       // 225: silo.v1.ListOperatorRulesRequest
-	(*ListOperatorRulesResponse)(nil),      // 226: silo.v1.ListOperatorRulesResponse
-	(*SetOperatorRuleRequest)(nil),         // 227: silo.v1.SetOperatorRuleRequest
-	(*DeleteOperatorRuleRequest)(nil),      // 228: silo.v1.DeleteOperatorRuleRequest
-	(*DeleteOperatorRuleResponse)(nil),     // 229: silo.v1.DeleteOperatorRuleResponse
-	(*FileEntry)(nil),                      // 230: silo.v1.FileEntry
-	(*ListFilesRequest)(nil),               // 231: silo.v1.ListFilesRequest
-	(*ListFilesResponse)(nil),              // 232: silo.v1.ListFilesResponse
-	(*ReadFileRequest)(nil),                // 233: silo.v1.ReadFileRequest
-	(*ReadFileResponse)(nil),               // 234: silo.v1.ReadFileResponse
-	(*MkdirRequest)(nil),                   // 235: silo.v1.MkdirRequest
-	(*RemoveFileRequest)(nil),              // 236: silo.v1.RemoveFileRequest
-	(*PutFileRequest)(nil),                 // 237: silo.v1.PutFileRequest
-	(*FileOpResponse)(nil),                 // 238: silo.v1.FileOpResponse
-	(*ConfigField)(nil),                    // 239: silo.v1.ConfigField
-	(*Settings)(nil),                       // 240: silo.v1.Settings
-	(*Provider)(nil),                       // 241: silo.v1.Provider
-	(*ProviderField)(nil),                  // 242: silo.v1.ProviderField
-	(*SetModelsRequest)(nil),               // 243: silo.v1.SetModelsRequest
-	(*ListProviderModelsRequest)(nil),      // 244: silo.v1.ListProviderModelsRequest
-	(*ProviderModel)(nil),                  // 245: silo.v1.ProviderModel
-	(*ListProviderModelsResponse)(nil),     // 246: silo.v1.ListProviderModelsResponse
-	(*ConnectorVar)(nil),                   // 247: silo.v1.ConnectorVar
-	(*SetConnectorVarsRequest)(nil),        // 248: silo.v1.SetConnectorVarsRequest
-	(*AutoenableConnectors)(nil),           // 249: silo.v1.AutoenableConnectors
-	(*SetAutoenableConnectorsRequest)(nil), // 250: silo.v1.SetAutoenableConnectorsRequest
-	(*SearchEngine)(nil),                   // 251: silo.v1.SearchEngine
-	(*SearchEngineField)(nil),              // 252: silo.v1.SearchEngineField
-	(*GetSettingsRequest)(nil),             // 253: silo.v1.GetSettingsRequest
-	(*PutSettingsRequest)(nil),             // 254: silo.v1.PutSettingsRequest
-	(*AuditEvent)(nil),                     // 255: silo.v1.AuditEvent
-	(*ListAuditEventsRequest)(nil),         // 256: silo.v1.ListAuditEventsRequest
-	(*ListAuditEventsResponse)(nil),        // 257: silo.v1.ListAuditEventsResponse
-	(*AuditSummaryRequest)(nil),            // 258: silo.v1.AuditSummaryRequest
-	(*AuditSummaryResponse)(nil),           // 259: silo.v1.AuditSummaryResponse
-	(*MarkAuditReadRequest)(nil),           // 260: silo.v1.MarkAuditReadRequest
-	(*TrafficRow)(nil),                     // 261: silo.v1.TrafficRow
-	(*ListTrafficRequest)(nil),             // 262: silo.v1.ListTrafficRequest
-	(*ListTrafficResponse)(nil),            // 263: silo.v1.ListTrafficResponse
-	(*HostPattern)(nil),                    // 264: silo.v1.HostPattern
-	(*BotNetwork)(nil),                     // 265: silo.v1.BotNetwork
-	(*GetBotNetworkRequest)(nil),           // 266: silo.v1.GetBotNetworkRequest
-	(*AddHostPatternRequest)(nil),          // 267: silo.v1.AddHostPatternRequest
-	(*RemoveHostPatternRequest)(nil),       // 268: silo.v1.RemoveHostPatternRequest
-	(*SetOtherProtocolsRequest)(nil),       // 269: silo.v1.SetOtherProtocolsRequest
-	(*FeedStatus)(nil),                     // 270: silo.v1.FeedStatus
-	(*EgressStatus)(nil),                   // 271: silo.v1.EgressStatus
-	(*GetEgressStatusRequest)(nil),         // 272: silo.v1.GetEgressStatusRequest
-	(*RotateEgressCARequest)(nil),          // 273: silo.v1.RotateEgressCARequest
-	(*LLMLog)(nil),                         // 274: silo.v1.LLMLog
-	(*ListLLMLogsRequest)(nil),             // 275: silo.v1.ListLLMLogsRequest
-	(*ListLLMLogsResponse)(nil),            // 276: silo.v1.ListLLMLogsResponse
-	(*HeaderKey)(nil),                      // 277: silo.v1.HeaderKey
-	(*EnvKey)(nil),                         // 278: silo.v1.EnvKey
-	(*EnvInput)(nil),                       // 279: silo.v1.EnvInput
-	(*Connector)(nil),                      // 280: silo.v1.Connector
-	(*ListConnectorsRequest)(nil),          // 281: silo.v1.ListConnectorsRequest
-	(*ListConnectorsResponse)(nil),         // 282: silo.v1.ListConnectorsResponse
-	(*HeaderInput)(nil),                    // 283: silo.v1.HeaderInput
-	(*CreateConnectorRequest)(nil),         // 284: silo.v1.CreateConnectorRequest
-	(*UpdateConnectorRequest)(nil),         // 285: silo.v1.UpdateConnectorRequest
-	(*DeleteConnectorRequest)(nil),         // 286: silo.v1.DeleteConnectorRequest
-	(*DeleteConnectorResponse)(nil),        // 287: silo.v1.DeleteConnectorResponse
-	(*BotConnector)(nil),                   // 288: silo.v1.BotConnector
-	(*ListBotConnectorsRequest)(nil),       // 289: silo.v1.ListBotConnectorsRequest
-	(*ListBotConnectorsResponse)(nil),      // 290: silo.v1.ListBotConnectorsResponse
-	(*AttachConnectorRequest)(nil),         // 291: silo.v1.AttachConnectorRequest
-	(*CreateBotConnectorRequest)(nil),      // 292: silo.v1.CreateBotConnectorRequest
-	(*DetachConnectorRequest)(nil),         // 293: silo.v1.DetachConnectorRequest
-	(*DetachConnectorResponse)(nil),        // 294: silo.v1.DetachConnectorResponse
-	(*ListSpaceConnectorsRequest)(nil),     // 295: silo.v1.ListSpaceConnectorsRequest
-	(*GrantConnectorRequest)(nil),          // 296: silo.v1.GrantConnectorRequest
-	(*RevokeConnectorRequest)(nil),         // 297: silo.v1.RevokeConnectorRequest
-	(*RevokeConnectorResponse)(nil),        // 298: silo.v1.RevokeConnectorResponse
-	(*RefreshBotConnectorRequest)(nil),     // 299: silo.v1.RefreshBotConnectorRequest
-	(*StartConnectorAuthRequest)(nil),      // 300: silo.v1.StartConnectorAuthRequest
-	(*StartConnectorAuthResponse)(nil),     // 301: silo.v1.StartConnectorAuthResponse
-	(*SeedConnectorsRequest)(nil),          // 302: silo.v1.SeedConnectorsRequest
-	(*SeedConnectorsResponse)(nil),         // 303: silo.v1.SeedConnectorsResponse
-	(*SeedSkillsRequest)(nil),              // 304: silo.v1.SeedSkillsRequest
-	(*SeedSkillsResponse)(nil),             // 305: silo.v1.SeedSkillsResponse
-	(*Skill)(nil),                          // 306: silo.v1.Skill
-	(*ListSkillsRequest)(nil),              // 307: silo.v1.ListSkillsRequest
-	(*ListSkillsResponse)(nil),             // 308: silo.v1.ListSkillsResponse
-	(*InstallSkillRequest)(nil),            // 309: silo.v1.InstallSkillRequest
-	(*InstallSkillResponse)(nil),           // 310: silo.v1.InstallSkillResponse
-	(*DeleteSkillRequest)(nil),             // 311: silo.v1.DeleteSkillRequest
-	(*DeleteSkillResponse)(nil),            // 312: silo.v1.DeleteSkillResponse
-	(*BotSkill)(nil),                       // 313: silo.v1.BotSkill
-	(*ListBotSkillsRequest)(nil),           // 314: silo.v1.ListBotSkillsRequest
-	(*ListBotSkillsResponse)(nil),          // 315: silo.v1.ListBotSkillsResponse
-	(*SetBotSkillRequest)(nil),             // 316: silo.v1.SetBotSkillRequest
-	(*ListSkillFilesRequest)(nil),          // 317: silo.v1.ListSkillFilesRequest
-	(*ReadSkillFileRequest)(nil),           // 318: silo.v1.ReadSkillFileRequest
-	(*SaveSkillRequest)(nil),               // 319: silo.v1.SaveSkillRequest
-	(*SaveSkillResponse)(nil),              // 320: silo.v1.SaveSkillResponse
-	(*ArtifactVersion)(nil),                // 321: silo.v1.ArtifactVersion
-	(*ArtifactItem)(nil),                   // 322: silo.v1.ArtifactItem
-	(*ListArtifactsRequest)(nil),           // 323: silo.v1.ListArtifactsRequest
-	(*ListArtifactsResponse)(nil),          // 324: silo.v1.ListArtifactsResponse
-	(*DeleteArtifactRequest)(nil),          // 325: silo.v1.DeleteArtifactRequest
-	(*DeleteArtifactResponse)(nil),         // 326: silo.v1.DeleteArtifactResponse
-	(*ArtifactEntry)(nil),                  // 327: silo.v1.ArtifactEntry
-	(*GetArtifactRequest)(nil),             // 328: silo.v1.GetArtifactRequest
-	(*GetArtifactResponse)(nil),            // 329: silo.v1.GetArtifactResponse
-	(*ReadArtifactFileRequest)(nil),        // 330: silo.v1.ReadArtifactFileRequest
-	(*ReadArtifactFileResponse)(nil),       // 331: silo.v1.ReadArtifactFileResponse
-	(*OpenArtifactAppRequest)(nil),         // 332: silo.v1.OpenArtifactAppRequest
-	(*OpenArtifactAppResponse)(nil),        // 333: silo.v1.OpenArtifactAppResponse
-	(*ArtifactShare)(nil),                  // 334: silo.v1.ArtifactShare
-	(*ShareArtifactRequest)(nil),           // 335: silo.v1.ShareArtifactRequest
-	(*ListArtifactSharesRequest)(nil),      // 336: silo.v1.ListArtifactSharesRequest
-	(*ListArtifactSharesResponse)(nil),     // 337: silo.v1.ListArtifactSharesResponse
-	(*DeleteArtifactShareRequest)(nil),     // 338: silo.v1.DeleteArtifactShareRequest
-	(*DeleteArtifactShareResponse)(nil),    // 339: silo.v1.DeleteArtifactShareResponse
-	(*ChannelFieldOption)(nil),             // 340: silo.v1.ChannelFieldOption
-	(*ChannelField)(nil),                   // 341: silo.v1.ChannelField
-	(*ChannelAdapterAction)(nil),           // 342: silo.v1.ChannelAdapterAction
-	(*ChannelAdapter)(nil),                 // 343: silo.v1.ChannelAdapter
-	(*ChannelState)(nil),                   // 344: silo.v1.ChannelState
-	(*Channel)(nil),                        // 345: silo.v1.Channel
-	(*ListChannelAdaptersRequest)(nil),     // 346: silo.v1.ListChannelAdaptersRequest
-	(*ListChannelAdaptersResponse)(nil),    // 347: silo.v1.ListChannelAdaptersResponse
-	(*ListBotChannelsRequest)(nil),         // 348: silo.v1.ListBotChannelsRequest
-	(*ListBotChannelsResponse)(nil),        // 349: silo.v1.ListBotChannelsResponse
-	(*CreateChannelRequest)(nil),           // 350: silo.v1.CreateChannelRequest
-	(*UpdateChannelRequest)(nil),           // 351: silo.v1.UpdateChannelRequest
-	(*DeleteChannelRequest)(nil),           // 352: silo.v1.DeleteChannelRequest
-	(*DeleteChannelResponse)(nil),          // 353: silo.v1.DeleteChannelResponse
-	(*ChannelActionRequest)(nil),           // 354: silo.v1.ChannelActionRequest
-	(*ChannelActionResponse)(nil),          // 355: silo.v1.ChannelActionResponse
-	(*DriveOption)(nil),                    // 356: silo.v1.DriveOption
-	(*DriveVar)(nil),                       // 357: silo.v1.DriveVar
-	(*DriveTemplate)(nil),                  // 358: silo.v1.DriveTemplate
-	(*Drive)(nil),                          // 359: silo.v1.Drive
-	(*ListDriveTemplatesRequest)(nil),      // 360: silo.v1.ListDriveTemplatesRequest
-	(*ListDriveTemplatesResponse)(nil),     // 361: silo.v1.ListDriveTemplatesResponse
-	(*ListDrivesRequest)(nil),              // 362: silo.v1.ListDrivesRequest
-	(*ListDrivesResponse)(nil),             // 363: silo.v1.ListDrivesResponse
-	(*SaveDriveRequest)(nil),               // 364: silo.v1.SaveDriveRequest
-	(*ListSpaceDrivesRequest)(nil),         // 365: silo.v1.ListSpaceDrivesRequest
-	(*GrantDriveRequest)(nil),              // 366: silo.v1.GrantDriveRequest
-	(*RevokeDriveRequest)(nil),             // 367: silo.v1.RevokeDriveRequest
-	(*RevokeDriveResponse)(nil),            // 368: silo.v1.RevokeDriveResponse
-	(*DeleteDriveRequest)(nil),             // 369: silo.v1.DeleteDriveRequest
-	(*DeleteDriveResponse)(nil),            // 370: silo.v1.DeleteDriveResponse
-	(*BeginDriveAuthRequest)(nil),          // 371: silo.v1.BeginDriveAuthRequest
-	(*BeginDriveAuthResponse)(nil),         // 372: silo.v1.BeginDriveAuthResponse
-	(*PickDriveOptionsRequest)(nil),        // 373: silo.v1.PickDriveOptionsRequest
-	(*PickDriveOptionsResponse)(nil),       // 374: silo.v1.PickDriveOptionsResponse
-	(*BrowseDriveRequest)(nil),             // 375: silo.v1.BrowseDriveRequest
-	(*BrowseDriveDir)(nil),                 // 376: silo.v1.BrowseDriveDir
-	(*BrowseDriveResponse)(nil),            // 377: silo.v1.BrowseDriveResponse
-	(*DriveSystemField)(nil),               // 378: silo.v1.DriveSystemField
-	(*DriveProviderSettings)(nil),          // 379: silo.v1.DriveProviderSettings
-	(*DriveSettings)(nil),                  // 380: silo.v1.DriveSettings
-	(*GetDriveSettingsRequest)(nil),        // 381: silo.v1.GetDriveSettingsRequest
-	(*PutDriveSettingsRequest)(nil),        // 382: silo.v1.PutDriveSettingsRequest
-	nil,                                    // 383: silo.v1.SetupOffer.OptionsEntry
-	nil,                                    // 384: silo.v1.PutSettingsRequest.FieldsEntry
-	nil,                                    // 385: silo.v1.Connector.ConfigEntry
-	nil,                                    // 386: silo.v1.UpdateConnectorRequest.ConfigEntry
-	nil,                                    // 387: silo.v1.CreateBotConnectorRequest.ConfigEntry
-	nil,                                    // 388: silo.v1.ChannelState.ValuesEntry
-	nil,                                    // 389: silo.v1.Channel.ConfigEntry
-	nil,                                    // 390: silo.v1.CreateChannelRequest.ConfigEntry
-	nil,                                    // 391: silo.v1.CreateChannelRequest.SecretsEntry
-	nil,                                    // 392: silo.v1.UpdateChannelRequest.ConfigEntry
-	nil,                                    // 393: silo.v1.UpdateChannelRequest.SecretsEntry
-	nil,                                    // 394: silo.v1.ChannelActionRequest.PayloadEntry
-	nil,                                    // 395: silo.v1.DriveOption.ExtraEntry
-	nil,                                    // 396: silo.v1.DriveVar.VisibleIfEntry
-	nil,                                    // 397: silo.v1.Drive.OptionsEntry
-	nil,                                    // 398: silo.v1.SaveDriveRequest.OptionsEntry
-	nil,                                    // 399: silo.v1.PutDriveSettingsRequest.ValuesEntry
+	(*TransferSpaceRequest)(nil),           // 48: silo.v1.TransferSpaceRequest
+	(*SpacePerson)(nil),                    // 49: silo.v1.SpacePerson
+	(*ListSpacePeopleRequest)(nil),         // 50: silo.v1.ListSpacePeopleRequest
+	(*ListSpacePeopleResponse)(nil),        // 51: silo.v1.ListSpacePeopleResponse
+	(*SetSpaceRoleRequest)(nil),            // 52: silo.v1.SetSpaceRoleRequest
+	(*PlanSpaceRemovalRequest)(nil),        // 53: silo.v1.PlanSpaceRemovalRequest
+	(*LastManaged)(nil),                    // 54: silo.v1.LastManaged
+	(*Lent)(nil),                           // 55: silo.v1.Lent
+	(*SpaceRemovalPlan)(nil),               // 56: silo.v1.SpaceRemovalPlan
+	(*Handoff)(nil),                        // 57: silo.v1.Handoff
+	(*RemoveSpacePersonRequest)(nil),       // 58: silo.v1.RemoveSpacePersonRequest
+	(*RemoveSpacePersonResponse)(nil),      // 59: silo.v1.RemoveSpacePersonResponse
+	(*CreateSpaceInviteRequest)(nil),       // 60: silo.v1.CreateSpaceInviteRequest
+	(*SpaceInvite)(nil),                    // 61: silo.v1.SpaceInvite
+	(*SpaceInviteLink)(nil),                // 62: silo.v1.SpaceInviteLink
+	(*ListSpaceInvitesRequest)(nil),        // 63: silo.v1.ListSpaceInvitesRequest
+	(*ListSpaceInvitesResponse)(nil),       // 64: silo.v1.ListSpaceInvitesResponse
+	(*DeleteSpaceInviteRequest)(nil),       // 65: silo.v1.DeleteSpaceInviteRequest
+	(*DeleteSpaceInviteResponse)(nil),      // 66: silo.v1.DeleteSpaceInviteResponse
+	(*GetSpaceInviteRequest)(nil),          // 67: silo.v1.GetSpaceInviteRequest
+	(*SpaceInviteInfo)(nil),                // 68: silo.v1.SpaceInviteInfo
+	(*JoinSpaceRequest)(nil),               // 69: silo.v1.JoinSpaceRequest
+	(*JoinSpaceResponse)(nil),              // 70: silo.v1.JoinSpaceResponse
+	(*BotPerson)(nil),                      // 71: silo.v1.BotPerson
+	(*ListBotPeopleRequest)(nil),           // 72: silo.v1.ListBotPeopleRequest
+	(*ListBotPeopleResponse)(nil),          // 73: silo.v1.ListBotPeopleResponse
+	(*AddBotPersonRequest)(nil),            // 74: silo.v1.AddBotPersonRequest
+	(*AddBotPersonResponse)(nil),           // 75: silo.v1.AddBotPersonResponse
+	(*SetBotRoleRequest)(nil),              // 76: silo.v1.SetBotRoleRequest
+	(*RemoveBotPersonRequest)(nil),         // 77: silo.v1.RemoveBotPersonRequest
+	(*RemoveBotPersonResponse)(nil),        // 78: silo.v1.RemoveBotPersonResponse
+	(*SetLendSharedRequest)(nil),           // 79: silo.v1.SetLendSharedRequest
+	(*SetLendSharedResponse)(nil),          // 80: silo.v1.SetLendSharedResponse
+	(*OtherBot)(nil),                       // 81: silo.v1.OtherBot
+	(*BotActivity)(nil),                    // 82: silo.v1.BotActivity
+	(*ListBotsRequest)(nil),                // 83: silo.v1.ListBotsRequest
+	(*ListBotsResponse)(nil),               // 84: silo.v1.ListBotsResponse
+	(*CreateBotRequest)(nil),               // 85: silo.v1.CreateBotRequest
+	(*UpdateBotRequest)(nil),               // 86: silo.v1.UpdateBotRequest
+	(*GetBotRequest)(nil),                  // 87: silo.v1.GetBotRequest
+	(*Container)(nil),                      // 88: silo.v1.Container
+	(*BotContainer)(nil),                   // 89: silo.v1.BotContainer
+	(*BotContainers)(nil),                  // 90: silo.v1.BotContainers
+	(*AdminContainer)(nil),                 // 91: silo.v1.AdminContainer
+	(*AdminNetwork)(nil),                   // 92: silo.v1.AdminNetwork
+	(*AdminBotGroup)(nil),                  // 93: silo.v1.AdminBotGroup
+	(*AdminUserGroup)(nil),                 // 94: silo.v1.AdminUserGroup
+	(*AdminSystemGroup)(nil),               // 95: silo.v1.AdminSystemGroup
+	(*AdminContainers)(nil),                // 96: silo.v1.AdminContainers
+	(*ListAdminContainersRequest)(nil),     // 97: silo.v1.ListAdminContainersRequest
+	(*AdminContainerActionRequest)(nil),    // 98: silo.v1.AdminContainerActionRequest
+	(*AdminActionResponse)(nil),            // 99: silo.v1.AdminActionResponse
+	(*DeleteBotResponse)(nil),              // 100: silo.v1.DeleteBotResponse
+	(*Memory)(nil),                         // 101: silo.v1.Memory
+	(*ListMemoriesRequest)(nil),            // 102: silo.v1.ListMemoriesRequest
+	(*ListMemoriesResponse)(nil),           // 103: silo.v1.ListMemoriesResponse
+	(*SearchMemoriesRequest)(nil),          // 104: silo.v1.SearchMemoriesRequest
+	(*SearchMemoriesResponse)(nil),         // 105: silo.v1.SearchMemoriesResponse
+	(*DeleteMemoryRequest)(nil),            // 106: silo.v1.DeleteMemoryRequest
+	(*DeleteMemoryResponse)(nil),           // 107: silo.v1.DeleteMemoryResponse
+	(*KnowledgeFolder)(nil),                // 108: silo.v1.KnowledgeFolder
+	(*KnowledgeIssue)(nil),                 // 109: silo.v1.KnowledgeIssue
+	(*ListKnowledgeRequest)(nil),           // 110: silo.v1.ListKnowledgeRequest
+	(*ListKnowledgeResponse)(nil),          // 111: silo.v1.ListKnowledgeResponse
+	(*AddKnowledgeFolderRequest)(nil),      // 112: silo.v1.AddKnowledgeFolderRequest
+	(*RemoveKnowledgeFolderRequest)(nil),   // 113: silo.v1.RemoveKnowledgeFolderRequest
+	(*RemoveKnowledgeFolderResponse)(nil),  // 114: silo.v1.RemoveKnowledgeFolderResponse
+	(*SyncKnowledgeRequest)(nil),           // 115: silo.v1.SyncKnowledgeRequest
+	(*KnowledgeHit)(nil),                   // 116: silo.v1.KnowledgeHit
+	(*SearchKnowledgeRequest)(nil),         // 117: silo.v1.SearchKnowledgeRequest
+	(*SearchKnowledgeResponse)(nil),        // 118: silo.v1.SearchKnowledgeResponse
+	(*ChangeSource)(nil),                   // 119: silo.v1.ChangeSource
+	(*Change)(nil),                         // 120: silo.v1.Change
+	(*ChangeFile)(nil),                     // 121: silo.v1.ChangeFile
+	(*ListChangesRequest)(nil),             // 122: silo.v1.ListChangesRequest
+	(*ListChangesResponse)(nil),            // 123: silo.v1.ListChangesResponse
+	(*DriveChangeEntry)(nil),               // 124: silo.v1.DriveChangeEntry
+	(*ListDriveChangesRequest)(nil),        // 125: silo.v1.ListDriveChangesRequest
+	(*ListDriveChangesResponse)(nil),       // 126: silo.v1.ListDriveChangesResponse
+	(*ListChangeFilesRequest)(nil),         // 127: silo.v1.ListChangeFilesRequest
+	(*ListChangeFilesResponse)(nil),        // 128: silo.v1.ListChangeFilesResponse
+	(*GetChangePatchRequest)(nil),          // 129: silo.v1.GetChangePatchRequest
+	(*GetChangePatchResponse)(nil),         // 130: silo.v1.GetChangePatchResponse
+	(*RestoreChangeRequest)(nil),           // 131: silo.v1.RestoreChangeRequest
+	(*RestoreSkip)(nil),                    // 132: silo.v1.RestoreSkip
+	(*RestoreChangeResponse)(nil),          // 133: silo.v1.RestoreChangeResponse
+	(*FeedPost)(nil),                       // 134: silo.v1.FeedPost
+	(*ListFeedRequest)(nil),                // 135: silo.v1.ListFeedRequest
+	(*ListFeedResponse)(nil),               // 136: silo.v1.ListFeedResponse
+	(*SetDesktopPausedRequest)(nil),        // 137: silo.v1.SetDesktopPausedRequest
+	(*SetDesktopPausedResponse)(nil),       // 138: silo.v1.SetDesktopPausedResponse
+	(*MarkFeedReadRequest)(nil),            // 139: silo.v1.MarkFeedReadRequest
+	(*MarkFeedReadResponse)(nil),           // 140: silo.v1.MarkFeedReadResponse
+	(*DeleteFeedPostRequest)(nil),          // 141: silo.v1.DeleteFeedPostRequest
+	(*DeleteFeedPostResponse)(nil),         // 142: silo.v1.DeleteFeedPostResponse
+	(*QuoteFeedPostRequest)(nil),           // 143: silo.v1.QuoteFeedPostRequest
+	(*QuoteFeedPostResponse)(nil),          // 144: silo.v1.QuoteFeedPostResponse
+	(*DashboardCard)(nil),                  // 145: silo.v1.DashboardCard
+	(*SetupOffer)(nil),                     // 146: silo.v1.SetupOffer
+	(*ResolveSetupOfferRequest)(nil),       // 147: silo.v1.ResolveSetupOfferRequest
+	(*ListDashboardRequest)(nil),           // 148: silo.v1.ListDashboardRequest
+	(*ListDashboardResponse)(nil),          // 149: silo.v1.ListDashboardResponse
+	(*DashboardWidget)(nil),                // 150: silo.v1.DashboardWidget
+	(*RefreshWidgetRequest)(nil),           // 151: silo.v1.RefreshWidgetRequest
+	(*SetWidgetStateRequest)(nil),          // 152: silo.v1.SetWidgetStateRequest
+	(*RunWidgetActionRequest)(nil),         // 153: silo.v1.RunWidgetActionRequest
+	(*RunWidgetActionResponse)(nil),        // 154: silo.v1.RunWidgetActionResponse
+	(*WidgetPlace)(nil),                    // 155: silo.v1.WidgetPlace
+	(*ArrangeDashboardRequest)(nil),        // 156: silo.v1.ArrangeDashboardRequest
+	(*ArrangeDashboardResponse)(nil),       // 157: silo.v1.ArrangeDashboardResponse
+	(*RemoveWidgetRequest)(nil),            // 158: silo.v1.RemoveWidgetRequest
+	(*RemoveWidgetResponse)(nil),           // 159: silo.v1.RemoveWidgetResponse
+	(*AskDashboardRequest)(nil),            // 160: silo.v1.AskDashboardRequest
+	(*AskDashboardResponse)(nil),           // 161: silo.v1.AskDashboardResponse
+	(*MarkDashboardReadRequest)(nil),       // 162: silo.v1.MarkDashboardReadRequest
+	(*MarkDashboardReadResponse)(nil),      // 163: silo.v1.MarkDashboardReadResponse
+	(*DismissDashboardCardRequest)(nil),    // 164: silo.v1.DismissDashboardCardRequest
+	(*DismissDashboardCardResponse)(nil),   // 165: silo.v1.DismissDashboardCardResponse
+	(*SubmitDashboardCardRequest)(nil),     // 166: silo.v1.SubmitDashboardCardRequest
+	(*SubmitDashboardCardResponse)(nil),    // 167: silo.v1.SubmitDashboardCardResponse
+	(*Tunnel)(nil),                         // 168: silo.v1.Tunnel
+	(*ListTunnelsRequest)(nil),             // 169: silo.v1.ListTunnelsRequest
+	(*ListTunnelsResponse)(nil),            // 170: silo.v1.ListTunnelsResponse
+	(*CreateTunnelRequest)(nil),            // 171: silo.v1.CreateTunnelRequest
+	(*UpdateTunnelRequest)(nil),            // 172: silo.v1.UpdateTunnelRequest
+	(*DeleteTunnelRequest)(nil),            // 173: silo.v1.DeleteTunnelRequest
+	(*DeleteTunnelResponse)(nil),           // 174: silo.v1.DeleteTunnelResponse
+	(*Mailbox)(nil),                        // 175: silo.v1.Mailbox
+	(*MailAttachment)(nil),                 // 176: silo.v1.MailAttachment
+	(*Mail)(nil),                           // 177: silo.v1.Mail
+	(*ListMailRequest)(nil),                // 178: silo.v1.ListMailRequest
+	(*ListMailResponse)(nil),               // 179: silo.v1.ListMailResponse
+	(*GetMailRequest)(nil),                 // 180: silo.v1.GetMailRequest
+	(*DeleteMailRequest)(nil),              // 181: silo.v1.DeleteMailRequest
+	(*DeleteMailResponse)(nil),             // 182: silo.v1.DeleteMailResponse
+	(*UpdateMailboxRequest)(nil),           // 183: silo.v1.UpdateMailboxRequest
+	(*RotateMailboxRequest)(nil),           // 184: silo.v1.RotateMailboxRequest
+	(*Automation)(nil),                     // 185: silo.v1.Automation
+	(*ListAutomationsRequest)(nil),         // 186: silo.v1.ListAutomationsRequest
+	(*ListAutomationsResponse)(nil),        // 187: silo.v1.ListAutomationsResponse
+	(*CreateAutomationRequest)(nil),        // 188: silo.v1.CreateAutomationRequest
+	(*UpdateAutomationRequest)(nil),        // 189: silo.v1.UpdateAutomationRequest
+	(*DeleteAutomationRequest)(nil),        // 190: silo.v1.DeleteAutomationRequest
+	(*DeleteAutomationResponse)(nil),       // 191: silo.v1.DeleteAutomationResponse
+	(*RunAutomationRequest)(nil),           // 192: silo.v1.RunAutomationRequest
+	(*RunAutomationResponse)(nil),          // 193: silo.v1.RunAutomationResponse
+	(*Chat)(nil),                           // 194: silo.v1.Chat
+	(*ModelOption)(nil),                    // 195: silo.v1.ModelOption
+	(*ListModelsRequest)(nil),              // 196: silo.v1.ListModelsRequest
+	(*ListModelsResponse)(nil),             // 197: silo.v1.ListModelsResponse
+	(*TranscribeRequest)(nil),              // 198: silo.v1.TranscribeRequest
+	(*TranscribeResponse)(nil),             // 199: silo.v1.TranscribeResponse
+	(*SetChatModelRequest)(nil),            // 200: silo.v1.SetChatModelRequest
+	(*SetChatThinkingRequest)(nil),         // 201: silo.v1.SetChatThinkingRequest
+	(*ListChatsRequest)(nil),               // 202: silo.v1.ListChatsRequest
+	(*ListChatsResponse)(nil),              // 203: silo.v1.ListChatsResponse
+	(*CreateChatRequest)(nil),              // 204: silo.v1.CreateChatRequest
+	(*RenameChatRequest)(nil),              // 205: silo.v1.RenameChatRequest
+	(*DeleteChatRequest)(nil),              // 206: silo.v1.DeleteChatRequest
+	(*DeleteChatResponse)(nil),             // 207: silo.v1.DeleteChatResponse
+	(*Attachment)(nil),                     // 208: silo.v1.Attachment
+	(*Quote)(nil),                          // 209: silo.v1.Quote
+	(*SendRequest)(nil),                    // 210: silo.v1.SendRequest
+	(*SendResponse)(nil),                   // 211: silo.v1.SendResponse
+	(*Command)(nil),                        // 212: silo.v1.Command
+	(*ListCommandsRequest)(nil),            // 213: silo.v1.ListCommandsRequest
+	(*ListCommandsResponse)(nil),           // 214: silo.v1.ListCommandsResponse
+	(*ListChatEventsRequest)(nil),          // 215: silo.v1.ListChatEventsRequest
+	(*ListChatEventsResponse)(nil),         // 216: silo.v1.ListChatEventsResponse
+	(*StopRunRequest)(nil),                 // 217: silo.v1.StopRunRequest
+	(*StopRunResponse)(nil),                // 218: silo.v1.StopRunResponse
+	(*StreamRunRequest)(nil),               // 219: silo.v1.StreamRunRequest
+	(*RunEvent)(nil),                       // 220: silo.v1.RunEvent
+	(*Quoted)(nil),                         // 221: silo.v1.Quoted
+	(*EditMessageRequest)(nil),             // 222: silo.v1.EditMessageRequest
+	(*DeleteMessageRequest)(nil),           // 223: silo.v1.DeleteMessageRequest
+	(*DeleteMessageResponse)(nil),          // 224: silo.v1.DeleteMessageResponse
+	(*DivergeChatRequest)(nil),             // 225: silo.v1.DivergeChatRequest
+	(*DivergeChatResponse)(nil),            // 226: silo.v1.DivergeChatResponse
+	(*CompactChatRequest)(nil),             // 227: silo.v1.CompactChatRequest
+	(*CompactChatResponse)(nil),            // 228: silo.v1.CompactChatResponse
+	(*CollectMemoriesRequest)(nil),         // 229: silo.v1.CollectMemoriesRequest
+	(*CollectMemoriesResponse)(nil),        // 230: silo.v1.CollectMemoriesResponse
+	(*Subagent)(nil),                       // 231: silo.v1.Subagent
+	(*ListSubagentsRequest)(nil),           // 232: silo.v1.ListSubagentsRequest
+	(*ListSubagentsResponse)(nil),          // 233: silo.v1.ListSubagentsResponse
+	(*GetSubagentRequest)(nil),             // 234: silo.v1.GetSubagentRequest
+	(*StopSubagentRequest)(nil),            // 235: silo.v1.StopSubagentRequest
+	(*StopSubagentResponse)(nil),           // 236: silo.v1.StopSubagentResponse
+	(*TaskItem)(nil),                       // 237: silo.v1.TaskItem
+	(*Taskboard)(nil),                      // 238: silo.v1.Taskboard
+	(*GetTaskboardRequest)(nil),            // 239: silo.v1.GetTaskboardRequest
+	(*ClearTaskboardRequest)(nil),          // 240: silo.v1.ClearTaskboardRequest
+	(*SecretMeta)(nil),                     // 241: silo.v1.SecretMeta
+	(*ListSecretsRequest)(nil),             // 242: silo.v1.ListSecretsRequest
+	(*ListSecretsResponse)(nil),            // 243: silo.v1.ListSecretsResponse
+	(*AddSecretRequest)(nil),               // 244: silo.v1.AddSecretRequest
+	(*UpdateSecretRequest)(nil),            // 245: silo.v1.UpdateSecretRequest
+	(*DeleteSecretRequest)(nil),            // 246: silo.v1.DeleteSecretRequest
+	(*DeleteSecretResponse)(nil),           // 247: silo.v1.DeleteSecretResponse
+	(*ApprovalField)(nil),                  // 248: silo.v1.ApprovalField
+	(*Approval)(nil),                       // 249: silo.v1.Approval
+	(*ListApprovalsRequest)(nil),           // 250: silo.v1.ListApprovalsRequest
+	(*ListApprovalsResponse)(nil),          // 251: silo.v1.ListApprovalsResponse
+	(*DecideApprovalRequest)(nil),          // 252: silo.v1.DecideApprovalRequest
+	(*Rule)(nil),                           // 253: silo.v1.Rule
+	(*RuleSection)(nil),                    // 254: silo.v1.RuleSection
+	(*ListRulesRequest)(nil),               // 255: silo.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),              // 256: silo.v1.ListRulesResponse
+	(*SetRuleRequest)(nil),                 // 257: silo.v1.SetRuleRequest
+	(*OperatorRule)(nil),                   // 258: silo.v1.OperatorRule
+	(*ListOperatorRulesRequest)(nil),       // 259: silo.v1.ListOperatorRulesRequest
+	(*ListOperatorRulesResponse)(nil),      // 260: silo.v1.ListOperatorRulesResponse
+	(*SetOperatorRuleRequest)(nil),         // 261: silo.v1.SetOperatorRuleRequest
+	(*DeleteOperatorRuleRequest)(nil),      // 262: silo.v1.DeleteOperatorRuleRequest
+	(*DeleteOperatorRuleResponse)(nil),     // 263: silo.v1.DeleteOperatorRuleResponse
+	(*FileEntry)(nil),                      // 264: silo.v1.FileEntry
+	(*ListFilesRequest)(nil),               // 265: silo.v1.ListFilesRequest
+	(*ListFilesResponse)(nil),              // 266: silo.v1.ListFilesResponse
+	(*ReadFileRequest)(nil),                // 267: silo.v1.ReadFileRequest
+	(*ReadFileResponse)(nil),               // 268: silo.v1.ReadFileResponse
+	(*MkdirRequest)(nil),                   // 269: silo.v1.MkdirRequest
+	(*RemoveFileRequest)(nil),              // 270: silo.v1.RemoveFileRequest
+	(*PutFileRequest)(nil),                 // 271: silo.v1.PutFileRequest
+	(*FileOpResponse)(nil),                 // 272: silo.v1.FileOpResponse
+	(*ConfigField)(nil),                    // 273: silo.v1.ConfigField
+	(*Settings)(nil),                       // 274: silo.v1.Settings
+	(*Provider)(nil),                       // 275: silo.v1.Provider
+	(*ProviderField)(nil),                  // 276: silo.v1.ProviderField
+	(*SetModelsRequest)(nil),               // 277: silo.v1.SetModelsRequest
+	(*ListProviderModelsRequest)(nil),      // 278: silo.v1.ListProviderModelsRequest
+	(*ProviderModel)(nil),                  // 279: silo.v1.ProviderModel
+	(*ListProviderModelsResponse)(nil),     // 280: silo.v1.ListProviderModelsResponse
+	(*ConnectorVar)(nil),                   // 281: silo.v1.ConnectorVar
+	(*SetConnectorVarsRequest)(nil),        // 282: silo.v1.SetConnectorVarsRequest
+	(*AutoenableConnectors)(nil),           // 283: silo.v1.AutoenableConnectors
+	(*SetAutoenableConnectorsRequest)(nil), // 284: silo.v1.SetAutoenableConnectorsRequest
+	(*SearchEngine)(nil),                   // 285: silo.v1.SearchEngine
+	(*SearchEngineField)(nil),              // 286: silo.v1.SearchEngineField
+	(*GetSettingsRequest)(nil),             // 287: silo.v1.GetSettingsRequest
+	(*PutSettingsRequest)(nil),             // 288: silo.v1.PutSettingsRequest
+	(*AuditEvent)(nil),                     // 289: silo.v1.AuditEvent
+	(*ListAuditEventsRequest)(nil),         // 290: silo.v1.ListAuditEventsRequest
+	(*ListAuditEventsResponse)(nil),        // 291: silo.v1.ListAuditEventsResponse
+	(*AuditSummaryRequest)(nil),            // 292: silo.v1.AuditSummaryRequest
+	(*AuditSummaryResponse)(nil),           // 293: silo.v1.AuditSummaryResponse
+	(*MarkAuditReadRequest)(nil),           // 294: silo.v1.MarkAuditReadRequest
+	(*TrafficRow)(nil),                     // 295: silo.v1.TrafficRow
+	(*ListTrafficRequest)(nil),             // 296: silo.v1.ListTrafficRequest
+	(*ListTrafficResponse)(nil),            // 297: silo.v1.ListTrafficResponse
+	(*HostPattern)(nil),                    // 298: silo.v1.HostPattern
+	(*BotNetwork)(nil),                     // 299: silo.v1.BotNetwork
+	(*GetBotNetworkRequest)(nil),           // 300: silo.v1.GetBotNetworkRequest
+	(*AddHostPatternRequest)(nil),          // 301: silo.v1.AddHostPatternRequest
+	(*RemoveHostPatternRequest)(nil),       // 302: silo.v1.RemoveHostPatternRequest
+	(*SetOtherProtocolsRequest)(nil),       // 303: silo.v1.SetOtherProtocolsRequest
+	(*FeedStatus)(nil),                     // 304: silo.v1.FeedStatus
+	(*EgressStatus)(nil),                   // 305: silo.v1.EgressStatus
+	(*GetEgressStatusRequest)(nil),         // 306: silo.v1.GetEgressStatusRequest
+	(*RotateEgressCARequest)(nil),          // 307: silo.v1.RotateEgressCARequest
+	(*LLMLog)(nil),                         // 308: silo.v1.LLMLog
+	(*ListLLMLogsRequest)(nil),             // 309: silo.v1.ListLLMLogsRequest
+	(*ListLLMLogsResponse)(nil),            // 310: silo.v1.ListLLMLogsResponse
+	(*HeaderKey)(nil),                      // 311: silo.v1.HeaderKey
+	(*EnvKey)(nil),                         // 312: silo.v1.EnvKey
+	(*EnvInput)(nil),                       // 313: silo.v1.EnvInput
+	(*Connector)(nil),                      // 314: silo.v1.Connector
+	(*ListConnectorsRequest)(nil),          // 315: silo.v1.ListConnectorsRequest
+	(*ListConnectorsResponse)(nil),         // 316: silo.v1.ListConnectorsResponse
+	(*HeaderInput)(nil),                    // 317: silo.v1.HeaderInput
+	(*CreateConnectorRequest)(nil),         // 318: silo.v1.CreateConnectorRequest
+	(*UpdateConnectorRequest)(nil),         // 319: silo.v1.UpdateConnectorRequest
+	(*DeleteConnectorRequest)(nil),         // 320: silo.v1.DeleteConnectorRequest
+	(*DeleteConnectorResponse)(nil),        // 321: silo.v1.DeleteConnectorResponse
+	(*BotConnector)(nil),                   // 322: silo.v1.BotConnector
+	(*ListBotConnectorsRequest)(nil),       // 323: silo.v1.ListBotConnectorsRequest
+	(*ListBotConnectorsResponse)(nil),      // 324: silo.v1.ListBotConnectorsResponse
+	(*AttachConnectorRequest)(nil),         // 325: silo.v1.AttachConnectorRequest
+	(*CreateBotConnectorRequest)(nil),      // 326: silo.v1.CreateBotConnectorRequest
+	(*DetachConnectorRequest)(nil),         // 327: silo.v1.DetachConnectorRequest
+	(*DetachConnectorResponse)(nil),        // 328: silo.v1.DetachConnectorResponse
+	(*ListSpaceConnectorsRequest)(nil),     // 329: silo.v1.ListSpaceConnectorsRequest
+	(*GrantConnectorRequest)(nil),          // 330: silo.v1.GrantConnectorRequest
+	(*RevokeConnectorRequest)(nil),         // 331: silo.v1.RevokeConnectorRequest
+	(*RevokeConnectorResponse)(nil),        // 332: silo.v1.RevokeConnectorResponse
+	(*RefreshBotConnectorRequest)(nil),     // 333: silo.v1.RefreshBotConnectorRequest
+	(*StartConnectorAuthRequest)(nil),      // 334: silo.v1.StartConnectorAuthRequest
+	(*StartConnectorAuthResponse)(nil),     // 335: silo.v1.StartConnectorAuthResponse
+	(*SeedConnectorsRequest)(nil),          // 336: silo.v1.SeedConnectorsRequest
+	(*SeedConnectorsResponse)(nil),         // 337: silo.v1.SeedConnectorsResponse
+	(*SeedSkillsRequest)(nil),              // 338: silo.v1.SeedSkillsRequest
+	(*SeedSkillsResponse)(nil),             // 339: silo.v1.SeedSkillsResponse
+	(*Skill)(nil),                          // 340: silo.v1.Skill
+	(*ListSkillsRequest)(nil),              // 341: silo.v1.ListSkillsRequest
+	(*ListSkillsResponse)(nil),             // 342: silo.v1.ListSkillsResponse
+	(*InstallSkillRequest)(nil),            // 343: silo.v1.InstallSkillRequest
+	(*InstallSkillResponse)(nil),           // 344: silo.v1.InstallSkillResponse
+	(*DeleteSkillRequest)(nil),             // 345: silo.v1.DeleteSkillRequest
+	(*DeleteSkillResponse)(nil),            // 346: silo.v1.DeleteSkillResponse
+	(*BotSkill)(nil),                       // 347: silo.v1.BotSkill
+	(*ListBotSkillsRequest)(nil),           // 348: silo.v1.ListBotSkillsRequest
+	(*ListBotSkillsResponse)(nil),          // 349: silo.v1.ListBotSkillsResponse
+	(*SetBotSkillRequest)(nil),             // 350: silo.v1.SetBotSkillRequest
+	(*ListSkillFilesRequest)(nil),          // 351: silo.v1.ListSkillFilesRequest
+	(*ReadSkillFileRequest)(nil),           // 352: silo.v1.ReadSkillFileRequest
+	(*SaveSkillRequest)(nil),               // 353: silo.v1.SaveSkillRequest
+	(*SaveSkillResponse)(nil),              // 354: silo.v1.SaveSkillResponse
+	(*ArtifactVersion)(nil),                // 355: silo.v1.ArtifactVersion
+	(*ArtifactItem)(nil),                   // 356: silo.v1.ArtifactItem
+	(*ListArtifactsRequest)(nil),           // 357: silo.v1.ListArtifactsRequest
+	(*ListArtifactsResponse)(nil),          // 358: silo.v1.ListArtifactsResponse
+	(*DeleteArtifactRequest)(nil),          // 359: silo.v1.DeleteArtifactRequest
+	(*DeleteArtifactResponse)(nil),         // 360: silo.v1.DeleteArtifactResponse
+	(*ArtifactEntry)(nil),                  // 361: silo.v1.ArtifactEntry
+	(*GetArtifactRequest)(nil),             // 362: silo.v1.GetArtifactRequest
+	(*GetArtifactResponse)(nil),            // 363: silo.v1.GetArtifactResponse
+	(*ReadArtifactFileRequest)(nil),        // 364: silo.v1.ReadArtifactFileRequest
+	(*ReadArtifactFileResponse)(nil),       // 365: silo.v1.ReadArtifactFileResponse
+	(*OpenArtifactAppRequest)(nil),         // 366: silo.v1.OpenArtifactAppRequest
+	(*OpenArtifactAppResponse)(nil),        // 367: silo.v1.OpenArtifactAppResponse
+	(*ArtifactShare)(nil),                  // 368: silo.v1.ArtifactShare
+	(*ShareArtifactRequest)(nil),           // 369: silo.v1.ShareArtifactRequest
+	(*ListArtifactSharesRequest)(nil),      // 370: silo.v1.ListArtifactSharesRequest
+	(*ListArtifactSharesResponse)(nil),     // 371: silo.v1.ListArtifactSharesResponse
+	(*DeleteArtifactShareRequest)(nil),     // 372: silo.v1.DeleteArtifactShareRequest
+	(*DeleteArtifactShareResponse)(nil),    // 373: silo.v1.DeleteArtifactShareResponse
+	(*ChannelFieldOption)(nil),             // 374: silo.v1.ChannelFieldOption
+	(*ChannelField)(nil),                   // 375: silo.v1.ChannelField
+	(*ChannelAdapterAction)(nil),           // 376: silo.v1.ChannelAdapterAction
+	(*ChannelAdapter)(nil),                 // 377: silo.v1.ChannelAdapter
+	(*ChannelState)(nil),                   // 378: silo.v1.ChannelState
+	(*Channel)(nil),                        // 379: silo.v1.Channel
+	(*ListChannelAdaptersRequest)(nil),     // 380: silo.v1.ListChannelAdaptersRequest
+	(*ListChannelAdaptersResponse)(nil),    // 381: silo.v1.ListChannelAdaptersResponse
+	(*ListBotChannelsRequest)(nil),         // 382: silo.v1.ListBotChannelsRequest
+	(*ListBotChannelsResponse)(nil),        // 383: silo.v1.ListBotChannelsResponse
+	(*CreateChannelRequest)(nil),           // 384: silo.v1.CreateChannelRequest
+	(*UpdateChannelRequest)(nil),           // 385: silo.v1.UpdateChannelRequest
+	(*DeleteChannelRequest)(nil),           // 386: silo.v1.DeleteChannelRequest
+	(*DeleteChannelResponse)(nil),          // 387: silo.v1.DeleteChannelResponse
+	(*ChannelActionRequest)(nil),           // 388: silo.v1.ChannelActionRequest
+	(*ChannelActionResponse)(nil),          // 389: silo.v1.ChannelActionResponse
+	(*DriveOption)(nil),                    // 390: silo.v1.DriveOption
+	(*DriveVar)(nil),                       // 391: silo.v1.DriveVar
+	(*DriveTemplate)(nil),                  // 392: silo.v1.DriveTemplate
+	(*Drive)(nil),                          // 393: silo.v1.Drive
+	(*ListDriveTemplatesRequest)(nil),      // 394: silo.v1.ListDriveTemplatesRequest
+	(*ListDriveTemplatesResponse)(nil),     // 395: silo.v1.ListDriveTemplatesResponse
+	(*ListDrivesRequest)(nil),              // 396: silo.v1.ListDrivesRequest
+	(*ListDrivesResponse)(nil),             // 397: silo.v1.ListDrivesResponse
+	(*SaveDriveRequest)(nil),               // 398: silo.v1.SaveDriveRequest
+	(*ListSpaceDrivesRequest)(nil),         // 399: silo.v1.ListSpaceDrivesRequest
+	(*GrantDriveRequest)(nil),              // 400: silo.v1.GrantDriveRequest
+	(*RevokeDriveRequest)(nil),             // 401: silo.v1.RevokeDriveRequest
+	(*RevokeDriveResponse)(nil),            // 402: silo.v1.RevokeDriveResponse
+	(*DeleteDriveRequest)(nil),             // 403: silo.v1.DeleteDriveRequest
+	(*DeleteDriveResponse)(nil),            // 404: silo.v1.DeleteDriveResponse
+	(*BeginDriveAuthRequest)(nil),          // 405: silo.v1.BeginDriveAuthRequest
+	(*BeginDriveAuthResponse)(nil),         // 406: silo.v1.BeginDriveAuthResponse
+	(*PickDriveOptionsRequest)(nil),        // 407: silo.v1.PickDriveOptionsRequest
+	(*PickDriveOptionsResponse)(nil),       // 408: silo.v1.PickDriveOptionsResponse
+	(*BrowseDriveRequest)(nil),             // 409: silo.v1.BrowseDriveRequest
+	(*BrowseDriveDir)(nil),                 // 410: silo.v1.BrowseDriveDir
+	(*BrowseDriveResponse)(nil),            // 411: silo.v1.BrowseDriveResponse
+	(*DriveSystemField)(nil),               // 412: silo.v1.DriveSystemField
+	(*DriveProviderSettings)(nil),          // 413: silo.v1.DriveProviderSettings
+	(*DriveSettings)(nil),                  // 414: silo.v1.DriveSettings
+	(*GetDriveSettingsRequest)(nil),        // 415: silo.v1.GetDriveSettingsRequest
+	(*PutDriveSettingsRequest)(nil),        // 416: silo.v1.PutDriveSettingsRequest
+	nil,                                    // 417: silo.v1.SetupOffer.OptionsEntry
+	nil,                                    // 418: silo.v1.PutSettingsRequest.FieldsEntry
+	nil,                                    // 419: silo.v1.Connector.ConfigEntry
+	nil,                                    // 420: silo.v1.UpdateConnectorRequest.ConfigEntry
+	nil,                                    // 421: silo.v1.CreateBotConnectorRequest.ConfigEntry
+	nil,                                    // 422: silo.v1.ChannelState.ValuesEntry
+	nil,                                    // 423: silo.v1.Channel.ConfigEntry
+	nil,                                    // 424: silo.v1.CreateChannelRequest.ConfigEntry
+	nil,                                    // 425: silo.v1.CreateChannelRequest.SecretsEntry
+	nil,                                    // 426: silo.v1.UpdateChannelRequest.ConfigEntry
+	nil,                                    // 427: silo.v1.UpdateChannelRequest.SecretsEntry
+	nil,                                    // 428: silo.v1.ChannelActionRequest.PayloadEntry
+	nil,                                    // 429: silo.v1.DriveOption.ExtraEntry
+	nil,                                    // 430: silo.v1.DriveVar.VisibleIfEntry
+	nil,                                    // 431: silo.v1.Drive.OptionsEntry
+	nil,                                    // 432: silo.v1.SaveDriveRequest.OptionsEntry
+	nil,                                    // 433: silo.v1.PutDriveSettingsRequest.ValuesEntry
 }
 var file_silo_v1_ui_proto_depIdxs = []int32{
 	7,   // 0: silo.v1.SignInResponse.user:type_name -> silo.v1.User
@@ -27725,524 +29973,566 @@ var file_silo_v1_ui_proto_depIdxs = []int32{
 	7,   // 4: silo.v1.RecoveryCodes.user:type_name -> silo.v1.User
 	7,   // 5: silo.v1.ListUsersResponse.users:type_name -> silo.v1.User
 	33,  // 6: silo.v1.ListUsersResponse.invites:type_name -> silo.v1.Invite
-	48,  // 7: silo.v1.Bot.activity:type_name -> silo.v1.BotActivity
+	82,  // 7: silo.v1.Bot.activity:type_name -> silo.v1.BotActivity
 	40,  // 8: silo.v1.ListSpacesResponse.spaces:type_name -> silo.v1.Space
-	39,  // 9: silo.v1.ListBotsResponse.bots:type_name -> silo.v1.Bot
-	55,  // 10: silo.v1.BotContainers.containers:type_name -> silo.v1.BotContainer
-	57,  // 11: silo.v1.AdminBotGroup.containers:type_name -> silo.v1.AdminContainer
-	58,  // 12: silo.v1.AdminBotGroup.networks:type_name -> silo.v1.AdminNetwork
-	59,  // 13: silo.v1.AdminUserGroup.bots:type_name -> silo.v1.AdminBotGroup
-	57,  // 14: silo.v1.AdminSystemGroup.containers:type_name -> silo.v1.AdminContainer
-	58,  // 15: silo.v1.AdminSystemGroup.networks:type_name -> silo.v1.AdminNetwork
-	60,  // 16: silo.v1.AdminContainers.users:type_name -> silo.v1.AdminUserGroup
-	61,  // 17: silo.v1.AdminContainers.system:type_name -> silo.v1.AdminSystemGroup
-	67,  // 18: silo.v1.ListMemoriesResponse.memories:type_name -> silo.v1.Memory
-	67,  // 19: silo.v1.SearchMemoriesResponse.memories:type_name -> silo.v1.Memory
-	75,  // 20: silo.v1.KnowledgeFolder.issues:type_name -> silo.v1.KnowledgeIssue
-	74,  // 21: silo.v1.ListKnowledgeResponse.folders:type_name -> silo.v1.KnowledgeFolder
-	82,  // 22: silo.v1.SearchKnowledgeResponse.hits:type_name -> silo.v1.KnowledgeHit
-	85,  // 23: silo.v1.Change.sources:type_name -> silo.v1.ChangeSource
-	86,  // 24: silo.v1.ListChangesResponse.pending:type_name -> silo.v1.Change
-	86,  // 25: silo.v1.ListChangesResponse.changes:type_name -> silo.v1.Change
-	85,  // 26: silo.v1.DriveChangeEntry.sources:type_name -> silo.v1.ChangeSource
-	90,  // 27: silo.v1.ListDriveChangesResponse.changes:type_name -> silo.v1.DriveChangeEntry
-	87,  // 28: silo.v1.ListChangeFilesResponse.files:type_name -> silo.v1.ChangeFile
-	98,  // 29: silo.v1.RestoreChangeResponse.skipped:type_name -> silo.v1.RestoreSkip
-	100, // 30: silo.v1.ListFeedResponse.posts:type_name -> silo.v1.FeedPost
-	160, // 31: silo.v1.QuoteFeedPostResponse.chat:type_name -> silo.v1.Chat
-	383, // 32: silo.v1.SetupOffer.options:type_name -> silo.v1.SetupOffer.OptionsEntry
-	111, // 33: silo.v1.ListDashboardResponse.cards:type_name -> silo.v1.DashboardCard
-	100, // 34: silo.v1.ListDashboardResponse.posts:type_name -> silo.v1.FeedPost
-	116, // 35: silo.v1.ListDashboardResponse.widgets:type_name -> silo.v1.DashboardWidget
-	116, // 36: silo.v1.RunWidgetActionResponse.widget:type_name -> silo.v1.DashboardWidget
-	160, // 37: silo.v1.RunWidgetActionResponse.chat:type_name -> silo.v1.Chat
-	121, // 38: silo.v1.ArrangeDashboardRequest.places:type_name -> silo.v1.WidgetPlace
-	160, // 39: silo.v1.SubmitDashboardCardResponse.chat:type_name -> silo.v1.Chat
-	134, // 40: silo.v1.ListTunnelsResponse.tunnels:type_name -> silo.v1.Tunnel
-	142, // 41: silo.v1.Mail.attachments:type_name -> silo.v1.MailAttachment
-	141, // 42: silo.v1.ListMailResponse.mailbox:type_name -> silo.v1.Mailbox
-	143, // 43: silo.v1.ListMailResponse.messages:type_name -> silo.v1.Mail
-	151, // 44: silo.v1.ListAutomationsResponse.automations:type_name -> silo.v1.Automation
-	161, // 45: silo.v1.ListModelsResponse.models:type_name -> silo.v1.ModelOption
-	160, // 46: silo.v1.ListChatsResponse.chats:type_name -> silo.v1.Chat
-	174, // 47: silo.v1.SendRequest.attachments:type_name -> silo.v1.Attachment
-	175, // 48: silo.v1.SendRequest.quotes:type_name -> silo.v1.Quote
-	178, // 49: silo.v1.ListCommandsResponse.commands:type_name -> silo.v1.Command
-	186, // 50: silo.v1.ListChatEventsResponse.events:type_name -> silo.v1.RunEvent
-	174, // 51: silo.v1.RunEvent.attachments:type_name -> silo.v1.Attachment
-	175, // 52: silo.v1.RunEvent.quotes:type_name -> silo.v1.Quote
-	187, // 53: silo.v1.RunEvent.quoted:type_name -> silo.v1.Quoted
-	111, // 54: silo.v1.RunEvent.card:type_name -> silo.v1.DashboardCard
-	112, // 55: silo.v1.RunEvent.setup_offer:type_name -> silo.v1.SetupOffer
-	116, // 56: silo.v1.Quoted.widget:type_name -> silo.v1.DashboardWidget
-	174, // 57: silo.v1.EditMessageRequest.attachments:type_name -> silo.v1.Attachment
-	175, // 58: silo.v1.EditMessageRequest.quotes:type_name -> silo.v1.Quote
-	160, // 59: silo.v1.DivergeChatResponse.chat:type_name -> silo.v1.Chat
-	67,  // 60: silo.v1.CollectMemoriesResponse.memories:type_name -> silo.v1.Memory
-	197, // 61: silo.v1.ListSubagentsResponse.subagents:type_name -> silo.v1.Subagent
-	203, // 62: silo.v1.Taskboard.items:type_name -> silo.v1.TaskItem
-	207, // 63: silo.v1.ListSecretsResponse.secrets:type_name -> silo.v1.SecretMeta
-	214, // 64: silo.v1.Approval.fields:type_name -> silo.v1.ApprovalField
-	215, // 65: silo.v1.ListApprovalsResponse.approvals:type_name -> silo.v1.Approval
-	219, // 66: silo.v1.RuleSection.rules:type_name -> silo.v1.Rule
-	219, // 67: silo.v1.ListRulesResponse.rules:type_name -> silo.v1.Rule
-	220, // 68: silo.v1.ListRulesResponse.sections:type_name -> silo.v1.RuleSection
-	224, // 69: silo.v1.ListOperatorRulesResponse.rules:type_name -> silo.v1.OperatorRule
-	230, // 70: silo.v1.ListFilesResponse.entries:type_name -> silo.v1.FileEntry
-	0,   // 71: silo.v1.ConfigField.source:type_name -> silo.v1.ConfigSource
-	239, // 72: silo.v1.Settings.fields:type_name -> silo.v1.ConfigField
-	251, // 73: silo.v1.Settings.search_engines:type_name -> silo.v1.SearchEngine
-	241, // 74: silo.v1.Settings.providers:type_name -> silo.v1.Provider
-	161, // 75: silo.v1.Settings.models:type_name -> silo.v1.ModelOption
-	247, // 76: silo.v1.Settings.connector_vars:type_name -> silo.v1.ConnectorVar
-	249, // 77: silo.v1.Settings.autoenable_connectors:type_name -> silo.v1.AutoenableConnectors
-	161, // 78: silo.v1.Settings.decision_models:type_name -> silo.v1.ModelOption
-	242, // 79: silo.v1.Provider.fields:type_name -> silo.v1.ProviderField
-	245, // 80: silo.v1.ListProviderModelsResponse.models:type_name -> silo.v1.ProviderModel
-	0,   // 81: silo.v1.ConnectorVar.source:type_name -> silo.v1.ConfigSource
-	247, // 82: silo.v1.SetConnectorVarsRequest.connector_vars:type_name -> silo.v1.ConnectorVar
-	0,   // 83: silo.v1.AutoenableConnectors.source:type_name -> silo.v1.ConfigSource
-	252, // 84: silo.v1.SearchEngine.fields:type_name -> silo.v1.SearchEngineField
-	384, // 85: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
-	255, // 86: silo.v1.ListAuditEventsResponse.events:type_name -> silo.v1.AuditEvent
-	261, // 87: silo.v1.ListTrafficResponse.rows:type_name -> silo.v1.TrafficRow
-	264, // 88: silo.v1.BotNetwork.patterns:type_name -> silo.v1.HostPattern
-	270, // 89: silo.v1.EgressStatus.feeds:type_name -> silo.v1.FeedStatus
-	274, // 90: silo.v1.ListLLMLogsResponse.logs:type_name -> silo.v1.LLMLog
-	277, // 91: silo.v1.Connector.header_keys:type_name -> silo.v1.HeaderKey
-	278, // 92: silo.v1.Connector.env_keys:type_name -> silo.v1.EnvKey
-	341, // 93: silo.v1.Connector.fields:type_name -> silo.v1.ChannelField
-	385, // 94: silo.v1.Connector.config:type_name -> silo.v1.Connector.ConfigEntry
-	280, // 95: silo.v1.ListConnectorsResponse.connectors:type_name -> silo.v1.Connector
-	283, // 96: silo.v1.CreateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	279, // 97: silo.v1.CreateConnectorRequest.env:type_name -> silo.v1.EnvInput
-	283, // 98: silo.v1.UpdateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	279, // 99: silo.v1.UpdateConnectorRequest.env:type_name -> silo.v1.EnvInput
-	386, // 100: silo.v1.UpdateConnectorRequest.config:type_name -> silo.v1.UpdateConnectorRequest.ConfigEntry
-	280, // 101: silo.v1.BotConnector.connector:type_name -> silo.v1.Connector
-	288, // 102: silo.v1.ListBotConnectorsResponse.connectors:type_name -> silo.v1.BotConnector
-	283, // 103: silo.v1.CreateBotConnectorRequest.headers:type_name -> silo.v1.HeaderInput
-	279, // 104: silo.v1.CreateBotConnectorRequest.env:type_name -> silo.v1.EnvInput
-	387, // 105: silo.v1.CreateBotConnectorRequest.config:type_name -> silo.v1.CreateBotConnectorRequest.ConfigEntry
-	306, // 106: silo.v1.ListSkillsResponse.skills:type_name -> silo.v1.Skill
-	313, // 107: silo.v1.ListBotSkillsResponse.skills:type_name -> silo.v1.BotSkill
-	321, // 108: silo.v1.ArtifactItem.versions:type_name -> silo.v1.ArtifactVersion
-	322, // 109: silo.v1.ListArtifactsResponse.artifacts:type_name -> silo.v1.ArtifactItem
-	321, // 110: silo.v1.GetArtifactResponse.versions:type_name -> silo.v1.ArtifactVersion
-	321, // 111: silo.v1.GetArtifactResponse.version:type_name -> silo.v1.ArtifactVersion
-	327, // 112: silo.v1.GetArtifactResponse.entries:type_name -> silo.v1.ArtifactEntry
-	334, // 113: silo.v1.ListArtifactSharesResponse.shares:type_name -> silo.v1.ArtifactShare
-	340, // 114: silo.v1.ChannelField.options:type_name -> silo.v1.ChannelFieldOption
-	341, // 115: silo.v1.ChannelAdapter.fields:type_name -> silo.v1.ChannelField
-	342, // 116: silo.v1.ChannelAdapter.actions:type_name -> silo.v1.ChannelAdapterAction
-	340, // 117: silo.v1.ChannelState.options:type_name -> silo.v1.ChannelFieldOption
-	388, // 118: silo.v1.ChannelState.values:type_name -> silo.v1.ChannelState.ValuesEntry
-	389, // 119: silo.v1.Channel.config:type_name -> silo.v1.Channel.ConfigEntry
-	344, // 120: silo.v1.Channel.state:type_name -> silo.v1.ChannelState
-	343, // 121: silo.v1.ListChannelAdaptersResponse.adapters:type_name -> silo.v1.ChannelAdapter
-	345, // 122: silo.v1.ListBotChannelsResponse.channels:type_name -> silo.v1.Channel
-	390, // 123: silo.v1.CreateChannelRequest.config:type_name -> silo.v1.CreateChannelRequest.ConfigEntry
-	391, // 124: silo.v1.CreateChannelRequest.secrets:type_name -> silo.v1.CreateChannelRequest.SecretsEntry
-	392, // 125: silo.v1.UpdateChannelRequest.config:type_name -> silo.v1.UpdateChannelRequest.ConfigEntry
-	393, // 126: silo.v1.UpdateChannelRequest.secrets:type_name -> silo.v1.UpdateChannelRequest.SecretsEntry
-	394, // 127: silo.v1.ChannelActionRequest.payload:type_name -> silo.v1.ChannelActionRequest.PayloadEntry
-	344, // 128: silo.v1.ChannelActionResponse.state:type_name -> silo.v1.ChannelState
-	395, // 129: silo.v1.DriveOption.extra:type_name -> silo.v1.DriveOption.ExtraEntry
-	356, // 130: silo.v1.DriveVar.options:type_name -> silo.v1.DriveOption
-	396, // 131: silo.v1.DriveVar.visible_if:type_name -> silo.v1.DriveVar.VisibleIfEntry
-	357, // 132: silo.v1.DriveTemplate.vars:type_name -> silo.v1.DriveVar
-	397, // 133: silo.v1.Drive.options:type_name -> silo.v1.Drive.OptionsEntry
-	358, // 134: silo.v1.ListDriveTemplatesResponse.templates:type_name -> silo.v1.DriveTemplate
-	359, // 135: silo.v1.ListDrivesResponse.drives:type_name -> silo.v1.Drive
-	398, // 136: silo.v1.SaveDriveRequest.options:type_name -> silo.v1.SaveDriveRequest.OptionsEntry
-	356, // 137: silo.v1.PickDriveOptionsResponse.options:type_name -> silo.v1.DriveOption
-	376, // 138: silo.v1.BrowseDriveResponse.dirs:type_name -> silo.v1.BrowseDriveDir
-	378, // 139: silo.v1.DriveProviderSettings.fields:type_name -> silo.v1.DriveSystemField
-	379, // 140: silo.v1.DriveSettings.providers:type_name -> silo.v1.DriveProviderSettings
-	399, // 141: silo.v1.PutDriveSettingsRequest.values:type_name -> silo.v1.PutDriveSettingsRequest.ValuesEntry
-	1,   // 142: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
-	3,   // 143: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
-	5,   // 144: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
-	8,   // 145: silo.v1.UI.AuthOptions:input_type -> silo.v1.AuthOptionsRequest
-	10,  // 146: silo.v1.UI.GetInvite:input_type -> silo.v1.GetInviteRequest
-	12,  // 147: silo.v1.UI.AcceptInvite:input_type -> silo.v1.AcceptInviteRequest
-	14,  // 148: silo.v1.UI.ChangeEmail:input_type -> silo.v1.ChangeEmailRequest
-	15,  // 149: silo.v1.UI.SetLanguage:input_type -> silo.v1.SetLanguageRequest
-	16,  // 150: silo.v1.UI.ChangePassword:input_type -> silo.v1.ChangePasswordRequest
-	18,  // 151: silo.v1.UI.ListSessions:input_type -> silo.v1.ListSessionsRequest
-	20,  // 152: silo.v1.UI.RevokeSession:input_type -> silo.v1.RevokeSessionRequest
-	21,  // 153: silo.v1.UI.RevokeOtherSessions:input_type -> silo.v1.RevokeOtherSessionsRequest
-	22,  // 154: silo.v1.UI.StartTOTP:input_type -> silo.v1.StartTOTPRequest
-	24,  // 155: silo.v1.UI.ConfirmTOTP:input_type -> silo.v1.ConfirmTOTPRequest
-	26,  // 156: silo.v1.UI.DisableTOTP:input_type -> silo.v1.DisableTOTPRequest
-	27,  // 157: silo.v1.UI.NewRecoveryCodes:input_type -> silo.v1.NewRecoveryCodesRequest
-	28,  // 158: silo.v1.UI.ListUsers:input_type -> silo.v1.ListUsersRequest
-	30,  // 159: silo.v1.UI.UpdateUser:input_type -> silo.v1.UpdateUserRequest
-	31,  // 160: silo.v1.UI.DeleteUser:input_type -> silo.v1.DeleteUserRequest
-	34,  // 161: silo.v1.UI.CreateInvite:input_type -> silo.v1.CreateInviteRequest
-	35,  // 162: silo.v1.UI.DeleteInvite:input_type -> silo.v1.DeleteInviteRequest
-	37,  // 163: silo.v1.UI.CheckOIDC:input_type -> silo.v1.CheckOIDCRequest
-	41,  // 164: silo.v1.UI.ListSpaces:input_type -> silo.v1.ListSpacesRequest
-	43,  // 165: silo.v1.UI.GetSpace:input_type -> silo.v1.GetSpaceRequest
-	44,  // 166: silo.v1.UI.CreateSpace:input_type -> silo.v1.CreateSpaceRequest
-	45,  // 167: silo.v1.UI.UpdateSpace:input_type -> silo.v1.UpdateSpaceRequest
-	46,  // 168: silo.v1.UI.DeleteSpace:input_type -> silo.v1.DeleteSpaceRequest
-	49,  // 169: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
-	51,  // 170: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
-	52,  // 171: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
-	53,  // 172: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
-	53,  // 173: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
-	53,  // 174: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
-	53,  // 175: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
-	53,  // 176: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
-	103, // 177: silo.v1.UI.SetDesktopPaused:input_type -> silo.v1.SetDesktopPausedRequest
-	53,  // 178: silo.v1.UI.ListBotContainers:input_type -> silo.v1.GetBotRequest
-	53,  // 179: silo.v1.UI.RemoveBotContainers:input_type -> silo.v1.GetBotRequest
-	63,  // 180: silo.v1.UI.ListAdminContainers:input_type -> silo.v1.ListAdminContainersRequest
-	64,  // 181: silo.v1.UI.AdminContainerAction:input_type -> silo.v1.AdminContainerActionRequest
-	53,  // 182: silo.v1.UI.RemoveAdminBotContainers:input_type -> silo.v1.GetBotRequest
-	53,  // 183: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
-	68,  // 184: silo.v1.UI.ListMemories:input_type -> silo.v1.ListMemoriesRequest
-	70,  // 185: silo.v1.UI.SearchMemories:input_type -> silo.v1.SearchMemoriesRequest
-	72,  // 186: silo.v1.UI.DeleteMemory:input_type -> silo.v1.DeleteMemoryRequest
-	76,  // 187: silo.v1.UI.ListKnowledge:input_type -> silo.v1.ListKnowledgeRequest
-	78,  // 188: silo.v1.UI.AddKnowledgeFolder:input_type -> silo.v1.AddKnowledgeFolderRequest
-	79,  // 189: silo.v1.UI.RemoveKnowledgeFolder:input_type -> silo.v1.RemoveKnowledgeFolderRequest
-	81,  // 190: silo.v1.UI.SyncKnowledge:input_type -> silo.v1.SyncKnowledgeRequest
-	83,  // 191: silo.v1.UI.SearchKnowledge:input_type -> silo.v1.SearchKnowledgeRequest
-	101, // 192: silo.v1.UI.ListFeed:input_type -> silo.v1.ListFeedRequest
-	105, // 193: silo.v1.UI.MarkFeedRead:input_type -> silo.v1.MarkFeedReadRequest
-	107, // 194: silo.v1.UI.DeleteFeedPost:input_type -> silo.v1.DeleteFeedPostRequest
-	109, // 195: silo.v1.UI.QuoteFeedPost:input_type -> silo.v1.QuoteFeedPostRequest
-	114, // 196: silo.v1.UI.ListDashboard:input_type -> silo.v1.ListDashboardRequest
-	128, // 197: silo.v1.UI.MarkDashboardRead:input_type -> silo.v1.MarkDashboardReadRequest
-	130, // 198: silo.v1.UI.DismissDashboardCard:input_type -> silo.v1.DismissDashboardCardRequest
-	132, // 199: silo.v1.UI.SubmitDashboardCard:input_type -> silo.v1.SubmitDashboardCardRequest
-	113, // 200: silo.v1.UI.ResolveSetupOffer:input_type -> silo.v1.ResolveSetupOfferRequest
-	117, // 201: silo.v1.UI.RefreshWidget:input_type -> silo.v1.RefreshWidgetRequest
-	118, // 202: silo.v1.UI.SetWidgetState:input_type -> silo.v1.SetWidgetStateRequest
-	119, // 203: silo.v1.UI.RunWidgetAction:input_type -> silo.v1.RunWidgetActionRequest
-	122, // 204: silo.v1.UI.ArrangeDashboard:input_type -> silo.v1.ArrangeDashboardRequest
-	124, // 205: silo.v1.UI.RemoveWidget:input_type -> silo.v1.RemoveWidgetRequest
-	126, // 206: silo.v1.UI.AskDashboard:input_type -> silo.v1.AskDashboardRequest
-	135, // 207: silo.v1.UI.ListTunnels:input_type -> silo.v1.ListTunnelsRequest
-	137, // 208: silo.v1.UI.CreateTunnel:input_type -> silo.v1.CreateTunnelRequest
-	138, // 209: silo.v1.UI.UpdateTunnel:input_type -> silo.v1.UpdateTunnelRequest
-	139, // 210: silo.v1.UI.DeleteTunnel:input_type -> silo.v1.DeleteTunnelRequest
-	144, // 211: silo.v1.UI.ListMail:input_type -> silo.v1.ListMailRequest
-	146, // 212: silo.v1.UI.GetMail:input_type -> silo.v1.GetMailRequest
-	147, // 213: silo.v1.UI.DeleteMail:input_type -> silo.v1.DeleteMailRequest
-	149, // 214: silo.v1.UI.UpdateMailbox:input_type -> silo.v1.UpdateMailboxRequest
-	150, // 215: silo.v1.UI.RotateMailbox:input_type -> silo.v1.RotateMailboxRequest
-	152, // 216: silo.v1.UI.ListAutomations:input_type -> silo.v1.ListAutomationsRequest
-	154, // 217: silo.v1.UI.CreateAutomation:input_type -> silo.v1.CreateAutomationRequest
-	155, // 218: silo.v1.UI.UpdateAutomation:input_type -> silo.v1.UpdateAutomationRequest
-	156, // 219: silo.v1.UI.DeleteAutomation:input_type -> silo.v1.DeleteAutomationRequest
-	158, // 220: silo.v1.UI.RunAutomation:input_type -> silo.v1.RunAutomationRequest
-	168, // 221: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
-	170, // 222: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
-	171, // 223: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
-	172, // 224: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
-	166, // 225: silo.v1.UI.SetChatModel:input_type -> silo.v1.SetChatModelRequest
-	167, // 226: silo.v1.UI.SetChatThinking:input_type -> silo.v1.SetChatThinkingRequest
-	162, // 227: silo.v1.UI.ListModels:input_type -> silo.v1.ListModelsRequest
-	164, // 228: silo.v1.UI.Transcribe:input_type -> silo.v1.TranscribeRequest
-	176, // 229: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
-	183, // 230: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
-	185, // 231: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
-	181, // 232: silo.v1.UI.ListChatEvents:input_type -> silo.v1.ListChatEventsRequest
-	179, // 233: silo.v1.UI.ListCommands:input_type -> silo.v1.ListCommandsRequest
-	188, // 234: silo.v1.UI.EditMessage:input_type -> silo.v1.EditMessageRequest
-	189, // 235: silo.v1.UI.DeleteMessage:input_type -> silo.v1.DeleteMessageRequest
-	191, // 236: silo.v1.UI.DivergeChat:input_type -> silo.v1.DivergeChatRequest
-	193, // 237: silo.v1.UI.CompactChat:input_type -> silo.v1.CompactChatRequest
-	195, // 238: silo.v1.UI.CollectMemories:input_type -> silo.v1.CollectMemoriesRequest
-	198, // 239: silo.v1.UI.ListSubagents:input_type -> silo.v1.ListSubagentsRequest
-	200, // 240: silo.v1.UI.GetSubagent:input_type -> silo.v1.GetSubagentRequest
-	201, // 241: silo.v1.UI.StopSubagent:input_type -> silo.v1.StopSubagentRequest
-	205, // 242: silo.v1.UI.GetTaskboard:input_type -> silo.v1.GetTaskboardRequest
-	206, // 243: silo.v1.UI.ClearTaskboard:input_type -> silo.v1.ClearTaskboardRequest
-	208, // 244: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
-	210, // 245: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
-	211, // 246: silo.v1.UI.UpdateSecret:input_type -> silo.v1.UpdateSecretRequest
-	212, // 247: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
-	216, // 248: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
-	218, // 249: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
-	221, // 250: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
-	223, // 251: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
-	225, // 252: silo.v1.UI.ListOperatorRules:input_type -> silo.v1.ListOperatorRulesRequest
-	227, // 253: silo.v1.UI.SetOperatorRule:input_type -> silo.v1.SetOperatorRuleRequest
-	228, // 254: silo.v1.UI.DeleteOperatorRule:input_type -> silo.v1.DeleteOperatorRuleRequest
-	88,  // 255: silo.v1.UI.ListChanges:input_type -> silo.v1.ListChangesRequest
-	93,  // 256: silo.v1.UI.ListChangeFiles:input_type -> silo.v1.ListChangeFilesRequest
-	95,  // 257: silo.v1.UI.GetChangePatch:input_type -> silo.v1.GetChangePatchRequest
-	97,  // 258: silo.v1.UI.RestoreChange:input_type -> silo.v1.RestoreChangeRequest
-	91,  // 259: silo.v1.UI.ListDriveChanges:input_type -> silo.v1.ListDriveChangesRequest
-	231, // 260: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
-	233, // 261: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
-	235, // 262: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
-	236, // 263: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
-	237, // 264: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
-	253, // 265: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
-	254, // 266: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
-	243, // 267: silo.v1.UI.SetModels:input_type -> silo.v1.SetModelsRequest
-	244, // 268: silo.v1.UI.ListProviderModels:input_type -> silo.v1.ListProviderModelsRequest
-	248, // 269: silo.v1.UI.SetConnectorVars:input_type -> silo.v1.SetConnectorVarsRequest
-	250, // 270: silo.v1.UI.SetAutoenableConnectors:input_type -> silo.v1.SetAutoenableConnectorsRequest
-	256, // 271: silo.v1.UI.ListAuditEvents:input_type -> silo.v1.ListAuditEventsRequest
-	258, // 272: silo.v1.UI.AuditSummary:input_type -> silo.v1.AuditSummaryRequest
-	260, // 273: silo.v1.UI.MarkAuditRead:input_type -> silo.v1.MarkAuditReadRequest
-	262, // 274: silo.v1.UI.ListTraffic:input_type -> silo.v1.ListTrafficRequest
-	266, // 275: silo.v1.UI.GetBotNetwork:input_type -> silo.v1.GetBotNetworkRequest
-	267, // 276: silo.v1.UI.AddHostPattern:input_type -> silo.v1.AddHostPatternRequest
-	268, // 277: silo.v1.UI.RemoveHostPattern:input_type -> silo.v1.RemoveHostPatternRequest
-	269, // 278: silo.v1.UI.SetOtherProtocols:input_type -> silo.v1.SetOtherProtocolsRequest
-	272, // 279: silo.v1.UI.GetEgressStatus:input_type -> silo.v1.GetEgressStatusRequest
-	273, // 280: silo.v1.UI.RotateEgressCA:input_type -> silo.v1.RotateEgressCARequest
-	275, // 281: silo.v1.UI.ListLLMLogs:input_type -> silo.v1.ListLLMLogsRequest
-	281, // 282: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
-	284, // 283: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
-	285, // 284: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
-	286, // 285: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
-	289, // 286: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
-	291, // 287: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
-	292, // 288: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
-	293, // 289: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
-	295, // 290: silo.v1.UI.ListSpaceConnectors:input_type -> silo.v1.ListSpaceConnectorsRequest
-	296, // 291: silo.v1.UI.GrantConnector:input_type -> silo.v1.GrantConnectorRequest
-	297, // 292: silo.v1.UI.RevokeConnector:input_type -> silo.v1.RevokeConnectorRequest
-	299, // 293: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
-	300, // 294: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
-	302, // 295: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
-	304, // 296: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
-	307, // 297: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
-	309, // 298: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
-	311, // 299: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
-	314, // 300: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
-	316, // 301: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
-	317, // 302: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
-	318, // 303: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
-	319, // 304: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
-	323, // 305: silo.v1.UI.ListArtifacts:input_type -> silo.v1.ListArtifactsRequest
-	325, // 306: silo.v1.UI.DeleteArtifact:input_type -> silo.v1.DeleteArtifactRequest
-	328, // 307: silo.v1.UI.GetArtifact:input_type -> silo.v1.GetArtifactRequest
-	330, // 308: silo.v1.UI.ReadArtifactFile:input_type -> silo.v1.ReadArtifactFileRequest
-	332, // 309: silo.v1.UI.OpenArtifactApp:input_type -> silo.v1.OpenArtifactAppRequest
-	335, // 310: silo.v1.UI.ShareArtifact:input_type -> silo.v1.ShareArtifactRequest
-	336, // 311: silo.v1.UI.ListArtifactShares:input_type -> silo.v1.ListArtifactSharesRequest
-	338, // 312: silo.v1.UI.DeleteArtifactShare:input_type -> silo.v1.DeleteArtifactShareRequest
-	346, // 313: silo.v1.UI.ListChannelAdapters:input_type -> silo.v1.ListChannelAdaptersRequest
-	348, // 314: silo.v1.UI.ListBotChannels:input_type -> silo.v1.ListBotChannelsRequest
-	350, // 315: silo.v1.UI.CreateChannel:input_type -> silo.v1.CreateChannelRequest
-	351, // 316: silo.v1.UI.UpdateChannel:input_type -> silo.v1.UpdateChannelRequest
-	352, // 317: silo.v1.UI.DeleteChannel:input_type -> silo.v1.DeleteChannelRequest
-	354, // 318: silo.v1.UI.ChannelAction:input_type -> silo.v1.ChannelActionRequest
-	360, // 319: silo.v1.UI.ListDriveTemplates:input_type -> silo.v1.ListDriveTemplatesRequest
-	362, // 320: silo.v1.UI.ListDrives:input_type -> silo.v1.ListDrivesRequest
-	364, // 321: silo.v1.UI.SaveDrive:input_type -> silo.v1.SaveDriveRequest
-	369, // 322: silo.v1.UI.DeleteDrive:input_type -> silo.v1.DeleteDriveRequest
-	365, // 323: silo.v1.UI.ListSpaceDrives:input_type -> silo.v1.ListSpaceDrivesRequest
-	366, // 324: silo.v1.UI.GrantDrive:input_type -> silo.v1.GrantDriveRequest
-	367, // 325: silo.v1.UI.RevokeDrive:input_type -> silo.v1.RevokeDriveRequest
-	371, // 326: silo.v1.UI.BeginDriveAuth:input_type -> silo.v1.BeginDriveAuthRequest
-	373, // 327: silo.v1.UI.PickDriveOptions:input_type -> silo.v1.PickDriveOptionsRequest
-	375, // 328: silo.v1.UI.BrowseDrive:input_type -> silo.v1.BrowseDriveRequest
-	381, // 329: silo.v1.UI.GetDriveSettings:input_type -> silo.v1.GetDriveSettingsRequest
-	382, // 330: silo.v1.UI.PutDriveSettings:input_type -> silo.v1.PutDriveSettingsRequest
-	2,   // 331: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
-	4,   // 332: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
-	6,   // 333: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
-	9,   // 334: silo.v1.UI.AuthOptions:output_type -> silo.v1.AuthOptionsResponse
-	11,  // 335: silo.v1.UI.GetInvite:output_type -> silo.v1.InviteInfo
-	13,  // 336: silo.v1.UI.AcceptInvite:output_type -> silo.v1.AcceptInviteResponse
-	7,   // 337: silo.v1.UI.ChangeEmail:output_type -> silo.v1.User
-	7,   // 338: silo.v1.UI.SetLanguage:output_type -> silo.v1.User
-	7,   // 339: silo.v1.UI.ChangePassword:output_type -> silo.v1.User
-	19,  // 340: silo.v1.UI.ListSessions:output_type -> silo.v1.ListSessionsResponse
-	19,  // 341: silo.v1.UI.RevokeSession:output_type -> silo.v1.ListSessionsResponse
-	19,  // 342: silo.v1.UI.RevokeOtherSessions:output_type -> silo.v1.ListSessionsResponse
-	23,  // 343: silo.v1.UI.StartTOTP:output_type -> silo.v1.StartTOTPResponse
-	25,  // 344: silo.v1.UI.ConfirmTOTP:output_type -> silo.v1.RecoveryCodes
-	7,   // 345: silo.v1.UI.DisableTOTP:output_type -> silo.v1.User
-	25,  // 346: silo.v1.UI.NewRecoveryCodes:output_type -> silo.v1.RecoveryCodes
-	29,  // 347: silo.v1.UI.ListUsers:output_type -> silo.v1.ListUsersResponse
-	7,   // 348: silo.v1.UI.UpdateUser:output_type -> silo.v1.User
-	32,  // 349: silo.v1.UI.DeleteUser:output_type -> silo.v1.DeleteUserResponse
-	33,  // 350: silo.v1.UI.CreateInvite:output_type -> silo.v1.Invite
-	36,  // 351: silo.v1.UI.DeleteInvite:output_type -> silo.v1.DeleteInviteResponse
-	38,  // 352: silo.v1.UI.CheckOIDC:output_type -> silo.v1.CheckOIDCResponse
-	42,  // 353: silo.v1.UI.ListSpaces:output_type -> silo.v1.ListSpacesResponse
-	40,  // 354: silo.v1.UI.GetSpace:output_type -> silo.v1.Space
-	40,  // 355: silo.v1.UI.CreateSpace:output_type -> silo.v1.Space
-	40,  // 356: silo.v1.UI.UpdateSpace:output_type -> silo.v1.Space
-	47,  // 357: silo.v1.UI.DeleteSpace:output_type -> silo.v1.DeleteSpaceResponse
-	50,  // 358: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
-	39,  // 359: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
-	39,  // 360: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
-	39,  // 361: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
-	54,  // 362: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
-	39,  // 363: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
-	39,  // 364: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
-	39,  // 365: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
-	104, // 366: silo.v1.UI.SetDesktopPaused:output_type -> silo.v1.SetDesktopPausedResponse
-	56,  // 367: silo.v1.UI.ListBotContainers:output_type -> silo.v1.BotContainers
-	39,  // 368: silo.v1.UI.RemoveBotContainers:output_type -> silo.v1.Bot
-	62,  // 369: silo.v1.UI.ListAdminContainers:output_type -> silo.v1.AdminContainers
-	65,  // 370: silo.v1.UI.AdminContainerAction:output_type -> silo.v1.AdminActionResponse
-	65,  // 371: silo.v1.UI.RemoveAdminBotContainers:output_type -> silo.v1.AdminActionResponse
-	66,  // 372: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
-	69,  // 373: silo.v1.UI.ListMemories:output_type -> silo.v1.ListMemoriesResponse
-	71,  // 374: silo.v1.UI.SearchMemories:output_type -> silo.v1.SearchMemoriesResponse
-	73,  // 375: silo.v1.UI.DeleteMemory:output_type -> silo.v1.DeleteMemoryResponse
-	77,  // 376: silo.v1.UI.ListKnowledge:output_type -> silo.v1.ListKnowledgeResponse
-	74,  // 377: silo.v1.UI.AddKnowledgeFolder:output_type -> silo.v1.KnowledgeFolder
-	80,  // 378: silo.v1.UI.RemoveKnowledgeFolder:output_type -> silo.v1.RemoveKnowledgeFolderResponse
-	74,  // 379: silo.v1.UI.SyncKnowledge:output_type -> silo.v1.KnowledgeFolder
-	84,  // 380: silo.v1.UI.SearchKnowledge:output_type -> silo.v1.SearchKnowledgeResponse
-	102, // 381: silo.v1.UI.ListFeed:output_type -> silo.v1.ListFeedResponse
-	106, // 382: silo.v1.UI.MarkFeedRead:output_type -> silo.v1.MarkFeedReadResponse
-	108, // 383: silo.v1.UI.DeleteFeedPost:output_type -> silo.v1.DeleteFeedPostResponse
-	110, // 384: silo.v1.UI.QuoteFeedPost:output_type -> silo.v1.QuoteFeedPostResponse
-	115, // 385: silo.v1.UI.ListDashboard:output_type -> silo.v1.ListDashboardResponse
-	129, // 386: silo.v1.UI.MarkDashboardRead:output_type -> silo.v1.MarkDashboardReadResponse
-	131, // 387: silo.v1.UI.DismissDashboardCard:output_type -> silo.v1.DismissDashboardCardResponse
-	133, // 388: silo.v1.UI.SubmitDashboardCard:output_type -> silo.v1.SubmitDashboardCardResponse
-	112, // 389: silo.v1.UI.ResolveSetupOffer:output_type -> silo.v1.SetupOffer
-	116, // 390: silo.v1.UI.RefreshWidget:output_type -> silo.v1.DashboardWidget
-	116, // 391: silo.v1.UI.SetWidgetState:output_type -> silo.v1.DashboardWidget
-	120, // 392: silo.v1.UI.RunWidgetAction:output_type -> silo.v1.RunWidgetActionResponse
-	123, // 393: silo.v1.UI.ArrangeDashboard:output_type -> silo.v1.ArrangeDashboardResponse
-	125, // 394: silo.v1.UI.RemoveWidget:output_type -> silo.v1.RemoveWidgetResponse
-	127, // 395: silo.v1.UI.AskDashboard:output_type -> silo.v1.AskDashboardResponse
-	136, // 396: silo.v1.UI.ListTunnels:output_type -> silo.v1.ListTunnelsResponse
-	134, // 397: silo.v1.UI.CreateTunnel:output_type -> silo.v1.Tunnel
-	134, // 398: silo.v1.UI.UpdateTunnel:output_type -> silo.v1.Tunnel
-	140, // 399: silo.v1.UI.DeleteTunnel:output_type -> silo.v1.DeleteTunnelResponse
-	145, // 400: silo.v1.UI.ListMail:output_type -> silo.v1.ListMailResponse
-	143, // 401: silo.v1.UI.GetMail:output_type -> silo.v1.Mail
-	148, // 402: silo.v1.UI.DeleteMail:output_type -> silo.v1.DeleteMailResponse
-	141, // 403: silo.v1.UI.UpdateMailbox:output_type -> silo.v1.Mailbox
-	141, // 404: silo.v1.UI.RotateMailbox:output_type -> silo.v1.Mailbox
-	153, // 405: silo.v1.UI.ListAutomations:output_type -> silo.v1.ListAutomationsResponse
-	151, // 406: silo.v1.UI.CreateAutomation:output_type -> silo.v1.Automation
-	151, // 407: silo.v1.UI.UpdateAutomation:output_type -> silo.v1.Automation
-	157, // 408: silo.v1.UI.DeleteAutomation:output_type -> silo.v1.DeleteAutomationResponse
-	159, // 409: silo.v1.UI.RunAutomation:output_type -> silo.v1.RunAutomationResponse
-	169, // 410: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
-	160, // 411: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
-	160, // 412: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
-	173, // 413: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
-	160, // 414: silo.v1.UI.SetChatModel:output_type -> silo.v1.Chat
-	160, // 415: silo.v1.UI.SetChatThinking:output_type -> silo.v1.Chat
-	163, // 416: silo.v1.UI.ListModels:output_type -> silo.v1.ListModelsResponse
-	165, // 417: silo.v1.UI.Transcribe:output_type -> silo.v1.TranscribeResponse
-	177, // 418: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
-	184, // 419: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
-	186, // 420: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
-	182, // 421: silo.v1.UI.ListChatEvents:output_type -> silo.v1.ListChatEventsResponse
-	180, // 422: silo.v1.UI.ListCommands:output_type -> silo.v1.ListCommandsResponse
-	177, // 423: silo.v1.UI.EditMessage:output_type -> silo.v1.SendResponse
-	190, // 424: silo.v1.UI.DeleteMessage:output_type -> silo.v1.DeleteMessageResponse
-	192, // 425: silo.v1.UI.DivergeChat:output_type -> silo.v1.DivergeChatResponse
-	194, // 426: silo.v1.UI.CompactChat:output_type -> silo.v1.CompactChatResponse
-	196, // 427: silo.v1.UI.CollectMemories:output_type -> silo.v1.CollectMemoriesResponse
-	199, // 428: silo.v1.UI.ListSubagents:output_type -> silo.v1.ListSubagentsResponse
-	197, // 429: silo.v1.UI.GetSubagent:output_type -> silo.v1.Subagent
-	202, // 430: silo.v1.UI.StopSubagent:output_type -> silo.v1.StopSubagentResponse
-	204, // 431: silo.v1.UI.GetTaskboard:output_type -> silo.v1.Taskboard
-	204, // 432: silo.v1.UI.ClearTaskboard:output_type -> silo.v1.Taskboard
-	209, // 433: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
-	207, // 434: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
-	207, // 435: silo.v1.UI.UpdateSecret:output_type -> silo.v1.SecretMeta
-	213, // 436: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
-	217, // 437: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
-	215, // 438: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
-	222, // 439: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
-	219, // 440: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
-	226, // 441: silo.v1.UI.ListOperatorRules:output_type -> silo.v1.ListOperatorRulesResponse
-	224, // 442: silo.v1.UI.SetOperatorRule:output_type -> silo.v1.OperatorRule
-	229, // 443: silo.v1.UI.DeleteOperatorRule:output_type -> silo.v1.DeleteOperatorRuleResponse
-	89,  // 444: silo.v1.UI.ListChanges:output_type -> silo.v1.ListChangesResponse
-	94,  // 445: silo.v1.UI.ListChangeFiles:output_type -> silo.v1.ListChangeFilesResponse
-	96,  // 446: silo.v1.UI.GetChangePatch:output_type -> silo.v1.GetChangePatchResponse
-	99,  // 447: silo.v1.UI.RestoreChange:output_type -> silo.v1.RestoreChangeResponse
-	92,  // 448: silo.v1.UI.ListDriveChanges:output_type -> silo.v1.ListDriveChangesResponse
-	232, // 449: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
-	234, // 450: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
-	238, // 451: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
-	238, // 452: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
-	238, // 453: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
-	240, // 454: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
-	240, // 455: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
-	240, // 456: silo.v1.UI.SetModels:output_type -> silo.v1.Settings
-	246, // 457: silo.v1.UI.ListProviderModels:output_type -> silo.v1.ListProviderModelsResponse
-	240, // 458: silo.v1.UI.SetConnectorVars:output_type -> silo.v1.Settings
-	240, // 459: silo.v1.UI.SetAutoenableConnectors:output_type -> silo.v1.Settings
-	257, // 460: silo.v1.UI.ListAuditEvents:output_type -> silo.v1.ListAuditEventsResponse
-	259, // 461: silo.v1.UI.AuditSummary:output_type -> silo.v1.AuditSummaryResponse
-	259, // 462: silo.v1.UI.MarkAuditRead:output_type -> silo.v1.AuditSummaryResponse
-	263, // 463: silo.v1.UI.ListTraffic:output_type -> silo.v1.ListTrafficResponse
-	265, // 464: silo.v1.UI.GetBotNetwork:output_type -> silo.v1.BotNetwork
-	265, // 465: silo.v1.UI.AddHostPattern:output_type -> silo.v1.BotNetwork
-	265, // 466: silo.v1.UI.RemoveHostPattern:output_type -> silo.v1.BotNetwork
-	265, // 467: silo.v1.UI.SetOtherProtocols:output_type -> silo.v1.BotNetwork
-	271, // 468: silo.v1.UI.GetEgressStatus:output_type -> silo.v1.EgressStatus
-	271, // 469: silo.v1.UI.RotateEgressCA:output_type -> silo.v1.EgressStatus
-	276, // 470: silo.v1.UI.ListLLMLogs:output_type -> silo.v1.ListLLMLogsResponse
-	282, // 471: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
-	280, // 472: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
-	280, // 473: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
-	287, // 474: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
-	290, // 475: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
-	288, // 476: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
-	288, // 477: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
-	294, // 478: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
-	282, // 479: silo.v1.UI.ListSpaceConnectors:output_type -> silo.v1.ListConnectorsResponse
-	288, // 480: silo.v1.UI.GrantConnector:output_type -> silo.v1.BotConnector
-	298, // 481: silo.v1.UI.RevokeConnector:output_type -> silo.v1.RevokeConnectorResponse
-	288, // 482: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
-	301, // 483: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
-	303, // 484: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
-	305, // 485: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
-	308, // 486: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
-	310, // 487: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
-	312, // 488: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
-	315, // 489: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
-	313, // 490: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
-	232, // 491: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
-	234, // 492: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
-	320, // 493: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
-	324, // 494: silo.v1.UI.ListArtifacts:output_type -> silo.v1.ListArtifactsResponse
-	326, // 495: silo.v1.UI.DeleteArtifact:output_type -> silo.v1.DeleteArtifactResponse
-	329, // 496: silo.v1.UI.GetArtifact:output_type -> silo.v1.GetArtifactResponse
-	331, // 497: silo.v1.UI.ReadArtifactFile:output_type -> silo.v1.ReadArtifactFileResponse
-	333, // 498: silo.v1.UI.OpenArtifactApp:output_type -> silo.v1.OpenArtifactAppResponse
-	334, // 499: silo.v1.UI.ShareArtifact:output_type -> silo.v1.ArtifactShare
-	337, // 500: silo.v1.UI.ListArtifactShares:output_type -> silo.v1.ListArtifactSharesResponse
-	339, // 501: silo.v1.UI.DeleteArtifactShare:output_type -> silo.v1.DeleteArtifactShareResponse
-	347, // 502: silo.v1.UI.ListChannelAdapters:output_type -> silo.v1.ListChannelAdaptersResponse
-	349, // 503: silo.v1.UI.ListBotChannels:output_type -> silo.v1.ListBotChannelsResponse
-	345, // 504: silo.v1.UI.CreateChannel:output_type -> silo.v1.Channel
-	345, // 505: silo.v1.UI.UpdateChannel:output_type -> silo.v1.Channel
-	353, // 506: silo.v1.UI.DeleteChannel:output_type -> silo.v1.DeleteChannelResponse
-	355, // 507: silo.v1.UI.ChannelAction:output_type -> silo.v1.ChannelActionResponse
-	361, // 508: silo.v1.UI.ListDriveTemplates:output_type -> silo.v1.ListDriveTemplatesResponse
-	363, // 509: silo.v1.UI.ListDrives:output_type -> silo.v1.ListDrivesResponse
-	359, // 510: silo.v1.UI.SaveDrive:output_type -> silo.v1.Drive
-	370, // 511: silo.v1.UI.DeleteDrive:output_type -> silo.v1.DeleteDriveResponse
-	363, // 512: silo.v1.UI.ListSpaceDrives:output_type -> silo.v1.ListDrivesResponse
-	359, // 513: silo.v1.UI.GrantDrive:output_type -> silo.v1.Drive
-	368, // 514: silo.v1.UI.RevokeDrive:output_type -> silo.v1.RevokeDriveResponse
-	372, // 515: silo.v1.UI.BeginDriveAuth:output_type -> silo.v1.BeginDriveAuthResponse
-	374, // 516: silo.v1.UI.PickDriveOptions:output_type -> silo.v1.PickDriveOptionsResponse
-	377, // 517: silo.v1.UI.BrowseDrive:output_type -> silo.v1.BrowseDriveResponse
-	380, // 518: silo.v1.UI.GetDriveSettings:output_type -> silo.v1.DriveSettings
-	380, // 519: silo.v1.UI.PutDriveSettings:output_type -> silo.v1.DriveSettings
-	331, // [331:520] is the sub-list for method output_type
-	142, // [142:331] is the sub-list for method input_type
-	142, // [142:142] is the sub-list for extension type_name
-	142, // [142:142] is the sub-list for extension extendee
-	0,   // [0:142] is the sub-list for field type_name
+	49,  // 9: silo.v1.ListSpacePeopleResponse.people:type_name -> silo.v1.SpacePerson
+	71,  // 10: silo.v1.LastManaged.others:type_name -> silo.v1.BotPerson
+	54,  // 11: silo.v1.SpaceRemovalPlan.last_managed:type_name -> silo.v1.LastManaged
+	55,  // 12: silo.v1.SpaceRemovalPlan.lent:type_name -> silo.v1.Lent
+	57,  // 13: silo.v1.RemoveSpacePersonRequest.plan:type_name -> silo.v1.Handoff
+	61,  // 14: silo.v1.SpaceInviteLink.invite:type_name -> silo.v1.SpaceInvite
+	61,  // 15: silo.v1.ListSpaceInvitesResponse.invites:type_name -> silo.v1.SpaceInvite
+	40,  // 16: silo.v1.JoinSpaceResponse.space:type_name -> silo.v1.Space
+	71,  // 17: silo.v1.ListBotPeopleResponse.people:type_name -> silo.v1.BotPerson
+	49,  // 18: silo.v1.ListBotPeopleResponse.candidates:type_name -> silo.v1.SpacePerson
+	71,  // 19: silo.v1.AddBotPersonResponse.person:type_name -> silo.v1.BotPerson
+	39,  // 20: silo.v1.ListBotsResponse.bots:type_name -> silo.v1.Bot
+	81,  // 21: silo.v1.ListBotsResponse.others:type_name -> silo.v1.OtherBot
+	89,  // 22: silo.v1.BotContainers.containers:type_name -> silo.v1.BotContainer
+	91,  // 23: silo.v1.AdminBotGroup.containers:type_name -> silo.v1.AdminContainer
+	92,  // 24: silo.v1.AdminBotGroup.networks:type_name -> silo.v1.AdminNetwork
+	93,  // 25: silo.v1.AdminUserGroup.bots:type_name -> silo.v1.AdminBotGroup
+	91,  // 26: silo.v1.AdminSystemGroup.containers:type_name -> silo.v1.AdminContainer
+	92,  // 27: silo.v1.AdminSystemGroup.networks:type_name -> silo.v1.AdminNetwork
+	94,  // 28: silo.v1.AdminContainers.users:type_name -> silo.v1.AdminUserGroup
+	95,  // 29: silo.v1.AdminContainers.system:type_name -> silo.v1.AdminSystemGroup
+	101, // 30: silo.v1.ListMemoriesResponse.memories:type_name -> silo.v1.Memory
+	101, // 31: silo.v1.SearchMemoriesResponse.memories:type_name -> silo.v1.Memory
+	109, // 32: silo.v1.KnowledgeFolder.issues:type_name -> silo.v1.KnowledgeIssue
+	108, // 33: silo.v1.ListKnowledgeResponse.folders:type_name -> silo.v1.KnowledgeFolder
+	116, // 34: silo.v1.SearchKnowledgeResponse.hits:type_name -> silo.v1.KnowledgeHit
+	119, // 35: silo.v1.Change.sources:type_name -> silo.v1.ChangeSource
+	120, // 36: silo.v1.ListChangesResponse.pending:type_name -> silo.v1.Change
+	120, // 37: silo.v1.ListChangesResponse.changes:type_name -> silo.v1.Change
+	119, // 38: silo.v1.DriveChangeEntry.sources:type_name -> silo.v1.ChangeSource
+	124, // 39: silo.v1.ListDriveChangesResponse.changes:type_name -> silo.v1.DriveChangeEntry
+	121, // 40: silo.v1.ListChangeFilesResponse.files:type_name -> silo.v1.ChangeFile
+	132, // 41: silo.v1.RestoreChangeResponse.skipped:type_name -> silo.v1.RestoreSkip
+	134, // 42: silo.v1.ListFeedResponse.posts:type_name -> silo.v1.FeedPost
+	194, // 43: silo.v1.QuoteFeedPostResponse.chat:type_name -> silo.v1.Chat
+	417, // 44: silo.v1.SetupOffer.options:type_name -> silo.v1.SetupOffer.OptionsEntry
+	145, // 45: silo.v1.ListDashboardResponse.cards:type_name -> silo.v1.DashboardCard
+	134, // 46: silo.v1.ListDashboardResponse.posts:type_name -> silo.v1.FeedPost
+	150, // 47: silo.v1.ListDashboardResponse.widgets:type_name -> silo.v1.DashboardWidget
+	150, // 48: silo.v1.RunWidgetActionResponse.widget:type_name -> silo.v1.DashboardWidget
+	194, // 49: silo.v1.RunWidgetActionResponse.chat:type_name -> silo.v1.Chat
+	155, // 50: silo.v1.ArrangeDashboardRequest.places:type_name -> silo.v1.WidgetPlace
+	194, // 51: silo.v1.SubmitDashboardCardResponse.chat:type_name -> silo.v1.Chat
+	168, // 52: silo.v1.ListTunnelsResponse.tunnels:type_name -> silo.v1.Tunnel
+	176, // 53: silo.v1.Mail.attachments:type_name -> silo.v1.MailAttachment
+	175, // 54: silo.v1.ListMailResponse.mailbox:type_name -> silo.v1.Mailbox
+	177, // 55: silo.v1.ListMailResponse.messages:type_name -> silo.v1.Mail
+	185, // 56: silo.v1.ListAutomationsResponse.automations:type_name -> silo.v1.Automation
+	195, // 57: silo.v1.ListModelsResponse.models:type_name -> silo.v1.ModelOption
+	194, // 58: silo.v1.ListChatsResponse.chats:type_name -> silo.v1.Chat
+	208, // 59: silo.v1.SendRequest.attachments:type_name -> silo.v1.Attachment
+	209, // 60: silo.v1.SendRequest.quotes:type_name -> silo.v1.Quote
+	212, // 61: silo.v1.ListCommandsResponse.commands:type_name -> silo.v1.Command
+	220, // 62: silo.v1.ListChatEventsResponse.events:type_name -> silo.v1.RunEvent
+	208, // 63: silo.v1.RunEvent.attachments:type_name -> silo.v1.Attachment
+	209, // 64: silo.v1.RunEvent.quotes:type_name -> silo.v1.Quote
+	221, // 65: silo.v1.RunEvent.quoted:type_name -> silo.v1.Quoted
+	145, // 66: silo.v1.RunEvent.card:type_name -> silo.v1.DashboardCard
+	146, // 67: silo.v1.RunEvent.setup_offer:type_name -> silo.v1.SetupOffer
+	150, // 68: silo.v1.Quoted.widget:type_name -> silo.v1.DashboardWidget
+	208, // 69: silo.v1.EditMessageRequest.attachments:type_name -> silo.v1.Attachment
+	209, // 70: silo.v1.EditMessageRequest.quotes:type_name -> silo.v1.Quote
+	194, // 71: silo.v1.DivergeChatResponse.chat:type_name -> silo.v1.Chat
+	101, // 72: silo.v1.CollectMemoriesResponse.memories:type_name -> silo.v1.Memory
+	231, // 73: silo.v1.ListSubagentsResponse.subagents:type_name -> silo.v1.Subagent
+	237, // 74: silo.v1.Taskboard.items:type_name -> silo.v1.TaskItem
+	241, // 75: silo.v1.ListSecretsResponse.secrets:type_name -> silo.v1.SecretMeta
+	248, // 76: silo.v1.Approval.fields:type_name -> silo.v1.ApprovalField
+	249, // 77: silo.v1.ListApprovalsResponse.approvals:type_name -> silo.v1.Approval
+	253, // 78: silo.v1.RuleSection.rules:type_name -> silo.v1.Rule
+	253, // 79: silo.v1.ListRulesResponse.rules:type_name -> silo.v1.Rule
+	254, // 80: silo.v1.ListRulesResponse.sections:type_name -> silo.v1.RuleSection
+	258, // 81: silo.v1.ListOperatorRulesResponse.rules:type_name -> silo.v1.OperatorRule
+	264, // 82: silo.v1.ListFilesResponse.entries:type_name -> silo.v1.FileEntry
+	0,   // 83: silo.v1.ConfigField.source:type_name -> silo.v1.ConfigSource
+	273, // 84: silo.v1.Settings.fields:type_name -> silo.v1.ConfigField
+	285, // 85: silo.v1.Settings.search_engines:type_name -> silo.v1.SearchEngine
+	275, // 86: silo.v1.Settings.providers:type_name -> silo.v1.Provider
+	195, // 87: silo.v1.Settings.models:type_name -> silo.v1.ModelOption
+	281, // 88: silo.v1.Settings.connector_vars:type_name -> silo.v1.ConnectorVar
+	283, // 89: silo.v1.Settings.autoenable_connectors:type_name -> silo.v1.AutoenableConnectors
+	195, // 90: silo.v1.Settings.decision_models:type_name -> silo.v1.ModelOption
+	276, // 91: silo.v1.Provider.fields:type_name -> silo.v1.ProviderField
+	279, // 92: silo.v1.ListProviderModelsResponse.models:type_name -> silo.v1.ProviderModel
+	0,   // 93: silo.v1.ConnectorVar.source:type_name -> silo.v1.ConfigSource
+	281, // 94: silo.v1.SetConnectorVarsRequest.connector_vars:type_name -> silo.v1.ConnectorVar
+	0,   // 95: silo.v1.AutoenableConnectors.source:type_name -> silo.v1.ConfigSource
+	286, // 96: silo.v1.SearchEngine.fields:type_name -> silo.v1.SearchEngineField
+	418, // 97: silo.v1.PutSettingsRequest.fields:type_name -> silo.v1.PutSettingsRequest.FieldsEntry
+	289, // 98: silo.v1.ListAuditEventsResponse.events:type_name -> silo.v1.AuditEvent
+	295, // 99: silo.v1.ListTrafficResponse.rows:type_name -> silo.v1.TrafficRow
+	298, // 100: silo.v1.BotNetwork.patterns:type_name -> silo.v1.HostPattern
+	304, // 101: silo.v1.EgressStatus.feeds:type_name -> silo.v1.FeedStatus
+	308, // 102: silo.v1.ListLLMLogsResponse.logs:type_name -> silo.v1.LLMLog
+	311, // 103: silo.v1.Connector.header_keys:type_name -> silo.v1.HeaderKey
+	312, // 104: silo.v1.Connector.env_keys:type_name -> silo.v1.EnvKey
+	375, // 105: silo.v1.Connector.fields:type_name -> silo.v1.ChannelField
+	419, // 106: silo.v1.Connector.config:type_name -> silo.v1.Connector.ConfigEntry
+	314, // 107: silo.v1.ListConnectorsResponse.connectors:type_name -> silo.v1.Connector
+	317, // 108: silo.v1.CreateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	313, // 109: silo.v1.CreateConnectorRequest.env:type_name -> silo.v1.EnvInput
+	317, // 110: silo.v1.UpdateConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	313, // 111: silo.v1.UpdateConnectorRequest.env:type_name -> silo.v1.EnvInput
+	420, // 112: silo.v1.UpdateConnectorRequest.config:type_name -> silo.v1.UpdateConnectorRequest.ConfigEntry
+	314, // 113: silo.v1.BotConnector.connector:type_name -> silo.v1.Connector
+	322, // 114: silo.v1.ListBotConnectorsResponse.connectors:type_name -> silo.v1.BotConnector
+	317, // 115: silo.v1.CreateBotConnectorRequest.headers:type_name -> silo.v1.HeaderInput
+	313, // 116: silo.v1.CreateBotConnectorRequest.env:type_name -> silo.v1.EnvInput
+	421, // 117: silo.v1.CreateBotConnectorRequest.config:type_name -> silo.v1.CreateBotConnectorRequest.ConfigEntry
+	340, // 118: silo.v1.ListSkillsResponse.skills:type_name -> silo.v1.Skill
+	347, // 119: silo.v1.ListBotSkillsResponse.skills:type_name -> silo.v1.BotSkill
+	355, // 120: silo.v1.ArtifactItem.versions:type_name -> silo.v1.ArtifactVersion
+	356, // 121: silo.v1.ListArtifactsResponse.artifacts:type_name -> silo.v1.ArtifactItem
+	355, // 122: silo.v1.GetArtifactResponse.versions:type_name -> silo.v1.ArtifactVersion
+	355, // 123: silo.v1.GetArtifactResponse.version:type_name -> silo.v1.ArtifactVersion
+	361, // 124: silo.v1.GetArtifactResponse.entries:type_name -> silo.v1.ArtifactEntry
+	368, // 125: silo.v1.ListArtifactSharesResponse.shares:type_name -> silo.v1.ArtifactShare
+	374, // 126: silo.v1.ChannelField.options:type_name -> silo.v1.ChannelFieldOption
+	375, // 127: silo.v1.ChannelAdapter.fields:type_name -> silo.v1.ChannelField
+	376, // 128: silo.v1.ChannelAdapter.actions:type_name -> silo.v1.ChannelAdapterAction
+	374, // 129: silo.v1.ChannelState.options:type_name -> silo.v1.ChannelFieldOption
+	422, // 130: silo.v1.ChannelState.values:type_name -> silo.v1.ChannelState.ValuesEntry
+	423, // 131: silo.v1.Channel.config:type_name -> silo.v1.Channel.ConfigEntry
+	378, // 132: silo.v1.Channel.state:type_name -> silo.v1.ChannelState
+	377, // 133: silo.v1.ListChannelAdaptersResponse.adapters:type_name -> silo.v1.ChannelAdapter
+	379, // 134: silo.v1.ListBotChannelsResponse.channels:type_name -> silo.v1.Channel
+	424, // 135: silo.v1.CreateChannelRequest.config:type_name -> silo.v1.CreateChannelRequest.ConfigEntry
+	425, // 136: silo.v1.CreateChannelRequest.secrets:type_name -> silo.v1.CreateChannelRequest.SecretsEntry
+	426, // 137: silo.v1.UpdateChannelRequest.config:type_name -> silo.v1.UpdateChannelRequest.ConfigEntry
+	427, // 138: silo.v1.UpdateChannelRequest.secrets:type_name -> silo.v1.UpdateChannelRequest.SecretsEntry
+	428, // 139: silo.v1.ChannelActionRequest.payload:type_name -> silo.v1.ChannelActionRequest.PayloadEntry
+	378, // 140: silo.v1.ChannelActionResponse.state:type_name -> silo.v1.ChannelState
+	429, // 141: silo.v1.DriveOption.extra:type_name -> silo.v1.DriveOption.ExtraEntry
+	390, // 142: silo.v1.DriveVar.options:type_name -> silo.v1.DriveOption
+	430, // 143: silo.v1.DriveVar.visible_if:type_name -> silo.v1.DriveVar.VisibleIfEntry
+	391, // 144: silo.v1.DriveTemplate.vars:type_name -> silo.v1.DriveVar
+	431, // 145: silo.v1.Drive.options:type_name -> silo.v1.Drive.OptionsEntry
+	392, // 146: silo.v1.ListDriveTemplatesResponse.templates:type_name -> silo.v1.DriveTemplate
+	393, // 147: silo.v1.ListDrivesResponse.drives:type_name -> silo.v1.Drive
+	432, // 148: silo.v1.SaveDriveRequest.options:type_name -> silo.v1.SaveDriveRequest.OptionsEntry
+	390, // 149: silo.v1.PickDriveOptionsResponse.options:type_name -> silo.v1.DriveOption
+	410, // 150: silo.v1.BrowseDriveResponse.dirs:type_name -> silo.v1.BrowseDriveDir
+	412, // 151: silo.v1.DriveProviderSettings.fields:type_name -> silo.v1.DriveSystemField
+	413, // 152: silo.v1.DriveSettings.providers:type_name -> silo.v1.DriveProviderSettings
+	433, // 153: silo.v1.PutDriveSettingsRequest.values:type_name -> silo.v1.PutDriveSettingsRequest.ValuesEntry
+	1,   // 154: silo.v1.UI.SignIn:input_type -> silo.v1.SignInRequest
+	3,   // 155: silo.v1.UI.SignOut:input_type -> silo.v1.SignOutRequest
+	5,   // 156: silo.v1.UI.Me:input_type -> silo.v1.MeRequest
+	8,   // 157: silo.v1.UI.AuthOptions:input_type -> silo.v1.AuthOptionsRequest
+	10,  // 158: silo.v1.UI.GetInvite:input_type -> silo.v1.GetInviteRequest
+	12,  // 159: silo.v1.UI.AcceptInvite:input_type -> silo.v1.AcceptInviteRequest
+	14,  // 160: silo.v1.UI.ChangeEmail:input_type -> silo.v1.ChangeEmailRequest
+	15,  // 161: silo.v1.UI.SetLanguage:input_type -> silo.v1.SetLanguageRequest
+	16,  // 162: silo.v1.UI.ChangePassword:input_type -> silo.v1.ChangePasswordRequest
+	18,  // 163: silo.v1.UI.ListSessions:input_type -> silo.v1.ListSessionsRequest
+	20,  // 164: silo.v1.UI.RevokeSession:input_type -> silo.v1.RevokeSessionRequest
+	21,  // 165: silo.v1.UI.RevokeOtherSessions:input_type -> silo.v1.RevokeOtherSessionsRequest
+	22,  // 166: silo.v1.UI.StartTOTP:input_type -> silo.v1.StartTOTPRequest
+	24,  // 167: silo.v1.UI.ConfirmTOTP:input_type -> silo.v1.ConfirmTOTPRequest
+	26,  // 168: silo.v1.UI.DisableTOTP:input_type -> silo.v1.DisableTOTPRequest
+	27,  // 169: silo.v1.UI.NewRecoveryCodes:input_type -> silo.v1.NewRecoveryCodesRequest
+	28,  // 170: silo.v1.UI.ListUsers:input_type -> silo.v1.ListUsersRequest
+	30,  // 171: silo.v1.UI.UpdateUser:input_type -> silo.v1.UpdateUserRequest
+	31,  // 172: silo.v1.UI.DeleteUser:input_type -> silo.v1.DeleteUserRequest
+	34,  // 173: silo.v1.UI.CreateInvite:input_type -> silo.v1.CreateInviteRequest
+	35,  // 174: silo.v1.UI.DeleteInvite:input_type -> silo.v1.DeleteInviteRequest
+	37,  // 175: silo.v1.UI.CheckOIDC:input_type -> silo.v1.CheckOIDCRequest
+	41,  // 176: silo.v1.UI.ListSpaces:input_type -> silo.v1.ListSpacesRequest
+	43,  // 177: silo.v1.UI.GetSpace:input_type -> silo.v1.GetSpaceRequest
+	44,  // 178: silo.v1.UI.CreateSpace:input_type -> silo.v1.CreateSpaceRequest
+	45,  // 179: silo.v1.UI.UpdateSpace:input_type -> silo.v1.UpdateSpaceRequest
+	46,  // 180: silo.v1.UI.DeleteSpace:input_type -> silo.v1.DeleteSpaceRequest
+	48,  // 181: silo.v1.UI.TransferSpace:input_type -> silo.v1.TransferSpaceRequest
+	50,  // 182: silo.v1.UI.ListSpacePeople:input_type -> silo.v1.ListSpacePeopleRequest
+	52,  // 183: silo.v1.UI.SetSpaceRole:input_type -> silo.v1.SetSpaceRoleRequest
+	53,  // 184: silo.v1.UI.PlanSpaceRemoval:input_type -> silo.v1.PlanSpaceRemovalRequest
+	58,  // 185: silo.v1.UI.RemoveSpacePerson:input_type -> silo.v1.RemoveSpacePersonRequest
+	60,  // 186: silo.v1.UI.CreateSpaceInvite:input_type -> silo.v1.CreateSpaceInviteRequest
+	63,  // 187: silo.v1.UI.ListSpaceInvites:input_type -> silo.v1.ListSpaceInvitesRequest
+	65,  // 188: silo.v1.UI.DeleteSpaceInvite:input_type -> silo.v1.DeleteSpaceInviteRequest
+	67,  // 189: silo.v1.UI.GetSpaceInvite:input_type -> silo.v1.GetSpaceInviteRequest
+	69,  // 190: silo.v1.UI.JoinSpace:input_type -> silo.v1.JoinSpaceRequest
+	72,  // 191: silo.v1.UI.ListBotPeople:input_type -> silo.v1.ListBotPeopleRequest
+	74,  // 192: silo.v1.UI.AddBotPerson:input_type -> silo.v1.AddBotPersonRequest
+	76,  // 193: silo.v1.UI.SetBotRole:input_type -> silo.v1.SetBotRoleRequest
+	77,  // 194: silo.v1.UI.RemoveBotPerson:input_type -> silo.v1.RemoveBotPersonRequest
+	79,  // 195: silo.v1.UI.SetLendShared:input_type -> silo.v1.SetLendSharedRequest
+	83,  // 196: silo.v1.UI.ListBots:input_type -> silo.v1.ListBotsRequest
+	85,  // 197: silo.v1.UI.CreateBot:input_type -> silo.v1.CreateBotRequest
+	86,  // 198: silo.v1.UI.UpdateBot:input_type -> silo.v1.UpdateBotRequest
+	87,  // 199: silo.v1.UI.GetBot:input_type -> silo.v1.GetBotRequest
+	87,  // 200: silo.v1.UI.GetContainer:input_type -> silo.v1.GetBotRequest
+	87,  // 201: silo.v1.UI.StartBot:input_type -> silo.v1.GetBotRequest
+	87,  // 202: silo.v1.UI.StopBot:input_type -> silo.v1.GetBotRequest
+	87,  // 203: silo.v1.UI.ResetContainer:input_type -> silo.v1.GetBotRequest
+	137, // 204: silo.v1.UI.SetDesktopPaused:input_type -> silo.v1.SetDesktopPausedRequest
+	87,  // 205: silo.v1.UI.ListBotContainers:input_type -> silo.v1.GetBotRequest
+	87,  // 206: silo.v1.UI.RemoveBotContainers:input_type -> silo.v1.GetBotRequest
+	97,  // 207: silo.v1.UI.ListAdminContainers:input_type -> silo.v1.ListAdminContainersRequest
+	98,  // 208: silo.v1.UI.AdminContainerAction:input_type -> silo.v1.AdminContainerActionRequest
+	87,  // 209: silo.v1.UI.RemoveAdminBotContainers:input_type -> silo.v1.GetBotRequest
+	87,  // 210: silo.v1.UI.DeleteBot:input_type -> silo.v1.GetBotRequest
+	102, // 211: silo.v1.UI.ListMemories:input_type -> silo.v1.ListMemoriesRequest
+	104, // 212: silo.v1.UI.SearchMemories:input_type -> silo.v1.SearchMemoriesRequest
+	106, // 213: silo.v1.UI.DeleteMemory:input_type -> silo.v1.DeleteMemoryRequest
+	110, // 214: silo.v1.UI.ListKnowledge:input_type -> silo.v1.ListKnowledgeRequest
+	112, // 215: silo.v1.UI.AddKnowledgeFolder:input_type -> silo.v1.AddKnowledgeFolderRequest
+	113, // 216: silo.v1.UI.RemoveKnowledgeFolder:input_type -> silo.v1.RemoveKnowledgeFolderRequest
+	115, // 217: silo.v1.UI.SyncKnowledge:input_type -> silo.v1.SyncKnowledgeRequest
+	117, // 218: silo.v1.UI.SearchKnowledge:input_type -> silo.v1.SearchKnowledgeRequest
+	135, // 219: silo.v1.UI.ListFeed:input_type -> silo.v1.ListFeedRequest
+	139, // 220: silo.v1.UI.MarkFeedRead:input_type -> silo.v1.MarkFeedReadRequest
+	141, // 221: silo.v1.UI.DeleteFeedPost:input_type -> silo.v1.DeleteFeedPostRequest
+	143, // 222: silo.v1.UI.QuoteFeedPost:input_type -> silo.v1.QuoteFeedPostRequest
+	148, // 223: silo.v1.UI.ListDashboard:input_type -> silo.v1.ListDashboardRequest
+	162, // 224: silo.v1.UI.MarkDashboardRead:input_type -> silo.v1.MarkDashboardReadRequest
+	164, // 225: silo.v1.UI.DismissDashboardCard:input_type -> silo.v1.DismissDashboardCardRequest
+	166, // 226: silo.v1.UI.SubmitDashboardCard:input_type -> silo.v1.SubmitDashboardCardRequest
+	147, // 227: silo.v1.UI.ResolveSetupOffer:input_type -> silo.v1.ResolveSetupOfferRequest
+	151, // 228: silo.v1.UI.RefreshWidget:input_type -> silo.v1.RefreshWidgetRequest
+	152, // 229: silo.v1.UI.SetWidgetState:input_type -> silo.v1.SetWidgetStateRequest
+	153, // 230: silo.v1.UI.RunWidgetAction:input_type -> silo.v1.RunWidgetActionRequest
+	156, // 231: silo.v1.UI.ArrangeDashboard:input_type -> silo.v1.ArrangeDashboardRequest
+	158, // 232: silo.v1.UI.RemoveWidget:input_type -> silo.v1.RemoveWidgetRequest
+	160, // 233: silo.v1.UI.AskDashboard:input_type -> silo.v1.AskDashboardRequest
+	169, // 234: silo.v1.UI.ListTunnels:input_type -> silo.v1.ListTunnelsRequest
+	171, // 235: silo.v1.UI.CreateTunnel:input_type -> silo.v1.CreateTunnelRequest
+	172, // 236: silo.v1.UI.UpdateTunnel:input_type -> silo.v1.UpdateTunnelRequest
+	173, // 237: silo.v1.UI.DeleteTunnel:input_type -> silo.v1.DeleteTunnelRequest
+	178, // 238: silo.v1.UI.ListMail:input_type -> silo.v1.ListMailRequest
+	180, // 239: silo.v1.UI.GetMail:input_type -> silo.v1.GetMailRequest
+	181, // 240: silo.v1.UI.DeleteMail:input_type -> silo.v1.DeleteMailRequest
+	183, // 241: silo.v1.UI.UpdateMailbox:input_type -> silo.v1.UpdateMailboxRequest
+	184, // 242: silo.v1.UI.RotateMailbox:input_type -> silo.v1.RotateMailboxRequest
+	186, // 243: silo.v1.UI.ListAutomations:input_type -> silo.v1.ListAutomationsRequest
+	188, // 244: silo.v1.UI.CreateAutomation:input_type -> silo.v1.CreateAutomationRequest
+	189, // 245: silo.v1.UI.UpdateAutomation:input_type -> silo.v1.UpdateAutomationRequest
+	190, // 246: silo.v1.UI.DeleteAutomation:input_type -> silo.v1.DeleteAutomationRequest
+	192, // 247: silo.v1.UI.RunAutomation:input_type -> silo.v1.RunAutomationRequest
+	202, // 248: silo.v1.UI.ListChats:input_type -> silo.v1.ListChatsRequest
+	204, // 249: silo.v1.UI.CreateChat:input_type -> silo.v1.CreateChatRequest
+	205, // 250: silo.v1.UI.RenameChat:input_type -> silo.v1.RenameChatRequest
+	206, // 251: silo.v1.UI.DeleteChat:input_type -> silo.v1.DeleteChatRequest
+	200, // 252: silo.v1.UI.SetChatModel:input_type -> silo.v1.SetChatModelRequest
+	201, // 253: silo.v1.UI.SetChatThinking:input_type -> silo.v1.SetChatThinkingRequest
+	196, // 254: silo.v1.UI.ListModels:input_type -> silo.v1.ListModelsRequest
+	198, // 255: silo.v1.UI.Transcribe:input_type -> silo.v1.TranscribeRequest
+	210, // 256: silo.v1.UI.Send:input_type -> silo.v1.SendRequest
+	217, // 257: silo.v1.UI.StopRun:input_type -> silo.v1.StopRunRequest
+	219, // 258: silo.v1.UI.StreamRun:input_type -> silo.v1.StreamRunRequest
+	215, // 259: silo.v1.UI.ListChatEvents:input_type -> silo.v1.ListChatEventsRequest
+	213, // 260: silo.v1.UI.ListCommands:input_type -> silo.v1.ListCommandsRequest
+	222, // 261: silo.v1.UI.EditMessage:input_type -> silo.v1.EditMessageRequest
+	223, // 262: silo.v1.UI.DeleteMessage:input_type -> silo.v1.DeleteMessageRequest
+	225, // 263: silo.v1.UI.DivergeChat:input_type -> silo.v1.DivergeChatRequest
+	227, // 264: silo.v1.UI.CompactChat:input_type -> silo.v1.CompactChatRequest
+	229, // 265: silo.v1.UI.CollectMemories:input_type -> silo.v1.CollectMemoriesRequest
+	232, // 266: silo.v1.UI.ListSubagents:input_type -> silo.v1.ListSubagentsRequest
+	234, // 267: silo.v1.UI.GetSubagent:input_type -> silo.v1.GetSubagentRequest
+	235, // 268: silo.v1.UI.StopSubagent:input_type -> silo.v1.StopSubagentRequest
+	239, // 269: silo.v1.UI.GetTaskboard:input_type -> silo.v1.GetTaskboardRequest
+	240, // 270: silo.v1.UI.ClearTaskboard:input_type -> silo.v1.ClearTaskboardRequest
+	242, // 271: silo.v1.UI.ListSecrets:input_type -> silo.v1.ListSecretsRequest
+	244, // 272: silo.v1.UI.AddSecret:input_type -> silo.v1.AddSecretRequest
+	245, // 273: silo.v1.UI.UpdateSecret:input_type -> silo.v1.UpdateSecretRequest
+	246, // 274: silo.v1.UI.DeleteSecret:input_type -> silo.v1.DeleteSecretRequest
+	250, // 275: silo.v1.UI.ListApprovals:input_type -> silo.v1.ListApprovalsRequest
+	252, // 276: silo.v1.UI.DecideApproval:input_type -> silo.v1.DecideApprovalRequest
+	255, // 277: silo.v1.UI.ListRules:input_type -> silo.v1.ListRulesRequest
+	257, // 278: silo.v1.UI.SetRule:input_type -> silo.v1.SetRuleRequest
+	259, // 279: silo.v1.UI.ListOperatorRules:input_type -> silo.v1.ListOperatorRulesRequest
+	261, // 280: silo.v1.UI.SetOperatorRule:input_type -> silo.v1.SetOperatorRuleRequest
+	262, // 281: silo.v1.UI.DeleteOperatorRule:input_type -> silo.v1.DeleteOperatorRuleRequest
+	122, // 282: silo.v1.UI.ListChanges:input_type -> silo.v1.ListChangesRequest
+	127, // 283: silo.v1.UI.ListChangeFiles:input_type -> silo.v1.ListChangeFilesRequest
+	129, // 284: silo.v1.UI.GetChangePatch:input_type -> silo.v1.GetChangePatchRequest
+	131, // 285: silo.v1.UI.RestoreChange:input_type -> silo.v1.RestoreChangeRequest
+	125, // 286: silo.v1.UI.ListDriveChanges:input_type -> silo.v1.ListDriveChangesRequest
+	265, // 287: silo.v1.UI.ListFiles:input_type -> silo.v1.ListFilesRequest
+	267, // 288: silo.v1.UI.ReadFile:input_type -> silo.v1.ReadFileRequest
+	269, // 289: silo.v1.UI.Mkdir:input_type -> silo.v1.MkdirRequest
+	270, // 290: silo.v1.UI.RemoveFile:input_type -> silo.v1.RemoveFileRequest
+	271, // 291: silo.v1.UI.PutFile:input_type -> silo.v1.PutFileRequest
+	287, // 292: silo.v1.UI.GetSettings:input_type -> silo.v1.GetSettingsRequest
+	288, // 293: silo.v1.UI.PutSettings:input_type -> silo.v1.PutSettingsRequest
+	277, // 294: silo.v1.UI.SetModels:input_type -> silo.v1.SetModelsRequest
+	278, // 295: silo.v1.UI.ListProviderModels:input_type -> silo.v1.ListProviderModelsRequest
+	282, // 296: silo.v1.UI.SetConnectorVars:input_type -> silo.v1.SetConnectorVarsRequest
+	284, // 297: silo.v1.UI.SetAutoenableConnectors:input_type -> silo.v1.SetAutoenableConnectorsRequest
+	290, // 298: silo.v1.UI.ListAuditEvents:input_type -> silo.v1.ListAuditEventsRequest
+	292, // 299: silo.v1.UI.AuditSummary:input_type -> silo.v1.AuditSummaryRequest
+	294, // 300: silo.v1.UI.MarkAuditRead:input_type -> silo.v1.MarkAuditReadRequest
+	296, // 301: silo.v1.UI.ListTraffic:input_type -> silo.v1.ListTrafficRequest
+	300, // 302: silo.v1.UI.GetBotNetwork:input_type -> silo.v1.GetBotNetworkRequest
+	301, // 303: silo.v1.UI.AddHostPattern:input_type -> silo.v1.AddHostPatternRequest
+	302, // 304: silo.v1.UI.RemoveHostPattern:input_type -> silo.v1.RemoveHostPatternRequest
+	303, // 305: silo.v1.UI.SetOtherProtocols:input_type -> silo.v1.SetOtherProtocolsRequest
+	306, // 306: silo.v1.UI.GetEgressStatus:input_type -> silo.v1.GetEgressStatusRequest
+	307, // 307: silo.v1.UI.RotateEgressCA:input_type -> silo.v1.RotateEgressCARequest
+	309, // 308: silo.v1.UI.ListLLMLogs:input_type -> silo.v1.ListLLMLogsRequest
+	315, // 309: silo.v1.UI.ListConnectors:input_type -> silo.v1.ListConnectorsRequest
+	318, // 310: silo.v1.UI.CreateConnector:input_type -> silo.v1.CreateConnectorRequest
+	319, // 311: silo.v1.UI.UpdateConnector:input_type -> silo.v1.UpdateConnectorRequest
+	320, // 312: silo.v1.UI.DeleteConnector:input_type -> silo.v1.DeleteConnectorRequest
+	323, // 313: silo.v1.UI.ListBotConnectors:input_type -> silo.v1.ListBotConnectorsRequest
+	325, // 314: silo.v1.UI.AttachConnector:input_type -> silo.v1.AttachConnectorRequest
+	326, // 315: silo.v1.UI.CreateBotConnector:input_type -> silo.v1.CreateBotConnectorRequest
+	327, // 316: silo.v1.UI.DetachConnector:input_type -> silo.v1.DetachConnectorRequest
+	329, // 317: silo.v1.UI.ListSpaceConnectors:input_type -> silo.v1.ListSpaceConnectorsRequest
+	330, // 318: silo.v1.UI.GrantConnector:input_type -> silo.v1.GrantConnectorRequest
+	331, // 319: silo.v1.UI.RevokeConnector:input_type -> silo.v1.RevokeConnectorRequest
+	333, // 320: silo.v1.UI.RefreshBotConnector:input_type -> silo.v1.RefreshBotConnectorRequest
+	334, // 321: silo.v1.UI.StartConnectorAuth:input_type -> silo.v1.StartConnectorAuthRequest
+	336, // 322: silo.v1.UI.SeedConnectors:input_type -> silo.v1.SeedConnectorsRequest
+	338, // 323: silo.v1.UI.SeedSkills:input_type -> silo.v1.SeedSkillsRequest
+	341, // 324: silo.v1.UI.ListSkills:input_type -> silo.v1.ListSkillsRequest
+	343, // 325: silo.v1.UI.InstallSkill:input_type -> silo.v1.InstallSkillRequest
+	345, // 326: silo.v1.UI.DeleteSkill:input_type -> silo.v1.DeleteSkillRequest
+	348, // 327: silo.v1.UI.ListBotSkills:input_type -> silo.v1.ListBotSkillsRequest
+	350, // 328: silo.v1.UI.SetBotSkill:input_type -> silo.v1.SetBotSkillRequest
+	351, // 329: silo.v1.UI.ListSkillFiles:input_type -> silo.v1.ListSkillFilesRequest
+	352, // 330: silo.v1.UI.ReadSkillFile:input_type -> silo.v1.ReadSkillFileRequest
+	353, // 331: silo.v1.UI.SaveSkill:input_type -> silo.v1.SaveSkillRequest
+	357, // 332: silo.v1.UI.ListArtifacts:input_type -> silo.v1.ListArtifactsRequest
+	359, // 333: silo.v1.UI.DeleteArtifact:input_type -> silo.v1.DeleteArtifactRequest
+	362, // 334: silo.v1.UI.GetArtifact:input_type -> silo.v1.GetArtifactRequest
+	364, // 335: silo.v1.UI.ReadArtifactFile:input_type -> silo.v1.ReadArtifactFileRequest
+	366, // 336: silo.v1.UI.OpenArtifactApp:input_type -> silo.v1.OpenArtifactAppRequest
+	369, // 337: silo.v1.UI.ShareArtifact:input_type -> silo.v1.ShareArtifactRequest
+	370, // 338: silo.v1.UI.ListArtifactShares:input_type -> silo.v1.ListArtifactSharesRequest
+	372, // 339: silo.v1.UI.DeleteArtifactShare:input_type -> silo.v1.DeleteArtifactShareRequest
+	380, // 340: silo.v1.UI.ListChannelAdapters:input_type -> silo.v1.ListChannelAdaptersRequest
+	382, // 341: silo.v1.UI.ListBotChannels:input_type -> silo.v1.ListBotChannelsRequest
+	384, // 342: silo.v1.UI.CreateChannel:input_type -> silo.v1.CreateChannelRequest
+	385, // 343: silo.v1.UI.UpdateChannel:input_type -> silo.v1.UpdateChannelRequest
+	386, // 344: silo.v1.UI.DeleteChannel:input_type -> silo.v1.DeleteChannelRequest
+	388, // 345: silo.v1.UI.ChannelAction:input_type -> silo.v1.ChannelActionRequest
+	394, // 346: silo.v1.UI.ListDriveTemplates:input_type -> silo.v1.ListDriveTemplatesRequest
+	396, // 347: silo.v1.UI.ListDrives:input_type -> silo.v1.ListDrivesRequest
+	398, // 348: silo.v1.UI.SaveDrive:input_type -> silo.v1.SaveDriveRequest
+	403, // 349: silo.v1.UI.DeleteDrive:input_type -> silo.v1.DeleteDriveRequest
+	399, // 350: silo.v1.UI.ListSpaceDrives:input_type -> silo.v1.ListSpaceDrivesRequest
+	400, // 351: silo.v1.UI.GrantDrive:input_type -> silo.v1.GrantDriveRequest
+	401, // 352: silo.v1.UI.RevokeDrive:input_type -> silo.v1.RevokeDriveRequest
+	405, // 353: silo.v1.UI.BeginDriveAuth:input_type -> silo.v1.BeginDriveAuthRequest
+	407, // 354: silo.v1.UI.PickDriveOptions:input_type -> silo.v1.PickDriveOptionsRequest
+	409, // 355: silo.v1.UI.BrowseDrive:input_type -> silo.v1.BrowseDriveRequest
+	415, // 356: silo.v1.UI.GetDriveSettings:input_type -> silo.v1.GetDriveSettingsRequest
+	416, // 357: silo.v1.UI.PutDriveSettings:input_type -> silo.v1.PutDriveSettingsRequest
+	2,   // 358: silo.v1.UI.SignIn:output_type -> silo.v1.SignInResponse
+	4,   // 359: silo.v1.UI.SignOut:output_type -> silo.v1.SignOutResponse
+	6,   // 360: silo.v1.UI.Me:output_type -> silo.v1.MeResponse
+	9,   // 361: silo.v1.UI.AuthOptions:output_type -> silo.v1.AuthOptionsResponse
+	11,  // 362: silo.v1.UI.GetInvite:output_type -> silo.v1.InviteInfo
+	13,  // 363: silo.v1.UI.AcceptInvite:output_type -> silo.v1.AcceptInviteResponse
+	7,   // 364: silo.v1.UI.ChangeEmail:output_type -> silo.v1.User
+	7,   // 365: silo.v1.UI.SetLanguage:output_type -> silo.v1.User
+	7,   // 366: silo.v1.UI.ChangePassword:output_type -> silo.v1.User
+	19,  // 367: silo.v1.UI.ListSessions:output_type -> silo.v1.ListSessionsResponse
+	19,  // 368: silo.v1.UI.RevokeSession:output_type -> silo.v1.ListSessionsResponse
+	19,  // 369: silo.v1.UI.RevokeOtherSessions:output_type -> silo.v1.ListSessionsResponse
+	23,  // 370: silo.v1.UI.StartTOTP:output_type -> silo.v1.StartTOTPResponse
+	25,  // 371: silo.v1.UI.ConfirmTOTP:output_type -> silo.v1.RecoveryCodes
+	7,   // 372: silo.v1.UI.DisableTOTP:output_type -> silo.v1.User
+	25,  // 373: silo.v1.UI.NewRecoveryCodes:output_type -> silo.v1.RecoveryCodes
+	29,  // 374: silo.v1.UI.ListUsers:output_type -> silo.v1.ListUsersResponse
+	7,   // 375: silo.v1.UI.UpdateUser:output_type -> silo.v1.User
+	32,  // 376: silo.v1.UI.DeleteUser:output_type -> silo.v1.DeleteUserResponse
+	33,  // 377: silo.v1.UI.CreateInvite:output_type -> silo.v1.Invite
+	36,  // 378: silo.v1.UI.DeleteInvite:output_type -> silo.v1.DeleteInviteResponse
+	38,  // 379: silo.v1.UI.CheckOIDC:output_type -> silo.v1.CheckOIDCResponse
+	42,  // 380: silo.v1.UI.ListSpaces:output_type -> silo.v1.ListSpacesResponse
+	40,  // 381: silo.v1.UI.GetSpace:output_type -> silo.v1.Space
+	40,  // 382: silo.v1.UI.CreateSpace:output_type -> silo.v1.Space
+	40,  // 383: silo.v1.UI.UpdateSpace:output_type -> silo.v1.Space
+	47,  // 384: silo.v1.UI.DeleteSpace:output_type -> silo.v1.DeleteSpaceResponse
+	40,  // 385: silo.v1.UI.TransferSpace:output_type -> silo.v1.Space
+	51,  // 386: silo.v1.UI.ListSpacePeople:output_type -> silo.v1.ListSpacePeopleResponse
+	49,  // 387: silo.v1.UI.SetSpaceRole:output_type -> silo.v1.SpacePerson
+	56,  // 388: silo.v1.UI.PlanSpaceRemoval:output_type -> silo.v1.SpaceRemovalPlan
+	59,  // 389: silo.v1.UI.RemoveSpacePerson:output_type -> silo.v1.RemoveSpacePersonResponse
+	62,  // 390: silo.v1.UI.CreateSpaceInvite:output_type -> silo.v1.SpaceInviteLink
+	64,  // 391: silo.v1.UI.ListSpaceInvites:output_type -> silo.v1.ListSpaceInvitesResponse
+	66,  // 392: silo.v1.UI.DeleteSpaceInvite:output_type -> silo.v1.DeleteSpaceInviteResponse
+	68,  // 393: silo.v1.UI.GetSpaceInvite:output_type -> silo.v1.SpaceInviteInfo
+	70,  // 394: silo.v1.UI.JoinSpace:output_type -> silo.v1.JoinSpaceResponse
+	73,  // 395: silo.v1.UI.ListBotPeople:output_type -> silo.v1.ListBotPeopleResponse
+	75,  // 396: silo.v1.UI.AddBotPerson:output_type -> silo.v1.AddBotPersonResponse
+	71,  // 397: silo.v1.UI.SetBotRole:output_type -> silo.v1.BotPerson
+	78,  // 398: silo.v1.UI.RemoveBotPerson:output_type -> silo.v1.RemoveBotPersonResponse
+	80,  // 399: silo.v1.UI.SetLendShared:output_type -> silo.v1.SetLendSharedResponse
+	84,  // 400: silo.v1.UI.ListBots:output_type -> silo.v1.ListBotsResponse
+	39,  // 401: silo.v1.UI.CreateBot:output_type -> silo.v1.Bot
+	39,  // 402: silo.v1.UI.UpdateBot:output_type -> silo.v1.Bot
+	39,  // 403: silo.v1.UI.GetBot:output_type -> silo.v1.Bot
+	88,  // 404: silo.v1.UI.GetContainer:output_type -> silo.v1.Container
+	39,  // 405: silo.v1.UI.StartBot:output_type -> silo.v1.Bot
+	39,  // 406: silo.v1.UI.StopBot:output_type -> silo.v1.Bot
+	39,  // 407: silo.v1.UI.ResetContainer:output_type -> silo.v1.Bot
+	138, // 408: silo.v1.UI.SetDesktopPaused:output_type -> silo.v1.SetDesktopPausedResponse
+	90,  // 409: silo.v1.UI.ListBotContainers:output_type -> silo.v1.BotContainers
+	39,  // 410: silo.v1.UI.RemoveBotContainers:output_type -> silo.v1.Bot
+	96,  // 411: silo.v1.UI.ListAdminContainers:output_type -> silo.v1.AdminContainers
+	99,  // 412: silo.v1.UI.AdminContainerAction:output_type -> silo.v1.AdminActionResponse
+	99,  // 413: silo.v1.UI.RemoveAdminBotContainers:output_type -> silo.v1.AdminActionResponse
+	100, // 414: silo.v1.UI.DeleteBot:output_type -> silo.v1.DeleteBotResponse
+	103, // 415: silo.v1.UI.ListMemories:output_type -> silo.v1.ListMemoriesResponse
+	105, // 416: silo.v1.UI.SearchMemories:output_type -> silo.v1.SearchMemoriesResponse
+	107, // 417: silo.v1.UI.DeleteMemory:output_type -> silo.v1.DeleteMemoryResponse
+	111, // 418: silo.v1.UI.ListKnowledge:output_type -> silo.v1.ListKnowledgeResponse
+	108, // 419: silo.v1.UI.AddKnowledgeFolder:output_type -> silo.v1.KnowledgeFolder
+	114, // 420: silo.v1.UI.RemoveKnowledgeFolder:output_type -> silo.v1.RemoveKnowledgeFolderResponse
+	108, // 421: silo.v1.UI.SyncKnowledge:output_type -> silo.v1.KnowledgeFolder
+	118, // 422: silo.v1.UI.SearchKnowledge:output_type -> silo.v1.SearchKnowledgeResponse
+	136, // 423: silo.v1.UI.ListFeed:output_type -> silo.v1.ListFeedResponse
+	140, // 424: silo.v1.UI.MarkFeedRead:output_type -> silo.v1.MarkFeedReadResponse
+	142, // 425: silo.v1.UI.DeleteFeedPost:output_type -> silo.v1.DeleteFeedPostResponse
+	144, // 426: silo.v1.UI.QuoteFeedPost:output_type -> silo.v1.QuoteFeedPostResponse
+	149, // 427: silo.v1.UI.ListDashboard:output_type -> silo.v1.ListDashboardResponse
+	163, // 428: silo.v1.UI.MarkDashboardRead:output_type -> silo.v1.MarkDashboardReadResponse
+	165, // 429: silo.v1.UI.DismissDashboardCard:output_type -> silo.v1.DismissDashboardCardResponse
+	167, // 430: silo.v1.UI.SubmitDashboardCard:output_type -> silo.v1.SubmitDashboardCardResponse
+	146, // 431: silo.v1.UI.ResolveSetupOffer:output_type -> silo.v1.SetupOffer
+	150, // 432: silo.v1.UI.RefreshWidget:output_type -> silo.v1.DashboardWidget
+	150, // 433: silo.v1.UI.SetWidgetState:output_type -> silo.v1.DashboardWidget
+	154, // 434: silo.v1.UI.RunWidgetAction:output_type -> silo.v1.RunWidgetActionResponse
+	157, // 435: silo.v1.UI.ArrangeDashboard:output_type -> silo.v1.ArrangeDashboardResponse
+	159, // 436: silo.v1.UI.RemoveWidget:output_type -> silo.v1.RemoveWidgetResponse
+	161, // 437: silo.v1.UI.AskDashboard:output_type -> silo.v1.AskDashboardResponse
+	170, // 438: silo.v1.UI.ListTunnels:output_type -> silo.v1.ListTunnelsResponse
+	168, // 439: silo.v1.UI.CreateTunnel:output_type -> silo.v1.Tunnel
+	168, // 440: silo.v1.UI.UpdateTunnel:output_type -> silo.v1.Tunnel
+	174, // 441: silo.v1.UI.DeleteTunnel:output_type -> silo.v1.DeleteTunnelResponse
+	179, // 442: silo.v1.UI.ListMail:output_type -> silo.v1.ListMailResponse
+	177, // 443: silo.v1.UI.GetMail:output_type -> silo.v1.Mail
+	182, // 444: silo.v1.UI.DeleteMail:output_type -> silo.v1.DeleteMailResponse
+	175, // 445: silo.v1.UI.UpdateMailbox:output_type -> silo.v1.Mailbox
+	175, // 446: silo.v1.UI.RotateMailbox:output_type -> silo.v1.Mailbox
+	187, // 447: silo.v1.UI.ListAutomations:output_type -> silo.v1.ListAutomationsResponse
+	185, // 448: silo.v1.UI.CreateAutomation:output_type -> silo.v1.Automation
+	185, // 449: silo.v1.UI.UpdateAutomation:output_type -> silo.v1.Automation
+	191, // 450: silo.v1.UI.DeleteAutomation:output_type -> silo.v1.DeleteAutomationResponse
+	193, // 451: silo.v1.UI.RunAutomation:output_type -> silo.v1.RunAutomationResponse
+	203, // 452: silo.v1.UI.ListChats:output_type -> silo.v1.ListChatsResponse
+	194, // 453: silo.v1.UI.CreateChat:output_type -> silo.v1.Chat
+	194, // 454: silo.v1.UI.RenameChat:output_type -> silo.v1.Chat
+	207, // 455: silo.v1.UI.DeleteChat:output_type -> silo.v1.DeleteChatResponse
+	194, // 456: silo.v1.UI.SetChatModel:output_type -> silo.v1.Chat
+	194, // 457: silo.v1.UI.SetChatThinking:output_type -> silo.v1.Chat
+	197, // 458: silo.v1.UI.ListModels:output_type -> silo.v1.ListModelsResponse
+	199, // 459: silo.v1.UI.Transcribe:output_type -> silo.v1.TranscribeResponse
+	211, // 460: silo.v1.UI.Send:output_type -> silo.v1.SendResponse
+	218, // 461: silo.v1.UI.StopRun:output_type -> silo.v1.StopRunResponse
+	220, // 462: silo.v1.UI.StreamRun:output_type -> silo.v1.RunEvent
+	216, // 463: silo.v1.UI.ListChatEvents:output_type -> silo.v1.ListChatEventsResponse
+	214, // 464: silo.v1.UI.ListCommands:output_type -> silo.v1.ListCommandsResponse
+	211, // 465: silo.v1.UI.EditMessage:output_type -> silo.v1.SendResponse
+	224, // 466: silo.v1.UI.DeleteMessage:output_type -> silo.v1.DeleteMessageResponse
+	226, // 467: silo.v1.UI.DivergeChat:output_type -> silo.v1.DivergeChatResponse
+	228, // 468: silo.v1.UI.CompactChat:output_type -> silo.v1.CompactChatResponse
+	230, // 469: silo.v1.UI.CollectMemories:output_type -> silo.v1.CollectMemoriesResponse
+	233, // 470: silo.v1.UI.ListSubagents:output_type -> silo.v1.ListSubagentsResponse
+	231, // 471: silo.v1.UI.GetSubagent:output_type -> silo.v1.Subagent
+	236, // 472: silo.v1.UI.StopSubagent:output_type -> silo.v1.StopSubagentResponse
+	238, // 473: silo.v1.UI.GetTaskboard:output_type -> silo.v1.Taskboard
+	238, // 474: silo.v1.UI.ClearTaskboard:output_type -> silo.v1.Taskboard
+	243, // 475: silo.v1.UI.ListSecrets:output_type -> silo.v1.ListSecretsResponse
+	241, // 476: silo.v1.UI.AddSecret:output_type -> silo.v1.SecretMeta
+	241, // 477: silo.v1.UI.UpdateSecret:output_type -> silo.v1.SecretMeta
+	247, // 478: silo.v1.UI.DeleteSecret:output_type -> silo.v1.DeleteSecretResponse
+	251, // 479: silo.v1.UI.ListApprovals:output_type -> silo.v1.ListApprovalsResponse
+	249, // 480: silo.v1.UI.DecideApproval:output_type -> silo.v1.Approval
+	256, // 481: silo.v1.UI.ListRules:output_type -> silo.v1.ListRulesResponse
+	253, // 482: silo.v1.UI.SetRule:output_type -> silo.v1.Rule
+	260, // 483: silo.v1.UI.ListOperatorRules:output_type -> silo.v1.ListOperatorRulesResponse
+	258, // 484: silo.v1.UI.SetOperatorRule:output_type -> silo.v1.OperatorRule
+	263, // 485: silo.v1.UI.DeleteOperatorRule:output_type -> silo.v1.DeleteOperatorRuleResponse
+	123, // 486: silo.v1.UI.ListChanges:output_type -> silo.v1.ListChangesResponse
+	128, // 487: silo.v1.UI.ListChangeFiles:output_type -> silo.v1.ListChangeFilesResponse
+	130, // 488: silo.v1.UI.GetChangePatch:output_type -> silo.v1.GetChangePatchResponse
+	133, // 489: silo.v1.UI.RestoreChange:output_type -> silo.v1.RestoreChangeResponse
+	126, // 490: silo.v1.UI.ListDriveChanges:output_type -> silo.v1.ListDriveChangesResponse
+	266, // 491: silo.v1.UI.ListFiles:output_type -> silo.v1.ListFilesResponse
+	268, // 492: silo.v1.UI.ReadFile:output_type -> silo.v1.ReadFileResponse
+	272, // 493: silo.v1.UI.Mkdir:output_type -> silo.v1.FileOpResponse
+	272, // 494: silo.v1.UI.RemoveFile:output_type -> silo.v1.FileOpResponse
+	272, // 495: silo.v1.UI.PutFile:output_type -> silo.v1.FileOpResponse
+	274, // 496: silo.v1.UI.GetSettings:output_type -> silo.v1.Settings
+	274, // 497: silo.v1.UI.PutSettings:output_type -> silo.v1.Settings
+	274, // 498: silo.v1.UI.SetModels:output_type -> silo.v1.Settings
+	280, // 499: silo.v1.UI.ListProviderModels:output_type -> silo.v1.ListProviderModelsResponse
+	274, // 500: silo.v1.UI.SetConnectorVars:output_type -> silo.v1.Settings
+	274, // 501: silo.v1.UI.SetAutoenableConnectors:output_type -> silo.v1.Settings
+	291, // 502: silo.v1.UI.ListAuditEvents:output_type -> silo.v1.ListAuditEventsResponse
+	293, // 503: silo.v1.UI.AuditSummary:output_type -> silo.v1.AuditSummaryResponse
+	293, // 504: silo.v1.UI.MarkAuditRead:output_type -> silo.v1.AuditSummaryResponse
+	297, // 505: silo.v1.UI.ListTraffic:output_type -> silo.v1.ListTrafficResponse
+	299, // 506: silo.v1.UI.GetBotNetwork:output_type -> silo.v1.BotNetwork
+	299, // 507: silo.v1.UI.AddHostPattern:output_type -> silo.v1.BotNetwork
+	299, // 508: silo.v1.UI.RemoveHostPattern:output_type -> silo.v1.BotNetwork
+	299, // 509: silo.v1.UI.SetOtherProtocols:output_type -> silo.v1.BotNetwork
+	305, // 510: silo.v1.UI.GetEgressStatus:output_type -> silo.v1.EgressStatus
+	305, // 511: silo.v1.UI.RotateEgressCA:output_type -> silo.v1.EgressStatus
+	310, // 512: silo.v1.UI.ListLLMLogs:output_type -> silo.v1.ListLLMLogsResponse
+	316, // 513: silo.v1.UI.ListConnectors:output_type -> silo.v1.ListConnectorsResponse
+	314, // 514: silo.v1.UI.CreateConnector:output_type -> silo.v1.Connector
+	314, // 515: silo.v1.UI.UpdateConnector:output_type -> silo.v1.Connector
+	321, // 516: silo.v1.UI.DeleteConnector:output_type -> silo.v1.DeleteConnectorResponse
+	324, // 517: silo.v1.UI.ListBotConnectors:output_type -> silo.v1.ListBotConnectorsResponse
+	322, // 518: silo.v1.UI.AttachConnector:output_type -> silo.v1.BotConnector
+	322, // 519: silo.v1.UI.CreateBotConnector:output_type -> silo.v1.BotConnector
+	328, // 520: silo.v1.UI.DetachConnector:output_type -> silo.v1.DetachConnectorResponse
+	316, // 521: silo.v1.UI.ListSpaceConnectors:output_type -> silo.v1.ListConnectorsResponse
+	322, // 522: silo.v1.UI.GrantConnector:output_type -> silo.v1.BotConnector
+	332, // 523: silo.v1.UI.RevokeConnector:output_type -> silo.v1.RevokeConnectorResponse
+	322, // 524: silo.v1.UI.RefreshBotConnector:output_type -> silo.v1.BotConnector
+	335, // 525: silo.v1.UI.StartConnectorAuth:output_type -> silo.v1.StartConnectorAuthResponse
+	337, // 526: silo.v1.UI.SeedConnectors:output_type -> silo.v1.SeedConnectorsResponse
+	339, // 527: silo.v1.UI.SeedSkills:output_type -> silo.v1.SeedSkillsResponse
+	342, // 528: silo.v1.UI.ListSkills:output_type -> silo.v1.ListSkillsResponse
+	344, // 529: silo.v1.UI.InstallSkill:output_type -> silo.v1.InstallSkillResponse
+	346, // 530: silo.v1.UI.DeleteSkill:output_type -> silo.v1.DeleteSkillResponse
+	349, // 531: silo.v1.UI.ListBotSkills:output_type -> silo.v1.ListBotSkillsResponse
+	347, // 532: silo.v1.UI.SetBotSkill:output_type -> silo.v1.BotSkill
+	266, // 533: silo.v1.UI.ListSkillFiles:output_type -> silo.v1.ListFilesResponse
+	268, // 534: silo.v1.UI.ReadSkillFile:output_type -> silo.v1.ReadFileResponse
+	354, // 535: silo.v1.UI.SaveSkill:output_type -> silo.v1.SaveSkillResponse
+	358, // 536: silo.v1.UI.ListArtifacts:output_type -> silo.v1.ListArtifactsResponse
+	360, // 537: silo.v1.UI.DeleteArtifact:output_type -> silo.v1.DeleteArtifactResponse
+	363, // 538: silo.v1.UI.GetArtifact:output_type -> silo.v1.GetArtifactResponse
+	365, // 539: silo.v1.UI.ReadArtifactFile:output_type -> silo.v1.ReadArtifactFileResponse
+	367, // 540: silo.v1.UI.OpenArtifactApp:output_type -> silo.v1.OpenArtifactAppResponse
+	368, // 541: silo.v1.UI.ShareArtifact:output_type -> silo.v1.ArtifactShare
+	371, // 542: silo.v1.UI.ListArtifactShares:output_type -> silo.v1.ListArtifactSharesResponse
+	373, // 543: silo.v1.UI.DeleteArtifactShare:output_type -> silo.v1.DeleteArtifactShareResponse
+	381, // 544: silo.v1.UI.ListChannelAdapters:output_type -> silo.v1.ListChannelAdaptersResponse
+	383, // 545: silo.v1.UI.ListBotChannels:output_type -> silo.v1.ListBotChannelsResponse
+	379, // 546: silo.v1.UI.CreateChannel:output_type -> silo.v1.Channel
+	379, // 547: silo.v1.UI.UpdateChannel:output_type -> silo.v1.Channel
+	387, // 548: silo.v1.UI.DeleteChannel:output_type -> silo.v1.DeleteChannelResponse
+	389, // 549: silo.v1.UI.ChannelAction:output_type -> silo.v1.ChannelActionResponse
+	395, // 550: silo.v1.UI.ListDriveTemplates:output_type -> silo.v1.ListDriveTemplatesResponse
+	397, // 551: silo.v1.UI.ListDrives:output_type -> silo.v1.ListDrivesResponse
+	393, // 552: silo.v1.UI.SaveDrive:output_type -> silo.v1.Drive
+	404, // 553: silo.v1.UI.DeleteDrive:output_type -> silo.v1.DeleteDriveResponse
+	397, // 554: silo.v1.UI.ListSpaceDrives:output_type -> silo.v1.ListDrivesResponse
+	393, // 555: silo.v1.UI.GrantDrive:output_type -> silo.v1.Drive
+	402, // 556: silo.v1.UI.RevokeDrive:output_type -> silo.v1.RevokeDriveResponse
+	406, // 557: silo.v1.UI.BeginDriveAuth:output_type -> silo.v1.BeginDriveAuthResponse
+	408, // 558: silo.v1.UI.PickDriveOptions:output_type -> silo.v1.PickDriveOptionsResponse
+	411, // 559: silo.v1.UI.BrowseDrive:output_type -> silo.v1.BrowseDriveResponse
+	414, // 560: silo.v1.UI.GetDriveSettings:output_type -> silo.v1.DriveSettings
+	414, // 561: silo.v1.UI.PutDriveSettings:output_type -> silo.v1.DriveSettings
+	358, // [358:562] is the sub-list for method output_type
+	154, // [154:358] is the sub-list for method input_type
+	154, // [154:154] is the sub-list for extension type_name
+	154, // [154:154] is the sub-list for extension extendee
+	0,   // [0:154] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_ui_proto_init() }
@@ -28251,19 +30541,19 @@ func file_silo_v1_ui_proto_init() {
 		return
 	}
 	file_silo_v1_ui_proto_msgTypes[29].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[51].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[210].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[222].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[226].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[284].OneofWrappers = []any{}
-	file_silo_v1_ui_proto_msgTypes[291].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[85].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[244].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[256].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[260].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[318].OneofWrappers = []any{}
+	file_silo_v1_ui_proto_msgTypes[325].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_ui_proto_rawDesc), len(file_silo_v1_ui_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   399,
+			NumMessages:   433,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

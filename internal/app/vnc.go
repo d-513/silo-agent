@@ -37,26 +37,26 @@ func socketOrigin(r *http.Request, publicURL string) bool {
 	return err == nil && pub.Host != "" && strings.EqualFold(o.Host, pub.Host) && strings.EqualFold(o.Scheme, pub.Scheme)
 }
 
-func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*websocket.Conn, *hub.Session, string, bool) {
+func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*websocket.Conn, *hub.Session, string, string, bool) {
 	if !socketOrigin(r, a.cfg().PublicURL) {
 		log.Printf("%s ws refused: origin %q is not this site", what, r.Header.Get("Origin"))
 		http.Error(w, "forbidden", http.StatusForbidden)
-		return nil, nil, "", false
+		return nil, nil, "", "", false
 	}
 	u, err := auth.UserFromRequest(a.DB, r, a.cfg().HostCookies())
 	if err != nil {
 		access.HTTPSessionError(w, err)
-		return nil, nil, "", false
+		return nil, nil, "", "", false
 	}
 	botID := r.URL.Query().Get("bot")
 	if !access.CanUse(a.DB, botID, u.ID) {
 		http.Error(w, "not found", http.StatusNotFound)
-		return nil, nil, "", false
+		return nil, nil, "", "", false
 	}
 	sess := a.Hub.Get(botID)
 	if sess == nil {
 		http.Error(w, "no worker", http.StatusServiceUnavailable)
-		return nil, nil, "", false
+		return nil, nil, "", "", false
 	}
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		CompressionMode:    websocket.CompressionDisabled,
@@ -64,16 +64,19 @@ func (a *App) openBotWS(w http.ResponseWriter, r *http.Request, what string) (*w
 	})
 	if err != nil {
 		log.Printf("%s ws accept bot=%s: %v", what, botID, err)
-		return nil, nil, "", false
+		return nil, nil, "", "", false
 	}
-	return c, sess, botID, true
+	return c, sess, botID, u.ID, true
 }
 
 func (a *App) handleVNC(w http.ResponseWriter, r *http.Request) {
-	c, sess, botID, ok := a.openBotWS(w, r, "vnc")
+	c, sess, botID, userID, ok := a.openBotWS(w, r, "vnc")
 	if !ok {
 		return
 	}
+	// The socket closes with the viewer's access to the Bot.
+	lost, stop := a.Gone.Lost(botID, userID)
+	defer stop()
 	defer c.Close(websocket.StatusNormalClosure, "")
 	viewID, toBrowser, toWorker := sess.BeginViewer()
 	defer sess.EndViewer(viewID)
@@ -97,6 +100,8 @@ func (a *App) handleVNC(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-lost:
 			return
 		case <-sess.Done():
 			return
@@ -125,10 +130,13 @@ func parseConsoleWS(typ websocket.MessageType, data []byte) (hub.ConsoleMsg, boo
 }
 
 func (a *App) handleConsole(w http.ResponseWriter, r *http.Request) {
-	c, sess, botID, ok := a.openBotWS(w, r, "console")
+	c, sess, botID, userID, ok := a.openBotWS(w, r, "console")
 	if !ok {
 		return
 	}
+	// The socket closes with the viewer's access to the Bot.
+	lost, stop := a.Gone.Lost(botID, userID)
+	defer stop()
 	defer c.Close(websocket.StatusNormalClosure, "")
 	viewID, toBrowser, toWorker := sess.BeginConsole()
 	defer sess.EndConsole(viewID)
@@ -156,6 +164,8 @@ func (a *App) handleConsole(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-lost:
 			return
 		case <-sess.Done():
 			return

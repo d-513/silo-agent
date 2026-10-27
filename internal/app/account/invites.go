@@ -200,3 +200,33 @@ func validEmail(email string) bool {
 	_, domain, _ := strings.Cut(email, "@")
 	return strings.Contains(domain, ".") && !strings.HasSuffix(domain, ".")
 }
+
+// SignUp makes an account with a password and signs it in on this request:
+// for a Workspace invite link while the operator allows that
+// (spaces.invite_signup). The caller has checked the link.
+func (s *Service) SignUp(ctx context.Context, email, password string) (*db.User, error) {
+	email = auth.NormalizeEmail(email)
+	if !validEmail(email) {
+		return nil, invalid("enter an email address")
+	}
+	if err := auth.ValidPassword(password); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if u, err := auth.FindUser(s.db, email); err != nil {
+		return nil, err
+	} else if u != nil {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a user with this email already exists: sign in, then open the link again"))
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+	u := db.User{ID: ids.New(), Email: email, PasswordHash: hash, CreatedAt: time.Now()}
+	if err := s.db.Create(&u).Error; err != nil {
+		return nil, err
+	}
+	if err := s.signIn(access.ResponseWriter(ctx), access.Request(ctx), &u, MethodInvite); err != nil {
+		return nil, err
+	}
+	return &u, nil
+}

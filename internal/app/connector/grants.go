@@ -2,12 +2,14 @@ package connector
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"time"
 
 	"connectrpc.com/connect"
 
+	"log"
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/catalog"
@@ -106,6 +108,9 @@ func (s *Service) grant(botID string, c *db.Connector) (*db.BotConnector, error)
 	}
 	if b.SpaceID == "" || b.SpaceID != c.SpaceID {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the connector are in different workspaces"))
+	}
+	if err := access.CheckLend(s.db, lend(c), botID); err != nil {
+		return nil, err
 	}
 	var row db.BotConnector
 	if s.db.Where("bot_id = ? AND connector_id = ?", botID, c.ID).Limit(1).Find(&row); row.ID != "" {
@@ -292,4 +297,108 @@ func (s *Service) RevokeConnector(ctx context.Context, req *connect.Request[v1.R
 	}
 	s.revoke(ctx, &row)
 	return connect.NewResponse(&v1.RevokeConnectorResponse{}), nil
+}
+
+// lend is a connection as the lending checks see it.
+func lend(c *db.Connector) access.Lend {
+	return access.Lend{Kind: "connector", ID: c.ID, Name: c.Name, LentBy: c.LentBy, Shared: c.Shared}
+}
+
+// Lent is every connection userID lent in the Workspace.
+func (s *Service) Lent(spaceID, userID string) []access.Lend {
+	var rows []db.Connector
+	s.db.Where("space_id = ? AND kind = ? AND lent_by = ?", spaceID, catalog.KindCustom, userID).Order("name").Find(&rows)
+	out := make([]access.Lend, 0, len(rows))
+	for i := range rows {
+		out = append(out, lend(&rows[i]))
+	}
+	return out
+}
+
+// Lending loads a Workspace connection for the lending checks.
+func (s *Service) Lending(id string) (access.Lend, string, bool) {
+	c, err := s.connection(id)
+	if err != nil {
+		return access.Lend{}, "", false
+	}
+	return lend(c), c.SpaceID, true
+}
+
+// Grantees are the Bots a connection is granted to.
+func (s *Service) Grantees(connectorID string) []string {
+	var out []string
+	s.db.Model(&db.BotConnector{}).Where("connector_id = ?", connectorID).Order("created_at").Pluck("bot_id", &out)
+	return out
+}
+
+// SetShared records the lender's say-so on a connection.
+func (s *Service) SetShared(id string, shared bool) {
+	s.db.Model(&db.Connector{}).Where("id = ?", id).Update("shared", shared)
+}
+
+// Unlend takes the lender's identity out of a connection: a personal one is
+// revoked everywhere and deleted; a shared one is signed out (its token and
+// typed credentials cleared) and stays for someone else to sign in.
+func (s *Service) Unlend(ctx context.Context, l access.Lend, why string) {
+	c, err := s.connection(l.ID)
+	if err != nil {
+		return
+	}
+	if l.Personal() {
+		s.deleteConnection(ctx, c)
+		return
+	}
+	s.forgetToken(c.ID)
+	hdr, _ := mcpx.HeadersFromJSON(c.HeadersJSON)
+	for k, v := range hdr {
+		if v != "" && !credentialRef.MatchString(v) {
+			hdr[k] = ""
+		}
+	}
+	env := parseEnv(c.EnvJSON)
+	for i := range env {
+		if env[i].Value != "" && !credentialRef.MatchString(env[i].Value) {
+			env[i].Value = ""
+		}
+	}
+	hb, _ := json.Marshal(hdr)
+	eb, _ := json.Marshal(env)
+	c.HeadersJSON, c.EnvJSON = string(hb), string(eb)
+	if len(env) == 0 {
+		c.EnvJSON = ""
+	}
+	s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{
+		"headers_json": c.HeadersJSON, "env_json": c.EnvJSON, "secrets_json": "", "lent_by": "",
+	})
+	s.refreshGrants(c.ID)
+	s.db.Model(&db.BotConnector{}).Where("connector_id = ?", c.ID).Update("status_detail", why)
+}
+
+// CheckNewBot says whether a new Bot that the people will use may get these
+// connections: each of its Workspace, none someone else's personal sign-in.
+func (s *Service) CheckNewBot(spaceID string, ids, people []string) error {
+	for _, id := range ids {
+		c, err := s.connection(id)
+		if err != nil {
+			return err
+		}
+		if c.SpaceID != spaceID {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the connector are in different workspaces"))
+		}
+		if err := access.CheckLend(s.db, lend(c), "", people...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// GrantNew gives a new Bot the connections ticked for it.
+func (s *Service) GrantNew(botID string, ids []string) {
+	for _, id := range ids {
+		if c, err := s.connection(id); err == nil {
+			if _, err := s.grant(botID, c); err != nil {
+				log.Printf("grant %s to new bot %s: %v", id, botID, err)
+			}
+		}
+	}
 }

@@ -32,6 +32,7 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/skills"
 	"silo.agent/internal/textx"
+	"slices"
 )
 
 // Service reads and writes the skill library and each Bot's enabled set.
@@ -224,8 +225,9 @@ func (s *Service) enable(botID, kind, name string) {
 	s.db.Create(&db.BotSkill{ID: ids.New(), BotID: botID, Kind: kind, Name: name, Enabled: true, CreatedAt: time.Now()})
 }
 
-// EnableSpace switches every skill of the Bot's Workspace on in a new Bot.
-func (s *Service) EnableSpace(botID string) {
+// EnableSpace switches every skill of the Bot's Workspace on in a new Bot,
+// but those named off (unticked on the New Bot page).
+func (s *Service) EnableSpace(botID string, off ...string) {
 	var b db.Bot
 	if s.db.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" || s.DataDir() == "" {
 		return
@@ -235,7 +237,9 @@ func (s *Service) EnableSpace(botID string) {
 		return
 	}
 	for _, r := range rows {
-		s.enable(b.ID, skills.KindSpace, r.Name)
+		if !slices.Contains(off, r.Name) {
+			s.enable(b.ID, skills.KindSpace, r.Name)
+		}
 	}
 }
 

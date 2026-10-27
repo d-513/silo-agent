@@ -1,10 +1,19 @@
-import { Plus } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
+import { Plus, Trash2 } from "lucide-react";
 import { Link, useParams } from "@tanstack/react-router";
+import { useState } from "react";
+import { ui } from "./api";
 import { useBots } from "./bots";
 import { btnClass } from "./Btn";
 import { Crest } from "./Crest";
+import { fail } from "./errors";
+import { ArmedButton } from "./Feedback";
+import { UI, type OtherBot } from "./gen/silo/v1/ui_pb";
 import { Lamp, StatusWord } from "./Lamp";
-import { canBuild, useSpaces } from "./space/spaces";
+import { reload } from "./query";
+import { Initials } from "./space/People";
+import { canAdmin, canBuild, useSpaces } from "./space/spaces";
+import { Tip } from "./Tip";
 import { t } from "./i18n.ts";
 
 function FolioSkeleton() {
@@ -92,6 +101,55 @@ export function BotsPage() {
           ))}
         </div>
       )}
+      {canAdmin(space?.role) ? <OtherBots spaceId={spaceId} /> : null}
     </div>
+  );
+}
+
+// OtherBots is what a Workspace admin sees of the Bots they are not on: that
+// they exist, who is on them and how much they are given, and Delete. They
+// cannot be opened.
+function OtherBots({ spaceId }: { spaceId: string }) {
+  const q = useQuery(UI.method.listBots, { spaceId }, { refetchInterval: 15_000 });
+  const others = q.data?.others ?? [];
+  const [err, setErr] = useState("");
+  if (others.length === 0) return null;
+  async function remove(b: OtherBot) {
+    setErr("");
+    try {
+      await ui.deleteBot({ id: b.id });
+      await reload(UI.method.listBots, { spaceId });
+    } catch (ex) {
+      setErr(fail(ex));
+    }
+  }
+  return (
+    <section className="mt-10">
+      <h2 className="text-[13.5px] font-medium text-ink">{t("Other Bots")}</h2>
+      <p className="mb-3 mt-0.5 text-[12.5px] text-ink-2">{t("Bots in this workspace you are not on. As an admin you can delete one, but not open it.")}</p>
+      {err ? <p role="alert" className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      <div className="grid grid-cols-1 gap-3 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+        {others.map((b) => (
+          <div key={b.id} className="flex items-center gap-3.5 rounded-card bg-surface/70 p-4 shadow-card">
+            <Tip content={<p className="text-[12.5px]">{t("Only people on {{name}} can open it.", { name: b.name })}</p>}>
+              <span tabIndex={0} className="opacity-60 outline-none">
+                <Crest index={b.crest} size={40} />
+              </span>
+            </Tip>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px] font-medium text-ink-2">{b.name}</div>
+              <div className="mt-1 flex items-center gap-1">
+                {b.people.slice(0, 4).map((p) => (
+                  <Initials key={p} email={p} size={20} />
+                ))}
+                {b.people.length > 4 ? <span className="text-[11px] text-ink-3">{`+${b.people.length - 4}`}</span> : null}
+                <span className="ml-1.5 text-[11.5px] text-ink-3">{t("{{count}} grants", { count: b.grants })}</span>
+              </div>
+            </div>
+            <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete {{name}}", { name: b.name })} armedLabel={t("Click again to delete")} icon={<Trash2 size={14} />} onConfirm={() => void remove(b)} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

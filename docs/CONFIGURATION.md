@@ -106,6 +106,7 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 | `auth.password` | `true` | `SILO_AUTH__PASSWORD` | Password sign-in. `false` leaves only OIDC, and only counts while OIDC is configured (see Sign-in) |
 | `auth.trusted_proxies` | (none) | `SILO_AUTH__TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxies in front of the control plane. `X-Forwarded-For` is believed only from them |
 | `auth.host_cookie` | `false` | `SILO_AUTH__HOST_COOKIE` | Name the session cookie `__Host-silo_session`, which only the exact host can set. Counts only while `public_url` is https (see Sign-in) |
+| `spaces.invite_signup` | `false` | `SILO_SPACES__INVITE_SIGNUP` | Let a Workspace's invite link make an account for someone who has none. Off, a link only joins someone already signed in, and new people come from the admin's invite links |
 | `oidc.issuer` | (none) | `SILO_OIDC__ISSUER` | The OIDC provider's issuer URL. OIDC sign-in is on when this and `oidc.client_id` are set |
 | `oidc.client_id` | (none) | `SILO_OIDC__CLIENT_ID` | OAuth client ID registered at the provider |
 | `oidc.client_secret` | (none) | `SILO_OIDC__CLIENT_SECRET` | Its secret |

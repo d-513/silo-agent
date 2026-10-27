@@ -303,6 +303,14 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 	if row.Kind == catalog.KindCustom && typedCredential(&row) && !typedCredential(&before) {
 		row.LentBy = access.User(ctx).ID
 	}
+	// A new lender starts personal: their identity may only reach Bots they
+	// alone use.
+	if row.LentBy != before.LentBy {
+		row.Shared = false
+		if err := access.CheckSignIn(s.db, row.Name, row.LentBy, false, s.Grantees(row.ID)); err != nil {
+			return nil, err
+		}
+	}
 	s.db.Save(&row)
 	s.renamed(&before, &row)
 	s.restartConnector(&row)

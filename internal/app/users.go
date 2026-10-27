@@ -23,6 +23,7 @@ func (a *App) DropUserBots(ctx context.Context, userID string) {
 			log.Printf("drop workspace %s: %v", sp.ID, err)
 		}
 	}
+	a.Spaces.DropUser(ctx, userID)
 	a.Spaces.Forget(userID)
 }
 
@@ -39,6 +40,9 @@ func (a *App) SuspendUser(ctx context.Context, userID string) {
 		a.haltBot(ctx, &b)
 		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("status", "stopped")
 	}
+	// What they lent is not lent while they cannot sign in: connector calls
+	// refuse (LenderOK) and their drives come down.
+	a.Drives.LenderChanged(userID)
 }
 
 // ResumeUser lets the Bots an enabled user manages work again. Their channels
@@ -49,6 +53,7 @@ func (a *App) ResumeUser(userID string) {
 			a.Channels.Resume(b.ID)
 		}
 	}
+	a.Drives.LenderChanged(userID)
 }
 
 var errOwnerDisabled = errors.New("nobody who manages this Bot can sign in: its managers are disabled")

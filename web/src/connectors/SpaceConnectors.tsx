@@ -20,6 +20,8 @@ import { ConnectorFields, draftFrom, emptyDraft, specOf, type ConnectorDraft } f
 import { LibraryTab } from "./LibraryTab";
 import { categoriesOf, FEATURED, filterCatalog, groupByCategory, nextCopyName } from "./model";
 import { SpaceCard } from "./SpaceCard";
+import { LendChip, SignInChoice } from "../space/Lend";
+import { useSpaces } from "../space/spaces";
 
 type HubMode = "space" | "library" | "custom";
 
@@ -35,6 +37,8 @@ export function SpaceConnectors() {
   const rows = spaceQ.data?.connectors ?? noRows;
   const catalog = catalogQ.data?.connectors ?? noRows;
   const managed = useManagedBots(spaceId) ?? [];
+  const space = useSpaces().spaces?.find((x) => x.id === spaceId);
+  const solo = (space?.people ?? 1) <= 1;
   const { bots } = useBots();
   const [actErr, setErr] = useState("");
   const loadErr = (!spaceQ.data && spaceQ.error) || (!catalogQ.data && catalogQ.error);
@@ -149,10 +153,9 @@ export function SpaceConnectors() {
                 actions={
                   <>
                     {c.auth === "oauth" && !c.signedIn ? (
-                      <Btn kind="primary" onClick={() => void act(() => startConnectorAuth({ connectorId: c.id }))}>
-                        {t("Sign in")}
-                      </Btn>
+                      <SignInChoice solo={solo} space={space?.name ?? ""} onSignIn={(shared) => void act(() => startConnectorAuth({ connectorId: c.id, shared }))} />
                     ) : null}
+                    <LendChip lentBy={c.lentBy} shared={c.shared} solo={solo} onShare={async (shared) => void (await act(() => ui.setLendShared({ connectorId: c.id, shared })))} />
                     <ChooseBots
                       bots={managed}
                       granted={c.usedBy}

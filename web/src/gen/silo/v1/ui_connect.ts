@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AcceptInviteRequest, AcceptInviteResponse, AddHostPatternRequest, AddKnowledgeFolderRequest, AddSecretRequest, AdminActionResponse, AdminContainerActionRequest, AdminContainers, Approval, ArrangeDashboardRequest, ArrangeDashboardResponse, ArtifactShare, AskDashboardRequest, AskDashboardResponse, AttachConnectorRequest, AuditSummaryRequest, AuditSummaryResponse, AuthOptionsRequest, AuthOptionsResponse, Automation, BeginDriveAuthRequest, BeginDriveAuthResponse, Bot, BotConnector, BotContainers, BotNetwork, BotSkill, BrowseDriveRequest, BrowseDriveResponse, ChangeEmailRequest, ChangePasswordRequest, Channel, ChannelActionRequest, ChannelActionResponse, Chat, CheckOIDCRequest, CheckOIDCResponse, ClearTaskboardRequest, CollectMemoriesRequest, CollectMemoriesResponse, CompactChatRequest, CompactChatResponse, ConfirmTOTPRequest, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, CreateInviteRequest, CreateSpaceRequest, CreateTunnelRequest, DashboardWidget, DecideApprovalRequest, DeleteArtifactRequest, DeleteArtifactResponse, DeleteArtifactShareRequest, DeleteArtifactShareResponse, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteDriveRequest, DeleteDriveResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteInviteRequest, DeleteInviteResponse, DeleteMailRequest, DeleteMailResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteOperatorRuleRequest, DeleteOperatorRuleResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DeleteSpaceRequest, DeleteSpaceResponse, DeleteTunnelRequest, DeleteTunnelResponse, DeleteUserRequest, DeleteUserResponse, DetachConnectorRequest, DetachConnectorResponse, DisableTOTPRequest, DismissDashboardCardRequest, DismissDashboardCardResponse, DivergeChatRequest, DivergeChatResponse, Drive, DriveSettings, EditMessageRequest, EgressStatus, FileOpResponse, GetArtifactRequest, GetArtifactResponse, GetBotNetworkRequest, GetBotRequest, GetChangePatchRequest, GetChangePatchResponse, GetDriveSettingsRequest, GetEgressStatusRequest, GetInviteRequest, GetMailRequest, GetSettingsRequest, GetSpaceRequest, GetSubagentRequest, GetTaskboardRequest, GrantConnectorRequest, GrantDriveRequest, InstallSkillRequest, InstallSkillResponse, Invite, InviteInfo, KnowledgeFolder, ListAdminContainersRequest, ListApprovalsRequest, ListApprovalsResponse, ListArtifactSharesRequest, ListArtifactSharesResponse, ListArtifactsRequest, ListArtifactsResponse, ListAuditEventsRequest, ListAuditEventsResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChangeFilesRequest, ListChangeFilesResponse, ListChangesRequest, ListChangesResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatEventsRequest, ListChatEventsResponse, ListChatsRequest, ListChatsResponse, ListCommandsRequest, ListCommandsResponse, ListConnectorsRequest, ListConnectorsResponse, ListDashboardRequest, ListDashboardResponse, ListDriveChangesRequest, ListDriveChangesResponse, ListDrivesRequest, ListDrivesResponse, ListDriveTemplatesRequest, ListDriveTemplatesResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListKnowledgeRequest, ListKnowledgeResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMailRequest, ListMailResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListOperatorRulesRequest, ListOperatorRulesResponse, ListProviderModelsRequest, ListProviderModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSessionsRequest, ListSessionsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSpaceConnectorsRequest, ListSpaceDrivesRequest, ListSpacesRequest, ListSpacesResponse, ListSubagentsRequest, ListSubagentsResponse, ListTrafficRequest, ListTrafficResponse, ListTunnelsRequest, ListTunnelsResponse, ListUsersRequest, ListUsersResponse, Mail, Mailbox, MarkAuditReadRequest, MarkDashboardReadRequest, MarkDashboardReadResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, NewRecoveryCodesRequest, OpenArtifactAppRequest, OpenArtifactAppResponse, OperatorRule, PickDriveOptionsRequest, PickDriveOptionsResponse, PutDriveSettingsRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadArtifactFileRequest, ReadArtifactFileResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RecoveryCodes, RefreshBotConnectorRequest, RefreshWidgetRequest, RemoveFileRequest, RemoveHostPatternRequest, RemoveKnowledgeFolderRequest, RemoveKnowledgeFolderResponse, RemoveWidgetRequest, RemoveWidgetResponse, RenameChatRequest, ResolveSetupOfferRequest, RestoreChangeRequest, RestoreChangeResponse, RevokeConnectorRequest, RevokeConnectorResponse, RevokeDriveRequest, RevokeDriveResponse, RevokeOtherSessionsRequest, RevokeSessionRequest, RotateEgressCARequest, RotateMailboxRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, RunWidgetActionRequest, RunWidgetActionResponse, SaveDriveRequest, SaveSkillRequest, SaveSkillResponse, SearchKnowledgeRequest, SearchKnowledgeResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetAutoenableConnectorsRequest, SetBotSkillRequest, SetChatModelRequest, SetChatThinkingRequest, SetConnectorVarsRequest, SetDesktopPausedRequest, SetDesktopPausedResponse, SetLanguageRequest, SetModelsRequest, SetOperatorRuleRequest, SetOtherProtocolsRequest, SetRuleRequest, Settings, SetupOffer, SetWidgetStateRequest, ShareArtifactRequest, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, Space, StartConnectorAuthRequest, StartConnectorAuthResponse, StartTOTPRequest, StartTOTPResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, SubmitDashboardCardRequest, SubmitDashboardCardResponse, SyncKnowledgeRequest, Taskboard, TranscribeRequest, TranscribeResponse, Tunnel, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest, UpdateMailboxRequest, UpdateSecretRequest, UpdateSpaceRequest, UpdateTunnelRequest, UpdateUserRequest, User } from "./ui_pb.js";
+import { AcceptInviteRequest, AcceptInviteResponse, AddBotPersonRequest, AddBotPersonResponse, AddHostPatternRequest, AddKnowledgeFolderRequest, AddSecretRequest, AdminActionResponse, AdminContainerActionRequest, AdminContainers, Approval, ArrangeDashboardRequest, ArrangeDashboardResponse, ArtifactShare, AskDashboardRequest, AskDashboardResponse, AttachConnectorRequest, AuditSummaryRequest, AuditSummaryResponse, AuthOptionsRequest, AuthOptionsResponse, Automation, BeginDriveAuthRequest, BeginDriveAuthResponse, Bot, BotConnector, BotContainers, BotNetwork, BotPerson, BotSkill, BrowseDriveRequest, BrowseDriveResponse, ChangeEmailRequest, ChangePasswordRequest, Channel, ChannelActionRequest, ChannelActionResponse, Chat, CheckOIDCRequest, CheckOIDCResponse, ClearTaskboardRequest, CollectMemoriesRequest, CollectMemoriesResponse, CompactChatRequest, CompactChatResponse, ConfirmTOTPRequest, Connector, Container, CreateAutomationRequest, CreateBotConnectorRequest, CreateBotRequest, CreateChannelRequest, CreateChatRequest, CreateConnectorRequest, CreateInviteRequest, CreateSpaceInviteRequest, CreateSpaceRequest, CreateTunnelRequest, DashboardWidget, DecideApprovalRequest, DeleteArtifactRequest, DeleteArtifactResponse, DeleteArtifactShareRequest, DeleteArtifactShareResponse, DeleteAutomationRequest, DeleteAutomationResponse, DeleteBotResponse, DeleteChannelRequest, DeleteChannelResponse, DeleteChatRequest, DeleteChatResponse, DeleteConnectorRequest, DeleteConnectorResponse, DeleteDriveRequest, DeleteDriveResponse, DeleteFeedPostRequest, DeleteFeedPostResponse, DeleteInviteRequest, DeleteInviteResponse, DeleteMailRequest, DeleteMailResponse, DeleteMemoryRequest, DeleteMemoryResponse, DeleteMessageRequest, DeleteMessageResponse, DeleteOperatorRuleRequest, DeleteOperatorRuleResponse, DeleteSecretRequest, DeleteSecretResponse, DeleteSkillRequest, DeleteSkillResponse, DeleteSpaceInviteRequest, DeleteSpaceInviteResponse, DeleteSpaceRequest, DeleteSpaceResponse, DeleteTunnelRequest, DeleteTunnelResponse, DeleteUserRequest, DeleteUserResponse, DetachConnectorRequest, DetachConnectorResponse, DisableTOTPRequest, DismissDashboardCardRequest, DismissDashboardCardResponse, DivergeChatRequest, DivergeChatResponse, Drive, DriveSettings, EditMessageRequest, EgressStatus, FileOpResponse, GetArtifactRequest, GetArtifactResponse, GetBotNetworkRequest, GetBotRequest, GetChangePatchRequest, GetChangePatchResponse, GetDriveSettingsRequest, GetEgressStatusRequest, GetInviteRequest, GetMailRequest, GetSettingsRequest, GetSpaceInviteRequest, GetSpaceRequest, GetSubagentRequest, GetTaskboardRequest, GrantConnectorRequest, GrantDriveRequest, InstallSkillRequest, InstallSkillResponse, Invite, InviteInfo, JoinSpaceRequest, JoinSpaceResponse, KnowledgeFolder, ListAdminContainersRequest, ListApprovalsRequest, ListApprovalsResponse, ListArtifactSharesRequest, ListArtifactSharesResponse, ListArtifactsRequest, ListArtifactsResponse, ListAuditEventsRequest, ListAuditEventsResponse, ListAutomationsRequest, ListAutomationsResponse, ListBotChannelsRequest, ListBotChannelsResponse, ListBotConnectorsRequest, ListBotConnectorsResponse, ListBotPeopleRequest, ListBotPeopleResponse, ListBotSkillsRequest, ListBotSkillsResponse, ListBotsRequest, ListBotsResponse, ListChangeFilesRequest, ListChangeFilesResponse, ListChangesRequest, ListChangesResponse, ListChannelAdaptersRequest, ListChannelAdaptersResponse, ListChatEventsRequest, ListChatEventsResponse, ListChatsRequest, ListChatsResponse, ListCommandsRequest, ListCommandsResponse, ListConnectorsRequest, ListConnectorsResponse, ListDashboardRequest, ListDashboardResponse, ListDriveChangesRequest, ListDriveChangesResponse, ListDrivesRequest, ListDrivesResponse, ListDriveTemplatesRequest, ListDriveTemplatesResponse, ListFeedRequest, ListFeedResponse, ListFilesRequest, ListFilesResponse, ListKnowledgeRequest, ListKnowledgeResponse, ListLLMLogsRequest, ListLLMLogsResponse, ListMailRequest, ListMailResponse, ListMemoriesRequest, ListMemoriesResponse, ListModelsRequest, ListModelsResponse, ListOperatorRulesRequest, ListOperatorRulesResponse, ListProviderModelsRequest, ListProviderModelsResponse, ListRulesRequest, ListRulesResponse, ListSecretsRequest, ListSecretsResponse, ListSessionsRequest, ListSessionsResponse, ListSkillFilesRequest, ListSkillsRequest, ListSkillsResponse, ListSpaceConnectorsRequest, ListSpaceDrivesRequest, ListSpaceInvitesRequest, ListSpaceInvitesResponse, ListSpacePeopleRequest, ListSpacePeopleResponse, ListSpacesRequest, ListSpacesResponse, ListSubagentsRequest, ListSubagentsResponse, ListTrafficRequest, ListTrafficResponse, ListTunnelsRequest, ListTunnelsResponse, ListUsersRequest, ListUsersResponse, Mail, Mailbox, MarkAuditReadRequest, MarkDashboardReadRequest, MarkDashboardReadResponse, MarkFeedReadRequest, MarkFeedReadResponse, MeRequest, MeResponse, MkdirRequest, NewRecoveryCodesRequest, OpenArtifactAppRequest, OpenArtifactAppResponse, OperatorRule, PickDriveOptionsRequest, PickDriveOptionsResponse, PlanSpaceRemovalRequest, PutDriveSettingsRequest, PutFileRequest, PutSettingsRequest, QuoteFeedPostRequest, QuoteFeedPostResponse, ReadArtifactFileRequest, ReadArtifactFileResponse, ReadFileRequest, ReadFileResponse, ReadSkillFileRequest, RecoveryCodes, RefreshBotConnectorRequest, RefreshWidgetRequest, RemoveBotPersonRequest, RemoveBotPersonResponse, RemoveFileRequest, RemoveHostPatternRequest, RemoveKnowledgeFolderRequest, RemoveKnowledgeFolderResponse, RemoveSpacePersonRequest, RemoveSpacePersonResponse, RemoveWidgetRequest, RemoveWidgetResponse, RenameChatRequest, ResolveSetupOfferRequest, RestoreChangeRequest, RestoreChangeResponse, RevokeConnectorRequest, RevokeConnectorResponse, RevokeDriveRequest, RevokeDriveResponse, RevokeOtherSessionsRequest, RevokeSessionRequest, RotateEgressCARequest, RotateMailboxRequest, Rule, RunAutomationRequest, RunAutomationResponse, RunEvent, RunWidgetActionRequest, RunWidgetActionResponse, SaveDriveRequest, SaveSkillRequest, SaveSkillResponse, SearchKnowledgeRequest, SearchKnowledgeResponse, SearchMemoriesRequest, SearchMemoriesResponse, SecretMeta, SeedConnectorsRequest, SeedConnectorsResponse, SeedSkillsRequest, SeedSkillsResponse, SendRequest, SendResponse, SetAutoenableConnectorsRequest, SetBotRoleRequest, SetBotSkillRequest, SetChatModelRequest, SetChatThinkingRequest, SetConnectorVarsRequest, SetDesktopPausedRequest, SetDesktopPausedResponse, SetLanguageRequest, SetLendSharedRequest, SetLendSharedResponse, SetModelsRequest, SetOperatorRuleRequest, SetOtherProtocolsRequest, SetRuleRequest, SetSpaceRoleRequest, Settings, SetupOffer, SetWidgetStateRequest, ShareArtifactRequest, SignInRequest, SignInResponse, SignOutRequest, SignOutResponse, Space, SpaceInviteInfo, SpaceInviteLink, SpacePerson, SpaceRemovalPlan, StartConnectorAuthRequest, StartConnectorAuthResponse, StartTOTPRequest, StartTOTPResponse, StopRunRequest, StopRunResponse, StopSubagentRequest, StopSubagentResponse, StreamRunRequest, Subagent, SubmitDashboardCardRequest, SubmitDashboardCardResponse, SyncKnowledgeRequest, Taskboard, TranscribeRequest, TranscribeResponse, TransferSpaceRequest, Tunnel, UpdateAutomationRequest, UpdateBotRequest, UpdateChannelRequest, UpdateConnectorRequest, UpdateMailboxRequest, UpdateSecretRequest, UpdateSpaceRequest, UpdateTunnelRequest, UpdateUserRequest, User } from "./ui_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -274,6 +274,161 @@ export const UI = {
       name: "DeleteSpace",
       I: DeleteSpaceRequest,
       O: DeleteSpaceResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * TransferSpace makes an admin the owner; the old owner becomes an admin.
+     *
+     * @generated from rpc silo.v1.UI.TransferSpace
+     */
+    transferSpace: {
+      name: "TransferSpace",
+      I: TransferSpaceRequest,
+      O: Space,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * The people of a Workspace. Members see the list; admins change roles
+     * (an admin only among members and guests) and remove people.
+     *
+     * @generated from rpc silo.v1.UI.ListSpacePeople
+     */
+    listSpacePeople: {
+      name: "ListSpacePeople",
+      I: ListSpacePeopleRequest,
+      O: ListSpacePeopleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SetSpaceRole
+     */
+    setSpaceRole: {
+      name: "SetSpaceRole",
+      I: SetSpaceRoleRequest,
+      O: SpacePerson,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * PlanSpaceRemoval is what removing a person (or leaving: user_id is the
+     * caller) would do: the Bots they are the last manager of, and what they
+     * lent. RemoveSpacePerson does it, with a choice for each such Bot.
+     *
+     * @generated from rpc silo.v1.UI.PlanSpaceRemoval
+     */
+    planSpaceRemoval: {
+      name: "PlanSpaceRemoval",
+      I: PlanSpaceRemovalRequest,
+      O: SpaceRemovalPlan,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RemoveSpacePerson
+     */
+    removeSpacePerson: {
+      name: "RemoveSpacePerson",
+      I: RemoveSpacePersonRequest,
+      O: RemoveSpacePersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Invite links: single use, 7 days, only the hash kept. Opening one signed
+     * in joins (JoinSpace); with spaces.invite_signup on, a visitor with no
+     * account makes one there (JoinSpace with email and password).
+     *
+     * @generated from rpc silo.v1.UI.CreateSpaceInvite
+     */
+    createSpaceInvite: {
+      name: "CreateSpaceInvite",
+      I: CreateSpaceInviteRequest,
+      O: SpaceInviteLink,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.ListSpaceInvites
+     */
+    listSpaceInvites: {
+      name: "ListSpaceInvites",
+      I: ListSpaceInvitesRequest,
+      O: ListSpaceInvitesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.DeleteSpaceInvite
+     */
+    deleteSpaceInvite: {
+      name: "DeleteSpaceInvite",
+      I: DeleteSpaceInviteRequest,
+      O: DeleteSpaceInviteResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.GetSpaceInvite
+     */
+    getSpaceInvite: {
+      name: "GetSpaceInvite",
+      I: GetSpaceInviteRequest,
+      O: SpaceInviteInfo,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.JoinSpace
+     */
+    joinSpace: {
+      name: "JoinSpace",
+      I: JoinSpaceRequest,
+      O: JoinSpaceResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * The people on a Bot: Can manage or Can use. Managers change the list;
+     * anyone may leave a Bot unless they are its last manager.
+     *
+     * @generated from rpc silo.v1.UI.ListBotPeople
+     */
+    listBotPeople: {
+      name: "ListBotPeople",
+      I: ListBotPeopleRequest,
+      O: ListBotPeopleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.AddBotPerson
+     */
+    addBotPerson: {
+      name: "AddBotPerson",
+      I: AddBotPersonRequest,
+      O: AddBotPersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.SetBotRole
+     */
+    setBotRole: {
+      name: "SetBotRole",
+      I: SetBotRoleRequest,
+      O: BotPerson,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc silo.v1.UI.RemoveBotPerson
+     */
+    removeBotPerson: {
+      name: "RemoveBotPerson",
+      I: RemoveBotPersonRequest,
+      O: RemoveBotPersonResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetLendShared is a lender's say-so on a connection or drive that carries
+     * their identity: shared, any Bot of the Workspace may get it; personal
+     * (the default), only Bots they alone use.
+     *
+     * @generated from rpc silo.v1.UI.SetLendShared
+     */
+    setLendShared: {
+      name: "SetLendShared",
+      I: SetLendSharedRequest,
+      O: SetLendSharedResponse,
       kind: MethodKind.Unary,
     },
     /**

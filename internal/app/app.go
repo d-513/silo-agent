@@ -169,7 +169,9 @@ type App struct {
 	DB     *gorm.DB
 	Docker dockerx.Host
 	Hub    *hub.Hub
-	Bus    *bus
+	// Gone ends what a person holds open on a Bot once their access ends.
+	Gone access.Watch
+	Bus  *bus
 	// DriveHTTP reaches drive providers (OAuth token endpoints and account
 	// lookups); nil is http.DefaultClient. Tests point it at a fake provider.
 	DriveHTTP *http.Client
@@ -282,10 +284,12 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	}
 	a.Feed = feed.New(a.DB, a)
 	a.Pause = pause.New(a.DB)
-	a.Spaces = space.New(a.DB)
+	a.Spaces = space.New(a.DB, a.cfg, spaceHost{a})
 	a.Spaces.OnDelete(a.Skills.DropSpace)
 	a.Spaces.OnDelete(a.Connectors.DropSpace)
 	a.Spaces.OnDelete(a.Drives.DropSpace)
+	a.Spaces.Lend("connector", a.Connectors)
+	a.Spaces.Lend("drive", a.Drives)
 	a.Setup = setup.New(a.DB, a)
 	a.Dashboard = dashboard.New(a.DB, a, a.Memory, a.Automations, a.Feed)
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
@@ -488,8 +492,22 @@ var publicRPCs = map[string]bool{
 	silov1connect.UIAcceptInviteProcedure: true,
 }
 
+// seenRPCs are public procedures that still learn who is asking when someone
+// is signed in: a Workspace invite link joins the signed-in user, and makes
+// an account for a visitor only while the operator allows it.
+var seenRPCs = map[string]bool{
+	silov1connect.UIGetSpaceInviteProcedure: true,
+	silov1connect.UIJoinSpaceProcedure:      true,
+}
+
 func (a *App) interceptUI(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		if seenRPCs[req.Spec().Procedure] {
+			if signed, err := a.signedIn(ctx); err == nil {
+				ctx = signed
+			}
+			return next(ctx, req)
+		}
 		if publicRPCs[req.Spec().Procedure] {
 			return next(ctx, req)
 		}

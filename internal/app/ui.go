@@ -28,6 +28,7 @@ import (
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 	"silo.agent/internal/zone"
+	"slices"
 )
 
 func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
@@ -93,6 +94,24 @@ func (a *App) ListBots(ctx context.Context, req *connect.Request[v1.ListBotsRequ
 		p.OutputPolicy = ""
 		out.Bots = append(out.Bots, p)
 	}
+	// A Workspace's admins see that its other Bots exist, who is on them and
+	// what they are granted: enough to delete one, nothing that opens it.
+	if id := req.Msg.GetSpaceId(); id != "" && access.Rank(access.SpaceRole(a.DB, id, u.ID)) >= access.Admin {
+		var others []db.Bot
+		a.DB.Where("space_id = ? AND id NOT IN (?)", id, a.DB.Model(&db.BotAccess{}).Select("bot_id").Where("user_id = ?", u.ID)).
+			Order("created_at desc").Find(&others)
+		for _, b := range others {
+			o := &v1.OtherBot{Id: b.ID, Name: b.Name, Crest: int32(b.Crest)}
+			for _, p := range access.People(a.DB, b.ID) {
+				o.People = append(o.People, access.Email(a.DB, p))
+			}
+			var conns, drives int64
+			a.DB.Model(&db.BotConnector{}).Where("bot_id = ?", b.ID).Count(&conns)
+			a.DB.Model(&db.BotDrive{}).Where("bot_id = ?", b.ID).Count(&drives)
+			o.Grants = int32(conns + drives)
+			out.Others = append(out.Others, o)
+		}
+	}
 	return connect.NewResponse(out), nil
 }
 
@@ -106,6 +125,22 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 	name := req.Msg.GetName()
 	if name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
+	}
+	// Who else uses it, and what it may use, are checked before it exists:
+	// nobody outside the Workspace, a guest only uses, and nobody's personal
+	// sign-in reaches someone else.
+	users := slices.DeleteFunc(slices.Clone(req.Msg.GetUserIds()), func(id string) bool { return id == u.ID })
+	for _, uid := range users {
+		if err := a.Spaces.CheckJoin("", sp.ID, uid, access.RoleUse); err != nil {
+			return nil, err
+		}
+	}
+	people := append([]string{u.ID}, users...)
+	if err := a.Connectors.CheckNewBot(sp.ID, req.Msg.GetConnectorIds(), people); err != nil {
+		return nil, err
+	}
+	if err := a.Drives.CheckNewBot(sp.ID, req.Msg.GetDriveIds(), people); err != nil {
+		return nil, err
 	}
 	id := ids.New()
 	crest := int(req.Msg.GetCrest())
@@ -132,8 +167,16 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		if err := tx.Create(&b).Error; err != nil {
 			return err
 		}
-		// Whoever makes a Bot manages it.
-		return tx.Create(&db.BotAccess{BotID: id, UserID: u.ID, Role: access.RoleManage, CreatedAt: b.CreatedAt}).Error
+		// Whoever makes a Bot manages it; the people picked use it.
+		if err := tx.Create(&db.BotAccess{BotID: id, UserID: u.ID, Role: access.RoleManage, CreatedAt: b.CreatedAt}).Error; err != nil {
+			return err
+		}
+		for _, uid := range users {
+			if err := tx.Create(&db.BotAccess{BotID: id, UserID: uid, Role: access.RoleUse, CreatedAt: b.CreatedAt}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -143,9 +186,11 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		return nil, err
 	}
 	a.Skills.EnsureDefaults(id)
-	a.Skills.EnableSpace(id)
+	a.Skills.EnableSpace(id, req.Msg.GetSkillsOff()...)
 	a.Automations.EnsurePinned(id)
 	a.Connectors.AttachDefaults(ctx, id)
+	a.Connectors.GrantNew(id, req.Msg.GetConnectorIds())
+	a.Drives.GrantNew(id, req.Msg.GetDriveIds())
 	if err := a.ensureRunning(ctx, &b); err != nil {
 		log.Printf("create start %s: %v", id, err)
 	}
@@ -493,6 +538,9 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 	botID := req.Msg.GetBotId()
 	chatID := req.Msg.GetChatId()
 	after := req.Msg.GetAfterEventId()
+	// The stream ends with the viewer's access to the Bot.
+	lost, stop := a.Gone.Lost(botID, access.User(ctx).ID)
+	defer stop()
 	ch, unsub := a.Bus.Subscribe(botID)
 	defer unsub()
 	runQ := a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ?", botID)
@@ -536,6 +584,8 @@ func (a *App) StreamRun(ctx context.Context, req *connect.Request[v1.StreamRunRe
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-lost:
+			return connect.NewError(connect.CodeNotFound, errors.New(access.NoBot))
 		case ev, ok := <-ch:
 			if !ok {
 				return connect.NewError(connect.CodeAborted, errors.New("stream overflow"))

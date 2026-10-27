@@ -242,6 +242,9 @@ func (s *Service) grant(botID string, d *db.Drive, readOnly bool) error {
 	if s.db.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" || b.SpaceID == "" || b.SpaceID != d.SpaceID {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the drive are in different workspaces"))
 	}
+	if err := access.CheckLend(s.db, lend(d), botID); err != nil {
+		return err
+	}
 	var n int64
 	s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND drive_id = ?", botID, d.ID).Count(&n)
 	if n > 0 {
@@ -390,8 +393,12 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 		delete(sec.User, k)
 	}
 	// Credentials typed in now are the typist's to lend.
-	if mustJSONString(sec.User) != mustJSONString(decodeSecrets(d.SecretsJSON).User) && len(sec.User) > 0 {
-		d.LentBy = access.User(ctx).ID
+	if mustJSONString(sec.User) != mustJSONString(decodeSecrets(d.SecretsJSON).User) && len(sec.User) > 0 && d.LentBy != access.User(ctx).ID {
+		// A new lender starts personal.
+		d.LentBy, d.Shared = access.User(ctx).ID, false
+		if err := access.CheckSignIn(s.db, d.Name, d.LentBy, false, s.grantees(d.ID)); err != nil {
+			return nil, err
+		}
 	}
 	d.OptionsJSON = mustJSONString(opts)
 	d.SecretsJSON = mustJSONString(sec)
@@ -496,16 +503,21 @@ func (s *Service) BeginDriveAuth(ctx context.Context, req *connect.Request[v1.Be
 		}
 		return nil, err
 	}
-	driveID, starter := d.ID, access.User(ctx).ID
+	driveID, starter, shared := d.ID, access.User(ctx).ID, req.Msg.GetShared()
+	// Whoever signs in lends their account: a personal sign-in may only
+	// reach Bots they alone use.
+	if err := access.CheckSignIn(s.db, d.Name, starter, shared, s.grantees(d.ID)); err != nil {
+		return nil, err
+	}
 	s.host.AwaitOAuth(state, driveAuthTTL, func(ctx context.Context, q url.Values) error {
-		return s.completeDriveAuth(ctx, driveID, starter, redirect, q)
+		return s.completeDriveAuth(ctx, driveID, starter, shared, redirect, q)
 	})
 	return connect.NewResponse(&v1.BeginDriveAuthResponse{Url: u}), nil
 }
 
 // completeDriveAuth finishes a sign-in: token exchange, account label and
 // other lookups, auto-picks, then a remount if the drive is live.
-func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter, redirect string, q url.Values) error {
+func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter string, shared bool, redirect string, q url.Values) error {
 	if e := q.Get("error"); e != "" {
 		if d := q.Get("error_description"); d != "" {
 			return errors.New(d)
@@ -561,6 +573,7 @@ func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter, redir
 		"secrets_json": mustJSONString(sec),
 		"options_json": mustJSONString(opts),
 		"lent_by":      starter,
+		"shared":       shared,
 	})
 	if !d.Draft {
 		s.applyAll(d.ID)
@@ -763,4 +776,103 @@ func (s *Service) Prompt(list []db.Drive) string {
 		b.WriteString(line + "\n")
 	}
 	return b.String()
+}
+
+// lend is a drive as the lending checks see it.
+func lend(d *db.Drive) access.Lend {
+	return access.Lend{Kind: "drive", ID: d.ID, Name: d.Name, LentBy: d.LentBy, Shared: d.Shared}
+}
+
+// Lent is every drive userID lent in the Workspace.
+func (s *Service) Lent(spaceID, userID string) []access.Lend {
+	var rows []db.Drive
+	s.db.Where("space_id = ? AND lent_by = ? AND draft = ?", spaceID, userID, false).Order("name").Find(&rows)
+	out := make([]access.Lend, 0, len(rows))
+	for i := range rows {
+		out = append(out, lend(&rows[i]))
+	}
+	return out
+}
+
+// Lending loads a drive for the lending checks.
+func (s *Service) Lending(id string) (access.Lend, string, bool) {
+	var d db.Drive
+	if s.db.Where("id = ? AND draft = ?", id, false).Limit(1).Find(&d); d.ID == "" {
+		return access.Lend{}, "", false
+	}
+	return lend(&d), d.SpaceID, true
+}
+
+// Grantees are the Bots a drive is granted to.
+func (s *Service) Grantees(driveID string) []string { return s.grantees(driveID) }
+
+// SetShared records the lender's say-so on a drive.
+func (s *Service) SetShared(id string, shared bool) {
+	s.db.Model(&db.Drive{}).Where("id = ?", id).Update("shared", shared)
+}
+
+// Unlend takes the lender's account out of a drive: a personal one is
+// unmounted everywhere and deleted; a shared one is signed out (its sign-in
+// and typed passwords cleared) and waits for someone to sign it in again.
+func (s *Service) Unlend(_ context.Context, l access.Lend, why string) {
+	var d db.Drive
+	if s.db.Where("id = ?", l.ID).Limit(1).Find(&d); d.ID == "" {
+		return
+	}
+	bots := s.grantees(d.ID)
+	if l.Personal() {
+		s.db.Where("drive_id = ?", d.ID).Delete(&db.BotDrive{})
+		s.db.Delete(&db.Drive{}, "id = ?", d.ID)
+		for _, b := range bots {
+			s.revoked(b, d.ID)
+		}
+		return
+	}
+	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{"secrets_json": "", "lent_by": ""})
+	s.db.Model(&db.BotDrive{}).Where("drive_id = ?", d.ID).Updates(map[string]any{"state": drives.StateNeedsAuth, "state_detail": why})
+	s.applyAll(d.ID)
+}
+
+// CheckNewBot says whether a new Bot that the people will use may get these
+// drives: each of its Workspace, none someone else's personal sign-in.
+func (s *Service) CheckNewBot(spaceID string, ids, people []string) error {
+	for _, id := range ids {
+		var d db.Drive
+		if s.db.Where("id = ? AND draft = ?", id, false).Limit(1).Find(&d); d.ID == "" {
+			return connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
+		}
+		if d.SpaceID != spaceID {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("the Bot and the drive are in different workspaces"))
+		}
+		if err := access.CheckLend(s.db, lend(&d), "", people...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// GrantNew mounts the drives ticked for a new Bot.
+func (s *Service) GrantNew(botID string, ids []string) {
+	for _, id := range ids {
+		var d db.Drive
+		if s.db.Where("id = ? AND draft = ?", id, false).Limit(1).Find(&d); d.ID == "" {
+			continue
+		}
+		if err := s.grant(botID, &d, false); err != nil {
+			log.Printf("drive %s to new bot %s: %v", id, botID, err)
+		}
+	}
+	if len(ids) > 0 {
+		s.applyDrives(botID)
+	}
+}
+
+// LenderChanged remounts every drive a user lent, after their account was
+// disabled (it comes down) or enabled again (it goes back up).
+func (s *Service) LenderChanged(userID string) {
+	var ids []string
+	s.db.Model(&db.Drive{}).Where("lent_by = ? AND draft = ?", userID, false).Pluck("id", &ids)
+	for _, id := range ids {
+		s.applyAll(id)
+	}
 }

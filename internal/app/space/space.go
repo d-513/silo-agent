@@ -17,6 +17,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/lang"
@@ -32,7 +33,12 @@ var homeNames = map[string]string{"en": "Personal", "pl": "Osobisty", "de": "Per
 
 // Service is the Workspaces domain.
 type Service struct {
-	db *gorm.DB
+	db   *gorm.DB
+	cfg  func() config.Config
+	host Host
+	// lenders are the domains whose resources can carry a person's
+	// identity, by kind (connector, drive).
+	lenders map[string]Lending
 	// dropped are told a Workspace's id once its rows are gone, so the
 	// domains that keep things per Workspace (skills on disk) drop theirs.
 	dropped []func(spaceID string)
@@ -42,7 +48,9 @@ type Service struct {
 func (s *Service) OnDelete(fn func(spaceID string)) { s.dropped = append(s.dropped, fn) }
 
 // New makes the Workspaces domain.
-func New(gdb *gorm.DB) *Service { return &Service{db: gdb} }
+func New(gdb *gorm.DB, cfg func() config.Config, host Host) *Service {
+	return &Service{db: gdb, cfg: cfg, host: host}
+}
 
 // Mark is the letters on a Workspace's tile: the given ones (letters and
 // digits, at most two, upper case), else the initials of the name.
@@ -184,6 +192,9 @@ func (s *Service) Alone(userID string) []db.Space {
 func (s *Service) Delete(spaceID string) error {
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("space_id = ?", spaceID).Delete(&db.SpaceMember{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("space_id = ?", spaceID).Delete(&db.SpaceInvite{}).Error; err != nil {
 			return err
 		}
 		return tx.Where("id = ?", spaceID).Delete(&db.Space{}).Error

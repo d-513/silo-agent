@@ -98,6 +98,19 @@ type SpaceMember struct {
 	CreatedAt time.Time
 }
 
+// SpaceInvite is a link that joins a Workspace with a role. ID is the hash
+// of the link's token; a link is single use and lasts 7 days.
+type SpaceInvite struct {
+	ID        string `gorm:"primaryKey"`
+	SpaceID   string `gorm:"not null;index"`
+	Role      string `gorm:"not null"`
+	CreatedBy string `gorm:"not null;default:''"`
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	UsedBy    string `gorm:"not null;default:''"`
+}
+
 // BotAccess is one person on a Bot: Role manage or use. A Bot always has a
 // manager. FeedReadAt and DashboardSeenAt are that person's read state.
 type BotAccess struct {
@@ -190,7 +203,10 @@ type Secret struct {
 	// Surrogate is the stable stand-in the box knows, generated when a secret
 	// is saved in surrogate mode. Empty for a plain secret, for a value too
 	// short to stand in for, and for a channel's own secret.
-	Surrogate  string `gorm:"not null;default:''"`
+	Surrogate string `gorm:"not null;default:''"`
+	// SetBy is who saved the value: adding a person to the Bot names the
+	// secrets someone else set, which that person could have it use.
+	SetBy      string `gorm:"not null;default:''"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 }
@@ -955,7 +971,7 @@ type MailBody struct {
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
-		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
+		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &SpaceInvite{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},

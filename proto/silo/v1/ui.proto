@@ -47,6 +47,37 @@ service UI {
   // DeleteSpace is the owner's, refused while the Workspace has Bots and for
   // the owner's last Workspace.
   rpc DeleteSpace(DeleteSpaceRequest) returns (DeleteSpaceResponse);
+  // TransferSpace makes an admin the owner; the old owner becomes an admin.
+  rpc TransferSpace(TransferSpaceRequest) returns (Space);
+
+  // The people of a Workspace. Members see the list; admins change roles
+  // (an admin only among members and guests) and remove people.
+  rpc ListSpacePeople(ListSpacePeopleRequest) returns (ListSpacePeopleResponse);
+  rpc SetSpaceRole(SetSpaceRoleRequest) returns (SpacePerson);
+  // PlanSpaceRemoval is what removing a person (or leaving: user_id is the
+  // caller) would do: the Bots they are the last manager of, and what they
+  // lent. RemoveSpacePerson does it, with a choice for each such Bot.
+  rpc PlanSpaceRemoval(PlanSpaceRemovalRequest) returns (SpaceRemovalPlan);
+  rpc RemoveSpacePerson(RemoveSpacePersonRequest) returns (RemoveSpacePersonResponse);
+  // Invite links: single use, 7 days, only the hash kept. Opening one signed
+  // in joins (JoinSpace); with spaces.invite_signup on, a visitor with no
+  // account makes one there (JoinSpace with email and password).
+  rpc CreateSpaceInvite(CreateSpaceInviteRequest) returns (SpaceInviteLink);
+  rpc ListSpaceInvites(ListSpaceInvitesRequest) returns (ListSpaceInvitesResponse);
+  rpc DeleteSpaceInvite(DeleteSpaceInviteRequest) returns (DeleteSpaceInviteResponse);
+  rpc GetSpaceInvite(GetSpaceInviteRequest) returns (SpaceInviteInfo);
+  rpc JoinSpace(JoinSpaceRequest) returns (JoinSpaceResponse);
+
+  // The people on a Bot: Can manage or Can use. Managers change the list;
+  // anyone may leave a Bot unless they are its last manager.
+  rpc ListBotPeople(ListBotPeopleRequest) returns (ListBotPeopleResponse);
+  rpc AddBotPerson(AddBotPersonRequest) returns (AddBotPersonResponse);
+  rpc SetBotRole(SetBotRoleRequest) returns (BotPerson);
+  rpc RemoveBotPerson(RemoveBotPersonRequest) returns (RemoveBotPersonResponse);
+  // SetLendShared is a lender's say-so on a connection or drive that carries
+  // their identity: shared, any Bot of the Workspace may get it; personal
+  // (the default), only Bots they alone use.
+  rpc SetLendShared(SetLendSharedRequest) returns (SetLendSharedResponse);
 
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc CreateBot(CreateBotRequest) returns (Bot);
@@ -603,6 +634,233 @@ message DeleteSpaceRequest {
 
 message DeleteSpaceResponse {}
 
+message TransferSpaceRequest {
+  string space_id = 1;
+  string user_id = 2;
+}
+
+message SpacePerson {
+  string user_id = 1;
+  string email = 2;
+  // owner, admin, member or guest.
+  string role = 3;
+  // How many of the Workspace's Bots they are on.
+  int32 bots = 4;
+  bool you = 5;
+  // Their account is disabled by the instance admin.
+  bool disabled = 6;
+  string joined_at = 7;
+}
+
+message ListSpacePeopleRequest {
+  string space_id = 1;
+}
+
+message ListSpacePeopleResponse {
+  repeated SpacePerson people = 1;
+  // invite_signup: an invite link may make an account (the operator's
+  // spaces.invite_signup).
+  bool invite_signup = 2;
+}
+
+message SetSpaceRoleRequest {
+  string space_id = 1;
+  string user_id = 2;
+  // admin, member or guest; owner moves with TransferSpace.
+  string role = 3;
+}
+
+message PlanSpaceRemovalRequest {
+  string space_id = 1;
+  string user_id = 2;
+}
+
+// LastManaged is a Bot whose only manager is the person going. others are
+// the rest of its people, any of whom can be made its manager.
+message LastManaged {
+  string bot_id = 1;
+  string name = 2;
+  int32 crest = 3;
+  repeated BotPerson others = 4;
+  // Whether the caller is on it (Take it over is for an admin who is not on
+  // it too: they become its manager).
+  bool caller_on = 5;
+}
+
+// Lent is a connection or drive that carries someone's identity.
+message Lent {
+  // connector or drive.
+  string kind = 1;
+  string id = 2;
+  string name = 3;
+  bool shared = 4;
+  // Names of the Bots it is granted to that the caller is on, and how many
+  // others.
+  repeated string bots = 5;
+  int32 bots_hidden = 6;
+}
+
+message SpaceRemovalPlan {
+  string user_id = 1;
+  string email = 2;
+  repeated LastManaged last_managed = 3;
+  // personal ones go with them; shared ones stay, signed out.
+  repeated Lent lent = 4;
+}
+
+// Handoff is what happens to a Bot whose last manager goes: "manager" makes
+// user_id its manager, "take" makes the caller its manager, "delete" deletes
+// it.
+message Handoff {
+  string bot_id = 1;
+  string action = 2;
+  string user_id = 3;
+}
+
+message RemoveSpacePersonRequest {
+  string space_id = 1;
+  // The caller's own id is leaving.
+  string user_id = 2;
+  repeated Handoff plan = 3;
+}
+
+message RemoveSpacePersonResponse {}
+
+message CreateSpaceInviteRequest {
+  string space_id = 1;
+  // admin (the owner only), member or guest.
+  string role = 2;
+}
+
+message SpaceInvite {
+  string id = 1;
+  string role = 2;
+  string created_by = 3;
+  string created_at = 4;
+  string expires_at = 5;
+}
+
+message SpaceInviteLink {
+  SpaceInvite invite = 1;
+  // The link, shown once: only its hash is kept.
+  string url = 2;
+}
+
+message ListSpaceInvitesRequest {
+  string space_id = 1;
+}
+
+message ListSpaceInvitesResponse {
+  repeated SpaceInvite invites = 1;
+}
+
+message DeleteSpaceInviteRequest {
+  string space_id = 1;
+  string id = 2;
+}
+
+message DeleteSpaceInviteResponse {}
+
+message GetSpaceInviteRequest {
+  string token = 1;
+}
+
+message SpaceInviteInfo {
+  // ok, used or expired (an unknown link reads as expired).
+  string state = 1;
+  string space_name = 2;
+  string space_mark = 3;
+  string role = 4;
+  // Who made the link (email).
+  string invited_by = 5;
+  // The link may make an account for someone signed out.
+  bool signup = 6;
+}
+
+message JoinSpaceRequest {
+  string token = 1;
+  // Only for someone with no account, while spaces.invite_signup is on.
+  string email = 2;
+  string password = 3;
+}
+
+message JoinSpaceResponse {
+  Space space = 1;
+  // Set when the join made an account and signed it in.
+  string email = 2;
+  bool admin = 3;
+}
+
+message BotPerson {
+  string user_id = 1;
+  string email = 2;
+  // manage or use.
+  string role = 3;
+  // Their Workspace role: a guest can only use.
+  string space_role = 4;
+  bool you = 5;
+}
+
+message ListBotPeopleRequest {
+  string bot_id = 1;
+}
+
+message ListBotPeopleResponse {
+  repeated BotPerson people = 1;
+  // For a manager: the Workspace's people who are not on the Bot.
+  repeated SpacePerson candidates = 2;
+}
+
+message AddBotPersonRequest {
+  string bot_id = 1;
+  string user_id = 2;
+  // manage or use.
+  string role = 3;
+  // Sent again after the confirmation below.
+  bool confirmed = 4;
+}
+
+message AddBotPersonResponse {
+  // Set (and nobody added) when the person would be able to have the Bot use
+  // secrets someone else set: those names. Send again with confirmed.
+  repeated string confirm_secrets = 1;
+  BotPerson person = 2;
+}
+
+message SetBotRoleRequest {
+  string bot_id = 1;
+  string user_id = 2;
+  string role = 3;
+}
+
+message RemoveBotPersonRequest {
+  string bot_id = 1;
+  // The caller's own id leaves the Bot.
+  string user_id = 2;
+}
+
+message RemoveBotPersonResponse {}
+
+message SetLendSharedRequest {
+  // One of the two.
+  string connector_id = 1;
+  string drive_id = 2;
+  bool shared = 3;
+}
+
+message SetLendSharedResponse {}
+
+// OtherBot is a Bot of the Workspace the caller (an admin) is not on: enough
+// to know it is there and to delete it, nothing that opens it.
+message OtherBot {
+  string id = 1;
+  string name = 2;
+  int32 crest = 3;
+  repeated string people = 4;
+  // How many connectors and drives it is granted.
+  int32 grants = 5;
+}
+
 // BotActivity is one live run of a Bot, for the sidebar's status line.
 message BotActivity {
   string chat_id = 1;
@@ -623,6 +881,8 @@ message ListBotsRequest {
 
 message ListBotsResponse {
   repeated Bot bots = 1;
+  // For a Workspace admin listing one Workspace: its Bots they are not on.
+  repeated OtherBot others = 2;
 }
 
 message CreateBotRequest {
@@ -635,6 +895,14 @@ message CreateBotRequest {
   bool interview = 5;
   // The Workspace to make it in; empty is the caller's first own one.
   string space_id = 6;
+  // What it can use (the New Bot page sends every one ticked): the
+  // Workspace's connections and drives to grant it, and the Workspace
+  // skills to leave off. A client that sends none grants only the defaults.
+  repeated string connector_ids = 7;
+  repeated string drive_ids = 8;
+  repeated string skills_off = 9;
+  // Who else can use it (Can use).
+  repeated string user_ids = 10;
 }
 
 message UpdateBotRequest {
@@ -2667,6 +2935,9 @@ message StartConnectorAuthRequest {
   string bot_id = 1;
   string id = 2;
   string connector_id = 3;
+  // Who can use this sign-in: false (Only my Bots) lets it reach only Bots
+  // the signer alone uses; true, any Bot of the Workspace.
+  bool shared = 4;
 }
 
 message StartConnectorAuthResponse {
@@ -3189,6 +3460,8 @@ message DeleteDriveResponse {}
 
 message BeginDriveAuthRequest {
   string id = 1;
+  // As StartConnectorAuthRequest.shared.
+  bool shared = 2;
 }
 
 message BeginDriveAuthResponse {
