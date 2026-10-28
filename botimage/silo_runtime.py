@@ -111,7 +111,8 @@ def artifact(
     same card. A directory that contains SKILL.md becomes an installable skill
     (the human clicks Save skill). An .html file, or a directory with
     index.html, becomes a live sandboxed app in the thread (`network=True`
-    lets it reach the internet, asking the owner by default). Any other file
+    lets it reach the internet, asking the owner by default). The app has no
+    storage: localStorage, sessionStorage, IndexedDB and cookies throw. Any other file
     becomes a downloadable card with a preview. `path` is relative to
     /workspace. This is not `present`.
     """
