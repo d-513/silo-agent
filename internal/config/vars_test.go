@@ -156,3 +156,13 @@ func TestAutoenableConnectors(t *testing.T) {
 		t.Fatal(EnvName("autoenable_connectors"))
 	}
 }
+
+func TestUnresolvedVars(t *testing.T) {
+	got := UnresolvedVars("${LIGHTPANDA_URL}/mcp?k=${secrets.KEY}&again=${LIGHTPANDA_URL}")
+	if strings.Join(got, ",") != "LIGHTPANDA_URL,secrets.KEY" {
+		t.Fatalf("UnresolvedVars = %v", got)
+	}
+	if got := UnresolvedVars("http://localhost:9223/mcp"); len(got) != 0 {
+		t.Fatalf("a resolved URL has no references, got %v", got)
+	}
+}

@@ -194,6 +194,9 @@ func (s *Service) MCPSession(ctx context.Context, row *db.BotConnector, c *db.Co
 	}
 	s.mu.Unlock()
 	c = s.Resolve(c, row.BotID)
+	if err := s.checkVars(c); err != nil {
+		return nil, err
+	}
 	var h mcpauth.OAuthHandler
 	if c.Auth == AuthOAuth {
 		oh, err := s.oauthHandler(c, s.redirectURL(), false, nil)

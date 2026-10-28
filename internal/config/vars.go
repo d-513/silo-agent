@@ -53,3 +53,17 @@ func ExpandVars(s string, vars map[string]string) string {
 		return ref
 	})
 }
+
+// UnresolvedVars lists the ${NAME} references still left in s after
+// expansion, each once, in order: a variable nobody defined.
+func UnresolvedVars(s string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, m := range varRefRE.FindAllStringSubmatch(s, -1) {
+		if !seen[m[1]] {
+			seen[m[1]] = true
+			out = append(out, m[1])
+		}
+	}
+	return out
+}

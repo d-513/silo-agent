@@ -158,3 +158,33 @@ func TestDeleteSecretPrunesRule(t *testing.T) {
 		t.Fatal("secret rule not pruned")
 	}
 }
+
+// A connector that failed to connect has no actions to list; its section says
+// why and carries the connection for its mark, so an empty section does not
+// read as broken rules.
+func TestRulesSectionOfAFailedConnector(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("FailedConn")
+	h.DB.Create(&db.Connector{ID: "conn-lp", Kind: "custom", SpaceID: bot.GetSpaceId(), Type: "mcp", Name: "Reader",
+		Transport: "http", HTTPURL: "${READER_URL}/mcp", Image: []byte{0x89, 'P', 'N', 'G'}})
+	h.DB.Create(&db.BotConnector{ID: "grant-lp", BotID: bot.GetId(), ConnectorID: "conn-lp", AuthStatus: "error",
+		LastError: "the URL uses ${READER_URL}, which is not defined"})
+
+	res, err := h.Client.ListRules(h.Ctx(), connect.NewRequest(&v1.ListRulesRequest{BotId: bot.GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sec := range res.Msg.GetSections() {
+		if sec.GetTitle() != "Reader" {
+			continue
+		}
+		if sec.GetConnectorId() != "conn-lp" || !sec.GetHasImage() {
+			t.Fatalf("mark: %q %v", sec.GetConnectorId(), sec.GetHasImage())
+		}
+		if !strings.Contains(sec.GetSummary(), "Not connected") || !strings.Contains(sec.GetSummary(), "READER_URL") {
+			t.Fatalf("summary %q", sec.GetSummary())
+		}
+		return
+	}
+	t.Fatal("no Reader section")
+}

@@ -16623,6 +16623,10 @@ type RuleSection struct {
 	// What the section's output rules do by default: the summary of its
 	// Results side. Empty for a section with no results to filter.
 	OutputSummary string `protobuf:"bytes,5,opt,name=output_summary,json=outputSummary,proto3" json:"output_summary,omitempty"`
+	// A connector's section: the connection, for its mark at
+	// /connectors/<id>/image. Empty for the Bot, Secrets and Channels.
+	ConnectorId   string `protobuf:"bytes,6,opt,name=connector_id,json=connectorId,proto3" json:"connector_id,omitempty"`
+	HasImage      bool   `protobuf:"varint,7,opt,name=has_image,json=hasImage,proto3" json:"has_image,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16690,6 +16694,20 @@ func (x *RuleSection) GetOutputSummary() string {
 		return x.OutputSummary
 	}
 	return ""
+}
+
+func (x *RuleSection) GetConnectorId() string {
+	if x != nil {
+		return x.ConnectorId
+	}
+	return ""
+}
+
+func (x *RuleSection) GetHasImage() bool {
+	if x != nil {
+		return x.HasImage
+	}
+	return false
 }
 
 type ListRulesRequest struct {
@@ -29053,13 +29071,15 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06locked\x18\n" +
 	" \x01(\bR\x06locked\x12%\n" +
 	"\x0espace_decision\x18\v \x01(\tR\rspaceDecision\x12!\n" +
-	"\fspace_output\x18\f \x01(\tR\vspaceOutputJ\x04\b\r\x10\x0e\"\x99\x01\n" +
+	"\fspace_output\x18\f \x01(\tR\vspaceOutputJ\x04\b\r\x10\x0e\"\xd9\x01\n" +
 	"\vRuleSection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\asummary\x18\x03 \x01(\tR\asummary\x12#\n" +
 	"\x05rules\x18\x04 \x03(\v2\r.silo.v1.RuleR\x05rules\x12%\n" +
-	"\x0eoutput_summary\x18\x05 \x01(\tR\routputSummary\")\n" +
+	"\x0eoutput_summary\x18\x05 \x01(\tR\routputSummary\x12!\n" +
+	"\fconnector_id\x18\x06 \x01(\tR\vconnectorId\x12\x1b\n" +
+	"\thas_image\x18\a \x01(\bR\bhasImage\")\n" +
 	"\x10ListRulesRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\xc5\x01\n" +
 	"\x11ListRulesResponse\x12#\n" +

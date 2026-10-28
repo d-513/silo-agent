@@ -1,9 +1,27 @@
-import { ChevronRight } from "lucide-react";
+import { Bot, ChevronRight, Key, Radio, type LucideIcon } from "lucide-react";
+import { ConnectorMark } from "../connectors/form";
 import type { Rule, RuleSection } from "../gen/silo/v1/ui_pb";
 import { sectionDecision, floorOf, type Side } from "./model";
 import { RuleDecisionSegment } from "./RuleDecisionSegment";
 import { RuleRow } from "./RuleRow";
 import { t } from "../i18n.ts";
+
+// The Bot, its secrets and its channels wear the glyphs their pages do.
+const glyphs: Record<string, LucideIcon> = { bot: Bot, secrets: Key, channels: Radio };
+
+// SectionMark is a section's icon: a connector's own mark (the plug when it
+// has none), else the glyph of the Bot's page the section is about.
+function SectionMark({ s }: { s: RuleSection }) {
+  const size = 28;
+  if (s.connectorId) return <ConnectorMark id={s.connectorId} hasImage={s.hasImage} size={size} />;
+  const Glyph = glyphs[s.id];
+  if (!Glyph) return <ConnectorMark hasImage={false} size={size} />;
+  return (
+    <span className="flex shrink-0 items-center justify-center rounded-sm bg-well text-ink-2" style={{ width: size, height: size }}>
+      <Glyph size={15} />
+    </span>
+  );
+}
 
 // One folio of rules (the Bot, its secrets, one connector): a header with a
 // switch for the whole section, and a row per action underneath.
@@ -40,6 +58,7 @@ export function SectionCard({
     >
       <summary className="flex cursor-pointer list-none flex-wrap items-start gap-3 p-4 transition-colors hover:bg-well [&::-webkit-details-marker]:hidden">
         <ChevronRight size={14} className="mt-1.5 shrink-0 text-ink-3 transition-transform group-open:rotate-90" />
+        <SectionMark s={s} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-[16px] font-medium text-ink">{s.title}</h3>

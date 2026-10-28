@@ -87,6 +87,8 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 			Title:         c.Name,
 			Summary:       fmt.Sprintf("When there is no override, this connector uses %s.", modeWord(c.DefaultMode)),
 			OutputSummary: "Everything this connector answers was written somewhere else, so each result is checked until you change it.",
+			ConnectorId:   c.ID,
+			HasImage:      len(c.Image) > 0,
 		}
 		if c.Transport == connector.TransportBuiltin {
 			sec.Summary = "Each action has its own default: reading is allowed, anything that sends or changes mail asks."
@@ -95,6 +97,11 @@ func (a *App) ListRules(ctx context.Context, req *connect.Request[v1.ListRulesRe
 		_ = json.Unmarshal([]byte(attached[i].ToolsJSON), &tools)
 		if len(tools) == 0 {
 			sec.Summary = "Authorize on Connectors, then actions show here. Unset actions use " + modeWord(c.DefaultMode) + "."
+			// A connection that failed says why, so an empty section does not
+			// read as broken rules.
+			if e := strings.TrimSpace(attached[i].LastError); attached[i].AuthStatus == connector.StatusErr && e != "" {
+				sec.Summary = "Not connected: " + e + ". Its actions show here once it connects."
+			}
 		}
 		for _, t := range tools {
 			if t.Name == "" {

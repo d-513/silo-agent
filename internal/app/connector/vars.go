@@ -2,6 +2,7 @@ package connector
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"silo.agent/internal/config"
@@ -153,4 +154,22 @@ func expandEnvValues(raw string, vars map[string]string) string {
 		return raw
 	}
 	return string(b)
+}
+
+// checkVars refuses a resolved HTTP connection whose URL still holds a
+// reference nobody defined, naming it and where to define it: dialed as it
+// is, it fails as an "unsupported protocol scheme" that says neither.
+func (s *Service) checkVars(c *db.Connector) error {
+	if c == nil || c.Transport == TransportSTDIO || c.Transport == TransportBuiltin {
+		return nil
+	}
+	refs := config.UnresolvedVars(c.HTTPURL)
+	if len(refs) == 0 {
+		return nil
+	}
+	name := refs[0]
+	if secret, ok := strings.CutPrefix(name, "secrets."); ok {
+		return fmt.Errorf("the URL uses the secret %s, which this Bot does not have: add it on Settings → Secrets", secret)
+	}
+	return fmt.Errorf("the URL uses ${%s}, which is not defined: an admin sets it in Admin → Settings → Connector options", name)
 }

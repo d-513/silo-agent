@@ -76,6 +76,8 @@ func (a *App) spaceRules(sp *db.Space) *v1.ListSpaceRulesResponse {
 			Summary:       "Every action of this connector, in every Bot that uses it.",
 			OutputSummary: "What this connector answers, in every Bot that uses it.",
 			Rules:         []*v1.Rule{row(slug, security.Star, "All actions")},
+			ConnectorId:   c.ID,
+			HasImage:      len(c.Image) > 0,
 		}
 		// The actions any Bot's session listed, once each.
 		seen := map[string]bool{}

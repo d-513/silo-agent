@@ -2343,6 +2343,10 @@ message RuleSection {
   // What the section's output rules do by default: the summary of its
   // Results side. Empty for a section with no results to filter.
   string output_summary = 5;
+  // A connector's section: the connection, for its mark at
+  // /connectors/<id>/image. Empty for the Bot, Secrets and Channels.
+  string connector_id = 6;
+  bool has_image = 7;
 }
 
 message ListRulesRequest {

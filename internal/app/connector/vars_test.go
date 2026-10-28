@@ -2,6 +2,7 @@ package connector
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"silo.agent/internal/config"
@@ -81,5 +82,27 @@ func TestResolveConnectorNoVarsIsIdentity(t *testing.T) {
 	s2 := &Service{store: store2, cfg: store2.Config}
 	if got := s2.Resolve(c, ""); got.HTTPURL != "https://${MISSING}.example.com" {
 		t.Fatalf("unknown ref should stay, got %q", got.HTTPURL)
+	}
+}
+
+// A URL whose variable the operator never defined is refused before it is
+// dialed, in words that say where to define it, not as an "unsupported
+// protocol scheme" from the HTTP client.
+func TestUndefinedVariableNamesItself(t *testing.T) {
+	store, err := config.FromYAML(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &Service{store: store, cfg: store.Config}
+	err = s.checkVars(s.Resolve(&db.Connector{Transport: transportHTTP, HTTPURL: "${LIGHTPANDA_URL}/mcp"}, ""))
+	if err == nil || !strings.Contains(err.Error(), "LIGHTPANDA_URL") || !strings.Contains(err.Error(), "Connector options") {
+		t.Fatalf("err = %v", err)
+	}
+	err = s.checkVars(s.Resolve(&db.Connector{Transport: transportHTTP, HTTPURL: "https://x/${secrets.TOKEN}"}, "bot"))
+	if err == nil || !strings.Contains(err.Error(), "Secrets") {
+		t.Fatalf("secret err = %v", err)
+	}
+	if err := s.checkVars(&db.Connector{Transport: transportHTTP, HTTPURL: "http://localhost:9223/mcp"}); err != nil {
+		t.Fatalf("resolved: %v", err)
 	}
 }
