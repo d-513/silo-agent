@@ -36,7 +36,7 @@ function MathCopy({ node, children }: { node?: HastNode; children?: ReactNode })
           className={`silo-math-copy absolute z-10 inline-flex items-center justify-center rounded-xs bg-surface text-ink-2 shadow-card transition-[opacity,color,background-color] duration-[160ms] hover:bg-well hover:text-ink ${
             display
               ? "h-5 w-5 top-1 right-1"
-              : "h-4 w-4 -top-2.5 -right-1.5 opacity-0 focus-visible:opacity-100 group-hover/math:opacity-100"
+              : "h-4 w-4 -top-2.5 -right-1.5 opacity-0 focus-visible:opacity-100 group-hover/math:opacity-100 [@media(hover:none)]:opacity-100"
           }`}
         >
           {copied ? (

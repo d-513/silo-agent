@@ -1,6 +1,7 @@
-import { Boxes, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
+import { Boxes, LogOut, Moon, Plus, Sun, UserRound, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { AccountPage } from "./account/AccountPage";
 import { ui } from "./api";
 import { useAuth } from "./auth";
@@ -14,6 +15,8 @@ import { canBuild, useCurrentSpace } from "./space/spaces";
 import { SpaceTile } from "./space/SpaceTile";
 import { flipTheme, setTheme, useTheme } from "./theme";
 import { t } from "./i18n.ts";
+import { useDismiss } from "./useMenu";
+import { useWide } from "./useWide";
 
 // Rail items: 40px hit areas. The active one is a lifted surface well with a
 // 3px cobalt bar on the leading edge (bottom edge in the narrow top bar).
@@ -51,10 +54,115 @@ function ThemeToggle() {
   );
 }
 
-type Page = "bots" | "admin" | "account" | "workspace";
+export type Page = "bots" | "admin" | "account" | "workspace";
 
-function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
+async function signOut(setSession: (s: null) => void) {
+  try {
+    await ui.signOut({});
+  } catch (e) {
+    // Already signed out is the goal; anything else keeps the session.
+    if (!isSignedOut(e)) return;
+  }
+  setSession(null);
+}
+
+const menuRow =
+  "flex h-11 w-full items-center gap-3 rounded-sm px-2.5 text-left text-[14px] text-ink transition-colors duration-[160ms] hover:bg-well";
+
+// AccountMenu is the narrow rail's one button for what the wide rail lists at
+// its foot (Admin, the theme, Account, Sign out): four icons there would leave
+// no room for the Bots.
+function AccountMenu({ page }: { page: Page }) {
   const { admin, email, setSession } = useAuth();
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<CSSProperties>({});
+  useDismiss(open, trigger, menu, () => setOpen(false));
+  useEffect(() => {
+    if (!open) return;
+    const r = trigger.current?.getBoundingClientRect();
+    if (r) setBox({ right: Math.max(8, window.innerWidth - r.right), top: r.bottom + 6 });
+    menu.current?.focus();
+  }, [open]);
+  const initial = (email.trim()[0] ?? "?").toUpperCase();
+  const dark = theme === "dark";
+  const label = email ? `${t("Account")} · ${email}` : t("Account");
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={railHit(page === "account" || page === "admin")}
+      >
+        {railBar(page === "account" || page === "admin")}
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={menu}
+              role="menu"
+              tabIndex={-1}
+              aria-label={t("Account")}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setOpen(false);
+                  trigger.current?.focus();
+                }
+              }}
+              className="fixed z-50 w-[min(280px,calc(100vw-16px))] rounded-control bg-surface p-1 shadow-slip outline-none"
+              style={box}
+            >
+              <div className="rise">
+                {email ? <div className="truncate px-2.5 pt-2 pb-1.5 text-[12.5px] text-ink-3">{email}</div> : null}
+                <Link to="/account" role="menuitem" onClick={() => setOpen(false)} className={menuRow}>
+                  <UserRound size={17} className="text-ink-2" />
+                  {t("Account")}
+                </Link>
+                {admin ? (
+                  <Link to="/admin/settings" role="menuitem" onClick={() => setOpen(false)} className={menuRow}>
+                    <Wrench size={17} className="text-ink-2" />
+                    {t("Admin")}
+                  </Link>
+                ) : null}
+                <button type="button" role="menuitem" className={menuRow} onClick={() => setTheme(flipTheme(theme))}>
+                  {dark ? <Sun size={17} className="text-ink-2" /> : <Moon size={17} className="text-ink-2" />}
+                  {dark ? t("Switch to light mode") : t("Switch to dark mode")}
+                </button>
+                <span aria-hidden className="mx-2 my-1 block h-px bg-line" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuRow}
+                  onClick={() => {
+                    setOpen(false);
+                    void signOut(setSession);
+                  }}
+                >
+                  <LogOut size={17} className="text-ink-2" />
+                  {t("Sign out")}
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+// Rail is the console's way between Workspaces and Bots: a column on a wide
+// screen, a top bar on a narrow one (and the head of a Bot's drawer there).
+export function Rail({ page, activeBotId, className = "" }: { page: Page; activeBotId?: string; className?: string }) {
+  const { admin, email, setSession } = useAuth();
+  const wide = useWide();
   const { bots } = useBots();
   const { space, spaces } = useCurrentSpace();
   const loc = useLocation();
@@ -63,7 +171,7 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
   // The rail holds the Bots of the Workspace the console is in.
   const here = (bots ?? []).filter((b) => b.spaceId === space?.id);
   return (
-    <aside className="flex shrink-0 bg-well max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center">
+    <aside className={`flex shrink-0 bg-well ${className} max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center`}>
       <SpaceTile space={space} spaces={spaces} />
       <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
         {space ? (
@@ -100,35 +208,28 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
           ) : null}
         </div>
       </nav>
-      <div className="flex items-center gap-1 max-wide:pr-2 wide:mb-4 wide:flex-col">
-        {admin && (
-          <Link to="/admin/settings" title={t("Admin")} className={railHit(page === "admin")}>
-            {railBar(page === "admin")}
-            <Wrench size={20} />
+      {wide ? (
+        <div className="mb-4 flex flex-col items-center gap-1">
+          {admin && (
+            <Link to="/admin/settings" title={t("Admin")} className={railHit(page === "admin")}>
+              {railBar(page === "admin")}
+              <Wrench size={20} />
+            </Link>
+          )}
+          <ThemeToggle />
+          <Link to="/account" title={email ? `${t("Account")} · ${email}` : t("Account")} className={railHit(page === "account")}>
+            {railBar(page === "account")}
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
           </Link>
-        )}
-        <ThemeToggle />
-        <Link to="/account" title={email ? `${t("Account")} · ${email}` : t("Account")} className={railHit(page === "account")}>
-          {railBar(page === "account")}
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
-        </Link>
-        <button
-          type="button"
-          title={t("Sign out")}
-          className={railHit(false)}
-          onClick={async () => {
-            try {
-              await ui.signOut({});
-            } catch (e) {
-              // Already signed out is the goal; anything else keeps the session.
-              if (!isSignedOut(e)) return;
-            }
-            setSession(null);
-          }}
-        >
-          <LogOut size={18} />
-        </button>
-      </div>
+          <button type="button" title={t("Sign out")} className={railHit(false)} onClick={() => void signOut(setSession)}>
+            <LogOut size={18} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex shrink-0 items-center pr-2 pl-1">
+          <AccountMenu page={page} />
+        </div>
+      )}
     </aside>
   );
 }
@@ -148,7 +249,9 @@ export function Shell() {
   useEffect(() => preloadMarkdown(), []);
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
-      <Rail page={page} activeBotId={activeBotId} />
+      {/* On a narrow screen a Bot page carries its own top bar, whose drawer
+          holds this rail: two bars would leave the chat too little room. */}
+      <Rail page={page} activeBotId={activeBotId} className={activeBotId ? "max-wide:hidden" : ""} />
       {/* A Bot page fills the height and scrolls inside its own panes. */}
       <main className={`min-w-0 flex-1 ${activeBotId ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
         <Outlet />

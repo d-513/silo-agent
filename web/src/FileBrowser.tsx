@@ -268,7 +268,7 @@ function Tree({
               {onDelete && (
                 <button
                   type="button"
-                  className={`shrink-0 opacity-0 group-hover:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-on-hatch/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
+                  className={`shrink-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 ${pendingDel === e.path ? "text-vermilion opacity-100" : hatch ? "text-on-hatch/70 hover:text-vermilion" : "text-ink-2 hover:text-vermilion"}`}
                   title={pendingDel === e.path ? t("Click again to delete") : t("Delete")}
                   onClick={() => onDelete(e)}
                 >

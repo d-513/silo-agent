@@ -933,3 +933,14 @@ details > summary::-webkit-details-marker {
 .hljs-built_in {
   color: var(--color-ink-3);
 }
+
+/* On a touch screen iOS zooms the page into any field set under 16px and
+   leaves it zoomed; the console's fields are 13–15px. Unlayered, so it wins
+   over the size utilities. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

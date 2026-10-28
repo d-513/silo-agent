@@ -120,7 +120,7 @@ export function UserBubble({
           </div>
         ) : null}
       </div>
-      <div className="flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100">
+      <div className="flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100">
         <CopyButton text={text} title={t("Copy prompt")} size={13} />
         {onEdit && isLast ? (
           <button type="button" onClick={startEdit} disabled={busy} title={busy ? t("Stop the Bot to edit") : t("Edit and resend")} className={miniBtn}>
@@ -261,7 +261,7 @@ export function Reply({ text, bounds, streaming, onRetry }: { text: string; boun
         {streaming && !text ? <span className="breathe inline-block h-[7px] w-[7px] rounded-full bg-ink" /> : null}
       </Quotable>
       {!streaming ? (
-        <div className="mt-1 -ml-1.5 flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within/reply:translate-y-0 group-focus-within/reply:opacity-100 group-hover/reply:translate-y-0 group-hover/reply:opacity-100">
+        <div className="mt-1 -ml-1.5 flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within/reply:translate-y-0 group-focus-within/reply:opacity-100 group-hover/reply:translate-y-0 group-hover/reply:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100">
           <CopyButton text={text} title={t("Copy reply")} />
           {onRetry ? (
             <button type="button" onClick={onRetry} title={t("Retry")} aria-label={t("Retry")} className={miniBtn}>

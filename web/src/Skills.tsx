@@ -39,13 +39,13 @@ function Section({ title, count, children }: { title: string; count: number; chi
 
 function EmptyState({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
+    <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
         <BookOpen size={28} />
       </div>
       <h3 className="text-base font-semibold text-ink">{title}</h3>
       <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{children}</p>
-      {actions ? <div className="mt-6 flex items-center justify-center gap-3">{actions}</div> : null}
+      {actions ? <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{actions}</div> : null}
     </div>
   );
 }

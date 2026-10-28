@@ -276,7 +276,7 @@ function CardSkeleton() {
 function Empty({ spaceId, build }: { spaceId: string; build: boolean }) {
   return (
     <div className="rise pt-[8vh]">
-      <p className="mb-2 text-[40px] font-medium leading-[48px] tracking-[-0.02em]">{t("No Bots yet")}</p>
+      <p className="mb-2 text-[30px] font-medium leading-[38px] tracking-[-0.02em] wide:text-[40px] wide:leading-[48px]">{t("No Bots yet")}</p>
       <p className="mb-7 max-w-[460px] text-[14px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
       {build ? (
         <Link to="/w/$spaceId/new" params={{ spaceId }} className={btnClass("primary")}>

@@ -1,7 +1,7 @@
 import type { Said } from "../composer/Composer";
-import { Link, Outlet, useMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, Outlet, useLocation, useMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { X } from "lucide-react";
-import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
 import { fail } from "../errors";
@@ -16,7 +16,7 @@ import { useWide } from "../useWide";
 import { BotPageCtx } from "./context";
 import { BotSidebar } from "./BotSidebar";
 import { BotSlip } from "./BotSlip";
-import { BotStrip } from "./BotStrip";
+import { BotDrawer, BotTopBar, MachineTiles } from "./BotDrawer";
 import { MachineRail } from "./MachineRail";
 import { setDocked, useDocked } from "./paneStore";
 import { runActions, type ChatPick } from "./runActions";
@@ -33,7 +33,11 @@ const ArtifactOverlay = lazyNamed(() => import("../ArtifactOverlay"), "ArtifactO
 
 function LoadingBot() {
   return (
-    <div className="flex h-full">
+    <div className="flex h-full max-wide:flex-col">
+      <div className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 bg-well px-3 pt-[env(safe-area-inset-top)] shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden">
+        <div className="skeleton h-7 w-7 rounded-sm" />
+        <div className="skeleton h-4 w-32 rounded-xs" />
+      </div>
       <div className="hidden w-[248px] shrink-0 bg-well px-2 wide:block">
         <div className="flex h-14 items-center px-3">
           <div className="skeleton h-4 w-32 rounded-xs" />
@@ -91,6 +95,14 @@ export function BotPage() {
   const [openAt, setOpenAt] = useState(open ?? "");
   const lastChat = useRef<string | undefined>(undefined);
   const [inspect, setInspect] = useState<Artifact | null>(null);
+  // The narrow layout's drawer; any move to another page puts it away.
+  const [drawer, setDrawer] = useState(false);
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+  const { pathname } = useLocation();
+  useEffect(() => setDrawer(false), [pathname]);
+  useEffect(() => {
+    if (wide) setDrawer(false);
+  }, [wide]);
   const subs = useSubagents(id, chatId);
   const run = useRunStream(id, chatId, {
     onApproval: reloadApprovals,
@@ -239,6 +251,36 @@ export function BotPage() {
       }}
     >
       <div className="flex h-full min-h-0 flex-col">
+        {wide ? null : (
+          <>
+            <BotTopBar
+              bot={bot}
+              tab={tab}
+              chat={chats.find((c) => c.id === chatId)}
+              fresh={fresh}
+              attention={pending.length ? "needs" : bot.dashboardAsks + bot.feedUnread + bot.auditUnseen ? "new" : ""}
+              open={drawer}
+              onOpen={() => setDrawer(true)}
+              onNewChat={onNewChat}
+            />
+            <BotDrawer open={drawer} botId={id} label={bot.name} onClose={closeDrawer}>
+              <BotSidebar
+                id={id}
+                bot={bot}
+                tab={tab}
+                chatId={chatId}
+                chats={chats}
+                rename={rename}
+                pendingCount={pending.length}
+                live={{ waiting, sending: run.sending, agentsBusy }}
+                onNewChat={onNewChat}
+                onDeleteChat={onDeleteChat}
+                drawer
+                machine={<MachineTiles bot={bot} tab={tab} onStart={start} onStop={stop} />}
+              />
+            </BotDrawer>
+          </>
+        )}
         {actErr && (
           <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-[13px] text-vermilion">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
@@ -248,22 +290,8 @@ export function BotPage() {
             </button>
           </div>
         )}
-        <BotStrip
-          id={id}
-          bot={bot}
-          tab={tab}
-          chatId={chatId}
-          chats={chats}
-          rename={rename}
-          pendingCount={pending.length}
-          busy={{ waiting, sending: run.sending }}
-          onNewChat={onNewChat}
-          onDeleteChat={onDeleteChat}
-          onStart={start}
-          onStop={stop}
-        />
-        <div className="relative flex min-h-0 flex-1" style={{ "--wash-left": max ? "0px" : "248px" } as CSSProperties}>
-          {max ? null : (
+        <div className="relative flex min-h-0 flex-1" style={{ "--wash-left": max || !wide ? "0px" : "248px" } as CSSProperties}>
+          {max || !wide ? null : (
             <BotSidebar
               id={id}
               bot={bot}

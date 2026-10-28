@@ -1780,6 +1780,7 @@ const de: Record<string, string> = {
   "Overview": "Übersicht",
   "Invite people": "Personen einladen",
   "Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.": "Alle im Workspace sind auf diesem Bot. Lade Personen im Tab Personen des Workspace ein.",
+  "Open {{name}} menu": "Menü von {{name}} öffnen",
 };
 
 export default de;

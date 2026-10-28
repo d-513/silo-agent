@@ -24,7 +24,9 @@ export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean
 
 // The wide layout's left column, on every page of a Bot: its name and state,
 // the Dashboard under them, New chat, the pages beside the chat, the chats
-// folded into date groups, and Settings at the foot.
+// folded into date groups, and Settings at the foot. In the narrow layout it
+// is the body of the Bot's drawer (`drawer`): one scroll for all of it, rows
+// tall enough for a thumb, and the machine's panes (`machine`) under the pages.
 export function BotSidebar({
   id,
   bot,
@@ -36,6 +38,8 @@ export function BotSidebar({
   live: { waiting, sending, agentsBusy },
   onNewChat,
   onDeleteChat,
+  drawer = false,
+  machine,
 }: {
   id: string;
   bot: Bot;
@@ -47,6 +51,8 @@ export function BotSidebar({
   live: ChatLive;
   onNewChat: () => void;
   onDeleteChat: (cid: string) => void;
+  drawer?: boolean;
+  machine?: ReactNode;
 }) {
   // The main chat is pinned above the pages; the date groups are the side
   // chats.
@@ -79,56 +85,60 @@ export function BotSidebar({
   const mainOpen = tab === "run" && !!main && main.id === chatId;
   const mainStatus = mainOpen && waiting ? "needs_you" : (mainOpen && busy) || bot.activity.some((a) => a.kind === "main") ? "working" : "";
   return (
-    <aside className="hidden w-[248px] shrink-0 flex-col bg-well wide:flex">
-      <BotHome
-        botId={id}
-        bot={bot}
-        on={tab === "dashboard"}
-        needs={pendingCount}
-        asks={bot.dashboardAsks}
-        fresh={freshCount}
-        curating={!!dashQ.data?.curating}
-      />
-      <ActivityStrip bot={bot} />
-      <div className="px-2 pb-3">
-        <MainChat
+    <aside className={drawer ? "flex min-h-0 flex-1 flex-col bg-well" : "hidden w-[248px] shrink-0 flex-col bg-well wide:flex"}>
+      <Scroll drawer={drawer}>
+        <BotHome
           botId={id}
-          mainId={main?.id}
-          on={mainOpen}
-          status={mainStatus}
-          onNewChat={onNewChat}
+          bot={bot}
+          on={tab === "dashboard"}
+          needs={pendingCount}
+          asks={bot.dashboardAsks}
+          fresh={freshCount}
+          curating={!!dashQ.data?.curating}
         />
-      </div>
-      <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
-        <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
-        <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
-        <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
-        <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
-        <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={tab === "feed" ? 0 : bot.feedUnread} />
-        <SideLink to="/bots/$botId/channels" botId={id} on={tab === "channels"} icon={Radio} label={t("Channels")} />
-      </nav>
-      <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">
-        {groups.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No other chats")}</p>}
-        {groups.map((g) => (
-          <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
-            {g.chats.map((c) => {
-              const on = tab === "run" && c.id === chatId;
-              return (
-                <ChatRow
-                  key={c.id}
-                  botId={id}
-                  chat={c}
-                  on={on}
-                  status={on && busy ? (waiting ? "needs_you" : "working") : ""}
-                  rename={rename}
-                  onDelete={() => onDeleteChat(c.id)}
-                  team={g.key === "team"}
-                />
-              );
-            })}
-          </ChatGroupSection>
-        ))}
-      </div>
+        <ActivityStrip bot={bot} />
+        <div className="px-2 pb-3">
+          <MainChat
+            botId={id}
+            mainId={main?.id}
+            on={mainOpen}
+            status={mainStatus}
+            onNewChat={onNewChat}
+          />
+        </div>
+        <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
+          <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
+          <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
+          <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
+          <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
+          <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={tab === "feed" ? 0 : bot.feedUnread} />
+          <SideLink to="/bots/$botId/channels" botId={id} on={tab === "channels"} icon={Radio} label={t("Channels")} />
+        </nav>
+        {machine}
+        <div className={drawer ? "mt-4 px-2 pb-3" : "mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3"}>
+          {groups.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No other chats")}</p>}
+          {groups.map((g) => (
+            <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
+              {g.chats.map((c) => {
+                const on = tab === "run" && c.id === chatId;
+                return (
+                  <ChatRow
+                    key={c.id}
+                    botId={id}
+                    chat={c}
+                    on={on}
+                    status={on && busy ? (waiting ? "needs_you" : "working") : ""}
+                    rename={rename}
+                    onDelete={() => onDeleteChat(c.id)}
+                    team={g.key === "team"}
+                    touch={drawer}
+                  />
+                );
+              })}
+            </ChatGroupSection>
+          ))}
+        </div>
+      </Scroll>
       <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label={t("Bot")}>
         <SideLink
           to="/bots/$botId/settings"
@@ -141,6 +151,12 @@ export function BotSidebar({
       </nav>
     </aside>
   );
+}
+
+// Scroll is the drawer's one scroll; the wide column scrolls only its chats.
+function Scroll({ drawer, children }: { drawer: boolean; children: ReactNode }) {
+  if (!drawer) return <>{children}</>;
+  return <div className="min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>;
 }
 
 // BotHome heads the sidebar: the Bot's name and state over its Dashboard, so
@@ -326,7 +342,7 @@ function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; o
         type="button"
         aria-expanded={open}
         onClick={() => setGroupOpen(group.key, !open)}
-        className="group/head sticky top-0 z-10 flex h-7 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-label-caps leading-4 text-ink-3 uppercase transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
+        className="group/head sticky top-0 z-10 flex h-7 in-data-drawer:h-9 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-label-caps leading-4 text-ink-3 uppercase transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
       >
         <span className="min-w-0 flex-1 truncate">{group.label}</span>
         <span
@@ -353,6 +369,7 @@ function ChatRow({
   rename,
   onDelete,
   team = false,
+  touch = false,
 }: {
   botId: string;
   chat: Chat;
@@ -364,6 +381,8 @@ function ChatRow({
   // A row of the Team group: someone else's chat, or the Bot's own. It
   // reads only: no rename, no delete.
   team?: boolean;
+  // In the drawer: there is no hover, so the open row shows its actions.
+  touch?: boolean;
 }) {
   const editing = rename.editing === chat.id;
   const ms = Date.parse(chat.updatedAt);
@@ -387,7 +406,7 @@ function ChatRow({
             e.preventDefault();
             if (!team) rename.begin(chat);
           }}
-          className="flex h-8 min-w-0 items-center gap-2 rounded-control pr-2 pl-3 outline-offset-[-2px]"
+          className={`flex min-w-0 items-center gap-2 rounded-control pl-3 outline-offset-[-2px] ${touch ? "h-10" : "h-8"} ${touch && on && !team ? "pr-[76px]" : "pr-2"}`}
         >
           {team ? chat.author ? <Initials email={chat.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} /> : null}
           <span
@@ -401,12 +420,22 @@ function ChatRow({
         </Link>
       )}
       {!editing && !team && (
-        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 opacity-0 transition-opacity duration-[160ms] ease-quiet group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
+        <span
+          className={`absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 transition-opacity duration-[160ms] ease-quiet ${
+            touch
+              ? on
+                ? ""
+                : "hidden"
+              : `pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100 ${
+                  on ? "[@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100" : ""
+                }`
+          }`}
+        >
           <button
             type="button"
             title={t("Rename chat")}
             aria-label={t("Rename chat")}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+            className={`flex items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink ${touch ? "h-9 w-8" : "h-7 w-7"}`}
             onClick={(e) => {
               e.preventDefault();
               rename.begin(chat);
@@ -418,7 +447,7 @@ function ChatRow({
             type="button"
             title={t("Delete chat")}
             aria-label={t("Delete chat")}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion"
+            className={`flex items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion ${touch ? "h-9 w-8" : "h-7 w-7"}`}
             onClick={onDelete}
           >
             <Trash2 size={13} />

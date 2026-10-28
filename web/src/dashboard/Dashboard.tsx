@@ -224,7 +224,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   if (empty && !working) {
     return (
       <div ref={ref} className="silo-page flex min-h-full max-w-[680px] flex-col justify-center pb-24">
-        <h2 className="text-center text-[40px] leading-[48px] font-medium tracking-[-0.02em] text-ink">{t("Nothing on the board yet")}</h2>
+        <h2 className="text-center text-[30px] leading-[38px] font-medium tracking-[-0.02em] text-ink wide:text-[40px] wide:leading-[48px]">{t("Nothing on the board yet")}</h2>
         <p className="mt-2 mb-7 text-center text-ink-2">
           {t("Say what you want to keep an eye on. {{name}} builds it once and keeps it current.", { name: bot.name })}
         </p>
@@ -329,7 +329,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       ) : null}
 
       {!widgets.some((w) => w.kind === "ideas") && widgets.length < 3 ? (
-        <div className="mb-2.5">
+        <div className={`mb-2.5 grid gap-2.5 ${cols > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
           <StarterIdeas botId={bot.id} name={bot.name} />
         </div>
       ) : null}

@@ -105,7 +105,7 @@ export function AdapterPicker({
           ))}
         </div>
       ) : adapters.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center text-ink-3">{t("No channel adapters available on this system.")}</div>
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12 text-ink-3">{t("No channel adapters available on this system.")}</div>
       ) : shown.length === 0 ? (
         <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
           <p className="text-[13px]">{t("No channels match “{{search}}”.", { search })}</p>

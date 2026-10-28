@@ -129,13 +129,13 @@ export function SpaceConnectors() {
 
       {tab === "space" ? (
         rows.length === 0 ? (
-          <div className="rounded-card border border-dashed border-line bg-surface p-12 text-center">
+          <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
               <Plug size={28} />
             </div>
             <h3 className="text-base font-semibold text-ink">{t("No connectors in this workspace yet")}</h3>
             <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{t("Add one from the library or connect your own MCP server, then choose which Bots can use it.")}</p>
-            <div className="mt-6 flex items-center justify-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button type="button" className={btnClass("primary")} onClick={() => setTab("library")}>
                 {t("Browse Library")}
               </button>

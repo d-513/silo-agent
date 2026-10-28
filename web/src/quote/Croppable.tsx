@@ -79,7 +79,7 @@ export function Croppable({ src, alt, target, className }: { src: string; alt: s
       <img ref={img} src={src} alt={alt} className={className} draggable={false} />
       {mode === "off" ? (
         sink.canUpload ? (
-          <button type="button" onClick={() => setMode("drag")} className={`${tool} absolute top-2 right-2 opacity-0 group-hover/crop:opacity-100 focus-visible:opacity-100`}>
+          <button type="button" onClick={() => setMode("drag")} className={`${tool} absolute top-2 right-2 opacity-0 group-hover/crop:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100`}>
             <Crop size={13} />
             {t("Quote a region")}
           </button>

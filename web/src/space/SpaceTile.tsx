@@ -105,7 +105,7 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
               tabIndex={-1}
               aria-label={t("Workspaces")}
               onKeyDown={onKeyDown}
-              className="fixed z-50 w-[260px] rounded-control bg-surface p-1 shadow-slip outline-none"
+              className="fixed z-50 w-[min(260px,calc(100vw-16px))] rounded-control bg-surface p-1 shadow-slip outline-none"
               style={box}
             >
               <div className="rise">

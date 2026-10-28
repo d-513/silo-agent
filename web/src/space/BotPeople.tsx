@@ -142,7 +142,7 @@ function AddPeople({ botId, candidates, onAdded }: { botId: string; candidates: 
         {t("Add people")}
       </button>
       {open ? (
-        <div ref={menu} role="dialog" aria-label={t("Add people")} className="absolute right-0 z-40 mt-2 w-[340px] rounded-control bg-surface p-3 shadow-slip">
+        <div ref={menu} role="dialog" aria-label={t("Add people")} className="absolute right-0 z-40 mt-2 w-[min(340px,calc(100vw-2rem))] rounded-control bg-surface p-3 shadow-slip">
           <div className="rise">
             <div className="mb-2 flex items-center justify-between">
               <ChipRadio size="sm" label={t("Role")} value={role} onChange={setRole} options={roleOptions(false)} />

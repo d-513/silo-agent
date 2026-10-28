@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "../i18n.ts";
 
 // The pages a Bot's sidebar opens: the conversation-side ones, Channels, the
-// first page of Settings, and (in the narrow strip) the machine panes.
+// first page of Settings, and (in the narrow drawer) the machine panes.
 type SideTo =
   | "/bots/$botId/dashboard"
   | "/bots/$botId/automations"
@@ -42,7 +42,7 @@ export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SidePr
       to={to}
       params={{ botId }}
       data-tab-on={on || undefined}
-      className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+      className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] in-data-drawer:h-10 font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
         on ? "bg-surface text-ink" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
     >
@@ -65,24 +65,5 @@ export function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
     <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-on-accent">
       {n > 99 ? "99+" : n}
     </span>
-  );
-}
-
-// SideChip is SideLink in the narrow chip strip: icon only unless active.
-export function SideChip({ to, botId, on, icon: Icon, label, badge = 0 }: SideProps) {
-  return (
-    <Link
-      to={to}
-      params={{ botId }}
-      title={label}
-      aria-label={label}
-      className={`relative flex h-10 shrink-0 items-center gap-2 rounded-control px-3 text-[13px] font-medium ${
-        on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
-      }`}
-    >
-      <Icon size={15} />
-      {on && label}
-      {badge > 0 && !on ? <UnreadBadge n={badge} dot /> : null}
-    </Link>
   );
 }

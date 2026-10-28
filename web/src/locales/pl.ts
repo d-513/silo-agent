@@ -1872,6 +1872,7 @@ const pl: Record<string, string> = {
   "Overview": "Przegląd",
   "Invite people": "Zaproś osoby",
   "Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.": "Wszyscy z przestrzeni roboczej są już w tym Bocie. Zaproś osoby w zakładce Osoby przestrzeni roboczej.",
+  "Open {{name}} menu": "Otwórz menu: {{name}}",
 };
 
 export default pl;
