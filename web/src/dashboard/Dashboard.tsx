@@ -25,7 +25,7 @@ import { reorder } from "./widgets";
 
 // The Dashboard is the owner's board for one Bot, top to bottom: one meta line
 // (when the Bot last looked, when it looks next, Look again, Arrange), what
-// needs the owner (approvals and the Bot's asks, with the vermilion ribbon),
+// needs the owner (approvals on the vermilion ribbon, then the Bot's asks),
 // the Feed's new posts, then the widgets, and an ask bar pinned to the foot
 // for changing any of it in words. Nothing here explains itself: an empty
 // board is the ask bar with a few suggestions.

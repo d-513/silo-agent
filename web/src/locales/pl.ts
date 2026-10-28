@@ -1632,6 +1632,7 @@ const pl: Record<string, string> = {
   "Answers in the main chat. Ctrl/⌘-click for a new chat.": "Odpowiada w głównym czacie. Ctrl/⌘ + klik, aby w nowym czacie.",
   "Opens in the main chat. Ctrl/⌘-click for a new chat.": "Otwiera się w głównym czacie. Ctrl/⌘ + klik, aby w nowym czacie.",
   "What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.": "Co ten bot opublikował dla Ciebie na później. Odpowiedz na wpis w głównym czacie albo w osobnym czacie.",
+  "Question for you": "Pytanie do Ciebie",
   "Answered": "Odpowiedziano",
   "Put away": "Odłożone",
   "{{what}} is not available on this server any more.": "{{what}} nie jest już dostępne na tym serwerze.",

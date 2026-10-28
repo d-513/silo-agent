@@ -692,6 +692,31 @@ details > summary::-webkit-details-marker {
   color: var(--color-ink);
 }
 
+/* An ask's question: the Bot's voice a step smaller than a reply, ink-2 once answered. */
+.ask-question {
+  font-size: 16px;
+  line-height: 26px;
+}
+.ask-question.is-closed {
+  color: var(--color-ink-2);
+}
+
+/* A picked choice's tick settles in. */
+.ask-tick {
+  animation: ask-tick 200ms var(--ease-settle) both;
+}
+@keyframes ask-tick {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-tick {
+    animation: none;
+  }
+}
+
 /* The breathing ink dot at the end of a streaming reply. */
 .silo-live .silo-md > :last-child:not(ul, ol, pre, table, .silo-md-table)::after,
 .silo-live .silo-md > :is(ul, ol):last-child > li:last-child::after {
