@@ -15,6 +15,7 @@ import (
 	"silo.agent/internal/app/space"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/llm/dummy"
 	"silo.agent/internal/skills"
 )
 
@@ -321,5 +322,42 @@ func TestPersonalScopeIsTheHomeWorkspace(t *testing.T) {
 	}
 	if res, err := h.Client.ListSkills(h.Ctx(), rq(&v1.ListSkillsRequest{Scope: "personal"})); err != nil || len(res.Msg.GetSkills()) != 1 {
 		t.Fatalf("listing personal: %v %v", res, err)
+	}
+}
+
+// The Workspace's overview says of each Bot when it last worked and what it
+// will do next on its own, from the list alone.
+func TestListBotsSaysWhenAndWhatNext(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	sp := homeSpace(t, h)
+	bot := h.CreateBot("Pulse")
+	listed := func() *v1.Bot {
+		t.Helper()
+		res, err := h.Client.ListBots(h.Ctx(), connect.NewRequest(&v1.ListBotsRequest{SpaceId: sp}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, b := range res.Msg.GetBots() {
+			if b.GetId() == bot.GetId() {
+				return b
+			}
+		}
+		t.Fatal("the Bot is not listed")
+		return nil
+	}
+	if b := listed(); b.GetLastActiveAt() != "" || b.GetNextRunName() != "" {
+		t.Fatalf("a new Bot has worked or has plans: %+v", b)
+	}
+	createAutomation(t, h, bot.GetId(), "Morning digest", "Summarize the news.", "0 9 * * *")
+	createAutomation(t, h, bot.GetId(), "Monthly report", "Write the report.", "0 9 1 * *")
+	runID, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "hello")
+	h.WaitRun(runID)
+	b := listed()
+	if b.GetLastActiveAt() == "" {
+		t.Fatal("no last active time after a run")
+	}
+	if b.GetNextRunName() != "Morning digest" || b.GetNextRunAt() == "" {
+		t.Fatalf("next run = %q at %q, want the daily one first", b.GetNextRunName(), b.GetNextRunAt())
 	}
 }

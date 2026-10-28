@@ -151,7 +151,7 @@ function AddPeople({ botId, candidates, onAdded }: { botId: string; candidates: 
               </button>
             </div>
             {candidates.length === 0 ? (
-              <p className="px-1 py-2 text-[12.5px] text-ink-3">{t("Everyone in the workspace is on this Bot. Invite people from Workspace settings.")}</p>
+              <p className="px-1 py-2 text-[12.5px] text-ink-3">{t("Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.")}</p>
             ) : (
               <ul className="max-h-[260px] overflow-auto">
                 {candidates.map((p) => (

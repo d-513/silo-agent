@@ -2109,7 +2109,13 @@ type Bot struct {
 	Role string `protobuf:"bytes,25,opt,name=role,proto3" json:"role,omitempty"`
 	// Everyone on the Bot, when it has more than one person (the sidebar's
 	// people); empty for a Bot with one.
-	People        []*BotPerson `protobuf:"bytes,26,rep,name=people,proto3" json:"people,omitempty"`
+	People []*BotPerson `protobuf:"bytes,26,rep,name=people,proto3" json:"people,omitempty"`
+	// Listed only (ListBots), for the Workspace's overview: when its newest
+	// run started (RFC 3339, "" never), and the next automation that will
+	// fire on its own, by name and time.
+	LastActiveAt  string `protobuf:"bytes,27,opt,name=last_active_at,json=lastActiveAt,proto3" json:"last_active_at,omitempty"`
+	NextRunName   string `protobuf:"bytes,28,opt,name=next_run_name,json=nextRunName,proto3" json:"next_run_name,omitempty"`
+	NextRunAt     string `protobuf:"bytes,29,opt,name=next_run_at,json=nextRunAt,proto3" json:"next_run_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2317,6 +2323,27 @@ func (x *Bot) GetPeople() []*BotPerson {
 		return x.People
 	}
 	return nil
+}
+
+func (x *Bot) GetLastActiveAt() string {
+	if x != nil {
+		return x.LastActiveAt
+	}
+	return ""
+}
+
+func (x *Bot) GetNextRunName() string {
+	if x != nil {
+		return x.NextRunName
+	}
+	return ""
+}
+
+func (x *Bot) GetNextRunAt() string {
+	if x != nil {
+		return x.NextRunAt
+	}
+	return ""
 }
 
 // Space is a Workspace as the caller sees it.
@@ -27931,7 +27958,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xab\x06\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x95\a\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -27959,7 +27986,10 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bactivity\x18\x17 \x03(\v2\x14.silo.v1.BotActivityR\bactivity\x12\x19\n" +
 	"\bspace_id\x18\x18 \x01(\tR\aspaceId\x12\x12\n" +
 	"\x04role\x18\x19 \x01(\tR\x04role\x12*\n" +
-	"\x06people\x18\x1a \x03(\v2\x12.silo.v1.BotPersonR\x06peopleJ\x04\b\t\x10\n" +
+	"\x06people\x18\x1a \x03(\v2\x12.silo.v1.BotPersonR\x06people\x12$\n" +
+	"\x0elast_active_at\x18\x1b \x01(\tR\flastActiveAt\x12\"\n" +
+	"\rnext_run_name\x18\x1c \x01(\tR\vnextRunName\x12\x1e\n" +
+	"\vnext_run_at\x18\x1d \x01(\tR\tnextRunAtJ\x04\b\t\x10\n" +
 	"\"\x9e\x01\n" +
 	"\x05Space\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +

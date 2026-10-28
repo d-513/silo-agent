@@ -95,10 +95,21 @@ func (a *App) ListBots(ctx context.Context, req *connect.Request[v1.ListBotsRequ
 		return nil, err
 	}
 	out := &v1.ListBotsResponse{}
+	ids := make([]string, len(bots))
+	for i := range bots {
+		ids[i] = bots[i].ID
+	}
+	last, next := a.lastActive(ids), a.nextRuns(ids)
 	for i := range bots {
 		p := a.viewBot(ctx, &bots[i])
 		p.Soul = ""
 		p.OutputPolicy = ""
+		if t, ok := last[p.Id]; ok {
+			p.LastActiveAt = t.UTC().Format(time.RFC3339)
+		}
+		if au, ok := next[p.Id]; ok {
+			p.NextRunName, p.NextRunAt = au.Name, au.NextRunAt.UTC().Format(time.RFC3339)
+		}
 		out.Bots = append(out.Bots, p)
 	}
 	// A Workspace's admins see that its other Bots exist, who is on them and
@@ -713,4 +724,37 @@ func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListCh
 		out.Events = append(out.Events, a.threadEvent(&rows[i], chatID))
 	}
 	return connect.NewResponse(out), nil
+}
+
+// lastActive is when each Bot's newest run started.
+func (a *App) lastActive(botIDs []string) map[string]time.Time {
+	out := map[string]time.Time{}
+	if len(botIDs) == 0 {
+		return out
+	}
+	var rows []struct {
+		BotID string
+		At    time.Time
+	}
+	a.DB.Model(&db.Run{}).Select("bot_id, max(created_at) AS at").Where("bot_id IN ?", botIDs).Group("bot_id").Scan(&rows)
+	for _, r := range rows {
+		out[r.BotID] = r.At
+	}
+	return out
+}
+
+// nextRuns is the enabled automation of each Bot that fires soonest.
+func (a *App) nextRuns(botIDs []string) map[string]db.Automation {
+	out := map[string]db.Automation{}
+	if len(botIDs) == 0 {
+		return out
+	}
+	var rows []db.Automation
+	a.DB.Select("DISTINCT ON (bot_id) bot_id, name, next_run_at").
+		Where("bot_id IN ? AND enabled AND next_run_at IS NOT NULL", botIDs).
+		Order("bot_id, next_run_at").Find(&rows)
+	for _, r := range rows {
+		out[r.BotID] = r
+	}
+	return out
 }

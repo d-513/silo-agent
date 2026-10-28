@@ -40,7 +40,7 @@ import { SignIn } from "./SignIn";
 import { JoinPage } from "./space/JoinPage";
 import { SpaceInvitePage, SpacePeople, SpaceRemovePage } from "./space/People";
 import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
-import { SpaceIndex, SpaceLayout } from "./space/Workspace";
+import { SpaceLayout } from "./space/Workspace";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
 // or it does not exist: nothing parses a path by hand, and every Link and
@@ -131,7 +131,7 @@ const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", comp
 const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
 const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: SpaceLayout });
-const spaceIndex = createRoute({ getParentRoute: () => space, path: "/", component: SpaceIndex });
+const spaceIndex = createRoute({ getParentRoute: () => space, path: "/", component: lazyRouteComponent(() => import("./space/Overview"), "SpaceOverview") });
 const spaceConnectors = createRoute({ getParentRoute: () => space, path: "connectors", component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors") });
 const spaceSkills = createRoute({ getParentRoute: () => space, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
 const spaceDrives = createRoute({ getParentRoute: () => space, path: "drives", component: Outlet });

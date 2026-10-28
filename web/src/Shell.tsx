@@ -1,4 +1,4 @@
-import { Building2, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
+import { Boxes, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AccountPage } from "./account/AccountPage";
@@ -69,7 +69,7 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
         {space ? (
           <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Workspace")} className={railHit(page === "workspace")}>
             {railBar(page === "workspace")}
-            <Building2 size={20} />
+            <Boxes size={20} />
           </Link>
         ) : null}
         <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />

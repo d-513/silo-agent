@@ -605,6 +605,12 @@ message Bot {
   // Everyone on the Bot, when it has more than one person (the sidebar's
   // people); empty for a Bot with one.
   repeated BotPerson people = 26;
+  // Listed only (ListBots), for the Workspace's overview: when its newest
+  // run started (RFC 3339, "" never), and the next automation that will
+  // fire on its own, by name and time.
+  string last_active_at = 27;
+  string next_run_name = 28;
+  string next_run_at = 29;
 }
 
 // Space is a Workspace as the caller sees it.
