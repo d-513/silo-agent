@@ -241,11 +241,14 @@ final class AppModel {
         }
     }
 
-    /// The Bot the app opens on: the last one used, else the first.
+    /// The Bot the app opens on: the last one used, else the first, in the Workspace last used.
+    /// None when that Workspace has no Bot of the user's (the root shows the Workspace page).
     func pickBot() {
         guard selectedBotID == nil || !bots.contains(where: { $0.id == selectedBotID }) else { return }
         let last = UserDefaults.standard.string(forKey: "lastBot")
-        selectedBotID = bots.first { $0.id == last }?.id ?? bots.first?.id
+        let space = UserDefaults.standard.string(forKey: SpaceModel.lastSpaceKey)
+        let mine = space == nil ? bots : bots.filter { $0.spaceID == space }
+        selectedBotID = mine.first { $0.id == last }?.id ?? mine.first?.id
     }
 
     /// Loads a Bot's chats and opens the last chat used with it, else a new one.

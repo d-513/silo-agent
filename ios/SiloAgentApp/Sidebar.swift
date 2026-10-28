@@ -2,13 +2,15 @@ import Observation
 import SiloClient
 import SwiftUI
 
-/// The web sidebar on a phone: the Bots' crests, the Bot's name and status, New chat, the pages
-/// beside the chat, the chats in date groups, and Customize, Settings and the account at the foot.
+/// The web sidebar on a phone: the Workspace tile and its Bots' crests, the Bot's name and status,
+/// New chat, the pages beside the chat, the chats in date groups, and Channels, the Workspace,
+/// Settings and the account at the foot.
 struct BotSidebar: View {
     @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
     @State private var creating = false
     @State private var account = false
-    @State private var hub = false
+    @State private var newSpace = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,7 +33,7 @@ struct BotSidebar: View {
         .background(Theme.well.ignoresSafeArea())
         .sheet(isPresented: $creating) { NewBotView() }
         .sheet(isPresented: $account) { AccountView(modal: true) }
-        .sheet(isPresented: $hub) { SkillHub() }
+        .sheet(isPresented: $newSpace) { NewSpaceSheet() }
     }
 
     // MARK: crests
@@ -40,7 +42,11 @@ struct BotSidebar: View {
         @Bindable var model = model
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                ForEach(model.bots, id: \.id) { bot in
+                SpaceSwitcher(newSpace: { newSpace = true }) {
+                    SpaceMarkView(mark: spaces.current?.mark ?? "", size: 40)
+                }
+                Theme.line.frame(width: 1, height: 24)
+                ForEach(spaces.bots, id: \.id) { bot in
                     Button {
                         if bot.id == model.selectedBotID { model.newChat() } else { model.selectedBotID = bot.id }
                     } label: {
@@ -59,15 +65,17 @@ struct BotSidebar: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(bot.name)
                 }
-                Button { creating = true } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Theme.ink3)
-                        .frame(width: 40, height: 40)
-                        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                if canBuildSpace(spaces.role) {
+                    Button { creating = true } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Theme.ink3)
+                            .frame(width: 40, height: 40)
+                            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New Bot")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("New Bot")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -139,10 +147,11 @@ struct BotSidebar: View {
     private var foot: some View {
         VStack(alignment: .leading, spacing: 0) {
             Theme.line.frame(height: 1)
-            SideRow(symbol: "slider.horizontal.3", title: "Customize", on: model.path.first == .customize) { go(.customize) }
+            SideRow(symbol: BotTab.channels.symbol, title: "Channels", on: model.path.first == .page(.channels)) { go(.page(.channels)) }
+            SideRow(symbol: BotTab.workspace.symbol, title: spaces.current?.name ?? "Workspace",
+                    on: model.path.first == .workspace || model.path.first.map { if case .space = $0 { return true } else { return false } } == true) { go(.workspace) }
             SideRow(symbol: "gearshape", title: "Settings", on: model.path.first == .settings) { go(.settings) }
             Theme.line.frame(height: 1).padding(.top, 4)
-            SideRow(symbol: "square.stack.3d.up", title: "Skill Hub") { hub = true }
             ProfileRow { account = true }
         }
     }

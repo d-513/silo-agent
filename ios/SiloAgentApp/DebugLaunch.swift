@@ -8,7 +8,7 @@ import SiloClient
 ///   SILO_DEV_EMAIL / SILO_DEV_PASSWORD / SILO_DEV_SERVER   sign in
 ///   SILO_DEV_BOT=<index>                                   select that Bot
 ///   SILO_DEV_PATH=feed,files,chat:0                        push pages / open the nth chat
-///                 new, sidebar, machine, customize, settings-list
+///                 new, sidebar, machine, workspace, space:<tab>, settings-list
 enum DebugLaunch {
     @MainActor
     static func run(_ model: AppModel) async {
@@ -43,8 +43,10 @@ enum DebugLaunch {
                 model.sidebarOpen = true
             } else if step == "machine" {
                 model.machineOpen = true
-            } else if step == "customize" {
-                model.path.append(.customize)
+            } else if step == "workspace" {
+                model.path.append(.workspace)
+            } else if step.hasPrefix("space:"), let tab = SpaceTab(rawValue: String(step.dropFirst(6))) {
+                model.path.append(.space(tab))
             } else if step == "settings-list" {
                 model.path.append(.settings)
             }

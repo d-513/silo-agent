@@ -4,14 +4,17 @@ import SwiftUI
 /// The pages pushed over the chat. The chat itself is the stack's root, never a route.
 enum BotRoute: Hashable {
     case page(BotTab)
-    /// The Customize and Settings lists, as on the web sidebar.
-    case customize
+    /// The Settings list, as on the web sidebar.
     case settings
+    /// The Workspace page (its overview) and one of its tabs.
+    case workspace
+    case space(SpaceTab)
 }
 
 /// The Bot pages. The conversation-side pages (Dashboard … Feed) sit beside the chats list on web;
-/// Files, Changes and Mail are the machine rail's panes; the rest are Customize and Settings.
-/// Desktop and Console stay web-only (see `ios/todo_skipped.md`).
+/// Files, Changes and Mail are the machine rail's panes; Channels is the Bot's own; the rest are
+/// Settings. What the Bot shares with its Workspace (connectors, skills, drives) is on the
+/// Workspace page. Desktop and Console stay web-only (see `ios/todo_skipped.md`).
 enum BotTab: String, CaseIterable, Identifiable {
     case chat
     case dashboard
@@ -24,10 +27,9 @@ enum BotTab: String, CaseIterable, Identifiable {
     case files
     case changes
     case mail
-    case drives
-    case connectors
     case channels
-    case skills
+    case people
+    case workspace
     case secrets
     case rules
     case audit
@@ -46,14 +48,13 @@ enum BotTab: String, CaseIterable, Identifiable {
         case .memories: return "Memories"
         case .knowledge: return "Knowledge"
         case .feed: return "Feed"
-        case .drives: return "Drives"
         case .desktop: return "Desktop"
         case .files: return "Files"
         case .changes: return "Changes"
         case .mail: return "Mail"
-        case .connectors: return "Connectors"
         case .channels: return "Channels"
-        case .skills: return "Skills"
+        case .people: return "People"
+        case .workspace: return "Workspace"
         case .secrets: return "Secrets"
         case .rules: return "Rules"
         case .audit: return "Audit"
@@ -72,19 +73,32 @@ enum BotTab: String, CaseIterable, Identifiable {
         case .memories: return "brain"
         case .knowledge: return "text.book.closed"
         case .feed: return "tray.full"
-        case .drives: return "externaldrive"
         case .desktop: return "display"
         case .files: return "folder"
         case .changes: return "clock.arrow.trianglehead.counterclockwise.rotate.90"
         case .mail: return "envelope"
-        case .connectors: return "puzzlepiece.extension"
         case .channels: return "antenna.radiowaves.left.and.right"
-        case .skills: return "square.stack.3d.up"
+        case .people: return "person.2"
+        case .workspace: return "rectangle.3.group"
         case .secrets: return "key"
         case .rules: return "checklist"
         case .audit: return "list.bullet.rectangle"
         case .tunnels: return "network"
         case .container: return "shippingbox"
+        case .settings: return "slider.horizontal.3"
+        }
+    }
+}
+
+extension SpaceTab {
+    var symbol: String {
+        switch self {
+        case .connectors: return "puzzlepiece.extension"
+        case .skills: return "book"
+        case .drives: return "externaldrive"
+        case .people: return "person.2"
+        case .rules: return "checklist"
+        case .activity: return "clock.arrow.circlepath"
         case .settings: return "slider.horizontal.3"
         }
     }
