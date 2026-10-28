@@ -84,9 +84,8 @@ var RPCs = map[string]RPCNeed{
 	"SetBotRole":               BotManage,
 	"RemoveBotPerson":          BotUse,    // leaving; taking someone else off needs BotAdminister
 	"SetLendShared":            SpaceView, // and only the lender
-	"ListSpaceRules":           SpaceBuild,
+	"ListSpaceRules":           SpaceAdmin,
 	"SetSpaceRule":             SpaceAdmin,
-	"DeleteSpaceRule":          SpaceAdmin,
 	"UpdateSpacePolicy":        SpaceAdmin,
 	"ListSpaceActivity":        SpaceAdmin,
 	"PlanMoveBot":              BotManage, // and SpaceBuild in the target

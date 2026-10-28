@@ -2,8 +2,8 @@ import { MessageCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { t } from "../i18n.ts";
 
-// The pages a Bot's sidebar opens: the conversation-side ones, the first page
-// of Customize and of Settings, and (in the narrow strip) the machine panes.
+// The pages a Bot's sidebar opens: the conversation-side ones, Channels, the
+// first page of Settings, and (in the narrow strip) the machine panes.
 type SideTo =
   | "/bots/$botId/dashboard"
   | "/bots/$botId/automations"
@@ -11,7 +11,7 @@ type SideTo =
   | "/bots/$botId/memories"
   | "/bots/$botId/knowledge"
   | "/bots/$botId/feed"
-  | "/bots/$botId/connectors"
+  | "/bots/$botId/channels"
   | "/bots/$botId/settings"
   | "/bots/$botId/files"
   | "/bots/$botId/desktop"

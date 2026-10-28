@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { attachedCount, categoriesOf, categoryOf, filterAttached, filterCatalog, groupByCategory, isCustom, nextCopyName } from "./model.ts";
+import { categoriesOf, categoryOf, filterCatalog, groupByCategory, isCustom, nextCopyName } from "./model.ts";
 
 const lib = (name: string, category: string, extra: object = {}) => ({ id: name.toLowerCase(), name, description: `${name} tools`, category, transport: "http", kind: "library", sourceId: "", ...extra }) as any;
 const catalog = [lib("GitHub", "Developer"), lib("Linear", "Developer"), lib("Notion", ""), lib("Slack", "Communication", { transport: "stdio" })];
@@ -23,10 +23,3 @@ eq(filterCatalog(catalog, "zzz", "all"), [], "no match");
 
 eq([...groupByCategory(catalog).entries()].map(([k, v]) => [k, v.length]), [["Developer", 2], ["General", 1], ["Communication", 1]], "groups keep first-seen order");
 
-const row = (c: any, authStatus = "authorized") => ({ id: "r" + c.id, connector: c, authStatus }) as any;
-eq(filterAttached([row(catalog[0]), row(catalog[1], "needs_auth")], "needs").map((r) => r.connector.name), ["Linear"], "attached search matches status");
-eq(filterAttached([row(catalog[0])], "").length, 1, "empty search keeps all");
-eq(filterAttached([{ id: "x", connector: undefined, authStatus: "" } as any], "a"), [], "a row without a connector never matches");
-
-eq(attachedCount([row(lib("GitHub", "", { sourceId: "k1" })), row(lib("GitHub 2", "", { sourceId: "k1" }))], "k1"), 2, "by source id");
-eq(attachedCount([row(lib("GitHub", ""))], "github"), 1, "by name");

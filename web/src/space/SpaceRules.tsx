@@ -1,139 +1,145 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ui } from "../api";
-import { RuleLayerPanel } from "../admin/OperatorRulesPanel";
-import { Btn } from "../Btn";
 import { fail } from "../errors";
-import { ErrorWell, Panel, SkeletonRows, textareaClass } from "../Field";
-import { ago } from "../format";
-import { UI, type SpaceActivity } from "../gen/silo/v1/ui_pb";
+import { useSave } from "../Feedback";
+import { ErrorWell, SkeletonRows } from "../Field";
+import { UI, type Rule, type RuleSection } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
-import { reload } from "../query";
-import { canAdmin, useSpaces } from "./spaces";
+import { patch, reload } from "../query";
+import { countRules, filterSections, sideSections, withDecision, withSectionDecision, type Side } from "../rules/model";
+import { PolicyPanel } from "../rules/PolicyPanel";
+import { RulesFilter } from "../rules/RulesFilter";
+import { SectionCard } from "../rules/SectionCard";
+import { TabPill, TabPills } from "../TabPills";
 
-// /w/$spaceId/settings/rules: the Workspace's layer of the rules engine,
-// between the operator's and each Bot's, and its policy texts.
+const none: RuleSection[] = [];
+
+// /w/$spaceId/rules: the Workspace's guardrails. The same sections and
+// switches as a Bot's Rules page, but what is set here is the least strict a
+// Bot of the Workspace may go: Ask here means no Bot may Allow it. Allow (and
+// Pass) is no limit, so every Bot decides for itself.
 export function SpaceRules() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/rules" });
-  const admin = canAdmin(useSpaces().spaces?.find((s) => s.id === spaceId)?.role);
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/rules" });
   const q = useQuery(UI.method.listSpaceRules, { spaceId });
-  return (
-    <div className="silo-page silo-page-wide rise space-y-6">
-      {q.error ? <ErrorWell>{fail(q.error)}</ErrorWell> : null}
-      {admin ? (
-        <RuleLayerPanel
-          title={t("Workspace rules")}
-          note={t("A rule here applies to every Bot in the workspace, under the operator's. A locked row is a floor: a Bot's managers may make it stricter, never looser. An unlocked one is a default they override. Use * as the action to cover a whole connector.")}
-          empty={t("No workspace rules yet.")}
-          rules={q.data?.rules ?? []}
-          onSet={async (row) => {
-            await ui.setSpaceRule({ spaceId, ...row });
-            await reload(UI.method.listSpaceRules, { spaceId });
-          }}
-          onDelete={async (row) => {
-            await ui.deleteSpaceRule({ spaceId, connector: row.connector, action: row.action });
-            await reload(UI.method.listSpaceRules, { spaceId });
-          }}
-        />
-      ) : (
-        <p className="text-[13.5px] text-ink-2">{t("Only the workspace's admins change its rules.")}</p>
-      )}
-      {admin && q.data ? <Policies key={spaceId} spaceId={spaceId} approval={q.data.approvalPolicy} output={q.data.outputPolicy} /> : null}
-    </div>
-  );
-}
-
-function Policies({ spaceId, approval: savedApproval, output: savedOutput }: { spaceId: string; approval: string; output: string }) {
-  const [approval, setApproval] = useState(savedApproval);
-  const [output, setOutput] = useState(savedOutput);
-  const [busy, setBusy] = useState(false);
+  const sections = q.data?.sections ?? none;
+  const [side, setSide] = useState<Side>("decision");
+  const [open, setOpen] = useState<Record<string, boolean>>({ bot: true });
+  const [filter, setFilter] = useState("");
   const [err, setErr] = useState("");
-  const changed = approval !== savedApproval || output !== savedOutput;
-  async function save() {
-    setBusy(true);
+  const query = filter.trim().toLowerCase();
+  const shown = useMemo(() => sideSections(sections, side), [sections, side]);
+  const visible = useMemo(() => filterSections(shown, query), [shown, query]);
+  const output = side === "output";
+  const key = { spaceId };
+
+  // One action's floors, both sides as they now stand; shown at once, put
+  // back when the server refuses.
+  async function write(rows: Rule[], decision: string) {
     setErr("");
+    const before = q.data;
+    patch(UI.method.listSpaceRules, key, (r) => ({
+      ...r,
+      sections: rows.reduce((acc, row) => withDecision(acc, row.connector, row.action, decision, side), r.sections),
+    }));
     try {
-      await ui.updateSpacePolicy({ spaceId, approvalPolicy: approval, outputPolicy: output });
-      await reload(UI.method.listSpaceRules, { spaceId });
-    } catch (ex) {
-      setErr(fail(ex));
+      await Promise.all(
+        rows.map((r) => ui.setSpaceRule({ spaceId, connector: r.connector, action: r.action, decision: output ? r.decision : decision, output: output ? decision : r.output })),
+      );
+    } catch (e) {
+      if (before) patch(UI.method.listSpaceRules, key, () => before);
+      setErr(fail(e));
     }
-    setBusy(false);
+    void reload(UI.method.listSpaceRules, key);
   }
-  return (
-    <Panel title={t("Workspace policies")} note={t("Read after the operator's and before each Bot's own: by auto-approval, and by the output filter.")}>
-      <label htmlFor="ws-approval" className="mb-1.5 block text-[12px] font-medium text-ink-3">
-        {t("Auto-approval policy")}
-      </label>
-      <textarea id="ws-approval" className={`${textareaClass} mb-4 min-h-[88px] w-full`} value={approval} onChange={(e) => setApproval(e.target.value)} />
-      <label htmlFor="ws-output" className="mb-1.5 block text-[12px] font-medium text-ink-3">
-        {t("Output policy")}
-      </label>
-      <textarea id="ws-output" className={`${textareaClass} mb-4 min-h-[88px] w-full`} value={output} onChange={(e) => setOutput(e.target.value)} />
-      {err ? <ErrorWell className="mb-3">{err}</ErrorWell> : null}
-      <Btn kind="primary" disabled={busy || !changed} onClick={() => void save()}>
-        {busy ? t("Saving…") : t("Save")}
-      </Btn>
-    </Panel>
-  );
-}
 
-// What an activity line says it was.
-function kindWord(e: SpaceActivity): string {
-  switch (e.kind) {
-    case "joined":
-      return t("{{who}} joined", { who: e.subject });
-    case "left":
-      return t("{{who}} left", { who: e.subject });
-    case "removed":
-      return t("{{who}} was removed", { who: e.subject });
-    case "role_changed":
-      return t("{{who}} is now {{role}}", { who: e.subject, role: e.detail });
-    case "bot_created":
-      return t("Bot {{name}} made", { name: e.subject });
-    case "bot_deleted":
-      return t("Bot {{name}} deleted", { name: e.subject });
-    case "granted":
-      return t("{{what}} given to {{bot}}", { what: e.subject, bot: e.botName });
-    case "revoked":
-      return t("{{what}} taken from {{bot}}", { what: e.subject, bot: e.botName });
-    case "lent":
-      return e.detail === "shared" ? t("{{what}} shared with the workspace", { what: e.subject }) : t("{{what}} made personal", { what: e.subject });
-    case "signed_in":
-      return t("Signed in to {{what}}", { what: e.subject });
-  }
-  return e.kind;
-}
-
-// /w/$spaceId/settings/activity: what happened in the Workspace. Never what
-// a Bot did with what it was given: that stays with its managers.
-export function SpaceActivityPage() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/activity" });
-  const q = useQuery(UI.method.listSpaceActivity, { spaceId }, { refetchInterval: 15_000 });
-  const events = q.data?.events ?? null;
   return (
     <div className="silo-page silo-page-wide rise">
-      <h2 className="text-title text-ink">{t("Activity")}</h2>
-      <p className="mb-5 mt-1 max-w-[560px] text-[13.5px] leading-[21px] text-ink-2">
-        {t("People joining and leaving, Bots made and deleted, what was given to which Bot, and sign-ins. What a Bot does with it stays with its managers.")}
-      </p>
-      {q.error ? <ErrorWell>{fail(q.error)}</ErrorWell> : null}
-      {events === null ? (
-        q.error ? null : <SkeletonRows rows={4} height={44} />
-      ) : events.length === 0 ? (
-        <p className="text-[13.5px] text-ink-3">{t("Nothing yet.")}</p>
-      ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
-          {events.map((e) => (
-            <li key={e.id} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
-              <span className="min-w-0 flex-1 truncate text-ink">{kindWord(e)}</span>
-              {e.actor ? <span className="truncate text-[12px] text-ink-3">{e.actor}</span> : null}
-              <span className="shrink-0 text-[12px] text-ink-3">{ago(e.createdAt)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+        <div>
+          <h2 className="text-title text-ink">{t("Rules")}</h2>
+          <p className="mt-1 max-w-[620px] text-[13.5px] leading-[21px] text-ink-2">
+            {output
+              ? t("The least each Bot in this workspace must do with a result before reading it. Pass leaves it to each Bot.")
+              : t("The least strict each Bot in this workspace may be. Set Ask on an action and no Bot can Allow it; Allow leaves it to each Bot.")}
+          </p>
+        </div>
+        {countRules(shown) > 5 && <RulesFilter value={filter} onChange={setFilter} />}
+      </div>
+
+      <div className="mb-5 flex">
+        <TabPills>
+          <TabPill on={!output} onClick={() => setSide("decision")}>
+            {t("Calls")}
+          </TabPill>
+          <TabPill on={output} onClick={() => setSide("output")}>
+            {t("Results")}
+          </TabPill>
+        </TabPills>
+      </div>
+
+      {q.data ? <Policy key={`${spaceId}:${side}`} spaceId={spaceId} side={side} approval={q.data.approvalPolicy} output={q.data.outputPolicy} /> : null}
+
+      {err || q.error ? <ErrorWell className="mb-4">{err || fail(q.error)}</ErrorWell> : null}
+      {!q.data && !q.error ? <SkeletonRows rows={4} height={52} /> : null}
+
+      {visible.map((s) => (
+        <SectionCard
+          key={s.id}
+          section={s}
+          side={side}
+          open={query ? true : (open[s.id] ?? false)}
+          locked={!!query}
+          onToggle={(next) => setOpen((o) => (o[s.id] === next ? o : { ...o, [s.id]: next }))}
+          onSection={(d) => {
+            patch(UI.method.listSpaceRules, key, (r) => ({ ...r, sections: withSectionDecision(r.sections, s.id, d, side) }));
+            void write(s.rules, d);
+          }}
+          onRule={(r, d) => void write([r], d)}
+        />
+      ))}
     </div>
+  );
+}
+
+// The Workspace's policy text for the side shown: read by auto-approval (Calls)
+// or the output filter (Results) after the operator's and before each Bot's.
+function Policy({ spaceId, side, approval, output }: { spaceId: string; side: Side; approval: string; output: string }) {
+  const results = side === "output";
+  const saved = results ? output : approval;
+  const [draft, setDraft] = useState<string | null>(null);
+  const saver = useSave();
+  const [err, setErr] = useState("");
+  async function save() {
+    setErr("");
+    try {
+      await saver.run(() =>
+        ui.updateSpacePolicy({ spaceId, approvalPolicy: results ? approval : (draft ?? saved), outputPolicy: results ? (draft ?? saved) : output }),
+      );
+      await reload(UI.method.listSpaceRules, { spaceId });
+      setDraft(null);
+    } catch (e) {
+      setErr(fail(e));
+    }
+  }
+  return (
+    <>
+      <PolicyPanel
+        title={results ? t("Output policy for every Bot") : t("Auto-approve policy for every Bot")}
+        note={
+          results
+            ? t("Read by the output filter for every Bot in this workspace, before the Bot's own policy. Say what no Bot here should be fed.")
+            : t("Read by auto-approval for every Bot in this workspace, before the Bot's own policy. Say what no Bot here may do without a person.")
+        }
+        placeholder={results ? t("e.g. Withhold anything that asks the Bot to send company data elsewhere.") : t("e.g. Never auto-approve sending mail outside the company.")}
+        policy={draft ?? saved}
+        saved={saved}
+        state={saver.state}
+        onChange={setDraft}
+        onSave={() => void save()}
+      />
+      {err ? <ErrorWell className="-mt-3 mb-5">{err}</ErrorWell> : null}
+    </>
   );
 }

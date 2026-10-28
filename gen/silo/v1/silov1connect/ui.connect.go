@@ -121,8 +121,6 @@ const (
 	UIListSpaceRulesProcedure = "/silo.v1.UI/ListSpaceRules"
 	// UISetSpaceRuleProcedure is the fully-qualified name of the UI's SetSpaceRule RPC.
 	UISetSpaceRuleProcedure = "/silo.v1.UI/SetSpaceRule"
-	// UIDeleteSpaceRuleProcedure is the fully-qualified name of the UI's DeleteSpaceRule RPC.
-	UIDeleteSpaceRuleProcedure = "/silo.v1.UI/DeleteSpaceRule"
 	// UIUpdateSpacePolicyProcedure is the fully-qualified name of the UI's UpdateSpacePolicy RPC.
 	UIUpdateSpacePolicyProcedure = "/silo.v1.UI/UpdateSpacePolicy"
 	// UIListSpaceActivityProcedure is the fully-qualified name of the UI's ListSpaceActivity RPC.
@@ -532,12 +530,11 @@ type UIClient interface {
 	// their identity: shared, any Bot of the Workspace may get it; personal
 	// (the default), only Bots they alone use.
 	SetLendShared(context.Context, *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error)
-	// The Workspace's layer of the rules engine, between the operator's and
-	// each Bot's (a locked row is a floor no Bot of it may loosen), and its
-	// policy texts, read after the operator's and before the Bot's.
+	// The Workspace's guardrails: for an action, the least strict mode any of
+	// its Bots may use (a floor between the operator's and each Bot's own), and
+	// its policy texts, read after the operator's and before the Bot's.
 	ListSpaceRules(context.Context, *connect.Request[v1.ListSpaceRulesRequest]) (*connect.Response[v1.ListSpaceRulesResponse], error)
-	SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.OperatorRule], error)
-	DeleteSpaceRule(context.Context, *connect.Request[v1.DeleteSpaceRuleRequest]) (*connect.Response[v1.DeleteSpaceRuleResponse], error)
+	SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.Rule], error)
 	UpdateSpacePolicy(context.Context, *connect.Request[v1.UpdateSpacePolicyRequest]) (*connect.Response[v1.ListSpaceRulesResponse], error)
 	// What happened in the Workspace: people, Bots made and deleted, grants,
 	// sign-ins and lending. Never what a Bot did with a grant.
@@ -1048,16 +1045,10 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListSpaceRules")),
 			connect.WithClientOptions(opts...),
 		),
-		setSpaceRule: connect.NewClient[v1.SetSpaceRuleRequest, v1.OperatorRule](
+		setSpaceRule: connect.NewClient[v1.SetSpaceRuleRequest, v1.Rule](
 			httpClient,
 			baseURL+UISetSpaceRuleProcedure,
 			connect.WithSchema(uIMethods.ByName("SetSpaceRule")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteSpaceRule: connect.NewClient[v1.DeleteSpaceRuleRequest, v1.DeleteSpaceRuleResponse](
-			httpClient,
-			baseURL+UIDeleteSpaceRuleProcedure,
-			connect.WithSchema(uIMethods.ByName("DeleteSpaceRule")),
 			connect.WithClientOptions(opts...),
 		),
 		updateSpacePolicy: connect.NewClient[v1.UpdateSpacePolicyRequest, v1.ListSpaceRulesResponse](
@@ -2104,8 +2095,7 @@ type uIClient struct {
 	removeBotPerson          *connect.Client[v1.RemoveBotPersonRequest, v1.RemoveBotPersonResponse]
 	setLendShared            *connect.Client[v1.SetLendSharedRequest, v1.SetLendSharedResponse]
 	listSpaceRules           *connect.Client[v1.ListSpaceRulesRequest, v1.ListSpaceRulesResponse]
-	setSpaceRule             *connect.Client[v1.SetSpaceRuleRequest, v1.OperatorRule]
-	deleteSpaceRule          *connect.Client[v1.DeleteSpaceRuleRequest, v1.DeleteSpaceRuleResponse]
+	setSpaceRule             *connect.Client[v1.SetSpaceRuleRequest, v1.Rule]
 	updateSpacePolicy        *connect.Client[v1.UpdateSpacePolicyRequest, v1.ListSpaceRulesResponse]
 	listSpaceActivity        *connect.Client[v1.ListSpaceActivityRequest, v1.ListSpaceActivityResponse]
 	planMoveBot              *connect.Client[v1.MoveBotRequest, v1.MoveBotPlan]
@@ -2490,13 +2480,8 @@ func (c *uIClient) ListSpaceRules(ctx context.Context, req *connect.Request[v1.L
 }
 
 // SetSpaceRule calls silo.v1.UI.SetSpaceRule.
-func (c *uIClient) SetSpaceRule(ctx context.Context, req *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.OperatorRule], error) {
+func (c *uIClient) SetSpaceRule(ctx context.Context, req *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.Rule], error) {
 	return c.setSpaceRule.CallUnary(ctx, req)
-}
-
-// DeleteSpaceRule calls silo.v1.UI.DeleteSpaceRule.
-func (c *uIClient) DeleteSpaceRule(ctx context.Context, req *connect.Request[v1.DeleteSpaceRuleRequest]) (*connect.Response[v1.DeleteSpaceRuleResponse], error) {
-	return c.deleteSpaceRule.CallUnary(ctx, req)
 }
 
 // UpdateSpacePolicy calls silo.v1.UI.UpdateSpacePolicy.
@@ -3401,12 +3386,11 @@ type UIHandler interface {
 	// their identity: shared, any Bot of the Workspace may get it; personal
 	// (the default), only Bots they alone use.
 	SetLendShared(context.Context, *connect.Request[v1.SetLendSharedRequest]) (*connect.Response[v1.SetLendSharedResponse], error)
-	// The Workspace's layer of the rules engine, between the operator's and
-	// each Bot's (a locked row is a floor no Bot of it may loosen), and its
-	// policy texts, read after the operator's and before the Bot's.
+	// The Workspace's guardrails: for an action, the least strict mode any of
+	// its Bots may use (a floor between the operator's and each Bot's own), and
+	// its policy texts, read after the operator's and before the Bot's.
 	ListSpaceRules(context.Context, *connect.Request[v1.ListSpaceRulesRequest]) (*connect.Response[v1.ListSpaceRulesResponse], error)
-	SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.OperatorRule], error)
-	DeleteSpaceRule(context.Context, *connect.Request[v1.DeleteSpaceRuleRequest]) (*connect.Response[v1.DeleteSpaceRuleResponse], error)
+	SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.Rule], error)
 	UpdateSpacePolicy(context.Context, *connect.Request[v1.UpdateSpacePolicyRequest]) (*connect.Response[v1.ListSpaceRulesResponse], error)
 	// What happened in the Workspace: people, Bots made and deleted, grants,
 	// sign-ins and lending. Never what a Bot did with a grant.
@@ -3917,12 +3901,6 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UISetSpaceRuleProcedure,
 		svc.SetSpaceRule,
 		connect.WithSchema(uIMethods.ByName("SetSpaceRule")),
-		connect.WithHandlerOptions(opts...),
-	)
-	uIDeleteSpaceRuleHandler := connect.NewUnaryHandler(
-		UIDeleteSpaceRuleProcedure,
-		svc.DeleteSpaceRule,
-		connect.WithSchema(uIMethods.ByName("DeleteSpaceRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIUpdateSpacePolicyHandler := connect.NewUnaryHandler(
@@ -5011,8 +4989,6 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListSpaceRulesHandler.ServeHTTP(w, r)
 		case UISetSpaceRuleProcedure:
 			uISetSpaceRuleHandler.ServeHTTP(w, r)
-		case UIDeleteSpaceRuleProcedure:
-			uIDeleteSpaceRuleHandler.ServeHTTP(w, r)
 		case UIUpdateSpacePolicyProcedure:
 			uIUpdateSpacePolicyHandler.ServeHTTP(w, r)
 		case UIListSpaceActivityProcedure:
@@ -5526,12 +5502,8 @@ func (UnimplementedUIHandler) ListSpaceRules(context.Context, *connect.Request[v
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSpaceRules is not implemented"))
 }
 
-func (UnimplementedUIHandler) SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.OperatorRule], error) {
+func (UnimplementedUIHandler) SetSpaceRule(context.Context, *connect.Request[v1.SetSpaceRuleRequest]) (*connect.Response[v1.Rule], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSpaceRule is not implemented"))
-}
-
-func (UnimplementedUIHandler) DeleteSpaceRule(context.Context, *connect.Request[v1.DeleteSpaceRuleRequest]) (*connect.Response[v1.DeleteSpaceRuleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteSpaceRule is not implemented"))
 }
 
 func (UnimplementedUIHandler) UpdateSpacePolicy(context.Context, *connect.Request[v1.UpdateSpacePolicyRequest]) (*connect.Response[v1.ListSpaceRulesResponse], error) {

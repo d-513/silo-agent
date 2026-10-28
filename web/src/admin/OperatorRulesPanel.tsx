@@ -32,51 +32,18 @@ const outputOptions = [
 // tighten it, never loosen it; an unlocked one is only a default.
 export function OperatorRulesPanel() {
   const q = useQuery(UI.method.listOperatorRules, {});
-  return (
-    <RuleLayerPanel
-      title={t("Operator rules")}
-      note={t("A rule here applies to every Bot, on top of whatever its owner set. A locked row is a floor: an owner may make it stricter, never looser. An unlocked one is only a default the owner overrides. Use * as the action to cover a whole connector.")}
-      empty={t("No operator rules yet.")}
-      rules={q.data?.rules ?? []}
-      onSet={async (row) => {
-        await ui.setOperatorRule(row);
-        await reload(UI.method.listOperatorRules, {});
-      }}
-      onDelete={async (row) => {
-        await ui.deleteOperatorRule({ connector: row.connector, action: row.action });
-        await reload(UI.method.listOperatorRules, {});
-      }}
-    />
-  );
-}
-
-type Row = { connector: string; action: string; decision: string; output: string; locked: boolean };
-
-// RuleLayerPanel is one layer of rules above each Bot's (the operator's, a
-// Workspace's): rows written as they change, and a form to add one.
-export function RuleLayerPanel({
-  title,
-  note,
-  empty,
-  rules,
-  onSet,
-  onDelete,
-}: {
-  title: string;
-  note: string;
-  empty: string;
-  rules: OperatorRule[];
-  onSet: (row: Row) => Promise<void>;
-  onDelete: (row: Row) => Promise<void>;
-}) {
+  const rules = q.data?.rules ?? [];
   const saver = useSave();
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ connector: "", action: "", decision: "ask", output: "", locked: false });
 
-  async function write(row: Row) {
+  async function write(row: { connector: string; action: string; decision: string; output: string; locked: boolean }) {
     setErr("");
-    await saver.run(() => onSet(row));
+    await saver.run(async () => {
+      await ui.setOperatorRule(row);
+      await reload(UI.method.listOperatorRules, {});
+    });
   }
 
   function run(fn: () => Promise<unknown>) {
@@ -86,8 +53,8 @@ export function RuleLayerPanel({
 
   return (
     <Panel
-      title={title}
-      note={note}
+      title={t("Operator rules")}
+      note={t("A rule here applies to every Bot, on top of whatever its owner set. A locked row is a floor: an owner may make it stricter, never looser. An unlocked one is only a default the owner overrides. Use * as the action to cover a whole connector.")}
       action={
         adding ? null : (
           <SaveButton size="sm" kind="secondary" state="idle" onClick={() => setAdding(true)}>
@@ -98,7 +65,7 @@ export function RuleLayerPanel({
     >
       {err ? <p className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
 
-      {rules.length === 0 && !adding ? <p className="mb-3 text-[13px] text-ink-2">{empty}</p> : null}
+      {rules.length === 0 && !adding ? <p className="mb-3 text-[13px] text-ink-2">{t("No operator rules yet.")}</p> : null}
 
       {rules.length > 0 ? (
         <ul className="mb-3 grid gap-2">
@@ -107,7 +74,10 @@ export function RuleLayerPanel({
               key={`${r.connector}.${r.action}`}
               rule={r}
               onWrite={(next) => run(() => write(next))}
-              onDelete={() => run(() => onDelete(r))}
+              onDelete={() => run(async () => {
+                await ui.deleteOperatorRule({ connector: r.connector, action: r.action });
+                await reload(UI.method.listOperatorRules, {});
+              })}
             />
           ))}
         </ul>

@@ -53,9 +53,9 @@ eq(withSectionDecision(both, "secrets", "check", "output")[1].rules[0].output, "
 
 {
   // The stricter locked layer holds the floor, and says who it is.
-  const base = { locked: false, operatorDecision: "", operatorOutput: "", spaceLocked: false, spaceDecision: "", spaceOutput: "" };
+  const base = { locked: false, operatorDecision: "", operatorOutput: "", spaceDecision: "", spaceOutput: "" };
   assert.deepEqual(ruleFloor({ ...base }, "decision"), { mode: "", by: "" });
   assert.deepEqual(ruleFloor({ ...base, locked: true, operatorDecision: "ask" }, "decision"), { mode: "ask", by: "operator" });
-  assert.deepEqual(ruleFloor({ ...base, spaceLocked: true, spaceDecision: "deny", locked: true, operatorDecision: "ask" }, "decision"), { mode: "deny", by: "workspace" });
-  assert.deepEqual(ruleFloor({ ...base, spaceLocked: false, spaceDecision: "deny" }, "decision"), { mode: "", by: "" });
+  assert.deepEqual(ruleFloor({ ...base, spaceDecision: "deny", locked: true, operatorDecision: "ask" }, "decision"), { mode: "deny", by: "workspace" });
+  assert.deepEqual(ruleFloor({ ...base, spaceDecision: "auto", locked: true, operatorDecision: "ask" }, "decision"), { mode: "ask", by: "operator" });
 }

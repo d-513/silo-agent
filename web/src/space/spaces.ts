@@ -21,6 +21,15 @@ function lastSpace(): string | null {
   }
 }
 
+/** Remember a Workspace as the one to open next. */
+export function rememberSpace(id: string) {
+  try {
+    localStorage.setItem(spaceKey, id);
+  } catch {
+    // Storage off: the console starts in the first Workspace.
+  }
+}
+
 /** Forget the remembered Workspace (it was deleted). */
 export function forgetSpace(id: string) {
   try {

@@ -108,6 +108,7 @@ func (s *Service) ListSkills(ctx context.Context, req *connect.Request[v1.ListSk
 	}
 	installers := s.installers(sc.spaceID)
 	userID := access.User(ctx).ID
+	used := s.usedBy(ctx, req.Msg.GetSpaceId(), sc.kind)
 	out := &v1.ListSkillsResponse{}
 	for _, r := range rows {
 		p := protoSkill(r)
@@ -116,6 +117,7 @@ func (s *Service) ListSkills(ctx context.Context, req *connect.Request[v1.ListSk
 			p.InstalledBy = by.email
 			p.CanRemove = by.userID == userID || access.Rank(sc.role) >= access.Admin
 		}
+		p.UsedBy = used[r.Name]
 		out.Skills = append(out.Skills, p)
 	}
 	return connect.NewResponse(out), nil
@@ -734,4 +736,25 @@ func (s *Service) PullTree(ctx context.Context, botID, rel string) (map[string][
 		return nil, err
 	}
 	return out, nil
+}
+
+// usedBy maps skills of a kind to the Bots of a Workspace that have them on,
+// among the Bots the caller is on.
+func (s *Service) usedBy(ctx context.Context, spaceID, kind string) map[string][]string {
+	out := map[string][]string{}
+	if spaceID == "" {
+		return out
+	}
+	if _, _, err := access.Space(ctx, s.db, spaceID, access.View); err != nil {
+		return out
+	}
+	var rows []struct{ BotID, Name string }
+	s.db.Model(&db.BotSkill{}).Select("bot_skills.bot_id, bot_skills.name").
+		Joins("JOIN bots ON bots.id = bot_skills.bot_id").
+		Joins("JOIN bot_access a ON a.bot_id = bots.id AND a.user_id = ?", access.User(ctx).ID).
+		Where("bots.space_id = ? AND bot_skills.kind = ? AND bot_skills.enabled", spaceID, kind).Scan(&rows)
+	for _, r := range rows {
+		out[r.Name] = append(out[r.Name], r.BotID)
+	}
+	return out
 }

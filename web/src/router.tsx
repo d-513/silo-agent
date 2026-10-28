@@ -16,13 +16,8 @@ import {
   ChannelSetupRoute,
   ChannelsRoute,
   ChatLayout,
-  ConnectorsRoute,
   ContainerRoute,
   DashboardRoute,
-  DriveAddRoute,
-  DriveNewRoute,
-  DriveRoute,
-  DrivesRoute,
   FeedRoute,
   KnowledgeRoute,
   MemoriesRoute,
@@ -32,22 +27,20 @@ import {
   SecretsRoute,
   PeopleRoute,
   SettingsRoute,
-  SkillsRoute,
   TunnelsRoute,
 } from "./bot/routes";
-import { CustomizeLayout, SettingsLayout } from "./bot/SectionTabs";
+import { SettingsLayout } from "./bot/SectionTabs";
 import type { Tab } from "./bot/tabs";
-import { BotsPage } from "./BotsPage";
 import { Snag } from "./ErrorBoundary";
 import { InvitePage } from "./InvitePage";
 import { NewBotPage } from "./NewBotPage";
 import { PaneFallback } from "./PaneFallback";
 import { AccountRoute, Shell } from "./Shell";
 import { SignIn } from "./SignIn";
-import { SpaceCustomizeLayout } from "./space/Customize";
 import { JoinPage } from "./space/JoinPage";
-import { SpaceInvitePage, SpacePeople, SpaceRemovePage, SpaceSettingsLayout } from "./space/People";
+import { SpaceInvitePage, SpacePeople, SpaceRemovePage } from "./space/People";
 import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
+import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
 // or it does not exist: nothing parses a path by hand, and every Link and
@@ -55,11 +48,13 @@ import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePag
 //
 //   /signin
 //   /invite/$token                 an admin's invite or password-reset link (signed out)
+//   /join/$token                   a Workspace's invite link
 //   _authed                        the rail; signed out goes to /signin
-//     /  /new                      to the same page in the current Workspace
+//     /  /new  /skills             to the current Workspace's first Bot, New Bot, Skills
 //     /w/new                       a new Workspace
-//     /w/$spaceId[/new|/settings]  a Workspace's Bots, New Bot in it, its settings
-//     /w/$spaceId/customize/       what its Bots share: connectors  skills (/skills goes there)  drives[/new[/$template]|/$driveId]
+//     /w/$spaceId/new              New Bot in a Workspace
+//     /w/$spaceId                  the Workspace page and its tabs:
+//       connectors  skills  drives[/new[/$template]|/$driveId]  people[/invite|/$userId]  rules  activity  settings
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
@@ -68,10 +63,9 @@ import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePag
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
 //       _chat                      the chat and the pages beside it
 //         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed
-//       _customize                 Customize and its tabs
-//         connectors  skills  drives/…  channels/…
+//       channels[/new[/$adapter]|/$channelId[/setup]]
 //       _settings                  Settings and its tabs
-//         settings  rules  secrets  tunnels  container  audit
+//         settings  people  rules  secrets  tunnels  container  audit
 //       files desktop console changes mail   a right-rail pane as a page of its own
 //
 // `staticData.tab` is the page a route lights (a sub-page lights its parent's).
@@ -134,37 +128,24 @@ const authed = createRoute({
 const home = createRoute({ getParentRoute: () => authed, path: "/", component: () => <SpaceRedirect to="home" /> });
 const newBot = createRoute({ getParentRoute: () => authed, path: "new", component: () => <SpaceRedirect to="new" /> });
 const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", component: NewSpacePage });
-const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: BotsPage });
 const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
-const spaceSettings = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/settings", component: SpaceSettingsLayout });
-const spaceGeneral = createRoute({ getParentRoute: () => spaceSettings, path: "/", component: SpaceSettingsPage });
-const spacePeople = createRoute({ getParentRoute: () => spaceSettings, path: "people", component: Outlet });
-const spacePeopleIndex = createRoute({ getParentRoute: () => spacePeople, path: "/", component: SpacePeople });
-const spaceInvite = createRoute({ getParentRoute: () => spacePeople, path: "invite", component: SpaceInvitePage });
-const spacePerson = createRoute({ getParentRoute: () => spacePeople, path: "$userId", component: SpaceRemovePage });
-const spaceRules = createRoute({ getParentRoute: () => spaceSettings, path: "rules", component: lazyRouteComponent(() => import("./space/SpaceRules"), "SpaceRules") });
-const spaceActivity = createRoute({ getParentRoute: () => spaceSettings, path: "activity", component: lazyRouteComponent(() => import("./space/SpaceRules"), "SpaceActivityPage") });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
-const spaceCustomize = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/customize", component: SpaceCustomizeLayout });
-const spaceCustomizeIndex = createRoute({
-  getParentRoute: () => spaceCustomize,
-  path: "/",
-  beforeLoad: ({ params }) => {
-    throw redirect({ to: "/w/$spaceId/customize/connectors", params });
-  },
-});
-const spaceConnectors = createRoute({
-  getParentRoute: () => spaceCustomize,
-  path: "connectors",
-  component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors"),
-});
-const spaceSkills = createRoute({ getParentRoute: () => spaceCustomize, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
-const spaceAccess = createRoute({ getParentRoute: () => spaceCustomize, path: "access", component: lazyRouteComponent(() => import("./space/Access"), "SpaceAccess") });
-const spaceDrives = createRoute({ getParentRoute: () => spaceCustomize, path: "drives", component: Outlet });
+const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: SpaceLayout });
+const spaceIndex = createRoute({ getParentRoute: () => space, path: "/", component: SpaceIndex });
+const spaceConnectors = createRoute({ getParentRoute: () => space, path: "connectors", component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors") });
+const spaceSkills = createRoute({ getParentRoute: () => space, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
+const spaceDrives = createRoute({ getParentRoute: () => space, path: "drives", component: Outlet });
 const spaceDrivesIndex = createRoute({ getParentRoute: () => spaceDrives, path: "/", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDrives") });
 const spaceDriveNew = createRoute({ getParentRoute: () => spaceDrives, path: "new", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveNew") });
 const spaceDriveAdd = createRoute({ getParentRoute: () => spaceDrives, path: "new/$template", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveAdd") });
 const spaceDrive = createRoute({ getParentRoute: () => spaceDrives, path: "$driveId", component: lazyRouteComponent(() => import("./drives/SpaceDrives"), "SpaceDriveEdit") });
+const spacePeople = createRoute({ getParentRoute: () => space, path: "people", component: Outlet });
+const spacePeopleIndex = createRoute({ getParentRoute: () => spacePeople, path: "/", component: SpacePeople });
+const spaceInvite = createRoute({ getParentRoute: () => spacePeople, path: "invite", component: SpaceInvitePage });
+const spacePerson = createRoute({ getParentRoute: () => spacePeople, path: "$userId", component: SpaceRemovePage });
+const spaceRules = createRoute({ getParentRoute: () => space, path: "rules", component: lazyRouteComponent(() => import("./space/SpaceRules"), "SpaceRules") });
+const spaceActivity = createRoute({ getParentRoute: () => space, path: "activity", component: lazyRouteComponent(() => import("./space/Activity"), "SpaceActivityPage") });
+const spaceSettings = createRoute({ getParentRoute: () => space, path: "settings", component: SpaceSettingsPage });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
@@ -268,22 +249,14 @@ const files = createRoute({
   validateSearch: (s: Record<string, unknown>): { open?: string } => (typeof s.open === "string" ? { open: s.open } : {}),
 });
 
-const customize = createRoute({ getParentRoute: () => bot, id: "_customize", component: CustomizeLayout });
 const settingsSection = createRoute({ getParentRoute: () => bot, id: "_settings", component: SettingsLayout });
-const drives = createRoute({ getParentRoute: () => customize, path: "drives", staticData: { tab: "drives" }, component: ScrollLayout });
-const drivesIndex = createRoute({ getParentRoute: () => drives, path: "/", component: DrivesRoute });
-const driveNew = createRoute({ getParentRoute: () => drives, path: "new", component: DriveNewRoute });
-const driveAdd = createRoute({ getParentRoute: () => drives, path: "new/$template", component: DriveAddRoute });
-const drive = createRoute({ getParentRoute: () => drives, path: "$driveId", component: DriveRoute });
-const connectors = createRoute({ getParentRoute: () => customize, path: "connectors", staticData: { tab: "connectors" }, component: ConnectorsRoute });
-const channels = createRoute({ getParentRoute: () => customize, path: "channels", staticData: { tab: "channels" }, component: ScrollLayout });
+const channels = createRoute({ getParentRoute: () => bot, path: "channels", staticData: { tab: "channels" }, component: ScrollLayout });
 const channelsIndex = createRoute({ getParentRoute: () => channels, path: "/", component: ChannelsRoute });
 const channelNew = createRoute({ getParentRoute: () => channels, path: "new", component: ChannelNewRoute });
 const channelAdd = createRoute({ getParentRoute: () => channels, path: "new/$adapter", component: ChannelAddRoute });
 const channel = createRoute({ getParentRoute: () => channels, path: "$channelId", component: ChannelRoute });
 const channelSetup = createRoute({ getParentRoute: () => channels, path: "$channelId/setup", component: ChannelSetupRoute });
 const tunnels = createRoute({ getParentRoute: () => settingsSection, path: "tunnels", staticData: { tab: "tunnels" }, component: TunnelsRoute });
-const botSkills = createRoute({ getParentRoute: () => customize, path: "skills", staticData: { tab: "skills" }, component: SkillsRoute });
 const secrets = createRoute({ getParentRoute: () => settingsSection, path: "secrets", staticData: { tab: "secrets" }, component: SecretsRoute });
 const rules = createRoute({ getParentRoute: () => settingsSection, path: "rules", staticData: { tab: "rules" }, component: RulesRoute });
 const container = createRoute({ getParentRoute: () => settingsSection, path: "container", staticData: { tab: "container" }, component: ContainerRoute });
@@ -308,22 +281,24 @@ const routeTree = root.addChildren([
     home,
     newBot,
     newSpace,
-    space,
     spaceNewBot,
-    spaceSettings.addChildren([spaceGeneral, spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson]), spaceRules, spaceActivity]),
-    spaceCustomize.addChildren([spaceCustomizeIndex, spaceConnectors, spaceSkills, spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive]), spaceAccess]),
     skills,
+    space.addChildren([
+      spaceIndex,
+      spaceConnectors,
+      spaceSkills,
+      spaceDrives.addChildren([spaceDrivesIndex, spaceDriveNew, spaceDriveAdd, spaceDrive]),
+      spacePeople.addChildren([spacePeopleIndex, spaceInvite, spacePerson]),
+      spaceRules,
+      spaceActivity,
+      spaceSettings,
+    ]),
     account,
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed]),
-      customize.addChildren([
-        connectors,
-        botSkills,
-        drives.addChildren([drivesIndex, driveNew, driveAdd, drive]),
-        channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
-      ]),
+      channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
       settingsSection.addChildren([settings, botPeople, rules, secrets, tunnels, container, botAudit]),
       files,
       desktop,

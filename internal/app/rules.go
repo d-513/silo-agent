@@ -122,7 +122,7 @@ func (a *App) SetRule(ctx context.Context, req *connect.Request[v1.SetRuleReques
 	// A locked operator row is the floor: the owner may tighten it, never
 	// loosen it. Refused here, so the UI cannot be talked around.
 	// So is a locked row of the Bot's Workspace.
-	if sp, ok := a.spaceRule(m.GetBotId(), m.GetConnector(), m.GetAction()); ok && sp.Locked {
+	if sp, ok := a.spaceRule(m.GetBotId(), m.GetConnector(), m.GetAction()); ok {
 		if setDecision && sp.Decision != "" && security.Looser(security.Rule(m.GetDecision()), sp.Decision) {
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
 				"your workspace holds %s.%s at %s", m.GetConnector(), m.GetAction(), modeWord(sp.Decision)))
@@ -293,7 +293,7 @@ func (a *App) effectiveRule(botID, conn, action, title string, stored map[string
 		r.OperatorDecision, r.OperatorOutput, r.Locked = op.Decision, op.Output, op.Locked
 	}
 	if sp, ok := a.spaceRule(botID, conn, action); ok {
-		r.SpaceDecision, r.SpaceOutput, r.SpaceLocked = sp.Decision, sp.Output, sp.Locked
+		r.SpaceDecision, r.SpaceOutput = sp.Decision, sp.Output
 	}
 	return r
 }

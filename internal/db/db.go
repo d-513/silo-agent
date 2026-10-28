@@ -92,9 +92,9 @@ type Space struct {
 	CreatedAt      time.Time
 }
 
-// SpaceRule is the Workspace's layer of the rules engine, between the
-// operator's (OperatorRule) and each of its Bots' (Rule): a locked row is a
-// floor no Bot of the Workspace may loosen, an unlocked one a default.
+// SpaceRule is a Workspace's guardrail for one action (or a connector's *):
+// the least strict call mode (Decision) and output mode (Output) any of its
+// Bots may use. It is a floor between the operator's rules and each Bot's.
 type SpaceRule struct {
 	ID        string `gorm:"primaryKey"`
 	SpaceID   string `gorm:"uniqueIndex:space_rule"`
@@ -102,7 +102,6 @@ type SpaceRule struct {
 	Action    string `gorm:"uniqueIndex:space_rule"`
 	Decision  string `gorm:"not null;default:''"`
 	Output    string `gorm:"not null;default:''"`
-	Locked    bool   `gorm:"not null;default:false"`
 	UpdatedAt time.Time
 }
 

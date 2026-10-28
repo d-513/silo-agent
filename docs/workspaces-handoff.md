@@ -1,6 +1,6 @@
 # Workspaces and teams: handoff
 
-> Status: phases 1 to 8 are built (see AGENTS.md, Workspaces and access). Not done yet: the iOS app's own Workspace UI (it runs on the RPC shims), "as Alice" on a connector call in the thread, and the pause refusal naming who holds the desktop.
+> Status: phases 1 to 8 are built (see AGENTS.md, Workspaces and access). Not done yet: the iOS app's own Workspace UI (it runs on the RPC shims), "as Alice" on a connector call in the thread, and the pause refusal naming who holds the desktop. After phase 8 the UI was reshaped: a Bot has no Customize (connectors, skills and drives are given to Bots only from the Workspace page, `/w/$spaceId`), the Access grid and the Workspace's Bots home are gone, and a Workspace rule is always a floor (no unlocked defaults). The Customize sections below describe the first design.
 
 Status: plan, not started. Read AGENTS.md first.
 

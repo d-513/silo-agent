@@ -1,9 +1,5 @@
-import type { BotConnector, Connector } from "../gen/silo/v1/ui_pb";
+import type { Connector } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
-
-// A Bot's pills: what it uses, what else its Workspace has, the library, a
-// custom server.
-export type TabMode = "in_use" | "workspace" | "library" | "custom";
 
 // Library presets shown in the Featured band, by their `builtin` key.
 export const FEATURED = ["email", "calendar"];
@@ -49,17 +45,6 @@ export function filterCatalog(catalog: Connector[], search: string, selectedCate
   });
 }
 
-// Attached connectors matching the search text.
-export function filterAttached(attached: BotConnector[], search: string) {
-  const q = search.trim().toLowerCase();
-  if (!q) return attached;
-  return attached.filter((r) => {
-    const c = r.connector;
-    if (!c) return false;
-    return c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || (c.category && c.category.toLowerCase().includes(q)) || r.authStatus.toLowerCase().includes(q);
-  });
-}
-
 export function groupByCategory(list: Connector[]) {
   const map = new Map<string, Connector[]>();
   for (const c of list) {
@@ -69,13 +54,4 @@ export function groupByCategory(list: Connector[]) {
     map.set(cat, items);
   }
   return map;
-}
-
-// How many copies of a library connector are attached (by source id or name).
-export function attachedCount(attached: BotConnector[], sourceIdOrName: string) {
-  return attached.filter((r) => {
-    const c = r.connector;
-    if (!c) return false;
-    return c.sourceId === sourceIdOrName || c.name.toLowerCase() === sourceIdOrName.toLowerCase();
-  }).length;
 }

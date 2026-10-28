@@ -33,8 +33,8 @@ export function modeLabel(id: string, side: Side): string {
 
 // The four-way switch for one side of one rule, or of a whole section:
 // Allow / Auto / Ask / Deny for calls, Pass / Check / Flag / Withhold for
-// results. A floor (the operator's locked value) disables the modes below it:
-// the owner may tighten a locked rule, never loosen it.
+// results. A floor (the operator's locked value, or the Workspace's) disables
+// the modes below it: the owner may tighten such a rule, never loosen it.
 export function RuleDecisionSegment({
   value,
   onChange,
@@ -42,6 +42,7 @@ export function RuleDecisionSegment({
   size = "md",
   side = "decision",
   floor = "",
+  floorBy = "operator",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -49,6 +50,8 @@ export function RuleDecisionSegment({
   size?: "sm" | "md";
   side?: Side;
   floor?: string;
+  // Who holds the floor, for the reason a looser mode is off.
+  floorBy?: "operator" | "workspace";
 }) {
   const modes = sideModes[side];
   const small = size === "sm";
@@ -69,7 +72,11 @@ export function RuleDecisionSegment({
           // Selected segment is a surface chip; only the text carries the tone.
           tone: m.tone,
           disabled: disabled || below,
-          title: below ? t("Your operator holds this at {{mode}} or stricter", { mode: modeLabel(floor, side) }) : undefined,
+          title: below
+            ? floorBy === "workspace"
+              ? t("Your workspace holds this at {{mode}} or stricter", { mode: modeLabel(floor, side) })
+              : t("Your operator holds this at {{mode}} or stricter", { mode: modeLabel(floor, side) })
+            : undefined,
         };
       })}
     />

@@ -1,10 +1,10 @@
-import { Book, Box, HardDrive, History, Key, ListChecks, Plug, Radio, SlidersHorizontal, Users, Waypoints, type LucideIcon } from "lucide-react";
+import { Box, History, Key, ListChecks, SlidersHorizontal, Users, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useBotPage } from "./context";
 import { FadeScroll } from "./FadeScroll";
 import { UnreadBadge } from "./SideNav";
-import type { CustomizeTab, SettingsTab } from "./tabs";
+import type { SettingsTab } from "./tabs";
 import { msg, t } from "../i18n.ts";
 
 // One 2px cobalt underline that slides to the active tab. It measures the tab
@@ -66,8 +66,7 @@ export function TabStrip({ children, tab }: { children: ReactNode; tab: string }
   );
 }
 
-type SectionTab = CustomizeTab | SettingsTab;
-type Item = { [T in SectionTab]: { tab: T; to: `/bots/$botId/${T}`; label: string; icon: LucideIcon; attention?: boolean } }[SectionTab];
+type Item = { [T in SettingsTab]: { tab: T; to: `/bots/$botId/${T}`; label: string; icon: LucideIcon; attention?: boolean } }[SettingsTab];
 
 // A section of a Bot with a few pages of its own: its name, one tab per page,
 // and the open page under them.
@@ -106,13 +105,6 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
   );
 }
 
-const customize: readonly Item[] = [
-  { tab: "connectors", to: "/bots/$botId/connectors", label: msg("Connectors"), icon: Plug },
-  { tab: "skills", to: "/bots/$botId/skills", label: msg("Skills"), icon: Book },
-  { tab: "drives", to: "/bots/$botId/drives", label: msg("Drives"), icon: HardDrive },
-  { tab: "channels", to: "/bots/$botId/channels", label: msg("Channels"), icon: Radio },
-];
-
 const settings: readonly Item[] = [
   { tab: "settings", to: "/bots/$botId/settings", label: msg("General"), icon: SlidersHorizontal },
   { tab: "people", to: "/bots/$botId/people", label: msg("People"), icon: Users },
@@ -122,11 +114,6 @@ const settings: readonly Item[] = [
   { tab: "container", to: "/bots/$botId/container", label: msg("Containers"), icon: Box },
   { tab: "audit", to: "/bots/$botId/audit", label: msg("Audit"), icon: History, attention: true },
 ];
-
-/** Customize: what the Bot can reach and use. */
-export function CustomizeLayout() {
-  return <Section title={t("Customize")} items={customize} />;
-}
 
 /** Settings: the Bot itself, what it may do, and what it runs on. */
 export function SettingsLayout() {

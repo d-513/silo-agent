@@ -1,7 +1,6 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { ui } from "../api";
-import { BotPageCtx } from "../bot/context";
 import { Btn } from "../Btn";
 import { ChannelForm } from "../channels/ChannelForm";
 import { ChannelSetup } from "../channels/ChannelSetup";
@@ -11,7 +10,8 @@ import { DriveForm } from "../drives/DriveForm";
 import { fail } from "../errors";
 import { Spinner } from "../Feedback";
 import { ErrorWell } from "../Field";
-import { UI, type Channel, type Connector, type SetupOffer } from "../gen/silo/v1/ui_pb";
+import { UI, type BotConnector, type Channel, type Connector, type SetupOffer } from "../gen/silo/v1/ui_pb";
+import { startConnectorAuth } from "../connectorAuth";
 import { Modal } from "../Modal";
 import { reload } from "../query";
 import { t } from "../i18n.ts";
@@ -64,7 +64,9 @@ function seedDraft(preset: Connector, options: Record<string, string>, taken: st
 }
 
 function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Props & { preset: Connector; taken: string[] }) {
-  const page = useContext(BotPageCtx);
+  // An OAuth connector still needs its sign-in once added: a press of its
+  // own, so the browser lets the sign-in window open.
+  const [signIn, setSignIn] = useState<BotConnector | null>(null);
   const [draft, setDraft] = useState<ConnectorDraft>(() => seedDraft(preset, offer.options, taken));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -77,9 +79,8 @@ function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Pr
     setErr("");
     try {
       const row = await ui.createBotConnector({ botId, ...specOf(draft), sourceId: preset.id });
-      void reload(UI.method.listBotConnectors, { botId });
-      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") page?.needAuth(row);
-      onDone();
+      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") setSignIn(row);
+      else onDone();
     } catch (ex) {
       setErr(fail(ex));
     } finally {
@@ -87,6 +88,30 @@ function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Pr
     }
   }
 
+  if (signIn) {
+    return (
+      <Modal rise onClose={onDone}>
+        <h3 className="mb-1 text-base font-semibold text-ink">{t("Sign in to {{name}}", { name: signIn.connector?.name ?? "" })}</h3>
+        <p className="mb-5 text-[13px] text-ink-2">{t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}</p>
+        {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
+        <div className="flex items-center gap-2">
+          <Btn
+            kind="primary"
+            onClick={() =>
+              void startConnectorAuth({ botId, id: signIn.id })
+                .then(onDone)
+                .catch((ex) => setErr(fail(ex)))
+            }
+          >
+            {t("Sign in")}
+          </Btn>
+          <Btn kind="ghost" onClick={onDone}>
+            {t("Later")}
+          </Btn>
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal rise onClose={onClose}>
       <form onSubmit={(e) => void submit(e)}>

@@ -33,11 +33,8 @@ const pages: [path: string, lit: string[]][] = [
   ["console", ["Console"]],
   ["files", ["Files"]],
   ["changes", ["Changes"]],
-  // Customize and Settings light their sidebar row and the open tab.
-  ["connectors", ["Customize", "Connectors"]],
-  ["skills", ["Customize", "Skills"]],
-  ["drives", ["Customize", "Drives"]],
-  ["channels", ["Customize", "Channels"]],
+  // Channels lights its sidebar row; Settings its row and the open tab.
+  ["channels", ["Channels"]],
   ["settings", ["Settings", "General"]],
   ["people", ["Settings", "People"]],
   ["rules", ["Settings", "Rules"]],
@@ -83,15 +80,15 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
     await expect(page).toHaveURL(new RegExp(`${bot}/run`));
     await page.goto(`${bot}/run`);
     await expect(page).toHaveURL(chatUrl);
+    // Anything else goes home: the Workspace's first Bot.
     await page.goto("/whatever");
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/bots\/[^/]+\/run/);
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/admin\/settings$/);
 
     // Sub-routes are real history entries: Back returns to the list.
     for (const [list, sub, label] of [
       ["channels", "channels/new", "Channels"],
-      ["drives", "drives/new", "Drives"],
       ["automations", "automations/new", "Automations"],
     ]) {
       await page.goto(`${bot}/${list}`);
@@ -111,11 +108,6 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
     await page.goto(`${bot}/automations/nope`);
     await expect(page.getByText("This automation is gone.")).toBeVisible();
     await expect(lit(page, "Automations")).toBeVisible();
-    await page.goto(`${bot}/drives/new/sftp`);
-    await expect(page.getByText(/sftp/i).first()).toBeVisible();
-    await expect(lit(page, "Drives")).toBeVisible();
-    await page.goto(`${bot}/drives/nope`);
-    await expect(page.getByText("That drive is gone.")).toBeVisible();
     await page.goto(`${bot}/channels/nope/setup`);
     await expect(page.getByText("Opening…")).toBeVisible();
     await expect(lit(page, "Channels")).toBeVisible();
@@ -129,8 +121,28 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
 
     await page.goto("/admin/connectors/new");
     await expect(page).toHaveURL(/\/admin\/connectors\/new$/);
+    // The Workspace page: /skills lands on its Skills tab, and every tab of
+    // it is a route of its own that lights its tab.
     await page.goto("/skills");
-    await expect(page).toHaveURL(/\/skills$/);
+    await expect(page).toHaveURL(/\/w\/[^/]+\/skills$/);
+    const workspace = new URL(page.url()).pathname.replace(/\/skills$/, "");
+    for (const [tab, label] of [
+      ["connectors", "Connectors"],
+      ["skills", "Skills"],
+      ["drives", "Drives"],
+      ["people", "People"],
+      ["rules", "Rules"],
+      ["activity", "Activity"],
+      ["settings", "Settings"],
+    ]) {
+      await page.goto(`${workspace}/${tab}`);
+      await expect(page, tab).toHaveURL(new RegExp(`${workspace}/${tab}$`));
+      await expect(lit(page, label), tab).toBeVisible();
+    }
+    await page.goto(`${workspace}/drives/new/sftp`);
+    await expect(page.getByText(/sftp/i).first()).toBeVisible();
+    await page.goto(`${workspace}/drives/nope`);
+    await expect(page.getByText("That drive is gone.")).toBeVisible();
     await page.goto("/account");
     await expect(page).toHaveURL(/\/account$/);
 
@@ -143,20 +155,20 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
     await page.goto(`${bot}/settings`);
     await page.getByRole("button", { name: /^delete$/i }).click();
     await page.getByRole("button", { name: /^click again to delete$/i }).click();
-    await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/(w\/[^/]+\/new|bots\/[^/]+\/run.*)$/, { timeout: 30_000 });
   }
 });
 
 // Signing in returns to the page the session ended on (the /signin route's
-// `from`), not the Bots list.
+// `from`), not home.
 test("signing in comes back to the page you were on", async ({ page }) => {
-  await page.goto("/skills");
+  await page.goto("/account");
   await signIn(page);
-  await expect(page).toHaveURL(/\/skills$/);
+  await expect(page).toHaveURL(/\/account$/);
   await page.getByTitle("Sign out").click();
   await expect(page).toHaveURL(/\/signin/);
   await signIn(page);
-  await expect(page).toHaveURL(/\/skills$/);
+  await expect(page).toHaveURL(/\/account$/);
 });
 
 // A private tunnel sends the browser to /signin?next=<its handoff>: after
@@ -244,7 +256,7 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await page.goto(`${bot}/settings`);
     await page.getByRole("button", { name: /^delete$/i }).click();
     await page.getByRole("button", { name: /^click again to delete$/i }).click();
-    await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/(w\/[^/]+\/new|bots\/[^/]+\/run.*)$/, { timeout: 30_000 });
   }
 });
 

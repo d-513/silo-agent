@@ -38,24 +38,24 @@ function useHubDrives(spaceId: string) {
   const refresh = useCallback(() => Promise.all([reload(UI.method.listSpaceDrives, { spaceId }), reload(UI.method.listDrives)]), [spaceId]);
   const back = useCallback(() => {
     void refresh();
-    void navigate({ to: "/w/$spaceId/customize/drives", params: { spaceId } });
+    void navigate({ to: "/w/$spaceId/drives", params: { spaceId } });
   }, [spaceId, navigate, refresh]);
   const byKey = useMemo(() => new Map((templates ?? []).map((x) => [x.key, x])), [templates]);
   const taken = useMemo(() => new Set((drives ?? []).map((d) => d.name)), [drives]);
   return { templates, drives, loadErr: failed ? fail(failed) : "", refresh, back, byKey, taken };
 }
 
-// /w/$spaceId/customize/drives: every drive of the Workspace and the Bots
+// /w/$spaceId/drives: every drive of the Workspace and the Bots
 // that mount it.
 export function SpaceDrives() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/customize/drives/" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/drives/" });
   const navigate = useNavigate();
   const { templates, drives, loadErr, refresh, byKey } = useHubDrives(spaceId);
   const managed = useManagedBots(spaceId) ?? [];
   const solo = (useSpaces().spaces?.find((x) => x.id === spaceId)?.people ?? 1) <= 1;
   const [actErr, setErr] = useState("");
   const err = actErr || loadErr;
-  const gallery = () => void navigate({ to: "/w/$spaceId/customize/drives/new", params: { spaceId } });
+  const gallery = () => void navigate({ to: "/w/$spaceId/drives/new", params: { spaceId } });
 
   async function act(fn: () => Promise<unknown>) {
     setErr("");
@@ -173,7 +173,7 @@ export function SpaceDrives() {
                         type="button"
                         aria-label={t("Edit {{name}}", { name: d.name })}
                         title={t("Edit")}
-                        onClick={() => void navigate({ to: "/w/$spaceId/customize/drives/$driveId", params: { spaceId, driveId: d.id } })}
+                        onClick={() => void navigate({ to: "/w/$spaceId/drives/$driveId", params: { spaceId, driveId: d.id } })}
                       >
                         <Pencil size={14} />
                       </Btn>
@@ -198,23 +198,23 @@ export function SpaceDrives() {
   );
 }
 
-// /w/$spaceId/customize/drives/new: the provider gallery.
+// /w/$spaceId/drives/new: the provider gallery.
 export function SpaceDriveNew() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/customize/drives/new" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/drives/new" });
   const navigate = useNavigate();
   const { admin } = useAuth();
   const { templates, back } = useHubDrives(spaceId);
   return templates ? (
-    <Gallery templates={templates} admin={admin} onPick={(key) => void navigate({ to: "/w/$spaceId/customize/drives/new/$template", params: { spaceId, template: key } })} onBack={back} />
+    <Gallery templates={templates} admin={admin} onPick={(key) => void navigate({ to: "/w/$spaceId/drives/new/$template", params: { spaceId, template: key } })} onBack={back} />
   ) : (
     <Loading onBack={back} />
   );
 }
 
-// /w/$spaceId/customize/drives/new/$template: a new drive for the Workspace,
+// /w/$spaceId/drives/new/$template: a new drive for the Workspace,
 // mounted in the Bots picked at its foot.
 export function SpaceDriveAdd() {
-  const { spaceId, template } = useParams({ from: "/_authed/w/$spaceId/customize/drives/new/$template" });
+  const { spaceId, template } = useParams({ from: "/_authed/w/$spaceId/drives/new/$template" });
   const { templates, drives, byKey, taken, back } = useHubDrives(spaceId);
   const managed = useManagedBots(spaceId);
   const [chosen, setChosen] = useState<string[] | null>(null);
@@ -236,9 +236,9 @@ export function SpaceDriveAdd() {
   );
 }
 
-// /w/$spaceId/customize/drives/$driveId: edit a Workspace drive.
+// /w/$spaceId/drives/$driveId: edit a Workspace drive.
 export function SpaceDriveEdit() {
-  const { spaceId, driveId } = useParams({ from: "/_authed/w/$spaceId/customize/drives/$driveId" });
+  const { spaceId, driveId } = useParams({ from: "/_authed/w/$spaceId/drives/$driveId" });
   const { templates, drives, byKey, back } = useHubDrives(spaceId);
   if (!templates || !drives) return <Loading onBack={back} />;
   const d = drives.find((x) => x.id === driveId);

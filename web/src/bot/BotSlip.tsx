@@ -1,29 +1,15 @@
 import { ui } from "../api";
-import { ApprovalSlip, ConnectorAuthSlip, SlipPresence, approveSetAuto } from "../Approval";
-import { startConnectorAuth } from "../connectorAuth";
+import { ApprovalSlip, SlipPresence, approveSetAuto } from "../Approval";
 import { fail } from "../errors";
-import { UI, type Approval, type Bot, type BotConnector } from "../gen/silo/v1/ui_pb";
+import { UI, type Approval, type Bot } from "../gen/silo/v1/ui_pb";
 import { patch } from "../query";
 
-// The right-hand "Needs you" slip: the oldest pending approval, else the
-// connector sign-in the Connectors tab asked for.
-export function BotSlip({
-  bot,
-  pending,
-  authPrompt,
-  setAuthPrompt,
-  onError,
-}: {
-  bot: Bot;
-  pending: Approval[];
-  authPrompt: BotConnector | null;
-  setAuthPrompt: (c: BotConnector | null) => void;
-  onError: (message: string) => void;
-}) {
+// The right-hand "Needs you" slip: the oldest pending approval.
+export function BotSlip({ bot, pending, onError }: { bot: Bot; pending: Approval[]; onError: (message: string) => void }) {
   // A decided approval leaves the slip at once; the next poll confirms it.
   const decided = (id: string) => patch(UI.method.listApprovals, { botId: bot.id }, (r) => ({ ...r, approvals: r.approvals.filter((a) => a.id !== id) }));
   return (
-    <SlipPresence show={!!(pending[0] || authPrompt?.connector)}>
+    <SlipPresence show={!!pending[0]}>
       {pending[0] ? (
         <ApprovalSlip
           key={pending[0].id}
@@ -42,20 +28,6 @@ export function BotSlip({
               onError(fail(e));
             }
           }}
-        />
-      ) : authPrompt?.connector ? (
-        <ConnectorAuthSlip
-          bot={bot}
-          name={authPrompt.connector.name}
-          onAuthorize={async () => {
-            try {
-              await startConnectorAuth({ botId: bot.id, id: authPrompt.id });
-              setAuthPrompt(null);
-            } catch (e) {
-              onError(fail(e));
-            }
-          }}
-          onLater={() => setAuthPrompt(null)}
         />
       ) : null}
     </SlipPresence>

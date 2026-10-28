@@ -1,5 +1,5 @@
 import { ActivityStrip } from "./ActivityStrip";
-import { Blocks, Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Settings, Timer, Trash2 } from "lucide-react";
+import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
@@ -13,7 +13,7 @@ import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { ActiveBar, SideLink } from "./SideNav";
-import { onCustomize, onSettings, type Tab } from "./tabs";
+import { onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 import { t } from "../i18n.ts";
 import { Initials } from "../space/People";
@@ -104,7 +104,7 @@ export function BotSidebar({
         <SideLink to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
         <SideLink to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
         <SideLink to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={tab === "feed" ? 0 : bot.feedUnread} />
-        <SideLink to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label={t("Customize")} />
+        <SideLink to="/bots/$botId/channels" botId={id} on={tab === "channels"} icon={Radio} label={t("Channels")} />
       </nav>
       <div className="mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3">
         {groups.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No other chats")}</p>}

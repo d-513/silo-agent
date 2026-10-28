@@ -1,4 +1,4 @@
-import { Blocks, Brain, Folder, GitCompareArrows, Inbox, LayoutGrid, Library, Mail, Monitor, Package, Pencil, Plus, Power, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
+import { Brain, Folder, GitCompareArrows, Inbox, LayoutGrid, Library, Mail, Monitor, Package, Pencil, Plus, Power, Radio, Settings, SquareTerminal, Timer, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { inputClass } from "../Field";
@@ -7,7 +7,7 @@ import { Lamp } from "../Lamp";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { FadeScroll } from "./FadeScroll";
 import { SideChip } from "./SideNav";
-import { onCustomize, onSettings, type Tab } from "./tabs";
+import { onSettings, type Tab } from "./tabs";
 import type { ChatRename } from "./useChatList";
 import { t } from "../i18n.ts";
 
@@ -55,7 +55,7 @@ export function BotStrip({
       <SideChip to="/bots/$botId/memories" botId={id} on={tab === "memories"} icon={Brain} label={t("Memories")} />
       <SideChip to="/bots/$botId/knowledge" botId={id} on={tab === "knowledge"} icon={Library} label={t("Knowledge")} />
       <SideChip to="/bots/$botId/feed" botId={id} on={tab === "feed"} icon={Inbox} label={t("Feed")} badge={bot.feedUnread} />
-      <SideChip to="/bots/$botId/connectors" botId={id} on={onCustomize(tab)} icon={Blocks} label={t("Customize")} />
+      <SideChip to="/bots/$botId/channels" botId={id} on={tab === "channels"} icon={Radio} label={t("Channels")} />
       <SideChip to="/bots/$botId/settings" botId={id} on={onSettings(tab)} icon={Settings} label={t("Settings")} badge={bot.auditUnseen} />
       {rule}
       <SideChip to="/bots/$botId/files" botId={id} on={tab === "files"} icon={Folder} label={t("Files")} />

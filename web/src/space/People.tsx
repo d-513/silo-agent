@@ -1,9 +1,8 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { Link, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { History, Link2, ListChecks, SlidersHorizontal, Trash2, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link2, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { ui } from "../api";
-import { TabStrip } from "../bot/SectionTabs";
 import { Btn, btnClass } from "../Btn";
 import { ChipRadio } from "../ChipRadio";
 import { Crest } from "../Crest";
@@ -12,7 +11,7 @@ import { ArmedButton, CopyButton } from "../Feedback";
 import { ErrorWell, SkeletonRows } from "../Field";
 import { day } from "../format";
 import { UI, type LastManaged, type SpacePerson } from "../gen/silo/v1/ui_pb";
-import { msg, t } from "../i18n.ts";
+import { t } from "../i18n.ts";
 import { PageHead } from "../PageHead";
 import { reload } from "../query";
 import { initials, mayChange } from "./people.ts";
@@ -33,66 +32,15 @@ export function Initials({ email, size = 28 }: { email: string; size?: number })
   );
 }
 
-type SettingsTab = "general" | "people" | "rules" | "activity";
-const tabs: readonly {
-  tab: SettingsTab;
-  to: "/w/$spaceId/settings" | "/w/$spaceId/settings/people" | "/w/$spaceId/settings/rules" | "/w/$spaceId/settings/activity";
-  label: string;
-  icon: LucideIcon;
-  admin?: boolean;
-}[] = [
-  { tab: "general", to: "/w/$spaceId/settings", label: msg("General"), icon: SlidersHorizontal },
-  { tab: "people", to: "/w/$spaceId/settings/people", label: msg("People"), icon: Users },
-  { tab: "rules", to: "/w/$spaceId/settings/rules", label: msg("Rules"), icon: ListChecks, admin: true },
-  { tab: "activity", to: "/w/$spaceId/settings/activity", label: msg("Activity"), icon: History, admin: true },
-];
-
-// The Workspace's settings: General and People, one tab each.
-export function SpaceSettingsLayout() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings" });
-  const { pathname } = useLocation();
-  const admin = canAdmin(useSpaceRole(spaceId).role);
-  const open: SettingsTab = tabs.find((x) => x.tab !== "general" && pathname.startsWith(`/w/${spaceId}/settings/${x.tab}`))?.tab ?? "general";
-  return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-4 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:px-5">
-        <h1 className="hidden shrink-0 text-card-title leading-5 wide:block">{t("Workspace settings")}</h1>
-        <TabStrip tab={open}>
-          {tabs.filter((x) => admin || !x.admin).map(({ tab, to, label, icon: Icon }) => {
-            const on = tab === open;
-            return (
-              <Link
-                key={tab}
-                to={to}
-                params={{ spaceId }}
-                data-tab-on={on || undefined}
-                className={`flex h-8 shrink-0 items-center gap-1.5 self-center whitespace-nowrap rounded-sm px-2.5 text-[13px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet ${
-                  on ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"
-                }`}
-              >
-                <Icon size={15} />
-                {t(label)}
-              </Link>
-            );
-          })}
-        </TabStrip>
-      </header>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <Outlet />
-      </div>
-    </section>
-  );
-}
-
 function useSpaceRole(spaceId: string) {
   const { spaces } = useSpaces();
   const space = spaces?.find((s) => s.id === spaceId);
   return { space, role: space?.role ?? "" };
 }
 
-// /w/$spaceId/settings/people: who is in the Workspace and with what role.
+// /w/$spaceId/people: who is in the Workspace and with what role.
 export function SpacePeople() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/people/" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/people/" });
   const { space, role } = useSpaceRole(spaceId);
   const admin = canAdmin(role);
   const peopleQ = useQuery(UI.method.listSpacePeople, { spaceId });
@@ -122,7 +70,7 @@ export function SpacePeople() {
           </p>
         </div>
         {admin ? (
-          <Link to="/w/$spaceId/settings/people/invite" params={{ spaceId }} className={btnClass("primary")}>
+          <Link to="/w/$spaceId/people/invite" params={{ spaceId }} className={btnClass("primary")}>
             <UserPlus size={15} />
             {t("Invite")}
           </Link>
@@ -170,7 +118,7 @@ export function SpacePeople() {
                 )}
                 {editable || (p.you && p.role !== "owner") ? (
                   <Link
-                    to="/w/$spaceId/settings/people/$userId"
+                    to="/w/$spaceId/people/$userId"
                     params={{ spaceId, userId: p.userId }}
                     className="h-8 rounded-control px-2.5 text-[12.5px] font-medium leading-8 text-ink-2 transition-colors hover:bg-well hover:text-ink"
                   >
@@ -213,16 +161,16 @@ export function SpacePeople() {
   );
 }
 
-// /w/$spaceId/settings/people/invite: make a link, shown once.
+// /w/$spaceId/people/invite: make a link, shown once.
 export function SpaceInvitePage() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/people/invite" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/people/invite" });
   const nav = useNavigate();
   const { space, role } = useSpaceRole(spaceId);
   const [pick, setPick] = useState("member");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const back = () => void nav({ to: "/w/$spaceId/settings/people", params: { spaceId } });
+  const back = () => void nav({ to: "/w/$spaceId/people", params: { spaceId } });
 
   async function make() {
     setBusy(true);
@@ -331,11 +279,11 @@ function HandoffRow({ lm, self, value, onChange }: { lm: LastManaged; self: bool
   );
 }
 
-// /w/$spaceId/settings/people/$userId: removing someone, or leaving. It is a
+// /w/$spaceId/people/$userId: removing someone, or leaving. It is a
 // page because it has choices: what happens to the Bots only they manage,
 // and what leaves with them.
 export function SpaceRemovePage() {
-  const { spaceId, userId } = useParams({ from: "/_authed/w/$spaceId/settings/people/$userId" });
+  const { spaceId, userId } = useParams({ from: "/_authed/w/$spaceId/people/$userId" });
   const nav = useNavigate();
   const { space } = useSpaceRole(spaceId);
   const planQ = useQuery(UI.method.planSpaceRemoval, { spaceId, userId }, { retry: false });
@@ -343,7 +291,7 @@ export function SpaceRemovePage() {
   const self = people.data?.people.find((p) => p.userId === userId)?.you ?? false;
   const [choices, setChoices] = useState<Record<string, Handoff>>({});
   const [err, setErr] = useState("");
-  const back = () => void nav({ to: "/w/$spaceId/settings/people", params: { spaceId } });
+  const back = () => void nav({ to: "/w/$spaceId/people", params: { spaceId } });
   const plan = planQ.data;
 
   const choiceOf = (lm: LastManaged): Handoff => {

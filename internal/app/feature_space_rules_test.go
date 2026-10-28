@@ -9,6 +9,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/apptest"
+	"silo.agent/internal/db"
 	"silo.agent/internal/security"
 )
 
@@ -27,32 +28,23 @@ func listedRule(t *testing.T, h *apptest.H, botID, conn, action string) *v1.Rule
 	return nil
 }
 
-func TestSpaceRulesSitBetweenOperatorAndBot(t *testing.T) {
+func TestSpaceRulesAreFloors(t *testing.T) {
 	h := apptest.New(t)
 	sp := homeSpace(t, h)
 	bot := h.CreateBot("Scout")
-	set := func(decision string, locked bool) {
+	set := func(decision string) {
 		t.Helper()
-		if _, err := h.Client.SetSpaceRule(h.Ctx(), connect.NewRequest(&v1.SetSpaceRuleRequest{SpaceId: sp, Connector: "python", Action: "run", Decision: decision, Locked: locked})); err != nil {
+		if _, err := h.Client.SetSpaceRule(h.Ctx(), connect.NewRequest(&v1.SetSpaceRuleRequest{SpaceId: sp, Connector: "python", Action: "run", Decision: decision})); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// Unlocked: a default for every Bot of the Workspace with no rule.
-	set(security.Ask, false)
-	if r := listedRule(t, h, bot.Id, "python", "run"); r.GetDecision() != security.Ask || r.GetSpaceDecision() != security.Ask || r.GetSpaceLocked() {
-		t.Fatalf("an unlocked workspace default: %+v", r)
-	}
-	// The owner overrides a default.
+	// A floor holds a Bot that allows the action at least at Ask, and says so.
 	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{BotId: bot.Id, Connector: "python", Action: "run", Decision: security.Allow})); err != nil {
 		t.Fatal(err)
 	}
-	if r := listedRule(t, h, bot.Id, "python", "run"); r.GetDecision() != security.Allow {
-		t.Fatalf("the owner could not override an unlocked default: %+v", r)
-	}
-	// Locked: a floor. The stricter wins, and loosening is refused.
-	set(security.Ask, true)
-	if r := listedRule(t, h, bot.Id, "python", "run"); r.GetDecision() != security.Ask {
-		t.Fatalf("a locked workspace floor did not hold: %+v", r)
+	set(security.Ask)
+	if r := listedRule(t, h, bot.Id, "python", "run"); r.GetDecision() != security.Ask || r.GetSpaceDecision() != security.Ask {
+		t.Fatalf("a workspace floor did not hold: %+v", r)
 	}
 	_, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{BotId: bot.Id, Connector: "python", Action: "run", Decision: security.Allow}))
 	if code(err) != connect.CodePermissionDenied || !strings.Contains(err.Error(), "workspace") {
@@ -61,9 +53,32 @@ func TestSpaceRulesSitBetweenOperatorAndBot(t *testing.T) {
 	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{BotId: bot.Id, Connector: "python", Action: "run", Decision: security.Deny})); err != nil {
 		t.Fatalf("tightening under a workspace floor: %v", err)
 	}
+	// The Workspace's page lists it where the Bot's Rules page would.
+	res, err := h.Client.ListSpaceRules(h.Ctx(), connect.NewRequest(&v1.ListSpaceRulesRequest{SpaceId: sp}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, sec := range res.Msg.GetSections() {
+		for _, r := range sec.GetRules() {
+			if r.GetConnector() == "python" && r.GetAction() == "run" {
+				found = r.GetDecision() == security.Ask
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the workspace page does not show the python floor at Ask")
+	}
+	// Allow is no floor: the row goes, and the Bot's own Deny stands.
+	set(security.Allow)
+	var n int64
+	h.DB.Model(&db.SpaceRule{}).Where("space_id = ?", sp).Count(&n)
+	if n != 0 {
+		t.Fatal("setting Allow left a workspace row")
+	}
 	// Only admins set them.
 	member, _ := joinSpace(t, h, sp, "bob@test.local", access.RoleMember)
-	if _, err := member.SetSpaceRule(h.Ctx(), connect.NewRequest(&v1.SetSpaceRuleRequest{SpaceId: sp, Connector: "python", Action: "run", Decision: security.Allow})); code(err) != connect.CodePermissionDenied {
+	if _, err := member.SetSpaceRule(h.Ctx(), connect.NewRequest(&v1.SetSpaceRuleRequest{SpaceId: sp, Connector: "python", Action: "run", Decision: security.Ask})); code(err) != connect.CodePermissionDenied {
 		t.Fatalf("a member set a workspace rule: %v", err)
 	}
 }

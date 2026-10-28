@@ -1,11 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, Settings } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Space } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { useDismiss } from "../useMenu";
-import { canAdmin } from "./spaces";
+import { rememberSpace } from "./spaces";
 
 /** The letters of a Workspace on a `well` square: the rail's tile, the menu's rows. */
 export function SpaceMark({ space, size = 32 }: { space: Pick<Space, "mark" | "name"> | undefined; size?: number }) {
@@ -58,9 +58,11 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Switching lands where home does: that Workspace's first Bot.
   function go(id: string) {
     setOpen(false);
-    void nav({ to: "/w/$spaceId", params: { spaceId: id } });
+    rememberSpace(id);
+    void nav({ to: "/" });
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -141,18 +143,6 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
                   <Plus size={15} className="mx-[4.5px]" />
                   {t("New workspace")}
                 </Link>
-                {space && canAdmin(space.role) ? (
-                  <Link
-                    to="/w/$spaceId/settings"
-                    params={{ spaceId: space.id }}
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                    className="flex h-9 items-center gap-2.5 rounded-sm px-2 text-[13px] text-ink-2 transition-colors hover:bg-well hover:text-ink"
-                  >
-                    <Settings size={15} className="mx-[4.5px]" />
-                    {t("Workspace settings")}
-                  </Link>
-                ) : null}
               </div>
             </div>,
             document.body,

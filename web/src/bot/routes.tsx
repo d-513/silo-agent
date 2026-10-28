@@ -21,11 +21,6 @@ const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const DashboardPane = lazyNamed(() => import("../dashboard/Dashboard"), "DashboardPane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
 const SubagentPage = lazyNamed(() => import("../SubagentPage"), "SubagentPage");
-const BotConnectors = lazyNamed(() => import("../connectors/BotConnectors"), "BotConnectors");
-const DrivesList = lazyNamed(() => import("../drives/BotDrives"), "DrivesList");
-const DriveNew = lazyNamed(() => import("../drives/BotDrives"), "DriveNew");
-const DriveAdd = lazyNamed(() => import("../drives/BotDrives"), "DriveAdd");
-const DriveEdit = lazyNamed(() => import("../drives/BotDrives"), "DriveEdit");
 const BotPeople = lazyNamed(() => import("../space/BotPeople"), "BotPeople");
 const ChannelsList = lazyNamed(() => import("../channels/BotChannels"), "ChannelsList");
 const ChannelNew = lazyNamed(() => import("../channels/BotChannels"), "ChannelNew");
@@ -33,7 +28,6 @@ const ChannelAdd = lazyNamed(() => import("../channels/BotChannels"), "ChannelAd
 const ChannelEdit = lazyNamed(() => import("../channels/BotChannels"), "ChannelEdit");
 const ChannelSetupPage = lazyNamed(() => import("../channels/BotChannels"), "ChannelSetupPage");
 const TunnelsPane = lazyNamed(() => import("./Tunnels"), "TunnelsPane");
-const BotSkills = lazyNamed(() => import("../Skills"), "BotSkills");
 const ContainersPane = lazyNamed(() => import("./Containers"), "ContainersPane");
 const SettingsPane = lazyNamed(() => import("../Settings"), "SettingsPane");
 const RulesPane = lazyNamed(() => import("../rules/RulesPane"), "RulesPane");
@@ -202,39 +196,6 @@ export function FeedRoute() {
   );
 }
 
-export function ConnectorsRoute() {
-  const p = useBotPage();
-  return (
-    <section className="min-h-0 min-w-0 flex-1 overflow-auto">
-      <Suspense fallback={<PaneFallback />}>
-        <BotConnectors botId={p.id} spaceId={p.bot.spaceId} onNeedAuth={p.needAuth} />
-      </Suspense>
-    </section>
-  );
-}
-
-export function DrivesRoute() {
-  const p = useBotPage();
-  return <DrivesList botId={p.id} spaceId={p.bot.spaceId} manage={p.bot.role === "manage"} />;
-}
-
-export function DriveNewRoute() {
-  const p = useBotPage();
-  return <DriveNew botId={p.id} admin={p.admin} />;
-}
-
-export function DriveAddRoute() {
-  const { template } = useParams({ from: "/_authed/bots/$botId/_customize/drives/new/$template" });
-  const p = useBotPage();
-  return <DriveAdd botId={p.id} spaceId={p.bot.spaceId} template={template} />;
-}
-
-export function DriveRoute() {
-  const { driveId } = useParams({ from: "/_authed/bots/$botId/_customize/drives/$driveId" });
-  const p = useBotPage();
-  return <DriveEdit botId={p.id} spaceId={p.bot.spaceId} driveId={driveId} />;
-}
-
 export function ChannelsRoute() {
   return <ChannelsList botId={useBotPage().id} />;
 }
@@ -244,17 +205,17 @@ export function ChannelNewRoute() {
 }
 
 export function ChannelAddRoute() {
-  const { adapter } = useParams({ from: "/_authed/bots/$botId/_customize/channels/new/$adapter" });
+  const { adapter } = useParams({ from: "/_authed/bots/$botId/channels/new/$adapter" });
   return <ChannelAdd botId={useBotPage().id} adapter={adapter} />;
 }
 
 export function ChannelRoute() {
-  const { channelId } = useParams({ from: "/_authed/bots/$botId/_customize/channels/$channelId" });
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId" });
   return <ChannelEdit botId={useBotPage().id} channelId={channelId} />;
 }
 
 export function ChannelSetupRoute() {
-  const { channelId } = useParams({ from: "/_authed/bots/$botId/_customize/channels/$channelId/setup" });
+  const { channelId } = useParams({ from: "/_authed/bots/$botId/channels/$channelId/setup" });
   return <ChannelSetupPage botId={useBotPage().id} channelId={channelId} />;
 }
 
@@ -262,15 +223,6 @@ export function TunnelsRoute() {
   return (
     <ScrollPane>
       <TunnelsPane botId={useBotPage().id} />
-    </ScrollPane>
-  );
-}
-
-export function SkillsRoute() {
-  const { id, bot } = useBotPage();
-  return (
-    <ScrollPane>
-      <BotSkills botId={id} spaceId={bot.spaceId} />
     </ScrollPane>
   );
 }

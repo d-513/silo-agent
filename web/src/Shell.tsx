@@ -1,4 +1,4 @@
-import { Blocks, LayoutGrid, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
+import { Building2, LogOut, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AccountPage } from "./account/AccountPage";
@@ -51,16 +51,14 @@ function ThemeToggle() {
   );
 }
 
-type Page = "bots" | "admin" | "account" | "customize";
+type Page = "bots" | "admin" | "account" | "workspace";
 
 function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
   const { admin, email, setSession } = useAuth();
   const { bots } = useBots();
   const { space, spaces } = useCurrentSpace();
   const loc = useLocation();
-  const spaceHome = space ? `/w/${space.id}` : "";
   const newBotPath = space ? `/w/${space.id}/new` : "";
-  const homeActive = page === "bots" && !activeBotId && loc.pathname === spaceHome;
   const initial = (email.trim()[0] ?? "?").toUpperCase();
   // The rail holds the Bots of the Workspace the console is in.
   const here = (bots ?? []).filter((b) => b.spaceId === space?.id);
@@ -69,19 +67,9 @@ function Rail({ page, activeBotId }: { page: Page; activeBotId?: string }) {
       <SpaceTile space={space} spaces={spaces} />
       <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
         {space ? (
-          <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Bots")} className={railHit(homeActive)}>
-            {railBar(homeActive)}
-            <LayoutGrid size={20} />
-          </Link>
-        ) : (
-          <span className={railHit(false)}>
-            <LayoutGrid size={20} />
-          </span>
-        )}
-        {space && canBuild(space.role) ? (
-          <Link to="/w/$spaceId/customize" params={{ spaceId: space.id }} title={t("Customize")} className={railHit(page === "customize")}>
-            {railBar(page === "customize")}
-            <Blocks size={20} />
+          <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Workspace")} className={railHit(page === "workspace")}>
+            {railBar(page === "workspace")}
+            <Building2 size={20} />
           </Link>
         ) : null}
         <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />
@@ -153,8 +141,8 @@ export function Shell() {
     ? "admin"
     : pathname.startsWith("/account")
       ? "account"
-      : /^\/w\/[^/]+\/customize/.test(pathname)
-        ? "customize"
+      : pathname.startsWith("/w/") && pathname !== "/w/new" && !/^\/w\/[^/]+\/new$/.test(pathname)
+        ? "workspace"
         : "bots";
   // Replies with code are common: fetch the highlighter once the browser is idle.
   useEffect(() => preloadMarkdown(), []);

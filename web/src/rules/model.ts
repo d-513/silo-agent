@@ -59,14 +59,14 @@ export function strictness(mode: string, side: Side = "decision"): number {
   return (side === "output" ? outputRank : callRank)[mode] ?? 2;
 }
 
-type Floored = Pick<Rule, "locked" | "operatorDecision" | "operatorOutput" | "spaceLocked" | "spaceDecision" | "spaceOutput">;
+type Floored = Pick<Rule, "locked" | "operatorDecision" | "operatorOutput" | "spaceDecision" | "spaceOutput">;
 
-// ruleFloor is the locked value a rule's side may not go below, and who
-// holds it: the operator or the Workspace, the stricter of the two; "" when
-// neither holds it.
+// ruleFloor is the value a rule's side may not go below, and who holds it:
+// the operator (a locked row) or the Workspace (always a floor), the
+// stricter of the two; "" when neither holds it.
 export function ruleFloor(r: Floored, side: Side): { mode: string; by: "operator" | "workspace" | "" } {
   const op = r.locked ? (side === "output" ? r.operatorOutput : r.operatorDecision) : "";
-  const ws = r.spaceLocked ? (side === "output" ? r.spaceOutput : r.spaceDecision) : "";
+  const ws = side === "output" ? r.spaceOutput : r.spaceDecision;
   if (ws && (!op || strictness(ws, side) > strictness(op, side))) return { mode: ws, by: "workspace" };
   if (op) return { mode: op, by: "operator" };
   return { mode: "", by: "" };

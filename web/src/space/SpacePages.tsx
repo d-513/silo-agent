@@ -7,23 +7,32 @@ import { Btn, btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ArmedButton } from "../Feedback";
 import { ErrorWell, inputClass, SettingGroup, SettingRow } from "../Field";
-import { UI } from "../gen/silo/v1/ui_pb";
+import { UI, type OtherBot } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { PaneFallback } from "../PaneFallback";
 import { Select } from "../Select";
 import { reload } from "../query";
 import { markOf } from "./pick.ts";
-import { forgetSpace, useCurrentSpace } from "./spaces";
+import { useBots } from "../bots";
+import { Crest } from "../Crest";
+import { Tip } from "../Tip";
+import { Initials } from "./People";
+import { canAdmin, canBuild, forgetSpace, useCurrentSpace } from "./spaces";
 import { SpaceMark } from "./SpaceTile";
 
 // SpaceRedirect is /, /new and /skills: the same page in the Workspace the
 // console is in (the one last opened here, else the first).
+// Home is the Workspace's first Bot you are on; with none, New Bot (or, for a
+// guest, the Workspace page).
 export function SpaceRedirect({ to }: { to: "home" | "new" | "skills" }) {
   const { space } = useCurrentSpace();
-  if (!space) return <PaneFallback />;
+  const { bots } = useBots();
+  if (!space || (to === "home" && !bots)) return <PaneFallback />;
   const params = { spaceId: space.id };
-  if (to === "new") return <Navigate to="/w/$spaceId/new" params={params} replace />;
-  if (to === "skills") return <Navigate to="/w/$spaceId/customize/skills" params={params} replace />;
+  if (to === "skills") return <Navigate to="/w/$spaceId/skills" params={params} replace />;
+  const first = to === "home" ? bots?.find((b) => b.spaceId === space.id) : undefined;
+  if (first) return <Navigate to="/bots/$botId/run" params={{ botId: first.id }} replace />;
+  if (canBuild(space.role)) return <Navigate to="/w/$spaceId/new" params={params} replace />;
   return <Navigate to="/w/$spaceId" params={params} replace />;
 }
 
@@ -69,7 +78,7 @@ export function NewSpacePage() {
     try {
       const s = await ui.createSpace({ name: name.trim(), mark: mark.trim() });
       await reload(UI.method.listSpaces);
-      void nav({ to: "/w/$spaceId", params: { spaceId: s.id } });
+      void nav({ to: "/w/$spaceId/new", params: { spaceId: s.id } });
     } catch (ex) {
       setErr(fail(ex));
       setBusy(false);
@@ -96,7 +105,7 @@ export function NewSpacePage() {
 }
 
 export function SpaceSettingsPage() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings/" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/settings" });
   const { spaces } = useCurrentSpace();
   const space = spaces?.find((s) => s.id === spaceId);
   if (!spaces) return <PaneFallback />;
@@ -153,6 +162,7 @@ function SpaceSettingsForm({ id, name: savedName, mark: savedMark, role }: { id:
         </form>
       </SettingGroup>
       <Membership id={id} role={role} />
+      {canAdmin(role) ? <OtherBots spaceId={id} /> : null}
       {role === "owner" ? (
         <SettingGroup title={t("Dangerous")} note={t("The first click arms, the second acts. These cannot be undone from here.")} tone="danger">
           <SettingRow
@@ -194,7 +204,7 @@ function Membership({ id, role }: { id: string; role: string }) {
     return (
       <SettingGroup title={t("Membership")}>
         <SettingRow label={t("Leave workspace")} hint={t("You lose access to its Bots. Bots only you manage need a new manager first.")}>
-          <Link to="/w/$spaceId/settings/people/$userId" params={{ spaceId: id, userId: me.userId }} className={btnClass("secondary")}>
+          <Link to="/w/$spaceId/people/$userId" params={{ spaceId: id, userId: me.userId }} className={btnClass("secondary")}>
             {t("Leave…")}
           </Link>
         </SettingRow>
@@ -217,5 +227,53 @@ function Membership({ id, role }: { id: string; role: string }) {
         ) : null}
       </SettingRow>
     </SettingGroup>
+  );
+}
+
+// OtherBots is what a Workspace admin sees of the Bots they are not on: that
+// they exist, who is on them and how much they are given, and Delete. They
+// cannot be opened.
+function OtherBots({ spaceId }: { spaceId: string }) {
+  const q = useQuery(UI.method.listBots, { spaceId }, { refetchInterval: 15_000 });
+  const others = q.data?.others ?? [];
+  const [err, setErr] = useState("");
+  if (others.length === 0) return null;
+  async function remove(b: OtherBot) {
+    setErr("");
+    try {
+      await ui.deleteBot({ id: b.id });
+      await reload(UI.method.listBots, { spaceId });
+    } catch (ex) {
+      setErr(fail(ex));
+    }
+  }
+  return (
+    <section className="mt-6">
+      <h2 className="text-[13.5px] font-medium text-ink">{t("Other Bots")}</h2>
+      <p className="mb-3 mt-0.5 text-[12.5px] text-ink-2">{t("Bots in this workspace you are not on. As an admin you can delete one, but not open it.")}</p>
+      {err ? <p role="alert" className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      <div className="grid grid-cols-1 gap-3 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
+        {others.map((b) => (
+          <div key={b.id} className="flex items-center gap-3.5 rounded-card bg-surface/70 p-4 shadow-card">
+            <Tip content={<p className="text-[12.5px]">{t("Only people on {{name}} can open it.", { name: b.name })}</p>}>
+              <span tabIndex={0} className="opacity-60 outline-none">
+                <Crest index={b.crest} size={40} />
+              </span>
+            </Tip>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[14px] font-medium text-ink-2">{b.name}</div>
+              <div className="mt-1 flex items-center gap-1">
+                {b.people.slice(0, 4).map((p) => (
+                  <Initials key={p} email={p} size={20} />
+                ))}
+                {b.people.length > 4 ? <span className="text-[11px] text-ink-3">{`+${b.people.length - 4}`}</span> : null}
+                <span className="ml-1.5 text-[11.5px] text-ink-3">{t("{{count}} grants", { count: b.grants })}</span>
+              </div>
+            </div>
+            <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete {{name}}", { name: b.name })} armedLabel={t("Click again to delete")} icon={<Trash2 size={14} />} onConfirm={() => void remove(b)} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

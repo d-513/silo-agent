@@ -112,8 +112,9 @@ type floor struct {
 }
 
 // layer combines the owner's value with the layers above it, nearest first
-// (the Workspace's, then the operator's). An unlocked layer is a default the
-// nearer ones override; a locked one is a floor, so the stricter value wins.
+// (the Workspace's, always a floor, then the operator's). An unlocked layer is
+// a default the nearer ones override; a locked one is a floor, so the
+// stricter value wins.
 func layer(own string, ownSet bool, floors []floor, stricter func(a, b string) string) (string, bool) {
 	val, set := own, ownSet
 	for _, f := range floors {
@@ -135,7 +136,7 @@ func (a *App) layeredDecision(botID, conn, action string) (string, bool) {
 	bot, botSet := a.botRule(botID, conn, action)
 	sp, _ := a.spaceRule(botID, conn, action)
 	op, _ := a.operatorRule(conn, action)
-	return layer(bot, botSet, []floor{{sp.Decision, sp.Locked}, {op.Decision, op.Locked}}, security.Stricter)
+	return layer(bot, botSet, []floor{{sp.Decision, true}, {op.Decision, op.Locked}}, security.Stricter)
 }
 
 // layeredOutput is the output rule in effect for an action, layered the same
@@ -144,7 +145,7 @@ func (a *App) layeredOutput(botID, conn, action string) (string, bool) {
 	bot := a.botOutput(botID, conn, action)
 	sp, _ := a.spaceRule(botID, conn, action)
 	op, _ := a.operatorRule(conn, action)
-	return layer(bot, bot != "", []floor{{sp.Output, sp.Locked}, {op.Output, op.Locked}}, security.StricterOutput)
+	return layer(bot, bot != "", []floor{{sp.Output, true}, {op.Output, op.Locked}}, security.StricterOutput)
 }
 
 // ListOperatorRules lists the installation's rule rows and its policy text.

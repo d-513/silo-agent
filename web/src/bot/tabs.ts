@@ -6,22 +6,18 @@
 // inbox, which needs no machine).
 export const sideTabs = ["dashboard", "automations", "artifacts", "memories", "knowledge", "feed"] as const;
 export type SideTab = (typeof sideTabs)[number];
-export const customizeTabs = ["connectors", "skills", "drives", "channels"] as const;
-export type CustomizeTab = (typeof customizeTabs)[number];
 export const settingsTabs = ["settings", "people", "rules", "secrets", "tunnels", "container", "audit"] as const;
 export type SettingsTab = (typeof settingsTabs)[number];
 export const paneKinds = ["files", "desktop", "console", "changes", "mail"] as const;
 export type PaneKind = (typeof paneKinds)[number];
-export type Tab = "run" | SideTab | CustomizeTab | SettingsTab | PaneKind;
+// Channels is the Bot's own page beside Settings: what talks to it. What it
+// shares with its Workspace (connectors, skills, drives) is the Workspace's.
+export type Tab = "run" | SideTab | "channels" | SettingsTab | PaneKind;
 
 const has = (xs: readonly string[], t: Tab) => xs.includes(t);
 
 export function onChatSide(t: Tab) {
   return t === "run" || has(sideTabs, t);
-}
-
-export function onCustomize(t: Tab) {
-  return has(customizeTabs, t);
 }
 
 export function onSettings(t: Tab) {

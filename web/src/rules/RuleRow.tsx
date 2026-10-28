@@ -32,7 +32,7 @@ export function RuleRow({ rule: r, side, onChange }: { rule: Rule; side: Side; o
         </div>
       </div>
       <div className="w-full wide:w-[260px] wide:shrink-0">
-        <RuleDecisionSegment side={side} value={r[side]} floor={floor} onChange={onChange} />
+        <RuleDecisionSegment side={side} value={r[side]} floor={floor} floorBy={held.by || "operator"} onChange={onChange} />
       </div>
     </div>
   );

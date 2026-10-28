@@ -272,33 +272,6 @@ export function ApprovalCard({
   );
 }
 
-export function ConnectorAuthSlip({
-  bot,
-  name,
-  onAuthorize,
-  onLater,
-}: {
-  bot: Bot;
-  name: string;
-  onAuthorize: () => void;
-  onLater: () => void;
-}) {
-  return (
-    <NeedYouSlip
-      bot={bot}
-      title={t("Authorize {{name}}", { name })}
-      summary={t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}
-    >
-      <Btn kind="primary" className="!h-10 w-full justify-center" onClick={onAuthorize}>
-        {t("Authorize")}
-      </Btn>
-      <Btn kind="secondary" className="!h-10 w-full justify-center" onClick={onLater}>
-        {t("Later")}
-      </Btn>
-    </NeedYouSlip>
-  );
-}
-
 // approveSetAuto is "Auto-approve from now on": the action's rule becomes
 // Auto, then this one call is let through once.
 export async function approveSetAuto(botId: string, ap: Approval) {

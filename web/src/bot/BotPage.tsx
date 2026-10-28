@@ -4,10 +4,9 @@ import { X } from "lucide-react";
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ui } from "../api";
 import type { Artifact } from "../Artifact";
-import { useAuth } from "../auth";
 import { fail } from "../errors";
 import { SkeletonRows } from "../Field";
-import { UI, type BotConnector } from "../gen/silo/v1/ui_pb";
+import { UI } from "../gen/silo/v1/ui_pb";
 import { lazyNamed } from "../lazyNamed";
 import { agentLink, chatLink, newChatLink } from "../links";
 import { reload, setBot } from "../query";
@@ -63,7 +62,6 @@ const paneTo = {
 // between pages (the live Bot row, the chat list, a half-written message, the
 // run stream) and hands it to those pages through useBotPage().
 export function BotPage() {
-  const { admin } = useAuth();
   const { botId: id } = useParams({ from: "/_authed/bots/$botId" });
   const { chatId, agentId } = useParams({ strict: false });
   // The tab is whatever the matched route says it lights (router.tsx).
@@ -81,7 +79,6 @@ export function BotPage() {
   const [pick, setPick] = useState<ChatPick>({ model: "", thinking: "" });
   useEffect(() => setPick({ model: "", thinking: "" }), [id, fresh]);
   const secrets = useSecrets(id, tab === "secrets", setActErr);
-  const [authPrompt, setAuthPrompt] = useState<BotConnector | null>(null);
   // A machine pane is its own page on its route (`max`); on the chat side it
   // is the one docked beside the page, where there is room for that. Customize
   // and Settings keep their full width: a docked pane waits (still connected)
@@ -107,7 +104,6 @@ export function BotPage() {
   });
 
   useEffect(() => {
-    setAuthPrompt(null);
     lastChat.current = undefined;
   }, [id]);
   // Docking a pane back goes to the chat it was opened from.
@@ -198,7 +194,6 @@ export function BotPage() {
       value={{
         id,
         bot,
-        admin,
         tab,
         chatId,
         fresh,
@@ -210,7 +205,6 @@ export function BotPage() {
         reloadApprovals,
         inspectArtifact: setInspect,
         saveSkill: onSaveSkill,
-        needAuth: setAuthPrompt,
         secrets,
         chats,
         models,
@@ -301,7 +295,7 @@ export function BotPage() {
             onError={setActErr}
           />
           <MachineRail bot={bot} open={pane} onPick={pickPane} onStart={start} onStop={stop} />
-          <BotSlip bot={bot} pending={tab === "dashboard" ? [] : pending} authPrompt={authPrompt} setAuthPrompt={setAuthPrompt} onError={setActErr} />
+          <BotSlip bot={bot} pending={tab === "dashboard" ? [] : pending} onError={setActErr} />
           {inspect ? (
             <Suspense fallback={null}>
               <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} />

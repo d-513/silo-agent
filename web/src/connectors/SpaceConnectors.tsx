@@ -31,7 +31,7 @@ const noRows: Connector[] = [];
 // connection kept once here, which Bots use each, and adding new ones from the
 // library or a custom server.
 export function SpaceConnectors() {
-  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/customize/connectors" });
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId/connectors" });
   const spaceQ = useQuery(UI.method.listSpaceConnectors, { spaceId }, { refetchInterval: 3000 });
   const catalogQ = useQuery(UI.method.listConnectors, {}, { refetchInterval: 10_000 });
   const rows = spaceQ.data?.connectors ?? noRows;

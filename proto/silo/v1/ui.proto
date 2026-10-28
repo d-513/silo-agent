@@ -78,12 +78,11 @@ service UI {
   // their identity: shared, any Bot of the Workspace may get it; personal
   // (the default), only Bots they alone use.
   rpc SetLendShared(SetLendSharedRequest) returns (SetLendSharedResponse);
-  // The Workspace's layer of the rules engine, between the operator's and
-  // each Bot's (a locked row is a floor no Bot of it may loosen), and its
-  // policy texts, read after the operator's and before the Bot's.
+  // The Workspace's guardrails: for an action, the least strict mode any of
+  // its Bots may use (a floor between the operator's and each Bot's own), and
+  // its policy texts, read after the operator's and before the Bot's.
   rpc ListSpaceRules(ListSpaceRulesRequest) returns (ListSpaceRulesResponse);
-  rpc SetSpaceRule(SetSpaceRuleRequest) returns (OperatorRule);
-  rpc DeleteSpaceRule(DeleteSpaceRuleRequest) returns (DeleteSpaceRuleResponse);
+  rpc SetSpaceRule(SetSpaceRuleRequest) returns (Rule);
   rpc UpdateSpacePolicy(UpdateSpacePolicyRequest) returns (ListSpaceRulesResponse);
   // What happened in the Workspace: people, Bots made and deleted, grants,
   // sign-ins and lending. Never what a Bot did with a grant.
@@ -872,28 +871,24 @@ message ListSpaceRulesRequest {
   string space_id = 1;
 }
 
+// ListSpaceRulesResponse is the Rules page of a Workspace: the sections a
+// Bot's Rules page has, each rule's decision and output being the
+// Workspace's floor (allow and pass: none).
 message ListSpaceRulesResponse {
-  repeated OperatorRule rules = 1;
+  repeated RuleSection sections = 1;
   string approval_policy = 2;
   string output_policy = 3;
 }
 
+// SetSpaceRuleRequest sets the floors for one action; allow and pass (or
+// empty) remove that side.
 message SetSpaceRuleRequest {
   string space_id = 1;
   string connector = 2;
   string action = 3;
   string decision = 4;
   string output = 5;
-  bool locked = 6;
 }
-
-message DeleteSpaceRuleRequest {
-  string space_id = 1;
-  string connector = 2;
-  string action = 3;
-}
-
-message DeleteSpaceRuleResponse {}
 
 message UpdateSpacePolicyRequest {
   string space_id = 1;
@@ -2327,10 +2322,11 @@ message Rule {
   string operator_decision = 8;
   string operator_output = 9;
   bool locked = 10;
-  // The Bot's Workspace's layer, likewise.
+  // The Bot's Workspace's floor for this action, when it sets one: the
+  // least strict mode the Bot may use.
   string space_decision = 11;
   string space_output = 12;
-  bool space_locked = 13;
+  reserved 13;
 }
 
 message RuleSection {
@@ -3067,6 +3063,9 @@ message Skill {
   // may remove it (they installed it, or they are an admin of the Workspace).
   string installed_by = 6;
   bool can_remove = 7;
+  // Listed for a Workspace (space_id set): which of its Bots the caller is on
+  // have it switched on.
+  repeated string used_by = 8;
 }
 
 // A skill scope is "library" (site-wide) or "space" (one Workspace's, named

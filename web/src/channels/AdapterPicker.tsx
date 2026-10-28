@@ -1,8 +1,9 @@
 import { Check, Plug, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useNavigate } from "@tanstack/react-router";
 import { btnClass } from "../Btn";
-import type { ChannelAdapter } from "../gen/silo/v1/ui_pb";
+import { UI, type ChannelAdapter } from "../gen/silo/v1/ui_pb";
 import { PageHead, widePage } from "../PageHead";
 import { ToolbarSearch } from "../ToolbarSearch";
 import { AdapterLogo } from "./AdapterLogo";
@@ -83,6 +84,8 @@ export function AdapterPicker({
   onBack: () => void;
 }) {
   const navigate = useNavigate();
+  // Connectors are the Workspace's: the button opens its Connectors tab.
+  const spaceId = useQuery(UI.method.getBot, { id: botId }).data?.spaceId ?? "";
   const [search, setSearch] = useState("");
   const shown = useMemo(() => filterAdapters(adapters, search), [adapters, search]);
   return (
@@ -128,7 +131,7 @@ export function AdapterPicker({
             <p className="text-xs text-ink-2">{t("Those are Connectors: the Bot calls them as tools instead of chatting through them.")}</p>
           </div>
         </div>
-        <button type="button" className={btnClass("secondary")} onClick={() => void navigate({ to: "/bots/$botId/connectors", params: { botId } })}>
+        <button type="button" className={btnClass("secondary")} disabled={!spaceId} onClick={() => void navigate({ to: "/w/$spaceId/connectors", params: { spaceId } })}>
           {t("Browse Connectors")}
         </button>
       </div>

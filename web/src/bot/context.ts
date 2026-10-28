@@ -1,7 +1,7 @@
 import type { Said } from "../composer/Composer";
 import { createContext, useContext } from "react";
 import type { Artifact } from "../Artifact";
-import type { Bot, BotConnector, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
+import type { Bot, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
 import type { AgentLink } from "../links";
 import type { useRunStream } from "../useRunStream";
 import type { useSubagents } from "../useSubagents";
@@ -16,7 +16,6 @@ import type { SecretsState } from "./useSecrets";
 export type BotPageState = {
   id: string;
   bot: Bot;
-  admin: boolean;
   tab: Tab;
   chatId?: string;
   // The empty chat (/run/new) and what is picked for it.
@@ -30,8 +29,6 @@ export type BotPageState = {
   reloadApprovals: () => void;
   inspectArtifact: (a: Artifact) => void;
   saveSkill: (a: Artifact) => void;
-  // Ask for a connector sign-in on the right-hand slip.
-  needAuth: (c: BotConnector | null) => void;
   secrets: SecretsState;
   // The chat side.
   chats: Chat[];
