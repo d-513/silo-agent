@@ -40,7 +40,8 @@ struct SpaceRulesPage: View {
                         RuleRow(rule: rule, side: side, modes: modes, workspace: false) { value in Task { await set([rule], value) } }
                     }
                 } header: {
-                    HStack {
+                    HStack(spacing: 8) {
+                        RuleSectionMark(section: section)
                         Text(section.title)
                         Spacer()
                         Menu("All") {

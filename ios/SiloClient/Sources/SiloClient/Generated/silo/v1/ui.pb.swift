@@ -5219,6 +5219,12 @@ public nonisolated struct Silo_V1_RuleSection: Sendable {
   /// Results side. Empty for a section with no results to filter.
   public var outputSummary: String = String()
 
+  /// A connector's section: the connection, for its mark at
+  /// /connectors/<id>/image. Empty for the Bot, Secrets and Channels.
+  public var connectorID: String = String()
+
+  public var hasImage_p: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -19737,7 +19743,7 @@ nonisolated extension Silo_V1_Rule: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension Silo_V1_RuleSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RuleSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}summary\0\u{1}rules\0\u{3}output_summary\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}summary\0\u{1}rules\0\u{3}output_summary\0\u{3}connector_id\0\u{3}has_image\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -19750,6 +19756,8 @@ nonisolated extension Silo_V1_RuleSection: SwiftProtobuf.Message, SwiftProtobuf.
       case 3: try { try decoder.decodeSingularStringField(value: &self.summary) }()
       case 4: try { try decoder.decodeRepeatedMessageField(value: &self.rules) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.outputSummary) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.connectorID) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.hasImage_p) }()
       default: break
       }
     }
@@ -19771,6 +19779,12 @@ nonisolated extension Silo_V1_RuleSection: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.outputSummary.isEmpty {
       try visitor.visitSingularStringField(value: self.outputSummary, fieldNumber: 5)
     }
+    if !self.connectorID.isEmpty {
+      try visitor.visitSingularStringField(value: self.connectorID, fieldNumber: 6)
+    }
+    if self.hasImage_p != false {
+      try visitor.visitSingularBoolField(value: self.hasImage_p, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -19780,6 +19794,8 @@ nonisolated extension Silo_V1_RuleSection: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.summary != rhs.summary {return false}
     if lhs.rules != rhs.rules {return false}
     if lhs.outputSummary != rhs.outputSummary {return false}
+    if lhs.connectorID != rhs.connectorID {return false}
+    if lhs.hasImage_p != rhs.hasImage_p {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
