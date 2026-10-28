@@ -28,6 +28,10 @@ struct DashboardPage: View {
                 if let board {
                     asks(board.cards.filter { $0.status == "open" })
                     sinceLooked
+                    // Until the Bot writes its own ideas, a few things to ask it.
+                    if !board.widgets.contains(where: { $0.kind == "ideas" }) && board.widgets.count < 3 {
+                        StarterIdeas()
+                    }
                     widgets(board.widgets)
                     curator(board)
                 } else {
@@ -38,15 +42,6 @@ struct DashboardPage: View {
             .padding(.bottom, 24)
         }
         .background(Theme.canvas.ignoresSafeArea())
-        .overlay {
-            if let board, board.widgets.isEmpty, board.cards.allSatisfy({ $0.status != "open" }), since.isEmpty, model.approvals.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing on the board yet", systemImage: "square.grid.2x2")
-                } description: {
-                    Text("Ask the Bot below for what you want to keep an eye on: a number, a list, a calendar, a service's health.")
-                }
-            }
-        }
         .safeAreaInset(edge: .bottom) {
             AskBar(focus: $focus) { text in await ask(text) }
         }
@@ -80,7 +75,8 @@ struct DashboardPage: View {
     private func asks(_ cards: [Silo_V1_DashboardCard]) -> some View {
         if !cards.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionTitle(text: cards.count == 1 ? "Needs you" : "\(cards.count) need you", color: Theme.vermilion)
+                // The Bot's questions only wait; approvals above are what a run is paused on.
+                SectionTitle(text: cards.count == 1 ? "Question for you" : "\(cards.count) questions", color: Theme.cobalt)
                 ForEach(cards.sorted { $0.priority < $1.priority }, id: \.id) { card in
                     Button { asking = card } label: { AskRow(card: card) }
                         .buttonStyle(.plain)
@@ -430,6 +426,7 @@ private struct WidgetCard: View {
             case "status": status
             case "checklist": checklist
             case "progress": progress
+            case "ideas": IdeaList(ideas: ideasOf(data))
             default: EmptyView()
             }
         }
@@ -793,7 +790,7 @@ private struct AskRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            RoundedRectangle(cornerRadius: 2).fill(Theme.vermilion).frame(width: 4)
+            Image(systemName: "questionmark.bubble").font(.system(size: 15)).foregroundStyle(Theme.cobalt).padding(.top, 2)
             VStack(alignment: .leading, spacing: 4) {
                 Text(card.title).font(.silo(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                 if !card.summary.isEmpty {
@@ -813,10 +810,12 @@ private struct AskRow: View {
 
 /// One ask as a sheet: its context blocks, native controls for its questions, and one submit that
 /// opens a chat with the answers. "Not now" puts it away; "Don't suggest this again" also tells the Bot.
-private struct AskSheet: View {
+struct AskSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let card: Silo_V1_DashboardCard
+    /// Shown in a chat: the answer is the owner's turn there, and there is no "don't suggest".
+    var inThread = false
     let changed: () async -> Void
     @State private var blocks: [AskBlock] = []
     @State private var values: [String: AskValue] = [:]
@@ -837,7 +836,9 @@ private struct AskSheet: View {
                 }
                 Section {
                     Button("Not now") { Task { await dismissCard(suppress: false) } }
-                    Button("Don't suggest this again", role: .destructive) { Task { await dismissCard(suppress: true) } }
+                    if !inThread {
+                        Button("Don't suggest this again", role: .destructive) { Task { await dismissCard(suppress: true) } }
+                    }
                 }
             }
             .navigationTitle(card.title)
@@ -978,5 +979,85 @@ private struct AskSheet: View {
             await changed()
             await model.refreshBots()
         } catch { await model.report(error) }
+    }
+}
+
+// MARK: - Ideas
+
+struct Idea: Hashable {
+    let title: String
+    let prompt: String
+}
+
+/// An ideas widget's data: `{items: [{title, prompt?}]}`.
+func ideasOf(_ data: [String: Any]) -> [Idea] {
+    WidgetJSON.items(data["items"]).compactMap { item in
+        let title = WidgetJSON.text(item["title"])
+        guard !title.isEmpty else { return nil }
+        let prompt = WidgetJSON.text(item["prompt"])
+        return Idea(title: title, prompt: prompt.isEmpty ? title : prompt)
+    }
+}
+
+/// A column of ideas: a press puts the prompt in the main chat's composer, never sent for the owner.
+struct IdeaList: View {
+    @Environment(AppModel.self) private var model
+    let ideas: [Idea]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(ideas, id: \.self) { idea in
+                Button {
+                    model.composerInsert = idea.prompt
+                    model.showMainChat()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(idea.title).font(.silo(14)).foregroundStyle(Theme.ink2).multilineTextAlignment(.leading)
+                        Spacer(minLength: 4)
+                        Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.ink3)
+                    }
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+/// What a Bot can do for its owner before it knows them: a few things to ask, shaped by what is
+/// connected. No model writes them; the Bot's own ideas widget replaces them.
+private struct StarterIdeas: View {
+    @Environment(AppModel.self) private var model
+    @State private var connected: Set<String> = []
+
+    private var ideas: [Idea] {
+        var out: [String] = []
+        if !connected.isDisjoint(with: ["email", "gmail"]) { out.append("Go through my unread mail and tell me what needs an answer") }
+        if !connected.isDisjoint(with: ["calendar", "google_calendar"]) { out.append("Plan my week from my calendar") }
+        out += [
+            "Research a question for me and compare the top three options",
+            "Turn my notes into a one-page PDF I can share",
+            "Every morning, brief me on what matters today",
+            "Watch a web page and tell me when it changes",
+        ]
+        return out.prefix(5).map { Idea(title: $0, prompt: $0) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("THINGS TO ASK \((model.selectedBot?.name ?? "").uppercased())")
+                .font(.silo(11, .medium))
+                .tracking(0.9)
+                .foregroundStyle(Theme.ink3)
+            IdeaList(ideas: ideas)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .widgetCard()
+        .task(id: model.selectedBotID) {
+            guard let botID = model.selectedBotID,
+                  let rows = try? await model.client.listBotConnectors(botID: botID) else { return }
+            connected = Set(rows.flatMap { [$0.connector.builtin, $0.connector.identifier] }.filter { !$0.isEmpty })
+        }
     }
 }

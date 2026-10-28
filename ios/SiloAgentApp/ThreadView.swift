@@ -11,6 +11,12 @@ struct ThreadView: View {
     var busy: Bool
     /// Edit/delete/branch only apply to the selected web chat.
     var interactive = true
+    /// Older pages of a long thread: how many events were put in front, whether there are more,
+    /// and how to load the next one. A log page passes none.
+    var prepended = 0
+    var earlier = false
+    var loadingEarlier = false
+    var onEarlier: (() async -> Void)?
     @State private var editing: Block?
     @State private var editText = ""
     @State private var deleting: Block?
@@ -20,13 +26,34 @@ struct ThreadView: View {
     /// Only the reader's own scrolling can leave the end: content growing under a scroll that is
     /// still settling must not count as "scrolled up".
     @State private var dragging = false
+    /// The `prepended` count the last change of events saw.
+    @State private var seenPrepended = 0
 
     var body: some View {
-        let blocks = foldEvents(events)
+        let blocks = foldEvents(events, first: -prepended)
         let lastUserID = blocks.last(where: { $0.kind == .user && $0.from.isEmpty })?.id
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
+                    if earlier, let onEarlier {
+                        Button {
+                            // Keep the reader on what they were looking at once the page is in front.
+                            let anchor = blocks.first?.id
+                            Task {
+                                await onEarlier()
+                                if let anchor { proxy.scrollTo(anchor, anchor: .top) }
+                            }
+                        } label: {
+                            Label(loadingEarlier ? "Loading…" : "Show earlier messages", systemImage: "arrow.up")
+                                .font(.silo(12.5, .medium))
+                                .foregroundStyle(Theme.ink2)
+                                .padding(.horizontal, 12)
+                                .frame(height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(loadingEarlier)
+                        .frame(maxWidth: .infinity)
+                    }
                     if blocks.isEmpty && !busy {
                         Text("Send a message to start.")
                             .font(.silo(.callout))
@@ -34,7 +61,7 @@ struct ThreadView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 48)
                     }
-                    ForEach(blocks) { block in
+                    ForEach(blocks.filter(\.shown)) { block in
                         BlockView(block: block)
                             .id(block.id)
                             .contextMenu { menu(for: block, isLastUser: interactive && block.id == lastUserID) }
@@ -56,7 +83,10 @@ struct ThreadView: View {
                 dragging = phase == .interacting || phase == .decelerating
             }
             .onChange(of: events.count) { old, new in
-                guard atBottom else { return }
+                // A page put in front is not new output.
+                let paged = prepended != seenPrepended
+                seenPrepended = prepended
+                guard atBottom, !paged else { return }
                 // A replay arrives as a burst: jump, do not animate through it.
                 if new - old > 3 || old == 0 {
                     proxy.scrollTo(Self.end, anchor: .bottom)
@@ -156,7 +186,7 @@ struct BlockView: View {
     var body: some View {
         switch block.kind {
         case .user:
-            userBubble
+            if block.from == "onboarding" { InterviewMark() } else { userBubble }
         case .assistant:
             ProseView(text: block.text)
         case .thinking:
@@ -178,6 +208,12 @@ struct BlockView: View {
             compactionRow
         case .artifact:
             if let artifact = block.artifact { ArtifactCard(artifact: artifact, runID: block.runID) }
+        case .card:
+            if let card = block.card { ThreadAskCard(card: card, asked: block.asked) }
+        case .offers:
+            OfferGroup(offers: block.offers)
+        case .boundary:
+            BoundaryRow(block: block)
         }
     }
 
@@ -189,6 +225,12 @@ struct BlockView: View {
                 Text("From \(block.from)")
                     .font(.silo(.caption, .medium))
                     .foregroundStyle(.secondary)
+            } else if !block.author.isEmpty {
+                // On a Bot several people use: who wrote it.
+                HStack(spacing: 6) {
+                    Initials(email: block.author, size: 18)
+                    Text(block.author).font(.silo(11.5)).foregroundStyle(Theme.ink3)
+                }
             }
             if !block.text.isEmpty {
                 Text(block.text)
@@ -352,15 +394,34 @@ struct BlockView: View {
         .siloCard()
     }
 
+    /// What the chat opened from, set off by a cobalt rule: a Feed post, a Dashboard question, or a
+    /// widget as it stood. The caption says which, where the Bot made it and when.
     private var quoteCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !block.source.isEmpty {
-                Label(block.source, systemImage: "quote.opening")
-                    .font(.silo(.caption, .medium))
-                    .foregroundStyle(.secondary)
+        let from = block.quoted?.from ?? ""
+        let label: String
+        switch from {
+        case "widget": label = "Widget on the Dashboard"
+        case "ask": label = "Asked on the Dashboard"
+        case "asked": label = "Asked while you were away"
+        default: label = block.source == "Dashboard" ? "From the Dashboard" : "From the Feed"
+        }
+        let board = !from.isEmpty && from != "feed" || block.source == "Dashboard"
+        let caption = [label, block.source == "Dashboard" ? "" : block.source, relativeTime(block.createdAt)]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(caption, systemImage: board ? "square.grid.2x2" : "tray")
+                .font(.silo(.caption, .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if from == "ask", let title = block.quoted?.title, !title.isEmpty {
+                Text(title).font(.silo(15, .medium)).foregroundStyle(Theme.ink)
+            }
+            if from == "widget", let widget = block.quoted?.widget, !widget.title.isEmpty {
+                Text(widget.title).font(.silo(15, .medium)).foregroundStyle(Theme.ink)
             }
             ProseView(text: block.text)
         }
+        .overlay(alignment: .leading) { Theme.cobalt.frame(width: 3).padding(.vertical, -16).padding(.leading, -16) }
         .frame(maxWidth: .infinity, alignment: .leading)
         .siloCard()
     }
@@ -617,5 +678,13 @@ struct FoldRow<Label: View, Content: View>: View {
                     .transition(.opacity)
             }
         }
+    }
+}
+
+extension Block {
+    /// Rows the thread leaves out: an offer that was made is its card, so its tool row would only
+    /// repeat it.
+    var shown: Bool {
+        !(kind == .tool && name == "offer_setup" && !running && !(result ?? "").isEmpty && !(result ?? "").hasPrefix("error:"))
     }
 }

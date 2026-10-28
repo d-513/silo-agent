@@ -54,6 +54,19 @@ final class AppModel {
     private(set) var attachments: [Silo_V1_Attachment] = []
     var attachError: String?
 
+    // Slash commands: the menu, and what the last one said back (with a question to confirm).
+    private(set) var commands: [Silo_V1_Command] = []
+    var said: Said?
+
+    // A long thread replays its newest turns only: `earlier` says there is more, and
+    // `prepended` counts the events of older pages put in front (the fold keeps its ids).
+    private(set) var earlier = false
+    private(set) var prepended = 0
+    private(set) var loadingEarlier = false
+
+    /// Text to put in the composer (an idea pressed on the Dashboard); the composer takes it.
+    var composerInsert: String?
+
     // Subagents and taskboard of the selected lead chat
     private(set) var subagents: [Silo_V1_Subagent] = []
     private(set) var board: [Silo_V1_TaskItem] = []
@@ -100,6 +113,12 @@ final class AppModel {
         guard let selectedChatID else { return nil }
         return chats.first { $0.id == selectedChatID }
     }
+
+    /// The caller's main chat on this Bot: pinned, where the Bot opens and replies land.
+    var mainChat: Silo_V1_Chat? { chats.first { $0.main && $0.mine } }
+
+    /// Someone else's chat (or the Bot's own, for a manager): read and stop only.
+    var readOnly: Bool { selectedChat.map { !$0.mine } ?? false }
 
     /// The model the next turn uses: the chat's override, else the operator default.
     var activeModel: String {
@@ -166,10 +185,8 @@ final class AppModel {
         await refreshBots()
         await refreshApprovals()
         if let id = selectedChatID {
-            events = []
-            usage = nil
             sending = false
-            startStream(for: id)
+            replay(id)
             await refreshSubagents()
         }
     }
@@ -254,6 +271,8 @@ final class AppModel {
         path = []
         approvals = []
         usage = nil
+        said = nil
+        commands = []
         subagents = []
         board = []
         attachments = []
@@ -269,10 +288,23 @@ final class AppModel {
             if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
         }
         guard id == selectedBotID else { return }
+        // The last chat used here, else the main chat, as the web opens a Bot on it.
         let last = UserDefaults.standard.string(forKey: Self.lastChatKey(id))
-        if let last, chats.contains(where: { $0.id == last }) { selectChat(last) } else { startDraft() }
+        if let last, chats.contains(where: { $0.id == last }) {
+            selectChat(last)
+        } else if let main = mainChat {
+            selectChat(main.id)
+        } else {
+            startDraft()
+        }
         await refreshApprovals()
         await loadModels(botID: id)
+        commands = (try? await client.listCommands(botID: id)) ?? []
+    }
+
+    /// Opens the main chat (or a new one, on a server too old to have one).
+    func showMainChat() {
+        if let main = mainChat { showChat(main.id) } else { newChat() }
     }
 
     private static func lastChatKey(_ botID: String) -> String { "lastChat.\(botID)" }
@@ -395,7 +427,9 @@ final class AppModel {
         do {
             try await client.deleteChat(botID: botID, chatID: id)
             chats.removeAll { $0.id == id }
-            if selectedChatID == id { startDraft() }
+            if selectedChatID == id {
+                if let main = mainChat { selectChat(main.id) } else { startDraft() }
+            }
         } catch {
             errorMessage = describe(error)
         }
@@ -628,6 +662,8 @@ final class AppModel {
         board = []
         attachments = []
         sending = false
+        said = nil
+        resetPaging()
         draftModel = ""
         draftThinking = ""
         if let botID = selectedBotID { UserDefaults.standard.removeObject(forKey: Self.lastChatKey(botID)) }
@@ -642,38 +678,162 @@ final class AppModel {
         subagents = []
         board = []
         sending = false
+        said = nil
+        resetPaging()
         startStream(for: id)
         Task { await refreshSubagents() }
     }
 
-    func send(_ text: String) async {
-        guard let botID = selectedBotID else { return }
+    /// Sends a message, or runs a slash command (`/clear`, `/wipe`, …) when the text is one.
+    /// Returns false when the text should go back in the composer (a refused command).
+    @discardableResult
+    func send(_ text: String, confirmed: Bool = false) async -> Bool {
+        guard let botID = selectedBotID else { return true }
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty || !attachments.isEmpty else { return }
+        guard !message.isEmpty || !attachments.isEmpty else { return true }
+        let command = looksLikeCommand(message, attachments: attachments.count)
         errorMessage = nil
-        sending = true
+        said = nil
+        if !command { sending = true }
         do {
-            if let chatID = selectedChatID {
-                _ = try await client.send(botID: botID, chatID: chatID, text: message, attachments: attachments)
-            } else {
-                // The server makes the chat and starts the run in one call.
-                let sent = try await client.send(botID: botID, chatID: "", text: message, attachments: attachments,
-                                                 newChat: true, model: draftModel, thinking: draftThinking)
-                guard botID == selectedBotID, selectedChatID == nil else { return }
-                selectChat(sent.chatID)
-                sending = true
+            let fresh = selectedChatID == nil
+            // With no chat the server makes one and starts the run in one call.
+            let sent = try await client.send(botID: botID, chatID: selectedChatID ?? "", text: message,
+                                             attachments: command ? [] : attachments, newChat: fresh,
+                                             model: fresh ? draftModel : "", thinking: fresh ? draftThinking : "",
+                                             confirmed: confirmed)
+            if !sent.command.isEmpty {
+                await afterCommand(sent, typed: message)
+                return true
             }
+            if fresh {
+                guard botID == selectedBotID, selectedChatID == nil else { return true }
+                await refreshChats()
+                selectChat(sent.chatID)
+            }
+            sending = true
             attachments = []
             await refreshChats()
             await refreshBots()
+            return true
         } catch {
             sending = false
             if isUnauthenticated(error) {
                 await signOut()
-            } else {
-                errorMessage = describe(error)
+                return true
             }
+            // A refused command is the answer to it: shown where it was typed, the text back to fix.
+            if command {
+                said = Said(text: describe(error))
+                return false
+            }
+            errorMessage = describe(error)
+            return true
         }
+    }
+
+    /// Shows what a command did, asks what it asks, and follows it where it leads.
+    private func afterCommand(_ response: Silo_V1_SendResponse, typed: String) async {
+        if !response.confirm.isEmpty {
+            said = Said(text: commandConfirm(response), confirmLabel: response.command == "wipe" ? "Wipe" : "Confirm", typed: typed)
+            return
+        }
+        if response.command == "help" {
+            said = Said(text: commands.map { "/\($0.name)\($0.args.isEmpty ? "" : " " + $0.args) — \($0.summary)" }.joined(separator: "\n"))
+            return
+        }
+        if response.newChat {
+            newChat()
+            return
+        }
+        await refreshChats()
+        await refreshBots()
+        if !response.chatID.isEmpty && response.chatID != selectedChatID {
+            showChat(response.chatID)
+            return
+        }
+        if !response.runID.isEmpty { sending = true }
+        if response.command == "wipe", let id = selectedChatID { replay(id) }
+        let text = commandSaid(response)
+        if !text.isEmpty { said = Said(text: text) }
+    }
+
+    /// Re-sends a command that asked first.
+    func confirmSaid() async {
+        guard let typed = said?.typed else { return }
+        said = nil
+        await send(typed, confirmed: true)
+    }
+
+    // MARK: - Cards and offers in the thread
+
+    /// Answers a question card shown in this chat: the answer is the owner's next turn here.
+    func answerCard(_ card: Silo_V1_DashboardCard, valuesJSON: String, note: String) async -> Bool {
+        guard let botID = selectedBotID else { return false }
+        do {
+            let out = try await client.submitDashboardCard(botID: botID, id: card.id, valuesJSON: valuesJSON, note: note)
+            if out.hasChat, !out.chat.id.isEmpty, out.chat.id != selectedChatID { openChat(out.chat) }
+            await refreshBots()
+            return true
+        } catch {
+            await report(error)
+            return false
+        }
+    }
+
+    /// Puts a question card away; in a chat that tells the Bot "not now".
+    func dismissCard(_ card: Silo_V1_DashboardCard) async {
+        guard let botID = selectedBotID else { return }
+        do {
+            try await client.dismissDashboardCard(botID: botID, id: card.id, suppressKind: false)
+            await refreshBots()
+        } catch {
+            await report(error)
+        }
+    }
+
+    /// Answers a setup offer: `done` once it was set up, `skipped` for Not now (`rest` skips the
+    /// other open offers of that turn too).
+    func resolveOffer(_ offer: Silo_V1_SetupOffer, outcome: String, rest: Bool = false) async {
+        guard let botID = selectedBotID else { return }
+        do {
+            _ = try await client.resolveSetupOffer(botID: botID, id: offer.id, outcome: outcome, rest: rest)
+        } catch {
+            await report(error)
+        }
+    }
+
+    // MARK: - Older pages
+
+    /// Puts the page before the oldest loaded event in front of the thread.
+    func loadEarlier() async {
+        guard let botID = selectedBotID, let chatID = selectedChatID, let before = events.first?.id,
+              !before.isEmpty, !loadingEarlier else { return }
+        loadingEarlier = true
+        defer { loadingEarlier = false }
+        do {
+            let page = try await client.listChatEvents(botID: botID, chatID: chatID, beforeEventID: before)
+            guard chatID == selectedChatID, events.first?.id == before else { return }
+            events.insert(contentsOf: page.events, at: 0)
+            prepended += page.events.count
+            earlier = page.more
+        } catch {
+            // The anchor went (a wipe or an edit elsewhere): start over.
+            replay(chatID)
+        }
+    }
+
+    private func resetPaging() {
+        earlier = false
+        prepended = 0
+    }
+
+    /// Replays a chat from scratch.
+    private func replay(_ chatID: String) {
+        events = []
+        usage = nil
+        resetPaging()
+        startStream(for: chatID)
     }
 
     func stopRun() async {
@@ -710,6 +870,7 @@ final class AppModel {
                             self.events = []
                             self.sending = false
                             self.usage = nil
+                            self.resetPaging()
                             after = ""
                             seen.removeAll()
                             break streamLoop
@@ -718,6 +879,10 @@ final class AppModel {
                             if seen.contains(event.id) { continue }
                             seen.insert(event.id)
                             after = event.id
+                        }
+                        if event.kind == "earlier" {
+                            self.earlier = true
+                            continue
                         }
                         if event.kind == "board" || event.kind == "subagents" {
                             await self.refreshSubagents()
@@ -731,6 +896,9 @@ final class AppModel {
                         }
                         if event.kind == "done" || event.kind == "chat_title" {
                             await self.refreshChats()
+                        }
+                        if event.kind == "card" || event.kind == "card_state" {
+                            await self.refreshBots()
                         }
                     case .finished(let error):
                         if let error, self.isUnauthenticated(error) {
@@ -826,4 +994,12 @@ final class AppModel {
     private func describe(_ error: Error) -> String {
         (error as? SiloError)?.errorDescription ?? error.localizedDescription
     }
+}
+
+/// What a slash command said back, shown above the composer. A command that destroys something
+/// asks first: `typed` is sent again with `confirmed` when the owner presses `confirmLabel`.
+struct Said: Equatable {
+    var text: String
+    var confirmLabel: String?
+    var typed: String?
 }

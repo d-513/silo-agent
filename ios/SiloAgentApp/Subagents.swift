@@ -177,7 +177,8 @@ struct SubagentPage: View {
         NavigationStack {
             VStack(spacing: 0) {
                 if let log {
-                    ThreadView(events: log.events, busy: log.busy, interactive: false)
+                    ThreadView(events: log.events, busy: log.busy, interactive: false, prepended: log.prepended,
+                           earlier: log.earlier, loadingEarlier: log.loadingEarlier, onEarlier: { await log.loadEarlier() })
                 } else {
                     ProgressView().frame(maxHeight: .infinity)
                 }

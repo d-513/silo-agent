@@ -94,3 +94,105 @@ final class FoldTests: XCTestCase {
         XCTAssertFalse(chatBusy([ev("user"), ev("done")]))
     }
 }
+
+final class FoldCardsTests: XCTestCase {
+    private func offer(_ id: String, _ status: String = "open") -> Silo_V1_SetupOffer {
+        var o = Silo_V1_SetupOffer()
+        o.id = id
+        o.status = status
+        return o
+    }
+
+    func testOffersOfOneRunAreOneGroupAndTakeTheirAnswer() {
+        var a = ev("setup_offer", "a"); a.setupOffer = offer("a")
+        var b = ev("setup_offer", "b"); b.setupOffer = offer("b")
+        var done = ev("setup_state", "a", run: ""); done.setupOffer = offer("a", "done")
+        let blocks = foldEvents([
+            ev("tool", "", tool: "offer_setup"), ev("tool_result", "{}", tool: "offer_setup"), a,
+            ev("tool", "", tool: "offer_setup"), ev("tool_result", "{}", tool: "offer_setup"), b,
+            ev("setup_state", "b", run: ""), done,
+        ])
+        let groups = blocks.filter { $0.kind == .offers }
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups[0].offers.map(\.id), ["a", "b"])
+        XCTAssertEqual(groups[0].offers[0].status, "done")
+    }
+
+    func testCardFollowsItsState() {
+        var card = Silo_V1_DashboardCard()
+        card.id = "c1"
+        card.status = "open"
+        var shown = ev("card", "c1"); shown.card = card
+        card.status = "submitted"
+        var state = ev("card_state", "c1", run: ""); state.card = card
+        var asked = ev("feed_quote", "q"); asked.card = card
+        let blocks = foldEvents([shown, state, asked])
+        XCTAssertEqual(blocks.map(\.kind), [.card, .card])
+        XCTAssertEqual(blocks[0].card?.status, "submitted")
+        XCTAssertTrue(blocks[1].asked)
+    }
+
+    func testBoundariesAndAuthor() {
+        var user = ev("user", "hi"); user.author = "bob@example.com"
+        let blocks = foldEvents([user, ev("context_cleared"), ev("wiped", "4")])
+        XCTAssertEqual(blocks[0].author, "bob@example.com")
+        XCTAssertEqual(blocks[1].source, "cleared")
+        XCTAssertEqual(blocks[2].source, "wiped")
+        XCTAssertEqual(blocks[2].count, 4)
+    }
+
+    func testPrependedPageKeepsKeys() {
+        let late = foldEvents([ev("user", "b")], first: 0)
+        let all = foldEvents([ev("user", "a"), ev("user", "b")], first: -1)
+        XCTAssertEqual(all.last?.id, late.first?.id)
+    }
+
+    func testCompactionAndReportKeepAChatBusy() {
+        XCTAssertTrue(chatBusy([ev("compacting")]))
+        XCTAssertTrue(chatBusy([ev("subagent_report")]))
+        XCTAssertFalse(chatBusy([ev("compacting"), ev("done")]))
+    }
+}
+
+final class SlashTests: XCTestCase {
+    private func command(_ name: String) -> Silo_V1_Command {
+        var c = Silo_V1_Command()
+        c.name = name
+        return c
+    }
+
+    func testQuery() {
+        XCTAssertEqual(slashQuery("/cl"), "cl")
+        XCTAssertEqual(slashQuery("/"), "")
+        XCTAssertNil(slashQuery("/clear now"))
+        XCTAssertNil(slashQuery("hi"))
+        XCTAssertEqual(matchCommands([command("clear"), command("compact"), command("wipe")], "c").map(\.name), ["clear", "compact"])
+    }
+
+    func testLooksLikeCommand() {
+        XCTAssertTrue(looksLikeCommand("/clear", attachments: 0))
+        XCTAssertFalse(looksLikeCommand("//clear", attachments: 0))
+        XCTAssertFalse(looksLikeCommand("/clear", attachments: 1))
+    }
+
+    func testSaid() {
+        var r = Silo_V1_SendResponse()
+        r.command = "wipe"
+        r.value = "3"
+        XCTAssertEqual(commandSaid(r), "Wiped 3 messages.")
+        r.command = "remember"
+        r.value = "0/0/0"
+        XCTAssertEqual(commandSaid(r), "Nothing new to remember.")
+        r.command = "unknown"
+        r.notice = "Done."
+        XCTAssertEqual(commandSaid(r), "Done.")
+    }
+}
+
+final class InitialsTests: XCTestCase {
+    func testInitials() {
+        XCTAssertEqual(personInitials("alice.smith@x.io"), "AS")
+        XCTAssertEqual(personInitials("bob@x.io"), "BO")
+        XCTAssertEqual(personInitials(""), "?")
+    }
+}

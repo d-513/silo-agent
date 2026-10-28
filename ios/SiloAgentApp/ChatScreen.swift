@@ -13,6 +13,7 @@ struct ChatScreen: View {
 
     private var title: String {
         guard let chat = model.selectedChat else { return model.selectedChatID == nil ? "New chat" : "" }
+        if chat.main { return "Main chat" }
         return chat.title.isEmpty ? "New chat" : chat.title
     }
 
@@ -21,7 +22,9 @@ struct ChatScreen: View {
             if model.selectedChatID == nil && model.events.isEmpty {
                 DraftIntro()
             } else {
-                ThreadView(events: model.events, busy: model.isRunning)
+                ThreadView(events: model.events, busy: model.isRunning, interactive: !model.readOnly,
+                           prepended: model.prepended, earlier: model.earlier, loadingEarlier: model.loadingEarlier,
+                           onEarlier: { await model.loadEarlier() })
             }
         }
         .background(Theme.canvas.ignoresSafeArea())
@@ -34,6 +37,8 @@ struct ChatScreen: View {
                         .padding(.horizontal, 10)
                         .padding(.bottom, 6)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if model.readOnly, let chat = model.selectedChat {
+                    ReadOnlyBar(chat: chat)
                 } else {
                     ComposerView()
                 }
@@ -110,11 +115,14 @@ struct ChatScreen: View {
 
     @ViewBuilder
     private var titleMenu: some View {
-        if model.selectedChatID != nil {
-            Button {
-                renameText = model.selectedChat?.title ?? ""
-                renaming = true
-            } label: { Label("Rename", systemImage: "pencil") }
+        // The main chat is never renamed or deleted; someone else's chat is only read.
+        if let chat = model.selectedChat, chat.mine {
+            if !chat.main {
+                Button {
+                    renameText = chat.title
+                    renaming = true
+                } label: { Label("Rename", systemImage: "pencil") }
+            }
             Button { Task { await model.collectMemories() } } label: {
                 Label("Save Memories from This Chat", systemImage: "brain")
             }
@@ -122,7 +130,11 @@ struct ChatScreen: View {
                 Label("Compact Conversation", systemImage: "rectangle.compress.vertical")
             }
             .disabled(model.isRunning)
-            Button(role: .destructive) { deleting = true } label: { Label("Delete Chat", systemImage: "trash") }
+            if !chat.main {
+                Button(role: .destructive) { deleting = true } label: { Label("Delete Chat", systemImage: "trash") }
+            }
+        } else if let chat = model.selectedChat {
+            Text(chat.author.isEmpty ? "The Bot's own chat" : "\(chat.author)'s chat")
         }
     }
 }
@@ -148,6 +160,12 @@ private struct DraftIntro: View {
                         .font(.silo(13))
                         .foregroundStyle(Theme.ink3)
                 }
+                if bot.people.count > 1 {
+                    // The trust line: on a Bot several people use, managers read every chat.
+                    Text("\(bot.name)'s managers can read this chat. What you tell \(bot.name), it may remember for everyone who uses it.")
+                        .font(.silo(13))
+                        .foregroundStyle(Theme.ink3)
+                }
                 Spacer()
                 Spacer()
             }
@@ -155,5 +173,31 @@ private struct DraftIntro: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
+    }
+}
+
+/// In place of the composer on someone else's chat (or the Bot's own): who writes here, and Stop.
+private struct ReadOnlyBar: View {
+    @Environment(AppModel.self) private var model
+    let chat: Silo_V1_Chat
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(chat.author.isEmpty
+                 ? "\(model.selectedBot?.name ?? "The Bot")'s own chat. You can read it and stop it."
+                 : "\(chat.author)'s chat. You can read it and stop it; only \(chat.author) writes in it.")
+                .font(.silo(13))
+                .foregroundStyle(Theme.ink3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if model.isRunning {
+                Button { Task { await model.stopRun() } } label: { Label("Stop", systemImage: "stop.fill") }
+                    .buttonStyle(.quiet)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
     }
 }

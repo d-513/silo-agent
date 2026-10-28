@@ -14,6 +14,8 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            if let said = model.said { SaidNotice(said: said) }
+            slashMenu
             controls
             attachmentChips
             if let error = dictation.error {
@@ -35,9 +37,64 @@ struct ComposerView: View {
                 .ignoresSafeArea()
         }
         .onChange(of: photos) { _, items in loadPhotos(items) }
+        .onChange(of: model.composerInsert, initial: true) { _, insert in
+            // An idea from the Dashboard: below a draft already started, never sent for the owner.
+            guard let insert, !insert.isEmpty else { return }
+            model.composerInsert = nil
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                text = insert
+            } else if !text.contains(insert) {
+                text = text.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + insert
+            }
+            focused = true
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
             Task { for url in urls { await attachFile(url) } }
+        }
+    }
+
+    // MARK: slash menu
+
+    /// While a bare "/name" is typed: the commands it could be, a press away.
+    @ViewBuilder
+    private var slashMenu: some View {
+        if let query = slashQuery(text) {
+            let matches = matchCommands(model.commands, query)
+            if !matches.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(matches.prefix(6), id: \.name) { command in
+                        Button {
+                            if command.args.isEmpty {
+                                text = ""
+                                Task { await model.send("/" + command.name) }
+                            } else {
+                                text = "/\(command.name) "
+                                focused = true
+                            }
+                        } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text("/\(command.name)").font(.siloMono(13.5, .medium)).foregroundStyle(Theme.ink)
+                                if !command.args.isEmpty {
+                                    Text(command.args).font(.siloMono(12.5)).foregroundStyle(Theme.ink3)
+                                }
+                                Text(command.summary)
+                                    .font(.silo(13))
+                                    .foregroundStyle(Theme.ink2)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 38)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous).stroke(Theme.line))
+            }
         }
     }
 
@@ -300,7 +357,10 @@ struct ComposerView: View {
         guard canSend else { return }
         let value = text
         text = ""
-        Task { await model.send(value) }
+        Task {
+            // A refused command comes back to fix.
+            if await !model.send(value), text.isEmpty { text = value }
+        }
     }
 }
 
@@ -355,5 +415,36 @@ struct ContextMeter: View {
             .frame(minWidth: 260)
             .presentationCompactAdaptation(.popover)
         }
+    }
+}
+
+/// What a slash command said back, over the composer; a command that destroys something asks
+/// here first. Tap the cross to put it away.
+private struct SaidNotice: View {
+    @Environment(AppModel.self) private var model
+    let said: Said
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(said.text)
+                .font(.silo(13.5))
+                .foregroundStyle(Theme.ink2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+            if let label = said.confirmLabel {
+                Button(label) { Task { await model.confirmSaid() } }
+                    .buttonStyle(.ink)
+                    .controlSize(.small)
+            }
+            Button { model.said = nil } label: {
+                Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ink3)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
     }
 }

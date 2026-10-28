@@ -15,11 +15,12 @@ struct BotSidebar: View {
             crests
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    if let bot = model.selectedBot { header(bot) }
-                    SideRow(symbol: "plus", title: "New chat", strong: true, on: model.selectedChatID == nil && model.path.isEmpty) {
-                        model.newChat()
+                    if let bot = model.selectedBot {
+                        header(bot)
+                        ActivityStrip(bot: bot)
                     }
-                    .padding(.bottom, 6)
+                    MainChatRow()
+                        .padding(.bottom, 8)
                     pages
                     chats
                 }
@@ -77,7 +78,11 @@ struct BotSidebar: View {
 
     private func header(_ bot: Silo_V1_Bot) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(bot.name).font(.silo(17, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+            HStack(spacing: 8) {
+                Text(bot.name).font(.silo(17, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                Spacer(minLength: 0)
+                if bot.people.count > 1 { PeopleFaces(people: bot.people) }
+            }
             StatusLine(status: bot.status)
         }
         .padding(.horizontal, 16)
@@ -90,9 +95,11 @@ struct BotSidebar: View {
     @ViewBuilder
     private var pages: some View {
         let bot = model.selectedBot
-        let waiting = model.approvals.count + Int(bot?.dashboardAsks ?? 0)
+        // Approvals are Needs you (a run is paused on them); the Bot's questions only wait.
+        let asks = Int(bot?.dashboardAsks ?? 0)
         SideRow(symbol: BotTab.dashboard.symbol, title: "Dashboard", strong: true, on: on(.dashboard),
-                trailing: waiting > 0 ? AnyView(NeedsYouMark()) : nil) { open(.dashboard) }
+                trailing: !model.approvals.isEmpty ? AnyView(NeedsYouMark(count: model.approvals.count))
+                    : asks > 0 ? AnyView(QuestionsMark(count: asks)) : nil) { open(.dashboard) }
         SideRow(symbol: BotTab.automations.symbol, title: "Automations", on: on(.automations)) { open(.automations) }
         SideRow(symbol: BotTab.artifacts.symbol, title: "Artifacts", on: on(.artifacts)) { open(.artifacts) }
         SideRow(symbol: BotTab.memories.symbol, title: "Memories", on: on(.memories)) { open(.memories) }
@@ -112,16 +119,34 @@ struct BotSidebar: View {
 
     // MARK: chats
 
+    /// Your own side chats by date (the main chat is above the pages); on a Bot several people use,
+    /// its managers also get the Team: everyone else's chats and the Bot's own, read-only.
     @ViewBuilder
     private var chats: some View {
-        let groups = chatGroups(model.chats, updatedAt: { parseDate($0.updatedAt) })
-        ForEach(groups) { group in
+        let own = chatGroups(model.chats.filter { $0.mine && !$0.main }, updatedAt: { parseDate($0.updatedAt) })
+        let others = model.chats.filter { !$0.mine }
+        ForEach(own) { group in
             Section {
                 ForEach(group.items, id: \.id) { chat in
                     SidebarChatRow(chat: chat, on: chat.id == model.selectedChatID && model.path.isEmpty)
                 }
             } header: {
-                Text(group.title.uppercased())
+                groupHeader(group.title)
+            }
+        }
+        if !others.isEmpty {
+            Section {
+                ForEach(others, id: \.id) { chat in
+                    SidebarChatRow(chat: chat, on: chat.id == model.selectedChatID && model.path.isEmpty, team: true)
+                }
+            } header: {
+                groupHeader("Team")
+            }
+        }
+    }
+
+    private func groupHeader(_ title: String) -> some View {
+                Text(title.uppercased())
                     .font(.silo(11, .medium))
                     .tracking(0.9)
                     .foregroundStyle(Theme.ink3)
@@ -130,8 +155,6 @@ struct BotSidebar: View {
                     .padding(.top, 14)
                     .padding(.bottom, 4)
                     .background(Theme.well)
-            }
-        }
     }
 
     // MARK: foot
@@ -221,13 +244,149 @@ struct SideRow: View {
     }
 }
 
-/// The Needs you lamp and word, as on the web's Dashboard row.
+/// The Needs you lamp and word, as on the web's Dashboard row: approvals a run is paused on.
 private struct NeedsYouMark: View {
+    let count: Int
+
     var body: some View {
         HStack(spacing: 5) {
             StatusDot(status: "needs_you", size: 7)
-            Text("Needs you").font(.silo(12, .medium)).foregroundStyle(Theme.vermilion)
+            Text(count == 1 ? "Needs you" : "\(count) need you").font(.silo(12, .medium)).foregroundStyle(Theme.vermilion)
         }
+    }
+}
+
+/// The Bot's open questions: they only wait, so cobalt with the question glyph, not Needs you.
+private struct QuestionsMark: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "questionmark.bubble").font(.system(size: 11, weight: .medium))
+            Text(count == 1 ? "1 question" : "\(count) questions").font(.silo(12, .medium))
+        }
+        .foregroundStyle(Theme.cobalt)
+    }
+}
+
+/// The Bot's one standing conversation, where it opens and where replies land, with New chat as the
+/// small plus beside it.
+private struct MainChatRow: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let main = model.mainChat
+        let on = main != nil && main?.id == model.selectedChatID && model.path.isEmpty
+        let working = model.selectedBot?.activity.contains { $0.kind == "main" } == true || (on && model.isRunning)
+        HStack(spacing: 6) {
+            Button { model.showMainChat() } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "bubble.left.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.onInk)
+                        .frame(width: 24, height: 24)
+                        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    Text("Main chat").font(.silo(15, .medium)).foregroundStyle(Theme.ink)
+                    Spacer(minLength: 0)
+                    if on && model.chatApproval != nil {
+                        StatusDot(status: "needs_you", size: 7)
+                    } else if working {
+                        StatusDot(status: "working", size: 7)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 44)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .stroke(on ? Theme.cobalt : Theme.line, lineWidth: on ? 1.5 : 1))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Button { model.newChat() } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                        .stroke(model.selectedChatID == nil && model.path.isEmpty ? Theme.cobalt : Theme.line))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("New chat")
+        }
+        .padding(.horizontal, 12)
+    }
+}
+
+/// What the Bot is doing right now, under its name: each live conversation with the tool it is in,
+/// a tap away; its subagents counted on one line. Shown only while something runs.
+private struct ActivityStrip: View {
+    @Environment(AppModel.self) private var model
+    let bot: Silo_V1_Bot
+
+    var body: some View {
+        let runs = bot.activity.filter { $0.kind != "subagent" }
+        let agents = bot.activity.filter { $0.kind == "subagent" }
+        if !runs.isEmpty || !agents.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(runs.prefix(3), id: \.chatID) { activity in
+                    row(where_(activity), step: activity.step) { open(activity.chatID) }
+                }
+                if let lead = agents.first {
+                    row(agents.count == 1 ? "1 subagent at work" : "\(agents.count) subagents at work", step: "") { open(lead.leadChatID) }
+                }
+            }
+            .padding(.vertical, 3)
+            .background(Theme.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
+        }
+    }
+
+    private func row(_ title: String, step: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                StatusDot(status: "working", size: 7)
+                Text(title).font(.silo(13)).foregroundStyle(Theme.ink2).lineLimit(1)
+                Spacer(minLength: 4)
+                if !step.isEmpty { Text(toolApp(step)).font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(1) }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Where a live run is: the main chat, an automation, a channel, or a chat's title.
+    private func where_(_ a: Silo_V1_BotActivity) -> String {
+        switch a.kind {
+        case "main": "Main chat"
+        case "automation": "Automation “\(a.title)”"
+        case "channel": "Channel “\(a.title)”"
+        default: a.title.isEmpty ? "New chat" : a.title
+        }
+    }
+
+    /// A chat this person can open; an automation's or a channel's log is not in the chat list.
+    private func open(_ chatID: String) {
+        if model.chats.contains(where: { $0.id == chatID }) { model.showChat(chatID) }
+    }
+}
+
+/// The faces of a Bot several people use: up to three, then +N.
+private struct PeopleFaces: View {
+    let people: [Silo_V1_BotPerson]
+
+    var body: some View {
+        HStack(spacing: -6) {
+            ForEach(people.prefix(3), id: \.userID) { Initials(email: $0.email, size: 20) }
+            if people.count > 3 {
+                Text("+\(people.count - 3)").font(.silo(11)).foregroundStyle(Theme.ink3).padding(.leading, 9)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(people.map { "\($0.email), \($0.role == "manage" ? "can manage" : "can use")" }.joined(separator: "; "))
     }
 }
 
@@ -246,16 +405,28 @@ struct SidebarChatRow: View {
     @Environment(AppModel.self) private var model
     let chat: Silo_V1_Chat
     let on: Bool
+    /// A row of the Team group: someone else's chat, or the Bot's own. It reads only.
+    var team = false
     @State private var renaming = false
     @State private var renameText = ""
     @State private var deleting = false
 
     var body: some View {
         Button { model.showChat(chat.id) } label: {
-            Text(chat.title.isEmpty ? "New chat" : chat.title)
-                .font(.silo(15))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
+            HStack(spacing: 8) {
+                if team {
+                    if chat.author.isEmpty {
+                        Image(systemName: "cpu").font(.system(size: 12)).foregroundStyle(Theme.ink3)
+                            .accessibilityLabel("The Bot's own")
+                    } else {
+                        Initials(email: chat.author, size: 18)
+                    }
+                }
+                Text(chat.title.isEmpty ? "New chat" : chat.title)
+                    .font(.silo(15))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .frame(height: 40)
@@ -265,8 +436,10 @@ struct SidebarChatRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button { begin() } label: { Label("Rename", systemImage: "pencil") }
-            Button(role: .destructive) { deleting = true } label: { Label("Delete", systemImage: "trash") }
+            if !team {
+                Button { begin() } label: { Label("Rename", systemImage: "pencil") }
+                Button(role: .destructive) { deleting = true } label: { Label("Delete", systemImage: "trash") }
+            }
         }
         .alert("Rename chat", isPresented: $renaming) {
             TextField("Title", text: $renameText)

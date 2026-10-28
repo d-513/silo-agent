@@ -169,8 +169,10 @@ public final class SiloClient: Sendable {
     /// With an empty `chatID` and `newChat`, the server makes the chat and starts the run in one
     /// call (a refused send leaves no row), starting it with `model` and `thinking`.
     public func send(botID: String, chatID: String, text: String, attachments: [Silo_V1_Attachment] = [],
-                     newChat: Bool = false, model: String = "", thinking: String = "") async throws -> Silo_V1_SendResponse {
+                     newChat: Bool = false, model: String = "", thinking: String = "",
+                     confirmed: Bool = false) async throws -> Silo_V1_SendResponse {
         var request = Silo_V1_SendRequest()
+        request.confirmed = confirmed
         request.botID = botID
         request.chatID = chatID
         request.newChat = newChat
@@ -437,10 +439,12 @@ public final class SiloClient: Sendable {
         _ = try unwrap(await ui.deleteFeedPost(request: request, headers: [:]))
     }
 
-    public func quoteFeedPost(botID: String, id: String) async throws -> Silo_V1_Chat {
+    /// Replies to a post in the main chat, or in a chat of its own with `newChat`.
+    public func quoteFeedPost(botID: String, id: String, newChat: Bool = false) async throws -> Silo_V1_Chat {
         var request = Silo_V1_QuoteFeedPostRequest()
         request.botID = botID
         request.id = id
+        request.newChat = newChat
         return try unwrap(await ui.quoteFeedPost(request: request, headers: [:])).chat
     }
 

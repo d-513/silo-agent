@@ -21,7 +21,7 @@ struct AutomationsPage: View {
                         row(item)
                     }
                     .swipeActions(edge: .trailing) {
-                        if item.kind != "heartbeat" {
+                        if !item.pinned {
                             Button(role: .destructive) { deleting = item } label: { Label("Delete", systemImage: "trash") }
                         }
                         Button { editing = item } label: { Label("Edit", systemImage: "pencil") }.tint(Theme.cobalt)
@@ -54,10 +54,8 @@ struct AutomationsPage: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
+                    AutomationMark(automation: item)
                     Text(item.name).font(.silo(.headline)).lineLimit(1)
-                    if item.kind == "heartbeat" {
-                        Image(systemName: "pin.fill").font(.silo(.caption2)).foregroundStyle(.secondary)
-                    }
                     if item.running { ProgressView().controlSize(.mini) }
                 }
                 Text(describeSchedule(item.schedule)).font(.silo(.subheadline)).foregroundStyle(.secondary)
@@ -114,7 +112,8 @@ struct AutomationLog: View {
     var body: some View {
         VStack(spacing: 0) {
             if let log {
-                ThreadView(events: log.events, busy: log.busy, interactive: false)
+                ThreadView(events: log.events, busy: log.busy, interactive: false, prepended: log.prepended,
+                           earlier: log.earlier, loadingEarlier: log.loadingEarlier, onEarlier: { await log.loadEarlier() })
             } else {
                 ProgressView().frame(maxHeight: .infinity)
             }
@@ -157,7 +156,7 @@ struct AutomationEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                if existing?.kind != "heartbeat" {
+                if existing?.pinned != true {
                     Section("Name") { TextField("Name", text: $name) }
                 }
                 Section {
@@ -180,7 +179,7 @@ struct AutomationEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(saving ? "Saving…" : "Save") { Task { await save() } }
                         .disabled(saving || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                  || (existing?.kind != "heartbeat" && name.trimmingCharacters(in: .whitespaces).isEmpty))
+                                  || (existing?.pinned != true && name.trimmingCharacters(in: .whitespaces).isEmpty))
                 }
             }
         }
@@ -278,5 +277,34 @@ struct ScheduleEditor: View {
                 schedule.minute = parts.minute ?? 0
             }
         ), displayedComponents: .hourAndMinute)
+    }
+}
+
+extension Silo_V1_Automation {
+    /// One of the automations every Bot has exactly one of (the Heartbeat, the Dashboard's
+    /// curator): its name is fixed and it cannot be deleted.
+    var pinned: Bool { kind == "heartbeat" || kind == "dashboard" }
+}
+
+/// What an automation is at a glance: the Heartbeat a pulse (flat while it has no schedule or is
+/// off), the Dashboard's curator a small board, any other a timer.
+struct AutomationMark: View {
+    let automation: Silo_V1_Automation
+
+    var body: some View {
+        Group {
+            switch automation.kind {
+            case "heartbeat":
+                Image(systemName: automation.enabled && !automation.schedule.isEmpty ? "waveform.path.ecg" : "minus")
+            case "dashboard":
+                Image(systemName: "square.grid.2x2")
+            default:
+                Image(systemName: "timer")
+            }
+        }
+        .font(.system(size: 13, weight: .medium))
+        .foregroundStyle(Theme.ink3)
+        .frame(width: 18)
+        .accessibilityHidden(true)
     }
 }

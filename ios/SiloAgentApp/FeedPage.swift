@@ -1,7 +1,8 @@
 import SiloClient
 import SwiftUI
 
-/// The owner's read-only inbox: what the Bot posted with `feed`. Delete, or Quote into a new chat.
+/// The owner's read-only inbox: what the Bot posted with `feed`. Delete, or reply in the main chat
+/// (or a chat of its own).
 struct FeedPage: View {
     @Environment(AppModel.self) private var model
     @State private var posts: [Silo_V1_FeedPost] = []
@@ -28,11 +29,12 @@ struct FeedPage: View {
                 .padding(.vertical, 4)
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) { deleting = post } label: { Label("Delete", systemImage: "trash") }
-                    Button { Task { await quote(post) } } label: { Label("Quote", systemImage: "quote.opening") }
+                    Button { Task { await quote(post) } } label: { Label("Reply", systemImage: "quote.opening") }
                         .tint(Theme.cobalt)
                 }
                 .contextMenu {
-                    Button { Task { await quote(post) } } label: { Label("Quote in new chat", systemImage: "quote.opening") }
+                    Button { Task { await quote(post) } } label: { Label("Reply in main chat", systemImage: "quote.opening") }
+                    Button { Task { await quote(post, newChat: true) } } label: { Label("Reply in a new chat", systemImage: "square.and.pencil") }
                     Button(role: .destructive) { deleting = post } label: { Label("Delete", systemImage: "trash") }
                 }
             }
@@ -81,8 +83,9 @@ struct FeedPage: View {
         } catch { await model.report(error) }
     }
 
-    private func quote(_ post: Silo_V1_FeedPost) async {
+    /// Replies to a post in the main chat (or a chat of its own while a reply runs there).
+    private func quote(_ post: Silo_V1_FeedPost, newChat: Bool = false) async {
         guard let botID = model.selectedBotID else { return }
-        do { model.openChat(try await model.client.quoteFeedPost(botID: botID, id: post.id)) } catch { await model.report(error) }
+        do { model.openChat(try await model.client.quoteFeedPost(botID: botID, id: post.id, newChat: newChat)) } catch { await model.report(error) }
     }
 }

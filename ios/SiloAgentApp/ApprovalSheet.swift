@@ -48,6 +48,10 @@ struct ApprovalSlip: View {
                 Text("Auto-approval was not sure about this one. The rule is in Rules.")
                     .font(.silo(12))
                     .foregroundStyle(Theme.ink3)
+            } else if approval.onceOnly {
+                // Someone who uses the Bot but does not manage it answers their own chat's call
+                // once: Always would change a rule, which is the managers'.
+                EmptyView()
             } else {
                 Menu {
                     Button { decide("always") } label: { Label("Always allow this action", systemImage: "checkmark.circle") }
@@ -78,6 +82,8 @@ struct ApprovalSlip: View {
 
     private var source: String {
         var parts = ["Needs you"]
+        // On a Bot several people use: whose chat asked.
+        if !approval.person.isEmpty { parts.append(approval.person) }
         if here { parts.append("this chat") } else if !approval.source.isEmpty { parts.append(approval.source) }
         return parts.joined(separator: " · ")
     }

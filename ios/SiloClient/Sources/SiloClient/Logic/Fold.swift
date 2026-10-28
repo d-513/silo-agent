@@ -44,6 +44,13 @@ public struct AgentStatus: Equatable, Sendable {
 public struct Block: Identifiable, Equatable, Sendable {
     public enum Kind: Sendable {
         case user, assistant, thinking, tool, receipt, error, report, quote, compaction, artifact
+        /// A question the Bot asked, shown as its card and answered in place (`card`).
+        case card
+        /// What the Bot offered to set up in one turn, drawn together (`offers`).
+        case offers
+        /// A slash command's mark: the context started over (`cleared`) or `count` messages
+        /// were deleted for good (`wiped`).
+        case boundary
     }
 
     public var id: String
@@ -59,8 +66,10 @@ public struct Block: Identifiable, Equatable, Sendable {
     public var createdAt = ""
     // user
     public var attachments: [Silo_V1_Attachment] = []
-    /// A non-human sender ("lead" for a subagent's brief).
+    /// A non-human sender ("lead" for a subagent's brief, "onboarding" for the interview's opening).
     public var from = ""
+    /// Who wrote it, on a Bot several people use (email).
+    public var author = ""
     // tool
     public var calls: [NestedCall] = []
     public var waiting = false
@@ -74,6 +83,15 @@ public struct Block: Identifiable, Equatable, Sendable {
     // quote (source label) / compaction (auto or manual)
     public var source = ""
     public var artifact: ArtifactInfo?
+    /// quote: what the chat opened from (`feed`, `widget`, `ask`, `asked`; empty on old quotes).
+    public var quoted: Silo_V1_Quoted?
+    /// card: the card as it stands; `asked` when it came from elsewhere into this chat.
+    public var card: Silo_V1_DashboardCard?
+    public var asked = false
+    /// offers: the offers of one run, as they stand.
+    public var offers: [Silo_V1_SetupOffer] = []
+    /// boundary: `cleared` or `wiped`, and for a wipe how many messages went.
+    public var count = 0
 }
 
 /// Parses a `subagent_report` label, "name:status,name2:status".
@@ -103,9 +121,11 @@ private let staleKey = try! NSRegularExpression(
     options: [.caseInsensitive]
 )
 
-public func foldEvents(_ events: [Silo_V1_RunEvent]) -> [Block] {
+/// `first` is the key index of `events[0]`: a page loaded in front of a thread starts below
+/// zero, so the blocks already drawn keep their ids.
+public func foldEvents(_ events: [Silo_V1_RunEvent], first: Int = 0) -> [Block] {
     var out: [Block] = []
-    var counter = 0
+    var counter = first
 
     func runOk(_ block: Block, _ runID: String) -> Bool {
         runID.isEmpty || block.runID.isEmpty || block.runID == runID
@@ -150,6 +170,7 @@ public func foldEvents(_ events: [Silo_V1_RunEvent]) -> [Block] {
             b.text = event.body
             b.attachments = event.attachments
             b.from = event.tool
+            b.author = event.author
             out.append(b)
 
         case "subagent_report":
@@ -210,9 +231,63 @@ public func foldEvents(_ events: [Silo_V1_RunEvent]) -> [Block] {
             }
 
         case "feed_quote":
-            var b = block(.quote)
-            b.text = event.body
-            b.source = event.tool
+            // A question the Bot asked from elsewhere is drawn as its card, live.
+            if event.hasCard {
+                var b = block(.card)
+                b.card = event.card
+                b.asked = true
+                out.append(b)
+            } else {
+                var b = block(.quote)
+                b.text = event.body
+                b.source = event.tool
+                if event.hasQuoted { b.quoted = event.quoted }
+                out.append(b)
+            }
+
+        case "card":
+            if event.hasCard {
+                var b = block(.card)
+                b.card = event.card
+                out.append(b)
+            }
+
+        case "card_state":
+            // A card in the chat changed (answered, put away): every block showing it follows.
+            guard event.hasCard else { continue }
+            for index in out.indices where out[index].kind == .card && out[index].card?.id == event.card.id {
+                out[index].card = event.card
+            }
+
+        case "setup_offer":
+            // Offers of one run join the group before them, past the offer_setup rows that made them.
+            guard event.hasSetupOffer else { continue }
+            var joined = false
+            for index in out.indices.reversed() {
+                if out[index].kind == .offers && out[index].runID == event.runID {
+                    out[index].offers.append(event.setupOffer)
+                    joined = true
+                    break
+                }
+                if !(out[index].kind == .tool && out[index].name == "offer_setup") { break }
+            }
+            if !joined {
+                var b = block(.offers)
+                b.offers = [event.setupOffer]
+                out.append(b)
+            }
+
+        case "setup_state":
+            guard event.hasSetupOffer else { continue }
+            for index in out.indices where out[index].kind == .offers {
+                out[index].offers = out[index].offers.map { $0.id == event.setupOffer.id ? event.setupOffer : $0 }
+            }
+
+        case "context_cleared", "wiped":
+            closeThinking()
+            var b = block(.boundary)
+            b.source = event.kind == "wiped" ? "wiped" : "cleared"
+            b.count = Int(event.body) ?? 0
             out.append(b)
 
         case "assistant", "section", "section_live":
@@ -405,12 +480,13 @@ public func foldEvents(_ events: [Silo_V1_RunEvent]) -> [Block] {
     return out
 }
 
-/// Whether a conversation still has a run in flight.
+/// Whether a conversation still has a run in flight: one that opened with a user message, a
+/// manual compaction or a subagent report and has not reached done or error.
 public func chatBusy(_ events: [Silo_V1_RunEvent]) -> Bool {
     var open = Set<String>()
     for event in events {
         guard !event.runID.isEmpty else { continue }
-        if event.kind == "user" { open.insert(event.runID) }
+        if ["user", "compacting", "subagent_report"].contains(event.kind) { open.insert(event.runID) }
         if event.kind == "done" || event.kind == "error" { open.remove(event.runID) }
     }
     return !open.isEmpty

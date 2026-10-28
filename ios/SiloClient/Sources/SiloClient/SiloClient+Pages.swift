@@ -59,12 +59,13 @@ extension SiloClient {
         }, headers: [:]))
     }
 
-    public func submitDashboardCard(botID: String, id: String, valuesJSON: String, note: String) async throws -> Silo_V1_SubmitDashboardCardResponse {
+    public func submitDashboardCard(botID: String, id: String, valuesJSON: String, note: String, newChat: Bool = false) async throws -> Silo_V1_SubmitDashboardCardResponse {
         try unwrap(await ui.submitDashboardCard(request: .with {
             $0.botID = botID
             $0.id = id
             $0.valuesJson = valuesJSON
             $0.note = note
+            $0.newChat = newChat
         }, headers: [:]))
     }
 
@@ -255,7 +256,9 @@ extension SiloClient {
     }
 
     public func setOutputPolicy(_ bot: Silo_V1_Bot, policy: String) async throws -> Silo_V1_Bot {
-        try unwrap(await ui.updateBot(request: .with {
+        // ListBots leaves SOUL and the output policy out: send what the Bot has now, not that.
+        let bot = try await getBot(bot.id)
+        return try unwrap(await ui.updateBot(request: .with {
             $0.id = bot.id
             $0.name = bot.name
             $0.description_p = bot.description_p
@@ -270,7 +273,9 @@ extension SiloClient {
 
     /// Pins the Bot to `zone`, or lets it follow the owner's device again (`pinned` false).
     public func setBotTimeZone(_ bot: Silo_V1_Bot, zone: String, pinned: Bool) async throws -> Silo_V1_Bot {
-        try unwrap(await ui.updateBot(request: .with {
+        // ListBots leaves SOUL and the output policy out: send what the Bot has now, not that.
+        let bot = try await getBot(bot.id)
+        return try unwrap(await ui.updateBot(request: .with {
             $0.id = bot.id
             $0.name = bot.name
             $0.description_p = bot.description_p

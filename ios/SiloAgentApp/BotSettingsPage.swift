@@ -8,6 +8,8 @@ struct BotSettingsPage: View {
     @State private var description = ""
     @State private var soul = ""
     @State private var botModel = ""
+    /// The Bot as `GetBot` has it: the list leaves SOUL out, so the form starts from this.
+    @State private var full: Silo_V1_Bot?
     @State private var saving = false
     @State private var confirmDelete = false
 
@@ -30,6 +32,7 @@ struct BotSettingsPage: View {
             } footer: {
                 Text("A chat's own model choice overrides this.")
             }
+            ProactivitySection()
             TimeZoneSection()
             if model.selectedBot?.mailAddress.isEmpty == false { MailSettingsSection() }
             Section {
@@ -46,7 +49,7 @@ struct BotSettingsPage: View {
                 }
             }
         }
-        .task(id: model.selectedBotID) { load() }
+        .task(id: model.selectedBotID) { await load() }
         .confirmationDialog("Delete this Bot?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete Bot and its data", role: .destructive) { Task { await delete() } }
         } message: {
@@ -55,12 +58,21 @@ struct BotSettingsPage: View {
     }
 
     private var dirty: Bool {
-        guard let bot = model.selectedBot else { return false }
+        guard let bot = full else { return false }
         return name != bot.name || description != bot.description_p || soul != bot.soul || botModel != bot.model
     }
 
-    private func load() {
-        guard let bot = model.selectedBot else { return }
+    private func load() async {
+        guard let id = model.selectedBotID else { return }
+        do {
+            let bot = try await model.client.getBot(id)
+            guard id == model.selectedBotID else { return }
+            full = bot
+            fill(bot)
+        } catch { await model.report(error) }
+    }
+
+    private func fill(_ bot: Silo_V1_Bot) {
         name = bot.name
         description = bot.description_p
         soul = bot.soul
@@ -68,11 +80,13 @@ struct BotSettingsPage: View {
     }
 
     private func save() async {
-        guard let bot = model.selectedBot else { return }
+        guard let bot = full else { return }
         saving = true
         defer { saving = false }
         do {
-            model.applyBot(try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel))
+            let saved = try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel)
+            full = saved
+            model.applyBot(saved)
         } catch { await model.report(error) }
     }
 
@@ -164,5 +178,46 @@ private struct ZonePicker: View {
         .searchable(text: $query, prompt: "City or region")
         .navigationTitle("Time Zone")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// How much the Bot does unasked: one choice that sets the Heartbeat's schedule and whether a
+/// background run may write into the main chat. It applies on its own, apart from Save.
+private struct ProactivitySection: View {
+    @Environment(AppModel.self) private var model
+    @State private var busy = false
+
+    private static let levels: [(id: String, label: String, note: String)] = [
+        ("off", "Off", "Only when you ask. No Heartbeat."),
+        ("quiet", "Quiet", "A morning check-in. News goes to the Feed; questions wait on the Dashboard."),
+        ("active", "Active", "Check-ins through the day, never at night. It may also write to you in the main chat."),
+    ]
+
+    var body: some View {
+        let bot = model.selectedBot
+        let current = Self.levels.first { $0.id == bot?.proactivity } ?? Self.levels[0]
+        Section {
+            Picker("Proactivity", selection: Binding(get: { current.id }, set: { level in Task { await choose(level) } })) {
+                ForEach(Self.levels, id: \.id) { Text($0.label).tag($0.id) }
+            }
+            .pickerStyle(.segmented)
+            .disabled(busy)
+        } header: {
+            Text("Proactivity")
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(current.note)
+                if bot?.heartbeatCustom == true {
+                    Text("The Heartbeat runs on a schedule set by hand (Automations). Choosing a level puts it back on that level's schedule.")
+                }
+            }
+        }
+    }
+
+    private func choose(_ level: String) async {
+        guard let bot = model.selectedBot, !busy, level != bot.proactivity || bot.heartbeatCustom else { return }
+        busy = true
+        defer { busy = false }
+        do { model.applyBot(try await model.client.setProactivity(bot, level: level)) } catch { await model.report(error) }
     }
 }

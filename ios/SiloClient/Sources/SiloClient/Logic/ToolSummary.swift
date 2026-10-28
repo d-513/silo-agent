@@ -98,3 +98,29 @@ public func isBotScratch(_ path: String) -> Bool {
     while p.hasPrefix("workspace/") { p.removeFirst("workspace/".count) }
     return p == "bot" || p.hasPrefix("bot/")
 }
+
+/// The app a tool belongs to, as the web's `toolMeta`: "Python", "Files", "Desktop", …; a
+/// connector tool (`slug__action`) is its connector's slug.
+public func toolApp(_ name: String) -> String {
+    switch name {
+    case "exec_python": return "Python"
+    case "terminal": return "Terminal"
+    case "read", "write", "patch", "grep", "delete", "present": return "Files"
+    case "look", "click", "type", "key", "scroll": return "Desktop"
+    case "soul": return "SOUL"
+    case "skill": return "Skills"
+    case "artifact": return "Artifact"
+    case "web_search": return "Web search"
+    case "channel": return "Channels"
+    case "chats": return "Chats"
+    case "feed": return "Feed"
+    case "list_models", "switch_model": return "Model"
+    case "decide": return "Decision"
+    case "spawn_agent", "agent_status", "message_agent", "stop_agent": return "Subagents"
+    case "sleep": return "Sleep"
+    case "task_add", "task_list", "task_done", "task_reset": return "Taskboard"
+    default:
+        if let range = name.range(of: "__") { return String(name[..<range.lowerBound]) }
+        return name
+    }
+}

@@ -8,6 +8,10 @@ import SwiftUI
 @Observable
 final class LogModel {
     private(set) var events: [Silo_V1_RunEvent] = []
+    /// A long log replays its newest turns only; these load the pages before (see `AppModel`).
+    private(set) var earlier = false
+    private(set) var prepended = 0
+    private(set) var loadingEarlier = false
     private let client: SiloClient
     private let botID: String
     private let chatID: String
@@ -33,9 +37,15 @@ final class LogModel {
                     guard case .event(let event) = item else { continue }
                     if event.kind == "reset" {
                         self.events = []
+                        self.earlier = false
+                        self.prepended = 0
                         after = ""
                         seen.removeAll()
                         break streamLoop
+                    }
+                    if event.kind == "earlier" {
+                        self.earlier = true
+                        continue
                     }
                     if event.kind == "board" || event.kind == "subagents" { continue }
                     if !event.id.isEmpty {
@@ -49,6 +59,17 @@ final class LogModel {
                 try? await Task.sleep(for: .milliseconds(800))
             }
         }
+    }
+
+    func loadEarlier() async {
+        guard let before = events.first?.id, !before.isEmpty, !loadingEarlier else { return }
+        loadingEarlier = true
+        defer { loadingEarlier = false }
+        guard let page = try? await client.listChatEvents(botID: botID, chatID: chatID, beforeEventID: before),
+              events.first?.id == before else { return }
+        events.insert(contentsOf: page.events, at: 0)
+        prepended += page.events.count
+        earlier = page.more
     }
 
     func stop() {
