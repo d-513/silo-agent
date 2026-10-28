@@ -4,80 +4,91 @@ import SwiftUI
 extension Silo_V1_Drive: @retroactive Identifiable {}
 extension Silo_V1_DriveTemplate: @retroactive Identifiable { public var id: String { key } }
 
-/// Cloud and network storage mounted into the Bot's workspace at `/workspace/drives/<name>`.
-struct DrivesPage: View {
+/// The Workspace's drives: cloud and network storage connected once here and mounted at
+/// `/workspace/drives/<name>` in the Bots chosen for each. Sign-ins and passwords stay on the CP.
+struct SpaceDrivesPage: View {
     @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
     @State private var drives: [Silo_V1_Drive] = []
     @State private var templates: [Silo_V1_DriveTemplate] = []
-    @State private var unavailable = ""
     @State private var loaded = false
     @State private var adding = false
     @State private var editing: Silo_V1_Drive?
     @State private var deleting: Silo_V1_Drive?
 
+    private var shown: [Silo_V1_Drive] { drives.filter { !$0.draft } }
+
     var body: some View {
         List {
-            if !unavailable.isEmpty {
-                Section { Text(unavailable).font(.silo(.footnote)).foregroundStyle(Theme.vermilion) }
-            }
-            ForEach(drives.filter { !$0.draft }) { drive in
-                Button { editing = drive } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(drive.name).font(.silo(.headline)).foregroundStyle(.primary)
-                            Spacer()
-                            Text(drive.state.isEmpty ? "—" : drive.state).font(.silo(.caption, .medium)).foregroundStyle(stateTone(drive))
+            Section {
+                ForEach(shown) { drive in
+                    NavigationLink {
+                        DriveGrantsPage(id: drive.id, initial: drive, template: templates.first { $0.key == drive.template }) {
+                            await load()
+                        } edit: {
+                            editing = drive
                         }
-                        Text(templates.first { $0.key == drive.template }?.title ?? drive.template)
-                            .font(.silo(.caption)).foregroundStyle(.secondary)
-                        Text("/workspace/drives/\(drive.name)\(drive.readOnly ? " · read-only" : "")")
-                            .font(.siloMono(.caption2)).foregroundStyle(.tertiary)
-                        if !drive.account.isEmpty { Text(drive.account).font(.silo(.caption)).foregroundStyle(.secondary) }
-                        if !drive.stateDetail.isEmpty, drive.state != "mounted" {
-                            Text(drive.stateDetail).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
+                    } label: {
+                        DriveRow(drive: drive, template: templates.first { $0.key == drive.template })
+                    }
+                    .swipeActions {
+                        if drive.canEdit {
+                            Button(role: .destructive) { deleting = drive } label: { Label("Delete", systemImage: "trash") }
                         }
                     }
                 }
-                .swipeActions { Button(role: .destructive) { deleting = drive } label: { Label("Remove", systemImage: "trash") } }
+            } footer: {
+                Text("Connect cloud storage or a file server once for the whole workspace, then choose which Bots mount it in /workspace/drives.")
             }
         }
+        .siloList()
         .overlay {
-            if loaded && drives.filter({ !$0.draft }).isEmpty && unavailable.isEmpty {
-                ContentUnavailableView("No drives", systemImage: "externaldrive", description: Text("Mount Google Drive, S3, WebDAV and more into the Bot's workspace."))
+            if loaded && shown.isEmpty {
+                ContentUnavailableView {
+                    Label("No drives in this workspace yet", systemImage: "externaldrive")
+                } description: {
+                    Text("Add one, then choose which Bots mount it.")
+                } actions: {
+                    Button("Add drive") { adding = true }.buttonStyle(.ink)
+                }
             }
         }
         .toolbar { ToolbarItem(placement: .primaryAction) { Button { adding = true } label: { Label("Add", systemImage: "plus") } } }
         .refreshable { await load() }
-        .task(id: model.selectedBotID) { await load() }
+        .task(id: spaces.currentID) {
+            await load()
+            // Poll while a mount is coming up.
+            while !Task.isCancelled, drives.contains(where: { $0.state == "mounting" }) {
+                try? await Task.sleep(for: .seconds(2))
+                await load()
+            }
+        }
         .sheet(isPresented: $adding) {
             DriveTemplatePicker(templates: templates, taken: Set(drives.map(\.name))) { await load() }
         }
         .sheet(item: $editing) { drive in
             if let template = templates.first(where: { $0.key == drive.template }) {
-                NavigationStack { DriveForm(template: template, drive: drive, taken: Set(drives.map(\.name))) { await load() } }
+                NavigationStack {
+                    DriveForm(template: template, drive: drive, taken: Set(drives.filter { $0.id != drive.id }.map(\.name))) { await load() }
+                }
             }
         }
-        .confirmationDialog("Remove this drive?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { drive in
-            Button("Remove \(drive.name)", role: .destructive) { Task { await delete(drive) } }
-        } message: { _ in Text("Only the mount is removed; nothing on the remote is deleted.") }
-    }
-
-    private func stateTone(_ drive: Silo_V1_Drive) -> Color {
-        switch drive.state {
-        case "mounted": return Theme.emerald
-        case "error": return Theme.vermilion
-        default: return .secondary
+        .confirmationDialog("Delete this drive?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { drive in
+            Button("Delete \(drive.name)", role: .destructive) { Task { await delete(drive) } }
+        } message: { drive in
+            Text(drive.usedBy.isEmpty && drive.usedByHidden == 0
+                 ? "Nothing on the remote is deleted."
+                 : "It is unmounted from every Bot. Nothing on the remote is deleted.")
         }
     }
 
     private func load() async {
-        guard let botID = model.selectedBotID else { return }
+        guard let spaceID = spaces.currentID else { return }
         do {
-            async let list = model.client.listDrives(botID: botID)
+            async let list = model.client.listSpaceDrives(spaceID: spaceID)
             async let kinds = model.client.listDriveTemplates()
             let (result, all) = try await (list, kinds)
-            drives = result.drives
-            unavailable = result.unavailable
+            drives = result
             templates = all
         } catch { await model.report(error) }
         loaded = true
@@ -88,6 +99,124 @@ struct DrivesPage: View {
             try await model.client.deleteDrive(id: drive.id)
             drives.removeAll { $0.id == drive.id }
         } catch { await model.report(error) }
+    }
+}
+
+private func stateTone(_ state: String) -> Color {
+    switch state {
+    case "mounted": return Theme.emerald
+    case "error", "needs_auth": return Theme.vermilion
+    default: return Theme.ink3
+    }
+}
+
+private func stateWord(_ state: String) -> String {
+    switch state {
+    case "mounted": return "Mounted"
+    case "mounting": return "Mounting"
+    case "error": return "Error"
+    case "stopped": return "Stopped"
+    case "needs_auth": return "Needs sign-in"
+    case "needs_setup", "needs_input": return "Needs setup"
+    case "": return "Not mounted"
+    default: return state.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+private struct DriveRow: View {
+    let drive: Silo_V1_Drive
+    let template: Silo_V1_DriveTemplate?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(drive.name).font(.silo(16, .medium))
+                WellChip(text: template?.title ?? drive.template, tone: Theme.ink3)
+                if drive.readOnly { WellChip(text: "Read-only", tone: Theme.ink3) }
+                Spacer(minLength: 0)
+                Text(stateWord(drive.state)).font(.silo(12, .medium)).foregroundStyle(stateTone(drive.state))
+            }
+            if !drive.account.isEmpty || !drive.lentBy.isEmpty {
+                Text([drive.account, drive.lentBy.isEmpty ? "" : "Signed in by \(drive.lentBy)"].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.silo(13)).foregroundStyle(Theme.ink3).lineLimit(1)
+            }
+            if !drive.stateDetail.isEmpty, drive.state != "mounted" {
+                Text(drive.stateDetail).font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(2)
+            }
+            UsedByLine(ids: drive.usedBy, hidden: drive.usedByHidden)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// A drive: Choose Bots, lending, Reconnect when its sign-in lapsed, and Edit for who added it or
+/// an admin.
+private struct DriveGrantsPage: View {
+    @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
+    @Environment(\.openURL) private var openURL
+    let id: String
+    let template: Silo_V1_DriveTemplate?
+    let onChange: () async -> Void
+    let edit: () -> Void
+    @State private var drive: Silo_V1_Drive
+
+    init(id: String, initial: Silo_V1_Drive, template: Silo_V1_DriveTemplate?, onChange: @escaping () async -> Void, edit: @escaping () -> Void) {
+        self.id = id
+        self.template = template
+        self.onChange = onChange
+        self.edit = edit
+        _drive = State(initialValue: initial)
+    }
+
+    var body: some View {
+        List {
+            Section {
+                DriveRow(drive: drive, template: template)
+                Text(drive.path.isEmpty ? "/workspace/drives/\(drive.name)" : drive.path)
+                    .font(.siloMono(12)).foregroundStyle(Theme.ink3)
+                if drive.state == "needs_auth" && drive.canEdit {
+                    Button("Reconnect") { Task { await reconnect() } }
+                }
+                if drive.canEdit {
+                    Button("Edit drive") { edit() }
+                }
+            }
+            LendSection(lentBy: drive.lentBy, shared: drive.shared) { shared in
+                await act { try await model.client.setLendShared(driveID: drive.id, shared: shared) }
+            }
+            ChooseBotsSection(granted: drive.usedBy) { botID, on in
+                await act {
+                    if on { try await model.client.grantDrive(botID: botID, driveID: drive.id) } else {
+                        try await model.client.revokeDrive(botID: botID, driveID: drive.id)
+                    }
+                }
+            }
+        }
+        .siloList()
+        .navigationTitle(drive.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await reload() }
+    }
+
+    private func reconnect() async {
+        do {
+            let url = try await model.client.beginDriveAuth(id: drive.id, shared: drive.shared)
+            if let target = URL(string: url) { openURL(target) }
+        } catch { await model.report(error) }
+    }
+
+    private func act(_ work: () async throws -> Void) async {
+        do { try await work() } catch { await model.report(error) }
+        await reload()
+        await onChange()
+    }
+
+    private func reload() async {
+        guard let spaceID = spaces.currentID,
+              let list = try? await model.client.listSpaceDrives(spaceID: spaceID),
+              let fresh = list.first(where: { $0.id == id }) else { return }
+        drive = fresh
     }
 }
 
@@ -124,6 +253,7 @@ private struct DriveTemplatePicker: View {
 /// (sign-in, test, browse) so those work before the drive exists; editing writes only on Save.
 private struct DriveForm: View {
     @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     let template: Silo_V1_DriveTemplate
@@ -141,6 +271,10 @@ private struct DriveForm: View {
     @State private var failure: String?
     @State private var saving = false
     @State private var pollTask: Task<Void, Never>?
+    /// A new drive's Bots: every Bot the user manages, unless they untick some.
+    @State private var picked: Set<String> = []
+    /// Who may use the sign-in: personal (only Bots the signer alone uses) or the Workspace's.
+    @State private var sharedSignIn = false
 
     enum TestState: Equatable { case idle, busy, ok(String), fail(String) }
 
@@ -167,6 +301,7 @@ private struct DriveForm: View {
             && !(draft?.secretsSet.contains($0.key) ?? false) && $0.defaultValue.isEmpty }
     }
     private var nameOK: Bool { DriveRules.isValidName(name) && (!taken.contains(name) || name == drive?.name) }
+    private var solo: Bool { (spaces.current?.people ?? 1) <= 1 }
 
     var body: some View {
         Form {
@@ -175,6 +310,12 @@ private struct DriveForm: View {
             }
             Section(oauth ? "Connect \(template.authLabel.isEmpty ? template.title : template.authLabel)" : "Connect") {
                 ForEach(connectVars, id: \.key) { varRow($0) }
+                if oauth && !solo && draft?.connected != true {
+                    Picker("Who can use this sign-in", selection: $sharedSignIn) {
+                        Text("Only my Bots").tag(false)
+                        Text("Anyone in \(spaces.current?.name ?? "the workspace")").tag(true)
+                    }
+                }
                 if oauth { oauthRow } else { testRow }
             }
             if !mountVars.isEmpty {
@@ -188,9 +329,10 @@ private struct DriveForm: View {
                     .font(.siloMono(.body))
                 Toggle("Read-only", isOn: $readOnly)
             } header: { Text("Mount") } footer: {
-                Text(nameOK ? "/workspace/drives/\(name)" : "Lowercase letters, digits and dashes; unique on this Bot.")
+                Text(nameOK ? "/workspace/drives/\(name)" : "Lowercase letters, digits and dashes; unique in this workspace.")
                     .foregroundStyle(nameOK ? Color.secondary : Theme.vermilion)
             }
+            if !editing { BotsStep(picked: $picked) }
             if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
         }
         .navigationTitle(editing ? drive!.name : template.title)
@@ -260,9 +402,11 @@ private struct DriveForm: View {
 
     private func load() {
         guard name.isEmpty else { return }
+        picked = Set(spaces.managedBots.map(\.id))
         draft = drive
         name = drive?.name ?? DriveRules.uniqueName(template.title, taken: taken)
         readOnly = drive?.readOnly ?? false
+        sharedSignIn = drive?.shared ?? false
         values = drive?.options ?? [:]
     }
 
@@ -279,9 +423,9 @@ private struct DriveForm: View {
     /// The saved drive when editing, else a server-side draft synced to what is on screen.
     private func sync() async throws -> Silo_V1_Drive {
         if let current = draft, !current.draft { return current }
-        guard let botID = model.selectedBotID else { throw SiloError.invalidArgument("No Bot selected") }
+        guard let spaceID = spaces.currentID else { throw SiloError.invalidArgument("No workspace is open.") }
         var request = Silo_V1_SaveDriveRequest()
-        request.botID = botID
+        request.spaceID = spaceID
         request.id = draft?.id ?? ""
         request.template = template.key
         request.draft = true
@@ -307,7 +451,7 @@ private struct DriveForm: View {
         failure = nil
         do {
             let d = try await sync()
-            let url = try await model.client.beginDriveAuth(id: d.id)
+            let url = try await model.client.beginDriveAuth(id: d.id, shared: sharedSignIn)
             guard let target = URL(string: url) else { return }
             authBusy = true
             openURL(target)
@@ -320,12 +464,12 @@ private struct DriveForm: View {
 
     /// The browser finishes the sign-in on the CP; poll the draft until it reports connected.
     private func pollAuth() async {
-        guard let botID = model.selectedBotID else { return }
+        guard let spaceID = spaces.currentID else { return }
         for _ in 0..<150 where !Task.isCancelled {
             try? await Task.sleep(for: .seconds(2))
             guard let current = draft,
-                  let list = try? await model.client.listDrives(botID: botID, draftID: current.draft ? current.id : ""),
-                  let fresh = list.drives.first(where: { $0.id == current.id }) else { continue }
+                  let list = try? await model.client.listSpaceDrives(spaceID: spaceID, draftID: current.draft ? current.id : ""),
+                  let fresh = list.first(where: { $0.id == current.id }) else { continue }
             if fresh.connected {
                 draft = fresh
                 for (key, value) in fresh.options where (values[key] ?? "").isEmpty { values[key] = value }
@@ -337,11 +481,12 @@ private struct DriveForm: View {
     }
 
     private func save() async {
-        guard let botID = model.selectedBotID else { return }
+        guard let spaceID = spaces.currentID else { return }
         saving = true
         defer { saving = false }
         var request = Silo_V1_SaveDriveRequest()
-        request.botID = botID
+        request.spaceID = spaceID
+        if !editing { request.botIds = Array(picked) }
         request.id = draft?.id ?? ""
         request.template = template.key
         request.name = name

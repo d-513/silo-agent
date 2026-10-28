@@ -109,10 +109,7 @@ struct RulesPage: View {
         }
     }
 
-    private func floor(_ rule: Silo_V1_Rule) -> String {
-        guard rule.locked else { return "" }
-        return side == .output ? rule.operatorOutput : rule.operatorDecision
-    }
+    private func floor(_ rule: Silo_V1_Rule) -> String { ruleFloor(rule, side: side) }
 
     /// The sections this side shows: only actions whose result the Bot reads have an output rule.
     private var filtered: [Silo_V1_RuleSection] {
@@ -199,16 +196,31 @@ struct RulesPage: View {
     }
 }
 
-private struct RuleRow: View {
+/// The least strict mode a rule may take on a Bot: the operator's locked value and the
+/// Workspace's guardrail, whichever is stricter ("" for no floor). The Workspace's own Rules page
+/// passes `workspace: false`, since there the Workspace's floor is the value being set.
+func ruleFloor(_ rule: Silo_V1_Rule, side: RuleSide, workspace: Bool = true) -> String {
+    let op = rule.locked ? (side == .output ? rule.operatorOutput : rule.operatorDecision) : ""
+    let space = workspace ? (side == .output ? rule.spaceOutput : rule.spaceDecision) : ""
+    if op.isEmpty { return space }
+    if space.isEmpty { return op }
+    return ruleStrictness(space, side: side) > ruleStrictness(op, side: side) ? space : op
+}
+
+/// One action's mode, as a menu that offers only what its floor allows.
+struct RuleRow: View {
     let rule: Silo_V1_Rule
     let side: RuleSide
     let modes: [(String, String)]
+    var workspace = true
     let set: (String) -> Void
 
     private var value: String { side == .output ? rule.output : rule.decision }
-    private var floor: String {
-        guard rule.locked else { return "" }
-        return side == .output ? rule.operatorOutput : rule.operatorDecision
+    private var floor: String { ruleFloor(rule, side: side, workspace: workspace) }
+    /// The Workspace set this floor (it is stricter than the operator's).
+    private var fromWorkspace: Bool {
+        workspace && !floor.isEmpty && floor == (side == .output ? rule.spaceOutput : rule.spaceDecision)
+            && floor != (rule.locked ? (side == .output ? rule.operatorOutput : rule.operatorDecision) : "")
     }
 
     var body: some View {
@@ -217,7 +229,7 @@ private struct RuleRow: View {
                 HStack(spacing: 4) {
                     if !floor.isEmpty {
                         Image(systemName: "lock.fill").font(.silo(.caption2)).foregroundStyle(.secondary)
-                            .accessibilityLabel("Locked by the operator")
+                            .accessibilityLabel(fromWorkspace ? "Set by the workspace" : "Locked by the operator")
                     }
                     Text(rule.title.isEmpty ? rule.action : rule.title)
                         .font(rule.connector == "secrets" ? .system(.subheadline, design: .monospaced) : .subheadline)
@@ -237,7 +249,7 @@ private struct RuleRow: View {
                     }
                 }
                 if !floor.isEmpty {
-                    Text("The operator set at least \(label(floor)).")
+                    Text(fromWorkspace ? "Set by the workspace: at least \(label(floor))." : "The operator set at least \(label(floor)).")
                 }
             } label: {
                 HStack(spacing: 3) {

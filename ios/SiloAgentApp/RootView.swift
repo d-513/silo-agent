@@ -2,18 +2,20 @@ import Observation
 import SiloClient
 import SwiftUI
 
-/// The signed-in app. It opens on a chat, as the web does: the Bot's sidebar (its pages, chats,
-/// Customize and Settings) slides in from the left edge on a phone and stays as a column on an
-/// iPad; the machine (Files, Changes, Mail, Start/Stop) is a sheet off the status lamp.
+/// The signed-in app. It opens on a chat, as the web does: the Bot's sidebar (the Workspace's
+/// crests, its pages, chats, Channels, the Workspace and Settings) slides in from the left edge on
+/// a phone and stays as a column on an iPad; the machine (Files, Changes, Mail, Start/Stop) is a
+/// sheet off the status lamp. With no Bot open (a Workspace with none of the user's) it is the
+/// Workspace page.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var creating = false
 
     var body: some View {
         Group {
-            if model.bots.isEmpty {
-                NoBots(creating: $creating)
+            if model.selectedBot == nil {
+                SpaceHome()
             } else if sizeClass == .regular {
                 NavigationSplitView {
                     BotSidebar()
@@ -26,8 +28,16 @@ struct RootView: View {
             }
         }
         .task(id: model.selectedBotID) { await model.chooseBot(model.selectedBotID) }
+        // The Workspaces, for whoever is signed in; listed again now and then for new ones.
+        .task(id: model.user?.id) {
+            spaces.reset()
+            while !Task.isCancelled {
+                await spaces.load()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .onChange(of: model.selectedBot?.spaceID, initial: true) { spaces.follow(model.selectedBot) }
         .overlay(alignment: .top) { ErrorBanner() }
-        .sheet(isPresented: $creating) { NewBotView() }
     }
 }
 
@@ -104,8 +114,9 @@ struct BotStack: View {
                 .navigationDestination(for: BotRoute.self) { route in
                     switch route {
                     case .page(let tab): BotPage(tab: tab)
-                    case .customize: SectionPage(title: "Customize", tabs: [.connectors, .skills, .drives, .channels])
-                    case .settings: SectionPage(title: "Settings", tabs: [.settings, .rules, .secrets, .tunnels, .container, .audit])
+                    case .settings: SectionPage(title: "Settings", tabs: [.settings, .people, .rules, .secrets, .tunnels, .container, .audit, .workspace])
+                    case .workspace: WorkspacePage()
+                    case .space(let tab): SpaceTabPage(tab: tab)
                     }
                 }
         }
@@ -114,36 +125,65 @@ struct BotStack: View {
     }
 }
 
-/// No Bot yet: the one thing to do is make one.
-private struct NoBots: View {
+/// No Bot open: the current Workspace's page at the root, with the Workspace switcher and the
+/// account in its bar. A new Workspace, or one with none of the user's Bots, lands here.
+private struct SpaceHome: View {
     @Environment(AppModel.self) private var model
-    @Binding var creating: Bool
+    @State private var path: [BotRoute] = []
     @State private var account = false
+    @State private var newSpace = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Spacer()
-            Text("No Bots yet").font(.silo(30, .medium))
-            Text("A Bot is its own machine. It does not share files with the others.")
-                .font(.silo(15))
-                .foregroundStyle(Theme.ink2)
-            Button { creating = true } label: { Text("New Bot") }
-                .buttonStyle(.ink)
-                .padding(.top, 6)
-            if let error = model.botsError {
-                Text(error).font(.silo(13)).foregroundStyle(Theme.vermilion)
-            }
-            Spacer()
-            Button { account = true } label: {
-                Text(model.user?.email ?? "Account").font(.silo(13)).foregroundStyle(Theme.ink3)
-            }
-            .buttonStyle(.plain)
+        NavigationStack(path: $path) {
+            WorkspacePage()
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        SpaceSwitcher(newSpace: { newSpace = true }) {
+                            HStack(spacing: 4) {
+                                Text("Workspaces").font(.silo(15, .medium))
+                                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundStyle(Theme.ink)
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { account = true } label: {
+                            Image(systemName: "person.crop.circle").foregroundStyle(Theme.ink2)
+                        }
+                        .accessibilityLabel(model.user?.email ?? "Account")
+                    }
+                }
+                .navigationDestination(for: BotRoute.self) { route in
+                    if case .space(let tab) = route { SpaceTabPage(tab: tab) } else { WorkspacePage() }
+                }
         }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(Theme.canvas.ignoresSafeArea())
-        .refreshable { await model.refreshBots() }
         .sheet(isPresented: $account) { AccountView(modal: true) }
+        .sheet(isPresented: $newSpace) { NewSpaceSheet() }
+    }
+}
+
+/// The Workspace switcher: the user's Workspaces (the current one checked, with their role), then
+/// New workspace. Picking one opens its first Bot, or its page when it has none.
+struct SpaceSwitcher<Content: View>: View {
+    @Environment(SpaceModel.self) private var spaces
+    let newSpace: () -> Void
+    @ViewBuilder let label: () -> Content
+
+    var body: some View {
+        Menu {
+            Picker("Workspaces", selection: Binding(get: { spaces.currentID ?? "" }, set: { spaces.open($0) })) {
+                ForEach(spaces.spaces) { space in
+                    let role = spaceRoleWord(space.role)
+                    Text(role.isEmpty ? space.name : "\(space.name) · \(role)").tag(space.id)
+                }
+            }
+            .pickerStyle(.inline)
+            Divider()
+            Button(action: newSpace) { Label("New workspace", systemImage: "plus") }
+        } label: {
+            label()
+        }
+        .accessibilityLabel(spaces.current.map { "Workspace: \($0.name)" } ?? "Workspaces")
     }
 }
 
@@ -197,7 +237,7 @@ struct SectionPage: View {
                 }
             } footer: {
                 if title == "Settings" {
-                    Text("Desktop and Console stay on the web client.")
+                    Text("Desktop and Console stay on the web client. Connectors, skills and drives are the workspace's: they are on the Workspace page.")
                 }
             }
         }
@@ -234,10 +274,9 @@ struct BotPage: View {
         case .memories: MemoriesPage()
         case .feed: FeedPage()
         case .files: FilesPage()
-        case .drives: DrivesPage()
-        case .connectors: ConnectorsPage()
         case .channels: ChannelsPage()
-        case .skills: SkillsPage()
+        case .people: BotPeoplePage()
+        case .workspace: MoveBotPage()
         case .secrets: SecretsPage()
         case .rules: RulesPage()
         case .container: ContainersPage()

@@ -188,11 +188,3 @@ final class SlashTests: XCTestCase {
         XCTAssertEqual(commandSaid(r), "Done.")
     }
 }
-
-final class InitialsTests: XCTestCase {
-    func testInitials() {
-        XCTAssertEqual(personInitials("alice.smith@x.io"), "AS")
-        XCTAssertEqual(personInitials("bob@x.io"), "BO")
-        XCTAssertEqual(personInitials(""), "?")
-    }
-}

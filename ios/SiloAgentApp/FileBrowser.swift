@@ -30,11 +30,12 @@ struct FsSource {
         )
     }
 
-    static func skill(client: SiloClient, scope: String, name: String) -> FsSource {
+    /// A skill's directory on the CP; a Workspace skill (`scope` "space") names its Workspace.
+    static func skill(client: SiloClient, scope: String, name: String, spaceID: String = "") -> FsSource {
         FsSource(
             rootLabel: name,
-            list: { try await client.listSkillFiles(scope: scope, name: name, path: $0) },
-            read: { try await client.readSkillFile(scope: scope, name: name, path: $0) }
+            list: { try await client.listSkillFiles(scope: scope, name: name, path: $0, spaceID: spaceID) },
+            read: { try await client.readSkillFile(scope: scope, name: name, path: $0, spaceID: spaceID) }
         )
     }
 }

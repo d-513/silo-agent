@@ -5,10 +5,15 @@ import UIKit
 
 @main
 struct SiloApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
+    /// The Workspaces and the one the app is in; it reads the session and Bots from `model`.
+    @State private var spaces: SpaceModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        _spaces = State(initialValue: SpaceModel(app: model))
         Self.registerFonts()
         Self.styleBars()
     }
@@ -52,6 +57,7 @@ struct SiloApp: App {
                 }
             }
             .environment(model)
+            .environment(spaces)
             .font(.silo(.body))
             .foregroundStyle(Theme.ink)
             .tint(Theme.cobalt)
