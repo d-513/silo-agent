@@ -1,4 +1,4 @@
-import { ChevronLeft, Play, Plus, Square, Timer } from "lucide-react";
+import { ChevronLeft, Play, Plus, Square } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -6,6 +6,7 @@ import { ui } from "./api";
 import { Btn } from "./Btn";
 import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "./Field";
+import { AutomationMark } from "./AutomationMark";
 import { Lamp } from "./Lamp";
 import { Select } from "./Select";
 import { PromptWell } from "./Settings";
@@ -181,9 +182,9 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
     <div className={`flex items-center gap-3 px-5 py-3.5 shadow-[inset_0_-1px_0_var(--color-line)] transition-colors duration-[160ms] last:shadow-none ${lead ? "bg-well" : "hover:bg-well"}`}>
       {/* The switch is a sibling, not a child, of the Link: a control nested in
           an anchor would navigate on click. */}
-      <Link to="/bots/$botId/automations/$automationId" params={{ botId: bot.id, automationId: a.id }} className="flex min-w-0 flex-1 items-center gap-3">
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-ink-2 ${lead ? "bg-surface shadow-card" : "bg-well"}`}>
-          <Timer size={15} />
+      <Link to="/bots/$botId/automations/$automationId" params={{ botId: bot.id, automationId: a.id }} className="group/auto flex min-w-0 flex-1 items-center gap-3">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] group-hover/auto:text-ink ${lead ? "bg-surface shadow-card" : "bg-well"}`}>
+          <AutomationMark a={a} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
@@ -272,7 +273,12 @@ export function AutomationLog({
           <ChevronLeft size={14} /> {t("Automations")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
+          <span className="group/auto flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card">
+              <AutomationMark a={sel} />
+            </span>
+            <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
+          </span>
           {busy ? <Lamp status="working" /> : null}
           <span className="text-[12.5px] text-ink-3">
             {describe(sel.schedule)} · {nextLine(sel)}

@@ -701,6 +701,34 @@ details > summary::-webkit-details-marker {
   color: var(--color-ink-2);
 }
 
+/* The pinned automations' marks answer a hover on their row: the Heartbeat's
+   trace draws itself again, the Dashboard's last tile fills. */
+.group\/auto:hover .beat-trace {
+  stroke-dasharray: 1;
+  animation: beat-draw 640ms var(--ease-settle) both;
+}
+@keyframes beat-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.board-tile {
+  fill: currentColor;
+  fill-opacity: 0;
+  transition: fill-opacity 200ms var(--ease-quiet);
+}
+.group\/auto:hover .board-tile {
+  fill-opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .group\/auto:hover .beat-trace {
+    animation: none;
+  }
+}
+
 /* A picked choice's tick settles in. */
 .ask-tick {
   animation: ask-tick 200ms var(--ease-settle) both;
