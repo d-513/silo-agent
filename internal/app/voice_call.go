@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -76,3 +78,35 @@ func (a *App) newCallChat(botID, userID string) (*db.Chat, error) {
 	ch := &db.Chat{ID: ids.New(), BotID: botID, UserID: userID, Title: "New chat", CreatedAt: now, UpdatedAt: now}
 	return ch, a.DB.Create(ch).Error
 }
+
+// RecordSpoken writes an exchange a call's talker answered on its own: what
+// the human said and what they heard back, as a run of its own, so the Bot
+// reads it in order next time. While a reply runs in the chat it would land
+// between that run's turns, so it is refused with run.ErrBusy and the call
+// writes it once the run is over.
+func (a *App) RecordSpoken(botID, chatID, said, reply string, sp run.Spoken) error {
+	a.convMu.Lock()
+	defer a.convMu.Unlock()
+	if a.LiveRunID(botID, chatID) != "" {
+		return run.ErrBusy
+	}
+	var ch db.Chat
+	if a.DB.Where("id = ? AND bot_id = ?", chatID, botID).Limit(1).Find(&ch); ch.ID == "" {
+		return errors.New("no such chat")
+	}
+	now := time.Now()
+	r := db.Run{ID: ids.New(), BotID: botID, ChatID: chatID, Origin: "voice", Status: "done", UserID: ch.UserID, CreatedAt: now}
+	if err := a.DB.Create(&r).Error; err != nil {
+		return err
+	}
+	a.emitUserAt(botID, chatID, r.ID, ids.New(), now, a.botZone(botID), said, run.Extra{Spoken: &sp}, "")
+	if strings.TrimSpace(reply) != "" {
+		a.Emit(botID, chatID, r.ID, "section", reply, "voice")
+	}
+	a.Emit(botID, chatID, r.ID, "done", "done", "")
+	a.DB.Model(&db.Chat{}).Where("id = ?", chatID).Update("updated_at", now)
+	return nil
+}
+
+// StopChat stops the reply running in a chat (voice's Host: "never mind").
+func (a *App) StopChat(botID, chatID string) { a.StopChatLive(botID, chatID) }

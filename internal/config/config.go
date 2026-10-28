@@ -291,28 +291,28 @@ type Config struct {
 	// TranscriptionModels, SpeechModels and EmbeddingModels are the
 	// allowlists of the other kinds (llm.Kinds). The model a role names is
 	// allowed whether or not it is listed (KindModels).
-	TranscriptionModels []string            `koanf:"transcription_models"`
-	SpeechModels        []string            `koanf:"speech_models"`
-	EmbeddingModels     []string            `koanf:"embedding_models"`
+	TranscriptionModels []string `koanf:"transcription_models"`
+	SpeechModels        []string `koanf:"speech_models"`
+	EmbeddingModels     []string `koanf:"embedding_models"`
 	// ModelVoice is the talker of a voice call: a fast text model that holds
 	// the conversation and hands real work to the Bot. Empty means the Bot
 	// answers every turn itself (direct mode).
 	ModelVoice string              `koanf:"model_voice"`
 	Voice      Voice               `koanf:"voice"`
 	Debug      bool                `koanf:"debug"`
-	Bootstrap      Bootstrap           `koanf:"bootstrap"`
-	Auth           Auth                `koanf:"auth"`
-	OIDC           OIDC                `koanf:"oidc"`
-	Providers      map[string]Provider `koanf:"providers"`
-	Search         Search              `koanf:"search"`
-	Drives         Drives              `koanf:"drives"`
-	Egress         Egress              `koanf:"egress"`
-	Tunnels        Tunnels             `koanf:"tunnels"`
-	Content        Content             `koanf:"content"`
-	Artifacts      Artifacts           `koanf:"artifacts"`
-	Mail           Mail                `koanf:"mail"`
-	Outbound       Outbound            `koanf:"outbound"`
-	Tools          Tools               `koanf:"tools"`
+	Bootstrap  Bootstrap           `koanf:"bootstrap"`
+	Auth       Auth                `koanf:"auth"`
+	OIDC       OIDC                `koanf:"oidc"`
+	Providers  map[string]Provider `koanf:"providers"`
+	Search     Search              `koanf:"search"`
+	Drives     Drives              `koanf:"drives"`
+	Egress     Egress              `koanf:"egress"`
+	Tunnels    Tunnels             `koanf:"tunnels"`
+	Content    Content             `koanf:"content"`
+	Artifacts  Artifacts           `koanf:"artifacts"`
+	Mail       Mail                `koanf:"mail"`
+	Outbound   Outbound            `koanf:"outbound"`
+	Tools      Tools               `koanf:"tools"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -360,12 +360,12 @@ type VoiceWebRTC struct {
 
 // The voice defaults.
 const (
-	VoiceModeTalker      = "talker"
-	VoiceModeDirect      = "direct"
-	DefaultVoiceMaxMin   = 30
-	DefaultVoiceIdleMin  = 3
-	DefaultVoiceUDPPort  = 3479
-	DefaultSpeechModel   = "openrouter/hexgrad/kokoro-82m"
+	VoiceModeTalker     = "talker"
+	VoiceModeDirect     = "direct"
+	DefaultVoiceMaxMin  = 30
+	DefaultVoiceIdleMin = 3
+	DefaultVoiceUDPPort = 3479
+	DefaultSpeechModel  = "openrouter/hexgrad/kokoro-82m"
 )
 
 // VoiceMode is talker only while a talker model is set.
@@ -598,7 +598,6 @@ var fieldDefs = []fieldMeta{
 	{Key: "voice.speech_model"},
 	{Key: "voice.max_minutes"},
 	{Key: "voice.idle_minutes"},
-	{Key: "voice.approve_by_voice", Type: "bool"},
 	{Key: "voice.opus_library"},
 	{Key: "voice.webrtc.udp_port", Restart: true},
 	{Key: "voice.webrtc.tcp_port", Restart: true},

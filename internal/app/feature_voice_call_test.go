@@ -211,6 +211,10 @@ func (c *callClient) send(m map[string]any) {
 // speak sends one turn: the dummy transcriber hears the WAV's samples as text.
 func (c *callClient) speak(words string) {
 	c.send(map[string]any{"t": "turn", "eou_ms": 240})
+	// Samples are two bytes: an odd last byte would be lost.
+	if len(words)%2 == 1 {
+		words += " "
+	}
 	if err := c.ws.Write(context.Background(), websocket.MessageBinary, speech.WAV([]byte(words), 16000)); err != nil {
 		c.t.Fatal(err)
 	}
@@ -349,5 +353,98 @@ func waitFor(t *testing.T, ok func() bool, what string) {
 			t.Fatalf("timed out waiting for %s", what)
 		}
 		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// talkerHarness is a voice harness with a talker in front of the Bot.
+func talkerHarness(t *testing.T) *apptest.H {
+	t.Helper()
+	h := voiceHarness(t)
+	if _, err := h.Client.SetModels(h.Ctx(), connect.NewRequest(&v1.SetModelsRequest{Models: []string{"dummy/echo", "dummy/talker"}})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{Fields: map[string]string{"model_voice": "dummy/talker"}})); err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// chatEvents are a chat's persisted events of some kinds, in order.
+func chatEvents(t *testing.T, h *apptest.H, chatID string, kinds ...string) []db.RunEvent {
+	t.Helper()
+	var evs []db.RunEvent
+	h.App.DB.Joins("JOIN runs ON runs.id = run_events.run_id").Where("runs.chat_id = ? AND run_events.kind IN ?", chatID, kinds).Order("run_events.seq").Find(&evs)
+	return evs
+}
+
+// The talker answers small talk itself, fast, and its exchange is written
+// into the chat as the human's turn and the Bot's reply, so the Bot reads it.
+func TestTalkerAnswers(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_tk1@talker", dummy.Turn{Text: "Hi! Good to hear you."})
+	h := talkerHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	c.speak("Test_tk1 hello there")
+	if say := c.expect("say"); say["text"] != "Hi!" {
+		t.Fatalf("first words %v", say)
+	}
+	main := mainChatOf(t, h, id)
+	waitFor(t, func() bool { return len(chatEvents(t, h, main, "section")) == 1 }, "the talker's reply in the chat")
+	evs := chatEvents(t, h, main, "user", "section")
+	if len(evs) != 2 || evs[0].Body != "Test_tk1 hello there" || !strings.Contains(evs[0].Meta, `"spoken"`) || evs[1].Body != "Hi! Good to hear you." || evs[1].Tool != "voice" {
+		t.Fatalf("exchange %+v", evs)
+	}
+	// The Bot itself never ran: only the talker was asked.
+	for _, r := range dummy.Streamed() {
+		if r.Model != "talker" {
+			t.Fatalf("the Bot's model was asked: %s", r.Model)
+		}
+	}
+}
+
+// What the talker should not answer it hands to the Bot after a few words,
+// and the Bot's own answer is what is spoken next.
+func TestTalkerDelegates(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_tk2@talker", dummy.Turn{Text: "Let me check.", ToolCalls: []llm.ToolCall{{ID: "d1", Name: "delegate", Arguments: "{}"}}})
+	dummy.Script("Test_tk2", dummy.Turn{Text: "Your meeting is at six."})
+	h := talkerHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	c.speak("Test_tk2 when is my meeting")
+	if say := c.expect("say"); say["text"] != "Let me check." {
+		t.Fatalf("preamble %v", say)
+	}
+	if say := c.expect("say"); say["text"] != "Your meeting is at six." {
+		t.Fatalf("the Bot's answer %v", say)
+	}
+	main := mainChatOf(t, h, id)
+	waitFor(t, func() bool { return h.App.LiveRunID(id, main) == "" }, "the Bot's run to end")
+	// The Bot was given the human's own words, marked spoken; the preamble
+	// is filler and not written.
+	reqs := dummy.Streamed()
+	last := reqs[len(reqs)-1]
+	if last.Model != "echo" || !strings.HasSuffix(userTexts(last)[0], "[spoken]\nTest_tk2 when is my meeting") {
+		t.Fatalf("the Bot read %s %q", last.Model, userTexts(last))
+	}
+	for _, ev := range chatEvents(t, h, main, "section", "assistant") {
+		if strings.Contains(ev.Body, "Let me check") {
+			t.Fatalf("the preamble was written: %+v", ev)
+		}
+	}
+}
+
+// Goodbye ends the call once it has been said.
+func TestTalkerEndsTheCall(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_tk3@talker", dummy.Turn{Text: "Bye, talk soon.", ToolCalls: []llm.ToolCall{{ID: "e1", Name: "end_call", Arguments: "{}"}}})
+	h := talkerHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	c.speak("Test_tk3 that's all, bye")
+	c.expect("say")
+	if bye := c.expect("bye"); bye["reason"] != "hangup" {
+		t.Fatalf("bye %v", bye)
 	}
 }

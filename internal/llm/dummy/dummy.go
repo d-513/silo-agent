@@ -283,7 +283,13 @@ func resolveTurn(req llm.Request) Turn {
 			index++
 		}
 	}
-	if turns, ok := scenarioFor(token); ok {
+	// A script for one model ("Test_x@talker") wins over the token's own, so
+	// a test can tell two models in one conversation apart.
+	turns, ok := scenarioFor(token + "@" + req.Model)
+	if !ok {
+		turns, ok = scenarioFor(token)
+	}
+	if ok {
 		if index < len(turns) {
 			return turns[index]
 		}

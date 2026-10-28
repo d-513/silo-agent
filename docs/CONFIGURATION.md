@@ -37,6 +37,31 @@ Whichever kind judges, the gate is shown the same three things: the Bot's auto-a
 
 Each provider's key lives under `providers.<id>`. Prompt caching is **on by default** for `openrouter`, `openai` and `anthropic` (`cache: false` turns it off); `anthropic` and `openrouter` also take `cache_ttl` (`5m` or `1h`) for Claude.
 
+### Model kinds
+
+Every model is of one **kind**, and each kind has its own allowlist: `models` (text), `decision_models`, `transcription_models` (speech-to-text), `speech_models` (text-to-speech) and `embedding_models`. An id is on one list only, and its provider must serve the kind: `openrouter`, `openai` and `local` serve text, speech-to-text, speech and embeddings (`openrouter` decision models too), `anthropic` only text, `typesafe` only decisions. **List models** under Admin → Settings → Providers shows a tab per kind the provider lists. The model a setting names (`transcribe_model`, `voice.speech_model`, `embedding_model`) counts as allowed for its kind even when its list does not name it, so a `silo.yaml` from before the lists keeps working.
+
+### Voice
+
+Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Voice.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `voice.enabled` | `true` | Off hides Read aloud and Talk everywhere. |
+| `transcribe_model` | `openrouter/openai/whisper-1` | Hears every turn of a call (and dictation). |
+| `voice.speech_model` | `openrouter/hexgrad/kokoro-82m` | The default voice; a Bot may pick another from `speech_models`, and a voice and speed of it (Bot → Settings → Voice). Any OpenAI-compatible `/audio/speech` model, e.g. OpenRouter's ElevenLabs, Fish, Voxtral, Kokoro, Gemini TTS. Kokoro has no Polish voice. |
+| `model_voice` | empty | The **talker**: a fast text model that hears each turn first, answers small talk itself and hands real work to the Bot, so answers start in under a second. Empty, the Bot answers every turn itself (smarter, slower). Pick it for time to first token and for not guessing; it must be on `models`. |
+| `voice.max_minutes` | `30` | A call ends after this long. |
+| `voice.idle_minutes` | `3` | A call nobody speaks in ends after this long. |
+| `voice.approve_by_voice` | `true` | Reserved for approving by voice. Today a call says an approval is waiting and it is answered on screen. |
+| `voice.opus_library` | empty | Where libopus is when the loader cannot find it (`libopus.so.0`). Calls need it, and a control plane built with cgo; Read aloud needs neither. |
+| `voice.webrtc.udp_port` | `3479` | The one UDP port every call's audio uses. **Publish it** beside the HTTP port; a reverse proxy cannot carry it. Restart required. |
+| `voice.webrtc.tcp_port` | `3479` | The route for networks that block UDP. Restart required. |
+| `voice.webrtc.public_ips` | empty | The control plane's public address when it sits behind NAT (comma-separated). Restart required. |
+| `voice.webrtc.ice_servers` | empty | `stun:`/`turn:` URLs offered to the browser, for networks that need a relay. |
+
+Audio is never kept: what is said on a call is written into its chat as text, and the timings of each turn (end of turn, speech-to-text, first sound back) are kept in `voice_turns`.
+
 ## Keys
 
 | Key | Default | Env | What |

@@ -30,7 +30,6 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/chats"
-	"silo.agent/internal/app/run"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -130,6 +129,15 @@ type call struct {
 	nTurns   int
 	pending  *db.VoiceTurn // the turn waiting for its first sound
 	pendAt   time.Time
+	// The talker (talker.go): the turn it is answering, a count for ids,
+	// whether it said goodbye, and exchanges waiting for a reply to end.
+	talking *talkTurn
+	nTalk   int
+	// nudged and nudges: the last "still working" line, and how many.
+	nudged  time.Time
+	nudges  int
+	ending  bool
+	waiting []exchange
 }
 
 // errHangup and friends say why a call ended.
@@ -223,6 +231,8 @@ func (c *call) run(reqCtx context.Context) {
 				c.cancel(errLimit)
 			} else if c.idleFor() > idle && !c.out.busy() && c.s.host.LiveRunID(c.botID, c.chatID) == "" {
 				c.cancel(errIdle)
+			} else {
+				c.nudge()
 			}
 		}
 	}
@@ -283,7 +293,9 @@ func (c *call) read() {
 	var eou int
 	expectTurn := false
 	for {
-		typ, data, err := c.ws.Read(c.ctx)
+		// Not the call's context: cancelling a Read closes the socket, and
+		// the call has a goodbye to send first. end() closes it.
+		typ, data, err := c.ws.Read(context.Background())
 		if err != nil {
 			if c.ctx.Err() == nil {
 				c.cancel(errNetwork)
@@ -367,23 +379,15 @@ func (c *call) turn(t turnIn) {
 	c.cutOff = ""
 	c.nTurns++
 	c.mu.Unlock()
-	runID, err := c.s.host.StartOrInject(c.botID, c.chatID, text, run.Extra{Spoken: &run.Spoken{CallID: c.id, Interrupted: cut}}, nil)
-	if err != nil {
-		log.Printf("voice: call %s: %v", c.id, err)
-		if errors.Is(err, run.ErrBusy) {
-			c.say(sayBusy.in(c.snd.Language), "")
-		} else {
-			c.say(sayFailed.in(c.snd.Language), "")
-		}
-		return
-	}
 	c.mu.Lock()
-	// What the Bot says next answers this turn: speak it even if an earlier
-	// sentence of the same run was cut off.
-	delete(c.muted, runID)
 	c.pending = &db.VoiceTurn{CallID: c.id, BotID: c.botID, EndOfTurnMs: t.eouMs, SpeechToTextMs: int(stt / time.Millisecond), CreatedAt: time.Now()}
 	c.pendAt = t.at
 	c.mu.Unlock()
+	if c.mode == config.VoiceModeTalker {
+		c.talk(text, cut)
+		return
+	}
+	c.hand(text, cut)
 }
 
 // meaningful reports whether a transcript holds any words at all: silence
@@ -431,6 +435,7 @@ func (c *call) follow() {
 			c.reply(runID, "", true)
 			c.forget(runID)
 			c.saveTurn()
+			c.flushWaiting()
 			c.settle()
 		case "error":
 			c.reply(runID, "", true)
@@ -470,6 +475,9 @@ func (c *call) reply(runID, text string, end bool) {
 }
 
 func (c *call) say(text, runID string) {
+	if runID != "" && c.isMuted(runID) {
+		return
+	}
 	c.touch()
 	c.out.say(text, runID)
 }
@@ -498,6 +506,12 @@ func (c *call) forget(runID string) {
 // Bot where it was cut off.
 func (c *call) interrupt() {
 	heard, runID := c.out.flush()
+	c.mu.Lock()
+	talkerCut := c.talking != nil && runID == c.talking.id
+	c.mu.Unlock()
+	if talkerCut {
+		c.cutTalk(heard)
+	}
 	c.mu.Lock()
 	note := strings.TrimSpace(strings.Join(append(c.said, heard), " "))
 	if r := []rune(note); len(r) > interruptedMax {
@@ -539,6 +553,9 @@ func (c *call) pieceStarted(p *piece) {
 		c.said = c.said[len(c.said)-2:]
 	}
 	c.said = append(c.said, p.text)
+	if c.talking != nil && p.runID == c.talking.id {
+		c.talking.played = append(c.talking.played, p.text)
+	}
 	if c.pending != nil && c.pending.FirstAudioMs == 0 {
 		c.pending.FirstAudioMs = int(time.Since(c.pendAt) / time.Millisecond)
 	}
@@ -547,8 +564,11 @@ func (c *call) pieceStarted(p *piece) {
 	c.setState(stateSpeaking, "")
 }
 
-// spokeAll is the queue running dry.
-func (c *call) spokeAll() { c.settle() }
+// spokeAll is the queue running dry: a talker turn has been heard in full.
+func (c *call) spokeAll() {
+	c.finishTalk()
+	c.settle()
+}
 
 // settle sets the state from what is going on: speaking, or the Bot still
 // at work, or listening.
@@ -578,6 +598,35 @@ func (c *call) setState(st, tool string) {
 	c.state, c.tool = st, tool
 	c.mu.Unlock()
 	_ = c.send(map[string]any{"t": "state", "state": st, "tool": tool})
+}
+
+// Long work is not met with silence: a fixed line says the Bot is still at
+// it after nudgeAfter of quiet, at most every nudgeEvery and nudgeMax times
+// in a stretch.
+const (
+	nudgeAfter = 12 * time.Second
+	nudgeEvery = 25 * time.Second
+	nudgeMax   = 3
+)
+
+func (c *call) nudge() {
+	if c.out.busy() || c.s.host.LiveRunID(c.botID, c.chatID) == "" {
+		c.mu.Lock()
+		c.nudges = 0
+		c.mu.Unlock()
+		return
+	}
+	c.mu.Lock()
+	quiet := time.Since(c.activity)
+	ok := quiet > nudgeAfter && time.Since(c.nudged) > nudgeEvery && c.nudges < nudgeMax
+	if ok {
+		c.nudged = time.Now()
+		c.nudges++
+	}
+	c.mu.Unlock()
+	if ok {
+		c.say(sayStillWorking.in(c.snd.Language), "")
+	}
 }
 
 // saveTurn files the timings of the turn the Bot just finished answering.
@@ -651,6 +700,6 @@ func (c *call) end(cause error) {
 	c.mu.Lock()
 	turns := c.nTurns
 	c.mu.Unlock()
-	c.s.db.Model(&db.VoiceCall{}).Where("id = ?", c.id).Updates(map[string]any{"ended_at": now, "end_reason": reason, "turns": turns})
 	c.putEvent(CallEndKind, callMeta{CallID: c.id, Seconds: secs, Reason: reason})
+	c.s.db.Model(&db.VoiceCall{}).Where("id = ?", c.id).Updates(map[string]any{"ended_at": now, "end_reason": reason, "turns": turns})
 }

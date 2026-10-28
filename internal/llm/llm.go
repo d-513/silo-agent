@@ -98,6 +98,10 @@ type Request struct {
 	// the model on its default. Callers fit it to the model first
 	// (NearestThinking over the model's levels).
 	Thinking string
+	// Latency asks a gateway that routes between upstreams (OpenRouter) for
+	// the one that answers first, not the cheapest: a voice call's talker
+	// waits on its first token.
+	Latency bool
 }
 
 // EventKind identifies a streamed event.

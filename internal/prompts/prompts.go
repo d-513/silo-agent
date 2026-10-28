@@ -92,6 +92,12 @@ var Decide string
 //go:embed VOICE.md
 var Voice string
 
+// VoiceTalker is the system prompt of a call's talker; {name} is the Bot's
+// and {language} the language it speaks.
+//
+//go:embed VOICE_TALKER.md
+var VoiceTalker string
+
 // Tunnels is the system-prompt section for a Bot that has the tunnel tools.
 //
 //go:embed TUNNELS.md

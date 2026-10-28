@@ -172,6 +172,9 @@ func (c *openAICompatClient) opts(req Request) []option.RequestOption {
 	if req.Thinking != "" && c.windows != nil {
 		out = append(out, option.WithJSONSet("reasoning", map[string]any{"effort": wireEffort(req.Thinking)}))
 	}
+	if req.Latency && c.windows != nil {
+		out = append(out, option.WithJSONSet("provider.sort", "latency"))
+	}
 	if c.explicitCache(req) {
 		ctrl := map[string]any{"type": "ephemeral"}
 		if strings.TrimSpace(req.Cache.TTL) == "1h" {

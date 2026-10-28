@@ -20,9 +20,9 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/run"
-	"silo.agent/internal/db"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/config"
+	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/textx"
 )
@@ -45,6 +45,10 @@ type Host interface {
 	Publish(botID string, ev *v1.RunEvent)
 	// Lost closes when the person can no longer use the Bot.
 	Lost(botID, userID string) (lost <-chan struct{}, stop func())
+	// RecordSpoken writes an exchange the talker answered (run.ErrBusy while
+	// a reply runs in the chat); StopChat stops that reply.
+	RecordSpoken(botID, chatID, said, reply string, sp run.Spoken) error
+	StopChat(botID, chatID string)
 }
 
 // Service is dictation, Read aloud and calls.

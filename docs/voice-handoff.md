@@ -1,7 +1,18 @@
 # Talk to the Bot: handoff
 
-Status: plan, not started. Read AGENTS.md first, then the research note this
-plan draws on ("Building an Actually Good Voice Pipeline", Oct 2026).
+Status: phases 1a, 1b, 2 and 3 are built (see AGENTS.md, **Model kinds** and
+**Calls**). Not done yet: phase 0's measurements, Smart Turn (turns end on
+the voice detector's silence, 550 ms), the WebSocket audio fallback when
+ICE finds no route, approvals and asks by voice (an approval is announced and
+answered on screen), phases 4 and 5 (streaming STT and TTS), the Admin
+P50/P95 panel over `voice_turns`, and phase 8. One change from the design
+below: the browser sends each finished turn as a WAV on the control socket
+instead of streaming the microphone over WebRTC; the Bot's voice still comes
+back on the WebRTC track, which is what the echo canceller needs. Streaming
+STT (phase 4) will send PCM frames on the same socket.
+
+Read AGENTS.md first, then the research note this plan draws on ("Building
+an Actually Good Voice Pipeline", Oct 2026).
 
 Dictation stays exactly as it is: the composer mic records, `Transcribe` turns
 the take into text, and the human edits it before sending. This plan adds a

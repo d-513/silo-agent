@@ -8,15 +8,15 @@ import (
 func TestForSpeech(t *testing.T) {
 	en := PointersFor("en")
 	for name, tc := range map[string]struct{ in, want string }{
-		"emphasis and code": {"This is **really** _fine_ and `go test` works.", "This is really fine and go test works."},
-		"link and url":      {"See [the docs](https://x.dev/a) or https://www.example.com/path?q=1.", "See the docs or example.com."},
-		"fence":             {"Here:\n```go\nfmt.Println(1)\n```\nDone.", "Here: " + en.Code + " Done."},
-		"list":              {"Steps:\n- install it\n- run it\n\nThen relax.", "Steps: install it. run it.\nThen relax."},
-		"heading":           {"## Summary\nAll good", "Summary. All good"},
-		"table":             {"| a | b |\n|---|---|\n| 1 | 2 |\nAfter.", en.Table + " After."},
+		"emphasis and code":  {"This is **really** _fine_ and `go test` works.", "This is really fine and go test works."},
+		"link and url":       {"See [the docs](https://x.dev/a) or https://www.example.com/path?q=1.", "See the docs or example.com."},
+		"fence":              {"Here:\n```go\nfmt.Println(1)\n```\nDone.", "Here: " + en.Code + " Done."},
+		"list":               {"Steps:\n- install it\n- run it\n\nThen relax.", "Steps: install it. run it.\nThen relax."},
+		"heading":            {"## Summary\nAll good", "Summary. All good"},
+		"table":              {"| a | b |\n|---|---|\n| 1 | 2 |\nAfter.", en.Table + " After."},
 		"emoji and sentinel": {"Great 🎉 news<section_send />", "Great news"},
-		"snake_case stays":  {"Use my_var_name here.", "Use my_var_name here."},
-		"polish pointer":    {"```\nx\n```", PointersFor("pl").Code},
+		"snake_case stays":   {"Use my_var_name here.", "Use my_var_name here."},
+		"polish pointer":     {"```\nx\n```", PointersFor("pl").Code},
 	} {
 		p := en
 		if name == "polish pointer" {

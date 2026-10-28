@@ -138,3 +138,8 @@ func Title(code string) string {
 	}
 	return fmt.Sprintf("Write it in %s.", names[code])
 }
+
+// Name is a language's English name, "" for mixed (or unknown).
+func Name(code string) string {
+	return names[Bot(code)]
+}
