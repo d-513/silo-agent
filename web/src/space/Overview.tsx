@@ -1,5 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { Inbox, LayoutGrid, Plus, Timer, UserPlus } from "lucide-react";
+import { Inbox, MessageCircleQuestionMark, Plus, Timer, UserPlus } from "lucide-react";
 import { useBots } from "../bots";
 import { btnClass } from "../Btn";
 import { Crest } from "../Crest";
@@ -15,19 +15,22 @@ import { canAdmin, canBuild, useSpaces } from "./spaces";
 import { roleWord, SpaceMark } from "./SpaceTile";
 
 // The Workspace's overview (/w/$spaceId): its Bots you are on and what each is
-// up to, live. The ones that need you or are at work come first; the rest
-// rest below. A card opens the Bot; what is on it opens where it points.
+// up to, live. The ones that need you (a paused run), have a question for
+// you, or are at work come first; the rest rest below. A card opens the Bot; what is on it opens where it points.
 
-type Mood = "needs_you" | "working" | "online" | "stopped";
+// A question waiting on the Dashboard is not Needs you: nothing is paused on
+// it, so it sorts after the approvals and never wears vermilion.
+type Mood = "needs_you" | "asks" | "working" | "online" | "stopped";
 
 function mood(b: Bot): Mood {
-  if (b.status === "needs_you" || b.dashboardAsks > 0) return "needs_you";
+  if (b.status === "needs_you") return "needs_you";
+  if (b.dashboardAsks > 0) return "asks";
   if (b.status === "working" || b.activity.length > 0) return "working";
   if (b.status === "stopped" || b.status === "" || b.status === "error") return "stopped";
   return "online";
 }
 
-const order: Record<Mood, number> = { needs_you: 0, working: 1, online: 2, stopped: 3 };
+const order: Record<Mood, number> = { needs_you: 0, asks: 1, working: 2, online: 3, stopped: 4 };
 
 export function SpaceOverview() {
   const { spaceId } = useParams({ from: "/_authed/w/$spaceId/" });
@@ -37,8 +40,8 @@ export function SpaceOverview() {
   const bots = all?.filter((b) => b.spaceId === spaceId) ?? null;
   const role = space?.role ?? "";
   const sorted = bots ? [...bots].sort((a, b) => order[mood(a)] - order[mood(b)]) : [];
-  const busy = sorted.filter((b) => order[mood(b)] < 2);
-  const quiet = sorted.filter((b) => order[mood(b)] >= 2);
+  const busy = sorted.filter((b) => order[mood(b)] < 3);
+  const quiet = sorted.filter((b) => order[mood(b)] >= 3);
   const count = (m: Mood) => sorted.filter((b) => mood(b) === m).length;
 
   return (
@@ -87,7 +90,7 @@ export function SpaceOverview() {
         <Empty spaceId={spaceId} build={canBuild(role)} />
       ) : (
         <>
-          <Pulse needs={count("needs_you")} working={count("working")} resting={count("online")} off={count("stopped")} />
+          <Pulse needs={count("needs_you")} asks={sorted.reduce((n, b) => n + b.dashboardAsks, 0)} working={count("working")} resting={count("online")} off={count("stopped")} />
           {busy.length ? (
             <Section title={t("Now")}>
               {busy.map((b, i) => (
@@ -108,10 +111,12 @@ export function SpaceOverview() {
   );
 }
 
-// Pulse is the Workspace at a glance: how many need you, work, rest, are off.
-function Pulse({ needs, working, resting, off }: { needs: number; working: number; resting: number; off: number }) {
+// Pulse is the Workspace at a glance: how many need you, the questions
+// waiting, how many work, rest, are off.
+function Pulse({ needs, asks, working, resting, off }: { needs: number; asks: number; working: number; resting: number; off: number }) {
   const parts: { status: string; n: number; word: string }[] = [
     { status: "needs_you", n: needs, word: t("{{count}} need you", { count: needs }) },
+    { status: "asks", n: asks, word: t("{{count}} questions", { count: asks }) },
     { status: "working", n: working, word: t("{{count}} at work", { count: working }) },
     { status: "online", n: resting, word: t("{{count}} resting", { count: resting }) },
     { status: "stopped", n: off, word: t("{{count}} switched off", { count: off }) },
@@ -121,8 +126,11 @@ function Pulse({ needs, working, resting, off }: { needs: number; working: numbe
       {parts
         .filter((p) => p.n > 0)
         .map((p) => (
-          <span key={p.status} className={`flex items-center gap-2 text-[13px] font-medium ${p.status === "needs_you" ? "text-vermilion" : "text-ink-2"}`}>
-            <Lamp status={p.status} />
+          <span
+            key={p.status}
+            className={`flex items-center gap-2 text-[13px] font-medium ${p.status === "needs_you" ? "text-vermilion" : p.status === "asks" ? "text-cobalt" : "text-ink-2"}`}
+          >
+            {p.status === "asks" ? <MessageCircleQuestionMark size={14} /> : <Lamp status={p.status} />}
             {p.word}
           </span>
         ))}
@@ -235,8 +243,8 @@ function Waiting({ bot: b }: { bot: Bot }) {
   return (
     <div className="-mx-2 mt-2 flex flex-wrap gap-1 border-t border-line pt-2">
       {b.dashboardAsks ? (
-        <Link to="/bots/$botId/dashboard" params={{ botId: b.id }} className={`${row} font-medium text-vermilion`}>
-          <LayoutGrid size={14} />
+        <Link to="/bots/$botId/dashboard" params={{ botId: b.id }} className={`${row} font-medium text-cobalt`}>
+          <MessageCircleQuestionMark size={14} />
           {t("{{count}} questions", { count: b.dashboardAsks })}
         </Link>
       ) : null}

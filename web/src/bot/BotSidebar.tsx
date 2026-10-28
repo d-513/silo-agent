@@ -1,5 +1,5 @@
 import { ActivityStrip } from "./ActivityStrip";
-import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, Package, Pencil, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
+import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, MessageCircleQuestionMark, Package, Pencil, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
@@ -84,7 +84,8 @@ export function BotSidebar({
         botId={id}
         bot={bot}
         on={tab === "dashboard"}
-        needs={pendingCount + bot.dashboardAsks}
+        needs={pendingCount}
+        asks={bot.dashboardAsks}
         fresh={freshCount}
         curating={!!dashQ.data?.curating}
       />
@@ -150,6 +151,7 @@ function BotHome({
   bot,
   on,
   needs,
+  asks,
   fresh,
   curating,
 }: {
@@ -157,6 +159,7 @@ function BotHome({
   bot: Bot;
   on: boolean;
   needs: number;
+  asks: number;
   fresh: number;
   curating: boolean;
 }) {
@@ -187,7 +190,7 @@ function BotHome({
           <LayoutGrid size={13} className={on ? "text-cobalt" : "text-ink-3 group-hover/home:text-cobalt"} />
           <span className="font-medium">{t("Dashboard")}</span>
           <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5 truncate">
-            <Digest needs={needs} fresh={fresh} curating={curating} />
+            <Digest needs={needs} asks={asks} fresh={fresh} curating={curating} />
           </span>
           <ChevronRight
             size={13}
@@ -226,12 +229,22 @@ function People({ people }: { people: Bot["people"] }) {
 
 // Digest is the one thing worth saying about the board right now: what needs
 // the owner first, then what changed, then that the Bot is curating it.
-function Digest({ needs, fresh, curating }: { needs: number; fresh: number; curating: boolean }) {
+function Digest({ needs, asks, fresh, curating }: { needs: number; asks: number; fresh: number; curating: boolean }) {
+  // Approvals are Needs you (a run is paused on them); the Bot's questions
+  // only wait, so they are cobalt like anything else that is new there.
   if (needs > 0) {
     return (
       <span className="rise flex items-center gap-1.5 font-medium text-vermilion">
         <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
         <span className="truncate">{t("{{count}} need you", { count: needs })}</span>
+      </span>
+    );
+  }
+  if (asks > 0) {
+    return (
+      <span className="rise flex items-center gap-1.5 font-medium text-cobalt">
+        <MessageCircleQuestionMark size={13} className="shrink-0" />
+        <span className="truncate">{t("{{count}} questions", { count: asks })}</span>
       </span>
     );
   }
