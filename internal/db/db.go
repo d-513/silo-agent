@@ -184,6 +184,13 @@ type Bot struct {
 	// quiet (the Heartbeat reports to the Feed; questions wait on the
 	// Dashboard) or active (it may also write into the main chat).
 	Proactivity string `gorm:"not null;default:'off'"`
+	// SpeechModel, Voice and SpeechSpeed are how the Bot sounds: a speech
+	// model from the operator's list ("" is the operator's default), that
+	// model's voice id ("" picks one for the Bot's language) and a speed
+	// multiplier (0 is the model's own).
+	SpeechModel string  `gorm:"not null;default:''"`
+	Voice       string  `gorm:"not null;default:''"`
+	SpeechSpeed float64 `gorm:"not null;default:0"`
 	// OtherProtocols lets this Bot's box open connections that are not HTTP
 	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
 	OtherProtocols bool `gorm:"not null;default:false"`
@@ -1004,6 +1011,41 @@ type MailBody struct {
 	Data  []byte
 }
 
+// VoiceCall is one spoken conversation with a Bot, held in one of its chats.
+// What was said is in the chat as events; this row is when and how it went.
+type VoiceCall struct {
+	ID        string    `gorm:"primaryKey"`
+	BotID     string    `gorm:"index;not null"`
+	ChatID    string    `gorm:"index;not null"`
+	UserID    string    `gorm:"index;not null"`
+	Mode      string    `gorm:"not null;default:''"`
+	StartedAt time.Time `gorm:"not null"`
+	EndedAt   *time.Time
+	// EndReason is why it ended: hangup, idle, limit, lost (the socket
+	// dropped), access (the person left the Bot), error.
+	EndReason string `gorm:"not null;default:''"`
+	Turns     int    `gorm:"not null;default:0"`
+}
+
+// VoiceTurn is one turn of a call, timed stage by stage: what the operator
+// reads as P50/P95 to see where a call's latency goes. Milliseconds; 0 is
+// not measured.
+type VoiceTurn struct {
+	ID     uint   `gorm:"primaryKey"`
+	CallID string `gorm:"index;not null"`
+	BotID  string `gorm:"index;not null"`
+	// EndOfTurnMs is the client's wait from the last speech to deciding the
+	// turn was over; SpeechToTextMs the transcription; FirstAudioMs from the
+	// turn's end on the control plane to the first sound sent back.
+	EndOfTurnMs    int       `gorm:"not null;default:0"`
+	SpeechToTextMs int       `gorm:"not null;default:0"`
+	FirstAudioMs   int       `gorm:"not null;default:0"`
+	SpeechMs       int       `gorm:"not null;default:0"`
+	Interrupted    bool      `gorm:"not null;default:false"`
+	Delegated      bool      `gorm:"not null;default:false"`
+	CreatedAt      time.Time `gorm:"index;not null"`
+}
+
 // Models is every table the Control Plane migrates, shared by Open and tests.
 func Models() []any {
 	return []any{
@@ -1016,6 +1058,7 @@ func Models() []any {
 		&Tunnel{}, &TunnelGrant{},
 		&Artifact{}, &ArtifactVersion{}, &ArtifactShare{}, &ArtifactView{},
 		&Mailbox{}, &MailMessage{}, &MailBody{},
+		&VoiceCall{}, &VoiceTurn{},
 		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{}, &EgressPattern{}, &EgressFeedState{},
 	}
 }

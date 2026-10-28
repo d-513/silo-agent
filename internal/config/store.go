@@ -37,6 +37,14 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
+	_ = k.Set("voice.enabled", true)
+	_ = k.Set("voice.mode", VoiceModeTalker)
+	_ = k.Set("voice.speech_model", DefaultSpeechModel)
+	_ = k.Set("voice.max_minutes", DefaultVoiceMaxMin)
+	_ = k.Set("voice.idle_minutes", DefaultVoiceIdleMin)
+	_ = k.Set("voice.approve_by_voice", true)
+	_ = k.Set("voice.webrtc.udp_port", DefaultVoiceUDPPort)
+	_ = k.Set("voice.webrtc.tcp_port", DefaultVoiceUDPPort)
 	// Prompt caching is on unless the operator turns it off: an agent loop
 	// re-sends its whole prefix every turn.
 	for _, id := range []string{llm.OpenRouter, llm.OpenAI, llm.Anthropic} {
@@ -262,6 +270,15 @@ func (s *Store) SetDecisionModels(models []string) error {
 	return s.setList("decision_models", models)
 }
 
+// SetKindModels writes the allowlist of one kind of model and reloads.
+func (s *Store) SetKindModels(kind string, models []string) error {
+	k, ok := llm.KindOf(kind)
+	if !ok {
+		return fmt.Errorf("unknown model kind %q", kind)
+	}
+	return s.setList(k.List, models)
+}
+
 // SetAutoenableConnectors writes autoenable_connectors, the identifiers of the
 // library connectors every new Bot gets, and reloads.
 func (s *Store) SetAutoenableConnectors(identifiers []string) error {
@@ -423,44 +440,65 @@ func validateYAML(raw []byte) error {
 	if err := validateModels(k); err != nil {
 		return err
 	}
-	if v := strings.TrimSpace(k.String("transcribe_model")); v != "" && !strings.EqualFold(v, TranscribeOff) {
-		if _, _, err := llm.Parse(v); err != nil {
-			return fmt.Errorf("transcribe_model: %w", err)
-		}
+	if m := strings.TrimSpace(k.String("voice.mode")); m != "" && m != VoiceModeTalker && m != VoiceModeDirect {
+		return fmt.Errorf("voice.mode: %q is neither %s nor %s", m, VoiceModeTalker, VoiceModeDirect)
 	}
 	return nil
 }
 
 // textRoles are the settings that name a text model: one that writes.
-var textRoles = []string{"model", "model_title", "model_subagent", "model_memory"}
+var textRoles = []string{"model", "model_title", "model_subagent", "model_memory", "model_voice"}
 
-// validateModels checks the two allowlists and the roles that pick from them.
-// A model is of one kind: its provider must serve that kind, and it is in one
-// list only. The auto-approval model may come from either.
+// kindRoles are the settings that name a model of one other kind. A role's
+// model counts as allowed (Config.KindModels), so it is checked for its kind
+// here and not against the list.
+var kindRoles = map[string]string{
+	"transcribe_model":   llm.KindTranscription,
+	"voice.speech_model": llm.KindSpeech,
+	"embedding_model":    llm.KindEmbedding,
+}
+
+// kindNames word a kind in a refusal.
+var kindNames = map[string]string{
+	llm.KindText:          "a text model",
+	llm.KindDecision:      "a decision model",
+	llm.KindTranscription: "a transcription model",
+	llm.KindSpeech:        "a speech model",
+	llm.KindEmbedding:     "an embedding model",
+}
+
+// validateModels checks the allowlists and the roles that pick from them. A
+// model is of one kind: its provider must serve that kind, and it is on one
+// list only. The auto-approval model and the filter may be text or decision.
 func validateModels(k *koanf.Koanf) error {
-	deciders := k.Strings("decision_models")
-	for _, list := range []struct{ key, kind, refusal string }{
-		{"models", llm.KindText, "has decision models only; allow it under decision_models"},
-		{"decision_models", llm.KindDecision, "has no decision models"},
-	} {
-		for _, m := range k.Strings(list.key) {
-			provider, _, err := llm.Parse(strings.TrimSpace(m))
+	listed := map[string]string{}
+	for _, kind := range llm.Kinds {
+		for _, m := range k.Strings(kind.List) {
+			m = strings.TrimSpace(m)
+			provider, _, err := llm.Parse(m)
 			if err != nil {
 				return fmt.Errorf("invalid model %q: %w", m, err)
 			}
-			if d, _ := llm.Lookup(provider); !d.Serves(list.kind) {
-				return fmt.Errorf("%s: %q: %s %s", list.key, m, d.Name, list.refusal)
+			if d, _ := llm.Lookup(provider); !d.Serves(kind.ID) {
+				if len(d.Kinds) == 1 {
+					only, _ := llm.KindOf(d.Kinds[0])
+					return fmt.Errorf("%s: %q: %s has %s models only; allow it under %s", kind.List, m, d.Name, only.ID, only.List)
+				}
+				return fmt.Errorf("%s: %q: %s has no %s models", kind.List, m, d.Name, kind.ID)
 			}
+			if other, dup := listed[m]; dup {
+				return fmt.Errorf("model %q is in both %s and %s", m, other, kind.List)
+			}
+			listed[m] = kind.List
 		}
 	}
-	for _, m := range k.Strings("models") {
-		if llm.Allowed(m, deciders) {
-			return fmt.Errorf("model %q is in both models and decision_models", strings.TrimSpace(m))
-		}
+	list := func(kind string) []string {
+		kd, _ := llm.KindOf(kind)
+		return k.Strings(kd.List)
 	}
 	role := func(key string) (string, error) {
 		v := strings.TrimSpace(k.String(key))
-		if v == "" {
+		if v == "" || (key == "transcribe_model" && strings.EqualFold(v, TranscribeOff)) {
 			return "", nil
 		}
 		if _, _, err := llm.Parse(v); err != nil {
@@ -473,8 +511,30 @@ func validateModels(k *koanf.Koanf) error {
 		if err != nil {
 			return err
 		}
-		if v != "" && modelKind(v, deciders) == llm.KindDecision {
-			return fmt.Errorf("%s: %q is a decision model; it answers typed questions and writes no text", key, v)
+		if v == "" {
+			continue
+		}
+		if kind := modelKind(v, list); kind != llm.KindText {
+			if kind == llm.KindDecision {
+				return fmt.Errorf("%s: %q is a decision model; it answers typed questions and writes no text", key, v)
+			}
+			return fmt.Errorf("%s: %q is %s, not a text model", key, v, kindNames[kind])
+		}
+	}
+	for key, want := range kindRoles {
+		v, err := role(key)
+		if err != nil {
+			return err
+		}
+		if v == "" {
+			continue
+		}
+		provider, _, _ := llm.Split(v)
+		if d, _ := llm.Lookup(provider); !d.Serves(want) {
+			return fmt.Errorf("%s: %s has no %s models", key, d.Name, want)
+		}
+		if other, ok := listed[v]; ok && other != func() string { kd, _ := llm.KindOf(want); return kd.List }() {
+			return fmt.Errorf("%s: %q is on %s, so it is not %s", key, v, other, kindNames[want])
 		}
 	}
 	for _, key := range []string{"model_approval", "model_filter"} {

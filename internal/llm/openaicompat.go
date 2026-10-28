@@ -77,6 +77,9 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 			}
 		}
 		c := &openAICompatClient{client: openai.NewClient(opts...), base: base, key: key, sendCacheKey: sendCacheKey, openAI: defaultBase == openAIBase}
+		if s.Get("base_url") == "" {
+			c.headers = defaultHeaders
+		}
 		if routing {
 			c.windows = &modelWindows{base: base, key: key}
 			if ig := ignoredUpstreams(s); len(ig) > 0 {
@@ -99,6 +102,9 @@ type openAICompatClient struct {
 	base         string
 	key          string
 	sendCacheKey bool
+	// headers are the provider's own (OpenRouter's app name) for the plain
+	// HTTP calls the SDK does not make.
+	headers map[string]string
 	// reqOpts ride on every chat request (after the body is serialized).
 	reqOpts []option.RequestOption
 	// windows lists context windows and reasoning support (OpenRouter only).
@@ -445,6 +451,10 @@ func (c *openAICompatClient) ListModels(ctx context.Context) ([]ModelInfo, error
 		return nil, err
 	}
 	out := modelInfos(list, KindText)
+	// OpenAI and self-hosted servers label nothing: the families' names do.
+	for i := range out {
+		out[i].Kind = GuessKind(out[i].ID)
+	}
 	sortModels(out)
 	return out, nil
 }

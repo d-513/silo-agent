@@ -35,6 +35,9 @@ export type Ev = {
   card?: DashboardCard;
   // A setup offer (and a setup_state update): the offer as it stands.
   setupOffer?: SetupOffer;
+  // Said on a voice call: a spoken turn (what of the Bot's reply it cut
+  // off), and a call's start and end (how long it ran).
+  spoken?: { callId: string; seconds: number; interrupted: string };
   at?: number;
   createdAt?: string;
 };
@@ -124,7 +127,8 @@ export type ReceiptBlock = { key: string; type: "receipt"; decision: Decision; t
 export type Block =
   // `from` names a non-human sender ("lead" for a subagent's brief and the
   // lead's messages to it).
-  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string; author?: string }
+  // `spoken` marks a turn said on a voice call.
+  | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string; author?: string; spoken?: boolean }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
   | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }
@@ -150,5 +154,7 @@ export type Block =
   // (/clear), or `count` messages were deleted for good (/wipe).
   | { key: string; type: "boundary"; kind: "cleared" | "wiped"; count: number; createdAt?: string }
   | ArtifactBlock
+  // Where a voice call began and ended; `seconds` is how long it ran.
+  | { key: string; type: "call"; edge: "start" | "end"; seconds: number; createdAt?: string }
   // A later emit of a card further up: the card shows it, this row says so.
   | { key: string; type: "artifact_update"; artifactId: string; title: string; version: number; runId?: string };

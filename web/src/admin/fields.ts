@@ -11,6 +11,15 @@ export const LABELS: Record<string, string> = {
   model_decision: msg("Default decision model"),
   embedding_model: msg("Embedding model"),
   transcribe_model: msg("Speech-to-text model"),
+  "voice.enabled": msg("Voice"),
+  "voice.approve_by_voice": msg("Approve by voice"),
+  "voice.max_minutes": msg("Longest call (minutes)"),
+  "voice.idle_minutes": msg("Hang up after silence (minutes)"),
+  "voice.opus_library": msg("libopus path"),
+  "voice.webrtc.udp_port": msg("UDP port"),
+  "voice.webrtc.tcp_port": msg("TCP port"),
+  "voice.webrtc.public_ips": msg("Public addresses"),
+  "voice.webrtc.ice_servers": msg("STUN/TURN servers"),
   "memory.in_prompt": msg("Memories in the prompt"),
   "memory.collect": msg("Collect from idle chats"),
   "knowledge.enabled": msg("Document search"),
@@ -123,11 +132,23 @@ export const HINTS: Record<string, string> = {
   "oidc.groups_claim": msg("The ID token claim that lists a person's groups."),
   "oidc.admin_group": msg("Members of this group are admins, checked at each sign-in. Empty leaves roles to Admin → Users."),
   transcribe_model: msg("Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice."),
+  "voice.enabled": msg("Read aloud on a Bot's messages, and Talk: a spoken conversation with a Bot. Off hides both everywhere."),
+  "voice.approve_by_voice": msg("On a call, a Bot that needs your OK asks out loud, and a clear yes answers Allow once. The slip stays on screen either way. Anyone in the room can say yes."),
+  "voice.max_minutes": msg("A call ends after this long."),
+  "voice.idle_minutes": msg("A call nobody speaks in ends after this long."),
+  "voice.opus_library": msg("Where libopus is when the control plane cannot find it (libopus.so.0). Calls need it; Read aloud does not."),
+  "voice.webrtc.udp_port": msg("The one UDP port every call's audio uses. Publish it beside the HTTP port. Restart required."),
+  "voice.webrtc.tcp_port": msg("A second route for networks that block UDP. Restart required."),
+  "voice.webrtc.public_ips": msg("Comma-separated. The control plane's own public address when it is behind NAT. Restart required."),
+  "voice.webrtc.ice_servers": msg("Comma-separated stun: or turn: URLs offered to the browser, for networks that need a relay. Usually empty."),
 };
 
 export const PLACEHOLDERS: Record<string, string> = {
   embedding_model: "openrouter/openai/text-embedding-3-small",
   transcribe_model: "openrouter/openai/whisper-1",
+  "voice.opus_library": "libopus.so.0",
+  "voice.webrtc.public_ips": "203.0.113.7",
+  "voice.webrtc.ice_servers": "stun:stun.l.google.com:19302",
   "content.host": "content.example.com",
   "content.scheme": msg("follows Public URL"),
   "mail.domain": "bots.example.com",
@@ -171,6 +192,10 @@ export const TUNNELS_NOTE =
 export const ARTIFACTS_NOTE =
   msg("Each artifact a Bot hands over is pinned as it was, on the Bot's own disk beside the workspace, so a card never changes under the human. Deleting a chat forgets its artifacts.");
 
+export const VOICE_CALL_NOTE = msg("Read aloud and calls. A call is held in a chat: what you say and what the Bot answers are written there as text, and audio is never kept.");
+
+export const VOICE_NETWORK_NOTE = msg("A call's audio travels over WebRTC to the control plane on its own port, beside the web address. Behind a firewall, publish the UDP port; the TCP port is the fallback.");
+
 export const MAIL_NOTE =
   msg("Gives every Bot a receive-only address. The control plane runs its own small SMTP listener and files what arrives in the Bot's inbox, where the Bot reads it with list_mail and read_mail. Nothing is ever sent, so there is no relay or sender reputation to look after. On as soon as a domain is set; changes here apply within a few seconds, without a restart.");
 
@@ -189,7 +214,10 @@ export const OIDC_NOTE =
 export const BOOTSTRAP_NOTE = msg("First admin only. Ignored after a user exists. Restart required.");
 
 export function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "transcribe_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model") return "models";
+  if (key === "transcribe_model" || key === "model_voice" || key === "voice.speech_model") return "voice_models";
+  if (key.startsWith("voice.webrtc.") || key === "voice.opus_library") return "voice_network";
+  if (key.startsWith("voice.")) return "voice";
   if (key.startsWith("memory.")) return "memory";
   if (key.startsWith("knowledge.")) return "knowledge";
   if (key.startsWith("tunnels.")) return "tunnels";

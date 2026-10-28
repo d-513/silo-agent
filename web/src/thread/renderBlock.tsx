@@ -2,7 +2,7 @@ import type { AgentLink } from "../links";
 import type { ReactNode } from "react";
 import { ArtifactCard, ArtifactUpdateRow, type Artifact } from "../Artifact";
 import type { Attachment, Block, Quote } from "../fold";
-import { Boundary, Compaction, InterviewMark, Receipt, Thinking } from "./ActivityRows";
+import { Boundary, CallMark, Compaction, InterviewMark, Receipt, Thinking } from "./ActivityRows";
 import { LeadNote, Opened, Reply, RunMark, SubagentReport, UserBubble } from "./Bubbles";
 import { rowState, rowVerb } from "./FoldRow";
 import { isBotScratch, PresentFile, QuietPreview } from "./Present";
@@ -21,6 +21,8 @@ export type BlockCtx = {
   fresh?: ReadonlySet<string>;
   userAs: "bubble" | "run";
   marks: ConnectorMarks;
+  // speech offers Read aloud on the Bot's replies.
+  speech?: boolean;
   lastUserKey?: string;
   lastAssistantKey?: string;
   // Re-sends the last user message; offered on the last reply only.
@@ -133,6 +135,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
         author={b.author}
         attachments={b.attachments}
         quotes={b.quotes}
+        spoken={b.spoken}
         isLast={b.key === c.lastUserKey}
         busy={c.sending}
         fresh={!!id && !!c.fresh?.has(id)}
@@ -151,6 +154,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "card") return <ThreadCard botId={c.botId} card={b.card} asked={b.asked} />;
   if (b.type === "offers") return <OfferGroup botId={c.botId} offers={b.offers} />;
   if (b.type === "boundary") return <Boundary kind={b.kind} count={b.count} />;
+  if (b.type === "call") return <CallMark edge={b.edge} seconds={b.seconds} />;
   if (b.type === "compaction") return <Compaction text={b.text} reason={b.reason} running={!!b.running && c.sending} />;
   if (b.type === "tool") return renderTool(b, c);
   if (b.type === "artifact") {
@@ -169,7 +173,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
     return <ArtifactUpdateRow title={b.title} version={b.version} />;
   }
   if (b.type === "assistant") {
-    return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} />;
+    return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} speak={c.speech ? c.botId : undefined} />;
   }
   return (
     <div role="alert" className="flex items-start gap-2 rounded-control bg-vermilion-pale px-3 py-2.5 text-[13px] text-vermilion">

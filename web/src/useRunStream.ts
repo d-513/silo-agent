@@ -45,6 +45,7 @@ function toEv(ev: RunEvent): Ev {
     quoted: ev.quoted ? { from: quotedFrom(ev.quoted.from), title: ev.quoted.title, widget: ev.quoted.widget } : undefined,
     card: ev.card,
     setupOffer: ev.setupOffer,
+    spoken: ev.spoken ? { callId: ev.spoken.callId, seconds: ev.spoken.seconds, interrupted: ev.spoken.interrupted } : undefined,
   };
 }
 

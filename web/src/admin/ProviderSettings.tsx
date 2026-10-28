@@ -10,7 +10,7 @@ import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo
 import { SearchBox } from "../SearchBox";
 import { Tip } from "../Tip";
 import { FieldGroup } from "./FieldGroup";
-import { bareModel, filterModels, fmtContext, kindOf, KINDS, kindsIn, type ModelKind } from "./providerModels";
+import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { locale, t } from "../i18n.ts";
 
@@ -80,15 +80,15 @@ function ProviderPanel({ provider }: { provider: Provider }) {
 }
 
 function ModelList({ provider, models, refreshing, onRefresh }: { provider: Provider; models: ProviderModel[]; refreshing: boolean; onRefresh: () => void }) {
-  const { models: allowedText, decisionModels, setModel, busyModels } = useSettingsForm();
+  const { allowedOf, setModel, busyModels } = useSettingsForm();
   const [query, setQuery] = useState("");
-  // A provider with both kinds shows one at a time; text is what most are after.
+  // A provider with several kinds shows one at a time; text is what most are after.
   const kinds = kindsIn(models);
   const [picked, setKind] = useState<ModelKind>("text");
   const kind = kinds.includes(picked) ? picked : (kinds[0] ?? "text");
   const ofKind = models.filter((m) => kindOf(m) === kind);
   const shown = filterModels(ofKind, query);
-  const allowed = kind === "decision" ? decisionModels : allowedText;
+  const allowed = allowedOf(kind);
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
 
   if (models.length === 0) {
@@ -96,14 +96,14 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   }
   return (
     <>
+      {kinds.length > 1 ? (
+        <div className="mb-3 max-w-full overflow-x-auto text-[13px]">
+          <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={kinds.map((k) => ({ id: k, label: kindWord(k) }))} />
+        </div>
+      ) : null}
       <div className="mb-3 flex items-center gap-2">
-        {kinds.length > 1 ? (
-          <div className="w-[176px] shrink-0 text-[13px]">
-            <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={KINDS.map((k) => ({ id: k, label: k === "decision" ? t("Decision", { context: "kind" }) : t("Text", { context: "kind" }) }))} />
-          </div>
-        ) : null}
         <div className="min-w-0 flex-1">
-          <SearchBox value={query} onChange={setQuery} placeholder={kind === "decision" ? t("Filter {{count}} decision models", { count: ofKind.length }) : t("Filter {{count}} text models", { count: ofKind.length })} searching={false} />
+          <SearchBox value={query} onChange={setQuery} placeholder={filterWord(kind, ofKind.length)} searching={false} />
         </div>
         <Btn kind="ghost" size="sm" iconOnly title={t("Ask again")} aria-label={t("Ask again")} disabled={refreshing} onClick={onRefresh}>
           {refreshing ? <Spinner size={13} /> : <RefreshCw size={14} />}
@@ -116,13 +116,14 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
           {shown.map((m) => {
             const on = isAllowed(m.id);
             const busy = busyModels.has(m.id);
-            const context = fmtContext(m.contextWindow);
+            // A speech model says how many voices it has; the rest their context.
+            const context = kind === "speech" ? (m.voices.length ? t("{{count}} voices", { count: m.voices.length }) : "") : fmtContext(m.contextWindow);
             return (
               <li key={m.id} className="flex h-11 items-center gap-3 pr-1.5 pl-3 text-[13px]">
                 <span className="max-w-full shrink-0 truncate font-mono text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:shrink">{bareModel(m.id)}</span>
                 <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.name}</span>
                 {context ? (
-                  <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
+                  <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={kind === "speech" ? undefined : t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
                     {context}
                   </span>
                 ) : null}
@@ -137,7 +138,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
                       <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
                         <Check size={14} />{t("Allowed")}
                       </span>
-                      <Btn kind="ghost" size="sm" iconOnly title={kind === "decision" ? t("Remove from the allowed decision models") : t("Remove from the allowed text models")} aria-label={t("Remove {{id}}", { id: m.id })} onClick={() => void setModel(m.id, false, kind)}>
+                      <Btn kind="ghost" size="sm" iconOnly title={removeTitle(kind)} aria-label={t("Remove {{id}}", { id: m.id })} onClick={() => void setModel(m.id, false, kind)}>
                         <X size={14} />
                       </Btn>
                     </>

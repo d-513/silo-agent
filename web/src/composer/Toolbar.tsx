@@ -11,6 +11,7 @@ import type { Dictation } from "../voice";
 import { ContextMeter } from "./ContextMeter";
 import { FollowToggle } from "./FollowToggle";
 import { MicButton } from "./MicButton";
+import { TalkButton } from "./TalkButton";
 import { SendStop } from "./SendStop";
 import { t } from "../i18n.ts";
 
@@ -25,6 +26,8 @@ export function Toolbar({
   workerConnected,
   dictation,
   voice,
+  talk,
+  botName,
   models,
   model,
   onModel,
@@ -46,6 +49,9 @@ export function Toolbar({
   dictation: Dictation;
   // voice shows the dictation mic.
   voice: boolean;
+  // talk starts a call with the Bot in this chat.
+  talk?: () => void;
+  botName?: string;
   models?: ModelOption[];
   model?: string;
   onModel?: (model: string) => void;
@@ -80,6 +86,7 @@ export function Toolbar({
         </button>
 
         {voice ? <MicButton dictation={dictation} disabled={!ready} /> : null}
+        {talk ? <TalkButton onTalk={talk} botName={botName ?? ""} /> : null}
 
         {models && models.length > 0 && onModel ? (
           <Select

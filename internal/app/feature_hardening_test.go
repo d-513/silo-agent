@@ -51,6 +51,12 @@ func TestBotSocketsRefuseForeignOrigin(t *testing.T) {
 		res.Body.Close()
 		return res.StatusCode
 	}
+	// A call hears the room and speaks as the Bot: the same gate.
+	for _, origin := range []string{"https://evil.example", "http://app.tunnels.example"} {
+		if got := dial("/voice/call", origin); got != http.StatusForbidden {
+			t.Fatalf("/voice/call from %s: status %d, want 403", origin, got)
+		}
+	}
 	for _, path := range []string{"/console", "/vnc"} {
 		if got := dial(path, "https://evil.example"); got != http.StatusForbidden {
 			t.Fatalf("%s from a foreign origin: status %d, want 403", path, got)

@@ -9,6 +9,7 @@ import { SkeletonRows } from "../Field";
 import { UI } from "../gen/silo/v1/ui_pb";
 import { lazyNamed } from "../lazyNamed";
 import { agentLink, chatLink, newChatLink } from "../links";
+import { useCall } from "../call/useCall";
 import { reload, setBot } from "../query";
 import { useRunStream } from "../useRunStream";
 import { useSubagents } from "../useSubagents";
@@ -77,7 +78,20 @@ export function BotPage() {
   const [said, setSaid] = useState<Said | null>(null);
   useEffect(() => setSaid(null), [id, chatId]);
   const { bot, loadErr, pending, reloadApprovals } = useBotLive(id, chatId);
-  const { chats, models, defaultModel, voice, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId, fresh }, setActErr);
+  const { chats, models, defaultModel, voice, talk, rename, newChat, deleteChat } = useChatList(id, { tab, chatSide, chatId, fresh }, setActErr);
+  // A call survives moving between the Bot's pages; it is held in one chat.
+  const call = useCall(id);
+  const startCall = useCallback(() => call.start(chatId ?? (fresh ? "new" : "")), [call, chatId, fresh]);
+  // A call from the empty chat makes its own: go there once it has an id.
+  const callChat = call.snap?.chatId ?? "";
+  const callFromNew = useRef(false);
+  useEffect(() => {
+    if (call.snap?.chatId === "new") callFromNew.current = true;
+    else if (callFromNew.current && callChat && fresh) {
+      callFromNew.current = false;
+      void navigate(chatLink(id, callChat));
+    }
+  }, [callChat, fresh, id, navigate, call.snap?.chatId]);
   const draft = useComposerDraft(id, bot?.workerConnected);
   // Each visit to the empty chat starts from the defaults.
   const [pick, setPick] = useState<ChatPick>({ model: "", thinking: "" });
@@ -222,6 +236,9 @@ export function BotPage() {
         models,
         defaultModel,
         voice,
+        talk,
+        call,
+        startCall,
         rename,
         newChat: onNewChat,
         deleteChat: onDeleteChat,

@@ -86,6 +86,12 @@ var Mail string
 //go:embed DECIDE.md
 var Decide string
 
+// Voice is the system-prompt section that says what a spoken turn is, there
+// while calls are on. The same text for every Bot.
+//
+//go:embed VOICE.md
+var Voice string
+
 // Tunnels is the system-prompt section for a Bot that has the tunnel tools.
 //
 //go:embed TUNNELS.md

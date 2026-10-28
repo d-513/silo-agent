@@ -20,6 +20,7 @@ import (
 	"silo.agent/internal/app/quote"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/setup"
+	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -56,6 +57,9 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
 		TimeZonePinned:  b.TimeZonePinned,
 		Language:        lang.Bot(b.Language),
+		SpeechModel:     b.SpeechModel,
+		Voice:           b.Voice,
+		SpeechSpeed:     b.SpeechSpeed,
 	}
 }
 
@@ -656,6 +660,10 @@ func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 	meta := decodeUserMeta(r.Meta)
 	out := &v1.RunEvent{Id: r.ID, RunId: r.RunID, ChatId: chatID, Kind: r.Kind, Author: r.Author, Body: textx.ValidUTF8(r.Body), Tool: textx.ValidUTF8(r.Tool), Attachments: v1Attachments(meta.Files), Quotes: v1Quotes(meta.Quotes), Quoted: quote.Proto(r), CreatedAt: r.CreatedAt.Format(time.RFC3339)}
 	switch {
+	case r.Kind == "user":
+		out.Spoken = v1Spoken(meta)
+	case voice.IsCallKind(r.Kind):
+		out.Spoken = voice.SpokenProto(r.Meta)
 	case r.Kind == dashboard.CardKind:
 		out.Card = a.Dashboard.CardProto(r.Body)
 	case r.Kind == quote.Kind:

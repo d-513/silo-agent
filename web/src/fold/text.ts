@@ -6,7 +6,19 @@ import { reportAgents, type Block, type Ev } from "./types.ts";
 export type Handler = (out: Block[], e: Ev, key: string) => void;
 
 export const user: Handler = (out, e, key) => {
-  out.push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, quotes: e.quotes, createdAt: e.createdAt, from: e.tool || undefined, author: e.author || undefined });
+  out.push({ key, type: "user", id: e.id, runId: e.runId, text: e.body, attachments: e.attachments, quotes: e.quotes, createdAt: e.createdAt, from: e.tool || undefined, author: e.author || undefined, spoken: e.spoken ? true : undefined });
+};
+
+// callStart and callEnd are where a voice call began and ended.
+export const callStart: Handler = (out, e, key) => {
+  out.push({ key, type: "call", edge: "start", seconds: 0, createdAt: e.createdAt });
+};
+
+export const callEnd: Handler = (out, e, key) => {
+  // A call nobody said anything in is one line, not two.
+  const last = out[out.length - 1];
+  if (last?.type === "call" && last.edge === "start") out.pop();
+  out.push({ key, type: "call", edge: "end", seconds: e.spoken?.seconds ?? 0, createdAt: e.createdAt });
 };
 
 export const subagentReport: Handler = (out, e, key) => {

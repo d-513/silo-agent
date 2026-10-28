@@ -11,6 +11,7 @@ const noFields: ConfigField[] = [];
 const noEngines: SearchEngine[] = [];
 const noProviders: Provider[] = [];
 const noModels: ModelOption[] = [];
+const noListed: string[] = [];
 const noVars: ConnectorVar[] = [];
 
 // useAdminSettings is the operator settings form. What the server holds is the
@@ -113,7 +114,9 @@ export function useAdminSettings() {
     modelQueue.current = modelQueue.current.then(async () => {
       try {
         const saved = peek(UI.method.getSettings, {});
-        const cur = ((kind === "decision" ? saved?.decisionModels : saved?.models) ?? []).map((m) => m.id);
+        // What silo.yaml lists: a role's own model is shown on its list but
+        // is not written into it by a press on another row.
+        const cur = saved?.allowed.find((a) => a.kind === kind)?.listed ?? [];
         const next = withModel(cur, id, on);
         if (next !== cur) applyAside(await ui.setModels({ models: next, kind }));
       } catch (ex) {
@@ -158,9 +161,12 @@ export function useAdminSettings() {
     setValue,
     engines: server?.searchEngines ?? noEngines,
     providers: server?.providers ?? noProviders,
-    // The two allowlists: text models, and decision models.
+    // The two allowlists the role pickers read most: text and decision.
     models: server?.models ?? noModels,
     decisionModels: server?.decisionModels ?? noModels,
+    // Every kind's allowlist, and what silo.yaml itself lists of it.
+    allowedOf: (kind: ModelKind) => server?.allowed.find((a) => a.kind === kind)?.models ?? noModels,
+    listedOf: (kind: ModelKind) => server?.allowed.find((a) => a.kind === kind)?.listed ?? noListed,
     connVars: server?.connectorVars ?? noVars,
     autoenable: server?.autoenableConnectors,
     yamlText: yamlDraft ?? server?.yaml ?? "",

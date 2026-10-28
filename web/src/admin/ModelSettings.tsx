@@ -8,7 +8,7 @@ import { Select } from "../Select";
 import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { modelOptions } from "../modelOptions";
 import { SourceChips } from "./FieldRow";
-import { HINTS, LABELS, placeholderOf } from "./fields";
+import { HINTS, LABELS } from "./fields";
 import { eitherKind, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { msg, t } from "../i18n.ts";
@@ -38,13 +38,10 @@ const ROLES: { key: string; takes?: ModelKind | "either"; unset?: string; hint?:
   { key: "model_decision", takes: "decision", hint: msg("What the Bot's decide tool asks unless it names another allowed decision model.") },
 ];
 
-// Embedding and speech models are not chat models, so they are free text, not
-// picked from the allowlist.
-const FREE = ["embedding_model", "transcribe_model"];
-
 export function ModelSettings() {
-  const { fields, values, setValue, models, decisionModels } = useSettingsForm();
+  const { fields, values, setValue, models, decisionModels, allowedOf } = useSettingsForm();
   const field = (key: string) => fields.find((f) => f.key === key);
+  const embedding = field("embedding_model");
 
   // A role's picker offers the allowed models of the kind it takes.
   function picker(r: (typeof ROLES)[number]) {
@@ -80,32 +77,25 @@ export function ModelSettings() {
       <AllowedModels kind="text" />
       <AllowedModels kind="decision" />
 
-      <Panel title={t("Embedding and speech")} note={t("Not chat models: type the id. Any OpenAI-compatible provider works.")}>
-        <div className="grid gap-5">
-          {FREE.map((key) => {
-            const f = field(key);
-            return (
-              <Field key={key} label={t(LABELS[key])} hint={HINTS[key] ? t(HINTS[key]) : undefined} headerRight={f ? <SourceChips field={f} /> : undefined}>
-                <input
-                  className={`${inputClass} font-mono text-[13px]`}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={placeholderOf(key)}
-                  value={values[key] ?? ""}
-                  disabled={f?.source === ConfigSource.ENV}
-                  onChange={(e) => setValue(key, e.target.value)}
-                />
-              </Field>
-            );
-          })}
-        </div>
+      <Panel title={t("Embeddings")} note={t("Memories and indexed documents are searched by meaning with this model. Speech models live under Voice.")}>
+        <Field label={t(LABELS.embedding_model)} hint={t(HINTS.embedding_model)} headerRight={embedding ? <SourceChips field={embedding} /> : undefined}>
+          <Select
+            value={values.embedding_model ?? ""}
+            onChange={(v) => setValue("embedding_model", v)}
+            disabled={embedding?.source === ConfigSource.ENV}
+            options={modelOptions(allowedOf("embedding"))}
+            placeholder={t("Select…")}
+            emptyLabel={t("No embedding models allowed yet")}
+          />
+        </Field>
       </Panel>
+      <AllowedModels kind="embedding" />
     </>
   );
 }
 
-// What the two allowlists are for, in the panel's own words.
-const ALLOWLISTS: Record<ModelKind, { title: string; note: string; none: string; example: string }> = {
+// What each allowlist is for, in the panel's own words.
+export const ALLOWLISTS: Record<ModelKind, { title: string; note: string; none: string; example: string }> = {
   text: {
     title: msg("Allowed text models"),
     note: msg("Models that write: the ones a chat, a Bot and the pickers above can use. A change here is saved at once."),
@@ -118,14 +108,35 @@ const ALLOWLISTS: Record<ModelKind, { title: string; note: string; none: string;
     none: msg("No decision models allowed yet. Without one the Bot has no decide tool."),
     example: msg("model name, e.g. jev-latest"),
   },
+  transcription: {
+    title: msg("Allowed speech-to-text models"),
+    note: msg("Models that turn speech into text: dictation, the transcribe tool and what you say on a call. Saved at once."),
+    none: msg("No speech-to-text models allowed yet."),
+    example: msg("model name, e.g. openai/whisper-1"),
+  },
+  speech: {
+    title: msg("Allowed speech models"),
+    note: msg("Models that read text aloud: Read aloud and a Bot's voice on a call. Each Bot picks one of these and a voice. Saved at once."),
+    none: msg("No speech models allowed yet."),
+    example: msg("model name, e.g. hexgrad/kokoro-82m"),
+  },
+  embedding: {
+    title: msg("Allowed embedding models"),
+    note: msg("Models that turn text into vectors for search by meaning. Saved at once."),
+    none: msg("No embedding models allowed yet."),
+    example: msg("model name, e.g. openai/text-embedding-3-small"),
+  },
 };
 
-// One allowlist: the text models every chat's model menu offers, or the
-// decision models. A change here saves at once, on its own.
-function AllowedModels({ kind }: { kind: ModelKind }) {
+// One kind's allowlist (the text models every chat's model menu offers, the
+// decision models, …). A change here saves at once, on its own. A model a
+// role names is on its list even when silo.yaml does not list it; it shows
+// as in use, and leaves the list only when the role names another.
+export function AllowedModels({ kind }: { kind: ModelKind }) {
   const form = useSettingsForm();
   const { setModel, busyModels } = form;
-  const models = kind === "decision" ? form.decisionModels : form.models;
+  const models = form.allowedOf(kind);
+  const listed = form.listedOf(kind);
   // Only the providers that have models of this kind can be typed in.
   const providers = form.providers.filter((p) => p.kinds.includes(kind));
   const copy = ALLOWLISTS[kind];
@@ -154,6 +165,8 @@ function AllowedModels({ kind }: { kind: ModelKind }) {
                 <span className="flex w-8 justify-center">
                   <Spinner size={13} />
                 </span>
+              ) : kind !== "text" && kind !== "decision" && !listed.includes(m.id) ? (
+                <span className="pr-2 text-[12px] text-ink-3">{t("In use", { context: "model" })}</span>
               ) : (
                 <Btn kind="ghost" size="sm" iconOnly title={t("Remove {{id}}", { id: m.id })} aria-label={t("Remove {{id}}", { id: m.id })} className="hover:text-vermilion" onClick={() => void setModel(m.id, false, kind)}>
                   <Trash2 size={14} />

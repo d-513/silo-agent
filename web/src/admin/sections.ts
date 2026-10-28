@@ -5,6 +5,7 @@ import { msg } from "../i18n.ts";
 export const SECTIONS = [
   { id: "models", label: msg("Models") },
   { id: "providers", label: msg("Providers") },
+  { id: "voice", label: msg("Voice") },
   { id: "search", label: msg("Search") },
   { id: "memory", label: msg("Memory & knowledge") },
   { id: "runs", label: msg("Context & runs") },

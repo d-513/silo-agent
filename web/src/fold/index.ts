@@ -10,6 +10,8 @@ export * from "./types.ts";
 
 const handlers: Record<string, text.Handler> = {
   user: text.user,
+  call_start: text.callStart,
+  call_end: text.callEnd,
   subagent_report: text.subagentReport,
   feed_quote: text.feedQuote,
   card: text.card,

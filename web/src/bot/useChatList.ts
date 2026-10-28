@@ -109,6 +109,7 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     models: modelsQ.data?.models ?? [],
     defaultModel: modelsQ.data?.defaultModel ?? "",
     voice: modelsQ.data?.voiceEnabled ?? false,
+    talk: modelsQ.data?.callEnabled ?? false,
     rename,
     newChat,
     deleteChat,

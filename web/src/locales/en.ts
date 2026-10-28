@@ -68,6 +68,14 @@ const en: Record<string, string> = {
   "{{count}} questions_other": "{{count}} questions",
   "{{count}} need you_one": "{{count}} needs you",
   "{{count}} need you_other": "{{count}} need you",
+  "{{count}} voices_one": "{{count}} voice",
+  "{{count}} voices_other": "{{count}} voices",
+  "Filter {{count}} speech-to-text models_one": "Filter {{count}} speech-to-text model",
+  "Filter {{count}} speech-to-text models_other": "Filter {{count}} speech-to-text models",
+  "Filter {{count}} speech models_one": "Filter {{count}} speech model",
+  "Filter {{count}} speech models_other": "Filter {{count}} speech models",
+  "Filter {{count}} embedding models_one": "Filter {{count}} embedding model",
+  "Filter {{count}} embedding models_other": "Filter {{count}} embedding models",
 };
 
 export default en;

@@ -287,8 +287,19 @@ type Config struct {
 	// DecisionModels is the allowlist of decision models. They answer typed
 	// questions with probabilities and write no text, so they are never a
 	// chat model; an id is in one list or the other.
-	DecisionModels []string            `koanf:"decision_models"`
-	Debug          bool                `koanf:"debug"`
+	DecisionModels []string `koanf:"decision_models"`
+	// TranscriptionModels, SpeechModels and EmbeddingModels are the
+	// allowlists of the other kinds (llm.Kinds). The model a role names is
+	// allowed whether or not it is listed (KindModels).
+	TranscriptionModels []string            `koanf:"transcription_models"`
+	SpeechModels        []string            `koanf:"speech_models"`
+	EmbeddingModels     []string            `koanf:"embedding_models"`
+	// ModelVoice is the talker of a voice call: a fast text model that holds
+	// the conversation and hands real work to the Bot. Empty means the Bot
+	// answers every turn itself (direct mode).
+	ModelVoice string              `koanf:"model_voice"`
+	Voice      Voice               `koanf:"voice"`
+	Debug      bool                `koanf:"debug"`
 	Bootstrap      Bootstrap           `koanf:"bootstrap"`
 	Auth           Auth                `koanf:"auth"`
 	OIDC           OIDC                `koanf:"oidc"`
@@ -313,6 +324,90 @@ type Config struct {
 	Audit Audit `koanf:"audit"`
 	// Spaces configures Workspaces.
 	Spaces Spaces `koanf:"spaces"`
+}
+
+// Voice configures talking to a Bot: Read aloud and calls.
+type Voice struct {
+	// Enabled is the operator's switch; off hides Talk and Read aloud.
+	Enabled bool `koanf:"enabled"`
+	// Mode is talker (a fast model in front, the Bot behind) or direct (the
+	// Bot answers every turn). Talker needs model_voice.
+	Mode string `koanf:"mode"`
+	// SpeechModel is the default text-to-speech model; a Bot may pick another
+	// allowed one.
+	SpeechModel string `koanf:"speech_model"`
+	// MaxMinutes ends a call; IdleMinutes ends one nobody speaks in.
+	MaxMinutes  int `koanf:"max_minutes"`
+	IdleMinutes int `koanf:"idle_minutes"`
+	// ApproveByVoice lets a spoken yes answer an approval with Allow once.
+	ApproveByVoice bool `koanf:"approve_by_voice"`
+	// OpusLibrary is the path of libopus when the loader cannot find it.
+	OpusLibrary string      `koanf:"opus_library"`
+	WebRTC      VoiceWebRTC `koanf:"webrtc"`
+}
+
+// VoiceWebRTC is how a call's audio reaches the control plane.
+type VoiceWebRTC struct {
+	// UDPPort carries every call's audio; TCPPort is the route for networks
+	// that block UDP. 0 picks one per call (fine on one machine only).
+	UDPPort int `koanf:"udp_port"`
+	TCPPort int `koanf:"tcp_port"`
+	// PublicIPs are the control plane's own addresses when it is behind NAT.
+	PublicIPs []string `koanf:"public_ips"`
+	// ICEServers are STUN/TURN URLs offered to the browser.
+	ICEServers []string `koanf:"ice_servers"`
+}
+
+// The voice defaults.
+const (
+	VoiceModeTalker      = "talker"
+	VoiceModeDirect      = "direct"
+	DefaultVoiceMaxMin   = 30
+	DefaultVoiceIdleMin  = 3
+	DefaultVoiceUDPPort  = 3479
+	DefaultSpeechModel   = "openrouter/hexgrad/kokoro-82m"
+)
+
+// VoiceMode is talker only while a talker model is set.
+func (c Config) VoiceMode() string {
+	if strings.TrimSpace(c.ModelVoice) == "" || strings.EqualFold(strings.TrimSpace(c.Voice.Mode), VoiceModeDirect) {
+		return VoiceModeDirect
+	}
+	return VoiceModeTalker
+}
+
+// SpeechModel is the default speech model, or "" when voice is off.
+func (c Config) SpeechModel() string {
+	if !c.Voice.Enabled {
+		return ""
+	}
+	return strings.TrimSpace(c.Voice.SpeechModel)
+}
+
+// KindModels is the allowlist of a kind: the listed models, plus the model a
+// role of that kind names when it is not listed (so a silo.yaml from before
+// the lists keeps working).
+func (c Config) KindModels(kind string) []string {
+	var list, roles []string
+	switch kind {
+	case llm.KindText:
+		return c.Models
+	case llm.KindDecision:
+		return c.DecisionModels
+	case llm.KindTranscription:
+		list, roles = c.TranscriptionModels, []string{c.TranscribeModel()}
+	case llm.KindSpeech:
+		list, roles = c.SpeechModels, []string{strings.TrimSpace(c.Voice.SpeechModel)}
+	case llm.KindEmbedding:
+		list, roles = c.EmbeddingModels, []string{strings.TrimSpace(c.EmbedModel)}
+	}
+	out := append([]string(nil), list...)
+	for _, r := range roles {
+		if r != "" && !llm.Allowed(r, out) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // Spaces configures Workspaces.
@@ -453,16 +548,20 @@ func (c Config) DecisionModel() string {
 // ModelKind is the kind of a provider/model id: a decision model when the
 // operator allowed it as one, or when its provider has no other kind.
 func (c Config) ModelKind(modelID string) string {
-	return modelKind(modelID, c.DecisionModels)
+	return modelKind(modelID, func(kind string) []string { return c.KindModels(kind) })
 }
 
-func modelKind(modelID string, decisionModels []string) string {
-	if llm.Allowed(modelID, decisionModels) {
-		return llm.KindDecision
+// modelKind is the kind whose list holds modelID, else its provider's only
+// kind when it has no text models, else text.
+func modelKind(modelID string, list func(kind string) []string) string {
+	for _, k := range llm.Kinds {
+		if k.ID != llm.KindText && llm.Allowed(modelID, list(k.ID)) {
+			return k.ID
+		}
 	}
 	if provider, _, ok := llm.Split(modelID); ok {
-		if d, known := llm.Lookup(provider); known && !d.Serves(llm.KindText) {
-			return llm.KindDecision
+		if d, known := llm.Lookup(provider); known && !d.Serves(llm.KindText) && len(d.Kinds) > 0 {
+			return d.Kinds[0]
 		}
 	}
 	return llm.KindText
@@ -494,6 +593,17 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_decision"},
 	{Key: "embedding_model"},
 	{Key: "transcribe_model"},
+	{Key: "model_voice"},
+	{Key: "voice.enabled", Type: "bool"},
+	{Key: "voice.speech_model"},
+	{Key: "voice.max_minutes"},
+	{Key: "voice.idle_minutes"},
+	{Key: "voice.approve_by_voice", Type: "bool"},
+	{Key: "voice.opus_library"},
+	{Key: "voice.webrtc.udp_port", Restart: true},
+	{Key: "voice.webrtc.tcp_port", Restart: true},
+	{Key: "voice.webrtc.public_ips", Restart: true},
+	{Key: "voice.webrtc.ice_servers"},
 	{Key: "memory.in_prompt", Type: "bool"},
 	{Key: "memory.collect", Type: "bool"},
 	{Key: "knowledge.enabled", Type: "bool"},

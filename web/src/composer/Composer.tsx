@@ -47,6 +47,9 @@ export interface ComposerProps {
   onCompact?: () => void;
   // voice shows the dictation mic; onTranscribe turns a recording into text.
   voice?: boolean;
+  // talk offers a call with the Bot in this chat.
+  talk?: boolean;
+  onTalk?: () => void;
   onTranscribe?: (audio: Uint8Array, mime: string) => Promise<string>;
   // onCollect runs the memory collector over this chat now.
   onCollect?: () => Promise<CollectMemoriesResponse>;
@@ -85,6 +88,8 @@ export function Composer({
   usage,
   onCompact,
   voice,
+  talk,
+  onTalk,
   onTranscribe,
   onCollect,
   commands = [],
@@ -212,6 +217,8 @@ export function Composer({
             workerConnected={workerConnected}
             dictation={dictation}
             voice={!!voice && !!onTranscribe}
+            talk={talk && onTalk ? onTalk : undefined}
+            botName={botName}
             models={models}
             model={model}
             onModel={onModel}

@@ -408,31 +408,56 @@ func (c *openRouterClient) Decide(ctx context.Context, req DecisionRequest) (Dec
 	return c.decisions.decide(ctx, req)
 }
 
-// ListModels lists the text models and, from a second query, the decision
-// models. A gateway that does not know that query still lists its text models.
+// openRouterModalities are the output modalities OpenRouter's /models lists
+// only when asked, and the kind each one is.
+var openRouterModalities = []struct{ modality, kind string }{
+	{"decisions", KindDecision},
+	{"transcription", KindTranscription},
+	{"speech", KindSpeech},
+	{"embeddings", KindEmbedding},
+}
+
+// ListModels lists the text models and, from one more query per modality,
+// the decision, transcription, speech and embedding models. A gateway that
+// does not know those queries still lists its text models.
 func (c *openRouterClient) ListModels(ctx context.Context) ([]ModelInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, listTimeout)
 	defer cancel()
-	out, err := c.openAICompatClient.ListModels(ctx)
+	list, err := fetchModels(ctx, c.base, c.key)
 	if err != nil {
 		return nil, err
 	}
-	deciders, err := fetchModels(ctx, c.base, c.key, "output_modalities=decisions")
-	if err != nil {
-		return out, nil
+	// The default listing is the text models (some of which also make audio).
+	out := modelInfos(list, KindText)
+	type answer struct {
+		kind string
+		list []listedModel
 	}
-	// Only what says it is a decision model: a gateway that ignores the query
-	// answers with its text models again.
-	kept := deciders[:0]
-	for _, m := range deciders {
-		for _, out := range m.Architecture.OutputModalities {
-			if out == "decisions" {
-				kept = append(kept, m)
-				break
+	answers := make(chan answer, len(openRouterModalities))
+	for _, m := range openRouterModalities {
+		go func() {
+			got, err := fetchModels(ctx, c.base, c.key, "output_modalities="+m.modality)
+			if err != nil {
+				got = nil
 			}
-		}
+			// Only what says it is of the modality: a gateway that ignores the
+			// query answers with its text models again.
+			kept := got[:0]
+			for _, e := range got {
+				for _, o := range e.Architecture.OutputModalities {
+					if o == m.modality {
+						kept = append(kept, e)
+						break
+					}
+				}
+			}
+			answers <- answer{m.kind, kept}
+		}()
 	}
-	out = append(out, modelInfos(kept, KindDecision)...)
+	for range openRouterModalities {
+		a := <-answers
+		out = append(out, modelInfos(a.list, a.kind)...)
+	}
 	sortModels(out)
 	return out, nil
 }

@@ -251,6 +251,12 @@ const (
 	UIListModelsProcedure = "/silo.v1.UI/ListModels"
 	// UITranscribeProcedure is the fully-qualified name of the UI's Transcribe RPC.
 	UITranscribeProcedure = "/silo.v1.UI/Transcribe"
+	// UIListVoicesProcedure is the fully-qualified name of the UI's ListVoices RPC.
+	UIListVoicesProcedure = "/silo.v1.UI/ListVoices"
+	// UISetBotVoiceProcedure is the fully-qualified name of the UI's SetBotVoice RPC.
+	UISetBotVoiceProcedure = "/silo.v1.UI/SetBotVoice"
+	// UIPrepareSpeechProcedure is the fully-qualified name of the UI's PrepareSpeech RPC.
+	UIPrepareSpeechProcedure = "/silo.v1.UI/PrepareSpeech"
 	// UISendProcedure is the fully-qualified name of the UI's Send RPC.
 	UISendProcedure = "/silo.v1.UI/Send"
 	// UIStopRunProcedure is the fully-qualified name of the UI's StopRun RPC.
@@ -632,6 +638,13 @@ type UIClient interface {
 	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// ListVoices is a speech model's voices, for a Bot's voice picker.
+	ListVoices(context.Context, *connect.Request[v1.ListVoicesRequest]) (*connect.Response[v1.ListVoicesResponse], error)
+	// SetBotVoice is how a Bot sounds: its speech model, voice and speed.
+	SetBotVoice(context.Context, *connect.Request[v1.SetBotVoiceRequest]) (*connect.Response[v1.Bot], error)
+	// PrepareSpeech readies text to be read aloud in a Bot's voice and
+	// answers the URL that streams it (single use, a few minutes).
+	PrepareSpeech(context.Context, *connect.Request[v1.PrepareSpeechRequest]) (*connect.Response[v1.PrepareSpeechResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest]) (*connect.ServerStreamForClient[v1.RunEvent], error)
@@ -1435,6 +1448,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("Transcribe")),
 			connect.WithClientOptions(opts...),
 		),
+		listVoices: connect.NewClient[v1.ListVoicesRequest, v1.ListVoicesResponse](
+			httpClient,
+			baseURL+UIListVoicesProcedure,
+			connect.WithSchema(uIMethods.ByName("ListVoices")),
+			connect.WithClientOptions(opts...),
+		),
+		setBotVoice: connect.NewClient[v1.SetBotVoiceRequest, v1.Bot](
+			httpClient,
+			baseURL+UISetBotVoiceProcedure,
+			connect.WithSchema(uIMethods.ByName("SetBotVoice")),
+			connect.WithClientOptions(opts...),
+		),
+		prepareSpeech: connect.NewClient[v1.PrepareSpeechRequest, v1.PrepareSpeechResponse](
+			httpClient,
+			baseURL+UIPrepareSpeechProcedure,
+			connect.WithSchema(uIMethods.ByName("PrepareSpeech")),
+			connect.WithClientOptions(opts...),
+		),
 		send: connect.NewClient[v1.SendRequest, v1.SendResponse](
 			httpClient,
 			baseURL+UISendProcedure,
@@ -2160,6 +2191,9 @@ type uIClient struct {
 	setChatThinking          *connect.Client[v1.SetChatThinkingRequest, v1.Chat]
 	listModels               *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
 	transcribe               *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	listVoices               *connect.Client[v1.ListVoicesRequest, v1.ListVoicesResponse]
+	setBotVoice              *connect.Client[v1.SetBotVoiceRequest, v1.Bot]
+	prepareSpeech            *connect.Client[v1.PrepareSpeechRequest, v1.PrepareSpeechResponse]
 	send                     *connect.Client[v1.SendRequest, v1.SendResponse]
 	stopRun                  *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun                *connect.Client[v1.StreamRunRequest, v1.RunEvent]
@@ -2802,6 +2836,21 @@ func (c *uIClient) ListModels(ctx context.Context, req *connect.Request[v1.ListM
 // Transcribe calls silo.v1.UI.Transcribe.
 func (c *uIClient) Transcribe(ctx context.Context, req *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
 	return c.transcribe.CallUnary(ctx, req)
+}
+
+// ListVoices calls silo.v1.UI.ListVoices.
+func (c *uIClient) ListVoices(ctx context.Context, req *connect.Request[v1.ListVoicesRequest]) (*connect.Response[v1.ListVoicesResponse], error) {
+	return c.listVoices.CallUnary(ctx, req)
+}
+
+// SetBotVoice calls silo.v1.UI.SetBotVoice.
+func (c *uIClient) SetBotVoice(ctx context.Context, req *connect.Request[v1.SetBotVoiceRequest]) (*connect.Response[v1.Bot], error) {
+	return c.setBotVoice.CallUnary(ctx, req)
+}
+
+// PrepareSpeech calls silo.v1.UI.PrepareSpeech.
+func (c *uIClient) PrepareSpeech(ctx context.Context, req *connect.Request[v1.PrepareSpeechRequest]) (*connect.Response[v1.PrepareSpeechResponse], error) {
+	return c.prepareSpeech.CallUnary(ctx, req)
 }
 
 // Send calls silo.v1.UI.Send.
@@ -3488,6 +3537,13 @@ type UIHandler interface {
 	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// ListVoices is a speech model's voices, for a Bot's voice picker.
+	ListVoices(context.Context, *connect.Request[v1.ListVoicesRequest]) (*connect.Response[v1.ListVoicesResponse], error)
+	// SetBotVoice is how a Bot sounds: its speech model, voice and speed.
+	SetBotVoice(context.Context, *connect.Request[v1.SetBotVoiceRequest]) (*connect.Response[v1.Bot], error)
+	// PrepareSpeech readies text to be read aloud in a Bot's voice and
+	// answers the URL that streams it (single use, a few minutes).
+	PrepareSpeech(context.Context, *connect.Request[v1.PrepareSpeechRequest]) (*connect.Response[v1.PrepareSpeechResponse], error)
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	StopRun(context.Context, *connect.Request[v1.StopRunRequest]) (*connect.Response[v1.StopRunResponse], error)
 	StreamRun(context.Context, *connect.Request[v1.StreamRunRequest], *connect.ServerStream[v1.RunEvent]) error
@@ -4285,6 +4341,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UITranscribeProcedure,
 		svc.Transcribe,
 		connect.WithSchema(uIMethods.ByName("Transcribe")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListVoicesHandler := connect.NewUnaryHandler(
+		UIListVoicesProcedure,
+		svc.ListVoices,
+		connect.WithSchema(uIMethods.ByName("ListVoices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetBotVoiceHandler := connect.NewUnaryHandler(
+		UISetBotVoiceProcedure,
+		svc.SetBotVoice,
+		connect.WithSchema(uIMethods.ByName("SetBotVoice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPrepareSpeechHandler := connect.NewUnaryHandler(
+		UIPrepareSpeechProcedure,
+		svc.PrepareSpeech,
+		connect.WithSchema(uIMethods.ByName("PrepareSpeech")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uISendHandler := connect.NewUnaryHandler(
@@ -5117,6 +5191,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIListModelsHandler.ServeHTTP(w, r)
 		case UITranscribeProcedure:
 			uITranscribeHandler.ServeHTTP(w, r)
+		case UIListVoicesProcedure:
+			uIListVoicesHandler.ServeHTTP(w, r)
+		case UISetBotVoiceProcedure:
+			uISetBotVoiceHandler.ServeHTTP(w, r)
+		case UIPrepareSpeechProcedure:
+			uIPrepareSpeechHandler.ServeHTTP(w, r)
 		case UISendProcedure:
 			uISendHandler.ServeHTTP(w, r)
 		case UIStopRunProcedure:
@@ -5760,6 +5840,18 @@ func (UnimplementedUIHandler) ListModels(context.Context, *connect.Request[v1.Li
 
 func (UnimplementedUIHandler) Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.Transcribe is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListVoices(context.Context, *connect.Request[v1.ListVoicesRequest]) (*connect.Response[v1.ListVoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListVoices is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetBotVoice(context.Context, *connect.Request[v1.SetBotVoiceRequest]) (*connect.Response[v1.Bot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetBotVoice is not implemented"))
+}
+
+func (UnimplementedUIHandler) PrepareSpeech(context.Context, *connect.Request[v1.PrepareSpeechRequest]) (*connect.Response[v1.PrepareSpeechResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PrepareSpeech is not implemented"))
 }
 
 func (UnimplementedUIHandler) Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error) {

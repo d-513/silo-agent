@@ -1,6 +1,7 @@
 import type { Said } from "../composer/Composer";
 import { createContext, useContext } from "react";
 import type { Artifact } from "../Artifact";
+import type { Call } from "../call/useCall";
 import type { Bot, Chat, ModelOption } from "../gen/silo/v1/ui_pb";
 import type { AgentLink } from "../links";
 import type { useRunStream } from "../useRunStream";
@@ -35,6 +36,10 @@ export type BotPageState = {
   models: ModelOption[];
   defaultModel: string;
   voice: boolean;
+  // talk offers a call (voice on, speech both ways); call is the live one.
+  talk: boolean;
+  call: Call;
+  startCall: () => void;
   rename: ChatRename;
   newChat: () => void;
   deleteChat: (cid: string) => void;

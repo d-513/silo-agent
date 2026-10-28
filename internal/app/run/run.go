@@ -33,10 +33,18 @@ type Report struct {
 }
 
 // Extra is what a message carries besides its text: files the human uploaded
-// and what they quoted.
+// and what they quoted, or that they said it on a voice call.
 type Extra struct {
 	Files  []*v1.Attachment
 	Quotes []*v1.Quote
+	Spoken *Spoken
+}
+
+// Spoken marks a message the human said on a voice call: the call, and the
+// words of the Bot's reply they cut off by speaking, if they did.
+type Spoken struct {
+	CallID      string
+	Interrupted string
 }
 
 // Request is one call into the shared execution engine. Chats, channels,

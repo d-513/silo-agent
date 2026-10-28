@@ -140,7 +140,7 @@ type Option struct {
 	ID       string
 	Provider string
 	Label    string
-	// Kind is llm.KindText or llm.KindDecision.
+	// Kind is one of llm.Kinds.
 	Kind string
 	// Thinking is filled only where the UI needs levels (ListModels).
 	Thinking []string
@@ -150,6 +150,11 @@ type Option struct {
 // roles may use. Decision models are a list of their own (Deciders).
 func (s *Service) Allowed() []Option {
 	return options(s.cfg().Models, llm.KindText)
+}
+
+// Options is the allowlist of one kind of model (llm.Kinds).
+func (s *Service) Options(kind string) []Option {
+	return options(s.cfg().KindModels(kind), kind)
 }
 
 func options(ids []string, kind string) []Option {

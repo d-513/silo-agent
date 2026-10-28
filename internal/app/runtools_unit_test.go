@@ -63,7 +63,7 @@ func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 func newToolApp() *App {
 	a := &App{}
 	a.Models = models.New(nil, a.cfg)
-	a.Voice = voice.New(nil, a.cfg, a.Models, nil)
+	a.Voice = voice.New(nil, a.cfg, a.Models, nil, a)
 	a.Tunnels = tunnels.New(nil, nil, a.cfg, nil)
 	a.Mail = mailbox.New(nil, a.cfg, nil, nil, nil)
 	a.Knowledge = knowledge.New(nil, nil, a.cfg, a.Models, nil)

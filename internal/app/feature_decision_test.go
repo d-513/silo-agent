@@ -261,7 +261,7 @@ func TestDecisionModelSettings(t *testing.T) {
 	for _, p := range st.GetProviders() {
 		kinds[p.GetId()] = strings.Join(p.GetKinds(), ",")
 	}
-	if kinds["openrouter"] != "text,decision" || kinds["typesafe"] != "decision" || kinds["anthropic"] != "text" {
+	if kinds["openrouter"] != "text,decision,transcription,speech,embedding" || kinds["typesafe"] != "decision" || kinds["anthropic"] != "text" {
 		t.Fatalf("provider kinds %v", kinds)
 	}
 

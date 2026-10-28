@@ -19,8 +19,10 @@ type ModelInfo struct {
 	ContextWindow int
 	// Created is when the provider released the model; zero when unknown.
 	Created time.Time
-	// Kind is KindText or KindDecision.
+	// Kind is one of Kinds.
 	Kind string
+	// Voices are a speech model's voice ids, where the provider lists them.
+	Voices []string
 }
 
 // ModelLister is the optional interface a provider implements when it can
@@ -41,6 +43,7 @@ type listedModel struct {
 	Created             int64    `json:"created"`
 	ContextLength       int      `json:"context_length"`
 	SupportedParameters []string `json:"supported_parameters"`
+	SupportedVoices     []string `json:"supported_voices"`
 	Architecture        struct {
 		OutputModalities []string `json:"output_modalities"`
 	} `json:"architecture"`
@@ -87,7 +90,7 @@ func modelInfos(list []listedModel, kind string) []ModelInfo {
 		if m.ID == "" {
 			continue
 		}
-		info := ModelInfo{ID: m.ID, Name: m.Name, ContextWindow: m.ContextLength, Kind: kind}
+		info := ModelInfo{ID: m.ID, Name: m.Name, ContextWindow: m.ContextLength, Kind: kind, Voices: m.SupportedVoices}
 		if m.Created > 0 {
 			info.Created = time.Unix(m.Created, 0)
 		}

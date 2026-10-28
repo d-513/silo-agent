@@ -92,7 +92,7 @@ func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneNam
 	}
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: um.encode(), Zone: zoneName, UserID: userID, Author: author, CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from,
-		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), CreatedAt: now.Format(time.RFC3339), Author: author})
+		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), Spoken: v1Spoken(um), CreatedAt: now.Format(time.RFC3339), Author: author})
 }
 
 // emitDelivered persists one user-visible block and, on a channel origin,

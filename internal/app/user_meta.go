@@ -34,7 +34,17 @@ type eventQuote struct {
 type userMeta struct {
 	Files  []eventAttachment `json:"files,omitempty"`
 	Quotes []eventQuote      `json:"quotes,omitempty"`
+	Spoken *spokenMeta       `json:"spoken,omitempty"`
 }
+
+// spokenMeta marks a turn said on a voice call (run.Spoken).
+type spokenMeta struct {
+	CallID      string `json:"call_id"`
+	Interrupted string `json:"interrupted,omitempty"`
+}
+
+// maxInterrupted caps the cut-off words a spoken turn carries.
+const maxInterrupted = 600
 
 // The caps on what one message may quote.
 const (
@@ -63,11 +73,14 @@ func (a *App) userMeta(botID string, ex run.Extra) userMeta {
 			Text: a.kept(botID, q.GetText()), Locator: q.GetLocator(), Image: q.GetImage(),
 		})
 	}
+	if sp := ex.Spoken; sp != nil {
+		um.Spoken = &spokenMeta{CallID: sp.CallID, Interrupted: a.kept(botID, textx.CapRunes(sp.Interrupted, maxInterrupted))}
+	}
 	return um
 }
 
 func (um userMeta) encode() string {
-	if len(um.Files) == 0 && len(um.Quotes) == 0 {
+	if len(um.Files) == 0 && len(um.Quotes) == 0 && um.Spoken == nil {
 		return ""
 	}
 	b, err := json.Marshal(um)
@@ -101,6 +114,14 @@ func v1Attachments(flat []eventAttachment) []*v1.Attachment {
 		out = append(out, &v1.Attachment{Name: a.Name, Path: a.Path, Size: a.Size, Mime: a.Mime})
 	}
 	return out
+}
+
+// v1Spoken is a spoken turn's mark for the thread.
+func v1Spoken(um userMeta) *v1.Spoken {
+	if um.Spoken == nil {
+		return nil
+	}
+	return &v1.Spoken{CallId: um.Spoken.CallID, Interrupted: um.Spoken.Interrupted}
 }
 
 func v1Quotes(qs []eventQuote) []*v1.Quote {
@@ -160,6 +181,15 @@ func capRunes(s string, n int) string {
 // live run both build the turn here, so the bytes are the same.
 func userTurnText(text string, um userMeta) string {
 	var b strings.Builder
+	// What was said aloud is a transcript, and the reply will be heard: the
+	// marker says both (prompts/VOICE.md tells the model what it means).
+	if sp := um.Spoken; sp != nil {
+		if sp.Interrupted != "" {
+			b.WriteString("[spoken; I cut you off after: \u201c" + sp.Interrupted + "\u201d]\n")
+		} else {
+			b.WriteString("[spoken]\n")
+		}
+	}
 	for _, q := range um.Quotes {
 		b.WriteString(quoteHead(q))
 		b.WriteString("\n")

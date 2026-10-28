@@ -145,17 +145,21 @@ func TestTypeSafeDecide(t *testing.T) {
 	}
 }
 
-// Only the providers that say they serve decision models are Deciders, and
-// every one that says so is.
-func TestDecisionProviders(t *testing.T) {
+// A provider serves a kind exactly when its client has the kind's
+// interface, for every kind in the registry.
+func TestProviderKinds(t *testing.T) {
 	for _, d := range Descriptors() {
 		c, err := New(d.ID, Settings{"api_key": "k", "base_url": "http://probe.invalid"})
 		if err != nil {
 			t.Fatalf("%s: %v", d.ID, err)
 		}
-		_, decides := c.(Decider)
-		if decides != d.Serves(KindDecision) {
-			t.Errorf("%s: Decider=%v but descriptor serves decision=%v", d.ID, decides, d.Serves(KindDecision))
+		for _, k := range Kinds {
+			if k.ID == KindText {
+				continue // every client streams; a decision-only one refuses to
+			}
+			if Implements(c, k.ID) != d.Serves(k.ID) {
+				t.Errorf("%s: implements %s=%v but descriptor serves it=%v", d.ID, k.ID, Implements(c, k.ID), d.Serves(k.ID))
+			}
 		}
 	}
 	for id, want := range map[string][]bool{
@@ -164,6 +168,12 @@ func TestDecisionProviders(t *testing.T) {
 		d, _ := Lookup(id)
 		if d.Serves(KindText) != want[0] || d.Serves(KindDecision) != want[1] {
 			t.Errorf("%s serves text=%v decision=%v", id, d.Serves(KindText), d.Serves(KindDecision))
+		}
+	}
+	for _, id := range []string{OpenRouter, OpenAI, Local} {
+		d, _ := Lookup(id)
+		if !d.Serves(KindSpeech) || !d.Serves(KindTranscription) || !d.Serves(KindEmbedding) {
+			t.Errorf("%s, an OpenAI-compatible provider, should serve speech, transcription and embeddings", id)
 		}
 	}
 }

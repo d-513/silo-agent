@@ -1,9 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { vadAssets } from "./vite-vad";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), vadAssets()],
   optimizeDeps: { exclude: ["@novnc/novnc"], esbuildOptions: { target: "es2022" } },
   build: {
     target: "es2022",
@@ -28,6 +29,8 @@ export default defineConfig({
       "/silo.v1.BotWorker": { target: "http://127.0.0.1:8080", changeOrigin: true },
       "/vnc": { target: "http://127.0.0.1:8080", ws: true },
       "/console": { target: "http://127.0.0.1:8080", ws: true },
+      // A voice call's control socket, and Read aloud's audio.
+      "/voice": { target: "http://127.0.0.1:8080", ws: true },
       "/healthz": { target: "http://127.0.0.1:8080" },
       "/oauth": { target: "http://127.0.0.1:8080" },
       // Signing in with the OIDC provider starts and ends on the control plane.

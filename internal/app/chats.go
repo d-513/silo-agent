@@ -157,7 +157,9 @@ func (a *App) ListModels(ctx context.Context, req *connect.Request[v1.ListModels
 		Models:       models.Protos(a.Models.WithThinking(ctx, a.Models.Allowed())),
 		DefaultModel: a.Models.BotDefault(b.ID),
 		TitleModel:   cfg.ModelTitle,
-		VoiceEnabled: a.Voice.Enabled(),
+		VoiceEnabled:  a.Voice.Enabled(),
+		SpeechEnabled: a.Voice.SpeechEnabled(),
+		CallEnabled:   a.Voice.CallEnabled(),
 	}), nil
 }
 

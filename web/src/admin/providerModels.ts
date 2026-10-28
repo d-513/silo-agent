@@ -28,19 +28,67 @@ export function filterModels<T extends { id: string; name: string }>(list: T[], 
   });
 }
 
-/** The two kinds of model. A text model writes; a decision model answers typed questions. */
-export type ModelKind = "text" | "decision";
+/** The kinds of model (the server's llm.Kinds), in the order Admin shows them. */
+export type ModelKind = "text" | "decision" | "transcription" | "speech" | "embedding";
 
-export const KINDS: ModelKind[] = ["text", "decision"];
+export const KINDS: ModelKind[] = ["text", "decision", "transcription", "speech", "embedding"];
 
-/** A listed model's kind; anything a provider does not mark as a decision model is text. */
+/** A listed model's kind; anything a provider does not mark is text. */
 export function kindOf(m: { kind?: string }): ModelKind {
-  return m.kind === "decision" ? "decision" : "text";
+  return (KINDS as string[]).includes(m.kind ?? "") ? (m.kind as ModelKind) : "text";
 }
 
-/** The kinds a list holds, text first. */
+/** The kinds a list holds, in registry order. */
 export function kindsIn(list: { kind?: string }[]): ModelKind[] {
   return KINDS.filter((k) => list.some((m) => kindOf(m) === k));
+}
+
+/** A kind as a short word for a tab. */
+export function kindWord(k: ModelKind): string {
+  switch (k) {
+    case "decision":
+      return t("Decision", { context: "kind" });
+    case "transcription":
+      return t("Speech-to-text", { context: "kind" });
+    case "speech":
+      return t("Speech", { context: "kind" });
+    case "embedding":
+      return t("Embedding", { context: "kind" });
+    default:
+      return t("Text", { context: "kind" });
+  }
+}
+
+/** The filter box's placeholder for a kind's list. */
+export function filterWord(k: ModelKind, count: number): string {
+  switch (k) {
+    case "decision":
+      return t("Filter {{count}} decision models", { count });
+    case "transcription":
+      return t("Filter {{count}} speech-to-text models", { count });
+    case "speech":
+      return t("Filter {{count}} speech models", { count });
+    case "embedding":
+      return t("Filter {{count}} embedding models", { count });
+    default:
+      return t("Filter {{count}} text models", { count });
+  }
+}
+
+/** The title of the button that takes a model off its kind's list. */
+export function removeTitle(k: ModelKind): string {
+  switch (k) {
+    case "decision":
+      return t("Remove from the allowed decision models");
+    case "transcription":
+      return t("Remove from the allowed speech-to-text models");
+    case "speech":
+      return t("Remove from the allowed speech models");
+    case "embedding":
+      return t("Remove from the allowed embedding models");
+    default:
+      return t("Remove from the allowed text models");
+  }
 }
 
 /** A role's picker rows when it takes either kind: decision models first, each saying what it is. */

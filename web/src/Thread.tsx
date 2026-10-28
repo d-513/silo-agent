@@ -1,5 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { UI } from "./gen/silo/v1/ui_pb";
 import type { Artifact } from "./Artifact";
 import type { AgentLink } from "./links";
 import { foldEvents, type Attachment, type Block, type Ev, type Quote } from "./fold";
@@ -72,6 +74,8 @@ export function Thread({
   paging?: Paging;
 }) {
   const marks = useConnectorMarks(botId);
+  // Read aloud is offered while the operator has a speech model.
+  const speech = useQuery(UI.method.listModels, { botId }, { staleTime: 60_000 }).data?.speechEnabled ?? false;
   const blocks = foldEvents(events, -(paging?.prepended ?? 0));
   const scroll = useStickyScroll({ chatId, events, sending, fresh, blocks });
   // A page put in front keeps what the reader was looking at where it was.
@@ -121,6 +125,7 @@ export function Thread({
     fresh,
     userAs,
     marks,
+    speech,
     lastUserKey: lastUser?.key,
     lastAssistantKey,
     retry,

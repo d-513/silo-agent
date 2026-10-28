@@ -1,4 +1,4 @@
-import { Bot, GitBranch, Inbox, LayoutGrid, Paperclip, Pencil, RotateCcw, Timer, Trash2 } from "lucide-react";
+import { AudioLines, Bot, GitBranch, Inbox, LayoutGrid, Paperclip, Pencil, RotateCcw, Timer, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AgentLink } from "../links";
@@ -10,6 +10,8 @@ import { Quotable } from "../quote/Quotable";
 import { QuoteList } from "../quote/QuoteList";
 import { fmtBytes, fullTime, runWhen } from "../format";
 import { Md } from "../Md";
+import { ReadAloudButton } from "../ReadAloud";
+import { Tip } from "../Tip";
 import { FoldRow } from "./FoldRow";
 import { t } from "../i18n.ts";
 import { Initials } from "../space/People";
@@ -22,6 +24,7 @@ export function UserBubble({
   author,
   attachments,
   quotes,
+  spoken,
   isLast,
   busy,
   fresh,
@@ -30,6 +33,8 @@ export function UserBubble({
   onDiverge,
 }: {
   text: string;
+  // Said on a voice call: it is what was heard, marked so.
+  spoken?: boolean;
   // Who wrote it, on a Bot several people use.
   author?: string;
   attachments?: Attachment[];
@@ -102,7 +107,14 @@ export function UserBubble({
       <div className="min-w-0 max-w-[88%] rounded-bubble rounded-br-[6px] bg-well px-4 py-2.5 text-ink sm:max-w-[80%]">
         {quotes?.length ? <QuoteList quotes={quotes} /> : null}
         <Quotable target={{ source: "message", ref: "own", label: "" }}>
-          <div className="whitespace-pre-wrap break-words text-[15px] leading-6 select-text">{text}</div>
+          <div className="whitespace-pre-wrap break-words text-[15px] leading-6 select-text">
+            {spoken ? (
+              <Tip content={t("Said on a call. This is what was heard.")}>
+                <AudioLines size={13} aria-label={t("Said on a call")} className="mr-1.5 inline-block -translate-y-px text-ink-3" />
+              </Tip>
+            ) : null}
+            {text}
+          </div>
         </Quotable>
         {attachments?.length ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -253,7 +265,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
   );
 }
 
-export function Reply({ text, bounds, streaming, onRetry }: { text: string; bounds?: number[]; streaming?: boolean; onRetry?: () => void }) {
+export function Reply({ text, bounds, streaming, onRetry, speak }: { text: string; bounds?: number[]; streaming?: boolean; onRetry?: () => void; speak?: string }) {
   return (
     <div className="group/reply min-w-0">
       <Quotable target={{ source: "message", ref: "reply", label: "" }} className={`silo-reply ${streaming ? "silo-live" : ""}`}>
@@ -263,6 +275,7 @@ export function Reply({ text, bounds, streaming, onRetry }: { text: string; boun
       {!streaming ? (
         <div className="mt-1 -ml-1.5 flex translate-y-0.5 items-center gap-0.5 opacity-0 transition-[opacity,transform] duration-[180ms] ease-quiet group-focus-within/reply:translate-y-0 group-focus-within/reply:opacity-100 group-hover/reply:translate-y-0 group-hover/reply:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100">
           <CopyButton text={text} title={t("Copy reply")} />
+          {speak ? <ReadAloudButton botId={speak} text={text} className={miniBtn} /> : null}
           {onRetry ? (
             <button type="button" onClick={onRetry} title={t("Retry")} aria-label={t("Retry")} className={miniBtn}>
               <RotateCcw size={14} />

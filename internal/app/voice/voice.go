@@ -1,5 +1,7 @@
-// Package voice is speech-to-text: composer dictation and the Bot's transcribe
-// tool, both through the operator's transcribe_model.
+// Package voice is talking with a Bot: composer dictation and the Bot's
+// transcribe tool (speech-to-text through transcribe_model), Read aloud (a
+// Bot's voice through a speech model), and calls (both at once, live: see
+// call.go).
 package voice
 
 import (
@@ -17,6 +19,8 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
+	"silo.agent/internal/app/run"
+	"silo.agent/internal/db"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/config"
 	"silo.agent/internal/llm"
@@ -30,16 +34,33 @@ const transcribeTimeout = 90 * time.Second
 // errVoiceOff is returned when the operator set transcribe_model: off.
 var errVoiceOff = errors.New("voice is off (transcribe_model: off)")
 
-// Service transcribes audio with the operator's transcribe model.
-type Service struct {
-	db     *gorm.DB
-	cfg    func() config.Config
-	models *models.Service
-	ws     *workspace.Service
+// Host is what voice needs from the App: a Bot as its viewer sees it, the
+// run engine a call talks to, and the events of a chat as they happen.
+type Host interface {
+	ViewBot(ctx context.Context, b *db.Bot) *v1.Bot
+	StartOrInject(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error)
+	LiveRunID(botID, chatID string) string
+	// Subscribe is every event of a Bot as it is published; stop ends it.
+	Subscribe(botID string) (events <-chan *v1.RunEvent, stop func())
+	Publish(botID string, ev *v1.RunEvent)
+	// Lost closes when the person can no longer use the Bot.
+	Lost(botID, userID string) (lost <-chan struct{}, stop func())
 }
 
-func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service, ws *workspace.Service) *Service {
-	return &Service{db: gdb, cfg: cfg, models: m, ws: ws}
+// Service is dictation, Read aloud and calls.
+type Service struct {
+	db      *gorm.DB
+	cfg     func() config.Config
+	models  *models.Service
+	ws      *workspace.Service
+	host    Host
+	tickets tickets
+	rtc     rtc
+	calls   calls
+}
+
+func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service, ws *workspace.Service, host Host) *Service {
+	return &Service{db: gdb, cfg: cfg, models: m, ws: ws, host: host}
 }
 
 // Enabled reports whether dictation and the transcribe tool can work: a

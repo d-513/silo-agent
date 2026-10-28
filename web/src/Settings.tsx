@@ -14,6 +14,7 @@ import { reload, setBot } from "./query";
 import { modelOptions } from "./modelOptions";
 import { fail } from "./errors";
 import { MailSettings } from "./Mail";
+import { BotVoice } from "./BotVoice";
 import { TimeZoneSettings } from "./TimeZone";
 import { locale, t } from "./i18n.ts";
 import { botLanguageOptions, flagOf, mixed } from "./languages.ts";
@@ -63,7 +64,9 @@ export function SettingsPane({
   // Only what the owner changed sits on top of the cached Bot.
   const [edits, setEdits] = useState<Partial<Form>>({});
   const [saveErr, setSaveErr] = useState("");
-  const models = useQuery(UI.method.listModels, { botId: bot.id }).data?.models ?? noModels;
+  const modelsQ = useQuery(UI.method.listModels, { botId: bot.id });
+  const models = modelsQ.data?.models ?? noModels;
+  const speech = modelsQ.data?.speechEnabled ?? false;
   const saver = useSave();
   const [dangerBusy, setDangerBusy] = useState(false);
   const nav = useNavigate();
@@ -234,6 +237,8 @@ export function SettingsPane({
       <div className="mt-6">
         {/* A Bot has a mailbox only while the operator has mail set up. */}
         {bot.mailAddress ? <MailSettings bot={bot} onError={onError} /> : null}
+
+        {speech ? <BotVoice bot={bot} onError={onError} /> : null}
 
         <MoveBot bot={bot} />
 

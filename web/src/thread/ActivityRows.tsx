@@ -1,4 +1,5 @@
-import { Eraser, Lightbulb, Minimize2, ShieldCheck, ShieldX, Sparkles, Trash2 } from "lucide-react";
+import { Eraser, Lightbulb, Minimize2, Phone, PhoneOff, ShieldCheck, ShieldX, Sparkles, Trash2 } from "lucide-react";
+import { callClock } from "../call/audio";
 import type { Decision, ReceiptBlock } from "../fold";
 import { Md } from "../Md";
 import { FoldRow } from "./FoldRow";
@@ -94,6 +95,21 @@ export function Boundary({ kind, count }: { kind: "cleared" | "wiped"; count: nu
       <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
         {kind === "cleared" ? <Eraser size={12} /> : <Trash2 size={12} />}
         {label}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
+// CallMark is where a voice call began, and where it ended with how long it
+// ran. What was said sits between them as ordinary messages.
+export function CallMark({ edge, seconds }: { edge: "start" | "end"; seconds: number }) {
+  return (
+    <div className="flex items-center gap-3 pt-3 pb-1">
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+        {edge === "start" ? <Phone size={12} /> : <PhoneOff size={12} />}
+        {edge === "start" ? t("Call started") : t("Call ended · {{length}}", { length: callClock(seconds * 1000) })}
       </span>
       <span aria-hidden className="h-px flex-1 bg-line" />
     </div>

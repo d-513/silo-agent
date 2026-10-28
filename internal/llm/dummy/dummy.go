@@ -85,6 +85,7 @@ func Reset() {
 	streamed = nil
 	decided = nil
 	completed = nil
+	spoken = nil
 }
 
 // streamed records every streamed request so tests can see what the agent
@@ -123,7 +124,7 @@ func init() {
 		ID:            Provider,
 		Name:          "Dummy",
 		Description:   "Deterministic scripted provider for tests. Not for production.",
-		Kinds:         []string{llm.KindText, llm.KindDecision},
+		Kinds:         []string{llm.KindText, llm.KindDecision, llm.KindTranscription, llm.KindSpeech, llm.KindEmbedding},
 		SupportsCache: false,
 		Settings: []llm.SettingDef{
 			{Key: "api_key", Label: "API key", Description: "Ignored; kept for shape compatibility."},

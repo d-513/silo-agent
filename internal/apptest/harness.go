@@ -234,6 +234,11 @@ embedding_model: dummy/embed
 transcribe_model: dummy/whisper
 models:
   - dummy/echo
+voice:
+  speech_model: dummy/voice
+  webrtc:
+    udp_port: 0
+    tcp_port: 0
 providers:
   dummy:
     api_key: test

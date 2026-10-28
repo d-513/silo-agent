@@ -73,6 +73,9 @@ export function RunRoute() {
       models={p.models}
       defaultModel={p.defaultModel}
       voice={p.voice}
+      talk={p.talk}
+      call={p.call}
+      onTalk={p.startCall}
       run={p.run}
       subs={p.subs}
       draft={p.draft}

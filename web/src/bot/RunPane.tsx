@@ -3,6 +3,10 @@ import { ui } from "../api";
 import { Btn } from "../Btn";
 import { t } from "../i18n.ts";
 import type { Artifact } from "../Artifact";
+import { CallBar } from "../call/CallBar";
+import type { Call } from "../call/useCall";
+import { useNavigate } from "@tanstack/react-router";
+import { chatLink } from "../links";
 import { useQuery } from "@connectrpc/connect-query";
 import { Composer, type Said } from "../composer/Composer";
 import { fail } from "../errors";
@@ -30,6 +34,9 @@ export function RunPane({
   models,
   defaultModel,
   voice,
+  talk,
+  call,
+  onTalk,
   run,
   subs,
   draft,
@@ -51,6 +58,9 @@ export function RunPane({
   models: ModelOption[];
   defaultModel: string;
   voice: boolean;
+  talk: boolean;
+  call: Call;
+  onTalk: () => void;
   run: ReturnType<typeof useRunStream>;
   subs: ReturnType<typeof useSubagents>;
   draft: ComposerDraft;
@@ -68,6 +78,10 @@ export function RunPane({
   const commands = useQuery(UI.method.listCommands, { botId: id }, { staleTime: Infinity }).data?.commands ?? none;
   // The empty chat shows what was picked for it; the first send carries it.
   const picked = !chatId && fresh ? pick : undefined;
+  const navigate = useNavigate();
+  // The call is drawn here when it is held in this chat (or is making it).
+  const callChat = call.snap?.chatId ?? "";
+  const callHere = !!call.snap && (callChat === chatId || (callChat === "new" && fresh && !chatId));
   return (
     <>
       <Taskboard
@@ -134,6 +148,8 @@ export function RunPane({
           ) : null}
         </div>
       ) : (
+        <>
+        <CallBar call={call} botName={bot.name} here={callHere} onBack={callChat && callChat !== "new" ? () => void navigate(chatLink(id, callChat)) : undefined} />
         <Composer
           text={draft.text}
           setText={draft.setText}
@@ -164,7 +180,10 @@ export function RunPane({
           onCommand={actions.sendCommand}
           said={said}
           onDismissSaid={() => setSaid(null)}
+          talk={talk && !(callHere && call.live)}
+          onTalk={onTalk}
         />
+        </>
       )}
     </>
   );

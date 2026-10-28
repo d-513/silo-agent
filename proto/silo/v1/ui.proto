@@ -183,6 +183,13 @@ service UI {
 
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
   rpc Transcribe(TranscribeRequest) returns (TranscribeResponse);
+  // ListVoices is a speech model's voices, for a Bot's voice picker.
+  rpc ListVoices(ListVoicesRequest) returns (ListVoicesResponse);
+  // SetBotVoice is how a Bot sounds: its speech model, voice and speed.
+  rpc SetBotVoice(SetBotVoiceRequest) returns (Bot);
+  // PrepareSpeech readies text to be read aloud in a Bot's voice and
+  // answers the URL that streams it (single use, a few minutes).
+  rpc PrepareSpeech(PrepareSpeechRequest) returns (PrepareSpeechResponse);
 
   rpc Send(SendRequest) returns (SendResponse);
   rpc StopRun(StopRunRequest) returns (StopRunResponse);
@@ -611,6 +618,10 @@ message Bot {
   string last_active_at = 27;
   string next_run_name = 28;
   string next_run_at = 29;
+  // How the Bot sounds (SetBotVoice): "" and 0 follow the defaults.
+  string speech_model = 30;
+  string voice = 31;
+  double speech_speed = 32;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -1890,6 +1901,74 @@ message ListModelsResponse {
   // voice_enabled is true when transcribe_model is set and its provider is
   // configured, so the composer can offer dictation.
   bool voice_enabled = 4;
+  // speech_enabled offers Read aloud; call_enabled offers Talk (both need
+  // voice on and a speech model; a call also needs speech-to-text).
+  bool speech_enabled = 5;
+  bool call_enabled = 6;
+}
+
+message ListVoicesRequest {
+  string bot_id = 1;
+  // model is a speech model from the allowed list; empty is the Bot's own.
+  string model = 2;
+}
+
+message Voice {
+  string id = 1;
+  // label is the id made readable ("en_paul_neutral" → "Paul, neutral").
+  string label = 2;
+  // language is an ISO-639-1 code read from the id, "" when it names none.
+  string language = 3;
+}
+
+message ListVoicesResponse {
+  // model is the speech model the voices are of.
+  string model = 1;
+  // voices is empty when the provider does not list them: then a voice is
+  // typed, or left to the provider.
+  repeated Voice voices = 2;
+  // default_voice is what the Bot speaks with when it picks none.
+  string default_voice = 3;
+  // models are the allowed speech models; default_model the operator's.
+  repeated ModelOption models = 4;
+  string default_model = 5;
+}
+
+message SetBotVoiceRequest {
+  string bot_id = 1;
+  // speech_model "" follows the operator's default.
+  string speech_model = 2;
+  // voice "" picks one for the Bot's language.
+  string voice = 3;
+  // speed is a multiplier from 0.5 to 2; 0 is the model's own.
+  double speed = 4;
+}
+
+message PrepareSpeechRequest {
+  string bot_id = 1;
+  // text is markdown, made speakable on the server.
+  string text = 2;
+  // model, voice and speed override the Bot's own, for a preview.
+  string model = 3;
+  string voice = 4;
+  double speed = 5;
+}
+
+message PrepareSpeechResponse {
+  // url streams the audio (GET, the session cookie); it works once.
+  string url = 1;
+}
+
+// Spoken is what a call adds to an event of its chat.
+message Spoken {
+  string call_id = 1;
+  // unheard is the part of a reply the human cut off (the event's body is
+  // what they heard).
+  string unheard = 2;
+  // seconds is a finished call's length (call_end).
+  int32 seconds = 3;
+  // interrupted is the Bot's words a spoken turn cut off, if it did.
+  string interrupted = 4;
 }
 
 // TranscribeRequest carries one dictated recording (browser MediaRecorder
@@ -2068,6 +2147,9 @@ message RunEvent {
   SetupOffer setup_offer = 12;
   // On a user event of a Bot with several people: who wrote it (email).
   string author = 13;
+  // spoken is set on what was said on a voice call: a turn the human spoke,
+  // and the call's start and end.
+  Spoken spoken = 14;
 }
 
 // Quoted is the thing a chat opened from: a Feed post, a Dashboard widget as
@@ -2500,6 +2582,19 @@ message Settings {
   // decision_models is the allowlist of decision models; models (above) is
   // the allowlist of text models. An id is in one list only.
   repeated ModelOption decision_models = 13;
+  // allowed is every kind's allowlist, text and decision included, in the
+  // order of the kinds registry. A role's model is on its kind's list even
+  // when silo.yaml does not list it.
+  repeated KindModels allowed = 14;
+}
+
+// KindModels is the allowlist of one kind of model.
+message KindModels {
+  // kind is "text", "decision", "transcription", "speech" or "embedding".
+  string kind = 1;
+  repeated ModelOption models = 2;
+  // listed are the ids silo.yaml lists (models adds a role's own model).
+  repeated string listed = 3;
 }
 
 message Provider {
@@ -2509,7 +2604,8 @@ message Provider {
   repeated ProviderField fields = 4;
   bool supports_cache = 5;
   repeated string cache_ttls = 6;
-  // kinds are the kinds of model the provider serves: "text", "decision".
+  // kinds are the kinds of model the provider serves: "text", "decision",
+  // "transcription", "speech", "embedding".
   repeated string kinds = 7;
 }
 
@@ -2523,8 +2619,8 @@ message ProviderField {
 
 message SetModelsRequest {
   repeated string models = 1;
-  // kind picks the allowlist to replace: "text" (the default when empty) or
-  // "decision".
+  // kind picks the allowlist to replace: "text" (the default when empty),
+  // "decision", "transcription", "speech" or "embedding".
   string kind = 2;
 }
 
@@ -2542,8 +2638,11 @@ message ProviderModel {
   string name = 2;
   // context_window is in tokens; 0 when the provider does not report one.
   int32 context_window = 3;
-  // kind is "text" or "decision": the allowlist the model belongs in.
+  // kind is the allowlist the model belongs in: "text", "decision",
+  // "transcription", "speech" or "embedding".
   string kind = 4;
+  // voices are a speech model's voice ids, where the provider lists them.
+  repeated string voices = 5;
 }
 
 message ListProviderModelsResponse {

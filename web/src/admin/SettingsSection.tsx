@@ -11,6 +11,7 @@ import { FieldGroup } from "./FieldGroup";
 import { NetworkSettings } from "./NetworkSettings";
 import { ModelSettings } from "./ModelSettings";
 import { ProviderSettings } from "./ProviderSettings";
+import { VoiceSettings } from "./VoiceSettings";
 import { OidcSettings } from "./OidcSettings";
 import { ARTIFACTS_NOTE, AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
@@ -30,6 +31,7 @@ export function SettingsSection() {
 const pages: Record<SectionId, () => React.ReactNode> = {
   models: () => <ModelSettings />,
   providers: () => <ProviderSettings />,
+  voice: () => <VoiceSettings />,
   search: () => <SearchSettings />,
   memory: () => (
     <>

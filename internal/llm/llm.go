@@ -249,8 +249,8 @@ type Descriptor struct {
 	// self-hosted server). BaseURLRequired marks one with no default URL.
 	KeyOptional     bool
 	BaseURLRequired bool
-	// Kinds are the kinds of model the provider serves; empty means text
-	// only. A provider that lists KindDecision is a Decider.
+	// Kinds are the kinds of model the provider serves (see Kinds); empty
+	// means text only. The client implements each kind's interface.
 	Kinds []string
 }
 
@@ -300,7 +300,7 @@ var builtinProviders = []registered{
 			ID:            OpenRouter,
 			Name:          "OpenRouter",
 			Description:   "OpenAI-compatible gateway to many models, decision models included (Jev, Clef and others through its Decisions API). Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
-			Kinds:         []string{KindText, KindDecision},
+			Kinds:         []string{KindText, KindDecision, KindTranscription, KindSpeech, KindEmbedding},
 			SupportsCache: true,
 			CacheTTLs:     []string{"5m", "1h"},
 			Settings: []SettingDef{
@@ -321,6 +321,7 @@ var builtinProviders = []registered{
 			ID:            OpenAI,
 			Name:          "OpenAI",
 			Description:   "OpenAI's API. Automatic prefix caching; prompt_cache_key improves routing.",
+			Kinds:         []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
 			SupportsCache: true,
 			Settings: []SettingDef{
 				{Key: "api_key", Label: "API key", Description: "OpenAI API key.", Secret: true},
@@ -352,6 +353,7 @@ var builtinProviders = []registered{
 			ID:              Local,
 			Name:            "Local",
 			Description:     "Any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp). Silo only connects; it does not run models.",
+			Kinds:           []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
 			KeyOptional:     true,
 			BaseURLRequired: true,
 			Settings: []SettingDef{
