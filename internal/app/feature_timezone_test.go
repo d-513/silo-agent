@@ -108,6 +108,12 @@ func TestZoneFollowsTheDevice(t *testing.T) {
 	id := botIn(t, h, "Traveller", "Europe/Warsaw")
 	chat := h.FirstChat(id)
 
+	warsaw, err := time.LoadLocation("Europe/Warsaw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Warsaw keeps summer time half the year: the stamp's offset is today's.
+	warsawOffset := time.Now().In(warsaw).Format("-07:00")
 	h.WaitRun(sendFrom(t, h, id, chat, "good morning", "Europe/Warsaw"))
 	h.WaitRun(sendFrom(t, h, id, chat, "landed", "Asia/Tokyo"))
 	if got := zoneOf(t, h, id).GetTimeZone(); got != "Asia/Tokyo" {
@@ -125,7 +131,7 @@ func TestZoneFollowsTheDevice(t *testing.T) {
 	if len(got) != 4 {
 		t.Fatalf("%d user turns: %q", len(got), got)
 	}
-	for i, want := range []string{"+02:00 Europe/Warsaw] good morning", "+09:00 Asia/Tokyo] landed", "+09:00 Asia/Tokyo] from an old client", "+09:00 Asia/Tokyo] from a broken one"} {
+	for i, want := range []string{warsawOffset + " Europe/Warsaw] good morning", "+09:00 Asia/Tokyo] landed", "+09:00 Asia/Tokyo] from an old client", "+09:00 Asia/Tokyo] from a broken one"} {
 		if !strings.HasSuffix(got[i], want) || !strings.HasPrefix(got[i], "[") {
 			t.Errorf("turn %d is %q, want it to end %q", i, got[i], want)
 		}
