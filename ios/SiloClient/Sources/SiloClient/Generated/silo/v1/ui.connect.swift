@@ -86,6 +86,111 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `checkOidc`(request: Silo_V1_CheckOIDCRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CheckOIDCResponse>
 
+    /// Workspaces: the containers of Bots, the people who use them, and what
+    /// their Bots share. ListSpaces is the caller's memberships, and makes their
+    /// first Workspace if they own none.
+    @available(iOS 13, *)
+    func `listSpaces`(request: Silo_V1_ListSpacesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpacesResponse>
+
+    @available(iOS 13, *)
+    func `getSpace`(request: Silo_V1_GetSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Space>
+
+    @available(iOS 13, *)
+    func `createSpace`(request: Silo_V1_CreateSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Space>
+
+    @available(iOS 13, *)
+    func `updateSpace`(request: Silo_V1_UpdateSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Space>
+
+    /// DeleteSpace is the owner's, refused while the Workspace has Bots and for
+    /// the owner's last Workspace.
+    @available(iOS 13, *)
+    func `deleteSpace`(request: Silo_V1_DeleteSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteSpaceResponse>
+
+    /// TransferSpace makes an admin the owner; the old owner becomes an admin.
+    @available(iOS 13, *)
+    func `transferSpace`(request: Silo_V1_TransferSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Space>
+
+    /// The people of a Workspace. Members see the list; admins change roles
+    /// (an admin only among members and guests) and remove people.
+    @available(iOS 13, *)
+    func `listSpacePeople`(request: Silo_V1_ListSpacePeopleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpacePeopleResponse>
+
+    @available(iOS 13, *)
+    func `setSpaceRole`(request: Silo_V1_SetSpaceRoleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SpacePerson>
+
+    /// PlanSpaceRemoval is what removing a person (or leaving: user_id is the
+    /// caller) would do: the Bots they are the last manager of, and what they
+    /// lent. RemoveSpacePerson does it, with a choice for each such Bot.
+    @available(iOS 13, *)
+    func `planSpaceRemoval`(request: Silo_V1_PlanSpaceRemovalRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SpaceRemovalPlan>
+
+    @available(iOS 13, *)
+    func `removeSpacePerson`(request: Silo_V1_RemoveSpacePersonRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RemoveSpacePersonResponse>
+
+    /// Invite links: single use, 7 days, only the hash kept. Opening one signed
+    /// in joins (JoinSpace); with spaces.invite_signup on, a visitor with no
+    /// account makes one there (JoinSpace with email and password).
+    @available(iOS 13, *)
+    func `createSpaceInvite`(request: Silo_V1_CreateSpaceInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SpaceInviteLink>
+
+    @available(iOS 13, *)
+    func `listSpaceInvites`(request: Silo_V1_ListSpaceInvitesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpaceInvitesResponse>
+
+    @available(iOS 13, *)
+    func `deleteSpaceInvite`(request: Silo_V1_DeleteSpaceInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteSpaceInviteResponse>
+
+    @available(iOS 13, *)
+    func `getSpaceInvite`(request: Silo_V1_GetSpaceInviteRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SpaceInviteInfo>
+
+    @available(iOS 13, *)
+    func `joinSpace`(request: Silo_V1_JoinSpaceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_JoinSpaceResponse>
+
+    /// The people on a Bot: Can manage or Can use. Managers change the list;
+    /// anyone may leave a Bot unless they are its last manager.
+    @available(iOS 13, *)
+    func `listBotPeople`(request: Silo_V1_ListBotPeopleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListBotPeopleResponse>
+
+    @available(iOS 13, *)
+    func `addBotPerson`(request: Silo_V1_AddBotPersonRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_AddBotPersonResponse>
+
+    @available(iOS 13, *)
+    func `setBotRole`(request: Silo_V1_SetBotRoleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotPerson>
+
+    @available(iOS 13, *)
+    func `removeBotPerson`(request: Silo_V1_RemoveBotPersonRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RemoveBotPersonResponse>
+
+    /// SetLendShared is a lender's say-so on a connection or drive that carries
+    /// their identity: shared, any Bot of the Workspace may get it; personal
+    /// (the default), only Bots they alone use.
+    @available(iOS 13, *)
+    func `setLendShared`(request: Silo_V1_SetLendSharedRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SetLendSharedResponse>
+
+    /// The Workspace's guardrails: for an action, the least strict mode any of
+    /// its Bots may use (a floor between the operator's and each Bot's own), and
+    /// its policy texts, read after the operator's and before the Bot's.
+    @available(iOS 13, *)
+    func `listSpaceRules`(request: Silo_V1_ListSpaceRulesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpaceRulesResponse>
+
+    @available(iOS 13, *)
+    func `setSpaceRule`(request: Silo_V1_SetSpaceRuleRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Rule>
+
+    @available(iOS 13, *)
+    func `updateSpacePolicy`(request: Silo_V1_UpdateSpacePolicyRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpaceRulesResponse>
+
+    /// What happened in the Workspace: people, Bots made and deleted, grants,
+    /// sign-ins and lending. Never what a Bot did with a grant.
+    @available(iOS 13, *)
+    func `listSpaceActivity`(request: Silo_V1_ListSpaceActivityRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSpaceActivityResponse>
+
+    /// Moving a Bot to another Workspace (a manager of it who may build in the
+    /// target): PlanMoveBot says what it loses (its grants, its Workspace
+    /// skills, the people not in the target); MoveBot does it.
+    @available(iOS 13, *)
+    func `planMoveBot`(request: Silo_V1_MoveBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_MoveBotPlan>
+
+    @available(iOS 13, *)
+    func `moveBot`(request: Silo_V1_MoveBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Bot>
+
     @available(iOS 13, *)
     func `listBots`(request: Silo_V1_ListBotsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListBotsResponse>
 
@@ -109,6 +214,12 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `resetContainer`(request: Silo_V1_GetBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Bot>
+
+    /// SetDesktopPaused hands the desktop to the owner: while paused the Bot's
+    /// desktop actions and Chromium are refused with a note that the owner is
+    /// in control.
+    @available(iOS 13, *)
+    func `setDesktopPaused`(request: Silo_V1_SetDesktopPausedRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SetDesktopPausedResponse>
 
     /// Every container that belongs to a Bot: its machine, drive sidecar, and
     /// STDIO MCP sidecars, with usage.
@@ -194,6 +305,9 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `submitDashboardCard`(request: Silo_V1_SubmitDashboardCardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SubmitDashboardCardResponse>
+
+    @available(iOS 13, *)
+    func `resolveSetupOffer`(request: Silo_V1_ResolveSetupOfferRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SetupOffer>
 
     /// Widgets: what the Bot keeps on the Dashboard and code keeps current.
     @available(iOS 13, *)
@@ -293,6 +407,16 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `streamRun`(headers: Connect.Headers) -> any Connect.ServerOnlyAsyncStreamInterface<Silo_V1_StreamRunRequest, Silo_V1_RunEvent>
+
+    /// ListChatEvents is a page of a chat's thread before an event: StreamRun
+    /// replays only the newest turns and opens with an "earlier" event when
+    /// there is more.
+    @available(iOS 13, *)
+    func `listChatEvents`(request: Silo_V1_ListChatEventsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListChatEventsResponse>
+
+    /// ListCommands is the slash commands a chat's composer offers.
+    @available(iOS 13, *)
+    func `listCommands`(request: Silo_V1_ListCommandsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListCommandsResponse>
 
     @available(iOS 13, *)
     func `editMessage`(request: Silo_V1_EditMessageRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SendResponse>
@@ -482,8 +606,23 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `createBotConnector`(request: Silo_V1_CreateBotConnectorRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotConnector>
 
+    /// DetachConnector takes a connection away from the Bot (its grant, by id);
+    /// the connection stays in the Workspace.
     @available(iOS 13, *)
     func `detachConnector`(request: Silo_V1_DetachConnectorRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DetachConnectorResponse>
+
+    /// A Workspace's connections, for its Customize hub and a Bot's Workspace
+    /// pill.
+    @available(iOS 13, *)
+    func `listSpaceConnectors`(request: Silo_V1_ListSpaceConnectorsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListConnectorsResponse>
+
+    /// Give a Workspace connection to a Bot of the same Workspace, or take it
+    /// away from one.
+    @available(iOS 13, *)
+    func `grantConnector`(request: Silo_V1_GrantConnectorRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotConnector>
+
+    @available(iOS 13, *)
+    func `revokeConnector`(request: Silo_V1_RevokeConnectorRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RevokeConnectorResponse>
 
     @available(iOS 13, *)
     func `refreshBotConnector`(request: Silo_V1_RefreshBotConnectorRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BotConnector>
@@ -577,6 +716,18 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `deleteDrive`(request: Silo_V1_DeleteDriveRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteDriveResponse>
+
+    /// A Workspace's drives, for its Customize hub and a Bot's From the
+    /// workspace list; and giving one to a Bot of the same Workspace, or taking
+    /// it away.
+    @available(iOS 13, *)
+    func `listSpaceDrives`(request: Silo_V1_ListSpaceDrivesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListDrivesResponse>
+
+    @available(iOS 13, *)
+    func `grantDrive`(request: Silo_V1_GrantDriveRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Drive>
+
+    @available(iOS 13, *)
+    func `revokeDrive`(request: Silo_V1_RevokeDriveRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RevokeDriveResponse>
 
     @available(iOS 13, *)
     func `beginDriveAuth`(request: Silo_V1_BeginDriveAuthRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BeginDriveAuthResponse>
@@ -714,6 +865,136 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listSpaces`(request: Silo_V1_ListSpacesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpacesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaces", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSpace`(request: Silo_V1_GetSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Space> {
+        return await self.client.unary(path: "/silo.v1.UI/GetSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `createSpace`(request: Silo_V1_CreateSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Space> {
+        return await self.client.unary(path: "/silo.v1.UI/CreateSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateSpace`(request: Silo_V1_UpdateSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Space> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteSpace`(request: Silo_V1_DeleteSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteSpaceResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `transferSpace`(request: Silo_V1_TransferSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Space> {
+        return await self.client.unary(path: "/silo.v1.UI/TransferSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listSpacePeople`(request: Silo_V1_ListSpacePeopleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpacePeopleResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpacePeople", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSpaceRole`(request: Silo_V1_SetSpaceRoleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SpacePerson> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSpaceRole", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `planSpaceRemoval`(request: Silo_V1_PlanSpaceRemovalRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SpaceRemovalPlan> {
+        return await self.client.unary(path: "/silo.v1.UI/PlanSpaceRemoval", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeSpacePerson`(request: Silo_V1_RemoveSpacePersonRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RemoveSpacePersonResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveSpacePerson", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `createSpaceInvite`(request: Silo_V1_CreateSpaceInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SpaceInviteLink> {
+        return await self.client.unary(path: "/silo.v1.UI/CreateSpaceInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listSpaceInvites`(request: Silo_V1_ListSpaceInvitesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpaceInvitesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaceInvites", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteSpaceInvite`(request: Silo_V1_DeleteSpaceInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteSpaceInviteResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteSpaceInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSpaceInvite`(request: Silo_V1_GetSpaceInviteRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SpaceInviteInfo> {
+        return await self.client.unary(path: "/silo.v1.UI/GetSpaceInvite", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `joinSpace`(request: Silo_V1_JoinSpaceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_JoinSpaceResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/JoinSpace", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listBotPeople`(request: Silo_V1_ListBotPeopleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListBotPeopleResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListBotPeople", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `addBotPerson`(request: Silo_V1_AddBotPersonRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_AddBotPersonResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/AddBotPerson", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setBotRole`(request: Silo_V1_SetBotRoleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotPerson> {
+        return await self.client.unary(path: "/silo.v1.UI/SetBotRole", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeBotPerson`(request: Silo_V1_RemoveBotPersonRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RemoveBotPersonResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveBotPerson", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setLendShared`(request: Silo_V1_SetLendSharedRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SetLendSharedResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/SetLendShared", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listSpaceRules`(request: Silo_V1_ListSpaceRulesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpaceRulesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaceRules", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSpaceRule`(request: Silo_V1_SetSpaceRuleRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Rule> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSpaceRule", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateSpacePolicy`(request: Silo_V1_UpdateSpacePolicyRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpaceRulesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateSpacePolicy", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listSpaceActivity`(request: Silo_V1_ListSpaceActivityRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSpaceActivityResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaceActivity", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `planMoveBot`(request: Silo_V1_MoveBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_MoveBotPlan> {
+        return await self.client.unary(path: "/silo.v1.UI/PlanMoveBot", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `moveBot`(request: Silo_V1_MoveBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Bot> {
+        return await self.client.unary(path: "/silo.v1.UI/MoveBot", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listBots`(request: Silo_V1_ListBotsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListBotsResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListBots", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -751,6 +1032,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `resetContainer`(request: Silo_V1_GetBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Bot> {
         return await self.client.unary(path: "/silo.v1.UI/ResetContainer", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setDesktopPaused`(request: Silo_V1_SetDesktopPausedRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SetDesktopPausedResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/SetDesktopPaused", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -861,6 +1147,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `submitDashboardCard`(request: Silo_V1_SubmitDashboardCardRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SubmitDashboardCardResponse> {
         return await self.client.unary(path: "/silo.v1.UI/SubmitDashboardCard", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `resolveSetupOffer`(request: Silo_V1_ResolveSetupOfferRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SetupOffer> {
+        return await self.client.unary(path: "/silo.v1.UI/ResolveSetupOffer", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1016,6 +1307,16 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `streamRun`(headers: Connect.Headers = [:]) -> any Connect.ServerOnlyAsyncStreamInterface<Silo_V1_StreamRunRequest, Silo_V1_RunEvent> {
         return self.client.serverOnlyStream(path: "/silo.v1.UI/StreamRun", headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listChatEvents`(request: Silo_V1_ListChatEventsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListChatEventsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListChatEvents", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listCommands`(request: Silo_V1_ListCommandsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListCommandsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListCommands", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1299,6 +1600,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listSpaceConnectors`(request: Silo_V1_ListSpaceConnectorsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListConnectorsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaceConnectors", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `grantConnector`(request: Silo_V1_GrantConnectorRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotConnector> {
+        return await self.client.unary(path: "/silo.v1.UI/GrantConnector", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `revokeConnector`(request: Silo_V1_RevokeConnectorRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RevokeConnectorResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RevokeConnector", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `refreshBotConnector`(request: Silo_V1_RefreshBotConnectorRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BotConnector> {
         return await self.client.unary(path: "/silo.v1.UI/RefreshBotConnector", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1449,6 +1765,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listSpaceDrives`(request: Silo_V1_ListSpaceDrivesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListDrivesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSpaceDrives", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `grantDrive`(request: Silo_V1_GrantDriveRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Drive> {
+        return await self.client.unary(path: "/silo.v1.UI/GrantDrive", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `revokeDrive`(request: Silo_V1_RevokeDriveRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RevokeDriveResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RevokeDrive", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `beginDriveAuth`(request: Silo_V1_BeginDriveAuthRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BeginDriveAuthResponse> {
         return await self.client.unary(path: "/silo.v1.UI/BeginDriveAuth", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1497,6 +1828,32 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let createInvite = Connect.MethodSpec(name: "CreateInvite", service: "silo.v1.UI", type: .unary)
             public static let deleteInvite = Connect.MethodSpec(name: "DeleteInvite", service: "silo.v1.UI", type: .unary)
             public static let checkOidc = Connect.MethodSpec(name: "CheckOIDC", service: "silo.v1.UI", type: .unary)
+            public static let listSpaces = Connect.MethodSpec(name: "ListSpaces", service: "silo.v1.UI", type: .unary)
+            public static let getSpace = Connect.MethodSpec(name: "GetSpace", service: "silo.v1.UI", type: .unary)
+            public static let createSpace = Connect.MethodSpec(name: "CreateSpace", service: "silo.v1.UI", type: .unary)
+            public static let updateSpace = Connect.MethodSpec(name: "UpdateSpace", service: "silo.v1.UI", type: .unary)
+            public static let deleteSpace = Connect.MethodSpec(name: "DeleteSpace", service: "silo.v1.UI", type: .unary)
+            public static let transferSpace = Connect.MethodSpec(name: "TransferSpace", service: "silo.v1.UI", type: .unary)
+            public static let listSpacePeople = Connect.MethodSpec(name: "ListSpacePeople", service: "silo.v1.UI", type: .unary)
+            public static let setSpaceRole = Connect.MethodSpec(name: "SetSpaceRole", service: "silo.v1.UI", type: .unary)
+            public static let planSpaceRemoval = Connect.MethodSpec(name: "PlanSpaceRemoval", service: "silo.v1.UI", type: .unary)
+            public static let removeSpacePerson = Connect.MethodSpec(name: "RemoveSpacePerson", service: "silo.v1.UI", type: .unary)
+            public static let createSpaceInvite = Connect.MethodSpec(name: "CreateSpaceInvite", service: "silo.v1.UI", type: .unary)
+            public static let listSpaceInvites = Connect.MethodSpec(name: "ListSpaceInvites", service: "silo.v1.UI", type: .unary)
+            public static let deleteSpaceInvite = Connect.MethodSpec(name: "DeleteSpaceInvite", service: "silo.v1.UI", type: .unary)
+            public static let getSpaceInvite = Connect.MethodSpec(name: "GetSpaceInvite", service: "silo.v1.UI", type: .unary)
+            public static let joinSpace = Connect.MethodSpec(name: "JoinSpace", service: "silo.v1.UI", type: .unary)
+            public static let listBotPeople = Connect.MethodSpec(name: "ListBotPeople", service: "silo.v1.UI", type: .unary)
+            public static let addBotPerson = Connect.MethodSpec(name: "AddBotPerson", service: "silo.v1.UI", type: .unary)
+            public static let setBotRole = Connect.MethodSpec(name: "SetBotRole", service: "silo.v1.UI", type: .unary)
+            public static let removeBotPerson = Connect.MethodSpec(name: "RemoveBotPerson", service: "silo.v1.UI", type: .unary)
+            public static let setLendShared = Connect.MethodSpec(name: "SetLendShared", service: "silo.v1.UI", type: .unary)
+            public static let listSpaceRules = Connect.MethodSpec(name: "ListSpaceRules", service: "silo.v1.UI", type: .unary)
+            public static let setSpaceRule = Connect.MethodSpec(name: "SetSpaceRule", service: "silo.v1.UI", type: .unary)
+            public static let updateSpacePolicy = Connect.MethodSpec(name: "UpdateSpacePolicy", service: "silo.v1.UI", type: .unary)
+            public static let listSpaceActivity = Connect.MethodSpec(name: "ListSpaceActivity", service: "silo.v1.UI", type: .unary)
+            public static let planMoveBot = Connect.MethodSpec(name: "PlanMoveBot", service: "silo.v1.UI", type: .unary)
+            public static let moveBot = Connect.MethodSpec(name: "MoveBot", service: "silo.v1.UI", type: .unary)
             public static let listBots = Connect.MethodSpec(name: "ListBots", service: "silo.v1.UI", type: .unary)
             public static let createBot = Connect.MethodSpec(name: "CreateBot", service: "silo.v1.UI", type: .unary)
             public static let updateBot = Connect.MethodSpec(name: "UpdateBot", service: "silo.v1.UI", type: .unary)
@@ -1505,6 +1862,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let startBot = Connect.MethodSpec(name: "StartBot", service: "silo.v1.UI", type: .unary)
             public static let stopBot = Connect.MethodSpec(name: "StopBot", service: "silo.v1.UI", type: .unary)
             public static let resetContainer = Connect.MethodSpec(name: "ResetContainer", service: "silo.v1.UI", type: .unary)
+            public static let setDesktopPaused = Connect.MethodSpec(name: "SetDesktopPaused", service: "silo.v1.UI", type: .unary)
             public static let listBotContainers = Connect.MethodSpec(name: "ListBotContainers", service: "silo.v1.UI", type: .unary)
             public static let removeBotContainers = Connect.MethodSpec(name: "RemoveBotContainers", service: "silo.v1.UI", type: .unary)
             public static let listAdminContainers = Connect.MethodSpec(name: "ListAdminContainers", service: "silo.v1.UI", type: .unary)
@@ -1527,6 +1885,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let markDashboardRead = Connect.MethodSpec(name: "MarkDashboardRead", service: "silo.v1.UI", type: .unary)
             public static let dismissDashboardCard = Connect.MethodSpec(name: "DismissDashboardCard", service: "silo.v1.UI", type: .unary)
             public static let submitDashboardCard = Connect.MethodSpec(name: "SubmitDashboardCard", service: "silo.v1.UI", type: .unary)
+            public static let resolveSetupOffer = Connect.MethodSpec(name: "ResolveSetupOffer", service: "silo.v1.UI", type: .unary)
             public static let refreshWidget = Connect.MethodSpec(name: "RefreshWidget", service: "silo.v1.UI", type: .unary)
             public static let setWidgetState = Connect.MethodSpec(name: "SetWidgetState", service: "silo.v1.UI", type: .unary)
             public static let runWidgetAction = Connect.MethodSpec(name: "RunWidgetAction", service: "silo.v1.UI", type: .unary)
@@ -1558,6 +1917,8 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let send = Connect.MethodSpec(name: "Send", service: "silo.v1.UI", type: .unary)
             public static let stopRun = Connect.MethodSpec(name: "StopRun", service: "silo.v1.UI", type: .unary)
             public static let streamRun = Connect.MethodSpec(name: "StreamRun", service: "silo.v1.UI", type: .serverStream)
+            public static let listChatEvents = Connect.MethodSpec(name: "ListChatEvents", service: "silo.v1.UI", type: .unary)
+            public static let listCommands = Connect.MethodSpec(name: "ListCommands", service: "silo.v1.UI", type: .unary)
             public static let editMessage = Connect.MethodSpec(name: "EditMessage", service: "silo.v1.UI", type: .unary)
             public static let deleteMessage = Connect.MethodSpec(name: "DeleteMessage", service: "silo.v1.UI", type: .unary)
             public static let divergeChat = Connect.MethodSpec(name: "DivergeChat", service: "silo.v1.UI", type: .unary)
@@ -1614,6 +1975,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let attachConnector = Connect.MethodSpec(name: "AttachConnector", service: "silo.v1.UI", type: .unary)
             public static let createBotConnector = Connect.MethodSpec(name: "CreateBotConnector", service: "silo.v1.UI", type: .unary)
             public static let detachConnector = Connect.MethodSpec(name: "DetachConnector", service: "silo.v1.UI", type: .unary)
+            public static let listSpaceConnectors = Connect.MethodSpec(name: "ListSpaceConnectors", service: "silo.v1.UI", type: .unary)
+            public static let grantConnector = Connect.MethodSpec(name: "GrantConnector", service: "silo.v1.UI", type: .unary)
+            public static let revokeConnector = Connect.MethodSpec(name: "RevokeConnector", service: "silo.v1.UI", type: .unary)
             public static let refreshBotConnector = Connect.MethodSpec(name: "RefreshBotConnector", service: "silo.v1.UI", type: .unary)
             public static let startConnectorAuth = Connect.MethodSpec(name: "StartConnectorAuth", service: "silo.v1.UI", type: .unary)
             public static let seedConnectors = Connect.MethodSpec(name: "SeedConnectors", service: "silo.v1.UI", type: .unary)
@@ -1644,6 +2008,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listDrives = Connect.MethodSpec(name: "ListDrives", service: "silo.v1.UI", type: .unary)
             public static let saveDrive = Connect.MethodSpec(name: "SaveDrive", service: "silo.v1.UI", type: .unary)
             public static let deleteDrive = Connect.MethodSpec(name: "DeleteDrive", service: "silo.v1.UI", type: .unary)
+            public static let listSpaceDrives = Connect.MethodSpec(name: "ListSpaceDrives", service: "silo.v1.UI", type: .unary)
+            public static let grantDrive = Connect.MethodSpec(name: "GrantDrive", service: "silo.v1.UI", type: .unary)
+            public static let revokeDrive = Connect.MethodSpec(name: "RevokeDrive", service: "silo.v1.UI", type: .unary)
             public static let beginDriveAuth = Connect.MethodSpec(name: "BeginDriveAuth", service: "silo.v1.UI", type: .unary)
             public static let pickDriveOptions = Connect.MethodSpec(name: "PickDriveOptions", service: "silo.v1.UI", type: .unary)
             public static let browseDrive = Connect.MethodSpec(name: "BrowseDrive", service: "silo.v1.UI", type: .unary)
