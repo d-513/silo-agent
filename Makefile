@@ -1,6 +1,9 @@
 # Toolchain / environment. Everything can be overridden on the command line,
 # e.g. `make DOCKER_HOST=unix:///run/podman/podman.sock run-control`.
-export CGO_ENABLED ?= 0
+# cgo is on for what runs on this host (the control plane, the tests). What
+# runs inside a container is built static with CGO_ENABLED=0 below: a cgo
+# binary built here links this host's glibc loader, which no image has.
+export CGO_ENABLED ?= 1
 export DOCKER_HOST ?= unix:///run/user/1000/podman/podman.sock
 
 GO          ?= go
@@ -74,10 +77,10 @@ build-cp: ## Build the control plane to bin/silo
 	$(GO) build -o bin/silo ./cmd/silo
 
 build-worker: ## Cross-build the in-container worker to bin/silo-worker
-	GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-worker ./cmd/silo-worker
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-worker ./cmd/silo-worker
 
 build-bridge: ## Cross-build the STDIO MCP bridge to bin/silo-mcp-bridge
-	GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
 
 build-drive: ## Cross-build the drive sidecar to bin/silo-drive
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-drive ./cmd/silo-drive

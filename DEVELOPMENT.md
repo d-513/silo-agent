@@ -13,7 +13,7 @@ Architecture: `docs/Description.md`. UI: `DESIGN.md`. Agent prompt: `internal/pr
 
 ## Prerequisites
 
-- Go 1.26+ (`CGO_ENABLED=0`)
+- Go 1.26+ and a C toolchain (gcc): the control plane and the tests build with cgo; the worker, bridge, drive and egress binaries are built static (`CGO_ENABLED=0`) because they run in Debian images
 - pnpm + Node 22+
 - Podman (or Docker) with a socket the CP can reach, plus `podman compose` (or set `COMPOSE=docker compose`)
 - `tmux` for `make dev`, `watchexec` for `make watch-control`
