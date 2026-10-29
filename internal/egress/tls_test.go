@@ -31,10 +31,22 @@ func TestReadClientHelloSNI(t *testing.T) {
 	if spec == nil {
 		t.Fatal("no mirrored spec")
 	}
+	// The client offered h2; upstream only http/1.1 is offered (all the
+	// gateway relays), and ALPS, which belongs to h2, goes with it.
+	alpn := 0
 	for _, e := range spec.Extensions {
-		if _, ok := e.(*utls.ALPNExtension); ok {
-			t.Fatal("ALPN must be dropped so the origin answers HTTP/1.1")
+		switch e := e.(type) {
+		case *utls.ALPNExtension:
+			alpn++
+			if len(e.AlpnProtocols) != 1 || e.AlpnProtocols[0] != "http/1.1" {
+				t.Fatalf("ALPN offers %v, want only http/1.1", e.AlpnProtocols)
+			}
+		case *utls.ApplicationSettingsExtension, *utls.ApplicationSettingsExtensionNew:
+			t.Fatal("ALPS was kept without the h2 it settles")
 		}
+	}
+	if alpn != 1 {
+		t.Fatalf("%d ALPN extensions, want the client's one in place", alpn)
 	}
 }
 

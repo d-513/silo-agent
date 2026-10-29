@@ -564,3 +564,75 @@ func originCapture(t *testing.T) (net.Listener, <-chan string) {
 	}()
 	return ln, got
 }
+
+// originRaw answers every request with the same raw bytes.
+func originRaw(t *testing.T, answer string) net.Listener {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer c.Close()
+				req, err := http.ReadRequest(bufio.NewReader(c))
+				if err != nil {
+					return
+				}
+				_, _ = io.Copy(io.Discard, req.Body)
+				_, _ = io.WriteString(c, answer)
+			}()
+		}
+	}()
+	return ln
+}
+
+// An origin's 103 Early Hints is passed on and the real answer read after it;
+// taken for the answer, it closed the origin and left the box waiting. The
+// answer's Alt-Svc goes: the gateway carries no HTTP/3.
+func TestProxyPassesInterimAnswersOn(t *testing.T) {
+	origin := originRaw(t, "HTTP/1.1 103 Early Hints\r\nLink: </s.css>; rel=preload; as=style\r\n\r\n"+
+		"HTTP/1.1 200 OK\r\nAlt-Svc: h3=\":443\"; ma=86400\r\nContent-Length: 5\r\n\r\nhello")
+	p, _, _ := testProxy(t, origin)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go p.Serve(ctx, ln, ModeProxy)
+
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	_, _ = fmt.Fprintf(conn, "GET http://origin.test/ HTTP/1.1\r\nHost: origin.test\r\n\r\n")
+	br := bufio.NewReader(conn)
+	hints, err := http.ReadResponse(br, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hints.StatusCode != 103 || hints.Header.Get("Link") == "" || hints.Header.Get("Content-Length") != "" {
+		t.Fatalf("interim = %d %v", hints.StatusCode, hints.Header)
+	}
+	resp, err := http.ReadResponse(br, nil)
+	if err != nil {
+		t.Fatalf("the real answer never came: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || string(body) != "hello" {
+		t.Fatalf("status %d body %q", resp.StatusCode, body)
+	}
+	if v := resp.Header.Get("Alt-Svc"); v != "" {
+		t.Fatalf("Alt-Svc passed on: %q", v)
+	}
+}

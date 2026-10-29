@@ -107,8 +107,11 @@ func sniFromClientHello(b []byte) string {
 }
 
 // mirrorSpec turns the client's ClientHello into a spec the gateway can send
-// upstream, dropping ALPN so the origin answers with HTTP/1.1 (which is what
-// the gateway speaks) while keeping the rest of the fingerprint. The SNI is
+// upstream, keeping the client's fingerprint except where the gateway speaks
+// differently: ALPN offers only http/1.1 (all the gateway relays), in the
+// extension's own place, and ALPS goes, since it carries HTTP/2 settings for a
+// protocol no longer offered. A hello that offers ALPS without the ALPN it
+// belongs to is no browser's, which is what bot walls look for. The SNI is
 // filled from host by the caller.
 func mirrorSpec(raw []byte, host string) *utls.ClientHelloSpec {
 	var spec *utls.ClientHelloSpec
@@ -126,10 +129,13 @@ func mirrorSpec(raw []byte, host string) *utls.ClientHelloSpec {
 	out := *spec
 	exts := make([]utls.TLSExtension, 0, len(spec.Extensions))
 	for _, e := range spec.Extensions {
-		if _, ok := e.(*utls.ALPNExtension); ok {
-			continue
+		switch e.(type) {
+		case *utls.ALPNExtension:
+			exts = append(exts, &utls.ALPNExtension{AlpnProtocols: []string{"http/1.1"}})
+		case *utls.ApplicationSettingsExtension, *utls.ApplicationSettingsExtensionNew:
+		default:
+			exts = append(exts, e)
 		}
-		exts = append(exts, e)
 	}
 	out.Extensions = exts
 	return &out

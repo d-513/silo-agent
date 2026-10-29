@@ -244,6 +244,7 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 	origin, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		log.Printf("egress: dial %s:%d: %v", host, port, err)
+		p.traffic(c, host, 0, 0, "")
 		writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
 		return true, nil
 	}
@@ -251,6 +252,8 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 		tc, err := p.dialTLS(origin, host, spec)
 		if err != nil {
 			origin.Close()
+			log.Printf("egress: tls to %s:%d: %v", host, port, err)
+			p.traffic(c, host, 0, 0, "")
 			writeStatusCode(client, http.StatusBadGateway, "the filter could not make a verified TLS connection to "+host+": "+err.Error())
 			return true, nil
 		}
@@ -283,6 +286,7 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 			writeBlock(client, lv.Detail)
 			return true, nil
 		}
+		log.Printf("egress: %s %s%s: sending the request: %v", req.Method, host, req.URL.Path, err)
 		writeStatusCode(client, http.StatusBadGateway, "the filter lost the origin")
 		return true, nil
 	}
@@ -302,18 +306,33 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 // becomes a splice once the 101 is through.
 func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn, req *http.Request, c *Client, host string, swapHost bool) (bool, int64, error) {
 	obr := bufio.NewReader(origin)
+	cw := &countWriter{w: client}
 	resp, err := http.ReadResponse(obr, req)
+	// An interim answer (103 Early Hints, a 100 the origin sent anyway) is
+	// passed on and the real one read after it: taking it for the answer
+	// would close the origin with the response still to come, and leave the
+	// box waiting for it on a connection the gateway thinks is done.
+	for err == nil && resp.StatusCode >= 100 && resp.StatusCode < 200 && resp.StatusCode != http.StatusSwitchingProtocols {
+		if err := writeInterim(cw, resp); err != nil {
+			return true, cw.n, err
+		}
+		resp, err = http.ReadResponse(obr, req)
+	}
 	if err != nil {
+		log.Printf("egress: %s %s%s: no answer: %v", req.Method, host, req.URL.Path, err)
 		writeStatusCode(client, http.StatusBadGateway, "the filter got no answer from "+host)
-		return true, 0, nil
+		return true, cw.n, nil
 	}
 	defer resp.Body.Close()
+	// Alt-Svc offers HTTP/3 over UDP, which the gateway does not carry: a
+	// browser that took it up would race QUIC against every request and mark
+	// the origin broken.
+	resp.Header.Del("Alt-Svc")
 	g := p.Guard()
 	b := g.State.bot(c)
 	if swapHost {
 		b.swapBackHeader(resp.Header)
 	}
-	cw := &countWriter{w: client}
 
 	if resp.StatusCode == http.StatusSwitchingProtocols {
 		if err := resp.Write(cw); err != nil {
@@ -361,6 +380,19 @@ func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn
 		return true, cw.n, err
 	}
 	return resp.Close, cw.n, nil
+}
+
+// writeInterim passes a 1xx answer on as it came: a status line and headers,
+// never a body or a length (http.Response.Write would add one).
+func writeInterim(w io.Writer, resp *http.Response) error {
+	if _, err := fmt.Fprintf(w, "HTTP/1.1 %d %s\r\n", resp.StatusCode, http.StatusText(resp.StatusCode)); err != nil {
+		return err
+	}
+	if err := resp.Header.Write(w); err != nil {
+		return err
+	}
+	_, err := io.WriteString(w, "\r\n")
+	return err
 }
 
 // hasBody reports whether an answer to req carries a body at all.
@@ -512,6 +544,10 @@ func (p *Proxy) mitm(ctx context.Context, client net.Conn, src io.Reader, raw []
 	err := tlsConn.HandshakeContext(hctx)
 	cancel()
 	if err != nil {
+		// The box refused the gateway's certificate (a stale CA after a
+		// rotation, a client with its own trust store) or gave up: say so,
+		// because the box only sees a broken connection.
+		log.Printf("egress: tls from a client for %s: %v", host, err)
 		return err
 	}
 	_ = client.SetReadDeadline(time.Time{})
