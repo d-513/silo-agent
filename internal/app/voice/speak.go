@@ -62,9 +62,14 @@ func (s *Service) SpeechEnabled() bool {
 	return models.Can[llm.Speaker](s.models, m, "speak") == nil
 }
 
-// CallEnabled reports whether a call can work: speech both ways.
+// CallEnabled reports whether a call can work: speech both ways, the
+// hearing side live or one request per turn.
 func (s *Service) CallEnabled() bool {
-	return s.SpeechEnabled() && s.Enabled()
+	if !s.SpeechEnabled() {
+		return false
+	}
+	h := s.hearingFor(s.cfg().CallTranscribeModel())
+	return h.model != "" && (h.batch || h.live != nil)
 }
 
 // SoundOf is how a Bot sounds: its own speech model while it is still
@@ -81,7 +86,7 @@ func (s *Service) SoundOf(ctx context.Context, b *db.Bot) Sound {
 	}
 	voices, _ := s.voices(ctx, out.Model)
 	switch v := strings.TrimSpace(b.Voice); {
-	case v != "" && (len(voices) == 0 || contains(voices, v)):
+	case v != "" && (len(voices) == 0 || hasVoice(voices, v)):
 		out.Voice = v
 	default:
 		out.Voice = speech.PickVoice(voices, out.Language)
@@ -89,9 +94,9 @@ func (s *Service) SoundOf(ctx context.Context, b *db.Bot) Sound {
 	return out
 }
 
-func contains(list []string, v string) bool {
+func hasVoice(list []speech.Voice, id string) bool {
 	for _, x := range list {
-		if x == v {
+		if x.ID == id {
 			return true
 		}
 	}
@@ -99,7 +104,7 @@ func contains(list []string, v string) bool {
 }
 
 // voices are a speech model's voices, where its provider lists them.
-func (s *Service) voices(ctx context.Context, modelID string) ([]string, error) {
+func (s *Service) voices(ctx context.Context, modelID string) ([]speech.Voice, error) {
 	if modelID == "" {
 		return nil, nil
 	}
@@ -113,7 +118,12 @@ func (s *Service) voices(ctx context.Context, modelID string) ([]string, error) 
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	return lister.Voices(ctx, model)
+	listed, err := lister.Voices(ctx, model)
+	out := make([]speech.Voice, 0, len(listed))
+	for _, v := range listed {
+		out = append(out, speech.Voice{ID: v.ID, Name: v.Name, Language: v.Language}.Described())
+	}
+	return out, err
 }
 
 // Speak asks the Bot's speech model to say one piece of text, already made
@@ -170,7 +180,7 @@ func (s *Service) ListVoices(ctx context.Context, req *connect.Request[v1.ListVo
 		log.Printf("voice: list voices of %s: %v", modelID, err)
 	}
 	for _, v := range voices {
-		out.Voices = append(out.Voices, &v1.Voice{Id: v, Label: speech.VoiceLabel(v), Language: speech.VoiceLanguage(v)})
+		out.Voices = append(out.Voices, &v1.Voice{Id: v.ID, Label: v.Name, Language: v.Language})
 	}
 	out.DefaultVoice = speech.PickVoice(voices, snd.Language)
 	return connect.NewResponse(out), nil

@@ -453,9 +453,10 @@ var textRoles = []string{"model", "model_title", "model_subagent", "model_memory
 // model counts as allowed (Config.KindModels), so it is checked for its kind
 // here and not against the list.
 var kindRoles = map[string]string{
-	"transcribe_model":   llm.KindTranscription,
-	"voice.speech_model": llm.KindSpeech,
-	"embedding_model":    llm.KindEmbedding,
+	"transcribe_model":       llm.KindTranscription,
+	"voice.transcribe_model": llm.KindTranscription,
+	"voice.speech_model":     llm.KindSpeech,
+	"embedding_model":        llm.KindEmbedding,
 }
 
 // kindNames word a kind in a refusal.

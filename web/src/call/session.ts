@@ -1,5 +1,5 @@
 import type { MicVAD } from "@ricky0123/vad-web";
-import { encodeWAV, joinFrames, loudness, playoutMs } from "./audio";
+import { encodeWAV, joinFrames, loudness, pcm16, playoutMs } from "./audio";
 import { micError } from "../voice";
 import { t } from "../i18n.ts";
 
@@ -20,6 +20,8 @@ export type CallSnapshot = {
   tool: string;
   // Your last turn as it was heard, and the sentence the Bot is saying.
   heard: string;
+  // Your words as they are being heard, while a turn streams live.
+  hearing: string;
   saying: string;
   muted: boolean;
   // Hold to talk: no voice detection, a turn is what is said while held.
@@ -41,6 +43,11 @@ const redemptionMs = 550;
 const duckFrames = 3;
 const duckThreshold = 0.7;
 const minTurnSamples = 16000 / 4;
+// Live hearing: the frames kept from before speech starts (~320 ms), and how
+// much silence lets the transcriber's end of turn end the turn early.
+const preRollFrames = 10;
+const eotQuietFrames = 3;
+const quietThreshold = 0.35;
 
 type ServerMsg = {
   t: string;
@@ -49,6 +56,8 @@ type ServerMsg = {
   sdp?: string;
   candidate?: RTCIceCandidateInit;
   ice_servers?: { urls: string[]; username?: string; credential?: string }[];
+  stt?: string;
+  n?: number;
   state?: string;
   tool?: string;
   text?: string;
@@ -77,12 +86,20 @@ export class CallSession {
   private raf = 0;
   private wake?: WakeLockSentinel;
   private lastEmit = 0;
+  // Live hearing (hello's stt is "live"): turns stream as they are spoken.
+  private live = false;
+  private turnN = 0;
+  private turnOpen = false;
+  private ring: Float32Array[] = [];
+  private quiet = 0;
+  // A turn the transcriber ended early; speech that goes on opens the next.
+  private endedEarly = false;
 
   constructor(
     private botId: string,
     chat: string,
   ) {
-    this.snap = { state: "connecting", tool: "", heard: "", saying: "", muted: false, ptt: false, holding: false, level: 0, chatId: chat, callId: "", error: "", startedAt: Date.now() };
+    this.snap = { state: "connecting", tool: "", heard: "", hearing: "", saying: "", muted: false, ptt: false, holding: false, level: 0, chatId: chat, callId: "", error: "", startedAt: Date.now() };
     this.audio.autoplay = true;
   }
 
@@ -152,17 +169,30 @@ export class CallSession {
       },
       onFrameProcessed: (p, frame) => this.onFrame(p.isSpeech, frame),
       onSpeechStart: () => {
-        if (!this.snap.ptt) this.set({ state: "hearing" });
+        if (this.snap.ptt) return;
+        this.set({ state: "hearing" });
+        if (this.live) this.openTurn();
       },
       onSpeechRealStart: () => {
         if (!this.snap.ptt && this.ducked) this.interrupt();
       },
       onVADMisfire: () => {
         if (this.ducked && !this.cut) this.unduck();
+        if (this.live && !this.snap.ptt && this.turnOpen) {
+          this.turnOpen = false;
+          this.send({ t: "cancel", n: this.turnN });
+        }
+        this.endedEarly = false;
         if (!this.snap.ptt && this.snap.state === "hearing") this.set({ state: this.fromServer() });
       },
       onSpeechEnd: (audio) => {
-        if (!this.snap.ptt) this.sendTurn(audio, redemptionMs);
+        if (this.snap.ptt) return;
+        if (this.live) {
+          if (this.turnOpen) this.endTurn(redemptionMs);
+          this.endedEarly = false;
+          return;
+        }
+        this.sendTurn(audio, redemptionMs);
       },
     });
     if (this.snap.state !== "ended") void this.vad.start();
@@ -171,7 +201,8 @@ export class CallSession {
   // Every 32 ms frame of the microphone: the meter, hold-to-talk capture, and
   // ducking the Bot the moment you seem to start speaking over it.
   private onFrame(speech: number, frame: Float32Array) {
-    if (this.snap.holding) this.held.push(frame.slice());
+    if (this.snap.holding && !this.live) this.held.push(frame.slice());
+    if (this.live && !this.snap.muted) this.liveFrame(speech, frame);
     if (this.serverState === "speaking" && !this.ducked && !this.snap.ptt) {
       this.speechRun = speech > duckThreshold ? this.speechRun + 1 : 0;
       if (this.speechRun >= duckFrames) this.duck();
@@ -208,6 +239,40 @@ export class CallSession {
     this.send({ t: "interrupt" });
   }
 
+  // A live turn's audio goes out as it comes; between turns the last few
+  // frames are kept so a turn starts before the detector was sure.
+  private liveFrame(speech: number, frame: Float32Array) {
+    if (this.turnOpen) {
+      this.ws?.send(pcm16(frame));
+      this.quiet = speech < quietThreshold ? this.quiet + 1 : 0;
+      return;
+    }
+    this.ring.push(frame.slice());
+    if (this.ring.length > preRollFrames) this.ring.shift();
+    // Still talking after the turn was ended early: that is the next turn.
+    if (this.endedEarly && !this.snap.ptt && speech > 0.5) {
+      this.endedEarly = false;
+      this.openTurn();
+    }
+  }
+
+  private openTurn() {
+    if (this.snap.muted || this.turnOpen) return;
+    this.turnN++;
+    this.turnOpen = true;
+    this.quiet = 0;
+    this.send({ t: "speech", n: this.turnN });
+    for (const f of this.ring) this.ws?.send(pcm16(f));
+    this.ring = [];
+    this.set({ hearing: "" });
+  }
+
+  private endTurn(eou: number) {
+    this.turnOpen = false;
+    this.send({ t: "turn", n: this.turnN, eou_ms: eou });
+    this.set({ state: "thinking", heard: "", saying: "" });
+  }
+
   private sendTurn(audio: Float32Array, eou: number) {
     if (audio.length < minTurnSamples || this.snap.muted) {
       this.set({ state: this.fromServer() });
@@ -221,6 +286,7 @@ export class CallSession {
   private async onMessage(m: ServerMsg) {
     switch (m.t) {
       case "hello":
+        this.live = m.stt === "live";
         this.set({ callId: m.call_id ?? "", chatId: m.chat_id ?? this.snap.chatId, state: "listening" });
         await this.connect(m.ice_servers ?? []);
         break;
@@ -250,7 +316,19 @@ export class CallSession {
         this.set({ saying: m.text ?? "" });
         break;
       case "heard":
-        this.set({ heard: m.text ?? "", error: "" });
+        this.set({ heard: m.text ?? "", hearing: "", error: "" });
+        break;
+      case "caption":
+        // Live words of the turn being heard (a late one for a closed turn is dropped).
+        if (m.n === this.turnN) this.set({ hearing: m.text ?? "" });
+        break;
+      case "eot":
+        // The transcriber judged the turn over: end it now if there is
+        // silence already, instead of waiting out the detector.
+        if (this.turnOpen && m.n === this.turnN && this.quiet >= eotQuietFrames && !this.snap.ptt) {
+          this.endTurn(this.quiet * 32);
+          this.endedEarly = true;
+        }
         break;
       case "error":
         this.set({ error: m.message ?? "" });
@@ -354,6 +432,15 @@ export class CallSession {
       this.held = [];
       if (this.serverState === "speaking") this.interrupt();
       this.set({ holding: true, state: "hearing" });
+      if (this.live) {
+        this.ring = [];
+        this.openTurn();
+      }
+      return;
+    }
+    if (this.live) {
+      this.set({ holding: false });
+      if (this.turnOpen) this.endTurn(0);
       return;
     }
     const audio = joinFrames(this.held);

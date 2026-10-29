@@ -119,3 +119,14 @@ func TestStream(t *testing.T) {
 		t.Fatalf("early sentence: %q", out)
 	}
 }
+
+func TestHeardWords(t *testing.T) {
+	words := []WordTime{{"The", 200}, {"meeting", 600}, {"is", 700}, {"at", 850}, {"six", 1200}}
+	h, u := HeardWords("The meeting is at six.", words, 900)
+	if h != "The meeting is at" || u != "six." {
+		t.Fatalf("%q / %q", h, u)
+	}
+	if h, _ := HeardWords("The meeting is at six.", words, 5000); h != "The meeting is at six." {
+		t.Fatalf("all heard: %q", h)
+	}
+}

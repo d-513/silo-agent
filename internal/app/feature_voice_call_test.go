@@ -124,6 +124,7 @@ type callClient struct {
 	pc      *webrtc.PeerConnection
 	msgs    chan map[string]any
 	packets atomic.Int64
+	hello   map[string]any
 }
 
 func dialCall(t *testing.T, h *apptest.H, botID, chat string) *callClient {
@@ -165,6 +166,7 @@ func dialCall(t *testing.T, h *apptest.H, botID, chat string) *callClient {
 	if hello["call_id"] == "" {
 		t.Fatalf("hello %v", hello)
 	}
+	c.hello = hello
 	se := webrtc.SettingEngine{}
 	se.SetIncludeLoopbackCandidate(true)
 	pc, err := webrtc.NewAPI(webrtc.WithSettingEngine(se)).NewPeerConnection(webrtc.Configuration{})
@@ -446,5 +448,92 @@ func TestTalkerEndsTheCall(t *testing.T) {
 	c.expect("say")
 	if bye := c.expect("bye"); bye["reason"] != "hangup" {
 		t.Fatalf("bye %v", bye)
+	}
+}
+
+// liveHarness makes calls hear and speak live (the dummy's live models).
+func liveHarness(t *testing.T, hear string) *apptest.H {
+	t.Helper()
+	h := voiceHarness(t)
+	if _, err := h.Client.PutSettings(h.Ctx(), connect.NewRequest(&v1.PutSettingsRequest{Fields: map[string]string{"voice.transcribe_model": hear, "voice.speech_model": "dummy/live-voice"}})); err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// streamTurn sends turn n as the browser does when hearing is live: a
+// "speech" mark, the audio in pieces as it is spoken, then "turn".
+func (c *callClient) streamTurn(n int, words string) {
+	c.send(map[string]any{"t": "speech", "n": n})
+	if len(words)%2 == 1 {
+		words += " "
+	}
+	for i := 0; i < len(words); i += 4 {
+		if err := c.ws.Write(context.Background(), websocket.MessageBinary, []byte(words[i:min(i+4, len(words))])); err != nil {
+			c.t.Fatal(err)
+		}
+	}
+	c.send(map[string]any{"t": "turn", "n": n, "eou_ms": 120})
+}
+
+// A model that hears live is sent the turn as it is spoken, shows the words
+// as they come, and the voice speaks on one connection with word timings.
+func TestVoiceCallLive(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_lv1", dummy.Turn{Text: "Hello there. I hear you live."})
+	h := liveHarness(t, "dummy/live-whisper")
+	id := h.CreateBot("Live").GetId()
+	c := dialCall(t, h, id, "")
+	if c.hello["stt"] != "live" {
+		t.Fatalf("hello %v", c.hello)
+	}
+	c.streamTurn(1, "Test_lv1 hi there")
+	if cap := c.expect("caption"); cap["text"] == "" {
+		t.Fatalf("caption %v", cap)
+	}
+	if heard := c.expect("heard"); heard["text"] != "Test_lv1 hi there" {
+		t.Fatalf("heard %v", heard)
+	}
+	if say := c.expect("say"); say["text"] != "Hello there." {
+		t.Fatalf("say %v", say)
+	}
+	c.expect("say")
+	waitFor(t, func() bool { return c.packets.Load() > 10 }, "the live voice on the track")
+	if said := dummy.LiveSaid(); len(said) != 2 || said[0] != "Hello there." {
+		t.Fatalf("the live voice said %q", said)
+	}
+	// One session to hear the turn, one voice for the call.
+	if n := dummy.LiveOpened(); n != 2 {
+		t.Fatalf("%d live connections opened", n)
+	}
+	if len(dummy.Spoken()) != 0 {
+		t.Fatal("a live voice should not fall back to one request per piece")
+	}
+
+	// A turn that was not speech is dropped with no transcript.
+	c.send(map[string]any{"t": "speech", "n": 2})
+	c.send(map[string]any{"t": "cancel", "n": 2})
+	c.send(map[string]any{"t": "hangup"})
+	c.expect("bye")
+}
+
+// A model that judges the end of a turn says so, so the browser can end it
+// early.
+func TestVoiceCallLiveEndOfTurn(t *testing.T) {
+	dummy.Reset()
+	h := liveHarness(t, "dummy/live-eot-whisper")
+	id := h.CreateBot("Live").GetId()
+	c := dialCall(t, h, id, "")
+	if c.hello["eot"] != true {
+		t.Fatalf("hello %v", c.hello)
+	}
+	c.send(map[string]any{"t": "speech", "n": 1})
+	for _, w := range []string{"that is ", "all, over"} {
+		if err := c.ws.Write(context.Background(), websocket.MessageBinary, []byte(w)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if eot := c.expect("eot"); eot["n"] != float64(1) {
+		t.Fatalf("eot %v", eot)
 	}
 }

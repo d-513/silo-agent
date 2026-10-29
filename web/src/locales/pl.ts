@@ -1924,7 +1924,6 @@ const pl: Record<string, string> = {
   "model name, e.g. openai/text-embedding-3-small": "nazwa modelu, np. openai/text-embedding-3-small",
   "In use_model": "W użyciu",
   "Speech-to-text": "Mowa na tekst",
-  "Hears what you say: dictation in the composer, the transcribe tool, and every turn of a call.": "Słyszy, co mówisz: dyktowanie w polu wiadomości, narzędzie transcribe i każda wypowiedź w rozmowie.",
   "Off: no dictation and no calls": "Wyłączone: bez dyktowania i rozmów",
   "No speech-to-text models allowed yet": "Nie ma jeszcze dozwolonych modeli zamiany mowy na tekst",
   "Speech": "Mowa",
@@ -2015,6 +2014,20 @@ const pl: Record<string, string> = {
   "Filter {{count}} embedding models_few": "Filtruj {{count}} modele embeddingów",
   "Filter {{count}} embedding models_many": "Filtruj {{count}} modeli embeddingów",
   "Filter {{count}} embedding models_other": "Filtruj {{count}} modelu embeddingów",
+  "live_model": "na żywo",
+  "Live": "Na żywo",
+  "Stays connected for a whole call and speaks each sentence on that connection, so the voice starts sooner.": "Pozostaje połączony przez całą rozmowę i mówi każde zdanie przez to samo połączenie, więc głos rusza szybciej.",
+  "Hears you as you speak, so the words are ready the moment you stop.": "Słyszy cię na bieżąco, więc słowa są gotowe, gdy tylko skończysz.",
+  "Says when each word is spoken, so a cut-off reply is recorded exactly as far as it was heard.": "Podaje, kiedy pada każde słowo, więc przerwana odpowiedź jest zapisana dokładnie do miejsca, w którym ją usłyszano.",
+  "Judges from your words when you have finished, so a turn can end before the silence timer.": "Z twoich słów ocenia, kiedy skończyłeś, więc wypowiedź może się zakończyć przed upływem czasu ciszy.",
+  "Hears what you say: dictation in the composer, the transcribe tool, and calls unless the next picker names another.": "Słyszy, co mówisz: dyktowanie w polu wiadomości, narzędzie transcribe i rozmowy, chyba że następne pole wskaże inny model.",
+  "Speech-to-text on calls": "Mowa na tekst w rozmowach",
+  "Hears every turn of a call. A live model hears you as you speak and has the words ready when you stop; dictation can stay on a cheaper one.": "Słyszy każdą wypowiedź w rozmowie. Model na żywo słyszy cię na bieżąco i ma słowa gotowe, gdy skończysz; dyktowanie może zostać na tańszym.",
+  "Same as dictation": "Taki sam jak przy dyktowaniu",
+  "Live: one connection for the whole call.": "Na żywo: jedno połączenie na całą rozmowę.",
+  "Live: heard as you speak.": "Na żywo: słyszy cię na bieżąco.",
+  "One request per sentence.": "Jedno zapytanie na zdanie.",
+  "One request per turn, after you stop.": "Jedno zapytanie na wypowiedź, gdy skończysz.",
 };
 
 export default pl;

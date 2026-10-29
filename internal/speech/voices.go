@@ -67,36 +67,59 @@ func title(s string) string {
 	return string(r)
 }
 
-// PickVoice chooses a voice for a language from a model's list: one that
-// names the language, preferring a neutral one, else the first. "" when the
-// list is empty (the provider then picks, or refuses).
-func PickVoice(voices []string, lang string) string {
+// Voice is a voice as a picker shows it: the provider's id, and the name
+// and language it gave (or that were read off the id).
+type Voice struct {
+	ID       string
+	Name     string
+	Language string
+}
+
+// Described fills in what a provider left out: a readable name and the
+// language its id names.
+func (v Voice) Described() Voice {
+	if v.Name == "" {
+		v.Name = VoiceLabel(v.ID)
+	}
+	if v.Language == "" {
+		v.Language = VoiceLanguage(v.ID)
+	}
+	v.Language = strings.ToLower(v.Language)
+	if i := strings.IndexAny(v.Language, "-_"); i > 0 {
+		v.Language = v.Language[:i]
+	}
+	return v
+}
+
+// PickVoice chooses a voice for a language from a model's list: one in that
+// language, preferring a neutral one, else an English one, else the first.
+// "" when the list is empty (the provider then picks, or refuses).
+func PickVoice(voices []Voice, lang string) string {
 	if len(voices) == 0 {
 		return ""
 	}
 	lang = strings.ToLower(lang)
-	var match []string
+	var match []Voice
 	for _, v := range voices {
-		if lang != "" && VoiceLanguage(v) == lang {
+		if lang != "" && v.Described().Language == lang {
 			match = append(match, v)
 		}
 	}
 	if len(match) == 0 {
-		// A list with no languages in its ids: any is as good.
+		// None in the language: any is as good, but English over another.
 		match = voices
 		if lang != "" && lang != "en" {
-			// Prefer an English one over another language's.
 			for _, v := range voices {
-				if VoiceLanguage(v) == "en" {
-					return v
+				if v.Described().Language == "en" {
+					return v.ID
 				}
 			}
 		}
 	}
 	for _, v := range match {
-		if strings.Contains(strings.ToLower(v), "neutral") {
-			return v
+		if strings.Contains(strings.ToLower(v.ID+" "+v.Name), "neutral") {
+			return v.ID
 		}
 	}
-	return match[0]
+	return match[0].ID
 }

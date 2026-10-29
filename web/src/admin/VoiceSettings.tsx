@@ -15,8 +15,16 @@ const PICKERS: { key: string; kind: "transcription" | "speech" | "text"; label: 
     key: "transcribe_model",
     kind: "transcription",
     label: msg("Speech-to-text"),
-    hint: msg("Hears what you say: dictation in the composer, the transcribe tool, and every turn of a call."),
+    hint: msg("Hears what you say: dictation in the composer, the transcribe tool, and calls unless the next picker names another."),
     off: msg("Off: no dictation and no calls"),
+    none: msg("No speech-to-text models allowed yet"),
+  },
+  {
+    key: "voice.transcribe_model",
+    kind: "transcription",
+    label: msg("Speech-to-text on calls"),
+    hint: msg("Hears every turn of a call. A live model hears you as you speak and has the words ready when you stop; dictation can stay on a cheaper one."),
+    off: msg("Same as dictation"),
     none: msg("No speech-to-text models allowed yet"),
   },
   {
@@ -51,16 +59,29 @@ export function VoiceSettings() {
           {PICKERS.map((p) => {
             const f = field(p.key);
             const list = p.kind === "text" ? models : allowedOf(p.kind);
+            // What the chosen model does on a call: live, or one request at a time.
+            const chosen = list.find((m) => m.id === (values[p.key] || (p.key === "voice.transcribe_model" ? values.transcribe_model : "")));
+            const how =
+              p.kind === "text" || !chosen
+                ? ""
+                : chosen.live
+                  ? p.kind === "speech"
+                    ? t("Live: one connection for the whole call.")
+                    : t("Live: heard as you speak.")
+                  : p.kind === "speech"
+                    ? t("One request per sentence.")
+                    : t("One request per turn, after you stop.");
             return (
               <Field key={p.key} label={t(p.label)} hint={t(p.hint)} headerRight={f ? <SourceChips field={f} /> : undefined}>
                 <Select
                   value={values[p.key] ?? ""}
                   onChange={(v) => setValue(p.key, v)}
                   disabled={f?.source === ConfigSource.ENV}
-                  options={[{ value: offValue(p.key), label: t(p.off) }, ...modelOptions(list)]}
+                  options={[{ value: offValue(p.key), label: t(p.off) }, ...modelOptions(list, t("live", { context: "model" }))]}
                   placeholder={t(p.off)}
                   emptyLabel={t(p.none)}
                 />
+                {how ? <p className={`mt-1.5 text-[12px] leading-[17px] ${chosen?.live ? "text-cobalt" : "text-ink-3"}`}>{how}</p> : null}
               </Field>
             );
           })}

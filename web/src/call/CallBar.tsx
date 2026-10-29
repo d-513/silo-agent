@@ -195,7 +195,8 @@ export function endWords(r?: EndReason): string {
 // speaks, your words once they were heard.
 function Caption({ s, botName }: { s: CallSnapshot; botName: string }) {
   const [shown, setShown] = useState("");
-  const line = s.state === "speaking" ? s.saying : s.heard ? `“${s.heard}”` : "";
+  // While a turn streams live, your words show as they are heard.
+  const line = s.state === "speaking" ? s.saying : s.hearing ? `“${s.hearing}…”` : s.heard ? `“${s.heard}”` : "";
   useEffect(() => setShown(line), [line]);
   if (s.error && s.state !== "ended") return <p className="truncate text-[12.5px] leading-[18px] text-vermilion">{s.error}</p>;
   if (s.state === "listening" && !s.heard) {

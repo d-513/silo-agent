@@ -63,6 +63,28 @@ providers:
     api_key: ""
     # cache: false          # on by default: cache_control breakpoints
     # cache_ttl: 5m         # 5m or 1h
+  # Fast and live pieces of a voice call (each: api_key, optional base_url):
+  # groq: { api_key: "" }        # a talker (model_voice) with a short time to the first word; Whisper
+  # cerebras: { api_key: "" }    # a talker
+  # deepgram: { api_key: "" }    # live Nova-3 / Flux transcription, Aura voices
+  # elevenlabs: { api_key: "" }  # live Flash voices (Polish too), Scribe transcription
+  # cartesia: { api_key: "" }    # live Sonic voices, Ink transcription
+  # inworld: { api_key: "" }     # live TTS 2 voices (the Base64 key from the Portal)
+  # soniox: { api_key: "" }      # live transcription, strong Polish
+  # assemblyai: { api_key: "" }  # live Universal Streaming transcription
+  # local:
+  #   base_url: http://localai:8080/v1
+  #   realtime: openai          # transcribes live over the Realtime API (speaches for Speaches)
+
+# Voice: Read aloud and calls (Admin → Settings → Voice). A model marked Live
+# streams; any other is asked one request at a time.
+# model_voice: groq/openai/gpt-oss-120b      # the talker; empty: the Bot answers every turn
+# voice:
+#   speech_model: elevenlabs/eleven_flash_v2_5
+#   transcribe_model: deepgram/flux-general-en   # calls; dictation stays on transcribe_model
+#   webrtc:
+#     udp_port: 3479        # publish beside the HTTP port
+#     public_ips: []        # the control plane's public address behind NAT
 
 # Content host & tunnels: Bot-made content is served by this control plane on a
 # domain separate from the console's — tunnels at tunnel-<name>.<host>, live app

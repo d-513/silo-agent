@@ -97,7 +97,7 @@ export function CallStage({
   );
 }
 
-const idle: CallSnapshot = { state: "ended", tool: "", heard: "", saying: "", muted: false, ptt: false, holding: false, level: 0, chatId: "", callId: "", error: "", startedAt: 0 };
+const idle: CallSnapshot = { state: "ended", tool: "", heard: "", hearing: "", saying: "", muted: false, ptt: false, holding: false, level: 0, chatId: "", callId: "", error: "", startedAt: 0 };
 
 // Face is the Bot's crest inside three rings: cobalt while you speak, ink
 // while the Bot does, swelling with the voice; one quiet ring otherwise,
@@ -175,7 +175,7 @@ function Captions({ s, botName }: { s: CallSnapshot; botName: string }) {
           </>
         )}
       </div>
-      <p className="mt-3 min-h-[22px] text-[14px] leading-[22px] text-ink-3">{s.heard ? `“${s.heard}”` : ""}</p>
+      <p className="mt-3 min-h-[22px] text-[14px] leading-[22px] text-ink-3">{s.hearing ? `“${s.hearing}…”` : s.heard ? `“${s.heard}”` : ""}</p>
     </div>
   );
 }

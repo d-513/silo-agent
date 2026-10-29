@@ -7,10 +7,27 @@ import (
 	"time"
 )
 
+// Voice is one voice of a speech model. Name and Language are filled when
+// the provider says them; an id alone is made readable by the caller.
+type Voice struct {
+	ID       string
+	Name     string
+	Language string
+}
+
 // VoiceLister is the optional interface a speech provider implements when it
 // can say which voices a model has. An empty answer means it does not know.
 type VoiceLister interface {
-	Voices(ctx context.Context, model string) ([]string, error)
+	Voices(ctx context.Context, model string) ([]Voice, error)
+}
+
+// voiceIDs are voices known by id only.
+func voiceIDs(ids []string) []Voice {
+	out := make([]Voice, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, Voice{ID: id})
+	}
+	return out
 }
 
 // openAIVoices are the voices of OpenAI's own speech models (its API does not
@@ -30,9 +47,9 @@ const voiceTTL = 6 * time.Hour
 // Voices lists a speech model's voices: OpenAI's fixed set, or what the
 // endpoint's model list says (OpenRouter's supported_voices). A server that
 // lists none answers none.
-func (c *openAICompatClient) Voices(ctx context.Context, model string) ([]string, error) {
+func (c *openAICompatClient) Voices(ctx context.Context, model string) ([]Voice, error) {
 	if c.openAI {
-		return openAIVoices, nil
+		return voiceIDs(openAIVoices), nil
 	}
 	voiceCache.Lock()
 	byModel, fresh := voiceCache.voices[c.base], time.Since(voiceCache.at[c.base]) < voiceTTL
@@ -54,5 +71,5 @@ func (c *openAICompatClient) Voices(ctx context.Context, model string) ([]string
 		voiceCache.voices[c.base], voiceCache.at[c.base] = byModel, time.Now()
 		voiceCache.Unlock()
 	}
-	return byModel[strings.TrimSpace(model)], nil
+	return voiceIDs(byModel[strings.TrimSpace(model)]), nil
 }

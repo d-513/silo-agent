@@ -12788,7 +12788,13 @@ type ModelOption struct {
 	ThinkingLevels []string `protobuf:"bytes,4,rep,name=thinking_levels,json=thinkingLevels,proto3" json:"thinking_levels,omitempty"`
 	// kind is "text" (a model that writes: chats and the text roles) or
 	// "decision" (a model that answers typed questions with probabilities).
-	Kind          string `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	Kind string `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	// A transcription or speech model's live abilities (llm.SpeechCaps):
+	// live hears as you speak / keeps a voice connected, words gives word
+	// timings, end_of_turn judges when you have finished.
+	Live          bool `protobuf:"varint,6,opt,name=live,proto3" json:"live,omitempty"`
+	Words         bool `protobuf:"varint,7,opt,name=words,proto3" json:"words,omitempty"`
+	EndOfTurn     bool `protobuf:"varint,8,opt,name=end_of_turn,json=endOfTurn,proto3" json:"end_of_turn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12856,6 +12862,27 @@ func (x *ModelOption) GetKind() string {
 		return x.Kind
 	}
 	return ""
+}
+
+func (x *ModelOption) GetLive() bool {
+	if x != nil {
+		return x.Live
+	}
+	return false
+}
+
+func (x *ModelOption) GetWords() bool {
+	if x != nil {
+		return x.Words
+	}
+	return false
+}
+
+func (x *ModelOption) GetEndOfTurn() bool {
+	if x != nil {
+		return x.EndOfTurn
+	}
+	return false
 }
 
 type ListModelsRequest struct {
@@ -18868,7 +18895,11 @@ type ProviderModel struct {
 	// "transcription", "speech" or "embedding".
 	Kind string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	// voices are a speech model's voice ids, where the provider lists them.
-	Voices        []string `protobuf:"bytes,5,rep,name=voices,proto3" json:"voices,omitempty"`
+	Voices []string `protobuf:"bytes,5,rep,name=voices,proto3" json:"voices,omitempty"`
+	// A transcription or speech model's live abilities, as on ModelOption.
+	Live          bool `protobuf:"varint,6,opt,name=live,proto3" json:"live,omitempty"`
+	Words         bool `protobuf:"varint,7,opt,name=words,proto3" json:"words,omitempty"`
+	EndOfTurn     bool `protobuf:"varint,8,opt,name=end_of_turn,json=endOfTurn,proto3" json:"end_of_turn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18936,6 +18967,27 @@ func (x *ProviderModel) GetVoices() []string {
 		return x.Voices
 	}
 	return nil
+}
+
+func (x *ProviderModel) GetLive() bool {
+	if x != nil {
+		return x.Live
+	}
+	return false
+}
+
+func (x *ProviderModel) GetWords() bool {
+	if x != nil {
+		return x.Words
+	}
+	return false
+}
+
+func (x *ProviderModel) GetEndOfTurn() bool {
+	if x != nil {
+		return x.EndOfTurn
+	}
+	return false
 }
 
 type ListProviderModelsResponse struct {
@@ -29389,13 +29441,16 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bthinking\x18\x06 \x01(\tR\bthinking\x12\x12\n" +
 	"\x04main\x18\a \x01(\bR\x04main\x12\x16\n" +
 	"\x06author\x18\b \x01(\tR\x06author\x12\x12\n" +
-	"\x04mine\x18\t \x01(\bR\x04mine\"\x8c\x01\n" +
+	"\x04mine\x18\t \x01(\bR\x04mine\"\xd6\x01\n" +
 	"\vModelOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
 	"\x05label\x18\x03 \x01(\tR\x05label\x12'\n" +
 	"\x0fthinking_levels\x18\x04 \x03(\tR\x0ethinkingLevels\x12\x12\n" +
-	"\x04kind\x18\x05 \x01(\tR\x04kind\"*\n" +
+	"\x04kind\x18\x05 \x01(\tR\x04kind\x12\x12\n" +
+	"\x04live\x18\x06 \x01(\bR\x04live\x12\x14\n" +
+	"\x05words\x18\a \x01(\bR\x05words\x12\x1e\n" +
+	"\vend_of_turn\x18\b \x01(\bR\tendOfTurn\"*\n" +
 	"\x11ListModelsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\xf7\x01\n" +
 	"\x12ListModelsResponse\x12,\n" +
@@ -29835,13 +29890,16 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06models\x18\x01 \x03(\tR\x06models\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\"7\n" +
 	"\x19ListProviderModelsRequest\x12\x1a\n" +
-	"\bprovider\x18\x01 \x01(\tR\bprovider\"\x86\x01\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\"\xd0\x01\n" +
 	"\rProviderModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
 	"\x0econtext_window\x18\x03 \x01(\x05R\rcontextWindow\x12\x12\n" +
 	"\x04kind\x18\x04 \x01(\tR\x04kind\x12\x16\n" +
-	"\x06voices\x18\x05 \x03(\tR\x06voices\"L\n" +
+	"\x06voices\x18\x05 \x03(\tR\x06voices\x12\x12\n" +
+	"\x04live\x18\x06 \x01(\bR\x04live\x12\x14\n" +
+	"\x05words\x18\a \x01(\bR\x05words\x12\x1e\n" +
+	"\vend_of_turn\x18\b \x01(\bR\tendOfTurn\"L\n" +
 	"\x1aListProviderModelsResponse\x12.\n" +
 	"\x06models\x18\x01 \x03(\v2\x16.silo.v1.ProviderModelR\x06models\"\x82\x01\n" +
 	"\fConnectorVar\x12\x12\n" +

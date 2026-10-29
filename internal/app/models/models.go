@@ -144,6 +144,8 @@ type Option struct {
 	Kind string
 	// Thinking is filled only where the UI needs levels (ListModels).
 	Thinking []string
+	// Caps are a transcription or speech model's live abilities.
+	Caps llm.SpeechCaps
 }
 
 // Allowed is the allowlist of text models: what a chat, a Bot and the text
@@ -152,9 +154,26 @@ func (s *Service) Allowed() []Option {
 	return options(s.cfg().Models, llm.KindText)
 }
 
-// Options is the allowlist of one kind of model (llm.Kinds).
+// Options is the allowlist of one kind of model (llm.Kinds); a
+// transcription or speech model says what it can do live.
 func (s *Service) Options(kind string) []Option {
-	return options(s.cfg().KindModels(kind), kind)
+	out := options(s.cfg().KindModels(kind), kind)
+	if kind == llm.KindTranscription || kind == llm.KindSpeech {
+		for i := range out {
+			out[i].Caps = s.Caps(out[i].ID)
+		}
+	}
+	return out
+}
+
+// Caps is what a model can do live, from its provider (no key needed).
+func (s *Service) Caps(modelID string) llm.SpeechCaps {
+	client, _, err := s.Probe(modelID)
+	if err != nil {
+		return llm.SpeechCaps{}
+	}
+	_, model, _ := llm.Split(modelID)
+	return llm.CapsOf(client, model)
 }
 
 func options(ids []string, kind string) []Option {
@@ -181,7 +200,7 @@ func options(ids []string, kind string) []Option {
 func Protos(opts []Option) []*v1.ModelOption {
 	out := make([]*v1.ModelOption, 0, len(opts))
 	for _, o := range opts {
-		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking, Kind: o.Kind})
+		out = append(out, &v1.ModelOption{Id: o.ID, Provider: o.Provider, Label: o.Label, ThinkingLevels: o.Thinking, Kind: o.Kind, Live: o.Caps.Live, Words: o.Caps.Words, EndOfTurn: o.Caps.EndOfTurn})
 	}
 	return out
 }

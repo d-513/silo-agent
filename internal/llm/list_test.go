@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -22,12 +23,15 @@ func ids(list []ModelInfo) []string {
 // only the id.
 func TestOpenAICompatListModels(t *testing.T) {
 	var auth []string
+	var mu sync.Mutex // OpenRouter asks for each modality at once
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/models" {
 			http.NotFound(w, r)
 			return
 		}
+		mu.Lock()
 		auth = append(auth, r.Header.Get("Authorization"))
+		mu.Unlock()
 		_, _ = w.Write([]byte(`{"data":[
 			{"id":"openai/gpt-old","name":"OpenAI: GPT Old","created":100,"context_length":8000},
 			{"id":"openai/gpt-5.6-luna","name":"OpenAI: GPT-5.6 Luna","created":300,"context_length":400000},

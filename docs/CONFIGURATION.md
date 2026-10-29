@@ -41,6 +41,23 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 
 Every model is of one **kind**, and each kind has its own allowlist: `models` (text), `decision_models`, `transcription_models` (speech-to-text), `speech_models` (text-to-speech) and `embedding_models`. An id is on one list only, and its provider must serve the kind: `openrouter`, `openai` and `local` serve text, speech-to-text, speech and embeddings (`openrouter` decision models too), `anthropic` only text, `typesafe` only decisions. **List models** under Admin → Settings → Providers shows a tab per kind the provider lists. The model a setting names (`transcribe_model`, `voice.speech_model`, `embedding_model`) counts as allowed for its kind even when its list does not name it, so a `silo.yaml` from before the lists keeps working.
 
+### Speech providers
+
+Besides OpenRouter, OpenAI and `local`, a provider each for the fastest pieces of a call (Admin → Settings → Providers; each takes `api_key` and an optional `base_url`):
+
+| Provider | Kinds | What for |
+| --- | --- | --- |
+| `groq` | text, transcription | A talker (`model_voice`) with a very short time to the first word (`openai/gpt-oss-120b`, `llama-3.3-70b-versatile`), and Whisper. |
+| `cerebras` | text | A talker (`gpt-oss-120b`, `qwen-3.8-27b`). |
+| `deepgram` | transcription, speech | Live Nova-3 and Flux; Aura voices (one voice per model id). |
+| `elevenlabs` | transcription, speech | Flash voices live with word timings; Scribe for files, Scribe Realtime live. |
+| `cartesia` | transcription, speech | Sonic voices live with word timings; Ink live. |
+| `inworld` | speech | TTS 2 voices live with word timings. The key is the Base64 one the Inworld Portal shows. |
+| `soniox` | transcription | Live, 60+ languages with code-switching; judges the end of a turn. Files go through a live session. |
+| `assemblyai` | transcription | Live Universal Streaming that judges the end of a turn; files in one request (Sync API). |
+
+`providers.local.realtime` says a self-hosted server transcribes live over the Realtime API: `openai` for LocalAI and servers that follow OpenAI's current API, `speaches` for Speaches; empty (the default) means one request per turn.
+
 ### Voice
 
 Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Voice.
@@ -48,8 +65,9 @@ Read aloud (a speaker button on every reply) and **calls** (Talk, in the compose
 | Key | Default | What it does |
 | --- | --- | --- |
 | `voice.enabled` | `true` | Off hides Read aloud and Talk everywhere. |
-| `transcribe_model` | `openrouter/openai/whisper-1` | Hears every turn of a call (and dictation). |
-| `voice.speech_model` | `openrouter/hexgrad/kokoro-82m` | The default voice; a Bot may pick another from `speech_models`, and a voice and speed of it (Bot → Settings → Voice). Any OpenAI-compatible `/audio/speech` model, e.g. OpenRouter's ElevenLabs, Fish, Voxtral, Kokoro, Gemini TTS. Kokoro has no Polish voice. |
+| `transcribe_model` | `openrouter/openai/whisper-1` | Dictation, the transcribe tool, and calls unless `voice.transcribe_model` names another. |
+| `voice.transcribe_model` | empty | What hears a call, when it should differ from dictation. A **live** model (marked Live in Admin) hears you as you speak and has the words ready when you stop; any other is asked once per turn. Live choices: Deepgram (`nova-3`, `flux-general-en`/`-multi`, which also judge when you have finished), Soniox (`stt-rt-v5`, strong Polish), AssemblyAI (`universal-3-6-pro`), ElevenLabs (`scribe_v2_realtime`), Cartesia (`ink-whisper`), OpenAI (`gpt-live-transcribe`, `gpt-4o-transcribe`), or a `local` server with `realtime` set. |
+| `voice.speech_model` | `openrouter/hexgrad/kokoro-82m` | The default voice; a Bot may pick another from `speech_models`, and a voice and speed of it (Bot → Settings → Voice). Through OpenRouter (Kokoro, Fish, Voxtral, Gemini TTS, ElevenLabs) every sentence is one request. A **live** voice stays connected for the whole call and says when each word is spoken: ElevenLabs direct (`eleven_flash_v2_5`, Polish included), Cartesia (`sonic-3.6`), Inworld (`inworld-tts-2-flash`), Deepgram Aura (`aura-2-thalia-en`; the voice is the model, no Polish). Kokoro has no Polish voice. |
 | `model_voice` | empty | The **talker**: a fast text model that hears each turn first, answers small talk itself and hands real work to the Bot, so answers start in under a second. Empty, the Bot answers every turn itself (smarter, slower). Pick it for time to first token and for not guessing; it must be on `models`. |
 | `voice.max_minutes` | `30` | A call ends after this long. |
 | `voice.idle_minutes` | `3` | A call nobody speaks in ends after this long. |

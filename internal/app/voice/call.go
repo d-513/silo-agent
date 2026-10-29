@@ -51,6 +51,7 @@ const (
 // The states a call is in, as the browser shows them.
 const (
 	stateListening = "listening"
+	stateHearing   = "hearing"
 	stateThinking  = "thinking"
 	stateWorking   = "working"
 	stateSpeaking  = "speaking"
@@ -85,6 +86,7 @@ func (c *calls) drop(key string, cur *call) {
 // clientMsg is what the browser sends as text.
 type clientMsg struct {
 	T         string                   `json:"t"`
+	N         int                      `json:"n,omitempty"`
 	SDP       string                   `json:"sdp,omitempty"`
 	Candidate *webrtc.ICECandidateInit `json:"candidate,omitempty"`
 	EouMs     int                      `json:"eou_ms,omitempty"`
@@ -94,6 +96,7 @@ type clientMsg struct {
 // turnIn is one spoken turn as it arrived.
 type turnIn struct {
 	wav   []byte
+	live  *liveTurnIn // a turn heard live (wav is then empty)
 	eouMs int
 	at    time.Time
 }
@@ -127,6 +130,15 @@ type call struct {
 	cutOff   string   // what the next turn tells the Bot it cut off
 	activity time.Time
 	nTurns   int
+	// hear is how turns are heard; heard the turn being heard live.
+	hear  hearing
+	heard *liveTurnIn
+	// tts is the connected voice (live.go): ttsOff once the model has none,
+	// ttsRetry after a failed connect.
+	ttsMu    sync.Mutex
+	tts      llm.SpeechConn
+	ttsOff   bool
+	ttsRetry time.Time
 	pending  *db.VoiceTurn // the turn waiting for its first sound
 	pendAt   time.Time
 	// The talker (talker.go): the turn it is answering, a count for ids,
@@ -177,6 +189,7 @@ func (s *Service) ServeCall(w http.ResponseWriter, r *http.Request, userID strin
 		snd: s.SoundOf(ctx, b), mode: cfg.VoiceMode(), start: time.Now(),
 		ctx: ctx, cancel: cancel, ws: ws, out: newOutbox(), turns: make(chan turnIn, 4),
 		state: stateListening, replies: map[string]*speech.Stream{}, muted: map[string]bool{}, activity: time.Now(),
+		hear: s.hearingFor(cfg.CallTranscribeModel()),
 	}
 	key := b.ID + "/" + userID
 	if prev := s.calls.swap(key, c); prev != nil {
@@ -190,7 +203,13 @@ func (s *Service) ServeCall(w http.ResponseWriter, r *http.Request, userID strin
 func (c *call) run(reqCtx context.Context) {
 	cfg := c.s.cfg()
 	defer c.ws.CloseNow()
-	if err := c.send(map[string]any{"t": "hello", "call_id": c.id, "chat_id": c.chatID, "mode": c.mode, "ice_servers": iceServers(cfg), "voice": c.snd.Voice}); err != nil {
+	// stt says how the browser sends turns: "live" streams them as spoken,
+	// "turn" sends each when it is over.
+	stt := "turn"
+	if c.hear.live != nil {
+		stt = "live"
+	}
+	if err := c.send(map[string]any{"t": "hello", "call_id": c.id, "chat_id": c.chatID, "mode": c.mode, "ice_servers": iceServers(cfg), "voice": c.snd.Voice, "stt": stt, "eot": c.hear.caps.EndOfTurn}); err != nil {
 		return
 	}
 	if err := c.handshake(cfg); err != nil {
@@ -303,6 +322,10 @@ func (c *call) read() {
 			return
 		}
 		if typ == websocket.MessageBinary {
+			if c.hear.live != nil {
+				c.feed(data)
+				continue
+			}
 			if !expectTurn || len(data) == 0 || len(data) > maxTurnBytes {
 				continue
 			}
@@ -323,9 +346,19 @@ func (c *call) read() {
 			if m.Candidate != nil && c.pc != nil {
 				_ = c.pc.AddICECandidate(*m.Candidate)
 			}
+		case "speech":
+			if c.hear.live != nil {
+				c.openTurn(m.N)
+			}
 		case "turn":
+			if c.hear.live != nil {
+				c.endTurn(m.N, m.EouMs)
+				continue
+			}
 			eou, expectTurn = m.EouMs, true
 			c.touch()
+		case "cancel":
+			c.cancelTurn(m.N)
 		case "duck":
 			c.out.duck(true)
 		case "unduck":
@@ -357,7 +390,15 @@ func (c *call) listen() {
 func (c *call) turn(t turnIn) {
 	c.setState(stateThinking, "")
 	started := time.Now()
-	tr, err := c.s.transcribe(c.ctx, c.botID, "call", llm.Audio{Data: t.wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
+	var text string
+	var err error
+	if t.live != nil {
+		text, err = c.heardText(t.live)
+	} else {
+		var tr llm.Transcript
+		tr, err = c.s.transcribeWith(c.ctx, c.botID, "call", c.hear.model, llm.Audio{Data: t.wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
+		text = tr.Text
+	}
 	stt := time.Since(started)
 	if err != nil {
 		if c.ctx.Err() != nil {
@@ -368,7 +409,7 @@ func (c *call) turn(t turnIn) {
 		c.say(sayNotHeard.in(c.snd.Language), "")
 		return
 	}
-	text := strings.TrimSpace(tr.Text)
+	text = strings.TrimSpace(text)
 	_ = c.send(map[string]any{"t": "heard", "text": text})
 	if !meaningful(text) {
 		c.settle()
@@ -531,6 +572,12 @@ func (c *call) interrupt() {
 
 // synth makes one piece's speech.
 func (c *call) synth(ctx context.Context, p *piece) {
+	if conn := c.voiceConn(); conn != nil && c.sayLive(ctx, conn, p) {
+		return
+	}
+	if ctx.Err() != nil {
+		return
+	}
 	sp, err := c.s.Speak(ctx, c.botID, c.snd, p.text, "pcm")
 	if err != nil {
 		if ctx.Err() == nil {
@@ -693,6 +740,7 @@ func (c *call) end(cause error) {
 		reason = "lost"
 	}
 	c.saveTurn()
+	c.closeLive()
 	_ = c.send(map[string]any{"t": "bye", "reason": reason})
 	c.ws.Close(websocket.StatusNormalClosure, reason)
 	secs := int(time.Since(c.start) / time.Second)

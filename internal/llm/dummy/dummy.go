@@ -86,6 +86,8 @@ func Reset() {
 	decided = nil
 	completed = nil
 	spoken = nil
+	liveOpened = 0
+	liveSaid = nil
 }
 
 // streamed records every streamed request so tests can see what the agent

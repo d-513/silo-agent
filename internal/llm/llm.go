@@ -295,7 +295,24 @@ const (
 	Anthropic  = "anthropic"
 	Local      = "local"
 	TypeSafe   = "typesafe"
+	Groq       = "groq"
+	Cerebras   = "cerebras"
+	Deepgram   = "deepgram"
+	ElevenLabs = "elevenlabs"
+	Cartesia   = "cartesia"
+	Inworld    = "inworld"
+	Soniox     = "soniox"
+	AssemblyAI = "assemblyai"
 )
+
+// keyAndURL are the settings of a provider that needs a key and may be
+// pointed elsewhere.
+func keyAndURL(name string) []SettingDef {
+	return []SettingDef{
+		{Key: "api_key", Label: "API key", Description: name + " API key.", Secret: true},
+		{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
+	}
+}
 
 // builtinProviders are the providers every control plane starts with.
 var builtinProviders = []registered{
@@ -363,6 +380,7 @@ var builtinProviders = []registered{
 			Settings: []SettingDef{
 				{Key: "base_url", Label: "Base URL", Description: "The server's OpenAI-compatible root, e.g. http://localai:8080/v1."},
 				{Key: "api_key", Label: "API key", Description: "Optional; only if the server checks one.", Secret: true},
+				{Key: "realtime", Label: "Live transcription", Description: "Whether the server transcribes live over the Realtime API, and in which form: openai (LocalAI, and other servers that follow OpenAI's current API) or speaches (Speaches). Empty: one request per turn."},
 			},
 		},
 		new: newOpenAICompat("", nil, false, false),
@@ -379,6 +397,89 @@ var builtinProviders = []registered{
 			},
 		},
 		new: newTypeSafe,
+	},
+	{
+		desc: Descriptor{
+			ID:          Groq,
+			Name:        "Groq",
+			Description: "Open models on Groq's fast inference: a talker for calls that answers in a fraction of a second (gpt-oss, Llama, Qwen), and Whisper transcription.",
+			Kinds:       []string{KindText, KindTranscription},
+			Settings:    keyAndURL("Groq"),
+		},
+		new: narrowed("https://api.groq.com/openai/v1", true),
+	},
+	{
+		desc: Descriptor{
+			ID:          Cerebras,
+			Name:        "Cerebras",
+			Description: "Open models on Cerebras' fast inference (gpt-oss, Qwen): a talker for calls with a very short time to the first word.",
+			Kinds:       []string{KindText},
+			Settings:    keyAndURL("Cerebras"),
+		},
+		new: narrowed("https://api.cerebras.ai/v1", false),
+	},
+	{
+		desc: Descriptor{
+			ID:          Deepgram,
+			Name:        "Deepgram",
+			Description: "Speech recognition that streams (Nova-3, and Flux, which also judges when you have finished speaking) and Aura voices. An Aura model is one voice: aura-2-thalia-en. No Polish voices.",
+			Kinds:       []string{KindTranscription, KindSpeech},
+			Settings:    keyAndURL("Deepgram"),
+		},
+		new: newDeepgram,
+	},
+	{
+		desc: Descriptor{
+			ID:          ElevenLabs,
+			Name:        "ElevenLabs",
+			Description: "Voices that stay connected for a call with word timings (Flash v2.5, many languages including Polish), and Scribe transcription: files with scribe_v2, live with scribe_v2_realtime.",
+			Kinds:       []string{KindTranscription, KindSpeech},
+			Settings:    keyAndURL("ElevenLabs"),
+		},
+		new: newElevenLabs,
+	},
+	{
+		desc: Descriptor{
+			ID:          Cartesia,
+			Name:        "Cartesia",
+			Description: "Sonic voices that stay connected for a call, with word timings, and Ink live transcription.",
+			Kinds:       []string{KindTranscription, KindSpeech},
+			Settings:    keyAndURL("Cartesia"),
+		},
+		new: newCartesia,
+	},
+	{
+		desc: Descriptor{
+			ID:          Inworld,
+			Name:        "Inworld",
+			Description: "TTS 2 voices that stay connected for a call, with word timings; Flash is among the fastest to the first sound.",
+			Kinds:       []string{KindSpeech},
+			Settings: []SettingDef{
+				{Key: "api_key", Label: "API key", Description: "The Base64 key the Inworld Portal shows, as it is.", Secret: true},
+				{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
+			},
+		},
+		new: newInworld,
+	},
+	{
+		desc: Descriptor{
+			ID:          Soniox,
+			Name:        "Soniox",
+			Description: "Live transcription in 60+ languages with code-switching (strong Polish), which also judges when you have finished speaking.",
+			Kinds:       []string{KindTranscription},
+			Settings:    keyAndURL("Soniox"),
+		},
+		new: newSoniox,
+	},
+	{
+		desc: Descriptor{
+			ID:          AssemblyAI,
+			Name:        "AssemblyAI",
+			Description: "Universal streaming transcription that judges when you have finished speaking, and files in one request.",
+			Kinds:       []string{KindTranscription},
+			Settings:    keyAndURL("AssemblyAI"),
+		},
+		new: newAssemblyAI,
 	},
 }
 

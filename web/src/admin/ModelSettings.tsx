@@ -9,6 +9,7 @@ import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { modelOptions } from "../modelOptions";
 import { SourceChips } from "./FieldRow";
 import { HINTS, LABELS } from "./fields";
+import { LiveChip } from "./LiveChip";
 import { eitherKind, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { msg, t } from "../i18n.ts";
@@ -161,6 +162,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
           {models.map((m) => (
             <li key={m.id} className="flex h-11 items-center gap-3 pr-3 pl-5 text-[13px]">
               <span className="min-w-0 flex-1 truncate font-mono text-ink">{m.id}</span>
+              <LiveChip kind={kind} live={m.live} words={m.words} endOfTurn={m.endOfTurn} />
               {busyModels.has(m.id) ? (
                 <span className="flex w-8 justify-center">
                   <Spinner size={13} />

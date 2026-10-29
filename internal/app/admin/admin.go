@@ -110,9 +110,10 @@ var modelRoles = map[string][]string{
 	"model_decision": {llm.KindDecision},
 	"model_voice":    {llm.KindText},
 	// The roles of the other kinds pick from their kind's list.
-	"transcribe_model":   {llm.KindTranscription},
-	"voice.speech_model": {llm.KindSpeech},
-	"embedding_model":    {llm.KindEmbedding},
+	"transcribe_model":       {llm.KindTranscription},
+	"voice.transcribe_model": {llm.KindTranscription},
+	"voice.speech_model":     {llm.KindSpeech},
+	"embedding_model":        {llm.KindEmbedding},
 }
 
 // kindWords name a kind in a refusal.
@@ -255,8 +256,10 @@ func (s *Service) ListProviderModels(ctx context.Context, req *connect.Request[v
 		if kind == "" {
 			kind = llm.KindText
 		}
+		caps := llm.CapsOf(client, m.ID)
 		out.Models = append(out.Models, &v1.ProviderModel{
 			Id: provider + "/" + m.ID, Name: m.Name, ContextWindow: int32(m.ContextWindow), Kind: kind, Voices: m.Voices,
+			Live: caps.Live, Words: caps.Words, EndOfTurn: caps.EndOfTurn,
 		})
 	}
 	return connect.NewResponse(out), nil

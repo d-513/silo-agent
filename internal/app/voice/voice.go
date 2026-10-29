@@ -85,7 +85,11 @@ func (s *Service) Enabled() bool {
 // transcribe turns one recording into text with the operator's
 // transcribe_model. label names the caller in the LLM debug log.
 func (s *Service) transcribe(ctx context.Context, botID, label string, audio llm.Audio) (llm.Transcript, error) {
-	modelID := s.cfg().TranscribeModel()
+	return s.transcribeWith(ctx, botID, label, s.cfg().TranscribeModel(), audio)
+}
+
+// transcribeWith is transcribe with a given model (a call's may be its own).
+func (s *Service) transcribeWith(ctx context.Context, botID, label, modelID string, audio llm.Audio) (llm.Transcript, error) {
 	if modelID == "" {
 		return llm.Transcript{}, errVoiceOff
 	}

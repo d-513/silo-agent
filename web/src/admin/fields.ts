@@ -213,7 +213,7 @@ export const BOOTSTRAP_NOTE = msg("First admin only. Ignored after a user exists
 
 export function groupOf(key: string) {
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model") return "models";
-  if (key === "transcribe_model" || key === "model_voice" || key === "voice.speech_model") return "voice_models";
+  if (key === "transcribe_model" || key === "model_voice" || key === "voice.speech_model" || key === "voice.transcribe_model") return "voice_models";
   if (key.startsWith("voice.webrtc.") || key === "voice.opus_library") return "voice_network";
   if (key.startsWith("voice.")) return "voice";
   if (key.startsWith("memory.")) return "memory";

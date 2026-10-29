@@ -336,6 +336,9 @@ type Voice struct {
 	// SpeechModel is the default text-to-speech model; a Bot may pick another
 	// allowed one.
 	SpeechModel string `koanf:"speech_model"`
+	// TranscribeModel hears a call's turns; empty is transcribe_model.
+	// A model that transcribes live is used live (llm.SpeechCaps).
+	TranscribeModel string `koanf:"transcribe_model"`
 	// MaxMinutes ends a call; IdleMinutes ends one nobody speaks in.
 	MaxMinutes  int `koanf:"max_minutes"`
 	IdleMinutes int `koanf:"idle_minutes"`
@@ -376,6 +379,15 @@ func (c Config) VoiceMode() string {
 	return VoiceModeTalker
 }
 
+// CallTranscribeModel is the model that hears a call: voice.transcribe_model,
+// else the dictation model; "" when speech-to-text is off.
+func (c Config) CallTranscribeModel() string {
+	if m := strings.TrimSpace(c.Voice.TranscribeModel); m != "" && !strings.EqualFold(m, TranscribeOff) {
+		return m
+	}
+	return c.TranscribeModel()
+}
+
 // SpeechModel is the default speech model, or "" when voice is off.
 func (c Config) SpeechModel() string {
 	if !c.Voice.Enabled {
@@ -395,7 +407,7 @@ func (c Config) KindModels(kind string) []string {
 	case llm.KindDecision:
 		return c.DecisionModels
 	case llm.KindTranscription:
-		list, roles = c.TranscriptionModels, []string{c.TranscribeModel()}
+		list, roles = c.TranscriptionModels, []string{c.TranscribeModel(), strings.TrimSpace(c.Voice.TranscribeModel)}
 	case llm.KindSpeech:
 		list, roles = c.SpeechModels, []string{strings.TrimSpace(c.Voice.SpeechModel)}
 	case llm.KindEmbedding:
@@ -596,6 +608,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_voice"},
 	{Key: "voice.enabled", Type: "bool"},
 	{Key: "voice.speech_model"},
+	{Key: "voice.transcribe_model"},
 	{Key: "voice.max_minutes"},
 	{Key: "voice.idle_minutes"},
 	{Key: "voice.opus_library"},

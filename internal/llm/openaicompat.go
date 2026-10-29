@@ -77,6 +77,12 @@ func newOpenAICompat(defaultBase string, defaultHeaders map[string]string, sendC
 			}
 		}
 		c := &openAICompatClient{client: openai.NewClient(opts...), base: base, key: key, sendCacheKey: sendCacheKey, openAI: defaultBase == openAIBase}
+		switch {
+		case c.openAI && s.Get("base_url") == "":
+			c.realtime = realtimeOpenAI
+		case defaultBase == "":
+			c.realtime = realtimeDialect(s.Get("realtime"))
+		}
 		if s.Get("base_url") == "" {
 			c.headers = defaultHeaders
 		}
@@ -105,6 +111,9 @@ type openAICompatClient struct {
 	// headers are the provider's own (OpenRouter's app name) for the plain
 	// HTTP calls the SDK does not make.
 	headers map[string]string
+	// realtime is the Realtime API dialect the endpoint speaks for live
+	// transcription (realtime.go); "" when it has none.
+	realtime string
 	// reqOpts ride on every chat request (after the body is serialized).
 	reqOpts []option.RequestOption
 	// windows lists context windows and reasoning support (OpenRouter only).
@@ -563,4 +572,46 @@ func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio
 		out.Cost = extra.Usage.Cost
 	}
 	return out, nil
+}
+
+// textClient is an OpenAI-compatible endpoint that serves text models only
+// (Cerebras): the shared client would claim speech and embeddings too.
+type textClient struct{ c *openAICompatClient }
+
+func (t textClient) Stream(ctx context.Context, req Request) (Stream, error) {
+	return t.c.Stream(ctx, req)
+}
+
+func (t textClient) Complete(ctx context.Context, req Request) (Response, error) {
+	return t.c.Complete(ctx, req)
+}
+
+func (t textClient) ListModels(ctx context.Context) ([]ModelInfo, error) { return t.c.ListModels(ctx) }
+
+func (t textClient) ThinkingLevels(ctx context.Context, model string) ([]string, error) {
+	return t.c.ThinkingLevels(ctx, model)
+}
+
+// textTranscribeClient serves text and transcription (Groq).
+type textTranscribeClient struct{ textClient }
+
+func (t textTranscribeClient) Transcribe(ctx context.Context, model string, a Audio) (Transcript, error) {
+	return t.c.Transcribe(ctx, model, a)
+}
+
+// narrowed builds an OpenAI-compatible client that shows only the kinds a
+// provider serves.
+func narrowed(base string, transcribe bool) factory {
+	inner := newOpenAICompat(base, nil, false, false)
+	return func(s Settings) (Client, error) {
+		c, err := inner(s)
+		if err != nil {
+			return nil, err
+		}
+		tc := textClient{c.(*openAICompatClient)}
+		if transcribe {
+			return textTranscribeClient{tc}, nil
+		}
+		return tc, nil
+	}
 }

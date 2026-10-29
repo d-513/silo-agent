@@ -1888,6 +1888,12 @@ message ModelOption {
   // kind is "text" (a model that writes: chats and the text roles) or
   // "decision" (a model that answers typed questions with probabilities).
   string kind = 5;
+  // A transcription or speech model's live abilities (llm.SpeechCaps):
+  // live hears as you speak / keeps a voice connected, words gives word
+  // timings, end_of_turn judges when you have finished.
+  bool live = 6;
+  bool words = 7;
+  bool end_of_turn = 8;
 }
 
 message ListModelsRequest {
@@ -2643,6 +2649,10 @@ message ProviderModel {
   string kind = 4;
   // voices are a speech model's voice ids, where the provider lists them.
   repeated string voices = 5;
+  // A transcription or speech model's live abilities, as on ModelOption.
+  bool live = 6;
+  bool words = 7;
+  bool end_of_turn = 8;
 }
 
 message ListProviderModelsResponse {

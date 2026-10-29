@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callClock, encodeWAV, joinFrames, loudness, playoutMs } from "./audio.ts";
+import { callClock, encodeWAV, joinFrames, loudness, pcm16, playoutMs } from "./audio.ts";
 
 test("encodeWAV writes a 16-bit mono header and clips the samples", () => {
   const wav = new DataView(encodeWAV(new Float32Array([0, 1, -1, 2]), 16000));
@@ -31,4 +31,12 @@ test("playoutMs reads the jitter buffer and adds the device's share", () => {
 
 test("callClock is m:ss", () => {
   assert.equal(callClock(65_400), "1:05");
+});
+
+test("pcm16 is little-endian and clipped", () => {
+  const v = new DataView(pcm16(new Float32Array([0, 1, -1, 3])));
+  assert.equal(v.byteLength, 8);
+  assert.equal(v.getInt16(2, true), 0x7fff);
+  assert.equal(v.getInt16(4, true), -0x8000);
+  assert.equal(v.getInt16(6, true), 0x7fff);
 });

@@ -1832,7 +1832,6 @@ const de: Record<string, string> = {
   "model name, e.g. openai/text-embedding-3-small": "Modellname, z. B. openai/text-embedding-3-small",
   "In use_model": "In Verwendung",
   "Speech-to-text": "Spracherkennung",
-  "Hears what you say: dictation in the composer, the transcribe tool, and every turn of a call.": "Hört, was du sagst: Diktat im Eingabefeld, das Transkriptionswerkzeug und jede Äußerung im Anruf.",
   "Off: no dictation and no calls": "Aus: kein Diktat und keine Anrufe",
   "No speech-to-text models allowed yet": "Noch keine Spracherkennungsmodelle erlaubt",
   "Speech": "Sprachausgabe",
@@ -1915,6 +1914,20 @@ const de: Record<string, string> = {
   "Filter {{count}} speech models_other": "{{count}} Sprachmodelle filtern",
   "Filter {{count}} embedding models_one": "{{count}} Embedding-Modell filtern",
   "Filter {{count}} embedding models_other": "{{count}} Embedding-Modelle filtern",
+  "live_model": "live",
+  "Live": "Live",
+  "Stays connected for a whole call and speaks each sentence on that connection, so the voice starts sooner.": "Bleibt für den ganzen Anruf verbunden und spricht jeden Satz über diese Verbindung, sodass die Stimme schneller einsetzt.",
+  "Hears you as you speak, so the words are ready the moment you stop.": "Hört dich, während du sprichst, sodass die Worte bereit sind, sobald du aufhörst.",
+  "Says when each word is spoken, so a cut-off reply is recorded exactly as far as it was heard.": "Sagt, wann jedes Wort gesprochen wird, sodass eine unterbrochene Antwort genau bis dorthin festgehalten wird, wo sie gehört wurde.",
+  "Judges from your words when you have finished, so a turn can end before the silence timer.": "Erkennt an deinen Worten, wann du fertig bist, sodass ein Beitrag vor dem Stille-Timer enden kann.",
+  "Hears what you say: dictation in the composer, the transcribe tool, and calls unless the next picker names another.": "Hört, was du sagst: Diktat im Eingabefeld, das Transkriptionswerkzeug und Anrufe, sofern die nächste Auswahl kein anderes nennt.",
+  "Speech-to-text on calls": "Spracherkennung in Anrufen",
+  "Hears every turn of a call. A live model hears you as you speak and has the words ready when you stop; dictation can stay on a cheaper one.": "Hört jeden Beitrag eines Anrufs. Ein Live-Modell hört dich, während du sprichst, und hat die Worte bereit, wenn du aufhörst; das Diktat kann bei einem günstigeren bleiben.",
+  "Same as dictation": "Wie beim Diktat",
+  "Live: one connection for the whole call.": "Live: eine Verbindung für den ganzen Anruf.",
+  "Live: heard as you speak.": "Live: hört dich, während du sprichst.",
+  "One request per sentence.": "Eine Anfrage pro Satz.",
+  "One request per turn, after you stop.": "Eine Anfrage pro Beitrag, nachdem du aufhörst.",
 };
 
 export default de;

@@ -12,6 +12,7 @@ import { Tip } from "../Tip";
 import { FieldGroup } from "./FieldGroup";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
+import { LiveChip } from "./LiveChip";
 import { locale, t } from "../i18n.ts";
 
 export function ProviderSettings() {
@@ -121,6 +122,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
             return (
               <li key={m.id} className="flex h-11 items-center gap-3 pr-1.5 pl-3 text-[13px]">
                 <span className="max-w-full shrink-0 truncate font-mono text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:shrink">{bareModel(m.id)}</span>
+                <LiveChip kind={kind} live={m.live} words={m.words} endOfTurn={m.endOfTurn} />
                 <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.name}</span>
                 {context ? (
                   <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={kind === "speech" ? undefined : t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/go-mp3"
 
+	"silo.agent/internal/llm"
 	"silo.agent/internal/speech"
 	"silo.agent/internal/speech/opus"
 )
@@ -35,6 +36,27 @@ type piece struct {
 	done    bool
 	started bool // synthesis started
 	sent    int  // frames sent
+	// words are the voice's own timings, when it gave them: what was heard
+	// before a cut is then exact.
+	words []speech.WordTime
+}
+
+func (p *piece) addWords(ws []llm.SpeechWord) {
+	p.mu.Lock()
+	for _, w := range ws {
+		p.words = append(p.words, speech.WordTime{Text: w.Text, EndMs: w.EndMs})
+	}
+	p.mu.Unlock()
+}
+
+// heardOf is what of the piece was heard after played frames.
+func (p *piece) heardOf(played int) string {
+	if len(p.words) > 0 {
+		h, _ := speech.HeardWords(p.text, p.words, played*int(frameDur/time.Millisecond))
+		return h
+	}
+	h, _ := speech.Heard(p.text, played, p.total())
+	return h
 }
 
 func (p *piece) add(f []byte) {
@@ -134,7 +156,7 @@ func (o *outbox) flush() (heard, runID string) {
 			p.mu.Lock()
 			played := max(0, p.sent-delay)
 			if p.sent > 0 {
-				heard, _ = speech.Heard(p.text, played, p.total())
+				heard = p.heardOf(played)
 				runID = p.runID
 			}
 			p.mu.Unlock()
@@ -261,6 +283,76 @@ func (o *outbox) take() (frame []byte, start *piece, idle bool) {
 	return nil, nil, false
 }
 
+// frameEncoder turns PCM as it arrives into Opus frames on a piece. Rates
+// Opus takes are encoded as they are; any other is resampled to 24 kHz a
+// frame at a time.
+type frameEncoder struct {
+	enc     *opus.Encoder
+	rate    int
+	encRate int
+	need    int // source bytes per frame
+	buf     []byte
+	samples []int16
+	p       *piece
+}
+
+func newFrameEncoder(rate int, p *piece) (*frameEncoder, error) {
+	encRate := rate
+	switch rate {
+	case 8000, 12000, 16000, 24000, 48000:
+	default:
+		encRate = 24000
+	}
+	enc, err := opus.NewEncoder(encRate)
+	if err != nil {
+		return nil, err
+	}
+	frame := enc.FrameSamples()
+	return &frameEncoder{enc: enc, rate: rate, encRate: encRate, need: frame * 2 * rate / encRate, samples: make([]int16, frame), p: p}, nil
+}
+
+// write takes PCM and encodes every whole frame it completes.
+func (f *frameEncoder) write(pcm []byte) error {
+	f.buf = append(f.buf, pcm...)
+	for len(f.buf) >= f.need {
+		if err := f.frame(f.buf[:f.need]); err != nil {
+			return err
+		}
+		f.buf = f.buf[f.need:]
+	}
+	return nil
+}
+
+// close encodes what is left, padded with silence, and frees the encoder.
+func (f *frameEncoder) close() error {
+	defer f.enc.Close()
+	if len(f.buf) == 0 {
+		return nil
+	}
+	rest := append(f.buf, make([]byte, f.need-len(f.buf))...)
+	f.buf = nil
+	return f.frame(rest)
+}
+
+func (f *frameEncoder) frame(block []byte) error {
+	if f.rate != f.encRate {
+		block = speech.Resample(block, f.rate, f.encRate)
+	}
+	for i := range f.samples {
+		if 2*i+1 < len(block) {
+			f.samples[i] = int16(binary.LittleEndian.Uint16(block[2*i:]))
+		} else {
+			f.samples[i] = 0
+		}
+	}
+	pkt, err := f.enc.Encode(f.samples)
+	if err != nil {
+		return err
+	}
+	f.p.add(pkt)
+	return nil
+}
+
 // encodeSpeech reads a provider's answer as it streams and turns it into
 // Opus frames on the piece.
 func encodeSpeech(body io.Reader, format string, rate int, p *piece) error {
@@ -280,49 +372,23 @@ func encodeSpeech(body io.Reader, format string, rate int, p *piece) error {
 		}
 		pcm = speech.SkipWAVHeader(br)
 	}
-	encRate := rate
-	switch rate {
-	case 8000, 12000, 16000, 24000, 48000:
-	default:
-		encRate = 24000
-	}
-	enc, err := opus.NewEncoder(encRate)
+	fe, err := newFrameEncoder(rate, p)
 	if err != nil {
 		return err
 	}
-	defer enc.Close()
-	frame := enc.FrameSamples()
-	need := frame * 2 * rate / encRate
-	buf := make([]byte, need)
-	samples := make([]int16, frame)
+	buf := make([]byte, 4096)
 	for {
-		n, err := io.ReadFull(pcm, buf)
-		if n == 0 {
-			if err == nil || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return nil
-			}
-			return err
-		}
-		clear(buf[n:])
-		block := buf
-		if rate != encRate {
-			block = speech.Resample(buf, rate, encRate)
-		}
-		for i := range samples {
-			if 2*i+1 < len(block) {
-				samples[i] = int16(binary.LittleEndian.Uint16(block[2*i:]))
-			} else {
-				samples[i] = 0
+		n, err := pcm.Read(buf)
+		if n > 0 {
+			if werr := fe.write(buf[:n]); werr != nil {
+				fe.close()
+				return werr
 			}
 		}
-		f, eerr := enc.Encode(samples)
-		if eerr != nil {
-			return eerr
-		}
-		p.add(f)
 		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return nil
+			cerr := fe.close()
+			if errors.Is(err, io.EOF) {
+				return cerr
 			}
 			return err
 		}

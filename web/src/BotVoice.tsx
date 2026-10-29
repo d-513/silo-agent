@@ -82,7 +82,7 @@ export function BotVoice({ bot, onError }: { bot: Bot; onError: (s: string) => v
             void save({ speechModel: m, voice: "" });
           }}
           emptyLabel={t("No speech models allowed")}
-          options={[{ value: "", label: v?.defaultModel ? t("Operator default ({{model}})", { model: v.defaultModel.split("/").slice(1).join("/") }) : t("Operator default") }, ...modelOptions(v?.models ?? [])]}
+          options={[{ value: "", label: v?.defaultModel ? t("Operator default ({{model}})", { model: v.defaultModel.split("/").slice(1).join("/") }) : t("Operator default") }, ...modelOptions(v?.models ?? [], t("live", { context: "model" }))]}
         />
       </SettingRow>
       <SettingRow

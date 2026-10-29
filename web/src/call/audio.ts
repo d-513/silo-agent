@@ -63,3 +63,14 @@ export function callClock(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/** A frame (-1..1) as 16-bit little-endian PCM, what a live turn streams. */
+export function pcm16(frame: Float32Array): ArrayBuffer {
+  const buf = new ArrayBuffer(frame.length * 2);
+  const v = new DataView(buf);
+  for (let i = 0; i < frame.length; i++) {
+    const s = Math.max(-1, Math.min(1, frame[i]));
+    v.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return buf;
+}
