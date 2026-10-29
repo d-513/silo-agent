@@ -457,7 +457,7 @@ func TestProxyRefusesAnUnverifiedOrigin(t *testing.T) {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusBadGateway || !strings.Contains(string(body), "verified") {
+	if resp.StatusCode != http.StatusBadGateway || resp.Header.Get("X-Silo-Filter") != "bad_certificate" || !strings.Contains(string(body), "certificate is not valid") {
 		t.Fatalf("status %d body %q", resp.StatusCode, body)
 	}
 	select {
@@ -665,13 +665,6 @@ func TestProxyKeepAliveMakesAFreshHandshakeEachTime(t *testing.T) {
 		if resp.StatusCode != 200 || string(body) != "ok" {
 			t.Fatalf("request %d on one connection: %d %q", i, resp.StatusCode, body)
 		}
-	}
-}
-
-func TestDialProblemNamesNoStaleServer(t *testing.T) {
-	err := &net.OpError{Op: "dial", Net: "tcp", Err: &net.DNSError{Err: "no such host", Name: "gone.example", Server: "10.213.4.1:53", IsNotFound: true}}
-	if got := dialProblem(err); strings.Contains(got, "10.213.4.1") || !strings.Contains(got, "gone.example does not resolve") {
-		t.Fatalf("dialProblem = %q", got)
 	}
 }
 

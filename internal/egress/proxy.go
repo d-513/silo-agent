@@ -146,7 +146,7 @@ func (p *Proxy) conn(ctx context.Context, conn net.Conn, mode string) error {
 		release, ok := p.Admit(c)
 		if !ok {
 			if mode != ModeTLS {
-				writeStatusCode(conn, http.StatusServiceUnavailable, "too many connections through the Silo network filter at once")
+				writeAnswer(conn, http.StatusServiceUnavailable, "busy", "Silo network filter: this Bot has too many connections open through the filter at once. Close some, or wait, and try again.")
 			}
 			return nil
 		}
@@ -184,7 +184,7 @@ func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader
 func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, tlsHost string, tlsPort int, hello []byte) (bool, error) {
 	if req.Method == http.MethodConnect {
 		if tlsHost != "" {
-			writeBlock(client, "CONNECT inside a decrypted connection is not served")
+			writeBlock(client, "bad_request", "CONNECT inside a decrypted connection is not served.")
 			return true, nil
 		}
 		return p.handleConnect(ctx, client, br, c, req)
@@ -207,7 +207,7 @@ func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Re
 		}
 	}
 	if host == "" {
-		writeBlock(client, "no host in the request")
+		writeBlock(client, "bad_request", "The request names no host.")
 		return true, nil
 	}
 	return p.forward(ctx, client, br, c, req, host, port, secure, hello)
@@ -224,7 +224,7 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 	}
 	head, err := io.ReadAll(io.LimitReader(req.Body, payloadCap))
 	if err != nil {
-		writeStatusCode(client, http.StatusBadRequest, "the filter could not read the request body")
+		writeAnswer(client, http.StatusBadRequest, "bad_request", "Silo network filter: the request body could not be read; the client stopped sending it.")
 		return true, nil
 	}
 	g := p.Guard()
@@ -241,7 +241,7 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 	if v.Block {
 		p.reportVerdict(c, host, v, 0, 0)
 		p.traffic(c, host, 0, 0, "block")
-		writeBlock(client, v.Detail)
+		writeBlock(client, v.Reason, v.Detail)
 		return true, nil
 	}
 	if v.Flag {
@@ -261,18 +261,14 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 
 	origin, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
-		log.Printf("egress: dial %s:%d: %s", host, port, dialProblem(err))
-		p.traffic(c, host, 0, 0, "")
-		writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
+		p.failed(client, c, host, port, stageDial, err)
 		return true, nil
 	}
 	if secure {
 		tc, err := p.dialTLS(origin, host, hello)
 		if err != nil {
 			origin.Close()
-			log.Printf("egress: tls to %s:%d: %v", host, port, err)
-			p.traffic(c, host, 0, 0, "")
-			writeStatusCode(client, http.StatusBadGateway, "the filter could not make a verified TLS connection to "+host+": "+err.Error())
+			p.failed(client, c, host, port, stageTLS, err)
 			return true, nil
 		}
 		origin = tc
@@ -301,11 +297,10 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 			}
 			p.reportVerdict(c, host, lv, sent.n, 0)
 			p.traffic(c, host, sent.n, 0, "block")
-			writeBlock(client, lv.Detail)
+			writeBlock(client, lv.Reason, lv.Detail)
 			return true, nil
 		}
-		log.Printf("egress: %s %s%s: sending the request: %v", req.Method, host, req.URL.Path, err)
-		writeStatusCode(client, http.StatusBadGateway, "the filter lost the origin")
+		p.failed(client, c, host, port, stageSend, err)
 		return true, nil
 	}
 	if req.ContentLength < 0 {
@@ -313,35 +308,40 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 			p.reportVerdict(c, host, fv, sent.n, 0)
 		}
 	}
-	done, down, err := p.relayResponse(client, br, origin, req, c, host, swapHost)
+	done, down, err := p.relayResponse(client, br, origin, req, c, host, port, swapHost)
 	p.traffic(c, host, sent.n, down, verdictName(v))
 	return done, err
 }
 
-// dialProblem words a failed origin dial for the log. A lookup error names
-// the nameserver from resolv.conf, which is not the one asked when the
-// control plane named upstreams (see Resolver), so it is reworded without it.
-func dialProblem(err error) string {
-	var de *net.DNSError
-	if errors.As(err, &de) {
-		switch {
-		case de.IsNotFound:
-			return de.Name + " does not resolve (the upstream DNS has no such name)"
-		case de.IsTimeout:
-			return "the upstream DNS did not answer for " + de.Name
-		}
-		return "looking up " + de.Name + ": " + de.Err
+// failed answers the box for an origin that could not be reached or did not
+// answer, logs it (the box sees only the answer) and counts it. A lookup
+// error's own text names the nameserver from resolv.conf, which is not the one
+// asked when the control plane named upstreams (see Resolver), so the log
+// carries the classified sentence, not the raw error.
+func (p *Proxy) failed(client io.Writer, c *Client, host string, port int, stage string, err error) {
+	f := upstreamFailure(stage, host, port, err)
+	log.Printf("egress: %s %s:%d: %s (%s)", stage, host, port, f.text, f.reason)
+	if f.block {
+		p.reportVerdict(c, host, Verdict{Block: true, Reason: f.reason, Detail: f.text}, 0, 0)
+		p.traffic(c, host, 0, 0, "block")
+	} else {
+		p.traffic(c, host, 0, 0, "")
 	}
-	return err.Error()
+	writeFailure(client, f)
 }
 
 // relayResponse streams the origin's answer back. For a host a surrogate goes
 // to, the real value is written back to the stand-in in its headers and body
 // (decoded first if the origin compressed it anyway). An upgrade (WebSocket)
 // becomes a splice once the 101 is through.
-func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn, req *http.Request, c *Client, host string, swapHost bool) (bool, int64, error) {
+func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn, req *http.Request, c *Client, host string, port int, swapHost bool) (bool, int64, error) {
 	obr := bufio.NewReader(origin)
 	cw := &countWriter{w: client}
+	// A site that takes the request and then says nothing would hold the box
+	// until its own client gave up, with no word of why. It has answerTimeout
+	// to start answering; once the headers are in nothing is timed, so a
+	// slow download or a long stream goes on.
+	_ = origin.SetReadDeadline(time.Now().Add(answerTimeout))
 	resp, err := http.ReadResponse(obr, req)
 	// An interim answer (103 Early Hints, a 100 the origin sent anyway) is
 	// passed on and the real one read after it: taking it for the answer
@@ -353,9 +353,9 @@ func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn
 		}
 		resp, err = http.ReadResponse(obr, req)
 	}
+	_ = origin.SetReadDeadline(time.Time{})
 	if err != nil {
-		log.Printf("egress: %s %s%s: no answer: %v", req.Method, host, req.URL.Path, err)
-		writeStatusCode(client, http.StatusBadGateway, "the filter got no answer from "+host)
+		p.failed(client, c, host, port, stageAnswer, err)
 		return true, cw.n, nil
 	}
 	defer resp.Body.Close()
@@ -385,7 +385,7 @@ func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn
 		if enc := strings.TrimSpace(resp.Header.Get("Content-Encoding")); enc != "" && !strings.EqualFold(enc, "identity") {
 			dec, err := decoder(enc, resp.Body)
 			if err != nil {
-				writeStatusCode(client, http.StatusBadGateway, "the filter cannot read this answer's encoding ("+enc+")")
+				writeAnswer(client, http.StatusBadGateway, "bad_answer", "Silo network filter: "+host+" answered in an encoding the filter cannot read ("+enc+"), so the answer cannot be passed on.")
 				return true, 0, nil
 			}
 			resp.Body = io.NopCloser(dec)
@@ -403,7 +403,7 @@ func (p *Proxy) relayResponse(client net.Conn, br *bufio.Reader, origin net.Conn
 
 	head, pre, err := peekHead(resp.Body)
 	if err != nil && err != io.EOF {
-		writeStatusCode(client, http.StatusBadGateway, "the filter lost the answer from "+host)
+		p.failed(client, c, host, port, stageBody, err)
 		return true, 0, nil
 	}
 	if v := g.CheckResponse(c, host, head, resp.Header.Get("Content-Type")); v.Flag {
@@ -487,18 +487,18 @@ func (c *countReader) Read(b []byte) (int, error) {
 func (p *Proxy) handleConnect(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request) (bool, error) {
 	host, port := hostPort(req.Host, 443)
 	if host == "" {
-		writeBlock(client, "no host in the CONNECT")
+		writeBlock(client, "bad_request", "The CONNECT names no host.")
 		return true, nil
 	}
 	g := p.Guard()
 	if g.State.passThrough(c, host) {
 		if v := p.passVerdict(ctx, g, c, host, port); v.Block {
-			writeBlock(client, v.Detail)
+			writeBlock(client, v.Reason, v.Detail)
 			return true, nil
 		}
 		up, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
-			writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
+			p.failed(client, c, host, port, stageDial, err)
 			return true, nil
 		}
 		defer up.Close()
@@ -710,19 +710,25 @@ func peekHead(r io.Reader) ([]byte, io.Reader, error) {
 }
 
 // writeBlock answers a request the filter refused, with words the Box can act
-// on. It never disguises itself as the origin.
-func writeBlock(w io.Writer, detail string) {
+// on. It never disguises itself as the origin. reason is the verdict's.
+func writeBlock(w io.Writer, reason, detail string) {
 	msg := "Blocked by the Silo network filter."
 	if detail != "" {
 		msg += " " + detail
 	}
-	writeStatusCode(w, http.StatusForbidden, msg)
+	if reason == "" {
+		reason = "blocked"
+	}
+	writeAnswer(w, http.StatusForbidden, reason, msg)
 }
 
-func writeStatusCode(w io.Writer, code int, msg string) {
+// writeAnswer is every answer the gateway makes itself, never the origin's:
+// X-Silo-Filter carries a stable reason, so code can tell the filter speaking
+// from a site that answered with the same status.
+func writeAnswer(w io.Writer, code int, reason, msg string) {
 	body := msg + "\n"
-	fmt.Fprintf(w, "HTTP/1.1 %d %s\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
-		code, http.StatusText(code), len(body), body)
+	fmt.Fprintf(w, "HTTP/1.1 %d %s\r\nContent-Type: text/plain; charset=utf-8\r\nX-Silo-Filter: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+		code, http.StatusText(code), reason, len(body), body)
 }
 
 // splice copies both ways until either side ends, half-closing as it goes.

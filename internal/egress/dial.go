@@ -36,9 +36,24 @@ func refuseInternal(_, address string, _ syscall.RawConn) error {
 		return fmt.Errorf("egress: unreadable address %q", address)
 	}
 	if netguard.Internal(ap.Addr()) {
-		return fmt.Errorf("egress: %s is an internal address", ap.Addr())
+		return &refusedAddr{addr: ap.Addr()}
 	}
 	return nil
+}
+
+// refusedAddr is a dial the filter itself turned away at the address actually
+// connected to: an internal one, or one on a threat list (list names it). It
+// is a block, worded as one, never a site that failed to answer.
+type refusedAddr struct {
+	addr netip.Addr
+	list string
+}
+
+func (e *refusedAddr) Error() string {
+	if e.list != "" {
+		return fmt.Sprintf("egress: %s is on threat list %s", e.addr, e.list)
+	}
+	return fmt.Sprintf("egress: %s is an internal address", e.addr)
 }
 
 // Dial is the origin dial with the threat lists' addresses refused as well as
@@ -58,7 +73,7 @@ func (g *Guard) Dial(ctx context.Context, network, addr string) (net.Conn, error
 		}
 		ap, _ := netip.ParseAddrPort(address)
 		if id, ok := feeds.Addr(ap.Addr()); ok {
-			return fmt.Errorf("egress: %s is on threat list %s", ap.Addr(), id)
+			return &refusedAddr{addr: ap.Addr(), list: id}
 		}
 		return nil
 	}}

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/netip"
 	"time"
@@ -15,7 +16,10 @@ const (
 	socksOK          = 0x00
 	socksFailure     = 0x01
 	socksNotAllowed  = 0x02
+	socksNetUnreach  = 0x03
 	socksHostUnreach = 0x04
+	socksRefused     = 0x05
+	socksTTLExpired  = 0x06 // what clients read as a timeout
 	socksCmdBad      = 0x07
 	socksAtypBad     = 0x08
 )
@@ -107,7 +111,15 @@ func (s *SOCKS) conn(ctx context.Context, conn net.Conn) {
 	target := net.JoinHostPort(host, fmt.Sprint(port))
 	up, err := s.dial(ctx, g, "tcp", target)
 	if err != nil {
-		socksReply(conn, socksHostUnreach)
+		// SOCKS has no room for a sentence, so the reply code carries what
+		// happened (a client prints "connection refused", "timed out") and
+		// the log the rest.
+		f := upstreamFailure(stageDial, host, port, err)
+		log.Printf("egress: socks %s: %s (%s)", target, f.text, f.reason)
+		if f.block && s.report != nil {
+			s.report(c, host, Verdict{Block: true, Reason: f.reason, Detail: f.text})
+		}
+		socksReply(conn, socksCode(f))
 		return
 	}
 	defer up.Close()
@@ -187,6 +199,23 @@ func socksRequest(conn net.Conn) (string, int, error) {
 		return "", 0, err
 	}
 	return host, int(binary.BigEndian.Uint16(pb[:])), nil
+}
+
+// socksCode is the reply code closest to a failure.
+func socksCode(f failure) byte {
+	switch {
+	case f.block:
+		return socksNotAllowed
+	case f.reason == "refused":
+		return socksRefused
+	case f.reason == "timeout":
+		return socksTTLExpired
+	case f.reason == "unreachable":
+		return socksNetUnreach
+	case f.reason == "dns_not_found":
+		return socksHostUnreach
+	}
+	return socksFailure
 }
 
 // socksReply writes a reply with a zero bound address: a client rarely needs

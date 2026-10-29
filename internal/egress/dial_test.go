@@ -90,7 +90,8 @@ func TestSOCKSRebindIsRefusedAtTheDial(t *testing.T) {
 	if _, err := io.ReadFull(conn, reply); err != nil {
 		t.Fatal(err)
 	}
-	if reply[1] != socksHostUnreach {
-		t.Errorf("reply code %d, want %d (refused at the dial)", reply[1], socksHostUnreach)
+	// Refused at the dial is the filter's ruleset, not a host that is down.
+	if reply[1] != socksNotAllowed {
+		t.Errorf("reply code %d, want %d (not allowed: refused at the dial)", reply[1], socksNotAllowed)
 	}
 }
