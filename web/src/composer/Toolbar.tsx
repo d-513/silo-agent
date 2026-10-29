@@ -1,23 +1,21 @@
 import { Paperclip } from "lucide-react";
 import type { RefObject } from "react";
 import type { CollectMemoriesResponse, ModelOption } from "../gen/silo/v1/ui_pb";
-import { MemoryCollectButton } from "../MemoryCollect";
 import { modelOptions } from "../modelOptions";
 import { Select } from "../Select";
 import { fitThinking } from "../thinking";
 import { ThinkingPicker } from "../ThinkingPicker";
 import type { Usage } from "../useRunStream";
 import type { Dictation } from "../voice";
-import { ContextMeter } from "./ContextMeter";
-import { FollowToggle } from "./FollowToggle";
+import { ConversationMenu } from "./ConversationMenu";
 import { MicButton } from "./MicButton";
 import { TalkButton } from "./TalkButton";
 import { SendStop } from "./SendStop";
 import { t } from "../i18n.ts";
 
-// The row under the textarea: attach, mic, model, thinking, the live-steps
-// toggle, memory collection and the context meter on the left; the key hint and
-// Send/Stop on the right.
+// The row under the textarea, in three groups: what goes into the message
+// (attach, dictate), who answers it (model, thinking), and on the right the
+// conversation menu (context, compact, memories, live steps), Talk and Send/Stop.
 export function Toolbar({
   attCount,
   fileInputRef,
@@ -66,9 +64,12 @@ export function Toolbar({
 }) {
   const currentModel = models?.find((m) => m.id === model) ?? models?.[0];
   const thinkingLevels = currentModel?.thinkingLevels ?? [];
+  const pickModel = models && models.length > 0 && onModel;
+  const pickThinking = thinkingLevels.length > 0 && onThinking;
   return (
-    <div className="flex items-center gap-1 px-2.5 pt-1 pb-2.5">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="flex items-center gap-2 px-2.5 pt-1 pb-2.5">
+      {/* What goes into the message. */}
+      <div className="flex shrink-0 items-center gap-0.5">
         <button
           type="button"
           title={workerConnected ? t("Attach files to /workspace/tmp") : t("Start the Bot to attach files")}
@@ -84,46 +85,38 @@ export function Toolbar({
             </span>
           )}
         </button>
-
         {voice ? <MicButton dictation={dictation} disabled={!ready} /> : null}
-        {talk ? <TalkButton onTalk={talk} botName={botName ?? ""} /> : null}
-
-        {models && models.length > 0 && onModel ? (
-          <Select
-            variant="ghost"
-            className="min-w-0 max-w-[220px]"
-            title={t("Model for this conversation")}
-            ariaLabel={t("Model for this conversation")}
-            value={model && models.some((m) => m.id === model) ? model : models[0].id}
-            onChange={onModel}
-            disabled={!ready}
-            options={modelOptions(models)}
-          />
-        ) : null}
-
-        {thinkingLevels.length > 0 && onThinking ? (
-          <ThinkingPicker value={fitThinking(thinking ?? "", thinkingLevels)} levels={thinkingLevels} onChange={onThinking} disabled={!ready} />
-        ) : null}
-
-        <FollowToggle />
-
-        {onCollect && chatId ? <MemoryCollectButton chatId={chatId} onCollect={onCollect} /> : null}
-
-        {usage && usage.window > 0 ? <ContextMeter usage={usage} onCompact={onCompact} disabled={sending || !chatId} /> : null}
       </div>
 
-      <span className="min-w-2 flex-1" />
+      {/* Who answers it, and how hard it thinks. */}
+      {pickModel || pickThinking ? (
+        <div className="flex min-w-0 items-center gap-0.5">
+          {pickModel ? (
+            <Select
+              variant="ghost"
+              className="min-w-0 max-w-[200px]"
+              title={t("Model for this conversation")}
+              ariaLabel={t("Model for this conversation")}
+              value={model && models.some((m) => m.id === model) ? model : models[0].id}
+              onChange={onModel}
+              disabled={!ready}
+              options={modelOptions(models)}
+            />
+          ) : null}
+          {pickThinking ? (
+            <ThinkingPicker value={fitThinking(thinking ?? "", thinkingLevels)} levels={thinkingLevels} onChange={onThinking} disabled={!ready} />
+          ) : null}
+        </div>
+      ) : null}
 
-      <span className="mr-1.5 hidden select-none text-[12px] text-ink-3 @min-[460px]:inline-grid" aria-hidden>
-        <span className={`col-start-1 row-start-1 text-right transition-opacity duration-[240ms] ease-quiet ${sending ? "opacity-0" : "opacity-100"}`}>
-          {t("Enter to send")}
-        </span>
-        <span className={`col-start-1 row-start-1 text-right transition-opacity duration-[240ms] ease-quiet ${sending ? "opacity-100" : "opacity-0"}`}>
-          {t("Esc stops the reply")}
-        </span>
-      </span>
+      <span className="flex-1" />
 
-      <SendStop sending={sending} canSend={canSend} onStop={onStop} />
+      {/* The conversation itself, a call, and Send. */}
+      <div className="flex shrink-0 items-center gap-1">
+        <ConversationMenu usage={usage} onCompact={onCompact} compactBlocked={sending || !chatId} chatId={chatId} onCollect={onCollect} />
+        {talk ? <TalkButton onTalk={talk} botName={botName ?? ""} /> : null}
+        <SendStop sending={sending} canSend={canSend} onStop={onStop} />
+      </div>
     </div>
   );
 }

@@ -291,14 +291,17 @@ No bounce, and no overshoot beyond the settle curve.
   - Draft present: `ink` fill, white arrow.
   - Run in progress: `vermilion` fill, white 10px rounded square.
 - The change is a **morph**: the arrow lifts out (translateY −10px, scale .6, fading) while the square rotates in from −90°. It takes 320ms `ease-settle`, and the fill crossfades over 240ms.
-- Enter sends, Shift+Enter adds a new line, and Escape stops the reply while it's running. The hint text beside the button switches between "Enter to send" and "Esc stops the reply".
+- Enter sends, Shift+Enter adds a new line, and Escape stops the reply while it's running. The button's own title says which ("Enter to send" / "Esc stops the reply"); no hint text sits beside it.
 - Stop cancels **this chat's run**, not the Bot, and leaves a "Stopped · this run" receipt.
 
 ### Composer
 
 - A `surface` card with 18px radius and `shadow-float`, switching to `shadow-float-focus` when focus is inside.
 - The textarea auto-grows (`field-sizing: content`, 26–168px) in `body-lg`. The placeholder is "Ask {Bot name}…".
-- The bottom row holds the paperclip (disabled until the worker is online, uploads to `/workspace/tmp`), the model chip, a spacer, the hint and Send.
+- The bottom row is three groups, never one strip of icons:
+  - **What goes in:** the paperclip (disabled until the worker is online, uploads to `/workspace/tmp`) and the dictation mic.
+  - **Who answers:** the model chip (the model's own name only, `claude-haiku-4.5`; the menu keeps the provider) and the thinking bulb.
+  - On the right, **the conversation:** the context ring (mono % beside it from 400px of composer), Talk, and Send. The ring opens a `shadow-slip` panel anchored to its right edge: the context window (bar, used, limit, cache, the auto-summary sentence), then rows for **Compact now**, **Save memories** (its result on the right, the saved facts under it; while it reads, a breathing `cobalt` dot sits on the ring, and a `+N` badge pops there when it lands) and **Follow live steps** (a small ink switch). Anything the conversation needs that is not about this message goes into that panel, not onto the row.
 
 ### Thread
 

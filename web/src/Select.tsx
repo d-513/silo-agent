@@ -8,6 +8,8 @@ export interface SelectOption {
   value: string;
   label: string;
   hint?: string;
+  // short is what a ghost trigger shows for this option when its label is long.
+  short?: string;
   disabled?: boolean;
 }
 
@@ -56,7 +58,7 @@ export function Select({
   });
 
   const current = options.find((o) => o.value === value);
-  const label = current?.label ?? (value || placeholder);
+  const label = (variant === "ghost" ? current?.short : undefined) ?? current?.label ?? (value || placeholder);
 
   function place() {
     const el = triggerRef.current;

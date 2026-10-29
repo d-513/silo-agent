@@ -8,6 +8,10 @@ export function modelOptions(models: ModelOption[], live?: string): SelectOption
   return models.map((m) => {
     const id = m.label && m.label !== m.id ? m.id : "";
     const hint = [id, live && m.live ? live : ""].filter(Boolean).join(" · ");
-    return { value: m.id, label: m.label || m.id, hint: hint || undefined };
+    const label = m.label || m.id;
+    // A chip shows only the model's own name: "OpenRouter · anthropic/claude-haiku-4.5" is "claude-haiku-4.5".
+    const name = label.includes(" · ") ? label.slice(label.lastIndexOf(" · ") + 3) : label;
+    const short = name.split("/").pop()?.trim() || label;
+    return { value: m.id, label, hint: hint || undefined, short: short === label ? undefined : short };
   });
 }

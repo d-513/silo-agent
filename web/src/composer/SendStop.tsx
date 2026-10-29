@@ -11,7 +11,7 @@ export function SendStop({ sending, canSend, onStop }: { sending: boolean; canSe
       type={sending ? "button" : "submit"}
       onClick={sending ? onStop : undefined}
       disabled={!sending && !canSend}
-      title={sending ? t("Stop this reply") : t("Send message")}
+      title={sending ? t("Esc stops the reply") : t("Enter to send")}
       aria-label={sending ? t("Stop this reply") : t("Send message")}
       className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] transition-[background-color,transform] duration-[240ms] ease-quiet active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:active:scale-100 ${fill}`}
     >
