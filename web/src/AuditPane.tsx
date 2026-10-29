@@ -1,14 +1,16 @@
 import { useInfiniteQuery, useQuery } from "@connectrpc/connect-query";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { Lock } from "lucide-react";
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
 import { fail } from "./errors";
 import { inputClass, SkeletonRows } from "./Field";
 import { fmtBytes, runWhen } from "./format";
-import { UI, type AuditEvent, type TrafficRow } from "./gen/silo/v1/ui_pb";
-import { reload, reloadBot } from "./query";
+import { UI, type AuditEvent, type BotNetwork, type HostPattern, type TrafficRow } from "./gen/silo/v1/ui_pb";
+import { put, reload, reloadBot } from "./query";
+import { listedAs, normHost } from "./rules/hostMatch";
 import { TabPill, TabPills } from "./TabPills";
 import { t } from "./i18n.ts";
 
@@ -105,6 +107,7 @@ function Summary({ summary }: { summary: { total: number; attention: number; req
 
 const noEvents: AuditEvent[] = [];
 const noTraffic: TrafficRow[] = [];
+const noPatterns: HostPattern[] = [];
 
 function Events({ botId, view, query }: { botId: string; view: "attention" | "all"; query: string }) {
   const q = useInfiniteQuery(
@@ -117,6 +120,9 @@ function Events({ botId, view, query }: { botId: string; view: "attention" | "al
     },
   );
   const events = q.data?.pages.flatMap((p) => p.events) ?? noEvents;
+  // The Bot's lists, so each line can say where its host already stands.
+  const netQ = useQuery(UI.method.getBotNetwork, { botId }, { enabled: !!botId });
+  const patterns = netQ.data?.patterns ?? noPatterns;
   const err = q.error ? fail(q.error) : "";
 
   if (q.isPending) return <SkeletonRows rows={5} height={56} />;
@@ -130,7 +136,7 @@ function Events({ botId, view, query }: { botId: string; view: "attention" | "al
       ) : (
         <ul className="overflow-hidden rounded-card bg-surface shadow-card">
           {events.map((e) => (
-            <EventRow key={e.id} e={e} showBot={!botId} editable={!!botId} />
+            <EventRow key={e.id} e={e} showBot={!botId} editable={!!botId && !!netQ.data} patterns={patterns} />
           ))}
         </ul>
       )}
@@ -147,19 +153,24 @@ function Events({ botId, view, query }: { botId: string; view: "attention" | "al
 
 // What a line reads as: a person glancing down it should know who decided what,
 // about which thing, and why — without opening anything.
-function EventRow({ e, showBot, editable }: { e: AuditEvent; showBot: boolean; editable: boolean }) {
+function EventRow({ e, showBot, editable, patterns }: { e: AuditEvent; showBot: boolean; editable: boolean; patterns: HostPattern[] }) {
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const host = e.host ? e.host + (e.port ? `:${e.port}` : "") : "";
 
-  async function list(kind: "block" | "trust") {
+  async function send(fn: () => Promise<BotNetwork>) {
     setErr("");
+    setBusy(true);
     try {
-      await ui.addHostPattern({ botId: e.botId, kind, pattern: e.host });
-      void reload(UI.method.getBotNetwork, { botId: e.botId });
+      put(UI.method.getBotNetwork, { botId: e.botId }, await fn());
     } catch (ex) {
       setErr(fail(ex));
+    } finally {
+      setBusy(false);
     }
   }
+  const add = (kind: "block" | "trust") => send(() => ui.addHostPattern({ botId: e.botId, kind, pattern: e.host }));
+  const remove = (p: HostPattern) => send(() => ui.removeHostPattern({ botId: e.botId, kind: p.kind, pattern: p.pattern }));
 
   return (
     <li className="group flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b border-line px-3 py-2.5 last:border-b-0">
@@ -189,17 +200,84 @@ function EventRow({ e, showBot, editable }: { e: AuditEvent; showBot: boolean; e
         ) : null}
       </span>
       {editable && e.host && e.attention ? (
-        <span className="flex items-center gap-1.5">
-          <Btn size="sm" onClick={() => void list("block")}>
-            {t("Block this host")}
-          </Btn>
-          <Btn size="sm" onClick={() => void list("trust")}>
-            {t("Trust this host")}
-          </Btn>
-          {err ? <span className="text-[12.5px] text-vermilion">{err}</span> : null}
-        </span>
+        <HostState host={e.host} patterns={patterns} busy={busy} onAdd={add} onRemove={remove} err={err} />
       ) : null}
     </li>
+  );
+}
+
+// HostState says where a line's host stands on the Bot's lists, and offers what
+// would change it: a host the Bot's own entry lists can be taken off again, one
+// a wider or the operator's entry covers says which.
+function HostState({
+  host,
+  patterns,
+  busy,
+  onAdd,
+  onRemove,
+  err,
+}: {
+  host: string;
+  patterns: HostPattern[];
+  busy: boolean;
+  onAdd: (kind: "block" | "trust") => void;
+  onRemove: (p: HostPattern) => void;
+  err: string;
+}) {
+  const blocked = listedAs(patterns, "block", host);
+  const trusted = listedAs(patterns, "trust", host);
+  const own = (p: HostPattern) => !p.fromOperator && normHost(p.pattern) === normHost(host);
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {blocked ? (
+        <Listed label={t("Blocked")} cls="bg-vermilion-pale text-vermilion" p={blocked} own={own(blocked)} busy={busy} undo={t("Unblock")} onRemove={onRemove} />
+      ) : trusted ? (
+        <Listed label={t("Trusted")} cls="bg-emerald/10 text-emerald" p={trusted} own={own(trusted)} busy={busy} undo={t("Stop trusting")} onRemove={onRemove} />
+      ) : null}
+      {!blocked ? (
+        <Btn size="sm" disabled={busy} onClick={() => onAdd("block")}>
+          {t("Block this host")}
+        </Btn>
+      ) : null}
+      {!blocked && !trusted ? (
+        <Btn size="sm" disabled={busy} onClick={() => onAdd("trust")}>
+          {t("Trust this host")}
+        </Btn>
+      ) : null}
+      {err ? <span className="text-[12.5px] text-vermilion">{err}</span> : null}
+    </span>
+  );
+}
+
+function Listed({
+  label,
+  cls,
+  p,
+  own,
+  busy,
+  undo,
+  onRemove,
+}: {
+  label: string;
+  cls: string;
+  p: HostPattern;
+  own: boolean;
+  busy: boolean;
+  undo: string;
+  onRemove: (p: HostPattern) => void;
+}) {
+  return (
+    <>
+      <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11.5px] font-medium ${cls}`}>
+        {p.fromOperator ? <Lock size={10} className="shrink-0" /> : null}
+        {own ? label : t("{{label}} by {{pattern}}", { label, pattern: p.pattern })}
+      </span>
+      {own ? (
+        <Btn size="sm" disabled={busy} onClick={() => onRemove(p)}>
+          {undo}
+        </Btn>
+      ) : null}
+    </>
   );
 }
 
