@@ -1,34 +1,34 @@
-import { AudioLines, Hand, Mic, MicOff, PhoneOff, X } from "lucide-react";
+import { AudioLines, Hand, Maximize2, Mic, MicOff, PhoneOff, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Spinner } from "../Feedback";
 import { Tip, TipTitle } from "../Tip";
 import { toolMeta } from "../thread/toolInfo";
 import { callClock } from "./audio";
 import type { Call } from "./useCall";
-import type { CallSnapshot, EndReason } from "./session";
+import type { CallSession, CallSnapshot, EndReason } from "./session";
 import { t } from "../i18n.ts";
 
 // CallBar is a live call, docked over the composer of the chat it is held
 // in: the orb (your voice, or the Bot's), what is going on in words, what was
 // last heard or said, and the controls. Elsewhere on the Bot's pages it is a
-// slim strip that leads back.
+// slim strip that leads back. The call screen (CallStage) is the same call
+// with the room to itself; the bar's maximise button opens it.
 
 const ctl =
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]";
 
-export function CallBar({ call, botName, here, onBack }: { call: Call; botName: string; here: boolean; onBack?: () => void }) {
+export function CallBar({ call, botName, here, onBack, onExpand }: { call: Call; botName: string; here: boolean; onBack?: () => void; onExpand?: () => void }) {
   const s = call.snap;
   if (!s) return null;
   if (!here && s.state !== "ended") return <CallStrip s={s} botName={botName} onBack={onBack} onEnd={call.end} />;
   if (!here) return null;
-  return <Bar s={s} call={call} botName={botName} />;
+  return <Bar s={s} call={call} botName={botName} onExpand={onExpand} />;
 }
 
-function Bar({ s, call, botName }: { s: CallSnapshot; call: Call; botName: string }) {
-  const session = call.session;
+// useHoldKeys makes Space hold-to-talk while that mode is on and no field
+// has the keys. The bar and the call screen share it.
+export function useHoldKeys(s: CallSnapshot, session: CallSession | null) {
   const ended = s.state === "ended";
-
-  // Space is hold-to-talk while that mode is on and no field has the keys.
   useEffect(() => {
     if (!s.ptt || ended || !session) return;
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
@@ -49,6 +49,13 @@ function Bar({ s, call, botName }: { s: CallSnapshot; call: Call; botName: strin
       window.removeEventListener("keyup", up);
     };
   }, [s.ptt, ended, session]);
+}
+
+function Bar({ s, call, botName, onExpand }: { s: CallSnapshot; call: Call; botName: string; onExpand?: () => void }) {
+  const session = call.session;
+  const ended = s.state === "ended";
+
+  useHoldKeys(s, session);
 
   return (
     <div className="mx-auto w-full max-w-[760px] px-4 pb-2" role="region" aria-label={t("Call with {{name}}", { name: botName })}>
@@ -85,6 +92,13 @@ function Bar({ s, call, botName }: { s: CallSnapshot; call: Call; botName: strin
                 {s.muted ? <MicOff size={16} /> : <Mic size={16} />}
               </button>
             </Tip>
+            {onExpand ? (
+              <Tip content={t("Open the call screen")}>
+                <button type="button" className={ctl} aria-label={t("Open the call screen")} onClick={onExpand}>
+                  <Maximize2 size={16} />
+                </button>
+              </Tip>
+            ) : null}
             <Tip content={t("End call")}>
               <button
                 type="button"
@@ -138,7 +152,7 @@ function Orb({ s, onInterrupt, botName }: { s: CallSnapshot; onInterrupt: () => 
   );
 }
 
-function stateWords(s: CallSnapshot, botName: string): string {
+export function stateWords(s: CallSnapshot, botName: string): string {
   switch (s.state) {
     case "connecting":
       return t("Connecting…");
@@ -158,7 +172,7 @@ function stateWords(s: CallSnapshot, botName: string): string {
   }
 }
 
-function endWords(r?: EndReason): string {
+export function endWords(r?: EndReason): string {
   switch (r) {
     case "idle":
       return t("Call ended after a quiet while");
@@ -210,7 +224,7 @@ function HoldToTalk({ s, onHold }: { s: CallSnapshot; onHold: (down: boolean) =>
   );
 }
 
-function Clock({ since }: { since: number }) {
+export function Clock({ since }: { since: number }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);

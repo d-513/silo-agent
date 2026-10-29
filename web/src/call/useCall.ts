@@ -14,6 +14,9 @@ export type Call = ReturnType<typeof useCall>;
 // person moves between the Bot's pages, ended with the page.
 export function useCall(botId: string) {
   const [session, setSession] = useState<CallSession | null>(null);
+  // expanded is the call screen; otherwise the call is the bar over the
+  // composer. The big Call button opens the screen, Talk the bar.
+  const [expanded, setExpanded] = useState(false);
   const snap: CallSnapshot | null = useSyncExternalStore(session?.subscribe ?? noSubscribe, session?.get ?? noSnap);
   const live = useRef<CallSession | null>(null);
   live.current = session;
@@ -31,10 +34,11 @@ export function useCall(botId: string) {
   useEffect(() => () => live.current?.hangup(), [botId]);
 
   const start = useCallback(
-    (chat: string) => {
+    (chat: string, screen = false) => {
       live.current?.hangup();
       const s = new CallSession(botId, chat);
       setSession(s);
+      setExpanded(screen);
       void s.start();
     },
     [botId],
@@ -45,6 +49,8 @@ export function useCall(botId: string) {
     // live is a call that has not ended.
     live: !!snap && snap.state !== "ended",
     start,
+    expanded,
+    setExpanded,
     end: () => session?.hangup(),
     dismiss: () => setSession(null),
     session,

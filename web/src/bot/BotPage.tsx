@@ -82,6 +82,19 @@ export function BotPage() {
   // A call survives moving between the Bot's pages; it is held in one chat.
   const call = useCall(id);
   const startCall = useCallback(() => call.start(chatId ?? (fresh ? "new" : "")), [call, chatId, fresh]);
+  // The big Call button rings the Bot in your main chat, on the call screen.
+  // While a call is up it goes back to it instead.
+  const mainId = chats.find((c) => c.main && c.mine)?.id;
+  const callMain = useCallback(() => {
+    if (call.live && call.snap) {
+      call.setExpanded(true);
+      if (call.snap.chatId && call.snap.chatId !== "new") void navigate(chatLink(id, call.snap.chatId));
+      return;
+    }
+    if (!mainId) return;
+    call.start(mainId, true);
+    void navigate(chatLink(id, mainId));
+  }, [call, mainId, id, navigate]);
   // A call from the empty chat makes its own: go there once it has an id.
   const callChat = call.snap?.chatId ?? "";
   const callFromNew = useRef(false);
@@ -279,6 +292,8 @@ export function BotPage() {
               open={drawer}
               onOpen={() => setDrawer(true)}
               onNewChat={onNewChat}
+              call={talk ? call : undefined}
+              onCall={callMain}
             />
             <BotDrawer open={drawer} botId={id} label={bot.name} onClose={closeDrawer}>
               <BotSidebar
@@ -292,6 +307,8 @@ export function BotPage() {
                 live={{ waiting, sending: run.sending, agentsBusy }}
                 onNewChat={onNewChat}
                 onDeleteChat={onDeleteChat}
+                call={talk ? call : undefined}
+                onCall={callMain}
                 drawer
                 machine={<MachineTiles bot={bot} tab={tab} onStart={start} onStop={stop} />}
               />
@@ -320,6 +337,8 @@ export function BotPage() {
               live={{ waiting, sending: run.sending, agentsBusy }}
               onNewChat={onNewChat}
               onDeleteChat={onDeleteChat}
+              call={talk ? call : undefined}
+              onCall={callMain}
             />
           )}
           <div className={`min-h-0 min-w-0 flex-1 ${max ? "hidden" : "flex"}`}>

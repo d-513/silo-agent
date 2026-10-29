@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Plus, Power } from "lucide-react";
+import { Menu, Phone, Plus, Power } from "lucide-react";
+import { Clock } from "../call/CallBar";
+import type { Call } from "../call/useCall";
 import { useEffect, useRef, type ReactNode, type TouchEvent } from "react";
 import { Crest } from "../Crest";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
@@ -46,6 +48,8 @@ export function BotTopBar({
   open,
   onOpen,
   onNewChat,
+  call,
+  onCall,
 }: {
   bot: Bot;
   tab: Tab;
@@ -56,6 +60,9 @@ export function BotTopBar({
   open: boolean;
   onOpen: () => void;
   onNewChat: () => void;
+  // The Bot's call while calls are on; its button rings the main chat.
+  call?: Call;
+  onCall: () => void;
 }) {
   const label = pageLabel(tab, chat, fresh);
   const menu = t("Open {{name}} menu", { name: bot.name });
@@ -87,11 +94,34 @@ export function BotTopBar({
           {label ? <span className="block truncate text-[12.5px] leading-4 text-ink-3">{label}</span> : null}
         </span>
       </button>
+      {call ? (
+        call.live && call.snap ? (
+          <button
+            type="button"
+            aria-label={t("Back to the call")}
+            onClick={onCall}
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-control bg-surface px-2.5 text-emerald shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
+          >
+            <Phone size={15} strokeWidth={2.25} />
+            <Clock since={call.snap.startedAt} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            title={t("Call")}
+            aria-label={t("Call {{name}}", { name: bot.name })}
+            onClick={onCall}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-ink text-on-ink transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
+          >
+            <Phone size={17} strokeWidth={2.25} />
+          </button>
+        )
+      ) : null}
       {tab === "run" && fresh && !chat ? null : (
         <button
           type="button"
-          title={t("New chat")}
-          aria-label={t("New chat")}
+          title={t("New side chat")}
+          aria-label={t("New side chat")}
           onClick={onNewChat}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface text-ink shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
         >

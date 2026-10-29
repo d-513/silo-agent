@@ -82,6 +82,7 @@ export function RunRoute() {
       actions={p.actions}
       said={p.said}
       setSaid={p.setSaid}
+      waiting={p.waiting}
       waitingRuns={p.waitingRuns}
       agentHref={p.agentHref}
       onInspectArtifact={p.inspectArtifact}

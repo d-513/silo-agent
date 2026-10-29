@@ -1,9 +1,11 @@
 import { Square } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { t } from "../i18n.ts";
 import type { Artifact } from "../Artifact";
 import { CallBar } from "../call/CallBar";
+import { CallStage } from "../call/CallStage";
 import type { Call } from "../call/useCall";
 import { useNavigate } from "@tanstack/react-router";
 import { chatLink } from "../links";
@@ -43,6 +45,7 @@ export function RunPane({
   actions,
   said,
   setSaid,
+  waiting,
   waitingRuns,
   agentHref,
   onInspectArtifact,
@@ -67,6 +70,8 @@ export function RunPane({
   actions: RunActions;
   said: Said | null;
   setSaid: (s: Said | null) => void;
+  // This chat's run is paused on an approval.
+  waiting: boolean;
   // Runs of subagents that are paused on an approval.
   waitingRuns: Set<string>;
   agentHref: (name: string) => AgentLink | undefined;
@@ -82,6 +87,65 @@ export function RunPane({
   // The call is drawn here when it is held in this chat (or is making it).
   const callChat = call.snap?.chatId ?? "";
   const callHere = !!call.snap && (callChat === chatId || (callChat === "new" && fresh && !chatId));
+  // The call screen takes the column; the composer comes up under it only
+  // when asked for (Type).
+  const staged = callHere && call.expanded;
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    if (!staged) setTyping(false);
+  }, [staged]);
+  const composer = (
+    <Composer
+      text={draft.text}
+      setText={draft.setText}
+      atts={draft.atts}
+      onRemoveAtt={(path) => draft.setAtts((xs) => xs.filter((x) => x.path !== path))}
+      quotes={draft.quotes}
+      onRemoveQuote={draft.unquote}
+      attachErr={draft.attachErr}
+      onAttach={draft.attach}
+      onSend={() => void actions.send()}
+      onStop={() => void actions.stopRun()}
+      sending={run.sending}
+      chatId={chatId}
+      fresh={fresh}
+      workerConnected={bot.workerConnected}
+      botName={bot.name}
+      models={models}
+      model={chat?.model || picked?.model || defaultModel}
+      onModel={(m) => void actions.pickModel(m)}
+      thinking={chat?.thinking ?? picked?.thinking ?? ""}
+      onThinking={(l) => void actions.pickThinking(l)}
+      usage={run.usage}
+      onCompact={() => void actions.compactChat()}
+      voice={voice}
+      onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
+      onCollect={() => ui.collectMemories({ botId: id, chatId: chatId! })}
+      commands={commands}
+      onCommand={actions.sendCommand}
+      said={said}
+      onDismissSaid={() => setSaid(null)}
+      talk={talk && !(callHere && call.live)}
+      onTalk={onTalk}
+    />
+  );
+  if (staged) {
+    return (
+      <>
+        <CallStage
+          call={call}
+          botName={bot.name}
+          crest={bot.crest}
+          where={chat?.main ? t("Main chat") : chat?.title || t("New chat")}
+          waiting={waiting}
+          typing={typing}
+          onType={() => setTyping((v) => !v)}
+          onMinimize={() => call.setExpanded(false)}
+        />
+        {typing ? composer : null}
+      </>
+    );
+  }
   return (
     <>
       <Taskboard
@@ -149,40 +213,14 @@ export function RunPane({
         </div>
       ) : (
         <>
-        <CallBar call={call} botName={bot.name} here={callHere} onBack={callChat && callChat !== "new" ? () => void navigate(chatLink(id, callChat)) : undefined} />
-        <Composer
-          text={draft.text}
-          setText={draft.setText}
-          atts={draft.atts}
-          onRemoveAtt={(path) => draft.setAtts((xs) => xs.filter((x) => x.path !== path))}
-          quotes={draft.quotes}
-          onRemoveQuote={draft.unquote}
-          attachErr={draft.attachErr}
-          onAttach={draft.attach}
-          onSend={() => void actions.send()}
-          onStop={() => void actions.stopRun()}
-          sending={run.sending}
-          chatId={chatId}
-          fresh={fresh}
-          workerConnected={bot.workerConnected}
+        <CallBar
+          call={call}
           botName={bot.name}
-          models={models}
-          model={chat?.model || picked?.model || defaultModel}
-          onModel={(m) => void actions.pickModel(m)}
-          thinking={chat?.thinking ?? picked?.thinking ?? ""}
-          onThinking={(l) => void actions.pickThinking(l)}
-          usage={run.usage}
-          onCompact={() => void actions.compactChat()}
-          voice={voice}
-          onTranscribe={(audio, mime) => ui.transcribe({ botId: id, audio, mime }).then((r) => r.text)}
-          onCollect={() => ui.collectMemories({ botId: id, chatId: chatId! })}
-          commands={commands}
-          onCommand={actions.sendCommand}
-          said={said}
-          onDismissSaid={() => setSaid(null)}
-          talk={talk && !(callHere && call.live)}
-          onTalk={onTalk}
+          here={callHere}
+          onBack={callChat && callChat !== "new" ? () => void navigate(chatLink(id, callChat)) : undefined}
+          onExpand={() => call.setExpanded(true)}
         />
+        {composer}
         </>
       )}
     </>

@@ -1,12 +1,15 @@
 import { ActivityStrip } from "./ActivityStrip";
-import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, MessageCircleQuestionMark, Package, Pencil, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
+import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, MessageCircleQuestionMark, Package, Pencil, Phone, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Link } from "@tanstack/react-router";
 import { pressClass } from "../Btn";
+import { Clock } from "../call/CallBar";
+import type { Call } from "../call/useCall";
+import { Crest } from "../Crest";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
-import { fullTime } from "../format";
+import { ago, fullTime } from "../format";
 import { UI, type Bot, type Chat } from "../gen/silo/v1/ui_pb";
 import { Lamp, Status, StatusWord } from "../Lamp";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
@@ -14,17 +17,19 @@ import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { ActiveBar, SideLink } from "./SideNav";
 import { onSettings, type Tab } from "./tabs";
+import { toolMeta } from "../thread/toolInfo";
 import type { ChatRename } from "./useChatList";
 import { t } from "../i18n.ts";
 import { Initials } from "../space/People";
-import { Tip } from "../Tip";
+import { Tip, TipTitle } from "../Tip";
 
 // What the open chat is doing, for its lamp: waiting on you, or working.
 export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
 
 // The wide layout's left column, on every page of a Bot: its name and state,
-// the Dashboard under them, New chat, the pages beside the chat, the chats
-// folded into date groups, and Settings at the foot. In the narrow layout it
+// the home card (the main chat with its Call, and the Dashboard), the pages
+// beside the chat, the side chats folded into date groups under their own
+// New side chat, and Settings at the foot. In the narrow layout it
 // is the body of the Bot's drawer (`drawer`): one scroll for all of it, rows
 // tall enough for a thumb, and the machine's panes (`machine`) under the pages.
 export function BotSidebar({
@@ -38,6 +43,8 @@ export function BotSidebar({
   live: { waiting, sending, agentsBusy },
   onNewChat,
   onDeleteChat,
+  call,
+  onCall,
   drawer = false,
   machine,
 }: {
@@ -51,6 +58,9 @@ export function BotSidebar({
   live: ChatLive;
   onNewChat: () => void;
   onDeleteChat: (cid: string) => void;
+  // The Bot's call while calls are on; undefined hides Call.
+  call?: Call;
+  onCall: () => void;
   drawer?: boolean;
   machine?: ReactNode;
 }) {
@@ -87,25 +97,24 @@ export function BotSidebar({
   return (
     <aside className={drawer ? "flex min-h-0 flex-1 flex-col bg-well" : "hidden w-[248px] shrink-0 flex-col bg-well wide:flex"}>
       <Scroll drawer={drawer}>
-        <BotHome
-          botId={id}
-          bot={bot}
-          on={tab === "dashboard"}
-          needs={pendingCount}
-          asks={bot.dashboardAsks}
-          fresh={freshCount}
-          curating={!!dashQ.data?.curating}
-        />
-        <ActivityStrip bot={bot} />
+        <BotHead bot={bot} />
         <div className="px-2 pb-3">
-          <MainChat
+          <HomeCard
             botId={id}
-            mainId={main?.id}
-            on={mainOpen}
-            status={mainStatus}
-            onNewChat={onNewChat}
+            bot={bot}
+            main={main}
+            mainOn={mainOpen}
+            mainStatus={mainStatus}
+            dashOn={tab === "dashboard"}
+            needs={pendingCount}
+            asks={bot.dashboardAsks}
+            fresh={freshCount}
+            curating={!!dashQ.data?.curating}
+            call={call}
+            onCall={onCall}
           />
         </div>
+        <ActivityStrip bot={bot} />
         <nav className="space-y-0.5 px-2" aria-label={t("Pages")}>
           <SideLink to="/bots/$botId/automations" botId={id} on={tab === "automations"} icon={Timer} label={t("Automations")} />
           <SideLink to="/bots/$botId/artifacts" botId={id} on={tab === "artifacts"} icon={Package} label={t("Artifacts")} />
@@ -115,8 +124,8 @@ export function BotSidebar({
           <SideLink to="/bots/$botId/channels" botId={id} on={tab === "channels"} icon={Radio} label={t("Channels")} />
         </nav>
         {machine}
-        <div className={drawer ? "mt-4 px-2 pb-3" : "mt-4 min-h-0 flex-1 overflow-auto px-2 pb-3"}>
-          {groups.length === 0 && <p className="px-3 py-2 text-[12.5px] text-ink-3">{t("No other chats")}</p>}
+        <SideChatsHead onNewChat={onNewChat} />
+        <div className={drawer ? "px-2 pb-3" : "min-h-0 flex-1 overflow-auto px-2 pb-3"}>
           {groups.map((g) => (
             <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
               {g.chats.map((c) => {
@@ -159,61 +168,171 @@ function Scroll({ drawer, children }: { drawer: boolean; children: ReactNode }) 
   return <div className="min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>;
 }
 
-// BotHome heads the sidebar: the Bot's name and state over its Dashboard, so
-// the board reads as the Bot's front page rather than one more button. The
-// whole block opens it; its second line says what is waiting there.
-function BotHome({
+// BotHead heads the sidebar: the Bot's face, name and state. It is not a
+// link; the home card under it holds where the Bot lives.
+function BotHead({ bot }: { bot: Bot }) {
+  return (
+    <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2.5">
+      <Crest index={bot.crest} size={28} />
+      <span className="min-w-0 flex-1">
+        <h1 className="truncate text-card-title leading-5">{bot.name}</h1>
+        <span className="flex items-center gap-1.5">
+          <Lamp status={bot.status} />
+          <StatusWord status={bot.status} />
+        </span>
+      </span>
+      {bot.people.length > 1 ? <People people={bot.people} /> : null}
+    </div>
+  );
+}
+
+// HomeCard is the Bot's two standing places, lifted as one card: the main
+// chat (one per person, where it opens and where replies land) with Call
+// beside it, and the Dashboard. Each row says what is there now.
+function HomeCard({
   botId,
   bot,
-  on,
+  main,
+  mainOn,
+  mainStatus,
+  dashOn,
   needs,
   asks,
   fresh,
   curating,
+  call,
+  onCall,
 }: {
   botId: string;
   bot: Bot;
-  on: boolean;
+  main?: Chat;
+  mainOn: boolean;
+  mainStatus: "needs_you" | "working" | "";
+  dashOn: boolean;
   needs: number;
   asks: number;
   fresh: number;
   curating: boolean;
+  call?: Call;
+  onCall: () => void;
 }) {
+  const row = "relative flex items-center gap-2.5 outline-offset-[-2px] transition-[background-color] duration-[160ms] ease-quiet";
+  const onCallHere = !!call?.live && !!main && call.snap?.chatId === main.id;
   return (
-    <div className="px-2 pt-2 pb-2">
+    <div className="overflow-hidden rounded-card bg-surface shadow-float">
+      <div className={`${row} pr-2 ${mainOn ? "" : "hover:bg-well/60"}`}>
+        <ActiveBar on={mainOn} />
+        {main ? (
+          <Link
+            to="/bots/$botId/run/$chatId"
+            params={{ botId, chatId: main.id }}
+            data-tab-on={mainOn || undefined}
+            className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5 outline-offset-[-2px] in-data-drawer:py-2.5"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
+              <MessageCircle size={14} strokeWidth={2.25} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{t("Main chat")}</span>
+              <MainLine bot={bot} at={main.updatedAt} status={mainStatus} onCall={onCallHere} />
+            </span>
+          </Link>
+        ) : (
+          <span className="h-[52px] flex-1" />
+        )}
+        {call && main ? <CallButton call={call} onCall={onCall} /> : null}
+      </div>
+      <div aria-hidden className="mx-2.5 h-px bg-line" />
       <Link
         to="/bots/$botId/dashboard"
         params={{ botId }}
-        data-tab-on={on || undefined}
-        className={`group/home relative block rounded-card px-3 pt-2.5 pb-2 transition-[background-color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] ${
-          on ? "bg-surface shadow-card" : "hover:bg-pressed"
-        }`}
+        data-tab-on={dashOn || undefined}
+        className={`group/home ${row} py-2 pr-2.5 pl-2.5 in-data-drawer:py-2.5 ${dashOn ? "" : "hover:bg-well/60"}`}
       >
-        <ActiveBar on={on} />
-        <div className="flex items-center gap-3">
-          <h1 className="min-w-0 flex-1 truncate text-card-title leading-6">{bot.name}</h1>
-          {bot.people.length > 1 ? <People people={bot.people} /> : null}
-          <span className="flex shrink-0 items-center gap-2">
-            <Lamp status={bot.status} />
-            <StatusWord status={bot.status} />
-          </span>
-        </div>
-        <div
-          className={`mt-1.5 flex h-6 items-center gap-2 text-[12.5px] leading-4 transition-colors duration-[160ms] ease-quiet ${
-            on ? "text-ink" : "text-ink-2 group-hover/home:text-ink"
-          }`}
-        >
-          <LayoutGrid size={13} className={on ? "text-cobalt" : "text-ink-3 group-hover/home:text-cobalt"} />
-          <span className="font-medium">{t("Dashboard")}</span>
-          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5 truncate">
+        <ActiveBar on={dashOn} />
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-well shadow-[inset_0_0_0_1px_var(--color-line)] ${dashOn ? "text-cobalt" : "text-ink-2"}`}>
+          <LayoutGrid size={14} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{t("Dashboard")}</span>
+          <span className="flex h-[18px] items-center text-[12.5px] leading-[18px] text-ink-3">
             <Digest needs={needs} asks={asks} fresh={fresh} curating={curating} />
           </span>
-          <ChevronRight
-            size={13}
-            className="-mr-1 shrink-0 text-ink-3 opacity-0 transition-[opacity,transform] duration-[160ms] ease-quiet group-hover/home:translate-x-0.5 group-hover/home:opacity-100 motion-reduce:transition-opacity"
-          />
-        </div>
+        </span>
+        <ChevronRight size={14} className="shrink-0 text-ink-3 transition-transform duration-[160ms] ease-quiet group-hover/home:translate-x-0.5 motion-reduce:transition-none" />
       </Link>
+    </div>
+  );
+}
+
+// MainLine is what the main chat is doing now: a call, a question waiting,
+// work (with the tool it is in), else when it last moved.
+function MainLine({ bot, at, status, onCall }: { bot: Bot; at: string; status: "needs_you" | "working" | ""; onCall: boolean }) {
+  const cls = "block truncate text-[12.5px] leading-[18px]";
+  if (onCall) return <span className={`${cls} text-emerald`}>{t("On a call")}</span>;
+  if (status === "needs_you") return <span className={`${cls} font-medium text-vermilion`}>{t("Needs you")}</span>;
+  if (status === "working") {
+    const step = bot.activity.find((a) => a.kind === "main")?.step;
+    return <span className={`${cls} text-emerald`}>{step ? t("Working: {{what}}", { what: toolMeta(step).app || step }) : t("Working…")}</span>;
+  }
+  return <span className={`${cls} text-ink-3`}>{at ? t("Last active {{when}}", { when: ago(at) }) : "\u00a0"}</span>;
+}
+
+// CallButton rings the Bot in the main chat. It carries the call: Calling…
+// while it connects, then the call's clock, which leads back to it.
+function CallButton({ call, onCall }: { call: Call; onCall: () => void }) {
+  const s = call.live ? call.snap : null;
+  const base = `flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] font-medium ${pressClass}`;
+  if (s?.state === "connecting") {
+    return (
+      <button type="button" onClick={onCall} className={`${base} bg-well text-ink-2`}>
+        <span aria-hidden className="breathe h-1.5 w-1.5 rounded-full bg-ink-3" />
+        {t("Calling…")}
+      </button>
+    );
+  }
+  if (s) {
+    return (
+      <Tip content={t("Back to the call")}>
+        <button type="button" onClick={onCall} aria-label={t("Back to the call")} className={`${base} bg-well text-emerald`}>
+          <Lamp status="working" />
+          <Clock since={s.startedAt} />
+        </button>
+      </Tip>
+    );
+  }
+  return (
+    <Tip
+      content={
+        <>
+          <TipTitle>{t("Call")}</TipTitle>
+          <p className="mt-1">{t("A voice call in your main chat. What you both say is written there.")}</p>
+        </>
+      }
+    >
+      <button type="button" onClick={onCall} className={`${base} bg-ink text-on-ink hover:bg-ink-deep`}>
+        <Phone size={13} strokeWidth={2.25} />
+        {t("Call")}
+      </button>
+    </Tip>
+  );
+}
+
+// SideChatsHead names the side chats and holds the one way to start one.
+function SideChatsHead({ onNewChat }: { onNewChat: () => void }) {
+  return (
+    <div className="mt-4 flex h-8 items-center gap-2 pr-2 pl-5 in-data-drawer:h-10">
+      <h2 className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-2">{t("Side chats")}</h2>
+      <Tip content={t("New side chat")}>
+        <button
+          type="button"
+          onClick={onNewChat}
+          aria-label={t("New side chat")}
+          className={`group/new flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card hover:text-ink ${pressClass}`}
+        >
+          <Plus size={14} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
+        </button>
+      </Tip>
     </div>
   );
 }
@@ -244,7 +363,8 @@ function People({ people }: { people: Bot["people"] }) {
 }
 
 // Digest is the one thing worth saying about the board right now: what needs
-// the owner first, then what changed, then that the Bot is curating it.
+// the owner first, then what changed, then that the Bot is curating it, else
+// that nothing is new (so the row keeps the main chat's two lines).
 function Digest({ needs, asks, fresh, curating }: { needs: number; asks: number; fresh: number; curating: boolean }) {
   // Approvals are Needs you (a run is paused on them); the Bot's questions
   // only wait, so they are cobalt like anything else that is new there.
@@ -280,56 +400,7 @@ function Digest({ needs, asks, fresh, curating }: { needs: number; asks: number;
       </span>
     );
   }
-  return null;
-}
-
-// MainChat is the sidebar's lifted control: the Bot's one standing
-// conversation, where it opens and where replies land. A side chat is the
-// small plus beside it, whose plus turns a quarter on hover.
-function MainChat({
-  botId,
-  mainId,
-  on,
-  status,
-  onNewChat,
-}: {
-  botId: string;
-  mainId?: string;
-  on: boolean;
-  status: "needs_you" | "working" | "";
-  onNewChat: () => void;
-}) {
-  const lift = `rounded-control bg-surface shadow-card hover:shadow-float ${pressClass}`;
-  return (
-    <div className="flex gap-1.5">
-      {mainId ? (
-        <Link
-          to="/bots/$botId/run/$chatId"
-          params={{ botId, chatId: mainId }}
-          data-tab-on={on || undefined}
-          className={`relative flex h-10 min-w-0 flex-1 items-center gap-2.5 pr-3 pl-2 text-[13.5px] font-medium text-ink ${lift} ${on ? "shadow-float" : ""}`}
-        >
-          <ActiveBar on={on} />
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-ink text-on-ink">
-            <MessageCircle size={14} strokeWidth={2.25} />
-          </span>
-          <span className="min-w-0 flex-1 truncate">{t("Main chat")}</span>
-          {status ? <Status status={status} className="shrink-0" /> : null}
-        </Link>
-      ) : (
-        <span className="h-10 flex-1" />
-      )}
-      <button
-        type="button"
-        onClick={onNewChat}
-        title={t("New chat")}
-        aria-label={t("New chat")}
-        className={`group/new flex h-10 w-10 shrink-0 items-center justify-center text-ink ${lift}`}
-      >
-        <Plus size={16} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
-      </button>
-    </div>
-  );
+  return <span className="truncate text-ink-3">{t("Nothing new")}</span>;
 }
 
 // One date group: a header that folds it, and its rows. The header is a
@@ -359,7 +430,7 @@ function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; o
   );
 }
 
-// One side chat: a single quiet line (the main chat is MainChat, above). The open one is lifted by tone and marked
+// One side chat: a single quiet line (the main chat is in HomeCard, above). The open one is lifted by tone and marked
 // with the cobalt bar; rename and delete fade in over the end of the title.
 function ChatRow({
   botId,
