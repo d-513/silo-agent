@@ -145,7 +145,7 @@ func (g *Guard) Check(ctx context.Context, req Request) Verdict {
 	if p, ok := g.sinks.match(host, req.Path); ok {
 		return Verdict{Flag: true, Reason: "exfil_sink", Detail: "a place anything can post to: " + p}
 	}
-	if name, ok := findSecretShape(payload); ok {
+	if name, ok := findSecretShape(payload, host); ok {
 		return Verdict{Flag: true, Reason: "secret_shape", Detail: "a " + name + " in the request"}
 	}
 	if c != nil && g.State.bot(c).plainSecret(payload) {

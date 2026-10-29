@@ -58,27 +58,50 @@ func (s sinkSet) match(host, path string) (string, bool) {
 // secretShape is a pattern that only a credential matches. They are kept to
 // formats with a fixed prefix: a pattern that also matches ordinary text
 // would bury the owner in flags.
+//
+// home is the service that issued the credential. A key on its way there is
+// being used, not carried off: Chromium sends its own Google API key to
+// *.googleapis.com on every start, and a page with a map sends the site's key
+// to maps.googleapis.com. Only a credential headed somewhere else is the shape
+// of a leak, so that is all this flags.
 type secretShape struct {
 	name string
 	re   *regexp.Regexp
+	home hostSet
+}
+
+// homeOf is a credential's issuer: each domain and everything below it.
+func homeOf(domains ...string) hostSet {
+	var patterns []string
+	for _, d := range domains {
+		patterns = append(patterns, d, "*."+d)
+	}
+	return newHostSet(patterns)
 }
 
 var secretShapes = []secretShape{
-	{"AWS access key", regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)},
-	{"GitHub token", regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b`)},
-	{"GitLab token", regexp.MustCompile(`\bglpat-[A-Za-z0-9_-]{20,}\b`)},
-	{"OpenAI key", regexp.MustCompile(`\bsk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}T3BlbkFJ[A-Za-z0-9_-]{20,}\b`)},
-	{"Anthropic key", regexp.MustCompile(`\bsk-ant-(?:api|admin)\d{2}-[A-Za-z0-9_-]{80,}\b`)},
-	{"OpenRouter key", regexp.MustCompile(`\bsk-or-v1-[a-f0-9]{64}\b`)},
-	{"Slack token", regexp.MustCompile(`\bxox[baprs]-[A-Za-z0-9-]{10,}\b`)},
-	{"Google API key", regexp.MustCompile(`\bAIza[0-9A-Za-z_-]{35}\b`)},
-	{"Stripe key", regexp.MustCompile(`\b(?:sk|rk)_live_[A-Za-z0-9]{20,}\b`)},
-	{"private key", regexp.MustCompile(`-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----`)},
+	{"AWS access key", regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`), homeOf("amazonaws.com", "amazonaws.com.cn", "aws.amazon.com")},
+	{"GitHub token", regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b`), homeOf("github.com", "githubusercontent.com", "ghcr.io")},
+	{"GitLab token", regexp.MustCompile(`\bglpat-[A-Za-z0-9_-]{20,}\b`), homeOf("gitlab.com")},
+	{"OpenAI key", regexp.MustCompile(`\bsk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}T3BlbkFJ[A-Za-z0-9_-]{20,}\b`), homeOf("openai.com")},
+	{"Anthropic key", regexp.MustCompile(`\bsk-ant-(?:api|admin)\d{2}-[A-Za-z0-9_-]{80,}\b`), homeOf("anthropic.com")},
+	{"OpenRouter key", regexp.MustCompile(`\bsk-or-v1-[a-f0-9]{64}\b`), homeOf("openrouter.ai")},
+	{"Slack token", regexp.MustCompile(`\bxox[baprs]-[A-Za-z0-9-]{10,}\b`), homeOf("slack.com")},
+	{"Google API key", regexp.MustCompile(`\bAIza[0-9A-Za-z_-]{35}\b`), homeOf("googleapis.com", "google.com", "youtube.com", "firebaseio.com")},
+	{"Stripe key", regexp.MustCompile(`\b(?:sk|rk)_live_[A-Za-z0-9]{20,}\b`), homeOf("stripe.com")},
+	// A private key has no service it is sent to.
+	{"private key", regexp.MustCompile(`-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----`), newHostSet()},
 }
 
-// findSecretShape names the first credential-shaped string in s.
-func findSecretShape(s string) (string, bool) {
+// findSecretShape names the first credential-shaped string in s that is not
+// on its way to the service that issued it. An empty host is nobody's home.
+func findSecretShape(s, host string) (string, bool) {
 	for _, p := range secretShapes {
+		if host != "" {
+			if _, home := p.home.match(host); home {
+				continue
+			}
+		}
 		if p.re.MatchString(s) {
 			return p.name, true
 		}

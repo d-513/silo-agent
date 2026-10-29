@@ -26,8 +26,9 @@ func TestVerdictDoesNotFlagASurrogateAtHome(t *testing.T) {
 	if v.Flag || v.Block {
 		t.Fatalf("a surrogate at its own host was judged: %+v", v)
 	}
-	// A real-looking token that is not the Bot's stand-in still is.
-	v = g.Check(context.Background(), Request{Client: b1, Host: "api.github.com", Proto: "https", Port: 443, Secure: true,
+	// A real-looking token that is not the Bot's stand-in still is, headed
+	// anywhere but GitHub (at GitHub it is only being used).
+	v = g.Check(context.Background(), Request{Client: b1, Host: "collector.example", Proto: "https", Port: 443, Secure: true,
 		Payload: "Authorization: Bearer ghp_" + strings.Repeat("Q", 36)})
 	if !v.Flag || v.Reason != "secret_shape" {
 		t.Fatalf("a token that is not a stand-in: %+v", v)

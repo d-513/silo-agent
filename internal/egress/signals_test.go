@@ -54,7 +54,7 @@ func TestSecretShapes(t *testing.T) {
 		"private key":    "-----BEGIN OPENSSH PRIVATE KEY-----\nb3Blbn...",
 	}
 	for want, s := range hits {
-		got, ok := findSecretShape(s)
+		got, ok := findSecretShape(s, "example.com")
 		if !ok || got != want {
 			t.Errorf("findSecretShape(%q) = %q, %v; want %q", s, got, ok, want)
 		}
@@ -66,9 +66,39 @@ func TestSecretShapes(t *testing.T) {
 		"-----BEGIN CERTIFICATE-----",
 		"https://example.com/?utm_source=newsletter&utm_medium=email",
 	} {
-		if name, ok := findSecretShape(s); ok {
+		if name, ok := findSecretShape(s, "example.com"); ok {
 			t.Errorf("findSecretShape(%q) = %q, want nothing", s, name)
 		}
+	}
+}
+
+// A credential headed to the service that issued it is being used, not
+// carried off: Chromium sends its built-in Google API key to googleapis.com
+// on every start, and that flagged every Bot. Headed anywhere else, the same
+// key is still the shape of a leak.
+func TestSecretShapeAtItsHomeIsNotFlagged(t *testing.T) {
+	google := "GET /v1/pages?key=AIza" + strings.Repeat("Q", 35)
+	for _, host := range []string{"safebrowsing.googleapis.com", "content-autofill.googleapis.com", "googleapis.com", "clients4.google.com", "www.youtube.com"} {
+		if name, ok := findSecretShape(google, host); ok {
+			t.Errorf("a Google API key to %s was flagged as %q", host, name)
+		}
+	}
+	for _, host := range []string{"example.com", "googleapis.com.evil.example", "notgoogle.com", ""} {
+		if name, ok := findSecretShape(google, host); !ok || name != "Google API key" {
+			t.Errorf("a Google API key to %q = %q, %v; want flagged", host, name, ok)
+		}
+	}
+	gh := "Authorization: token ghp_" + strings.Repeat("a1B2", 9)
+	if _, ok := findSecretShape(gh, "api.github.com"); ok {
+		t.Error("a GitHub token to api.github.com was flagged")
+	}
+	// Another credential in the same request is judged on its own.
+	if name, ok := findSecretShape(google+"\nX-Aws: AKIAIOSFODNN7EXAMPLE", "maps.googleapis.com"); !ok || name != "AWS access key" {
+		t.Errorf("an AWS key riding along to Google = %q, %v; want flagged", name, ok)
+	}
+	// A private key has no home.
+	if _, ok := findSecretShape("-----BEGIN RSA PRIVATE KEY-----", "github.com"); !ok {
+		t.Error("a private key was let through to github.com")
 	}
 }
 
