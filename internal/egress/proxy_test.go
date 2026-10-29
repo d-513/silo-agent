@@ -636,3 +636,41 @@ func TestProxyPassesInterimAnswersOn(t *testing.T) {
 		t.Fatalf("Alt-Svc passed on: %q", v)
 	}
 }
+
+// Every request on a kept-alive connection makes its own handshake to the
+// origin, and each needs fresh keys. The hello spec used to be built once per
+// connection and reused: applying it writes the handshake's public keys into
+// it, utls then makes no private key for the next one, and every request
+// after the first failed with "local error: tls: internal error", so a page
+// loaded and its styles and scripts did not.
+func TestProxyKeepAliveMakesAFreshHandshakeEachTime(t *testing.T) {
+	a := testApply(t)
+	ca, err := LoadCA(a.CaCert, a.CaKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin, _ := originServe(t, ca, func(_ *http.Request, _ []byte, w io.Writer) {
+		_, _ = io.WriteString(w, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+	})
+	addr, _, _ := mitmProxy(t, a, origin)
+	tc := tlsVia(t, addr, "origin.test", ca)
+	br := bufio.NewReader(tc)
+	for i := range 4 {
+		_, _ = fmt.Fprintf(tc, "GET /%d HTTP/1.1\r\nHost: origin.test\r\n\r\n", i)
+		resp, err := http.ReadResponse(br, nil)
+		if err != nil {
+			t.Fatalf("request %d: %v", i, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != 200 || string(body) != "ok" {
+			t.Fatalf("request %d on one connection: %d %q", i, resp.StatusCode, body)
+		}
+	}
+}
+
+func TestDialProblemNamesNoStaleServer(t *testing.T) {
+	err := &net.OpError{Op: "dial", Net: "tcp", Err: &net.DNSError{Err: "no such host", Name: "gone.example", Server: "10.213.4.1:53", IsNotFound: true}}
+	if got := dialProblem(err); strings.Contains(got, "10.213.4.1") || !strings.Contains(got, "gone.example does not resolve") {
+		t.Fatalf("dialProblem = %q", got)
+	}
+}

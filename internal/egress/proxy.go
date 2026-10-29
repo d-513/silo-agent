@@ -17,6 +17,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/andybalholm/brotli"
@@ -83,7 +84,20 @@ func (p *Proxy) dial(ctx context.Context, g *Guard, network, addr string) (net.C
 	return g.Dial(ctx, network, addr)
 }
 
-func (p *Proxy) dialTLS(raw net.Conn, host string, spec *utls.ClientHelloSpec) (net.Conn, error) {
+// dialTLS makes the TLS connection to the origin, mirroring hello (the box's
+// own ClientHello; nil for a request that came over plain HTTP).
+//
+// The spec is built anew for every handshake and never kept: applying one
+// writes the handshake's public keys into its key_share extension, and utls
+// generates no private key for a share that already has data. A spec reused
+// for the next request on a kept-alive connection therefore failed every
+// handshake after the first with "local error: tls: internal error": a page's
+// HTML loaded and its styles, scripts and API calls did not.
+func (p *Proxy) dialTLS(raw net.Conn, host string, hello []byte) (net.Conn, error) {
+	var spec *utls.ClientHelloSpec
+	if hello != nil {
+		spec = mirrorSpec(hello, host)
+	}
 	_ = raw.SetDeadline(time.Now().Add(helloTimeout))
 	defer func() { _ = raw.SetDeadline(time.Time{}) }()
 	if p.DialTLS != nil {
@@ -149,7 +163,7 @@ func (p *Proxy) conn(ctx context.Context, conn net.Conn, mode string) error {
 // serveHTTP serves requests off br, answering on client. tlsHost, when set, is
 // the decrypted origin every request goes to (a MITM session); otherwise each
 // request names its own.
-func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, tlsHost string, port int, spec *utls.ClientHelloSpec) error {
+func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, tlsHost string, port int, hello []byte) error {
 	for {
 		_ = client.SetReadDeadline(time.Now().Add(idleTimeout))
 		req, err := http.ReadRequest(br)
@@ -158,7 +172,7 @@ func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader
 		}
 		// A body may take as long as it takes; the slot cap bounds how many.
 		_ = client.SetReadDeadline(time.Time{})
-		done, err := p.handleRequest(ctx, client, br, c, req, tlsHost, port, spec)
+		done, err := p.handleRequest(ctx, client, br, c, req, tlsHost, port, hello)
 		if err != nil || done {
 			return err
 		}
@@ -167,7 +181,7 @@ func (p *Proxy) serveHTTP(ctx context.Context, client net.Conn, br *bufio.Reader
 
 // handleRequest judges and forwards one request. It reports whether the
 // connection must end.
-func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, tlsHost string, tlsPort int, spec *utls.ClientHelloSpec) (bool, error) {
+func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, tlsHost string, tlsPort int, hello []byte) (bool, error) {
 	if req.Method == http.MethodConnect {
 		if tlsHost != "" {
 			writeBlock(client, "CONNECT inside a decrypted connection is not served")
@@ -192,14 +206,14 @@ func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Re
 		writeBlock(client, "no host in the request")
 		return true, nil
 	}
-	return p.forward(ctx, client, br, c, req, host, port, secure, spec)
+	return p.forward(ctx, client, br, c, req, host, port, secure, hello)
 }
 
 // forward sends one request on to host and its answer back. The body is never
 // held whole: its first payloadCap bytes are read for the verdict, and the
 // rest streams through the surrogate swaps, which end the upload if a stand-in
 // turns up where it must not go.
-func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, host string, port int, secure bool, spec *utls.ClientHelloSpec) (bool, error) {
+func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, c *Client, req *http.Request, host string, port int, secure bool, hello []byte) (bool, error) {
 	if req.Header.Get("Expect") == "100-continue" {
 		_, _ = io.WriteString(client, "HTTP/1.1 100 Continue\r\n\r\n")
 		req.Header.Del("Expect")
@@ -243,13 +257,13 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 
 	origin, err := p.dial(ctx, g, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
-		log.Printf("egress: dial %s:%d: %v", host, port, err)
+		log.Printf("egress: dial %s:%d: %s", host, port, dialProblem(err))
 		p.traffic(c, host, 0, 0, "")
 		writeStatusCode(client, http.StatusBadGateway, "the filter could not reach "+host)
 		return true, nil
 	}
 	if secure {
-		tc, err := p.dialTLS(origin, host, spec)
+		tc, err := p.dialTLS(origin, host, hello)
 		if err != nil {
 			origin.Close()
 			log.Printf("egress: tls to %s:%d: %v", host, port, err)
@@ -298,6 +312,23 @@ func (p *Proxy) forward(ctx context.Context, client net.Conn, br *bufio.Reader, 
 	done, down, err := p.relayResponse(client, br, origin, req, c, host, swapHost)
 	p.traffic(c, host, sent.n, down, verdictName(v))
 	return done, err
+}
+
+// dialProblem words a failed origin dial for the log. A lookup error names
+// the nameserver from resolv.conf, which is not the one asked when the
+// control plane named upstreams (see Resolver), so it is reworded without it.
+func dialProblem(err error) string {
+	var de *net.DNSError
+	if errors.As(err, &de) {
+		switch {
+		case de.IsNotFound:
+			return de.Name + " does not resolve (the upstream DNS has no such name)"
+		case de.IsTimeout:
+			return "the upstream DNS did not answer for " + de.Name
+		}
+		return "looking up " + de.Name + ": " + de.Err
+	}
+	return err.Error()
 }
 
 // relayResponse streams the origin's answer back. For a host a surrogate goes
@@ -545,14 +576,17 @@ func (p *Proxy) mitm(ctx context.Context, client net.Conn, src io.Reader, raw []
 	cancel()
 	if err != nil {
 		// The box refused the gateway's certificate (a stale CA after a
-		// rotation, a client with its own trust store) or gave up: say so,
-		// because the box only sees a broken connection.
-		log.Printf("egress: tls from a client for %s: %v", host, err)
+		// rotation, a client with its own trust store): say so, because the
+		// box only sees a broken connection. A connection closed before the
+		// handshake ends is a browser dropping a socket it opened ahead of
+		// need, which is nothing to report.
+		if !errors.Is(err, io.EOF) && !errors.Is(err, syscall.ECONNRESET) {
+			log.Printf("egress: tls from a client for %s: %v", host, err)
+		}
 		return err
 	}
 	_ = client.SetReadDeadline(time.Time{})
-	spec := mirrorSpec(raw, host)
-	return p.serveHTTP(ctx, tlsConn, bufio.NewReader(tlsConn), c, host, port, spec)
+	return p.serveHTTP(ctx, tlsConn, bufio.NewReader(tlsConn), c, host, port, raw)
 }
 
 // payloadOf is the text the shape checks read: the request line, its headers
