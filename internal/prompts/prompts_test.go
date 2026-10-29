@@ -22,6 +22,21 @@ func TestSystemPromptKeepsHardRules(t *testing.T) {
 	}
 }
 
+// A secret is used inside code and never seen by the model: a value a cell
+// prints, or one put in a tool's arguments, has gone through inference.
+func TestSystemPromptKeepsSecretsOutOfTheConversation(t *testing.T) {
+	for _, want := range []string{
+		"A secret's value never passes through you",
+		"never print, return, log",
+		"only when your owner explicitly asks",
+		"type_text(get_secret(",
+	} {
+		if !strings.Contains(System, want) {
+			t.Fatalf("SYSTEM.md no longer says %q", want)
+		}
+	}
+}
+
 // The box ships Node.js and pnpm (botimage/Containerfile); the model only
 // reaches for them if the prompt says they are there.
 func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {

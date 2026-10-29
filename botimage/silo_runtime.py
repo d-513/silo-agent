@@ -45,6 +45,13 @@ def _post(path: str, body: dict) -> dict:
 
 
 def get_secret(name: str) -> str:
+    """The value of the Bot's secret `name` (may wait for the owner's approval).
+
+    Use it inside this cell and hand it straight to what needs it: a header,
+    a subprocess's environment, type_text() or a Playwright fill(). Never
+    print, return or log it: what a cell prints goes back into the
+    conversation.
+    """
     body = {"name": name}
     rid = os.environ.get("SILO_RUN_ID")
     if rid:
