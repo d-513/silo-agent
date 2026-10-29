@@ -159,6 +159,7 @@ func (s *Service) status() *v1.EgressStatus {
 		out.Networks = host.Networks
 	}
 	out.CaFingerprint = s.caFingerprint()
+	out.DnsServers, out.DnsSource = s.dnsServers()
 
 	var rows []db.EgressFeedState
 	s.db.Find(&rows)

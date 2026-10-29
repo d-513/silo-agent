@@ -64,6 +64,7 @@ export const LABELS: Record<string, string> = {
   "egress.trust": msg("Trusted hosts"),
   "egress.pass": msg("Hosts without inspection"),
   "egress.feeds": msg("Threat lists"),
+  "egress.dns": msg("DNS servers"),
   "outbound.block_private": msg("Block private addresses"),
   "outbound.allow": msg("Exceptions"),
   "auth.password": msg("Password sign-in"),
@@ -114,6 +115,8 @@ export const HINTS: Record<string, string> = {
     msg("Hosts no Bot may reach, one per line or comma-separated: example.com, *.example.com, an IP or a CIDR. A Bot's owner can add to this list from the Bot's Rules page, but never remove it."),
   "egress.trust": msg("Hosts reached without inspection even where a rule would check them, such as an internal package registry."),
   "egress.pass": msg("Hosts forwarded without being looked at, for a service the gateway would otherwise break (websockets, unusual TLS)."),
+  "egress.dns":
+    msg("The resolvers the gateway looks names up with, comma-separated IPs, each optionally with a port (1.1.1.1, 9.9.9.9, 10.0.0.53:5353). Empty uses the system's, as this server's own resolv.conf names them."),
   "egress.feeds":
     msg("Threat lists the gateway downloads and keeps current on its own. Four are built in, none needing a key: abuse.ch's URLhaus and Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains. A host on one is blocked and recorded on the Bot's timeline."),
   "outbound.allow":

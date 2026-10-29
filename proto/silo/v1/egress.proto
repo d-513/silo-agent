@@ -34,6 +34,10 @@ message EgressApply {
   string cp_addr = 6;
   EgressLimits limits = 7;
   repeated EgressFeed feeds = 8;
+  // The resolvers the gateway looks outside names up with, as ip:port, in
+  // order of preference: the operator's egress.dns, else the control plane's
+  // own system resolvers. Empty, the gateway falls back to its resolv.conf.
+  repeated string dns_servers = 9;
 }
 
 // EgressClient is one container on its own internal network. The gateway

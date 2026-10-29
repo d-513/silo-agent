@@ -99,9 +99,13 @@ type EgressApply struct {
 	CaCert []byte `protobuf:"bytes,4,opt,name=ca_cert,json=caCert,proto3" json:"ca_cert,omitempty"`
 	CaKey  []byte `protobuf:"bytes,5,opt,name=ca_key,json=caKey,proto3" json:"ca_key,omitempty"`
 	// host:port of the control plane, which a client's CP link is forwarded to.
-	CpAddr        string        `protobuf:"bytes,6,opt,name=cp_addr,json=cpAddr,proto3" json:"cp_addr,omitempty"`
-	Limits        *EgressLimits `protobuf:"bytes,7,opt,name=limits,proto3" json:"limits,omitempty"`
-	Feeds         []*EgressFeed `protobuf:"bytes,8,rep,name=feeds,proto3" json:"feeds,omitempty"`
+	CpAddr string        `protobuf:"bytes,6,opt,name=cp_addr,json=cpAddr,proto3" json:"cp_addr,omitempty"`
+	Limits *EgressLimits `protobuf:"bytes,7,opt,name=limits,proto3" json:"limits,omitempty"`
+	Feeds  []*EgressFeed `protobuf:"bytes,8,rep,name=feeds,proto3" json:"feeds,omitempty"`
+	// The resolvers the gateway looks outside names up with, as ip:port, in
+	// order of preference: the operator's egress.dns, else the control plane's
+	// own system resolvers. Empty, the gateway falls back to its resolv.conf.
+	DnsServers    []string `protobuf:"bytes,9,rep,name=dns_servers,json=dnsServers,proto3" json:"dns_servers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -188,6 +192,13 @@ func (x *EgressApply) GetLimits() *EgressLimits {
 func (x *EgressApply) GetFeeds() []*EgressFeed {
 	if x != nil {
 		return x.Feeds
+	}
+	return nil
+}
+
+func (x *EgressApply) GetDnsServers() []string {
+	if x != nil {
+		return x.DnsServers
 	}
 	return nil
 }
@@ -1254,7 +1265,7 @@ const file_silo_v1_egress_proto_rawDesc = "" +
 	"\n" +
 	"EgressDown\x12,\n" +
 	"\x05apply\x18\x01 \x01(\v2\x14.silo.v1.EgressApplyH\x00R\x05applyB\x06\n" +
-	"\x04body\"\xbf\x02\n" +
+	"\x04body\"\xe0\x02\n" +
 	"\vEgressApply\x12/\n" +
 	"\aclients\x18\x01 \x03(\v2\x15.silo.v1.EgressClientR\aclients\x12&\n" +
 	"\x04bots\x18\x02 \x03(\v2\x12.silo.v1.EgressBotR\x04bots\x124\n" +
@@ -1263,7 +1274,9 @@ const file_silo_v1_egress_proto_rawDesc = "" +
 	"\x06ca_key\x18\x05 \x01(\fR\x05caKey\x12\x17\n" +
 	"\acp_addr\x18\x06 \x01(\tR\x06cpAddr\x12-\n" +
 	"\x06limits\x18\a \x01(\v2\x15.silo.v1.EgressLimitsR\x06limits\x12)\n" +
-	"\x05feeds\x18\b \x03(\v2\x13.silo.v1.EgressFeedR\x05feeds\"\x88\x01\n" +
+	"\x05feeds\x18\b \x03(\v2\x13.silo.v1.EgressFeedR\x05feeds\x12\x1f\n" +
+	"\vdns_servers\x18\t \x03(\tR\n" +
+	"dnsServers\"\x88\x01\n" +
 	"\fEgressClient\x12\x16\n" +
 	"\x06subnet\x18\x01 \x01(\tR\x06subnet\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x15\n" +

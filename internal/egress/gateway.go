@@ -84,6 +84,9 @@ type Gateway struct {
 	addrMu  sync.Mutex
 	addrs   []netip.Addr
 	addrsAt time.Time
+
+	// upstreams are the resolvers every lookup goes to (see Resolver).
+	upstreams upstreams
 }
 
 // New builds a gateway with empty state: everything passes until an apply.
@@ -143,6 +146,7 @@ func (gw *Gateway) Apply(a *v1.EgressApply) {
 	s, _ := NewState(a)
 	gw.state.Store(s)
 	gw.feeds.SetSpecs(a.GetFeeds())
+	gw.upstreams.set(a.GetDnsServers())
 	gw.guard.Store(NewGuard(s, gw.feeds, gw.rep))
 }
 

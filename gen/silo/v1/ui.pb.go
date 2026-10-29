@@ -20738,6 +20738,11 @@ type EgressStatus struct {
 	Networks      int32         `protobuf:"varint,4,opt,name=networks,proto3" json:"networks,omitempty"`
 	CaFingerprint string        `protobuf:"bytes,5,opt,name=ca_fingerprint,json=caFingerprint,proto3" json:"ca_fingerprint,omitempty"`
 	Feeds         []*FeedStatus `protobuf:"bytes,6,rep,name=feeds,proto3" json:"feeds,omitempty"`
+	// The resolvers the gateway is told to use, and where they came from:
+	// "settings" (egress.dns), "system" (the control plane's resolv.conf) or
+	// "" (none found; the gateway uses what its engine gave it).
+	DnsServers    []string `protobuf:"bytes,7,rep,name=dns_servers,json=dnsServers,proto3" json:"dns_servers,omitempty"`
+	DnsSource     string   `protobuf:"bytes,8,opt,name=dns_source,json=dnsSource,proto3" json:"dns_source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -20812,6 +20817,20 @@ func (x *EgressStatus) GetFeeds() []*FeedStatus {
 		return x.Feeds
 	}
 	return nil
+}
+
+func (x *EgressStatus) GetDnsServers() []string {
+	if x != nil {
+		return x.DnsServers
+	}
+	return nil
+}
+
+func (x *EgressStatus) GetDnsSource() string {
+	if x != nil {
+		return x.DnsSource
+	}
+	return ""
 }
 
 type GetEgressStatusRequest struct {
@@ -30038,7 +30057,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\aentries\x18\x03 \x01(\x05R\aentries\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\tR\tupdatedAt\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error\"\xcf\x01\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"\x8f\x02\n" +
 	"\fEgressStatus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x18\n" +
 	"\aproblem\x18\x02 \x01(\tR\aproblem\x12\x1d\n" +
@@ -30046,7 +30065,11 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"healthy_at\x18\x03 \x01(\tR\thealthyAt\x12\x1a\n" +
 	"\bnetworks\x18\x04 \x01(\x05R\bnetworks\x12%\n" +
 	"\x0eca_fingerprint\x18\x05 \x01(\tR\rcaFingerprint\x12)\n" +
-	"\x05feeds\x18\x06 \x03(\v2\x13.silo.v1.FeedStatusR\x05feeds\"\x18\n" +
+	"\x05feeds\x18\x06 \x03(\v2\x13.silo.v1.FeedStatusR\x05feeds\x12\x1f\n" +
+	"\vdns_servers\x18\a \x03(\tR\n" +
+	"dnsServers\x12\x1d\n" +
+	"\n" +
+	"dns_source\x18\b \x01(\tR\tdnsSource\"\x18\n" +
 	"\x16GetEgressStatusRequest\"\x17\n" +
 	"\x15RotateEgressCARequest\"\xbc\x02\n" +
 	"\x06LLMLog\x12\x0e\n" +

@@ -654,6 +654,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "egress.trust"},
 	{Key: "egress.pass"},
 	{Key: "egress.feeds"},
+	{Key: "egress.dns"},
 	{Key: "content.host"},
 	{Key: "content.scheme"},
 	{Key: "tunnels.enabled", Type: "bool"},

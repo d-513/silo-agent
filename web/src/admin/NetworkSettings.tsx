@@ -64,6 +64,16 @@ function EgressHealth() {
       <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] wide:grid-cols-3">
         <Fact label={t("Bots on their own network")}>{status?.networks ?? 0}</Fact>
         <Fact label={t("Last word from the gateway")}>{status?.healthyAt || t("never")}</Fact>
+        <Fact label={t("DNS servers")}>
+          {status?.dnsServers.length ? (
+            <span className="font-mono text-[12px] break-all">
+              {status.dnsServers.join(", ")}
+              <span className="ml-1.5 font-sans text-ink-3">{status.dnsSource === "settings" ? t("(set above)") : t("(the system's)")}</span>
+            </span>
+          ) : (
+            <span className="text-vermilion">{t("none found; set them above")}</span>
+          )}
+        </Fact>
         <Fact label={t("Gateway certificate")}>
           {status?.caFingerprint ? (
             <span className="flex items-center gap-1">

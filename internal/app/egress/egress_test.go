@@ -1,6 +1,9 @@
 package egress
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -150,5 +153,38 @@ func TestGatewayAddrIsTheSecondHost(t *testing.T) {
 		if got := GatewayAddr(subnet); got != want {
 			t.Errorf("GatewayAddr(%q) = %q, want %q", subnet, got, want)
 		}
+	}
+}
+
+// The gateway is told its resolvers: the operator's when set, else the ones
+// the control plane's own resolv.conf names (a loopback stub skipped, so
+// systemd-resolved's list of upstreams is read next), else none.
+func TestDNSServersSettingsThenSystem(t *testing.T) {
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "resolv.conf")
+	upstream := filepath.Join(dir, "resolved.conf")
+	if err := os.WriteFile(stub, []byte("nameserver 127.0.0.53\noptions edns0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(upstream, []byte("nameserver 192.168.10.1\nnameserver 2001:db8::53\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var dns string
+	s := New(nil, nil, nil, func() config.Config { return config.Config{Egress: config.Egress{DNS: dns}} })
+	s.ResolvConfs = []string{stub, upstream}
+
+	got, src := s.dnsServers()
+	if src != "system" || strings.Join(got, ",") != "192.168.10.1:53,[2001:db8::53]:53" {
+		t.Fatalf("system = %v %q", got, src)
+	}
+	dns = "1.1.1.1, 10.0.0.53:5353"
+	got, src = s.dnsServers()
+	if src != "settings" || strings.Join(got, ",") != "1.1.1.1:53,10.0.0.53:5353" {
+		t.Fatalf("settings = %v %q", got, src)
+	}
+	dns = ""
+	s.ResolvConfs = []string{stub, filepath.Join(dir, "missing")}
+	if got, src = s.dnsServers(); len(got) != 0 || src != "" {
+		t.Fatalf("none = %v %q", got, src)
 	}
 }

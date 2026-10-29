@@ -27,6 +27,10 @@ type Egress struct {
 	// Feeds are the threat lists the gateway downloads and refreshes itself.
 	// Empty means the built-in set.
 	Feeds []EgressFeed `koanf:"feeds"`
+	// DNS names the resolvers the gateway looks outside names up with:
+	// comma-separated IPs, each optionally with a port. Empty means the
+	// system's, as the control plane's own resolv.conf names them.
+	DNS string `koanf:"dns"`
 }
 
 // EgressFeed is one threat list the gateway refreshes on its own.
@@ -81,11 +85,52 @@ func (c Config) EgressFeeds() []EgressFeed {
 	return DefaultEgressFeeds
 }
 
+// EgressDNS is the resolvers the operator named for the gateway. A bad entry
+// (possible only from the environment, which is not validated) is skipped.
+func (c Config) EgressDNS() []string {
+	servers, _ := ParseDNSServers(c.Egress.DNS)
+	return servers
+}
+
+// ParseDNSServers reads a comma-separated list of resolvers, each an IP or
+// IP:port, into host:port strings (port 53 when none is given). It keeps the
+// entries it can read and reports the first it cannot.
+func ParseDNSServers(s string) ([]string, error) {
+	var out []string
+	var bad error
+	for _, f := range splitList(s) {
+		ap, err := parseDNSServer(f)
+		if err != nil {
+			if bad == nil {
+				bad = err
+			}
+			continue
+		}
+		out = append(out, ap.String())
+	}
+	return out, bad
+}
+
+func parseDNSServer(s string) (netip.AddrPort, error) {
+	if ap, err := netip.ParseAddrPort(s); err == nil {
+		if ap.Port() == 0 || ap.Addr().IsUnspecified() {
+			return netip.AddrPort{}, fmt.Errorf("%q is not a resolver address", s)
+		}
+		return netip.AddrPortFrom(ap.Addr().Unmap(), ap.Port()), nil
+	}
+	a, err := netip.ParseAddr(strings.Trim(s, "[]"))
+	if err != nil || a.IsUnspecified() {
+		return netip.AddrPort{}, fmt.Errorf("%q is not an IP address (names are not taken: the gateway would need DNS to find its DNS)", s)
+	}
+	return netip.AddrPortFrom(a.Unmap(), 53), nil
+}
+
 // validateEgress checks the egress.* keys of a YAML document being written.
 func validateEgress(k *koanf.Koanf) error {
 	known := map[string]bool{
 		"egress.enabled": true, "egress.image": true, "egress.subnet_pool": true,
 		"egress.block": true, "egress.trust": true, "egress.pass": true, "egress.feeds": true,
+		"egress.dns": true,
 	}
 	for _, key := range k.Keys() {
 		if strings.HasPrefix(key, "egress.") && !known[key] {
@@ -109,6 +154,14 @@ func validateEgress(k *koanf.Koanf) error {
 		if p.Bits() > EgressSubnetBits {
 			return fmt.Errorf("egress.subnet_pool must be no smaller than a /%d", EgressSubnetBits)
 		}
+	}
+	switch k.Get("egress.dns").(type) {
+	case nil, string:
+	default:
+		return fmt.Errorf("egress.dns must be one comma-separated string of IP addresses")
+	}
+	if _, err := ParseDNSServers(k.String("egress.dns")); err != nil {
+		return fmt.Errorf("egress.dns: %w", err)
 	}
 	for _, list := range []string{"egress.block", "egress.trust", "egress.pass"} {
 		for _, p := range k.Strings(list) {

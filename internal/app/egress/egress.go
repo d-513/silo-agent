@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -75,10 +76,19 @@ type Service struct {
 	// gateway, and Reconcile would drop a network another client is still
 	// setting up.
 	build sync.Mutex
+
+	// ResolvConfs are where the system's resolvers are read when the
+	// operator named none (egress.dns), first file with a usable one wins:
+	// the file every program reads, then systemd-resolved's list of its own
+	// upstreams, for a host whose resolv.conf names only the 127.0.0.53 stub.
+	ResolvConfs []string
 }
 
+// DefaultResolvConfs is Service.ResolvConfs on a real host.
+var DefaultResolvConfs = []string{"/etc/resolv.conf", "/run/systemd/resolve/resolv.conf"}
+
 func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Config) *Service {
-	return &Service{db: gdb, docker: d, store: store, cfg: cfg, hub: &hub{}}
+	return &Service{db: gdb, docker: d, store: store, cfg: cfg, hub: &hub{}, ResolvConfs: DefaultResolvConfs}
 }
 
 // Enabled reports whether the network filter is on and usable on this engine.
@@ -455,6 +465,7 @@ func (s *Service) renderApply() (*v1.EgressApply, error) {
 		CpAddr:   s.cpAddr(),
 		Feeds:    s.feeds(),
 	}
+	apply.DnsServers, _ = s.dnsServers()
 	seenBot := map[string]bool{}
 	for _, c := range clients {
 		apply.Clients = append(apply.Clients, &v1.EgressClient{
@@ -470,6 +481,29 @@ func (s *Service) renderApply() (*v1.EgressApply, error) {
 		}
 	}
 	return apply, nil
+}
+
+// dnsServers are the resolvers the gateway is told to use, and where they came
+// from: the operator's egress.dns ("settings"), else the system's ("system"),
+// else none (""), when the gateway keeps to what its engine gave it.
+//
+// The system's are read here, on the control plane, rather than in the
+// gateway: the gateway's own resolv.conf is the engine's, which lists the
+// client networks' DNS and, after a restart, nothing else.
+func (s *Service) dnsServers() ([]string, string) {
+	if servers := s.cfg().EgressDNS(); len(servers) > 0 {
+		return servers, "settings"
+	}
+	for _, p := range s.ResolvConfs {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		if servers := egress.ResolvConfServers(string(b)); len(servers) > 0 {
+			return servers, "system"
+		}
+	}
+	return nil, ""
 }
 
 // operatorLists is the operator's floor, from silo.yaml.

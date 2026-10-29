@@ -2883,6 +2883,11 @@ message EgressStatus {
   int32 networks = 4;
   string ca_fingerprint = 5;
   repeated FeedStatus feeds = 6;
+  // The resolvers the gateway is told to use, and where they came from:
+  // "settings" (egress.dns), "system" (the control plane's resolv.conf) or
+  // "" (none found; the gateway uses what its engine gave it).
+  repeated string dns_servers = 7;
+  string dns_source = 8;
 }
 
 message GetEgressStatusRequest {}
