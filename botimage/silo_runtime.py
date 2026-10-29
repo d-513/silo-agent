@@ -59,6 +59,16 @@ def get_secret(name: str) -> str:
     return _post("/v1/secrets/get", body)["value"]
 
 
+def list_secrets() -> dict:
+    """The Bot's secrets by name, never their values.
+
+    Returns {secrets: [{name, mode, hosts}, ...]}: mode "surrogate" means this
+    machine holds a stand-in that the network filter swaps for the real value
+    on the way to `hosts`; "plain" means get_secret gives the real value.
+    """
+    return call("bot", "list_secrets", {})
+
+
 def chrome_page():
     """Playwright Page on the headed desktop Chromium. Opens it if needed.
 

@@ -230,6 +230,14 @@ func (a *App) toolDefs() []tool.Def {
 			}),
 		},
 		{
+			Name:        "list_secrets",
+			Description: "List this Bot's secrets by name, never their values: how this machine sees each (a stand-in the network filter swaps for the real value on the way to the hosts named, or plain) and those hosts. Use a name with get_secret inside code. Python: silo_runtime.list_secrets().",
+			Params:      tool.Object(nil),
+			Connector:   security.Bot, Action: "list_secrets",
+			ExposePython: true,
+			Run:          text(a.listSecretsTool),
+		},
+		{
 			Name:        "list_models",
 			Description: "List the models this Bot may switch to, with the current chat model and the operator default. Use this before switch_model.",
 			Params:      tool.Object(nil),

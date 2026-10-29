@@ -16,6 +16,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/chats"
+	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/egress"
 	"silo.agent/internal/ids"
@@ -33,6 +34,48 @@ func (a *App) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecre
 		out.Secrets = append(out.Secrets, protoSecret(&s))
 	}
 	return connect.NewResponse(out), nil
+}
+
+// listSecretsTool names the Bot's secrets so it can ask for the right one with
+// get_secret: each name, how the box sees it and where a stand-in's real value
+// is sent. Never a value and never a stand-in (get_secret, under the secret's
+// own rule, is the one way to either), and never a channel's own
+// credentials, which are the CP's.
+func (a *App) listSecretsTool(_ context.Context, c *tool.Call) (string, error) {
+	var secs []db.Secret
+	a.DB.Select("name", "mode", "hosts").Where("bot_id = ? AND name NOT LIKE ?", c.Bot.ID, "channel.%").Order("name").Find(&secs)
+	type secret struct {
+		Name  string   `json:"name"`
+		Mode  string   `json:"mode"`
+		Hosts []string `json:"hosts"`
+	}
+	list := make([]secret, 0, len(secs))
+	for _, s := range secs {
+		hosts := secretHostsOf(s.Hosts)
+		if hosts == nil {
+			hosts = []string{}
+		}
+		list = append(list, secret{Name: s.Name, Mode: secretMode(s.Mode), Hosts: hosts})
+	}
+	if c.Structured() {
+		b, err := json.Marshal(struct {
+			Secrets []secret `json:"secrets"`
+		}{list})
+		return string(b), err
+	}
+	if len(list) == 0 {
+		return "This Bot has no secrets. Its owner adds them on the Secrets tab of its settings.", nil
+	}
+	var b strings.Builder
+	b.WriteString("Secrets by name (use one inside code with silo_runtime.get_secret(name); never print its value):\n")
+	for _, s := range list {
+		if s.Mode == "surrogate" && len(s.Hosts) > 0 {
+			fmt.Fprintf(&b, "- %s: a stand-in on this machine; the network filter sends the real value only to %s\n", s.Name, strings.Join(s.Hosts, ", "))
+			continue
+		}
+		fmt.Fprintf(&b, "- %s: plain (this machine gets the real value)\n", s.Name)
+	}
+	return b.String(), nil
 }
 
 func protoSecret(s *db.Secret) *v1.SecretMeta {

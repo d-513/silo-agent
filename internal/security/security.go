@@ -111,6 +111,7 @@ var catalog = map[string]spec{
 	"bot.widget_set":       {title: "Update a Dashboard widget", mode: Allow, summary: want("update a Dashboard widget's data")},
 	"bot.widget_remove":    {title: "Remove a Dashboard widget", mode: Allow, summary: want("remove a Dashboard widget")},
 	"bot.transcribe":       {title: "Transcribe audio", mode: Allow, output: OutCheck, summary: want("transcribe an audio file")},
+	"bot.list_secrets":     {title: "List secret names", mode: Allow, summary: want("see the names of its secrets (never their values)")},
 	"skills.load":          {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit":        {title: "Artifact", mode: Allow, summary: want("show an artifact")},
 	"artifact.app_network": {title: "App with network", mode: Ask, summary: appNetworkSummary, fields: appFields},
