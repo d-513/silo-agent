@@ -192,8 +192,12 @@ func (p *Proxy) handleRequest(ctx context.Context, client net.Conn, br *bufio.Re
 	host, port, secure := tlsHost, tlsPort, tlsHost != ""
 	if !secure {
 		switch {
-		case req.URL.Host == "": // transparent: origin-form
-			host, port = hostPort(req.Host, 80)
+		case req.URL.Host == "": // transparent, or plain inside a CONNECT: origin-form
+			def := 80
+			if tlsPort != 0 {
+				def = tlsPort
+			}
+			host, port = hostPort(req.Host, def)
 		case req.URL.Scheme == "https":
 			// An absolute https URI (rare in a plain proxy): fetch it over TLS.
 			host, port = hostPort(req.URL.Host, 443)
@@ -507,7 +511,19 @@ func (p *Proxy) handleConnect(ctx context.Context, client net.Conn, br *bufio.Re
 	if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
 		return true, err
 	}
-	// The client's hello follows; read it, then decrypt both sides.
+	// A TLS hello follows for https and wss: decrypt both sides. A browser
+	// also tunnels plain ws:// (and http:// on some setups) through CONNECT,
+	// and that is served as the plain HTTP door does, the tunnel's port the
+	// default for a Host header that names none.
+	_ = client.SetReadDeadline(time.Now().Add(helloTimeout))
+	first, err := br.Peek(1)
+	_ = client.SetReadDeadline(time.Time{})
+	if err != nil {
+		return true, nil
+	}
+	if first[0] != recordHandshake {
+		return true, p.serveHTTP(ctx, client, br, c, "", port, nil)
+	}
 	return true, p.mitm(ctx, client, br, nil, c, host, port)
 }
 

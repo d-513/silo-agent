@@ -146,3 +146,41 @@ func TestContainerEgressOtherProtocols(t *testing.T) {
 	}
 	t.Fatalf("port 22 did not connect with Other protocols on:\n%s", out)
 }
+
+// TestContainerEgressChromiumReachesOtherPorts proves the route Chromium takes
+// to a web port other than 80 and 443 (a speed test's servers on 8080): the
+// box's managed policy hands Chromium a PAC script naming the gateway's proxy
+// door, and a CONNECT through that door reaches the port, with Other
+// protocols off. It needs the gateway to reach portquiz.net:8080, which
+// answers on every port.
+func TestContainerEgressChromiumReachesOtherPorts(t *testing.T) {
+	if !apptest.ContainersEnabled(t) {
+		return
+	}
+	h := newContainerHarness(t)
+	id := h.SeedBot("Ports")
+	h.StartSeededBot(id)
+
+	script := strings.Join([]string{
+		`python3 -c 'import json, base64; p = json.load(open("/etc/chromium/policies/managed/silo-egress.json"))["ProxySettings"]; print("mode", p["ProxyMode"]); print([l for l in base64.b64decode(p["ProxyPacUrl"].split(",", 1)[1]).decode().splitlines() if "GATEWAY =" in l][0])'`,
+		`echo "gateway $SILO_EGRESS_DNS"`,
+		`python3 -c 'import os, socket; s = socket.create_connection((os.environ["SILO_EGRESS_DNS"], 8888), 20); s.sendall(b"CONNECT portquiz.net:8080 HTTP/1.1\r\nHost: portquiz.net:8080\r\n\r\n"); f = s.makefile("rb"); print("tunnel", f.readline().split()[1].decode()); [f.readline() for _ in range(1)]; s.sendall(b"GET / HTTP/1.1\r\nHost: portquiz.net:8080\r\nConnection: close\r\n\r\n"); print("connect", f.readline().split()[1].decode())'`,
+	}, "; echo ---; ")
+	cmd := &v1.Cmd{Id: ids.New(), Body: &v1.Cmd_Terminal{Terminal: &v1.TerminalCmd{Command: script}}}
+	out, err := h.App.Hub.Exec(h.Ctx(), id, cmd)
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	gw := ""
+	for _, line := range strings.Split(out, "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "gateway "); ok {
+			gw = v
+		}
+	}
+	if gw == "" || !strings.Contains(out, "mode pac_script") || !strings.Contains(out, `"PROXY `+gw+`:8888"`) {
+		t.Fatalf("Chromium's policy does not send other ports to the gateway's proxy door:\n%s", out)
+	}
+	if !strings.Contains(out, "connect 200") {
+		t.Fatalf("a CONNECT to port 8080 through the proxy door did not get through:\n%s", out)
+	}
+}

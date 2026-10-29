@@ -58,6 +58,17 @@ Match host *,!localhost,!127.0.0.1,!::1
 EOF
   chmod 644 /etc/ssh/ssh_config.d/silo-egress.conf
   export SILO_SOCKS_PROXY="socks5h://$SILO_EGRESS_DNS:$socks_port"
+
+  # Chromium does not read proxychains. Its web traffic on other ports (a
+  # speed test's servers on 8080, a dev server elsewhere) goes to the
+  # gateway's HTTP proxy door (8888, egress.DefaultProxyAddr) by a PAC script
+  # in managed policy, so every launch (the dock's, Playwright's) gets it and
+  # no page or extension can change it. There it is decrypted and judged like
+  # port 443, so it needs no Other protocols switch.
+  pac=$(sed "s/__GATEWAY__/$SILO_EGRESS_DNS/" /opt/silo/egress.pac | base64 -w0)
+  printf '{"ProxySettings": {"ProxyMode": "pac_script", "ProxyPacUrl": "data:application/x-ns-proxy-autoconfig;base64,%s"}}\n' "$pac" \
+    > /etc/chromium/policies/managed/silo-egress.json
+  chmod 644 /etc/chromium/policies/managed/silo-egress.json
 fi
 
 # The gateway decrypts HTTPS and signs what it hands back with its own CA, so

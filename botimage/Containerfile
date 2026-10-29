@@ -68,6 +68,7 @@ COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
 COPY botimage/mimeapps.list /opt/silo/mimeapps.list
 COPY botimage/chromium.png /opt/silo/chromium.png
 COPY botimage/chromium/policies.json /etc/chromium/policies/managed/silo.json
+COPY botimage/chromium/egress.pac /opt/silo/egress.pac
 COPY botimage/chromium/stealth/ /opt/silo/stealth/
 ADD https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.901.1442/uBOLite_2026.901.1442.chromium.zip /tmp/ubol.zip
 RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \

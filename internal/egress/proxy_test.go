@@ -674,3 +674,109 @@ func TestDialProblemNamesNoStaleServer(t *testing.T) {
 		t.Fatalf("dialProblem = %q", got)
 	}
 }
+
+// connectProxy is a ModeProxy door in front of origin that records the address
+// each origin dial asked for.
+func connectProxy(t *testing.T, a *v1.EgressApply, origin net.Listener) (string, *CA, <-chan string) {
+	t.Helper()
+	s, err := NewState(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ca, err := LoadCA(a.CaCert, a.CaKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b1 := s.Client(netip.MustParseAddr("10.213.1.1"))
+	g := NewGuard(s, nil, nil)
+	g.Resolve = noResolve
+	dials := make(chan string, 8)
+	p := &Proxy{
+		Client: func(_, _ netip.Addr) *Client { return b1 },
+		Guard:  func() *Guard { return g },
+		Dial: func(_ context.Context, _, addr string) (net.Conn, error) {
+			dials <- addr
+			return net.Dial("tcp", origin.Addr().String())
+		},
+		Roots: ca.Pool(),
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() { cancel(); ln.Close() })
+	go p.Serve(ctx, ln, ModeProxy)
+	return ln.Addr().String(), ca, dials
+}
+
+func connectTo(t *testing.T, addr, target string) (net.Conn, *bufio.Reader) {
+	t.Helper()
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_, _ = fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
+	br := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(br, nil)
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatalf("CONNECT %s: %v %v", target, resp, err)
+	}
+	return conn, br
+}
+
+// Chromium's PAC sends web traffic on ports other than 80 and 443 (a speed
+// test's servers on 8080) through the proxy door as a CONNECT. It is decrypted
+// and judged like 443, and the origin is reached on the port asked for.
+func TestProxyConnectOnAnotherPortIsDecrypted(t *testing.T) {
+	a := testApply(t)
+	ca, err := LoadCA(a.CaCert, a.CaKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin, got := originServe(t, ca, answerOK)
+	addr, _, dials := connectProxy(t, a, origin)
+	conn, _ := connectTo(t, addr, "speed.example:8080")
+	tc := tls.Client(conn, &tls.Config{ServerName: "speed.example", RootCAs: ca.Pool()})
+	if err := tc.Handshake(); err != nil {
+		t.Fatalf("handshake inside the CONNECT: %v", err)
+	}
+	_, _ = fmt.Fprintf(tc, "GET /hello HTTP/1.1\r\nHost: speed.example:8080\r\n\r\n")
+	resp, err := http.ReadResponse(bufio.NewReader(tc), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || string(body) != "ok" {
+		t.Fatalf("status %d body %q", resp.StatusCode, body)
+	}
+	if d := <-dials; d != "speed.example:8080" {
+		t.Fatalf("origin dialled at %s, want speed.example:8080", d)
+	}
+	if r := <-got; r.Host != "speed.example:8080" {
+		t.Fatalf("origin saw Host %q", r.Host)
+	}
+}
+
+// A browser tunnels plain ws:// through CONNECT too: no TLS hello follows, and
+// the request is served as the plain door would, on the tunnel's port.
+func TestProxyConnectCarriesPlainHTTP(t *testing.T) {
+	a := testApply(t)
+	origin := originRaw(t, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+	addr, _, dials := connectProxy(t, a, origin)
+	conn, br := connectTo(t, addr, "speed.example:8080")
+	_, _ = fmt.Fprintf(conn, "GET /ws HTTP/1.1\r\nHost: speed.example\r\n\r\n")
+	resp, err := http.ReadResponse(br, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || string(body) != "hello" {
+		t.Fatalf("status %d body %q", resp.StatusCode, body)
+	}
+	if d := <-dials; d != "speed.example:8080" {
+		t.Fatalf("origin dialled at %s, want the tunnel's port", d)
+	}
+}
