@@ -26,7 +26,7 @@ A model is one of two kinds. A **text model** writes: prose and tool calls, in a
 
 - `decision_models` is the **allowlist of decision models**, separate from `models`: an id is in one list or the other, and a decision model is never a chat model.
 - `model_decision` is the default decision model. Unset, it is the first of `decision_models`.
-- Two providers serve them. `openrouter` reaches every decision model on its Decisions API with the OpenRouter key you already have (`openrouter/typesafe/jev-1.13`, `openrouter/cloudflare/clef-flash`, …); `typesafe` is TypeSafe's own API (`typesafe/jev-latest`) with a TypeSafe key. Under Admin → Settings → Providers, **List models** shows a provider's text and decision models apart, and each is one press from its allowlist.
+- Two providers serve them. `openrouter` reaches every decision model on its Decisions API with the OpenRouter key you already have (`openrouter/typesafe/jev-1.13`, `openrouter/cloudflare/clef-flash`, …); `typesafe` is TypeSafe's own API (`typesafe/jev-latest`) with a TypeSafe key. Under Admin → Settings → Models → Providers, **List models** shows a provider's text and decision models apart, and each is one press from its allowlist.
 
 They are used in two places:
 
@@ -39,11 +39,11 @@ Each provider's key lives under `providers.<id>`. Prompt caching is **on by defa
 
 ### Model kinds
 
-Every model is of one **kind**, and each kind has its own allowlist: `models` (text), `decision_models`, `transcription_models` (speech-to-text), `speech_models` (text-to-speech) and `embedding_models`. An id is on one list only, and its provider must serve the kind: `openrouter`, `openai` and `local` serve text, speech-to-text, speech and embeddings (`openrouter` decision models too), `anthropic` only text, `typesafe` only decisions. **List models** under Admin → Settings → Providers shows a tab per kind the provider lists. The model a setting names (`transcribe_model`, `voice.speech_model`, `embedding_model`) counts as allowed for its kind even when its list does not name it, so a `silo.yaml` from before the lists keeps working.
+Every model is of one **kind**, and each kind has its own allowlist: `models` (text), `decision_models`, `transcription_models` (speech-to-text), `speech_models` (text-to-speech) and `embedding_models`. An id is on one list only, and its provider must serve the kind: `openrouter`, `openai` and `local` serve text, speech-to-text, speech and embeddings (`openrouter` decision models too), `anthropic` only text, `typesafe` only decisions. **List models** under Admin → Settings → Models → Providers shows a tab per kind the provider lists. The model a setting names (`transcribe_model`, `voice.speech_model`, `embedding_model`) counts as allowed for its kind even when its list does not name it, so a `silo.yaml` from before the lists keeps working.
 
 ### Speech providers
 
-Besides OpenRouter, OpenAI and `local`, a provider each for the fastest pieces of a call (Admin → Settings → Providers; each takes `api_key` and an optional `base_url`):
+Besides OpenRouter, OpenAI and `local`, a provider each for the fastest pieces of a call (Admin → Settings → Models → Providers; each takes `api_key` and an optional `base_url`):
 
 | Provider | Kinds | What for |
 | --- | --- | --- |
@@ -60,7 +60,7 @@ Besides OpenRouter, OpenAI and `local`, a provider each for the fastest pieces o
 
 ### Voice
 
-Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Voice.
+Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Models → Voice.
 
 | Key | Default | What it does |
 | --- | --- | --- |
@@ -111,7 +111,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `model_decision` | (none) | `SILO_MODEL_DECISION` | Default decision model, for the Bot's `decide` tool (must be in `decision_models`). Empty = the first of `decision_models` |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
 | `model_memory` | (none) | `SILO_MODEL_MEMORY` | Memory save model: the memory collector reads chats with it (must be in `models`). Empty = the title model. A cheap model is enough |
-| `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models; a provider that cannot embed (Anthropic) is rejected |
+| `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models → Embeddings; a provider that cannot embed (Anthropic) is rejected |
 | `transcribe_model` | `openrouter/openai/whisper-1` | `SILO_TRANSCRIBE_MODEL` | Speech-to-text for composer dictation (the mic, `Transcribe` RPC) and the Bot's `transcribe` tool / `silo_runtime.transcribe`. Any OpenAI-compatible `/audio/transcriptions` model: OpenRouter (`openai/whisper-1`, `openai/whisper-large-v3`, …), OpenAI (`whisper-1`, `gpt-4o-transcribe`), or `local/<model>` for LocalAI / Speaches / vLLM / whisper.cpp (`--inference-path /v1/audio/transcriptions`). 25 MB per recording. `off` disables voice (the mic hides and the tool is not offered). A provider that cannot transcribe (Anthropic) is rejected |
 | `memory.in_prompt` | `true` | `SILO_MEMORY__IN_PROMPT` | Put memories in the system prompt: every memory while they total under 6,000 characters, then a summary a background sweep writes with `model_memory` and rewrites (at most every 30 minutes) when the memories changed. Nothing is embedded when a message arrives; the Bot searches with `recall`. Off keeps memories out of the prompt |
 | `tools.expose_completion` | (none) | `SILO_TOOLS__EXPOSE_COMPLETION` | Built-in tools to also offer the model as chat tools (YAML list, or comma-separated in the environment; `all` for every one). Most built-ins ship reachable from Python only (`silo_runtime.web_search`, `feed`, the taskboard, …) to keep each request small; name the ones a model handles badly that way |
@@ -134,7 +134,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `runs.max_duration` | `120m` | `SILO_RUNS__MAX_DURATION` | Cap on one agent run (a Go duration such as `120m`/`2h`, or bare minutes). `-1` means unlimited. Subagent runs and a lead sleeping while its subagents work count toward it |
 | `context.windows` | (none) | — | Per-model window overrides (YAML list of `{model, window}`; a list because model ids contain dots). Wins over the provider's report |
 | `thinking.levels` | (none) | — | Per-model thinking-level overrides for the composer's Thinking picker (YAML list of `{model, levels}`; levels from `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`; `[]` hides the picker). Wins over the provider's report: OpenRouter `/models` `supported_parameters`, the Anthropic Models API `capabilities`, OpenAI's reasoning families (`o*`, `gpt-5*` → low/medium/high). `local` models have no levels unless listed here (sent as `reasoning_effort`) |
-| `models` | (none) | — | Allowlist of text models (YAML list). Admin → Settings → Models edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
+| `models` | (none) | — | Allowlist of text models (YAML list). Admin → Settings → Models → Text edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
 | `decision_models` | (none) | — | Allowlist of decision models (YAML list), edited in the same two places. Only `openrouter` and `typesafe` ids are accepted, and an id cannot be in `models` too. Empty: no `decide` tool |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used (optional for `local`) |
 | `providers.<id>.base_url` | (provider default) | `SILO_PROVIDERS__<ID>__BASE_URL` | Override the API base URL |

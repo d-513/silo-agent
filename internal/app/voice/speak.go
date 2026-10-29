@@ -41,7 +41,7 @@ const (
 )
 
 // errNoSpeech is answered when voice is off or no speech model is set.
-var errNoSpeech = errors.New("read aloud is off: set a speech model under Admin → Settings → Voice")
+var errNoSpeech = errors.New("read aloud is off: set a speech model under Admin → Settings → Models → Voice")
 
 // Sound is how a Bot sounds right now: the speech model, its voice and speed,
 // and the language its pointers are said in.
@@ -138,7 +138,7 @@ func (s *Service) Speak(ctx context.Context, botID string, snd Sound, text strin
 	}
 	sp, ok := client.(llm.Speaker)
 	if !ok {
-		return llm.Speech{}, fmt.Errorf("%s cannot speak; pick a speech model under Admin → Settings → Voice", provider)
+		return llm.Speech{}, fmt.Errorf("%s cannot speak; pick a speech model under Admin → Settings → Models → Voice", provider)
 	}
 	start := time.Now()
 	out, err := sp.Speak(ctx, model, llm.SpeechRequest{Text: text, Voice: snd.Voice, Speed: snd.Speed, Language: snd.Language, Format: format})

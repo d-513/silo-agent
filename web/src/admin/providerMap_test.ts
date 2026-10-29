@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capOf, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerMap.ts";
+import { capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerMap.ts";
 
 test("a job follows its setting's fallbacks", () => {
   const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small" }, ["typesafe/jev-latest"]);
@@ -17,6 +17,16 @@ test("off is nobody", () => {
   const hears = jobs.find((j) => j.key === "voice.transcribe_model")!;
   assert.equal(hears.model, "");
   assert.equal(jobs.find((j) => j.key === "model_voice")!.model, "");
+});
+
+test("an empty setting follows the nearest one set", () => {
+  const v = { model: "a/chat", model_title: "b/title", model_approval: "" };
+  assert.deepEqual(effective(v, "model_filter"), { model: "b/title", from: "model_title" });
+  assert.deepEqual(effective(v, "model_approval"), { model: "b/title", from: "model_title" });
+  assert.deepEqual(effective({ ...v, model_filter: "c/judge" }, "model_filter"), { model: "c/judge", from: "" });
+  assert.deepEqual(effective({}, "model_subagent"), { model: "", from: "" }, "the lead's model is not a setting");
+  assert.deepEqual(effective({}, "model_decision", ["t/jev"]), { model: "t/jev", from: "decision_models" });
+  assert.deepEqual(effective({ transcribe_model: "off" }, "voice.transcribe_model"), { model: "", from: "transcribe_model" });
 });
 
 test("ready means a key, or a local server's address", () => {

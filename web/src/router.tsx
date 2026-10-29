@@ -1,5 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from "@tanstack/react-router";
-import { FIRST_SECTION, isSection } from "./admin/sections";
+import { FIRST_SECTION, isModelPage, isSection } from "./admin/sections";
 import { getSession, onSession } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
@@ -58,6 +58,7 @@ import { SpaceLayout } from "./space/Workspace";
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
+//       settings/models[/$page]    the model map, and its pages: providers text decision embedding voice
 //       users[/invite|/$userId]
 //       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
@@ -150,7 +151,7 @@ const account = createRoute({ getParentRoute: () => authed, path: "account", com
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
 const adminPage = (
-  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminContainers" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
+  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "ModelMapPage" | "ModelsPage" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminContainers" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
 ) =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
@@ -179,9 +180,24 @@ const adminSettingsSection = createRoute({
   getParentRoute: () => adminSettings,
   path: "$section",
   beforeLoad: ({ params }) => {
+    // Providers and Voice were categories of their own; they are under Models now.
+    if (isModelPage(params.section)) throw redirect({ to: "/admin/settings/models/$page", params: { page: params.section }, replace: true });
     if (!isSection(params.section)) toFirstSection();
   },
   component: adminPage("SettingsSection"),
+});
+// Models is the map, with a page per kind of job under it.
+const adminModels = createRoute({ getParentRoute: () => adminSettings, path: "models" });
+const adminModelsIndex = createRoute({ getParentRoute: () => adminModels, path: "/", component: adminPage("ModelMapPage") });
+const adminModelsPage = createRoute({
+  getParentRoute: () => adminModels,
+  path: "$page",
+  // provider opens one provider on the Providers page (the map's press).
+  validateSearch: (s: Record<string, unknown>): { provider?: string } => (typeof s.provider === "string" && s.provider ? { provider: s.provider } : {}),
+  beforeLoad: ({ params }) => {
+    if (!isModelPage(params.page)) throw redirect({ to: "/admin/settings/models", replace: true });
+  },
+  component: adminPage("ModelsPage"),
 });
 const adminUsers = createRoute({ getParentRoute: () => admin, path: "users", component: adminPage("UsersList") });
 const adminUserInvite = createRoute({ getParentRoute: () => admin, path: "users/invite", component: adminPage("InviteUser") });
@@ -294,7 +310,7 @@ const routeTree = root.addChildren([
       spaceSettings,
     ]),
     account,
-    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminModels.addChildren([adminModelsIndex, adminModelsPage]), adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed]),

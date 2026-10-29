@@ -1,6 +1,7 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { AudioLines, Binary, Check, ChevronRight, Ear, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
-import { useState } from "react";
+import { AudioLines, Binary, Check, ChevronRight, Ear, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { Segmented } from "../connectors/form/atoms";
 import { fail } from "../errors";
@@ -11,7 +12,8 @@ import { SearchBox } from "../SearchBox";
 import { Tip, TipTitle } from "../Tip";
 import { FieldRow } from "./FieldRow";
 import { capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerMap";
-import { ProviderMap, ProviderMark, Status } from "./ProviderMap";
+import { ProviderMark, Status } from "./ProviderMap";
+import { ModelsHead } from "./roles";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { LiveChip } from "./LiveChip";
@@ -20,7 +22,9 @@ import { locale, msg, t } from "../i18n.ts";
 export function ProviderSettings() {
   const form = useSettingsForm();
   const { providers, values, fields, decisionModels, allowedOf } = form;
-  const [open, setOpen] = useState("");
+  // The map sends a provider to open (?provider=…).
+  const { provider: asked } = useSearch({ from: "/_authed/admin/settings/models/$page" });
+  const [open, setOpen] = useState(asked ?? "");
   const jobs = resolveJobs(values, decisionModels.map((m) => m.id));
   const inUse = providersInUse(jobs);
   const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV);
@@ -28,18 +32,26 @@ export function ProviderSettings() {
   const rank = (p: Provider) => (inUse.includes(p.id) ? inUse.indexOf(p.id) : ready(p.id) ? 100 : 200);
   const sorted = [...providers].sort((a, b) => rank(a) - rank(b));
   const allowed = Object.fromEntries(CAP_KINDS.map((k) => [k.kind, allowedOf(k.kind).map((m) => m.id)]));
+  const setUp = providers.filter((p) => ready(p.id)).length;
 
-  function pick(id: string) {
-    setOpen(id);
-    requestAnimationFrame(() => document.getElementById(`provider-${id}`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
-  }
+  useEffect(() => {
+    if (!asked) return;
+    setOpen(asked);
+    requestAnimationFrame(() => document.getElementById(`provider-${asked}`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
+  }, [asked]);
 
   return (
     <>
-      <Panel title={t("Model map")} note={t("Which provider does each job. A dashed line follows another setting. Pick a provider to set it up.")}>
-        <ProviderMap jobs={jobs} providers={providers} ready={ready} picked={open} onPick={pick} />
-      </Panel>
-      <Panel title={t("Providers")} note={t("What each one can do, and how many of its models you allow. Open one for its settings and its own list of models.")} padded={false}>
+      <ModelsHead icon={Plug} title={t("Providers")} note={t("Who serves your models. Each row says what a provider can do and how many of its models you allow; open one for its key and its own list of models.")}>
+        <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
+          <span className="text-label-caps text-ink-3 uppercase">{t("Set up")}</span>
+          <span className="font-mono text-[20px] leading-6 text-ink tabular-nums">
+            {setUp}
+            <span className="text-ink-3">/{providers.length}</span>
+          </span>
+        </div>
+      </ModelsHead>
+      <Panel padded={false}>
         <div className="@container">
           <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-[11.5px] font-medium tracking-[0.02em] text-ink-3 uppercase @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
             <span>{t("Provider")}</span>
@@ -245,7 +257,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
 
   if (models.length === 0) {
-    return <p className="text-[13px] text-ink-2">{t("{{name}} lists no models for this key. Add one by id under Models.", { name: provider.name })}</p>;
+    return <p className="text-[13px] text-ink-2">{t("{{name}} lists no models for this key. Add one by id on its kind's page under Models.", { name: provider.name })}</p>;
   }
   return (
     <>

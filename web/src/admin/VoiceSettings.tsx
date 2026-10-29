@@ -1,96 +1,72 @@
-import { Field, Panel } from "../Field";
-import { ConfigSource } from "../gen/silo/v1/ui_pb";
-import { Select } from "../Select";
-import { modelOptions } from "../modelOptions";
+import { AudioLines } from "lucide-react";
+import type { ModelOption } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
+import { AllowedModels } from "./AllowedModels";
 import { FieldGroup } from "./FieldGroup";
-import { SourceChips } from "./FieldRow";
-import { AllowedModels } from "./ModelSettings";
 import { VOICE_CALL_NOTE, VOICE_NETWORK_NOTE, groupOf } from "./fields";
+import { ModelsHead, RolePanel, type Role } from "./roles";
 import { useSettingsForm } from "./useAdminSettings";
 
+// What a model does on a call: live, or one request at a time.
+function how(kind: "transcription" | "speech") {
+  return function describe(m: ModelOption | undefined) {
+    if (!m) return null;
+    const words = m.live
+      ? kind === "speech"
+        ? t("Live: one connection for the whole call.")
+        : t("Live: heard as you speak.")
+      : kind === "speech"
+        ? t("One request per sentence.")
+        : t("One request per turn, after you stop.");
+    return <p className={`mt-1.5 text-[12px] leading-[17px] ${m.live ? "text-cobalt" : "text-ink-3"}`}>{words}</p>;
+  };
+}
+
 // The models a voice call is made of, each picked from its own kind's list.
-const PICKERS: { key: string; kind: "transcription" | "speech" | "text"; label: string; hint: string; off: string; none: string }[] = [
+const ROLES: Role[] = [
   {
     key: "transcribe_model",
-    kind: "transcription",
+    takes: "transcription",
     label: msg("Speech-to-text"),
     hint: msg("Hears what you say: dictation in the composer, the transcribe tool, and calls unless the next picker names another."),
-    off: msg("Off: no dictation and no calls"),
-    none: msg("No speech-to-text models allowed yet"),
+    unset: msg("Off: no dictation and no calls"),
+    unsetValue: "off",
+    describe: how("transcription"),
   },
   {
     key: "voice.transcribe_model",
-    kind: "transcription",
+    takes: "transcription",
     label: msg("Speech-to-text on calls"),
     hint: msg("Hears every turn of a call. A live model hears you as you speak and has the words ready when you stop; dictation can stay on a cheaper one."),
-    off: msg("Same as dictation"),
-    none: msg("No speech-to-text models allowed yet"),
+    unset: msg("Same as dictation"),
+    describe: how("transcription"),
   },
   {
     key: "voice.speech_model",
-    kind: "speech",
+    takes: "speech",
     label: msg("Speech"),
     hint: msg("The voice a Bot speaks with unless its own Settings pick another allowed speech model."),
-    off: msg("None: no Read aloud and no calls"),
-    none: msg("No speech models allowed yet"),
+    unset: msg("None: no Read aloud and no calls"),
+    describe: how("speech"),
   },
   {
     key: "model_voice",
-    kind: "text",
+    takes: "text",
     label: msg("Talker"),
     hint: msg("A fast text model that holds the conversation on a call and hands real work to the Bot, so answers start in under a second. Without one, the Bot answers every turn itself: smarter, slower."),
-    off: msg("None: the Bot answers every turn"),
-    none: msg("No text models allowed yet"),
+    unset: msg("None: the Bot answers every turn"),
   },
 ];
 
 export function VoiceSettings() {
-  const { fields, values, setValue, allowedOf, models } = useSettingsForm();
-  const field = (key: string) => fields.find((f) => f.key === key);
-  const offValue = (key: string) => (key === "transcribe_model" ? "off" : "");
-
+  const { fields } = useSettingsForm();
   return (
     <>
+      <ModelsHead icon={AudioLines} title={t("Voice")} note={t("Dictation, Read aloud and calls: what hears you, what speaks, and the fast model that talks first.")} kinds={["transcription", "speech"]} />
       <FieldGroup title={t("Voice")} note={t(VOICE_CALL_NOTE)} rows={fields.filter((f) => groupOf(f.key) === "voice")} />
-
-      <Panel title={t("Voice models")} note={t("What a call hears with, speaks with, and thinks with first. Each picker offers its own list below.")}>
-        <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-          {PICKERS.map((p) => {
-            const f = field(p.key);
-            const list = p.kind === "text" ? models : allowedOf(p.kind);
-            // What the chosen model does on a call: live, or one request at a time.
-            const chosen = list.find((m) => m.id === (values[p.key] || (p.key === "voice.transcribe_model" ? values.transcribe_model : "")));
-            const how =
-              p.kind === "text" || !chosen
-                ? ""
-                : chosen.live
-                  ? p.kind === "speech"
-                    ? t("Live: one connection for the whole call.")
-                    : t("Live: heard as you speak.")
-                  : p.kind === "speech"
-                    ? t("One request per sentence.")
-                    : t("One request per turn, after you stop.");
-            return (
-              <Field key={p.key} label={t(p.label)} hint={t(p.hint)} headerRight={f ? <SourceChips field={f} /> : undefined}>
-                <Select
-                  value={values[p.key] ?? ""}
-                  onChange={(v) => setValue(p.key, v)}
-                  disabled={f?.source === ConfigSource.ENV}
-                  options={[{ value: offValue(p.key), label: t(p.off) }, ...modelOptions(list, t("live", { context: "model" }))]}
-                  placeholder={t(p.off)}
-                  emptyLabel={t(p.none)}
-                />
-                {how ? <p className={`mt-1.5 text-[12px] leading-[17px] ${chosen?.live ? "text-cobalt" : "text-ink-3"}`}>{how}</p> : null}
-              </Field>
-            );
-          })}
-        </div>
-      </Panel>
-
+      <RolePanel title={t("Voice models")} note={t("What a call hears with, speaks with, and thinks with first. Each picker offers its own list below.")} roles={ROLES} />
       <AllowedModels kind="transcription" />
       <AllowedModels kind="speech" />
-
       <FieldGroup title={t("Call network")} note={t(VOICE_NETWORK_NOTE)} rows={fields.filter((f) => groupOf(f.key) === "voice_network")} />
     </>
   );

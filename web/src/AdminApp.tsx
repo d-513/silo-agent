@@ -3,6 +3,7 @@
 export { AdminLayout } from "./Admin";
 export { AdminSettings } from "./admin/AdminSettings";
 export { SettingsSection } from "./admin/SettingsSection";
+export { ModelMapPage, ModelsPage } from "./admin/ModelsPages";
 export { CatalogList, LibraryForm } from "./AdminConnectors";
 export { AdminAudit } from "./AdminAudit";
 export { AdminDebug } from "./AdminDebug";

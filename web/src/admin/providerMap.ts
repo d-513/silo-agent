@@ -1,6 +1,6 @@
 import { msg } from "../i18n.ts";
 
-// The Providers page's map, as pure functions node can test: which provider
+// The model map, as pure functions node can test: which provider
 // does each job (following each setting's fallbacks the way the server
 // does), whether a provider is set up, and what a provider can do per kind.
 
@@ -19,6 +19,8 @@ export function modelOf(id: string): string {
 export type Job = {
   key: string;
   label: string;
+  // The Models page where it is set.
+  page: JobPage;
   // The model doing it, "" when nobody does (off or unset).
   model: string;
   // inherited names the setting it follows when its own is unset.
@@ -27,46 +29,66 @@ export type Job = {
   idle: string;
 };
 
-type JobDef = { key: string; label: string; follows?: string[]; idle?: string };
+export type JobPage = "text" | "decision" | "embedding" | "voice";
+
+type JobDef = { key: string; label: string; page: JobPage; idle?: string };
 
 // The jobs a model is given, in the order the map reads: a conversation
 // first, then a call, then the quieter ones.
 export const JOBS: JobDef[] = [
-  { key: "model", label: msg("Chat") },
-  { key: "model_voice", label: msg("Talker"), idle: msg("The Bot answers every turn") },
-  { key: "voice.transcribe_model", label: msg("Hears calls"), follows: ["transcribe_model"], idle: msg("Off") },
-  { key: "voice.speech_model", label: msg("Speaks"), idle: msg("No voice") },
-  { key: "transcribe_model", label: msg("Dictation"), idle: msg("Off") },
-  { key: "model_approval", label: msg("Auto-approval"), follows: ["model_title", "model"] },
-  { key: "model_decision", label: msg("Decisions"), idle: msg("No decision model") },
-  { key: "embedding_model", label: msg("Embeddings") },
+  { key: "model", label: msg("Chat"), page: "text" },
+  { key: "model_voice", label: msg("Talker"), page: "voice", idle: msg("The Bot answers every turn") },
+  { key: "voice.transcribe_model", label: msg("Hears calls"), page: "voice", idle: msg("Off") },
+  { key: "voice.speech_model", label: msg("Speaks"), page: "voice", idle: msg("No voice") },
+  { key: "transcribe_model", label: msg("Dictation"), page: "voice", idle: msg("Off") },
+  { key: "model_approval", label: msg("Auto-approval"), page: "decision" },
+  { key: "model_decision", label: msg("Decisions"), page: "decision", idle: msg("No decision model") },
+  { key: "embedding_model", label: msg("Embeddings"), page: "embedding" },
 ];
+
+// What a setting left empty follows, nearest first, as the server reads it.
+export const FOLLOWS: Record<string, string[]> = {
+  model_title: ["model"],
+  model_approval: ["model_title", "model"],
+  model_filter: ["model_approval", "model_title", "model"],
+  model_memory: ["model_title", "model"],
+  "voice.transcribe_model": ["transcribe_model"],
+};
+
+/**
+ * The model a setting uses: its own value, else the first set one it follows
+ * (from names that one), else for the decision model the first allowed one
+ * (from = "decision_models"). "" when nobody does it; "off" reads as nobody.
+ */
+export function effective(values: Record<string, string>, key: string, decisionModels: string[] = []): { model: string; from: string } {
+  const own = (k: string) => {
+    const v = (values[k] ?? "").trim();
+    return v.toLowerCase() === "off" ? "off" : v;
+  };
+  let model = own(key);
+  let from = "";
+  if (!model) {
+    for (const f of FOLLOWS[key] ?? []) {
+      const v = own(f);
+      if (v) {
+        model = v;
+        from = f;
+        break;
+      }
+    }
+  }
+  if (!model && key === "model_decision" && decisionModels.length) {
+    model = decisionModels[0];
+    from = "decision_models";
+  }
+  return { model: model === "off" ? "" : model, from };
+}
 
 /** What each job is done with, given the form's values and the allowed decision models. */
 export function resolveJobs(values: Record<string, string>, decisionModels: string[]): Job[] {
-  const own = (key: string) => {
-    const v = (values[key] ?? "").trim();
-    return v.toLowerCase() === "off" ? "off" : v;
-  };
   return JOBS.map((j) => {
-    let model = own(j.key);
-    let inherited = "";
-    if (!model) {
-      for (const f of j.follows ?? []) {
-        const v = own(f);
-        if (v) {
-          model = v;
-          inherited = f;
-          break;
-        }
-      }
-    }
-    if (!model && j.key === "model_decision" && decisionModels.length) {
-      model = decisionModels[0];
-      inherited = "decision_models";
-    }
-    if (model === "off") model = "";
-    return { key: j.key, label: j.label, model, inherited, idle: j.idle ?? msg("Not set") };
+    const { model, from } = effective(values, j.key, decisionModels);
+    return { key: j.key, label: j.label, page: j.page, model, inherited: from, idle: j.idle ?? msg("Not set") };
   });
 }
 

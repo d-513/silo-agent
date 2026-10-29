@@ -296,6 +296,20 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   await expect(page.getByText(/\/auth\/oidc\/callback$/)).toBeVisible();
   await page.goto("/admin/settings/nope");
   await expect(page).toHaveURL(/\/admin\/settings\/models$/);
+  // Models is the map, with a page per kind under it; the old Providers and
+  // Voice categories land on theirs, an unknown page on the map.
+  for (const m of ["providers", "text", "decision", "embedding", "voice"]) {
+    await page.goto(`/admin/settings/models/${m}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/settings/models/${m}$`));
+    await expect(categories.locator("[data-tab-on]")).toHaveCount(1);
+    await expect(page.getByText("This page hit a snag")).toHaveCount(0);
+  }
+  for (const old of ["providers", "voice"]) {
+    await page.goto(`/admin/settings/${old}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/settings/models/${old}$`));
+  }
+  await page.goto("/admin/settings/models/nope");
+  await expect(page).toHaveURL(/\/admin\/settings\/models$/);
   // Search & Extract was a tab; its old address lands on the category.
   await page.goto("/admin/search-extract");
   await expect(page).toHaveURL(/\/admin\/settings\/search$/);

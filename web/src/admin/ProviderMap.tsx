@@ -7,15 +7,16 @@ import { markOf, modelOf, providerOf, providersInUse, type Job } from "./provide
 // ProviderMap draws which provider does each job: the jobs down the left,
 // the providers they use down the right, a hairline from each job to its
 // provider (dashed where a job follows another setting). Hovering a job or a
-// provider brings its lines forward; pressing a provider opens it below. A
-// narrow frame reads as a plain list instead.
+// provider brings its lines forward; pressing a job opens the page that sets
+// it, pressing a provider opens its settings. A narrow frame reads as a plain
+// list instead.
 
 type Path = { job: string; provider: string; d: string; dashed: boolean };
 
 // Below this width the two columns and the lines between them do not fit.
 const NARROW = 560;
 
-export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: Job[]; providers: Provider[]; ready: (id: string) => boolean; picked: string; onPick: (id: string) => void }) {
+export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: Job[]; providers: Provider[]; ready: (id: string) => boolean; onJob: (job: Job) => void; onPick: (id: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const jobEls = useRef(new Map<string, HTMLElement>());
   const provEls = useRef(new Map<string, HTMLElement>());
@@ -66,7 +67,9 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
           const p = byID.get(providerOf(j.model));
           return (
             <div key={j.key} className="flex items-center gap-3 py-2.5 text-[13px]">
-              <span className="w-28 shrink-0 font-medium text-ink">{t(j.label)}</span>
+              <button type="button" className="w-28 shrink-0 text-left font-medium text-ink hover:text-cobalt" onClick={() => onJob(j)}>
+                {t(j.label)}
+              </button>
               {p ? (
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => onPick(p.id)}>
                   <ArrowRight size={13} className="shrink-0 text-ink-3" />
@@ -84,7 +87,7 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
   }
 
   return (
-    <div ref={box} className="relative grid grid-cols-[minmax(0,15rem)_minmax(3.5rem,1fr)_minmax(0,15rem)] items-center gap-y-1.5" onMouseLeave={() => setHover({})}>
+    <div ref={box} className="relative grid grid-cols-[minmax(0,15rem)_minmax(3.5rem,1fr)_minmax(0,15rem)] items-center gap-y-1.5" onMouseLeave={() => setHover({})} onBlur={() => setHover({})}>
       <svg className="pointer-events-none absolute inset-0" width={size.w} height={size.h} aria-hidden>
         {paths.map((p) => {
           const on = lit(p.job, p.provider);
@@ -107,14 +110,17 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
           const p = providerOf(j.model);
           const missing = !!p && !ready(p);
           return (
-            <div
+            <button
+              type="button"
               key={j.key}
               ref={(el) => {
                 if (el) jobEls.current.set(j.key, el);
                 else jobEls.current.delete(j.key);
               }}
               onMouseEnter={() => setHover({ job: j.key })}
-              className={`relative flex h-11 min-w-0 flex-col justify-center rounded-control px-3 transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "bg-well" : ""}`}
+              onFocus={() => setHover({ job: j.key })}
+              onClick={() => onJob(j)}
+              className={`relative flex h-11 min-w-0 flex-col justify-center rounded-control px-3 text-left transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "bg-well" : ""}`}
             >
               <span className="flex items-center gap-1.5 text-[13px] leading-[18px] font-medium text-ink">
                 {t(j.label)}
@@ -123,7 +129,7 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
               <span className="truncate font-mono text-[11.5px] leading-4 text-ink-3">{j.model ? modelOf(j.model) : t(j.idle)}</span>
               {/* Where a line leaves; a job nobody does has an open end. */}
               <span aria-hidden className={`absolute top-1/2 -right-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full ${p ? "bg-ink-3" : "shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-canvas"}`} />
-            </div>
+            </button>
           );
         })}
       </div>
@@ -145,10 +151,10 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
                 else provEls.current.delete(id);
               }}
               onMouseEnter={() => setHover({ provider: id })}
+              onFocus={() => setHover({ provider: id })}
               onClick={() => onPick(id)}
               className={`relative flex h-14 min-w-0 items-center gap-2.5 rounded-card bg-surface pr-3 pl-2.5 text-left transition-[box-shadow] duration-[160ms] ease-quiet ${on ? "shadow-float" : "shadow-card"}`}
             >
-              {picked === id ? <span aria-hidden className="absolute top-2.5 bottom-2.5 left-0 w-[2px] rounded-full bg-cobalt" /> : null}
               <span aria-hidden className="absolute top-1/2 -left-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full bg-ink-3" />
               <ProviderMark name={p.name} />
               <span className="min-w-0 flex-1">
@@ -166,8 +172,15 @@ export function ProviderMap({ jobs, providers, ready, picked, onPick }: { jobs: 
 
 // ProviderMark is a provider's monogram on a well tile: the crest is a Bot's
 // character, a provider gets only its initials.
-export function ProviderMark({ name }: { name: string }) {
-  return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-well font-mono text-[11px] font-semibold tracking-wide text-ink-2">{markOf(name)}</span>;
+export function ProviderMark({ name, small }: { name: string; small?: boolean }) {
+  return (
+    <span
+      title={small ? name : undefined}
+      className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-[9.5px]" : "h-8 w-8 text-[11px]"}`}
+    >
+      {markOf(name)}
+    </span>
+  );
 }
 
 // Status is a provider's lamp and word: ready to be asked, or waiting for a key.

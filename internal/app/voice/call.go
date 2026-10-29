@@ -166,7 +166,7 @@ var (
 // is calling and that they may write in the chat.
 func (s *Service) ServeCall(w http.ResponseWriter, r *http.Request, userID string, b *db.Bot, ch *db.Chat) {
 	if !s.CallEnabled() {
-		http.Error(w, "calls are off: voice needs a speech model and speech-to-text (Admin → Settings → Voice)", http.StatusConflict)
+		http.Error(w, "calls are off: voice needs a speech model and speech-to-text (Admin → Settings → Models → Voice)", http.StatusConflict)
 		return
 	}
 	cfg := s.cfg()
