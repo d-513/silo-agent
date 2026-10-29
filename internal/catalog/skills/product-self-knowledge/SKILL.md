@@ -31,7 +31,7 @@ To type a **stored secret**, `get_secret` in Python and `silo_runtime.type_text`
 
 Dock: Files (`thunar /workspace`), Terminal, Editor, Chromium (`silo-chromium`). You are user `silo` (uid 1000); `sudo` is passwordless for apt.
 
-`silo_runtime.chrome_page()` is headed Chromium for page screenshots, mutating displayed HTML, or an automated script — not the live click loop. Never `playwright install`, `pyautogui`, `xdotool`, or a second browser.
+Everything done *on* a website (navigating, logging in, clicking, forms, dialogs) is the `look` / `click` loop. `silo_runtime.chrome_page()` is Playwright on that same Chromium, only for taking data out of a page already reached that way (text, tables, links, a full-page screenshot), a scripted run repeated over many pages, or mutating displayed HTML — never `goto`/`fill`/`click` to get through the task. Never `playwright install`, `pyautogui`, `xdotool`, or a second browser.
 
 ## Connectors
 

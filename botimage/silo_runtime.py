@@ -72,6 +72,10 @@ def list_secrets() -> dict:
 def chrome_page():
     """Playwright Page on the headed desktop Chromium. Opens it if needed.
 
+    For extracting data from a page already reached with look/click, and for
+    scripted runs over many pages; navigating, logging in and filling forms
+    are the desktop loop.
+
     Raises while the owner has paused the desktop: they are in control.
     """
     global _pw, _browser
