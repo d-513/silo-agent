@@ -383,6 +383,7 @@ func providerProtos() []*v1.Provider {
 				p.Kinds = append(p.Kinds, kind.ID)
 			}
 		}
+		p.LiveKinds = d.Live
 		for _, f := range d.Settings {
 			p.Fields = append(p.Fields, &v1.ProviderField{
 				Key: f.Key, Label: f.Label, Type: f.Type, Description: f.Description, Secret: f.Secret,

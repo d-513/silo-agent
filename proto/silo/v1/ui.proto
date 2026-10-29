@@ -2613,6 +2613,9 @@ message Provider {
   // kinds are the kinds of model the provider serves: "text", "decision",
   // "transcription", "speech", "embedding".
   repeated string kinds = 7;
+  // live_kinds are the kinds some of its models serve live (transcription
+  // as you speak, a voice that stays connected for a call).
+  repeated string live_kinds = 8;
 }
 
 message ProviderField {

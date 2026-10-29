@@ -256,6 +256,10 @@ type Descriptor struct {
 	// Kinds are the kinds of model the provider serves (see Kinds); empty
 	// means text only. The client implements each kind's interface.
 	Kinds []string
+	// Live are the kinds some of its models serve live (SpeechCaps):
+	// transcription as you speak, a voice that stays connected. Which models
+	// do is SpeechCaps; this is what the provider map shows.
+	Live []string
 }
 
 // Serves reports whether the provider has models of a kind.
@@ -340,6 +344,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:            OpenAI,
+			Live:          []string{KindTranscription},
 			Name:          "OpenAI",
 			Description:   "OpenAI's API. Automatic prefix caching; prompt_cache_key improves routing.",
 			Kinds:         []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
@@ -372,6 +377,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:              Local,
+			Live:            []string{KindTranscription},
 			Name:            "Local",
 			Description:     "Any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp). Silo only connects; it does not run models.",
 			Kinds:           []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
@@ -421,6 +427,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          Deepgram,
+			Live:        []string{KindTranscription, KindSpeech},
 			Name:        "Deepgram",
 			Description: "Speech recognition that streams (Nova-3, and Flux, which also judges when you have finished speaking) and Aura voices. An Aura model is one voice: aura-2-thalia-en. No Polish voices.",
 			Kinds:       []string{KindTranscription, KindSpeech},
@@ -431,6 +438,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          ElevenLabs,
+			Live:        []string{KindTranscription, KindSpeech},
 			Name:        "ElevenLabs",
 			Description: "Voices that stay connected for a call with word timings (Flash v2.5, many languages including Polish), and Scribe transcription: files with scribe_v2, live with scribe_v2_realtime.",
 			Kinds:       []string{KindTranscription, KindSpeech},
@@ -441,6 +449,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          Cartesia,
+			Live:        []string{KindTranscription, KindSpeech},
 			Name:        "Cartesia",
 			Description: "Sonic voices that stay connected for a call, with word timings, and Ink live transcription.",
 			Kinds:       []string{KindTranscription, KindSpeech},
@@ -451,6 +460,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          Inworld,
+			Live:        []string{KindSpeech},
 			Name:        "Inworld",
 			Description: "TTS 2 voices that stay connected for a call, with word timings; Flash is among the fastest to the first sound.",
 			Kinds:       []string{KindSpeech},
@@ -464,6 +474,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          Soniox,
+			Live:        []string{KindTranscription},
 			Name:        "Soniox",
 			Description: "Live transcription in 60+ languages with code-switching (strong Polish), which also judges when you have finished speaking.",
 			Kinds:       []string{KindTranscription},
@@ -474,6 +485,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          AssemblyAI,
+			Live:        []string{KindTranscription},
 			Name:        "AssemblyAI",
 			Description: "Universal streaming transcription that judges when you have finished speaking, and files in one request.",
 			Kinds:       []string{KindTranscription},

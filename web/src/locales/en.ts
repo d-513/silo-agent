@@ -76,6 +76,10 @@ const en: Record<string, string> = {
   "Filter {{count}} speech models_other": "Filter {{count}} speech models",
   "Filter {{count}} embedding models_one": "Filter {{count}} embedding model",
   "Filter {{count}} embedding models_other": "Filter {{count}} embedding models",
+  "{{count}} jobs_one": "{{count}} job",
+  "{{count}} jobs_other": "{{count}} jobs",
+  "{{count}} allowed_one": "{{count}} allowed",
+  "{{count}} allowed_other": "{{count}} allowed",
 };
 
 export default en;

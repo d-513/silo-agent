@@ -18622,7 +18622,10 @@ type Provider struct {
 	CacheTtls     []string               `protobuf:"bytes,6,rep,name=cache_ttls,json=cacheTtls,proto3" json:"cache_ttls,omitempty"`
 	// kinds are the kinds of model the provider serves: "text", "decision",
 	// "transcription", "speech", "embedding".
-	Kinds         []string `protobuf:"bytes,7,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	Kinds []string `protobuf:"bytes,7,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	// live_kinds are the kinds some of its models serve live (transcription
+	// as you speak, a voice that stays connected for a call).
+	LiveKinds     []string `protobuf:"bytes,8,rep,name=live_kinds,json=liveKinds,proto3" json:"live_kinds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18702,6 +18705,13 @@ func (x *Provider) GetCacheTtls() []string {
 func (x *Provider) GetKinds() []string {
 	if x != nil {
 		return x.Kinds
+	}
+	return nil
+}
+
+func (x *Provider) GetLiveKinds() []string {
+	if x != nil {
+		return x.LiveKinds
 	}
 	return nil
 }
@@ -29889,7 +29899,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"KindModels\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12,\n" +
 	"\x06models\x18\x02 \x03(\v2\x14.silo.v1.ModelOptionR\x06models\x12\x16\n" +
-	"\x06listed\x18\x03 \x03(\tR\x06listed\"\xdc\x01\n" +
+	"\x06listed\x18\x03 \x03(\tR\x06listed\"\xfb\x01\n" +
 	"\bProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -29898,7 +29908,9 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x0esupports_cache\x18\x05 \x01(\bR\rsupportsCache\x12\x1d\n" +
 	"\n" +
 	"cache_ttls\x18\x06 \x03(\tR\tcacheTtls\x12\x14\n" +
-	"\x05kinds\x18\a \x03(\tR\x05kinds\"\x85\x01\n" +
+	"\x05kinds\x18\a \x03(\tR\x05kinds\x12\x1d\n" +
+	"\n" +
+	"live_kinds\x18\b \x03(\tR\tliveKinds\"\x85\x01\n" +
 	"\rProviderField\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +

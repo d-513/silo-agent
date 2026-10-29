@@ -170,6 +170,21 @@ func TestProviderKinds(t *testing.T) {
 			t.Errorf("%s serves text=%v decision=%v", id, d.Serves(KindText), d.Serves(KindDecision))
 		}
 	}
+	// A kind a provider says is live is one it serves, through the live
+	// interface.
+	for _, d := range Descriptors() {
+		c, _ := New(d.ID, Settings{"api_key": "k", "base_url": "http://probe.invalid"})
+		for _, k := range d.Live {
+			if !d.Serves(k) {
+				t.Errorf("%s: live %s but does not serve it", d.ID, k)
+			}
+			_, lt := c.(LiveTranscriber)
+			_, ls := c.(LiveSpeaker)
+			if k == KindTranscription && !lt || k == KindSpeech && !ls || k != KindTranscription && k != KindSpeech {
+				t.Errorf("%s: live %s without its live interface", d.ID, k)
+			}
+		}
+	}
 	for _, id := range []string{OpenRouter, OpenAI, Local} {
 		d, _ := Lookup(id)
 		if !d.Serves(KindSpeech) || !d.Serves(KindTranscription) || !d.Serves(KindEmbedding) {
