@@ -165,3 +165,37 @@ Honest caveats:
 - Muse: [TechCrunch launch](https://techcrunch.com/2026/09/08/meta-debuts-its-muse-ai-agent-will-consumers-trust-it/), [Muse guide†](https://codersera.com/blog/meta-muse-ai-agent-app-guide-2026/), [CNBC on adoption](https://www.cnbc.com/2026/10/07/meta-muse-personal-ai-agents-dazzle.html), [TIME on privacy](https://time.com/article/2026/10/06/meta-muse-ai-agent-privacy/), [Analytics India Mag on Sentinel](https://analyticsindiamag.com/ai-news/meta-launches-muse-ai-agent-with-internet-access-guardrails)
 - Instinct: [TechCrunch on calls](https://techcrunch.com/2026/09/17/rival-ai-agents-instinct-and-metas-muse-both-add-the-ability-to-make-calls/), [Fox News](https://www.foxnews.com/tech/ai-agents-make-phone-calls)
 - Text-message agents: [TechCrunch roundup, 10-10](https://techcrunch.com/2026/10/10/all-the-ai-agents-that-can-live-in-your-text-messages/)
+
+## 10. Open from the build plans
+
+The egress, voice and workspaces handoff docs were removed once built (they are in git history). What they planned and the code does not have yet:
+
+**Egress gateway**
+- Docker engine support: `egress.Service.Enabled()` is false on Docker, so the filter is silently off there, and Admin shows only "Off" with no reason.
+- "Newly registered domain" flags; only `random_domain` exists.
+- The CP never sends `EgressApply.limits` (upload budget, query minimum), so the gateway always uses its defaults and an operator cannot set them.
+- A rootful engine's client bridge `.1` is reachable from a box (documented, not mitigated).
+- The SOCKS door splices TLS without inspecting it; DNS over UDP identifies the client by source address only.
+
+**Voice**
+- Phase 0 measurements (talker time to first token, TTS/STT latency, echo cancellation across browsers) are not written down.
+- Turn end is 550 ms of VAD silence (`redemptionMs`); no Smart Turn, no CP-side VAD.
+- No WebSocket media fallback when ICE finds no route.
+- Approvals by voice: `voice.approve_by_voice` is parsed but unused. `ask_owner` cards are not read out or answerable by voice.
+- No streaming STT (`llm.StreamTranscriber`, live captions, speculative talker start), no streaming TTS (`SpeechSession`) or word timestamps.
+- No Admin P50/P95 panel over `voice_turns`, no 30-day sweep of `voice_turns`/`voice_calls`.
+- Late Bot results get no "About <task>: " prefix; no earcon; `Meta.unheard` is not drawn faint.
+- `TestLiveTalker`, the delegation eval, the live latency probe and the replay suite do not exist.
+- No per-layer fallback chain, STT watchdog, or reconnect that resumes the same `call_id`.
+- Later: iOS calls, channel voice notes, a phone line, a wake word, a realtime speech-to-speech talker.
+
+**Workspaces**
+- iOS has no Workspace UI (it runs on the RPC shims).
+- A call through a lent connection does not name the lender ("GitHub · as Alice" in the thread, audit and `security.Describe`).
+- `desktop_pauses` has no user, so the refusal cannot say who holds the desktop.
+- Prompts still say "your owner" (`SYSTEM.md`, `MAIL.md`, `ONBOARDING.md`) on shared Bots.
+- `Bot.activity` is not filtered per viewer: a "Can use" person sees the titles and steps of other people's live chats (planned: "Working in another chat").
+- The drive refresh-token race between two sidecars (Box) is untested per OAuth template; no `single_mount`; no UI warning that two Bots on one drive is last-writer-wins.
+- Missing tests: `TestUngrantedIsAbsent`, `TestRevokePrunesOnlyThatBot`, `TestBotWithNoEnabledManagerSuspends` (only the unit `TestSuspendedIsNoEnabledManager`), and the two-person case of `TestHistoryIsAppendOnly`.
+- The New Bot page still says "change it later in Customize" (`web/src/NewBotPage.tsx`, and its pl/de entries); Customize is gone.
+- Later: OPSEC levels as named sets of Workspace floors, checked at the grant; Bots talking to each other.

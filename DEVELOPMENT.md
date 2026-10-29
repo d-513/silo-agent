@@ -1,6 +1,6 @@
 # Development
 
-Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus two container images and a Postgres (pgvector) database from `docker-compose.dev.yml`.
+Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus container images (the Bot, STDIO MCP sidecar, drive sidecar and egress gateway) and a Postgres (pgvector) database from `docker-compose.dev.yml`.
 
 ```
 browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-worker)
@@ -47,8 +47,8 @@ Run `make help` to list everything.
 | `make run-frontend`  | Vite dev server on `:5173`                                        |
 | `make watch-control` | Run the CP under watchexec (rebuild + restart on Go changes)      |
 | `make build-cp`      | `bin/silo`                                                        |
-| `make build-all`     | `bin/silo`, `bin/silo-worker`, `bin/silo-mcp-bridge`              |
-| `make images`        | Bot + STDIO MCP images                                            |
+| `make build-all`     | Every binary (`bin/silo`, worker, bridge, drive, egress) and every image |
+| `make images`        | Bot, STDIO MCP, drive and egress images                           |
 | `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433` + Lightpanda MCP on `:9223` + smtp4dev on `:1025`/`:1143`/`:8025` + Radicale on `:5232` + Dex (OIDC) on `:5556` |
 | `make db-psql`       | `psql` on the dev database                                        |
 | `make db-reset`      | Drop the Postgres volume — every user, bot, chat (asks first)     |
@@ -60,7 +60,7 @@ Run `make help` to list everything.
 | `make fmt` / `vet`   | `go fmt` / `go vet`                                               |
 | `make proto`         | `buf generate`                                                    |
 | `make cleanup`       | Force-remove every `silo-*` container                             |
-| `make clean-images`  | Remove the local bot and STDIO images                             |
+| `make clean-images`  | Remove the local bot, STDIO, drive and egress images              |
 | `make clean`         | Remove `bin/` and `web/dist`                                      |
 | `make reset-data`    | Delete `./data` — workspaces + skills, not the DB (asks first)    |
 
@@ -73,13 +73,13 @@ Run `make help` to list everything.
 ## Build
 
 ```
-make build-all     # CP + worker + bridge
-make images        # localhost/silo-bot:v1 + localhost/silo-mcp-stdio:v1
+make build-all     # every binary, then every image
+make images        # bot, STDIO, drive and egress images
 ```
 
-`make images` builds the worker/bridge binaries first; the Containerfiles copy them from `bin/`. `CONTAINER_ARCH` comes from `podman info`.
+`make images` builds the worker, bridge, drive and egress binaries first; the Containerfiles copy them from `bin/`. `CONTAINER_ARCH` comes from `podman info`.
 
-Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1`, `localhost/silo-mcp-stdio:v1`). `make bot-image` builds the worker then the bot image; `make stdio-image` builds the bridge then the sidecar image; `make images` does both. None of them remove containers (`make cleanup` does).
+Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1`, `localhost/silo-mcp-stdio:v1`). `make bot-image` builds the worker then the bot image; `make stdio-image` the bridge then the sidecar image; `make drive-image` and `make egress-image` likewise; `make images` does all four. None of them remove containers (`make cleanup` does).
 
 ## Run
 
@@ -106,7 +106,7 @@ Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id
 
 ## Tunnels in development
 
-With `public_url` on `localhost`/`127.0.0.1` (the example config), tunnels need no setup: a Bot's tunnel is `http://<name>.localhost:8080`, served by the control plane directly (browsers send `*.localhost` to loopback; Vite is not involved, since it would answer with the SPA). The private-tunnel sign-in starts at `public_url`, which Vite proxies (`/tunnels`) to the control plane. Tunnels need the worker that understands `OpenTunnel`, so after pulling this change run `make bot-image` and recreate the Bot's container. To try one: ask the Bot to run `python -m http.server 8000` in the background and open a tunnel, or add port 8000 on the Bot's **Tunnels** tab.
+With `public_url` on `localhost`/`127.0.0.1` (the example config), tunnels need no setup: a Bot's tunnel is `http://<name>.localhost:8080`, served by the control plane directly (browsers send `*.localhost` to loopback; Vite is not involved, since it would answer with the SPA). The private-tunnel sign-in starts at `public_url`, which Vite proxies (`/tunnels`) to the control plane. To try one: ask the Bot to run `python -m http.server 8000` in the background and open a tunnel, or add port 8000 on the Bot's **Tunnels** tab.
 
 ## Mail in development
 
@@ -118,7 +118,7 @@ swaks --server localhost:2525 --from you@example.com --to <name>@silo.localhost 
 printf 'EHLO me\r\nMAIL FROM:<you@example.com>\r\nRCPT TO:<<name>@silo.localhost>\r\nDATA\r\nSubject: hello\r\n\r\nYour code is 482913.\r\n.\r\nQUIT\r\n' | nc localhost 2525
 ```
 
-Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), so it never wakes a Bot; the wake path is covered by `TestMailWake*`, which sign a message and fake the DNS. The Bot's `silo_runtime.list_mail` / `read_mail` need a Bot image built after this change (`make bot-image`); the chat tools do not.
+Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), so it never wakes a Bot; the wake path is covered by `TestMailWake*`, which sign a message and fake the DNS.
 
 ## After you change…
 
@@ -174,9 +174,9 @@ Use **Conventional Commits**: `<type>(<scope>): <imperative summary>` — lowerc
 | `build` | Makefile, Containerfiles, dependencies, images |
 | `chore` | housekeeping with no src/logic change |
 
-**Scopes** mirror the layout: `app`, `worker`, `bridge`, `mcp`, `channels`, `llm`, `search`, `security`, `catalog`, `prompts`, `proto`, `web`, `botimage`, `mcpimage`, `config`. Omit the scope for cross-cutting changes.
+**Scopes** mirror the layout or the feature: `app`, `worker`, `bridge`, `mcp`, `channels`, `llm`, `search`, `security`, `catalog`, `prompts`, `proto`, `web`, `botimage`, `mcpimage`, `config`, and feature names such as `voice`, `drives`, `egress`, `spaces`, `zones`. Omit the scope for cross-cutting changes.
 
-The body (optional) explains what and why, not how, wrapped at 72 columns. Footers carry `BREAKING CHANGE:` and issue references.
+The body (optional) explains what and why, not how, wrapped at 72 columns. Footers carry `BREAKING CHANGE:` and issue references. A commit made with a model's help ends with an `Assisted-by: <model name>` trailer (never a `Co-Authored-By` for the model).
 
 ```
 feat(channels): bind Telegram rows to a single chat
@@ -188,7 +188,7 @@ enumerate dialogs, so the picker lists seen chats or accepts @username.
 Fixes #42
 ```
 
-Keep commits atomic: one logical change each, not a mega-commit that bundles unrelated work.
+Keep commits atomic: one logical change each, not a mega-commit that bundles unrelated work. A large feature may land as one commit when its message describes it clearly.
 
 ## Layout
 
