@@ -1,6 +1,16 @@
 {
   "CommandLineFlagSecurityWarningsEnabled": false,
   "TranslateEnabled": false,
+  "PasswordManagerEnabled": false,
+  "PasswordLeakDetectionEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "PaymentMethodQueryEnabled": false,
+  "BrowserSignin": 0,
+  "SyncDisabled": true,
+  "DefaultBrowserSettingEnabled": false,
+  "PromotionsEnabled": false,
+  "DefaultNotificationsSetting": 2,
   "3rdparty": {
     "extensions": {
       "ddkjiahejlhfcafbddmgiahcphecmpfh": {
