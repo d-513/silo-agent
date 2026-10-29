@@ -136,9 +136,8 @@ func (a *App) decideSections(promptContext) []promptSection {
 	return []promptSection{{title: "Decisions", body: a.Models.DecidePrompt(prompts.Decide)}}
 }
 
-// tunnelSections explains the tunnel tools, only while the operator has tunnels
-// on and a domain for them. The text is the same for every Bot, so it stays in
-// the cached prefix.
+// voiceSections says what a spoken turn is, only while calls are on. The same
+// text for every Bot.
 func (a *App) voiceSections(promptContext) []promptSection {
 	if !a.Voice.CallEnabled() {
 		return nil
@@ -146,6 +145,9 @@ func (a *App) voiceSections(promptContext) []promptSection {
 	return []promptSection{{title: "Voice calls", body: prompts.Voice}}
 }
 
+// tunnelSections explains the tunnel tools, only while the operator has tunnels
+// on and a domain for them. The text is the same for every Bot, so it stays in
+// the cached prefix.
 func (a *App) tunnelSections(promptContext) []promptSection {
 	return []promptSection{{title: "Tunnels", body: a.Tunnels.Prompt(prompts.Tunnels)}}
 }
@@ -192,13 +194,15 @@ func (b *systemPromptBuilder) add(s promptSection) {
 // carries back to the previous block.
 func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 	var session strings.Builder
+	session.WriteString("\n\n## This Bot\n")
 	if b.bot.Name != "" {
-		fmt.Fprintf(&session, "\n\nThis Bot's name is %s.", b.bot.Name)
-		if d := strings.TrimSpace(b.bot.Description); d != "" {
+		fmt.Fprintf(&session, "This Bot's name is %s.", b.bot.Name)
+		if d := strings.TrimRight(strings.TrimSpace(b.bot.Description), "."); d != "" {
 			fmt.Fprintf(&session, " Description: %s.", d)
 		}
+		session.WriteString("\n\n")
 	}
-	session.WriteString("\n\n" + lang.Prompt(b.bot.Language))
+	session.WriteString(lang.Prompt(b.bot.Language))
 	for _, sec := range b.sections {
 		session.WriteString(sec.render())
 	}

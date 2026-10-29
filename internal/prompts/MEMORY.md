@@ -22,7 +22,7 @@ Durable knowledge about the human and their world — identity, preferences and 
 
 ## Form
 
-Each memory is one self-contained sentence of at most 300 characters that makes sense with no other context: name the subject ("The human's sister Ana…", not "She…"), include concrete names, versions, paths, and dates (absolute, not "tomorrow"). At most 8 items in total.
+Each memory is one self-contained sentence of at most 300 characters that makes sense with no other context: name the subject ("The human's sister Ana…", not "She…"; when the excerpt has several people, each message names its writer, so say whose fact it is), include concrete names, versions, paths, and dates (absolute, not "tomorrow"). At most 8 items in total.
 
 Answer with JSON only, no prose and no code fence:
 

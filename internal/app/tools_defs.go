@@ -571,7 +571,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "open_tunnel",
-			Description: "Give the human an address for a service listening on this machine's localhost (a web app, dashboard, notebook). Returns the URL. Private by default: only the owner, signed in to Silo, can open it. public=true makes it open to anyone with the link and asks the human first. Start the service first and keep it running. Calling it again for the same port returns the same address. Python: silo_runtime.open_tunnel(port).",
+			Description: "Give the human an address for a service listening on this machine's localhost (a web app, dashboard, notebook). Returns the URL. Private by default: only the people who use this Bot, signed in to Silo, can open it. public=true makes it open to anyone with the link and asks the human first. Start the service first and keep it running. Calling it again for the same port returns the same address. Python: silo_runtime.open_tunnel(port).",
 			Params: tool.Object(map[string]any{
 				"port":   map[string]any{"type": "integer", "description": "the port the service listens on (1-65535; the desktop's own 5900 and 9222 are refused)"},
 				"public": map[string]any{"type": "boolean", "description": "open to anyone with the link, no sign-in; asks the human. Leave out unless they asked for a shareable link."},

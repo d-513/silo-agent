@@ -136,7 +136,7 @@ func who(public bool) string {
 	if public {
 		return "public (anyone with the link can open it)"
 	}
-	return "private (only the owner, signed in to Silo, can open it)"
+	return "private (only the people who use this Bot, signed in to Silo, can open it)"
 }
 
 func view(t *db.Tunnel, cfg config.Config) map[string]any {

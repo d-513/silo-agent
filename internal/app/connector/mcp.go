@@ -121,7 +121,7 @@ func (s *Service) Views(botID string) []View {
 // how to reach it from Python, with each authorized connector's own notes.
 func (s *Service) Prompt(views []View) string {
 	var b strings.Builder
-	b.WriteString("Attached on this Bot. Use exec_python and `import tools.<slug>`. They are not chat tools unless a line says so.\n")
+	b.WriteString("Attached on this Bot. Use them from exec_python: `import tools`, then `tools.<slug>.<fn>(...)`. They are not chat tools unless a line says so.\n")
 	if len(views) == 0 {
 		b.WriteString("None attached. Do not invent MCP servers, packages, or credentials.\n")
 		return b.String()

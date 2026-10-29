@@ -771,7 +771,7 @@ func (s *Service) Prompt(list []db.Drive) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("The owner mounted these remote drives. They are ordinary folders: use `read`, `write`, `grep`, the terminal, and Python on them like any workspace path. Every access goes over the network to the provider, so open specific paths — never walk or grep a whole drive (a workspace-wide `grep` skips drives; pass a path inside one to search it). If a drive's folder is empty or missing, it is disconnected: tell the owner to check the Drives tab rather than retrying. You cannot add or remove drives.\n")
+	b.WriteString("The owner mounted these remote drives. They are ordinary folders: use `read`, `write`, `grep`, the terminal, and Python on them like any workspace path. Every access goes over the network to the provider, so open specific paths — never walk or grep a whole drive (a workspace-wide `grep` skips drives; pass a path inside one to search it). If a drive's folder is empty or missing, it is disconnected: tell the owner to check it on the Workspace's Drives page rather than retrying. You cannot add or remove drives.\n")
 	for _, d := range list {
 		title := d.Template
 		if t, ok := s.templates().Get(d.Template); ok {
