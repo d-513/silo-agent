@@ -68,7 +68,7 @@ Run `make help` to list everything.
 
 ### How the backend watch is configured
 
-`make watch-control` watches only `cmd/`, `internal/`, `go.mod`, `go.sum`, and `silo.yaml`, and only for Go/mod/Markdown/YAML/JSON changes. A 750 ms debounce coalesces a burst of editor writes, and `--on-busy-update restart` sends SIGTERM with a 5 s grace period so the CP releases `:8080` before the next build starts. The command builds first and only then `exec`s the new binary, so a compile error never replaces a working process.
+`make watch-control` watches only `cmd/`, `internal/`, `go.mod` and `go.sum`, and only for Go/mod/Markdown/YAML/JSON changes. `silo.yaml` is not watched: Admin saves apply live, so a hand edit needs a manual restart. A 750 ms debounce coalesces a burst of editor writes, and `--on-busy-update restart` sends SIGTERM with a 5 s grace period so the CP releases `:8080` before the next build starts. The command builds first and only then `exec`s the new binary, so a compile error never replaces a working process.
 
 ## Build
 

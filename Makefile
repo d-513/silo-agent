@@ -26,7 +26,7 @@ SESSION ?= silo
 # A sane watch: only sources, only relevant extensions, a real debounce so a
 # flurry of editor writes coalesces into one restart, and SIGTERM + a grace
 # period so the CP can release :8080 before the next build starts.
-WATCH_PATHS := cmd internal go.mod go.sum silo.yaml
+WATCH_PATHS := cmd internal go.mod go.sum
 WATCH_EXTS  := go,mod,sum,md,yaml,yml,json
 WATCH_OPTS  := \
 	--shell=sh \
