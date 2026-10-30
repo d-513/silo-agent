@@ -5,7 +5,7 @@ import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { AllowedModels } from "./AllowedModels";
 import { ProviderSettings } from "./ProviderSettings";
 import { ProviderMap } from "./ProviderMap";
-import { isReady, providerOf, providersInUse, resolveJobs } from "./providerMap";
+import { isReady, providerOf, providersInUse, resolveJobs } from "./providerJobs";
 import { ModelsHead, RolePanel, type Role } from "./roles";
 import { isModelPage, type ModelPage } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";

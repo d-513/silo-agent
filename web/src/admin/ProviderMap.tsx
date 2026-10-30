@@ -1,8 +1,9 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Server } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Provider } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
-import { markOf, modelOf, providerOf, providersInUse, type Job } from "./providerMap";
+import { PROVIDER_ICONS } from "./providerIcons";
+import { markOf, modelOf, providerOf, providersInUse, type Job } from "./providerJobs";
 
 // ProviderMap draws which provider does each job: the jobs down the left,
 // the providers they use down the right, a hairline from each job to its
@@ -156,7 +157,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
               className={`relative flex h-14 min-w-0 items-center gap-2.5 rounded-card bg-surface pr-3 pl-2.5 text-left transition-[box-shadow] duration-[160ms] ease-quiet ${on ? "shadow-float" : "shadow-card"}`}
             >
               <span aria-hidden className="absolute top-1/2 -left-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full bg-ink-3" />
-              <ProviderMark name={p.name} />
+              <ProviderMark id={id} name={p.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] leading-[18px] font-medium text-ink">{p.name}</span>
                 <span className="block truncate text-[11.5px] leading-4 text-ink-3">{t("{{count}} jobs", { count })}</span>
@@ -170,15 +171,28 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
   );
 }
 
-// ProviderMark is a provider's monogram on a well tile: the crest is a Bot's
-// character, a provider gets only its initials.
-export function ProviderMark({ name, small }: { name: string; small?: boolean }) {
+// ProviderMark is a provider's mark on a well tile: its logo in ink where we
+// have one (providerIcons.ts), else its initials. The crest is a Bot's
+// character; a provider gets only its sign.
+export function ProviderMark({ id, name, small }: { id: string; name: string; small?: boolean }) {
+  const icon = PROVIDER_ICONS[id];
+  const size = small ? 13 : 17;
   return (
     <span
       title={small ? name : undefined}
       className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-[9.5px]" : "h-8 w-8 text-[11px]"}`}
     >
-      {markOf(name)}
+      {icon ? (
+        <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill="currentColor" fillRule={icon.evenOdd ? "evenodd" : undefined}>
+          {icon.paths.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </svg>
+      ) : id === "local" ? (
+        <Server aria-hidden size={size} strokeWidth={1.75} />
+      ) : (
+        markOf(name)
+      )}
     </span>
   );
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerMap.ts";
+import { capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
 
 test("a job follows its setting's fallbacks", () => {
   const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small" }, ["typesafe/jev-latest"]);

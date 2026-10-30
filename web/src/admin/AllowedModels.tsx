@@ -8,7 +8,7 @@ import { Select } from "../Select";
 import { LiveChip } from "./LiveChip";
 import { ProviderMark } from "./ProviderMap";
 import { ROLE_NAMES } from "./roles";
-import { providerOf } from "./providerMap";
+import { providerOf } from "./providerJobs";
 import { type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { msg, t } from "../i18n.ts";
@@ -84,7 +84,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
             const name = form.providers.find((p) => p.id === providerOf(m.id))?.name ?? providerOf(m.id);
             return (
               <li key={m.id} className="flex min-h-12 items-center gap-3 py-1.5 pr-3 pl-4 text-[13px]">
-                <ProviderMark name={name} small />
+                <ProviderMark id={providerOf(m.id)} name={name} small />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-ink">{m.id}</span>
                   {jobs.length ? <span className="block truncate text-[12px] leading-4 text-ink-3">{jobs.map((k) => t(ROLE_NAMES[k])).join(" · ")}</span> : null}

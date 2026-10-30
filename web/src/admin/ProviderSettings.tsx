@@ -11,7 +11,7 @@ import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo
 import { SearchBox } from "../SearchBox";
 import { Tip, TipTitle } from "../Tip";
 import { FieldRow } from "./FieldRow";
-import { capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerMap";
+import { capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerJobs";
 import { ProviderMark, Status } from "./ProviderMap";
 import { ModelsHead } from "./roles";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
@@ -100,7 +100,7 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
         {open ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-[2px] rounded-full bg-cobalt" /> : null}
         <span className="flex min-w-0 items-center gap-3">
           <ChevronRight size={14} className={`shrink-0 text-ink-3 transition-transform duration-[200ms] ease-quiet ${open ? "rotate-90" : ""}`} />
-          <ProviderMark name={provider.name} />
+          <ProviderMark id={provider.id} name={provider.name} />
           <span className="min-w-0">
             <span className="flex items-center gap-2 text-[13.5px] leading-[18px] font-medium text-ink">
               {provider.name}

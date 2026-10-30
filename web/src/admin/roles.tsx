@@ -7,7 +7,7 @@ import { Select } from "../Select";
 import { SourceChips } from "./FieldRow";
 import { HINTS, LABELS } from "./fields";
 import { ProviderMark } from "./ProviderMap";
-import { effective, providerOf } from "./providerMap";
+import { effective, providerOf } from "./providerJobs";
 import { eitherKind, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { msg, t } from "../i18n.ts";
@@ -136,7 +136,7 @@ export function ModelsHead({ icon: Icon, title, note, kinds = [], children }: { 
               {from.length ? (
                 <span className="flex items-center gap-1">
                   {from.slice(0, 4).map((p) => (
-                    <ProviderMark key={p} name={providers.find((x) => x.id === p)?.name ?? p} small />
+                    <ProviderMark key={p} id={p} name={providers.find((x) => x.id === p)?.name ?? p} small />
                   ))}
                 </span>
               ) : null}

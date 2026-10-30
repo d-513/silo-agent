@@ -14,7 +14,7 @@ import { UI, type LastManaged, type SpacePerson } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { PageHead } from "../PageHead";
 import { reload } from "../query";
-import { initials, mayChange } from "./people.ts";
+import { initials, mayChange } from "./roster.ts";
 import { forgetSpace, canAdmin, useSpaces } from "./spaces";
 import { roleWord } from "./SpaceTile";
 

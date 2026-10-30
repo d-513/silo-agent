@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { initials, mayChange } from "./people.ts";
+import { initials, mayChange } from "./roster.ts";
 
 assert.equal(initials("alice.smith@example.com"), "AS");
 assert.equal(initials("bob@example.com"), "BO");
