@@ -82,8 +82,6 @@ export function RunRoute() {
       actions={p.actions}
       said={p.said}
       setSaid={p.setSaid}
-      waiting={p.waiting}
-      waitingRuns={p.waitingRuns}
       agentHref={p.agentHref}
       onInspectArtifact={p.inspectArtifact}
       onSaveSkill={p.saveSkill}
@@ -99,9 +97,7 @@ export function AgentRoute() {
     <Suspense fallback={<PaneFallback />}>
       <SubagentPage
         key={p.agentId}
-        botId={p.id}
-        botName={p.bot.name}
-        botCrest={p.bot.crest}
+        bot={p.bot}
         chatId={p.chatId}
         agentId={p.agentId}
         onError={p.onError}

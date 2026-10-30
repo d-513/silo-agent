@@ -2,10 +2,12 @@ import { AudioLines, Hand, Maximize2, Mic, MicOff, PhoneOff, X } from "lucide-re
 import { useEffect, useState } from "react";
 import { Spinner } from "../Feedback";
 import { Tip, TipTitle } from "../Tip";
-import { toolMeta } from "../thread/toolInfo";
+import type { Bot as BotRow } from "../gen/silo/v1/ui_pb";
+import { chatDoing, type Doing } from "../statusLook";
 import { callClock } from "./audio";
+import { callTone, type CallTone, stateWords } from "./look";
 import type { Call } from "./useCall";
-import type { CallSession, CallSnapshot, EndReason } from "./session";
+import type { CallSession, CallSnapshot } from "./session";
 import { t } from "../i18n.ts";
 
 // CallBar is a live call, docked over the composer of the chat it is held in,
@@ -17,10 +19,10 @@ import { t } from "../i18n.ts";
 const ctl =
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]";
 
-export function CallBar({ call, botName, onExpand }: { call: Call; botName: string; onExpand?: () => void }) {
+export function CallBar({ call, bot, onExpand }: { call: Call; bot: BotRow; onExpand?: () => void }) {
   const s = call.snap;
   if (!s) return null;
-  return <Bar s={s} call={call} botName={botName} onExpand={onExpand} />;
+  return <Bar s={s} call={call} botName={bot.name} doing={chatDoing(bot, s.chatId)} onExpand={onExpand} />;
 }
 
 // useHoldKeys makes Space hold-to-talk while that mode is on and no field
@@ -49,7 +51,7 @@ export function useHoldKeys(s: CallSnapshot, session: CallSession | null) {
   }, [s.ptt, ended, session]);
 }
 
-function Bar({ s, call, botName, onExpand }: { s: CallSnapshot; call: Call; botName: string; onExpand?: () => void }) {
+function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Call; botName: string; doing?: Doing; onExpand?: () => void }) {
   const session = call.session;
   const ended = s.state === "ended";
 
@@ -61,7 +63,7 @@ function Bar({ s, call, botName, onExpand }: { s: CallSnapshot; call: Call; botN
         <Orb s={s} onInterrupt={() => session?.interrupt()} botName={botName} />
         <div className="min-w-0 flex-1" aria-live="polite">
           <div className="flex items-baseline gap-2">
-            <span className={`truncate text-[13.5px] leading-5 font-medium ${s.error && ended ? "text-vermilion" : "text-ink"}`}>{stateWords(s, botName)}</span>
+            <span className={`truncate text-[13.5px] leading-5 font-medium ${(s.error && ended) || s.state === "needs_you" ? "text-vermilion" : "text-ink"}`}>{stateWords(s, botName, doing)}</span>
             {!ended ? <Clock since={s.startedAt} /> : null}
           </div>
           <Caption s={s} botName={botName} />
@@ -117,23 +119,21 @@ function Bar({ s, call, botName, onExpand }: { s: CallSnapshot; call: Call; botN
 
 // Orb shows whose voice it is and how loud: cobalt while you speak, ink while
 // the Bot does, breathing while it thinks. A press while the Bot speaks stops it.
+const orbTone: Record<CallTone, string> = {
+  you: "bg-cobalt",
+  bot: "bg-ink",
+  needs_you: "bg-vermilion",
+  muted: "bg-vermilion-pale",
+  working: "bg-emerald",
+  thinking: "breathe bg-ink-3",
+  ended: "bg-line-strong",
+  quiet: "bg-well shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]",
+};
+
 function Orb({ s, onInterrupt, botName }: { s: CallSnapshot; onInterrupt: () => void; botName: string }) {
   const speaking = s.state === "speaking";
   const scale = s.state === "hearing" || speaking ? 1 + s.level * 0.45 : 1;
-  const tone =
-    s.state === "hearing"
-      ? "bg-cobalt"
-      : speaking
-        ? "bg-ink"
-        : s.state === "working"
-          ? "bg-emerald"
-          : s.state === "thinking"
-            ? "breathe bg-ink-3"
-            : s.state === "ended"
-              ? "bg-line-strong"
-              : s.muted
-                ? "bg-vermilion-pale"
-                : "bg-well shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]";
+  const tone = orbTone[callTone(s)];
   const body =
     s.state === "connecting" ? (
       <Spinner size={16} />
@@ -148,45 +148,6 @@ function Orb({ s, onInterrupt, botName }: { s: CallSnapshot; onInterrupt: () => 
       </button>
     </Tip>
   );
-}
-
-export function stateWords(s: CallSnapshot, botName: string): string {
-  switch (s.state) {
-    case "connecting":
-      return t("Connecting…");
-    case "hearing":
-      return s.holding ? t("Talking…") : t("Hearing you…");
-    case "thinking":
-      return t("{{name}} is thinking…", { name: botName });
-    case "working":
-      return s.tool ? t("Working: {{what}}", { what: toolMeta(s.tool).app || s.tool }) : t("Working…");
-    case "speaking":
-      return t("{{name}} is speaking", { name: botName });
-    case "ended":
-      return s.error || endWords(s.ended);
-    default:
-      if (s.muted) return t("Muted");
-      return s.ptt ? t("Hold to talk") : t("Listening");
-  }
-}
-
-export function endWords(r?: EndReason): string {
-  switch (r) {
-    case "idle":
-      return t("Call ended after a quiet while");
-    case "limit":
-      return t("Call ended: it reached the longest call allowed");
-    case "access":
-      return t("Call ended: you no longer have this Bot");
-    case "replaced":
-      return t("The call moved to another tab");
-    case "lost":
-      return t("The call's connection dropped");
-    case "error":
-      return t("The call could not go on");
-    default:
-      return t("Call ended");
-  }
 }
 
 // Caption is the last thing said: the sentence the Bot is on while it

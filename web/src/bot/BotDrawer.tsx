@@ -7,6 +7,7 @@ import { Crest } from "../Crest";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 import { Lamp } from "../Lamp";
+import { botLook, powerWord } from "../statusLook";
 import { Rail } from "../Shell";
 import { paneMeta } from "./MachineRail";
 import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
@@ -87,7 +88,7 @@ export function BotTopBar({
         </span>
         <span className="relative flex h-7 w-7 shrink-0">
           <Crest index={bot.crest} size={28} />
-          <Lamp status={bot.status} onCrest="well" className="absolute -right-0.5 -bottom-0.5" />
+          <Lamp status={botLook(bot).lamp} onCrest="well" className="absolute -right-0.5 -bottom-0.5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14.5px] leading-[18px] font-semibold text-ink">{bot.name}</span>
@@ -146,8 +147,8 @@ const tile =
 // MachineTiles are the drawer's way to the machine: each pane as its own
 // page (there is no room to dock one), and Start/Stop.
 export function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
-  const starting = bot.status === "starting";
-  const power = bot.workerConnected ? t("Stop Bot") : starting ? t("Starting…") : t("Start Bot");
+  const starting = bot.machine === "starting";
+  const power = powerWord(bot);
   const kinds = paneKinds.filter((k) => k !== "mail" || bot.mailAddress || tab === "mail");
   return (
     <section aria-label={t("Machine")} className="mt-4 px-2">

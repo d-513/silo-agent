@@ -9,6 +9,7 @@ import { useBots } from "./bots";
 import { Crest } from "./Crest";
 import { isSignedOut } from "./errors";
 import { Lamp } from "./Lamp";
+import { botLook } from "./statusLook";
 import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
 import { canBuild, useCurrentSpace } from "./space/spaces";
@@ -184,18 +185,19 @@ export function Rail({ page, activeBotId, className = "" }: { page: Page; active
         <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 gap-1 max-wide:flex-row max-wide:items-center max-wide:py-1 wide:flex-col wide:items-center wide:overflow-x-hidden wide:overflow-y-auto wide:px-3 wide:py-0.5">
           {here.map((b) => {
             const on = b.id === activeBotId;
+            const look = botLook(b);
             return (
               <Link
                 key={b.id}
                 to="/bots/$botId/run"
                 params={{ botId: b.id }}
-                title={b.name}
-                className={railHit(on, `blink ${b.status === "working" ? "blink-idle" : ""}`)}
+                title={`${b.name} · ${look.word}`}
+                className={railHit(on, `blink ${look.lamp === "working" ? "blink-idle" : ""}`)}
               >
                 {railBar(on)}
                 <span className="relative flex h-7 w-7">
                   <Crest index={b.crest} size={28} />
-                  <Lamp status={b.status} onCrest={on ? "surface" : "well"} className="absolute -right-0.5 -bottom-0.5" />
+                  <Lamp status={look.lamp} onCrest={on ? "surface" : "well"} className="absolute -right-0.5 -bottom-0.5" />
                 </span>
               </Link>
             );

@@ -9,6 +9,7 @@ import { Panel, SkeletonRows } from "../Field";
 import { UI, type Bot } from "../gen/silo/v1/ui_pb";
 import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
+import { containerLook } from "../statusLook";
 import { setBot } from "../query";
 import { msg, t } from "../i18n.ts";
 
@@ -90,9 +91,8 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
           {boxes.map((b) => {
             const kind = BOX_KIND[b.kind] ?? BOX_KIND.mcp;
             const Icon = kind.icon;
+            const look = containerLook(b.state);
             const up = b.state === "running";
-            const lamp = up ? "online" : "stopped";
-            const word = up ? t("Running") : b.state === "stopped" ? t("Stopped") : t("Not created");
             const memUsed = n64(b.memUsed);
             const memCap = n64(b.memLimit);
             return (
@@ -109,8 +109,8 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{b.detail}</div>
                     <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
                       <span className="flex items-center gap-1.5">
-                        <Lamp status={lamp} />
-                        <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{word}</span>
+                        <Lamp status={look.lamp} />
+                        <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{look.word}</span>
                       </span>
                       {up && b.startedAt ? <span className="text-ink-3">{uptime(b.startedAt, now)}</span> : null}
                       <code className="min-w-0 truncate font-mono text-[12px] text-ink-3">{b.name}</code>
@@ -122,8 +122,8 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                         {t("Stop")}
                       </Btn>
                     ) : (
-                      <Btn kind="primary" size="sm" onClick={onStart} disabled={bot.status === "starting"} icon={<Power size={12} />}>
-                        {bot.status === "starting" ? t("Starting…") : t("Start")}
+                      <Btn kind="primary" size="sm" onClick={onStart} disabled={bot.machine === "starting"} icon={<Power size={12} />}>
+                        {bot.machine === "starting" ? t("Starting…") : t("Start")}
                       </Btn>
                     )
                   ) : null}

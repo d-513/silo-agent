@@ -3,7 +3,8 @@ import { createContext, useContext, useRef, useState, type ReactNode } from "rea
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
-import { Lamp, StatusWord } from "./Lamp";
+import { Status } from "./Lamp";
+import { runLook, started } from "./statusLook";
 import type { Approval, Bot } from "./gen/silo/v1/ui_pb";
 import { t } from "./i18n.ts";
 
@@ -94,8 +95,7 @@ export function NeedYouSlip({
             <Crest index={bot.crest} size={28} />
             <span className="min-w-0 truncate text-card-title leading-5">{bot.name}</span>
             <span className="ml-auto flex shrink-0 items-center gap-2">
-              <Lamp status="needs_you" />
-              <StatusWord status="needs_you" />
+              <Status look={runLook({ ...started, state: "needs_you" })} />
             </span>
           </div>
           {source ? <p className="mb-1 truncate text-[12px] leading-4 font-medium text-ink-3">{source}</p> : null}
@@ -225,8 +225,7 @@ export function ApprovalCard({
       <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-vermilion" />
       <div>
         <div className="flex min-w-0 items-center gap-2 text-[12px]">
-          <Lamp status="needs_you" />
-          <StatusWord status="needs_you" />
+          <Status look={runLook({ ...started, state: "needs_you" })} />
           {sourceOf(approval) ? <span className="min-w-0 truncate text-ink-3">· {sourceOf(approval)}</span> : null}
         </div>
         <h3 className="mt-1.5 text-[15px] leading-5 font-medium tracking-[-0.01em] text-ink">{d.title}</h3>

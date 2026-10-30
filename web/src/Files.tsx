@@ -40,7 +40,7 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
     return (
       <NeedMachine
         copy={t("Start the Bot to browse /workspace.")}
-        starting={bot.status === "starting"}
+        starting={bot.machine === "starting"}
         onStart={onStart}
       />
     );

@@ -70,7 +70,7 @@ function FolderPicker({
   if (!bot.workerConnected) {
     return (
       <div className="flex min-h-[200px] flex-col">
-        <NeedMachine copy={t("Start the Bot to browse its folders.")} starting={bot.status === "starting"} onStart={onStart} />
+        <NeedMachine copy={t("Start the Bot to browse its folders.")} starting={bot.machine === "starting"} onStart={onStart} />
       </div>
     );
   }

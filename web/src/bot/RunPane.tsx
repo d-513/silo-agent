@@ -44,8 +44,6 @@ export function RunPane({
   actions,
   said,
   setSaid,
-  waiting,
-  waitingRuns,
   agentHref,
   onInspectArtifact,
   onSaveSkill,
@@ -70,9 +68,7 @@ export function RunPane({
   said: Said | null;
   setSaid: (s: Said | null) => void;
   // This chat's run is paused on an approval.
-  waiting: boolean;
   // Runs of subagents that are paused on an approval.
-  waitingRuns: Set<string>;
   agentHref: (name: string) => AgentLink | undefined;
   onInspectArtifact: (a: Artifact) => void;
   onSaveSkill: (a: Artifact) => void;
@@ -132,10 +128,8 @@ export function RunPane({
       <>
         <CallStage
           call={call}
-          botName={bot.name}
-          crest={bot.crest}
+          bot={bot}
           where={chat?.main ? t("Main chat") : chat?.title || t("New chat")}
-          waiting={waiting}
           typing={typing}
           onType={() => setTyping((v) => !v)}
           onMinimize={() => call.setExpanded(false)}
@@ -178,7 +172,7 @@ export function RunPane({
           botId={id}
           chatId={chatId}
           agents={subs.agents}
-          waitingRuns={waitingRuns}
+          bot={bot}
           onStop={(sid) => {
             ui.stopSubagent({ botId: id, id: sid }).then(subs.refresh).catch((e) => onError(fail(e)));
           }}
@@ -211,7 +205,7 @@ export function RunPane({
         </div>
       ) : (
         <>
-        {callHere ? <CallBar call={call} botName={bot.name} onExpand={() => call.setExpanded(true)} /> : null}
+        {callHere ? <CallBar call={call} bot={bot} onExpand={() => call.setExpanded(true)} /> : null}
         {composer}
         </>
       )}

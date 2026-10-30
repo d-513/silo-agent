@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { agentLink, type AgentLink } from "./links";
 import type { Subagent } from "./gen/silo/v1/ui_pb";
-import { Lamp, StatusWord } from "./Lamp";
-import { elapsed, shortModel } from "./useSubagents";
+import { DoingLine } from "./Doing";
+import type { Bot as BotRow } from "./gen/silo/v1/ui_pb";
+import { finishedLook, progress, runLook, started } from "./statusLook";
+import { elapsed } from "./useSubagents";
 import { t } from "./i18n.ts";
 
 // SubagentTray sits between the thread and the composer while a chat has
@@ -14,7 +16,7 @@ export function SubagentTray({
   botId,
   chatId,
   agents,
-  waitingRuns,
+  bot,
   onStop,
   onStopAll,
 }: {
@@ -22,7 +24,7 @@ export function SubagentTray({
   chatId: string;
   agents: Subagent[];
   // Runs paused on an approval slip.
-  waitingRuns: ReadonlySet<string>;
+  bot: BotRow;
   onStop: (id: string) => void;
   onStopAll: () => void;
 }) {
@@ -41,7 +43,7 @@ export function SubagentTray({
       <div className="mx-auto flex max-w-[760px] items-center gap-1.5">
         <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto px-px pt-1 pb-1 [scrollbar-width:none]">
           {running.map((a) => {
-            const waiting = waitingRuns.has(a.runId);
+            const row = bot.activity.find((r) => r.kind === "subagent" && r.leadChatId === chatId && r.title === a.name);
             return (
               <div
                 key={a.id}
@@ -54,11 +56,7 @@ export function SubagentTray({
                       {elapsed(a.createdAt, now)}
                     </span>
                   </span>
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <Lamp status={waiting ? "needs_you" : "working"} />
-                    <StatusWord status={waiting ? "needs_you" : "working"} />
-                    {!waiting ? <span className="min-w-0 truncate font-mono text-[11.5px] leading-4 text-ink-3">{a.activity || shortModel(a.model)}</span> : null}
-                  </span>
+                  <DoingLine look={runLook(row ?? started)} step={progress(row)} />
                 </Link>
                 <button
                   type="button"
@@ -89,8 +87,6 @@ export function SubagentTray({
     </div>
   );
 }
-
-const statusTone: Record<string, string> = { done: "text-emerald", error: "text-vermilion" };
 
 function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) => AgentLink }) {
   const [open, setOpen] = useState(false);
@@ -125,7 +121,7 @@ function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) =>
               className="flex items-center gap-2 rounded-control px-2.5 py-1.5 text-[13px] hover:bg-well"
             >
               <span className="min-w-0 flex-1 truncate font-medium text-ink">{a.name}</span>
-              <span className={`shrink-0 text-[12px] ${statusTone[a.status] ?? "text-ink-3"}`}>{a.status}</span>
+              <span className={`shrink-0 text-[12px] ${finishedLook(a.status).tone}`}>{finishedLook(a.status).word}</span>
             </Link>
           ))}
         </div>

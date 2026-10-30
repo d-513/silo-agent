@@ -1,4 +1,5 @@
 import { ActivityStrip } from "./ActivityStrip";
+import { DoingLine } from "../Doing";
 import { Bot as BotGlyph, Brain, ChevronDown, ChevronRight, Inbox, LayoutGrid, Library, MessageCircle, MessageCircleQuestionMark, Package, Pencil, Phone, Plus, Radio, Settings, Timer, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
@@ -10,21 +11,19 @@ import { Crest } from "../Crest";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
 import { ago, fullTime } from "../format";
-import { UI, type Bot, type Chat } from "../gen/silo/v1/ui_pb";
-import { Lamp, Status, StatusWord } from "../Lamp";
+import { UI, type Bot, type BotActivity, type Chat } from "../gen/silo/v1/ui_pb";
+import { Lamp, Status } from "../Lamp";
+import { botLook, chatDoing, type Doing, progress, runLook, started, type StatusLook } from "../statusLook";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { ActiveBar, SideLink } from "./SideNav";
 import { onSettings, type Tab } from "./tabs";
-import { toolMeta } from "../thread/toolInfo";
 import type { ChatRename } from "./useChatList";
 import { t } from "../i18n.ts";
 import { Initials } from "../space/People";
+import { sourceLabel } from "../sources";
 import { Tip, TipTitle } from "../Tip";
-
-// What the open chat is doing, for its lamp: waiting on you, or working.
-export type ChatLive = { waiting: boolean; sending: boolean; agentsBusy: boolean };
 
 // The wide layout's left column, on every page of a Bot: its name and state,
 // the home card (the main chat with its Call, and the Dashboard), the pages
@@ -40,7 +39,7 @@ export function BotSidebar({
   chats,
   rename,
   pendingCount = 0,
-  live: { waiting, sending, agentsBusy },
+  sending,
   onNewChat,
   onDeleteChat,
   call,
@@ -55,7 +54,8 @@ export function BotSidebar({
   chats: Chat[];
   rename: ChatRename;
   pendingCount?: number;
-  live: ChatLive;
+  // The open chat has a reply on its way, before the Bot's row says so.
+  sending: boolean;
   onNewChat: () => void;
   onDeleteChat: (cid: string) => void;
   // The Bot's call while calls are on; undefined hides Call.
@@ -89,11 +89,10 @@ export function BotSidebar({
     if (openKey) setGroupOpen(openKey, true);
   }, [chatId, openKey]);
 
-  const busy = waiting || sending || agentsBusy;
-  // The main chat's lamp: waiting on the owner while open, else working
-  // whenever a run is live there, open or not.
   const mainOpen = tab === "run" && !!main && main.id === chatId;
-  const mainStatus = mainOpen && waiting ? "needs_you" : (mainOpen && busy) || bot.activity.some((a) => a.kind === "main") ? "working" : "";
+  // What a chat is doing, by what the Bot says of it; the open one shows a
+  // reply on its way before the next poll does.
+  const doing = (cid: string | undefined) => chatDoing(bot, cid) ?? (sending && cid === chatId ? started : undefined);
   return (
     <aside className={drawer ? "flex min-h-0 flex-1 flex-col bg-well" : "hidden w-[248px] shrink-0 flex-col bg-well wide:flex"}>
       <Scroll drawer={drawer}>
@@ -101,10 +100,9 @@ export function BotSidebar({
         <div className="px-2 pb-3">
           <HomeCard
             botId={id}
-            bot={bot}
             main={main}
             mainOn={mainOpen}
-            mainStatus={mainStatus}
+            mainDoing={doing(main?.id)}
             dashOn={tab === "dashboard"}
             needs={pendingCount}
             asks={bot.dashboardAsks}
@@ -136,7 +134,7 @@ export function BotSidebar({
                     botId={id}
                     chat={c}
                     on={on}
-                    status={on && busy ? (waiting ? "needs_you" : "working") : ""}
+                    doing={doing(c.id)}
                     rename={rename}
                     onDelete={() => onDeleteChat(c.id)}
                     team={g.key === "team"}
@@ -176,13 +174,23 @@ function BotHead({ bot }: { bot: Bot }) {
       <Crest index={bot.crest} size={28} />
       <span className="min-w-0 flex-1">
         <h1 className="truncate text-card-title leading-5">{bot.name}</h1>
-        <span className="flex items-center gap-1.5">
-          <Lamp status={bot.status} />
-          <StatusWord status={bot.status} />
-        </span>
+        <HeadLine bot={bot} />
       </span>
       {bot.people.length > 1 ? <People people={bot.people} /> : null}
     </div>
+  );
+}
+
+// HeadLine is the Bot's one line; what needs you says where.
+function HeadLine({ bot }: { bot: Bot }) {
+  const look = botLook(bot);
+  const paused = bot.activity.find((a) => a.state === "needs_you");
+  const where = paused ? sourceLabel(paused.kind, paused.title, t("New chat")) : "";
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <Status look={look} className="shrink-0" />
+      {where ? <span className="min-w-0 truncate text-[12px] leading-4 text-ink-3">{`· ${where}`}</span> : null}
+    </span>
   );
 }
 
@@ -191,10 +199,9 @@ function BotHead({ bot }: { bot: Bot }) {
 // beside it, and the Dashboard. Each row says what is there now.
 function HomeCard({
   botId,
-  bot,
   main,
   mainOn,
-  mainStatus,
+  mainDoing,
   dashOn,
   needs,
   asks,
@@ -204,10 +211,9 @@ function HomeCard({
   onCall,
 }: {
   botId: string;
-  bot: Bot;
   main?: Chat;
   mainOn: boolean;
-  mainStatus: "needs_you" | "working" | "";
+  mainDoing?: Doing;
   dashOn: boolean;
   needs: number;
   asks: number;
@@ -234,7 +240,7 @@ function HomeCard({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{t("Main chat")}</span>
-              <MainLine bot={bot} at={main.updatedAt} status={mainStatus} onCall={onCallHere} />
+              <MainLine at={main.updatedAt} doing={mainDoing} onCall={onCallHere} />
             </span>
           </Link>
         ) : (
@@ -265,17 +271,11 @@ function HomeCard({
   );
 }
 
-// MainLine is what the main chat is doing now: a call, a question waiting,
-// work (with the tool it is in), else when it last moved.
-function MainLine({ bot, at, status, onCall }: { bot: Bot; at: string; status: "needs_you" | "working" | ""; onCall: boolean }) {
-  const cls = "block truncate text-[12.5px] leading-[18px]";
-  if (onCall) return <span className={`${cls} text-emerald`}>{t("On a call")}</span>;
-  if (status === "needs_you") return <span className={`${cls} font-medium text-vermilion`}>{t("Needs you")}</span>;
-  if (status === "working") {
-    const step = bot.activity.find((a) => a.kind === "main")?.step;
-    return <span className={`${cls} text-emerald`}>{step ? t("Working: {{what}}", { what: toolMeta(step).app || step }) : t("Working…")}</span>;
-  }
-  return <span className={`${cls} text-ink-3`}>{at ? t("Last active {{when}}", { when: ago(at) }) : "\u00a0"}</span>;
+// MainLine is what the main chat is doing now, else when it last moved.
+function MainLine({ at, doing, onCall }: { at: string; doing?: Doing; onCall: boolean }) {
+  const now = doing ?? (onCall ? { ...started, state: "on_call" } : undefined);
+  if (now) return <DoingLine look={runLook(now)} step={progress(doing as BotActivity | undefined)} className="h-[18px]" />;
+  return <span className="block truncate text-[12.5px] leading-[18px] text-ink-3">{at ? t("Last active {{when}}", { when: ago(at) }) : "\u00a0"}</span>;
 }
 
 // CallButton rings the Bot in the main chat. It carries the call: Calling…
@@ -295,7 +295,7 @@ function CallButton({ call, onCall }: { call: Call; onCall: () => void }) {
     return (
       <Tip content={t("Back to the call")}>
         <button type="button" onClick={onCall} aria-label={t("Back to the call")} className={`${base} bg-well text-emerald`}>
-          <Lamp status="working" />
+          <Lamp status="online" />
           <Clock since={s.startedAt} />
         </button>
       </Tip>
@@ -430,13 +430,27 @@ function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; o
   );
 }
 
+// RowState ends a chat's row: the row is one line, so work is the lamp and
+// how far along it is, and the full line is its tooltip. What is not work
+// says so in words.
+function RowState({ doing }: { doing: Doing }) {
+  const look: StatusLook = runLook(doing);
+  if (look.lamp !== "working") return <Status look={look} className="max-w-[55%] shrink-0" />;
+  return (
+    <span className="flex shrink-0 items-center gap-1.5" title={look.word}>
+      <Lamp status="working" />
+      <span className="font-mono text-[11.5px] leading-4 text-ink-3">{progress(doing as BotActivity) || null}</span>
+    </span>
+  );
+}
+
 // One side chat: a single quiet line (the main chat is in HomeCard, above). The open one is lifted by tone and marked
 // with the cobalt bar; rename and delete fade in over the end of the title.
 function ChatRow({
   botId,
   chat,
   on,
-  status,
+  doing,
   rename,
   onDelete,
   team = false,
@@ -445,8 +459,8 @@ function ChatRow({
   botId: string;
   chat: Chat;
   on: boolean;
-  // The lamp state of the open chat while it works or waits; "" otherwise.
-  status: "needs_you" | "working" | "";
+  // What the chat is doing now, if anything.
+  doing?: Doing;
   rename: ChatRename;
   onDelete: () => void;
   // A row of the Team group: someone else's chat, or the Bot's own. It
@@ -487,7 +501,7 @@ function ChatRow({
           >
             {chat.title || t("New chat")}
           </span>
-          {status ? <Status status={status} className="shrink-0" /> : null}
+          {doing ? <RowState doing={doing} /> : null}
         </Link>
       )}
       {!editing && !team && (

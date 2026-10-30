@@ -6,8 +6,9 @@ import { chatLink } from "./links";
 import { ui } from "./api";
 import type { Artifact } from "./Artifact";
 import { Btn } from "./Btn";
-import { UI } from "./gen/silo/v1/ui_pb";
-import { Lamp } from "./Lamp";
+import { UI, type Bot } from "./gen/silo/v1/ui_pb";
+import { Status } from "./Lamp";
+import { finishedLook, runLook, started } from "./statusLook";
 import { SkeletonRows } from "./Field";
 import { Taskboard } from "./Taskboard";
 import { Md } from "./Md";
@@ -21,9 +22,7 @@ import { Trans } from "./Trans.tsx";
 // SubagentPage shows one subagent's work log with the shared Thread. It is
 // read-only: only the lead talks to a subagent. The human can Stop it.
 export function SubagentPage({
-  botId,
-  botName,
-  botCrest,
+  bot,
   chatId,
   agentId,
   onError,
@@ -31,9 +30,7 @@ export function SubagentPage({
   onInspectArtifact,
   onSaveSkill,
 }: {
-  botId: string;
-  botName: string;
-  botCrest: number;
+  bot: Bot;
   chatId: string;
   agentId: string;
   onError: (s: string) => void;
@@ -41,6 +38,7 @@ export function SubagentPage({
   onInspectArtifact: (a: Artifact) => void;
   onSaveSkill: (a: Artifact) => void;
 }) {
+  const { id: botId, name: botName, crest: botCrest } = bot;
   const q = useQuery(UI.method.getSubagent, { botId, id: agentId }, { refetchInterval: 3000, retry: false });
   const sa = q.data ?? null;
   const gone = !sa && !!q.error;
@@ -63,6 +61,7 @@ export function SubagentPage({
     );
   }
   const busy = sa.running || stream.sending;
+  const doing = bot.activity.find((r) => r.kind === "subagent" && r.leadChatId === chatId && r.title === sa.name);
   const stop = () => ui.stopSubagent({ botId, id: sa.id }).catch((e) => onError(fail(e)));
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -72,10 +71,7 @@ export function SubagentPage({
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sa.name}</h2>
-          <span className="flex items-center gap-1.5 text-[12.5px] text-ink-3">
-            <Lamp status={busy ? "working" : "stopped"} />
-            {busy ? t("Working") : sa.status}
-          </span>
+          <Status look={busy ? runLook(doing ?? started) : finishedLook(sa.status)} />
           <span className="font-mono text-[12px] text-ink-3" title={sa.model}>
             {shortModel(sa.model)}
           </span>

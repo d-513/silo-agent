@@ -1,20 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { msg, t } from "./i18n.ts";
-
-export type LampStatus = "online" | "idle" | "working" | "needs_you" | "starting" | "stopped";
+import type { LampStatus, StatusLook } from "./statusLook";
 
 type Ground = "canvas" | "surface" | "well" | "pressed";
-type Norm = Exclude<LampStatus, "idle">;
-
-function norm(status: string): Norm {
-  if (status === "idle") return "online";
-  if (status === "online" || status === "working" || status === "needs_you" || status === "starting") return status;
-  return "stopped";
-}
 
 // Online/Working are solid lamp green (Working breathes), Needs you is
 // vermilion, Starting and Stopped are hollow 1.5px rings.
-function look(s: Norm): { bg: string; ring: string } {
+function look(s: LampStatus): { bg: string; ring: string } {
   switch (s) {
     case "online":
     case "working":
@@ -37,18 +28,19 @@ export function Lamp({
   onCrest,
   className = "",
 }: {
-  status: string;
+  status: LampStatus;
   onCrest?: Ground;
   className?: string;
 }) {
-  const s = norm(status);
-  const prev = useRef<Norm | null>(null);
+  const s = status;
+  const prev = useRef<LampStatus | null>(null);
   const [ping, setPing] = useState(0);
   useEffect(() => {
     // One ping when the state becomes Needs you — never on first mount.
     if (prev.current !== null && prev.current !== "needs_you" && s === "needs_you") setPing((n) => n + 1);
     prev.current = s;
   }, [s]);
+  if (s === "none") return null;
   const { bg, ring } = look(s);
   const size = onCrest ? 9 : 7;
   const ground = onCrest ? `var(--color-${onCrest})` : "";
@@ -77,56 +69,35 @@ export function Lamp({
   );
 }
 
-const WORDS: Record<Norm, string> = {
-  online: msg("Online"),
-  working: msg("Working"),
-  needs_you: msg("Needs you"),
-  starting: msg("Starting"),
-  stopped: msg("Stopped"),
-};
-
-const TONE: Record<Norm, string> = {
-  online: "text-emerald",
-  working: "text-emerald",
-  needs_you: "text-vermilion",
-  starting: "text-ink-2",
-  stopped: "text-ink-3",
-};
-
-export function statusText(status: string) {
-  return t(WORDS[norm(status)]);
-}
-
 /** The status word beside a lamp: the old word fades out while the new one rises 4px. */
-export function StatusWord({ status, className = "" }: { status: string; className?: string }) {
-  const s = norm(status);
-  const [shown, setShown] = useState<{ cur: Norm; old: Norm | null; n: number }>({ cur: s, old: null, n: 0 });
-  if (shown.cur !== s) setShown({ cur: s, old: shown.cur, n: shown.n + 1 });
+export function StatusWord({ look: l, className = "" }: { look: StatusLook; className?: string }) {
+  const [shown, setShown] = useState<{ cur: StatusLook; old: StatusLook | null; n: number }>({ cur: l, old: null, n: 0 });
+  if (shown.cur.word !== l.word || shown.cur.tone !== l.tone) setShown({ cur: l, old: shown.cur, n: shown.n + 1 });
   return (
-    <span className={`inline-grid text-[12px] leading-4 font-medium ${className}`} aria-live="polite">
+    <span className={`inline-grid min-w-0 grid-cols-[minmax(0,1fr)] text-[12px] leading-4 font-medium ${className}`} aria-live="polite" title={l.word}>
       {shown.old ? (
         <span
           key={`o${shown.n}`}
           aria-hidden
-          className={`word-out col-start-1 row-start-1 whitespace-nowrap ${TONE[shown.old]}`}
+          className={`word-out col-start-1 row-start-1 truncate ${shown.old.tone}`}
           onAnimationEnd={() => setShown((x) => ({ ...x, old: null }))}
         >
-          {t(WORDS[shown.old])}
+          {shown.old.word}
         </span>
       ) : null}
-      <span key={`n${shown.n}`} className={`col-start-1 row-start-1 whitespace-nowrap ${shown.n ? "word-in" : ""} ${TONE[s]}`}>
-        {t(WORDS[s])}
+      <span key={`n${shown.n}`} className={`col-start-1 row-start-1 truncate ${shown.n ? "word-in" : ""} ${l.tone}`}>
+        {l.word}
       </span>
     </span>
   );
 }
 
-/** Lamp + word, the pair every status uses (a lamp is never the only signal). */
-export function Status({ status, className = "" }: { status: string; className?: string }) {
+/** Lamp + word, the pair every status uses (a lamp is never alone). */
+export function Status({ look: l, className = "" }: { look: StatusLook; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
-      <Lamp status={status} />
-      <StatusWord status={status} />
+    <span className={`inline-flex min-w-0 items-center gap-2 ${className}`}>
+      <Lamp status={l.lamp} />
+      <StatusWord look={l} />
     </span>
   );
 }

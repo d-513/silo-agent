@@ -9,8 +9,8 @@ export function retryable(failures: number, e: unknown): boolean {
 }
 
 /** A Bot's row is polled fast until the box settles (online or stopped). */
-export function botPollMs(bot: { workerConnected: boolean; status: string } | undefined): number {
-  return bot && (bot.workerConnected || bot.status === "stopped") ? 3000 : 500;
+export function botPollMs(bot: { machine: string } | undefined): number {
+  return bot && bot.machine !== "starting" ? 3000 : 500;
 }
 
 /**

@@ -3,34 +3,22 @@ import { Inbox, MessageCircleQuestionMark, Plus, Timer, UserPlus } from "lucide-
 import { useBots } from "../bots";
 import { btnClass } from "../Btn";
 import { Crest } from "../Crest";
-import { ago, nextWhen } from "../format";
+import { DoingRow } from "../Doing";
+import { nextWhen } from "../format";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
-import { Lamp, StatusWord } from "../Lamp";
-import { chatLink } from "../links";
-import { sourceLabel } from "../sources";
-import { toolMeta } from "../thread/toolInfo";
+import { Lamp, Status } from "../Lamp";
+import { botLook, botMood, type LampStatus, type Mood } from "../statusLook";
 import { Initials } from "./People";
 import { canAdmin, canBuild, useSpaces } from "./spaces";
 import { roleWord, SpaceMark } from "./SpaceTile";
 
 // The Workspace's overview (/w/$spaceId): its Bots you are on and what each is
 // up to, live. The ones that need you (a paused run), have a question for
-// you, or are at work come first; the rest rest below. A card opens the Bot; what is on it opens where it points.
+// you, or are at work come first; the rest rest below, box up or not. A card
+// opens the Bot; what is on it opens where it points.
 
-// A question waiting on the Dashboard is not Needs you: nothing is paused on
-// it, so it sorts after the approvals and never wears vermilion.
-type Mood = "needs_you" | "asks" | "working" | "online" | "stopped";
-
-function mood(b: Bot): Mood {
-  if (b.status === "needs_you") return "needs_you";
-  if (b.dashboardAsks > 0) return "asks";
-  if (b.status === "working" || b.activity.length > 0) return "working";
-  if (b.status === "stopped" || b.status === "" || b.status === "error") return "stopped";
-  return "online";
-}
-
-const order: Record<Mood, number> = { needs_you: 0, asks: 1, working: 2, online: 3, stopped: 4 };
+const order: Record<Mood, number> = { needs_you: 0, asks: 1, working: 2, resting: 3 };
 
 export function SpaceOverview() {
   const { spaceId } = useParams({ from: "/_authed/w/$spaceId/" });
@@ -39,10 +27,10 @@ export function SpaceOverview() {
   const space = spaces?.find((s) => s.id === spaceId);
   const bots = all?.filter((b) => b.spaceId === spaceId) ?? null;
   const role = space?.role ?? "";
-  const sorted = bots ? [...bots].sort((a, b) => order[mood(a)] - order[mood(b)]) : [];
-  const busy = sorted.filter((b) => order[mood(b)] < 3);
-  const quiet = sorted.filter((b) => order[mood(b)] >= 3);
-  const count = (m: Mood) => sorted.filter((b) => mood(b) === m).length;
+  const sorted = bots ? [...bots].sort((a, b) => order[botMood(a)] - order[botMood(b)]) : [];
+  const busy = sorted.filter((b) => botMood(b) !== "resting");
+  const quiet = sorted.filter((b) => botMood(b) === "resting");
+  const count = (m: Mood) => sorted.filter((b) => botMood(b) === m).length;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 wide:px-8 wide:pt-9">
@@ -90,7 +78,7 @@ export function SpaceOverview() {
         <Empty spaceId={spaceId} build={canBuild(role)} />
       ) : (
         <>
-          <Pulse needs={count("needs_you")} asks={sorted.reduce((n, b) => n + b.dashboardAsks, 0)} working={count("working")} resting={count("online")} off={count("stopped")} />
+          <Pulse needs={count("needs_you")} asks={sorted.reduce((n, b) => n + b.dashboardAsks, 0)} working={count("working")} resting={count("resting")} />
           {busy.length ? (
             <Section title={t("Now")}>
               {busy.map((b, i) => (
@@ -112,14 +100,13 @@ export function SpaceOverview() {
 }
 
 // Pulse is the Workspace at a glance: how many need you, the questions
-// waiting, how many work, rest, are off.
-function Pulse({ needs, asks, working, resting, off }: { needs: number; asks: number; working: number; resting: number; off: number }) {
-  const parts: { status: string; n: number; word: string }[] = [
+// waiting, how many work, how many rest.
+function Pulse({ needs, asks, working, resting }: { needs: number; asks: number; working: number; resting: number }) {
+  const parts: { status: LampStatus | "asks"; n: number; word: string }[] = [
     { status: "needs_you", n: needs, word: t("{{count}} need you", { count: needs }) },
     { status: "asks", n: asks, word: t("{{count}} questions", { count: asks }) },
     { status: "working", n: working, word: t("{{count}} at work", { count: working }) },
-    { status: "online", n: resting, word: t("{{count}} resting", { count: resting }) },
-    { status: "stopped", n: off, word: t("{{count}} switched off", { count: off }) },
+    { status: "none", n: resting, word: t("{{count}} resting", { count: resting }) },
   ];
   return (
     <div className="rise mb-8 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card bg-well px-4 py-3 shadow-[inset_0_0_0_1px_var(--color-line)]">
@@ -155,7 +142,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 // next), and what waits for you there. The whole card opens it; the rows on
 // it are links of their own above that.
 function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
-  const m = mood(b);
+  const m = botMood(b);
   const others = b.people.filter((p) => !p.you);
   return (
     <article
@@ -166,17 +153,12 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
       <Link to="/bots/$botId/run" params={{ botId: b.id }} aria-label={b.name} className="absolute inset-0 rounded-card outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--color-cobalt)]" />
 
       <div className="pointer-events-none flex items-start gap-3.5">
-        <span className={`relative ${m === "stopped" ? "opacity-70 grayscale-[.4]" : ""}`}>
-          <Crest index={b.crest} size={44} />
-        </span>
+        <Crest index={b.crest} size={44} />
         <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-center gap-2">
             <span className="min-w-0 truncate text-card-title leading-5 text-ink">{b.name}</span>
           </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <Lamp status={m === "needs_you" ? "needs_you" : b.status} />
-            <StatusWord status={m === "needs_you" ? "needs_you" : b.status} />
-          </div>
+          <Status look={botLook(b)} className="mt-1" />
         </div>
         {others.length ? (
           <div className="flex shrink-0 -space-x-1.5 pt-0.5" title={b.people.map((p) => p.email).join(", ")}>
@@ -200,23 +182,19 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
   );
 }
 
-const row = "relative z-10 flex h-8 min-w-0 items-center gap-2 rounded-sm px-2 text-[12.5px] transition-colors duration-[160ms] hover:bg-pressed";
+const row = "relative z-10 h-8 px-2 text-[12.5px] text-ink-2";
 
-// Doing is what it is up to: each live conversation and its tool, else when
-// it last worked and what it will do next on its own.
+// Doing is what it is up to: each live conversation and what it is on, else
+// what it will do next on its own (the line above says when it last worked).
 function Doing({ bot: b }: { bot: Bot }) {
   const runs = b.activity.filter((a) => a.kind !== "subagent");
   const agents = b.activity.filter((a) => a.kind === "subagent").length;
   if (runs.length || agents) {
     return (
       <ul className="-mx-2 space-y-px">
-        {runs.slice(0, 2).map((a) => (
-          <li key={a.chatId}>
-            <Link {...chatLink(b.id, a.chatId)} className={`${row} text-ink-2 hover:text-ink`}>
-              <Lamp status="working" />
-              <span className="min-w-0 truncate">{sourceLabel(a.kind, a.title, t("New chat"))}</span>
-              {a.step ? <span className="ml-auto shrink-0 rounded-xs bg-well px-1.5 py-px font-mono text-[11px] text-ink-3">{toolMeta(a.step).app}</span> : null}
-            </Link>
+        {runs.slice(0, 2).map((a, i) => (
+          <li key={a.chatId || i}>
+            <DoingRow bot={b} row={a} className={row} />
           </li>
         ))}
         {runs.length > 2 ? <li className="px-2 text-[12px] text-ink-3">{t("…and {{count}} more", { count: runs.length - 2 })}</li> : null}
@@ -224,16 +202,12 @@ function Doing({ bot: b }: { bot: Bot }) {
       </ul>
     );
   }
+  if (!b.nextRunAt) return null;
   return (
-    <div className="pointer-events-none space-y-1 text-[12.5px] leading-[18px] text-ink-3">
-      <p>{b.lastActiveAt ? t("Last active {{when}}", { when: ago(b.lastActiveAt) }) : t("Has not worked yet")}</p>
-      {b.nextRunAt ? (
-        <p className="flex min-w-0 items-center gap-1.5">
-          <Timer size={13} className="shrink-0" />
-          <span className="min-w-0 truncate">{`${b.nextRunName} · ${nextWhen(b.nextRunAt)}`}</span>
-        </p>
-      ) : null}
-    </div>
+    <p className="pointer-events-none flex min-w-0 items-center gap-1.5 text-[12.5px] leading-[18px] text-ink-3">
+      <Timer size={13} className="shrink-0" />
+      <span className="min-w-0 truncate">{`${b.nextRunName} · ${nextWhen(b.nextRunAt)}`}</span>
+    </p>
   );
 }
 

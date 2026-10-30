@@ -170,11 +170,6 @@ export function BotPage() {
   }
   if (!bot) return <LoadingBot />;
 
-  const chatRuns = new Set(run.events.map((e) => e.runId).filter(Boolean));
-  const agentRuns = new Set(subs.agents.map((a) => a.runId).filter(Boolean));
-  const waitingRuns = new Set(pending.map((p) => p.runId).filter((r) => r && agentRuns.has(r)));
-  // A subagent's approval slip is this chat's too: the human is the same.
-  const waiting = pending.some((p) => p.runId && (chatRuns.has(p.runId) || agentRuns.has(p.runId)));
   const agentsBusy = subs.agents.some((a) => a.running);
 
   function agentHref(name: string) {
@@ -287,8 +282,6 @@ export function BotPage() {
         }),
         said,
         setSaid,
-        waiting,
-        waitingRuns,
         agentsBusy,
         agentHref,
       }}
@@ -317,7 +310,7 @@ export function BotPage() {
                 chats={chats}
                 rename={rename}
                 pendingCount={pending.length}
-                live={{ waiting, sending: run.sending, agentsBusy }}
+                sending={run.sending}
                 onNewChat={onNewChat}
                 onDeleteChat={onDeleteChat}
                 call={talk ? call : undefined}
@@ -347,7 +340,7 @@ export function BotPage() {
               chats={chats}
               rename={rename}
               pendingCount={pending.length}
-              live={{ waiting, sending: run.sending, agentsBusy }}
+              sending={run.sending}
               onNewChat={onNewChat}
               onDeleteChat={onDeleteChat}
               call={talk ? call : undefined}
@@ -361,10 +354,8 @@ export function BotPage() {
             <aside className="flex min-h-0 w-[340px] shrink-0 flex-col bg-canvas shadow-[inset_1px_0_0_var(--color-line)]">
               <CallStage
                 call={call}
-                botName={bot.name}
-                crest={bot.crest}
                 where={callRow?.main ? t("Main chat") : callRow?.title || t("New chat")}
-                waiting={pending.length > 0}
+                bot={bot}
                 narrow
                 onMinimize={() => {
                   call.setExpanded(false);
@@ -397,7 +388,7 @@ export function BotPage() {
         </div>
         {place === "bar" ? (
           <div className="shrink-0 bg-well pt-2 pb-[env(safe-area-inset-bottom)] shadow-[inset_0_1px_0_var(--color-line)]">
-            <CallBar call={call} botName={bot.name} onExpand={callMain} />
+            <CallBar call={call} bot={bot} onExpand={callMain} />
           </div>
         ) : null}
       </div>

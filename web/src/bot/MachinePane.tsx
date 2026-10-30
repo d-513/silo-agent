@@ -5,7 +5,8 @@ import { ConsoleTerm } from "../Console";
 import { Crest } from "../Crest";
 import { fail } from "../errors";
 import type { Bot } from "../gen/silo/v1/ui_pb";
-import { Lamp, statusText } from "../Lamp";
+import { Lamp } from "../Lamp";
+import { machineLook } from "../statusLook";
 import { LinkSurface, retryDelay, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
 import { setBot } from "../query";
@@ -159,7 +160,7 @@ export function MachinePane({
     return (
       <NeedMachine
         copy={t("{{name}} not connected", { name: label })}
-        starting={bot.status === "starting"}
+        starting={bot.machine === "starting"}
         onStart={onStart}
       />
     );
@@ -170,8 +171,8 @@ export function MachinePane({
         <Crest index={bot.crest} size={20} />
         <span className="min-w-0 truncate">{bot.name}</span>
         <span className="font-mono text-[12px] text-white/60">{label}</span>
-        <Lamp status={bot.status} />
-        <span className="ml-auto font-mono text-[12px] text-white/80">{statusText(bot.status)}</span>
+        <Lamp status={machineLook(bot.machine).lamp} />
+        <span className="ml-auto font-mono text-[12px] text-white/80">{machineLook(bot.machine).word}</span>
         {kind === "desktop" ? <PauseSwitch bot={bot} onError={onError} /> : null}
         {actions ? <span className="-mr-1.5 flex shrink-0 items-center gap-0.5">{actions}</span> : null}
       </div>

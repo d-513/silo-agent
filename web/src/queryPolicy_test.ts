@@ -12,9 +12,9 @@ eq(retryable(0, new ConnectError("bot name taken", Code.AlreadyExists)), false, 
 
 // The Bot row is polled fast until the box settles, slowly after.
 eq(botPollMs(undefined), 500, "no row yet");
-eq(botPollMs({ workerConnected: false, status: "starting" }), 500, "starting");
-eq(botPollMs({ workerConnected: true, status: "working" }), 3000, "online");
-eq(botPollMs({ workerConnected: false, status: "stopped" }), 3000, "stopped");
+eq(botPollMs({ machine: "starting" }), 500, "starting");
+eq(botPollMs({ machine: "online" }), 3000, "online");
+eq(botPollMs({ machine: "stopped" }), 3000, "stopped");
 
 // Subagents: the tray moves while one runs; a lead with none still checks in.
 eq(subagentPollMs([{ running: true }, { running: false }], true), 2500, "one running");

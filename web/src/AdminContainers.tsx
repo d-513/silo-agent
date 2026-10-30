@@ -11,6 +11,7 @@ import { ErrorWell, inputClass, Panel, SkeletonRows } from "./Field";
 import { UI, type AdminBotGroup, type AdminContainer, type AdminNetwork, type AdminUserGroup } from "./gen/silo/v1/ui_pb";
 import { fmtBytes } from "./format";
 import { Lamp, Status } from "./Lamp";
+import { containerLook, machineLook } from "./statusLook";
 import { msg, t } from "./i18n.ts";
 import { recheck } from "./query";
 
@@ -154,7 +155,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
   const kind = KIND[c.kind] ?? KIND.stray;
   const Icon = kind.icon;
   const up = c.state === "running";
-  const word = up ? t("Running") : c.state === "stopped" ? t("Stopped") : t("Not created");
+  const look = containerLook(c.state);
   const mem = n64(c.memUsed);
   const cap = n64(c.memLimit);
   const busyAct = busy !== null;
@@ -172,8 +173,8 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
           {c.detail ? <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{c.detail}</div> : null}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
             <span className="flex items-center gap-1.5">
-              <Lamp status={up ? "online" : "stopped"} />
-              <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{word}</span>
+              <Lamp status={look.lamp} />
+              <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{look.word}</span>
             </span>
             {up && c.startedAt ? <span className="text-ink-3">{uptime(c.startedAt, now)}</span> : null}
             {c.networks?.length ? (
@@ -227,7 +228,7 @@ function BotCard({ g, busy, now, onAct, onRemoveAll }: { g: AdminBotGroup; busy:
           <Link to="/bots/$botId/container" params={{ botId: g.botId }} className="min-w-0 truncate text-[15px] font-semibold text-ink transition-colors duration-[160ms] ease-quiet hover:text-cobalt" onClick={(e) => e.stopPropagation()}>
             {g.botName}
           </Link>
-          <Status status={g.status} />
+          <Status look={machineLook(g.status)} />
           <CountChip up={up} total={containers.filter((c) => c.state !== "absent").length} />
         </>
       }

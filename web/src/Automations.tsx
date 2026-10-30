@@ -8,6 +8,7 @@ import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "./Field";
 import { AutomationMark } from "./AutomationMark";
 import { Lamp } from "./Lamp";
+import { chatDoing, runLook, started } from "./statusLook";
 import { Select } from "./Select";
 import { PromptWell } from "./Settings";
 import { Switch } from "./Switch";
@@ -25,8 +26,8 @@ function isPinned(kind: string) {
   return kind === "heartbeat" || kind === "dashboard";
 }
 
-function nextLine(a: Automation) {
-  if (a.running) return t("Running now");
+function nextLine(a: Automation, bot: Bot) {
+  if (a.running) return runLook(chatDoing(bot, a.chatId) ?? started).word;
   if (!a.enabled) return t("Paused");
   if (!a.schedule) return t("No schedule — never runs on its own");
   return a.nextRunAt ? t("Next {{when}}", { when: nextWhen(a.nextRunAt) }) : "";
@@ -189,11 +190,11 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate text-[13.5px] font-medium text-ink">{a.name}</span>
-            {a.running ? <Lamp status="working" /> : null}
+            {a.running ? <Lamp status={runLook(chatDoing(bot, a.chatId) ?? started).lamp} /> : null}
             {a.lastStatus === "error" ? <span className="text-[12px] text-vermilion">{t("Last run failed")}</span> : null}
           </span>
           <span className="block truncate text-[12.5px] text-ink-3">
-            {describe(a.schedule)} · {nextLine(a)}
+            {describe(a.schedule)} · {nextLine(a, bot)}
           </span>
         </span>
       </Link>
@@ -279,9 +280,9 @@ export function AutomationLog({
             </span>
             <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
           </span>
-          {busy ? <Lamp status="working" /> : null}
+          {busy ? <Lamp status={runLook(chatDoing(bot, sel.chatId) ?? started).lamp} /> : null}
           <span className="text-[12.5px] text-ink-3">
-            {describe(sel.schedule)} · {nextLine(sel)}
+            {describe(sel.schedule)} · {nextLine(sel, bot)}
           </span>
           <span className="flex-1" />
           <Btn kind="ghost" size="sm" onClick={() => setEditing((v) => !v)}>

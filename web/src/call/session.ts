@@ -10,7 +10,7 @@ import { t } from "../i18n.ts";
 // WebRTC track, which is what lets the echo canceller hear it; speaking over
 // it takes the floor back (bargein.ts).
 
-export type CallState = "connecting" | "listening" | "hearing" | "thinking" | "working" | "speaking" | "ended";
+export type CallState = "connecting" | "listening" | "hearing" | "thinking" | "working" | "needs_you" | "speaking" | "ended";
 
 export type EndReason = "hangup" | "idle" | "limit" | "access" | "replaced" | "lost" | "error";
 
@@ -327,6 +327,7 @@ export class CallSession {
       case "speaking":
       case "thinking":
       case "working":
+      case "needs_you":
         return this.serverState;
       default:
         return "listening";

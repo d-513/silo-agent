@@ -2,10 +2,12 @@ import { Hand, Keyboard, MessageSquareText, Mic, MicOff, PhoneOff } from "lucide
 import { useEffect, useState } from "react";
 import { Crest } from "../Crest";
 import { Spinner } from "../Feedback";
+import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
+import { chatDoing, progress } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
-import { toolMeta } from "../thread/toolInfo";
-import { Clock, stateWords, useHoldKeys } from "./CallBar";
+import { Clock, useHoldKeys } from "./CallBar";
+import { callTone, type CallTone, callWork, stateWords } from "./look";
 import type { Call } from "./useCall";
 import type { CallSnapshot } from "./session";
 import { t } from "../i18n.ts";
@@ -21,22 +23,17 @@ const dk =
 
 export function CallStage({
   call,
-  botName,
-  crest,
+  bot,
   where,
-  waiting,
   typing,
   onType,
   narrow,
   onMinimize,
 }: {
   call: Call;
-  botName: string;
-  crest: number;
+  bot: Bot;
   // Which chat the call is held in, for the top line.
   where: string;
-  // A run of this chat is paused on an approval: the slip is on screen.
-  waiting: boolean;
   typing?: boolean;
   // There is no composer in the narrow column, so no typing there.
   onType?: () => void;
@@ -48,11 +45,13 @@ export function CallStage({
   const ended = s?.state === "ended";
   useHoldKeys(s ?? idle, session);
   if (!s) return null;
+  const { name: botName, crest } = bot;
+  const doing = chatDoing(bot, s.chatId);
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label={t("Call with {{name}}", { name: botName })}>
       <header className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="flex min-w-0 items-center gap-2 text-[12.5px] text-ink-3">
-          {ended ? null : <Lamp status="working" />}
+          {ended ? null : <Lamp status="online" />}
           <span className="truncate">{ended ? t("Call ended") : t("On a call · {{where}}", { where })}</span>
           {ended ? null : <Clock since={s.startedAt} />}
         </span>
@@ -71,27 +70,27 @@ export function CallStage({
           <Face s={s} crest={crest} botName={botName} onInterrupt={() => session?.interrupt()} />
           <h2 className="mt-1 text-title text-ink">{botName}</h2>
           <p className={`mt-1 flex min-h-5 items-center gap-2 text-[13px] leading-5 ${s.error && ended ? "text-vermilion" : "text-ink-3"}`} aria-live="polite">
-            {s.state === "working" ? <Lamp status="working" /> : null}
-            {stateWords(s, botName)}
+            {s.state === "working" || s.state === "needs_you" ? null : stateWords(s, botName)}
           </p>
         </div>
         <Captions s={s} botName={botName} narrow={narrow} />
         <div className="mt-4 flex min-h-8 flex-wrap items-center justify-center gap-2">
-          {waiting && !ended ? (
+          {s.state === "needs_you" ? (
             <span className="flex h-8 items-center gap-2 rounded-sm px-3 text-[12.5px] font-medium text-vermilion shadow-[inset_0_0_0_1px_var(--color-vermilion)]">
-              <span aria-hidden className="breathe h-1.5 w-1.5 rounded-full bg-vermilion" />
-              {t("Needs you on screen")}
+              <Lamp status="needs_you" />
+              {stateWords(s, botName)}
             </span>
           ) : null}
-          {s.state === "working" && s.tool && !waiting ? (
+          {s.state === "working" ? (
             <button
               type="button"
               onClick={onMinimize}
-              className="flex h-8 items-center gap-2 rounded-sm bg-well py-0 pr-1 pl-3 text-[12.5px] text-ink-2 transition-colors duration-[160ms] ease-quiet hover:text-ink"
+              className="flex h-8 max-w-full items-center gap-2 rounded-sm bg-well py-0 pr-1 pl-3 text-[12.5px] text-ink-2 transition-colors duration-[160ms] ease-quiet hover:text-ink"
             >
               <Lamp status="working" />
-              {t("Working · {{what}}", { what: toolMeta(s.tool).app || s.tool })}
-              <span className="rounded-xs bg-surface px-2 py-0.5 font-medium text-ink shadow-card">{t("Show")}</span>
+              <span className="min-w-0 truncate">{callWork(s, doing)}</span>
+              {progress(doing) ? <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{progress(doing)}</span> : null}
+              <span className="shrink-0 rounded-xs bg-surface px-2 py-0.5 font-medium text-ink shadow-card">{t("Show")}</span>
             </button>
           ) : null}
         </div>
@@ -106,9 +105,20 @@ const idle: CallSnapshot = { state: "ended", tool: "", heard: "", hearing: "", s
 // Face is the Bot's crest inside three rings: cobalt while you speak, ink
 // while the Bot does, swelling with the voice; one quiet ring otherwise,
 // breathing while it thinks. A press while the Bot speaks stops it.
+const faceTone: Record<CallTone, string> = {
+  you: "text-cobalt",
+  bot: "text-ink",
+  needs_you: "text-vermilion",
+  muted: "text-vermilion",
+  working: "text-emerald",
+  thinking: "text-ink",
+  ended: "text-line-strong",
+  quiet: "text-line-strong",
+};
+
 function Face({ s, crest, botName, onInterrupt }: { s: CallSnapshot; crest: number; botName: string; onInterrupt: () => void }) {
   const loud = s.state === "hearing" || s.state === "speaking";
-  const tone = s.muted ? "text-vermilion" : s.state === "hearing" ? "text-cobalt" : s.state === "working" ? "text-emerald" : s.state === "ended" ? "text-line-strong" : s.state === "listening" ? "text-line-strong" : "text-ink";
+  const tone = faceTone[callTone(s)];
   const rings = [0, 1, 2].map((i) => {
     const size = 128 + i * 34;
     const scale = loud ? 1 + s.level * (0.32 - i * 0.06) : 1;

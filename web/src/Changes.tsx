@@ -83,7 +83,7 @@ export function ChangesPane({
         ) : online ? (
           <WorkspaceChanges botId={botId} data={q.data ?? null} onError={onError} />
         ) : (
-          <NeedMachine copy={t("Start the Bot to see what changed in /workspace.")} starting={bot.status === "starting"} onStart={onStart} />
+          <NeedMachine copy={t("Start the Bot to see what changed in /workspace.")} starting={bot.machine === "starting"} onStart={onStart} />
         )}
       </div>
     </div>

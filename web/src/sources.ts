@@ -13,6 +13,8 @@ export function sourceLabel(kind: string, name: string, untitled: string = t("Ch
       return t("Channel “{{name}}”", { name });
     case "chat":
       return name || untitled;
+    case "hidden":
+      return t("Someone else's chat");
     default:
       return "";
   }

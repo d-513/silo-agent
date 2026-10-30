@@ -51,8 +51,6 @@ export type BotPageState = {
   said: Said | null;
   setSaid: (s: Said | null) => void;
   // The open chat (or one of its subagents) is paused on an approval.
-  waiting: boolean;
-  waitingRuns: Set<string>;
   agentsBusy: boolean;
   agentHref: (name: string) => AgentLink | undefined;
 };
