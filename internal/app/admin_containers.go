@@ -119,7 +119,7 @@ func (a *App) ListAdminContainers(ctx context.Context, req *connect.Request[v1.L
 			userGroups[owner] = ug
 			groupOrder = append(groupOrder, ug)
 		}
-		bg := &v1.AdminBotGroup{BotId: b.ID, BotName: b.Name, Status: b.Status}
+		bg := &v1.AdminBotGroup{BotId: b.ID, BotName: b.Name, Status: a.machine(ctx, b)}
 		ug.Bots = append(ug.Bots, bg)
 		botGroups[b.ID] = bg
 	}
@@ -327,11 +327,8 @@ func (a *App) AdminContainerAction(ctx context.Context, req *connect.Request[v1.
 			}
 		case "stop":
 			a.haltBot(ctx, &b)
-			b.Status = "stopped"
-			a.DB.Save(&b)
 		case "remove":
 			a.destroyBot(ctx, &b)
-			b.Status = "stopped"
 			a.DB.Save(&b)
 		}
 		return connect.NewResponse(&v1.AdminActionResponse{}), nil
@@ -399,7 +396,6 @@ func (a *App) RemoveAdminBotContainers(ctx context.Context, req *connect.Request
 	a.destroyBot(ctx, &b)
 	a.Drives.RemoveSidecar(ctx, b.ID)
 	a.Connectors.DropBotStdio(b.ID)
-	b.Status = "stopped"
 	a.DB.Save(&b)
 	return connect.NewResponse(&v1.AdminActionResponse{}), nil
 }

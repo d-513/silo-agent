@@ -126,6 +126,8 @@ type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
 	chatID string
+	// started says which taskboard changes are this run's (currentTask).
+	started time.Time
 	// origin is where the run came from, for a tool called from Python that
 	// delivers something back there.
 	origin *run.Origin
@@ -746,20 +748,4 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 		aq = aq.Where("run_id IN (?)", a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", botID, chatID))
 	}
 	aq.Update("status", "interrupted")
-	a.recomputeStatus(botID)
-}
-
-func (a *App) recomputeStatus(botID string) {
-	var n int64
-	a.DB.Model(&db.Approval{}).Where("bot_id = ? AND status = ?", botID, "pending").Count(&n)
-	if n > 0 {
-		a.setBotStatus(botID, "needs_you")
-		return
-	}
-	a.DB.Model(&db.Run{}).Where("bot_id = ? AND status = ?", botID, "running").Count(&n)
-	if n > 0 {
-		a.setBotStatus(botID, "working")
-		return
-	}
-	a.setBotStatus(botID, "idle")
 }

@@ -320,16 +320,34 @@ func (a *App) ListApprovals(ctx context.Context, req *connect.Request[v1.ListApp
 	for _, r := range rows {
 		// Only what the caller may answer: the Needs-you count is theirs.
 		person := a.runPerson(r.RunID)
-		if !manager && (person != u.ID || security.ManagerOnly(r.Connector, r.Action)) {
+		if !mayAnswer(&r, person, u.ID, manager) {
 			continue
 		}
 		p := protoApproval(&r)
 		p.Source = a.approvalSource(r.RunID)
 		p.Person = access.Email(a.DB, person)
 		p.OnceOnly = !manager
+		p.ChatId = a.slipChat(r.RunID)
 		out.Approvals = append(out.Approvals, p)
 	}
 	return connect.NewResponse(out), nil
+}
+
+// mayAnswer says whether a person may answer an approval, whose run is
+// person's: the Bot's managers answer all of them, anyone else their own chats'
+// unless the action is the managers' whoever asked.
+func mayAnswer(ap *db.Approval, person, userID string, manager bool) bool {
+	return manager || (person == userID && !security.ManagerOnly(ap.Connector, ap.Action))
+}
+
+// slipChat is the chat an approval's slip belongs to: a subagent's is its
+// lead chat's, since the human there is the same.
+func (a *App) slipChat(runID string) string {
+	chatID := a.ChatOfRun(runID)
+	if sa := a.subagentOfChat(chatID); sa != nil {
+		return sa.ParentChatID
+	}
+	return chatID
 }
 
 // runPerson is who started a run: "" for a background run or none.
@@ -391,7 +409,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	// A person answers their own chat's approvals, once at a time; the
 	// Bot's managers answer the rest, and only they change a rule.
 	if access.BotRole(a.DB, b.ID, access.User(ctx).ID) != access.RoleManage {
-		if a.runPerson(row.RunID) != access.User(ctx).ID || security.ManagerOnly(row.Connector, row.Action) {
+		if !mayAnswer(&row, a.runPerson(row.RunID), access.User(ctx).ID, false) {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("this needs one of "+b.Name+"'s managers"))
 		}
 		if dec == security.Always {
@@ -430,7 +448,6 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 		default:
 		}
 	}
-	a.recomputeStatus(row.BotID)
 	return connect.NewResponse(protoApproval(&row)), nil
 }
 
@@ -456,10 +473,6 @@ func (a *App) emitDecision(row *db.Approval, dec string) {
 		"target":      target,
 	})
 	a.Emit(row.BotID, a.ChatOfRun(row.RunID), row.RunID, "decision", string(body), row.Connector+"."+row.Action)
-}
-
-func (a *App) setBotStatus(id, st string) {
-	a.DB.Model(&db.Bot{}).Where("id = ?", id).Update("status", st)
 }
 
 func argsJSON(name string) string {

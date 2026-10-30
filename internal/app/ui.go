@@ -32,16 +32,15 @@ import (
 	"slices"
 )
 
-func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
-	connected := a.Hub.Connected(b.ID)
+func (a *App) protoBot(b *db.Bot, machine string) *v1.Bot {
 	return &v1.Bot{
 		Id:              b.ID,
 		SpaceId:         b.SpaceID,
 		Name:            b.Name,
-		Status:          DeriveStatus(connected, running, b.Status),
+		Machine:         machine,
 		LastTask:        b.LastTask,
 		Crest:           int32(b.Crest),
-		WorkerConnected: connected,
+		WorkerConnected: machine == machineOnline,
 		Description:     b.Description,
 		Soul:            b.Soul,
 		AutoApprove:     b.AutoApprove,
@@ -51,7 +50,6 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 		DesktopPaused:   a.Pause.Paused(b.ID),
 		Proactivity:     b.Proactivity,
 		HeartbeatCustom: a.Proactivity.Custom(b.ID, b.Proactivity),
-		Activity:        a.activity(b.ID),
 		AuditUnseen:     int32(b.AuditUnseen),
 		MailAddress:     a.Mail.Address(b.ID),
 		TimeZone:        zone.Resolve(b.TimeZone).String(),
@@ -63,12 +61,20 @@ func (a *App) protoBot(b *db.Bot, running bool) *v1.Bot {
 	}
 }
 
-// viewBot is a Bot as one person sees it: their role, their unread Feed,
-// and (on a Bot several people use) who else is on it.
+// viewBot is a Bot as one person sees it: what it is doing and whether it
+// needs them, their role, their unread Feed, and (on a Bot several people use)
+// who else is on it.
 func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
-	p := a.protoBot(b, a.live(ctx, b))
+	p := a.protoBot(b, a.machine(ctx, b))
+	p.Status = p.Machine
+	if t := a.lastActive(b.ID); !t.IsZero() {
+		p.LastActiveAt = t.UTC().Format(time.RFC3339)
+	}
 	if u := access.User(ctx); u != nil {
 		p.Role = access.BotRole(a.DB, b.ID, u.ID)
+		var needsYou bool
+		p.Activity, needsYou = a.activity(b.ID, u.ID, p.Role == access.RoleManage)
+		p.Status = botStatus(p.Machine, p.Activity, needsYou)
 		p.FeedUnread = a.Feed.Unread(b.ID, u.ID)
 		if people := access.People(a.DB, b.ID); len(people) > 1 {
 			for _, id := range people {
@@ -103,14 +109,11 @@ func (a *App) ListBots(ctx context.Context, req *connect.Request[v1.ListBotsRequ
 	for i := range bots {
 		ids[i] = bots[i].ID
 	}
-	last, next := a.lastActive(ids), a.nextRuns(ids)
+	next := a.nextRuns(ids)
 	for i := range bots {
 		p := a.viewBot(ctx, &bots[i])
 		p.Soul = ""
 		p.OutputPolicy = ""
-		if t, ok := last[p.Id]; ok {
-			p.LastActiveAt = t.UTC().Format(time.RFC3339)
-		}
 		if au, ok := next[p.Id]; ok {
 			p.NextRunName, p.NextRunAt = au.Name, au.NextRunAt.UTC().Format(time.RFC3339)
 		}
@@ -181,7 +184,6 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		TimeZone: zone.Resolve(req.Msg.GetTimeZone()).String(),
 		// A Bot starts out writing in the language its maker reads Silo in.
 		Language:  lang.UI(u.Language),
-		Status:    "stopped",
 		Crest:     crest,
 		CreatedAt: time.Now(),
 	}
@@ -356,7 +358,6 @@ func (a *App) takeDown(ctx context.Context, id string, down func(context.Context
 		return nil, err
 	}
 	down(ctx, b)
-	b.Status = "stopped"
 	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
@@ -735,20 +736,13 @@ func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListCh
 }
 
 // lastActive is when each Bot's newest run started.
-func (a *App) lastActive(botIDs []string) map[string]time.Time {
-	out := map[string]time.Time{}
-	if len(botIDs) == 0 {
-		return out
+func (a *App) lastActive(botID string) time.Time {
+	var at *time.Time
+	a.DB.Model(&db.Run{}).Select("max(created_at)").Where("bot_id = ?", botID).Scan(&at)
+	if at == nil {
+		return time.Time{}
 	}
-	var rows []struct {
-		BotID string
-		At    time.Time
-	}
-	a.DB.Model(&db.Run{}).Select("bot_id, max(created_at) AS at").Where("bot_id IN ?", botIDs).Group("bot_id").Scan(&rows)
-	for _, r := range rows {
-		out[r.BotID] = r.At
-	}
-	return out
+	return *at
 }
 
 // nextRuns is the enabled automation of each Bot that fires soonest.

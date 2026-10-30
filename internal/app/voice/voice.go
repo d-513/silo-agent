@@ -40,6 +40,9 @@ type Host interface {
 	ViewBot(ctx context.Context, b *db.Bot) *v1.Bot
 	StartOrInject(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error)
 	LiveRunID(botID, chatID string) string
+	// NeedsYou says a run of the chat, or of one of its subagents, is paused on
+	// an approval this person may answer.
+	NeedsYou(botID, chatID, userID string) bool
 	// Subscribe is every event of a Bot as it is published; stop ends it.
 	Subscribe(botID string) (events <-chan *v1.RunEvent, stop func())
 	Publish(botID string, ev *v1.RunEvent)

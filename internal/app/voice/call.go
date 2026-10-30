@@ -64,6 +64,9 @@ const (
 	stateThinking  = "thinking"
 	stateWorking   = "working"
 	stateSpeaking  = "speaking"
+	// stateNeedsYou: a run on the chat is paused on an approval this person may
+	// answer, so saying it is still working would be untrue.
+	stateNeedsYou = "needs_you"
 )
 
 // calls are the live calls: one per person per Bot. A second one (another
@@ -82,6 +85,22 @@ func (c *calls) swap(key string, next *call) (prev *call) {
 	prev = c.live[key]
 	c.live[key] = next
 	return prev
+}
+
+// Live is a call in progress, for what a Bot is doing.
+type Live struct{ ChatID string }
+
+// Live lists a Bot's calls.
+func (s *Service) Live(botID string) []Live {
+	s.calls.mu.Lock()
+	defer s.calls.mu.Unlock()
+	var out []Live
+	for _, c := range s.calls.live {
+		if c.botID == botID {
+			out = append(out, Live{ChatID: c.chatID})
+		}
+	}
+	return out
 }
 
 func (c *calls) drop(key string, cur *call) {
@@ -514,6 +533,9 @@ func (c *call) follow() {
 			}
 		case "approval":
 			c.say(sayApproval.in(c.snd.Language), runID)
+			c.settle()
+		case "decision":
+			c.settle()
 		}
 	}
 }
@@ -674,6 +696,10 @@ func (c *call) settle() {
 		return
 	}
 	if c.s.host.LiveRunID(c.botID, c.chatID) != "" {
+		if c.s.host.NeedsYou(c.botID, c.chatID, c.userID) {
+			c.setState(stateNeedsYou, "")
+			return
+		}
 		c.mu.Lock()
 		st, tool := c.work, c.workTool
 		c.mu.Unlock()
@@ -722,6 +748,18 @@ func (c *call) nudge() {
 		c.mu.Lock()
 		c.nudges = 0
 		c.mu.Unlock()
+		return
+	}
+	// A run paused on the human is not working on it, and an approval from a
+	// subagent reaches the call only here: its events are in the subagent's chat.
+	needs := c.s.host.NeedsYou(c.botID, c.chatID, c.userID)
+	c.mu.Lock()
+	was := c.state == stateNeedsYou
+	c.mu.Unlock()
+	if needs || was {
+		c.settle()
+	}
+	if needs {
 		return
 	}
 	c.mu.Lock()

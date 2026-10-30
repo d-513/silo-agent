@@ -21,7 +21,6 @@ func (a *App) Commands(ctx context.Context, stream *connect.BidiStream[v1.CmdEve
 	bot := currentBot(ctx)
 	sess := a.Hub.Attach(bot.ID)
 	defer a.Hub.Detach(bot.ID, sess)
-	a.recomputeStatus(bot.ID)
 	log.Printf("worker connected bot=%s", bot.ID)
 	go a.Connectors.PushTools(bot.ID)
 	go a.Skills.Push(bot.ID)

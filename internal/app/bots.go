@@ -11,21 +11,6 @@ import (
 	"silo.agent/internal/ids"
 )
 
-// DeriveStatus: worker and Docker are truth; the DB row is a cache.
-func DeriveStatus(connected, running bool, dbStatus string) string {
-	switch {
-	case connected:
-		if dbStatus == "working" || dbStatus == "needs_you" {
-			return dbStatus
-		}
-		return "online"
-	case running:
-		return "starting"
-	default:
-		return "stopped"
-	}
-}
-
 func (a *App) lockBot(id string) func() {
 	v, _ := a.lifecycle.LoadOrStore(id, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
@@ -64,9 +49,6 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 		if dockerx.IsNotFound(err) {
 			if b.ContainerID != "" {
 				b.ContainerID = ""
-				if b.Status != "stopped" {
-					b.Status = "stopped"
-				}
 				a.DB.Save(b)
 			}
 			return false
@@ -77,9 +59,6 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 	if h, err := a.Docker.EnvTokenHash(ctx, st.ID); err == nil && h != "" && h != b.TokenHash {
 		a.Docker.Drop(ctx, b.ID, st.ID)
 		b.ContainerID = ""
-		if b.Status != "stopped" {
-			b.Status = "stopped"
-		}
 		a.DB.Save(b)
 		return false
 	}
@@ -87,14 +66,7 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 		b.ContainerID = st.ID
 		a.DB.Save(b)
 	}
-	if !st.Running {
-		if b.Status != "stopped" {
-			b.Status = "stopped"
-			a.DB.Save(b)
-		}
-		return false
-	}
-	return true
+	return st.Running
 }
 
 // dropStaleCA removes a box that trusts a network filter certificate the
@@ -164,15 +136,10 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 		}
 	}
 	if a.liveLocked(ctx, b) {
-		if b.Status == "stopped" {
-			b.Status = "starting"
-			a.DB.Save(b)
-		}
 		return nil
 	}
 	if st, err := a.inspectBot(ctx, b); err == nil {
 		if err := a.Docker.Start(ctx, st.ID); err != nil {
-			b.Status = "stopped"
 			b.LastTask = err.Error()
 			a.DB.Save(b)
 			return err
@@ -180,11 +147,9 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 		if b.ContainerID != st.ID {
 			b.ContainerID = st.ID
 		}
-		b.Status = "starting"
 		b.LastTask = ""
 		return a.DB.Save(b).Error
 	} else if !dockerx.IsNotFound(err) {
-		b.Status = "stopped"
 		b.LastTask = err.Error()
 		a.DB.Save(b)
 		return err
@@ -193,14 +158,12 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	token := ids.Token()
 	net, err := a.Egress.ClientNetwork(ctx, "bot", b.ID, "", b.Name)
 	if err != nil {
-		b.Status = "stopped"
 		b.LastTask = err.Error()
 		a.DB.Save(b)
 		return err
 	}
 	cid, err := a.Docker.Create(ctx, b.ID, token, net)
 	if err != nil {
-		b.Status = "stopped"
 		b.LastTask = err.Error()
 		a.DB.Save(b)
 		return err
@@ -208,7 +171,6 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	if err := a.Docker.Start(ctx, cid); err != nil {
 		a.Docker.Drop(ctx, b.ID, cid)
 		b.ContainerID = ""
-		b.Status = "stopped"
 		b.LastTask = err.Error()
 		a.DB.Save(b)
 		return err
@@ -216,7 +178,6 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	a.Mask(b.ID).Add(token)
 	b.TokenHash = ids.Hash(token)
 	b.ContainerID = cid
-	b.Status = "starting"
 	b.LastTask = ""
 	return a.DB.Save(b).Error
 }

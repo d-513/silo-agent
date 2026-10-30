@@ -559,6 +559,9 @@ message CheckOIDCResponse {
 message Bot {
   string id = 1;
   string name = 2;
+  // Status is the Bot as the viewer sees it, worked out per request, the most
+  // pressing first: needs_you (an approval they may answer), working,
+  // waiting (paused only on someone else's answer), on_call, then machine.
   string status = 3;
   string last_task = 4;
   int32 crest = 5;
@@ -612,16 +615,19 @@ message Bot {
   // Everyone on the Bot, when it has more than one person (the sidebar's
   // people); empty for a Bot with one.
   repeated BotPerson people = 26;
-  // Listed only (ListBots), for the Workspace's overview: when its newest
-  // run started (RFC 3339, "" never), and the next automation that will
-  // fire on its own, by name and time.
+  // When its newest run started (RFC 3339, "" never).
   string last_active_at = 27;
+  // Listed only (ListBots), for the Workspace's overview: the next automation
+  // that will fire on its own, by name and time.
   string next_run_name = 28;
   string next_run_at = 29;
   // How the Bot sounds (SetBotVoice): "" and 0 follow the defaults.
   string speech_model = 30;
   string voice = 31;
   double speech_speed = 32;
+  // Machine is its box, whatever the Bot is doing: stopped, starting or online.
+  // Controls that need the box read this, never status.
+  string machine = 33;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -961,10 +967,11 @@ message OtherBot {
   int32 grants = 5;
 }
 
-// BotActivity is one live run of a Bot, for the sidebar's status line.
+// BotActivity is one live run or call of a Bot, as the viewer may see it.
 message BotActivity {
   string chat_id = 1;
-  // chat, main, automation, channel or subagent.
+  // chat, main, automation, channel, subagent or call; hidden for a
+  // conversation the viewer may not read, which carries only its state.
   string kind = 2;
   // The chat's title, the automation's or channel's name, the subagent's.
   string title = 3;
@@ -972,6 +979,16 @@ message BotActivity {
   string step = 4;
   // For a subagent: its lead chat, which the strip links to.
   string lead_chat_id = 5;
+  // working, needs_you (paused on an approval the viewer may answer),
+  // waiting (paused on someone else's answer) or on_call.
+  string state = 6;
+  // While waiting: who may answer (email); empty when it takes a manager.
+  string waiting_on = 7;
+  // The taskboard task it is on, in the Bot's words; "" with no current one.
+  string task = 8;
+  // Progress on the board that task is from.
+  int32 task_done = 9;
+  int32 task_total = 10;
 }
 
 message ListBotsRequest {
@@ -2385,6 +2402,9 @@ message Approval {
   // What the caller may answer: true, Allow once and Deny only (they are
   // not the Bot's manager; Always would change the rule).
   bool once_only = 14;
+  // The chat the slip belongs to: a subagent's approval is its lead chat's.
+  // Empty for a background run.
+  string chat_id = 15;
 }
 
 message ListApprovalsRequest {

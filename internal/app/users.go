@@ -38,7 +38,6 @@ func (a *App) SuspendUser(ctx context.Context, userID string) {
 		}
 		a.Channels.Suspend(b.ID)
 		a.haltBot(ctx, &b)
-		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("status", "stopped")
 	}
 	// What they lent is not lent while they cannot sign in: connector calls
 	// refuse (LenderOK) and their drives come down.

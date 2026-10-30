@@ -74,10 +74,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		if req.Report != nil {
 			task = "Subagents reported"
 		}
-		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(map[string]any{
-			"last_task": task,
-			"status":    "working",
-		})
+		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("last_task", task)
 		// Always ensure the box: a message must start a stopped Bot, and a
 		// worker session can outlive a container that was removed out of band.
 		cp := b
@@ -86,7 +83,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	// Tracked before the goroutine starts, so a caller that releases the
 	// conversation lock right after this already sees the run as live.
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
-	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
+	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, started: time.Now(), origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
 	if req.Origin != nil && req.Origin.Automation != nil {
 		lr.pySession = runID
 	}
@@ -139,7 +136,7 @@ func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from strin
 	select {
 	case lr.inbox <- inboxMsg{text: text, ex: ex, id: id, at: at, zone: zn}:
 		a.emitUserAt(botID, chatID, runID, id, at, zn, text, ex, from)
-		a.dbSaveBotWorking(botID, text)
+		a.saveLastTask(botID, text)
 		lr.signal("message")
 		// Someone on a call does not wait for a reply they have moved past.
 		if ex.Spoken != nil {
@@ -151,8 +148,8 @@ func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from strin
 	}
 }
 
-func (a *App) dbSaveBotWorking(botID, text string) {
-	a.DB.Model(&db.Bot{}).Where("id = ?", botID).Updates(map[string]any{"last_task": text, "status": "working"})
+func (a *App) saveLastTask(botID, text string) {
+	a.DB.Model(&db.Bot{}).Where("id = ?", botID).Update("last_task", text)
 }
 
 // drainInbox appends the messages injected since the last turn. Each one's
@@ -830,7 +827,6 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", st)
 	a.untrackRun(runID)
 	a.dropNotices(runID)
-	a.recomputeStatus(botID)
 	a.Emit(botID, chatID, runID, "done", st, "")
 	// The closing snapshot is a worker round trip; nothing waits for it.
 	go a.Changes.End(botID, runID)

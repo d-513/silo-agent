@@ -10,31 +10,11 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
-	"silo.agent/internal/app"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
 )
-
-func TestDeriveStatusRules(t *testing.T) {
-	cases := []struct {
-		conn, run bool
-		db, want  string
-	}{
-		{true, true, "working", "working"},
-		{true, true, "needs_you", "needs_you"},
-		{true, true, "starting", "online"},
-		{true, false, "stopped", "online"},
-		{false, true, "idle", "starting"},
-		{false, false, "working", "stopped"},
-	}
-	for _, c := range cases {
-		if got := app.DeriveStatus(c.conn, c.run, c.db); got != c.want {
-			t.Fatalf("conn=%v running=%v db=%s got %s want %s", c.conn, c.run, c.db, got, c.want)
-		}
-	}
-}
 
 func TestLiveInspectErrorPreservesContainer(t *testing.T) {
 	h := apptest.New(t)

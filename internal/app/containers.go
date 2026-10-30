@@ -113,7 +113,6 @@ func (a *App) RemoveBotContainers(ctx context.Context, req *connect.Request[v1.G
 	a.destroyBot(ctx, b)
 	a.Drives.RemoveSidecar(ctx, b.ID)
 	a.Connectors.DropBotStdio(b.ID)
-	b.Status = "stopped"
 	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }

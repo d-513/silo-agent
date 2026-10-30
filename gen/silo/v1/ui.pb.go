@@ -2055,15 +2055,18 @@ func (x *CheckOIDCResponse) GetAuthorizationEndpoint() string {
 }
 
 type Bot struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Status          string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	LastTask        string                 `protobuf:"bytes,4,opt,name=last_task,json=lastTask,proto3" json:"last_task,omitempty"`
-	Crest           int32                  `protobuf:"varint,5,opt,name=crest,proto3" json:"crest,omitempty"`
-	WorkerConnected bool                   `protobuf:"varint,6,opt,name=worker_connected,json=workerConnected,proto3" json:"worker_connected,omitempty"`
-	Description     string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
-	Soul            string                 `protobuf:"bytes,8,opt,name=soul,proto3" json:"soul,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Status is the Bot as the viewer sees it, worked out per request, the most
+	// pressing first: needs_you (an approval they may answer), working,
+	// waiting (paused only on someone else's answer), on_call, then machine.
+	Status          string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	LastTask        string `protobuf:"bytes,4,opt,name=last_task,json=lastTask,proto3" json:"last_task,omitempty"`
+	Crest           int32  `protobuf:"varint,5,opt,name=crest,proto3" json:"crest,omitempty"`
+	WorkerConnected bool   `protobuf:"varint,6,opt,name=worker_connected,json=workerConnected,proto3" json:"worker_connected,omitempty"`
+	Description     string `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
+	Soul            string `protobuf:"bytes,8,opt,name=soul,proto3" json:"soul,omitempty"`
 	// AutoApprove is this Bot's free-text auto-approval policy. Rules set to
 	// "auto" consult the approval model with this text.
 	AutoApprove string `protobuf:"bytes,10,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
@@ -2110,16 +2113,19 @@ type Bot struct {
 	// Everyone on the Bot, when it has more than one person (the sidebar's
 	// people); empty for a Bot with one.
 	People []*BotPerson `protobuf:"bytes,26,rep,name=people,proto3" json:"people,omitempty"`
-	// Listed only (ListBots), for the Workspace's overview: when its newest
-	// run started (RFC 3339, "" never), and the next automation that will
-	// fire on its own, by name and time.
+	// When its newest run started (RFC 3339, "" never).
 	LastActiveAt string `protobuf:"bytes,27,opt,name=last_active_at,json=lastActiveAt,proto3" json:"last_active_at,omitempty"`
-	NextRunName  string `protobuf:"bytes,28,opt,name=next_run_name,json=nextRunName,proto3" json:"next_run_name,omitempty"`
-	NextRunAt    string `protobuf:"bytes,29,opt,name=next_run_at,json=nextRunAt,proto3" json:"next_run_at,omitempty"`
+	// Listed only (ListBots), for the Workspace's overview: the next automation
+	// that will fire on its own, by name and time.
+	NextRunName string `protobuf:"bytes,28,opt,name=next_run_name,json=nextRunName,proto3" json:"next_run_name,omitempty"`
+	NextRunAt   string `protobuf:"bytes,29,opt,name=next_run_at,json=nextRunAt,proto3" json:"next_run_at,omitempty"`
 	// How the Bot sounds (SetBotVoice): "" and 0 follow the defaults.
-	SpeechModel   string  `protobuf:"bytes,30,opt,name=speech_model,json=speechModel,proto3" json:"speech_model,omitempty"`
-	Voice         string  `protobuf:"bytes,31,opt,name=voice,proto3" json:"voice,omitempty"`
-	SpeechSpeed   float64 `protobuf:"fixed64,32,opt,name=speech_speed,json=speechSpeed,proto3" json:"speech_speed,omitempty"`
+	SpeechModel string  `protobuf:"bytes,30,opt,name=speech_model,json=speechModel,proto3" json:"speech_model,omitempty"`
+	Voice       string  `protobuf:"bytes,31,opt,name=voice,proto3" json:"voice,omitempty"`
+	SpeechSpeed float64 `protobuf:"fixed64,32,opt,name=speech_speed,json=speechSpeed,proto3" json:"speech_speed,omitempty"`
+	// Machine is its box, whatever the Bot is doing: stopped, starting or online.
+	// Controls that need the box read this, never status.
+	Machine       string `protobuf:"bytes,33,opt,name=machine,proto3" json:"machine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2369,6 +2375,13 @@ func (x *Bot) GetSpeechSpeed() float64 {
 		return x.SpeechSpeed
 	}
 	return 0
+}
+
+func (x *Bot) GetMachine() string {
+	if x != nil {
+		return x.Machine
+	}
+	return ""
 }
 
 // Space is a Workspace as the caller sees it.
@@ -5328,18 +5341,29 @@ func (x *OtherBot) GetGrants() int32 {
 	return 0
 }
 
-// BotActivity is one live run of a Bot, for the sidebar's status line.
+// BotActivity is one live run or call of a Bot, as the viewer may see it.
 type BotActivity struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	ChatId string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	// chat, main, automation, channel or subagent.
+	// chat, main, automation, channel, subagent or call; hidden for a
+	// conversation the viewer may not read, which carries only its state.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// The chat's title, the automation's or channel's name, the subagent's.
 	Title string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	// The tool it is running now ("" between tools); the client words it.
 	Step string `protobuf:"bytes,4,opt,name=step,proto3" json:"step,omitempty"`
 	// For a subagent: its lead chat, which the strip links to.
-	LeadChatId    string `protobuf:"bytes,5,opt,name=lead_chat_id,json=leadChatId,proto3" json:"lead_chat_id,omitempty"`
+	LeadChatId string `protobuf:"bytes,5,opt,name=lead_chat_id,json=leadChatId,proto3" json:"lead_chat_id,omitempty"`
+	// working, needs_you (paused on an approval the viewer may answer),
+	// waiting (paused on someone else's answer) or on_call.
+	State string `protobuf:"bytes,6,opt,name=state,proto3" json:"state,omitempty"`
+	// While waiting: who may answer (email); empty when it takes a manager.
+	WaitingOn string `protobuf:"bytes,7,opt,name=waiting_on,json=waitingOn,proto3" json:"waiting_on,omitempty"`
+	// The taskboard task it is on, in the Bot's words; "" with no current one.
+	Task string `protobuf:"bytes,8,opt,name=task,proto3" json:"task,omitempty"`
+	// Progress on the board that task is from.
+	TaskDone      int32 `protobuf:"varint,9,opt,name=task_done,json=taskDone,proto3" json:"task_done,omitempty"`
+	TaskTotal     int32 `protobuf:"varint,10,opt,name=task_total,json=taskTotal,proto3" json:"task_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5407,6 +5431,41 @@ func (x *BotActivity) GetLeadChatId() string {
 		return x.LeadChatId
 	}
 	return ""
+}
+
+func (x *BotActivity) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *BotActivity) GetWaitingOn() string {
+	if x != nil {
+		return x.WaitingOn
+	}
+	return ""
+}
+
+func (x *BotActivity) GetTask() string {
+	if x != nil {
+		return x.Task
+	}
+	return ""
+}
+
+func (x *BotActivity) GetTaskDone() int32 {
+	if x != nil {
+		return x.TaskDone
+	}
+	return 0
+}
+
+func (x *BotActivity) GetTaskTotal() int32 {
+	if x != nil {
+		return x.TaskTotal
+	}
+	return 0
 }
 
 type ListBotsRequest struct {
@@ -16745,7 +16804,10 @@ type Approval struct {
 	Person string `protobuf:"bytes,13,opt,name=person,proto3" json:"person,omitempty"`
 	// What the caller may answer: true, Allow once and Deny only (they are
 	// not the Bot's manager; Always would change the rule).
-	OnceOnly      bool `protobuf:"varint,14,opt,name=once_only,json=onceOnly,proto3" json:"once_only,omitempty"`
+	OnceOnly bool `protobuf:"varint,14,opt,name=once_only,json=onceOnly,proto3" json:"once_only,omitempty"`
+	// The chat the slip belongs to: a subagent's approval is its lead chat's.
+	// Empty for a background run.
+	ChatId        string `protobuf:"bytes,15,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16876,6 +16938,13 @@ func (x *Approval) GetOnceOnly() bool {
 		return x.OnceOnly
 	}
 	return false
+}
+
+func (x *Approval) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
 }
 
 type ListApprovalsRequest struct {
@@ -28658,7 +28727,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xf1\a\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x8b\b\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -28692,7 +28761,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\vnext_run_at\x18\x1d \x01(\tR\tnextRunAt\x12!\n" +
 	"\fspeech_model\x18\x1e \x01(\tR\vspeechModel\x12\x14\n" +
 	"\x05voice\x18\x1f \x01(\tR\x05voice\x12!\n" +
-	"\fspeech_speed\x18  \x01(\x01R\vspeechSpeedJ\x04\b\t\x10\n" +
+	"\fspeech_speed\x18  \x01(\x01R\vspeechSpeed\x12\x18\n" +
+	"\amachine\x18! \x01(\tR\amachineJ\x04\b\t\x10\n" +
 	"\"\x9e\x01\n" +
 	"\x05Space\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -28891,14 +28961,22 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05crest\x18\x03 \x01(\x05R\x05crest\x12\x16\n" +
 	"\x06people\x18\x04 \x03(\tR\x06people\x12\x16\n" +
-	"\x06grants\x18\x05 \x01(\x05R\x06grants\"\x86\x01\n" +
+	"\x06grants\x18\x05 \x01(\x05R\x06grants\"\x8b\x02\n" +
 	"\vBotActivity\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x12\n" +
 	"\x04step\x18\x04 \x01(\tR\x04step\x12 \n" +
 	"\flead_chat_id\x18\x05 \x01(\tR\n" +
-	"leadChatId\",\n" +
+	"leadChatId\x12\x14\n" +
+	"\x05state\x18\x06 \x01(\tR\x05state\x12\x1d\n" +
+	"\n" +
+	"waiting_on\x18\a \x01(\tR\twaitingOn\x12\x12\n" +
+	"\x04task\x18\b \x01(\tR\x04task\x12\x1b\n" +
+	"\ttask_done\x18\t \x01(\x05R\btaskDone\x12\x1d\n" +
+	"\n" +
+	"task_total\x18\n" +
+	" \x01(\x05R\ttaskTotal\",\n" +
 	"\x0fListBotsRequest\x12\x19\n" +
 	"\bspace_id\x18\x01 \x01(\tR\aspaceId\"_\n" +
 	"\x10ListBotsResponse\x12 \n" +
@@ -29756,7 +29834,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x14DeleteSecretResponse\";\n" +
 	"\rApprovalField\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xf4\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\x8d\x03\n" +
 	"\bApproval\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x15\n" +
@@ -29772,7 +29850,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06source\x18\v \x01(\tR\x06source\x12\x12\n" +
 	"\x04auto\x18\f \x01(\bR\x04auto\x12\x16\n" +
 	"\x06person\x18\r \x01(\tR\x06person\x12\x1b\n" +
-	"\tonce_only\x18\x0e \x01(\bR\bonceOnly\"-\n" +
+	"\tonce_only\x18\x0e \x01(\bR\bonceOnly\x12\x17\n" +
+	"\achat_id\x18\x0f \x01(\tR\x06chatId\"-\n" +
 	"\x14ListApprovalsRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"H\n" +
 	"\x15ListApprovalsResponse\x12/\n" +

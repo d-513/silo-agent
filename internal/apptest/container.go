@@ -106,7 +106,7 @@ func (h *H) SeedBot(name string) string {
 	if err != nil {
 		h.T.Fatalf("seed bot: %v", err)
 	}
-	b := db.Bot{ID: id, SpaceID: sp.ID, CreatedBy: u.ID, Name: name, Status: "stopped", CreatedAt: time.Now()}
+	b := db.Bot{ID: id, SpaceID: sp.ID, CreatedBy: u.ID, Name: name, CreatedAt: time.Now()}
 	if err := h.DB.Create(&b).Error; err != nil {
 		h.T.Fatalf("seed bot: %v", err)
 	}

@@ -199,7 +199,6 @@ type Bot struct {
 	AuditUnseen int    `gorm:"not null;default:0"`
 	TokenHash   string `gorm:"uniqueIndex"`
 	ContainerID string
-	Status      string
 	LastTask    string
 	Crest       int
 	CreatedAt   time.Time

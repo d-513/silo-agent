@@ -125,14 +125,12 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 		a.mu.Lock()
 		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
-		a.setBotStatus(bot.ID, "needs_you")
 		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
 		var dec string
 		select {
 		case <-ctx.Done():
 			a.dropWaiter(ap.ID)
 			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
-			a.recomputeStatus(bot.ID)
 			return ap.ID, errors.New("canceled")
 		case dec = <-ch:
 		}
