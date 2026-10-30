@@ -9,6 +9,9 @@ import { SkeletonRows } from "../Field";
 import { UI } from "../gen/silo/v1/ui_pb";
 import { lazyNamed } from "../lazyNamed";
 import { agentLink, chatLink, newChatLink } from "../links";
+import { CallBar } from "../call/CallBar";
+import { CallStage } from "../call/CallStage";
+import { callIsHere, callPlace } from "../call/place";
 import { useCall } from "../call/useCall";
 import { reload, setBot } from "../query";
 import { useRunStream } from "../useRunStream";
@@ -225,6 +228,16 @@ export function BotPage() {
     void navigate(lastChat.current === "" ? newChatLink(id) : chatLink(id, lastChat.current));
   }
 
+  // Off its chat's page the call is drawn here, so it never leaves the screen.
+  const place = callPlace({
+    call: !!call.snap,
+    here: tab === "run" && !agentId && callIsHere(callChat, chatId, fresh),
+    expanded: call.expanded,
+    wide,
+    docked: !!pane && !max,
+  });
+  const callRow = chats.find((c) => c.id === callChat);
+
   const quotes: QuoteSink = { add: draft.quote, upload: draft.upload, canUpload: !!bot.workerConnected };
 
   return (
@@ -344,6 +357,22 @@ export function BotPage() {
           <div className={`min-h-0 min-w-0 flex-1 ${max ? "hidden" : "flex"}`}>
             <Outlet />
           </div>
+          {place === "aside" ? (
+            <aside className="flex min-h-0 w-[340px] shrink-0 flex-col bg-canvas shadow-[inset_1px_0_0_var(--color-line)]">
+              <CallStage
+                call={call}
+                botName={bot.name}
+                crest={bot.crest}
+                where={callRow?.main ? t("Main chat") : callRow?.title || t("New chat")}
+                waiting={pending.length > 0}
+                narrow
+                onMinimize={() => {
+                  call.setExpanded(false);
+                  if (callChat !== "new") void navigate(chatLink(id, callChat));
+                }}
+              />
+            </aside>
+          ) : null}
           <SidePane
             key={id}
             bot={bot}
@@ -366,6 +395,11 @@ export function BotPage() {
             </Suspense>
           ) : null}
         </div>
+        {place === "bar" ? (
+          <div className="shrink-0 bg-well pt-2 pb-[env(safe-area-inset-bottom)] shadow-[inset_0_1px_0_var(--color-line)]">
+            <CallBar call={call} botName={bot.name} onExpand={callMain} />
+          </div>
+        ) : null}
       </div>
     </BotPageCtx.Provider>
     </QuoteProvider>

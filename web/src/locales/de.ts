@@ -1892,8 +1892,6 @@ const de: Record<string, string> = {
   "Hold the button or Space while you talk.": "Halte die Taste oder die Leertaste, während du sprichst.",
   "Talk to {{name}}. Speak over it any time to cut in.": "Sprich mit {{name}}. Du kannst jederzeit dazwischenreden.",
   "Listening back…": "Höre zurück…",
-  "On a call with {{name}} in another chat": "Anruf mit {{name}} in einem anderen Chat",
-  "Go back": "Zurück",
   "The call could not start. Voice may be off, or this Bot is not yours to call.": "Der Anruf konnte nicht beginnen. Sprache ist vielleicht aus, oder du darfst diesen Bot nicht anrufen.",
   "The voice detector did not load: {{error}}": "Die Spracherkennung wurde nicht geladen: {{error}}",
   "The call's audio could not connect. A firewall may be blocking its port.": "Der Ton des Anrufs konnte sich nicht verbinden. Vielleicht sperrt eine Firewall seinen Port.",

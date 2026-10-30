@@ -8,20 +8,18 @@ import type { Call } from "./useCall";
 import type { CallSession, CallSnapshot, EndReason } from "./session";
 import { t } from "../i18n.ts";
 
-// CallBar is a live call, docked over the composer of the chat it is held
-// in: the orb (your voice, or the Bot's), what is going on in words, what was
-// last heard or said, and the controls. Elsewhere on the Bot's pages it is a
-// slim strip that leads back. The call screen (CallStage) is the same call
-// with the room to itself; the bar's maximise button opens it.
+// CallBar is a live call, docked over the composer of the chat it is held in,
+// or under any other page of the Bot (place.ts): the orb (your voice, or the
+// Bot's), what is going on in words, what was last heard or said, and the
+// controls. The call screen (CallStage) is the same call with the room to
+// itself; the bar's maximise button opens it.
 
 const ctl =
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]";
 
-export function CallBar({ call, botName, here, onBack, onExpand }: { call: Call; botName: string; here: boolean; onBack?: () => void; onExpand?: () => void }) {
+export function CallBar({ call, botName, onExpand }: { call: Call; botName: string; onExpand?: () => void }) {
   const s = call.snap;
   if (!s) return null;
-  if (!here && s.state !== "ended") return <CallStrip s={s} botName={botName} onBack={onBack} onEnd={call.end} />;
-  if (!here) return null;
   return <Bar s={s} call={call} botName={botName} onExpand={onExpand} />;
 }
 
@@ -232,25 +230,4 @@ export function Clock({ since }: { since: number }) {
     return () => clearInterval(id);
   }, []);
   return <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums">{callClock(now - since)}</span>;
-}
-
-// CallStrip is the call seen from another page of the Bot.
-function CallStrip({ s, botName, onBack, onEnd }: { s: CallSnapshot; botName: string; onBack?: () => void; onEnd: () => void }) {
-  return (
-    <div className="mx-auto w-full max-w-[760px] px-4 pb-2">
-      <div className="flex items-center gap-2 rounded-control bg-well py-1.5 pr-1.5 pl-3 text-[13px]">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${s.state === "speaking" ? "bg-ink" : s.state === "hearing" ? "bg-cobalt" : "breathe bg-emerald"}`} />
-        <span className="min-w-0 flex-1 truncate text-ink-2">{t("On a call with {{name}} in another chat", { name: botName })}</span>
-        <Clock since={s.startedAt} />
-        {onBack ? (
-          <button type="button" className="rounded-sm px-2 py-1 font-medium text-cobalt hover:bg-surface" onClick={onBack}>
-            {t("Go back")}
-          </button>
-        ) : null}
-        <button type="button" className="rounded-sm px-2 py-1 font-medium text-vermilion hover:bg-surface" onClick={onEnd}>
-          {t("End", { context: "call" })}
-        </button>
-      </div>
-    </div>
-  );
 }

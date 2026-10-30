@@ -141,6 +141,10 @@ func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from strin
 		a.emitUserAt(botID, chatID, runID, id, at, zn, text, ex, from)
 		a.dbSaveBotWorking(botID, text)
 		lr.signal("message")
+		// Someone on a call does not wait for a reply they have moved past.
+		if ex.Spoken != nil {
+			lr.cutTurn()
+		}
 		return true
 	default:
 		return false
@@ -210,6 +214,43 @@ func (a *App) closeInbox(lr *liveRun, runID string) bool {
 	return true
 }
 
+// openTurn says a model turn is being written, and how to stop it.
+func (lr *liveRun) openTurn(stop context.CancelFunc) {
+	lr.turnMu.Lock()
+	lr.stopTurn, lr.turnCut = stop, false
+	lr.turnMu.Unlock()
+}
+
+// commitTurn is the turn's first tool call: from here it runs to its end, since
+// a call half written cannot be kept. False means it was cut first.
+func (lr *liveRun) commitTurn() bool {
+	lr.turnMu.Lock()
+	defer lr.turnMu.Unlock()
+	lr.stopTurn = nil
+	return !lr.turnCut
+}
+
+// cutTurn stops the model turn being written, if it still may be: what it has
+// written stands as a reply that ended there, and the loop goes on to the
+// message waiting in the inbox. Tools are never stopped.
+func (lr *liveRun) cutTurn() {
+	lr.turnMu.Lock()
+	defer lr.turnMu.Unlock()
+	if lr.stopTurn != nil {
+		lr.turnCut = true
+		lr.stopTurn()
+		lr.stopTurn = nil
+	}
+}
+
+// closeTurn ends the turn and reports whether it was cut.
+func (lr *liveRun) closeTurn() bool {
+	lr.turnMu.Lock()
+	defer lr.turnMu.Unlock()
+	lr.stopTurn = nil
+	return lr.turnCut
+}
+
 // EndTurn ends a live run after the tool calls of its current turn: the
 // tool has handed the conversation to the human, and another model turn would
 // only talk about the question it just asked.
@@ -243,11 +284,19 @@ type turnResult struct {
 }
 
 // streamTurn drives one provider completion, emitting chunks, reasoning, and
-// tool-call events, and returns the assembled assistant message.
-func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, client llm.Client, req llm.Request) (turnResult, error) {
+// tool-call events, and returns the assembled assistant message. A turn cut
+// short (cutTurn) returns as a reply of what it had written, possibly nothing.
+func (a *App) streamTurn(ctx context.Context, lr *liveRun, botID, chatID, runID string, client llm.Client, req llm.Request) (turnResult, error) {
 	a.setStep(runID, "")
-	stream, err := client.Stream(ctx, req)
+	turnCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	lr.openTurn(stop)
+	defer lr.closeTurn()
+	stream, err := client.Stream(turnCtx, req)
 	if err != nil {
+		if lr.closeTurn() {
+			return turnResult{}, nil
+		}
 		return turnResult{}, err
 	}
 	defer stream.Close()
@@ -277,6 +326,7 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 	pieces := &coalescer{emit: func(kind, body, tool string) { a.Emit(botID, chatID, runID, kind, body, tool) }}
 	defer pieces.flush()
 
+reading:
 	for stream.Next() {
 		ev := stream.Event()
 		switch ev.Kind {
@@ -296,6 +346,9 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 			think.WriteString(ev.Text)
 			pieces.add("thinking_chunk", ev.Text, "")
 		case llm.EventToolCallStart:
+			if !lr.commitTurn() {
+				break reading
+			}
 			saw = true
 			st := touch(ev.Index)
 			if ev.ToolCallID != "" {
@@ -311,6 +364,9 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 				st.notified = true
 			}
 		case llm.EventToolCallDelta:
+			if !lr.commitTurn() {
+				break reading
+			}
 			saw = true
 			st := touch(ev.Index)
 			st.call.Arguments += ev.Text
@@ -324,13 +380,14 @@ func (a *App) streamTurn(ctx context.Context, botID, chatID, runID string, clien
 		}
 	}
 	pieces.flush()
-	if err := stream.Err(); err != nil {
+	cut := lr.closeTurn()
+	if err := stream.Err(); err != nil && !cut {
 		return turnResult{}, err
 	}
 	if think.Len() > 0 {
 		a.Emit(botID, chatID, runID, "thinking", think.String(), "")
 	}
-	if !saw {
+	if !saw && !cut {
 		return turnResult{}, fmt.Errorf("empty completion")
 	}
 	// Signed reasoning rides on the in-run turn only (never persisted): the
@@ -569,13 +626,13 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 			// applies from the next model call.
 			Thinking: a.Models.ChatThinking(ctx, chatID, modelID),
 		}
-		res, err := a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
+		res, err := a.streamTurn(ctx, lr, botID, chatID, runID, client, turnReq)
 		// The estimate can be off: a provider that refuses the request as too
 		// long gets one compaction and one retry.
 		if err != nil && isContextOverflow(err) && len(msgs) > 1 && ctx.Err() == nil {
 			if compactNow() {
 				turnReq.Messages = msgs
-				res, err = a.streamTurn(ctx, botID, chatID, runID, client, turnReq)
+				res, err = a.streamTurn(ctx, lr, botID, chatID, runID, client, turnReq)
 			}
 		}
 		if err != nil {
@@ -609,8 +666,8 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				a.finish(botID, chatID, runID, "done")
 				return
 			}
-			// A message came in while the reply was written: answer it in
-			// this run, with the reply as replay will read it back.
+			// A message came in while the reply was written (or cut it short):
+			// answer it in this run, with the reply as replay will read it back.
 			for _, t := range append(res.sections, res.tail) {
 				if t = a.kept(botID, t); strings.TrimSpace(t) != "" {
 					msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Text: t})
@@ -687,7 +744,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				// later is what this turn reads as once its pixels are no
 				// longer sent: a look is dropped by the next one, a presented
 				// image by the end of the run.
-				later := itype
+				later := presentOmitted
 				if isLookTool(tc.Name) {
 					pruneLookImages(msgs)
 					pruneLookImages(shown)

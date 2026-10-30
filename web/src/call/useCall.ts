@@ -31,11 +31,16 @@ export function useCall(botId: string) {
   }, [ended, failed, session]);
 
   // Leaving the Bot ends the call.
-  useEffect(() => () => live.current?.hangup(), [botId]);
+  useEffect(
+    () => () => {
+      void live.current?.hangup();
+    },
+    [botId],
+  );
 
   const start = useCallback(
     (chat: string, screen = false) => {
-      live.current?.hangup();
+      void live.current?.hangup();
       const s = new CallSession(botId, chat);
       setSession(s);
       setExpanded(screen);
@@ -51,7 +56,7 @@ export function useCall(botId: string) {
     start,
     expanded,
     setExpanded,
-    end: () => session?.hangup(),
+    end: () => void session?.hangup(),
     dismiss: () => setSession(null),
     session,
   };

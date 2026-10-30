@@ -49,6 +49,9 @@ type Turn struct {
 	// Delay holds the stream back this long before it answers, so a test can
 	// act while the turn is being written.
 	Delay time.Duration
+	// Hold keeps the stream open this long after the turn's text, before its
+	// tool calls and its end, so a test can act while the turn is half written.
+	Hold time.Duration
 }
 
 // CompactMarker is the heading the CP's compaction prompt starts with; a
@@ -153,7 +156,11 @@ func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error
 		}
 	}
 	events := buildEvents(turn, size)
-	return &sliceStream{events: events}, nil
+	st := &sliceStream{ctx: ctx, events: events}
+	if turn.Hold > 0 {
+		st.hold, st.holdAt = turn.Hold, textEvents(turn)
+	}
+	return st, nil
 }
 
 // requestRunes is the request's size in runes; the dummy reports it as its
@@ -343,6 +350,15 @@ func isWordByte(b byte) bool {
 }
 
 // buildEvents turns a Turn into the neutral event stream.
+// textEvents is how many of a turn's events come up to the end of its text.
+func textEvents(t Turn) int {
+	n := len(chunkRunes(t.Reasoning, 7)) + len(chunkRunes(t.Text, 7))
+	if t.Reasoning != "" {
+		n++
+	}
+	return n
+}
+
 func buildEvents(t Turn, input int) []llm.Event {
 	var out []llm.Event
 	for _, chunk := range chunkRunes(t.Reasoning, 7) {
@@ -419,12 +435,26 @@ func chunkString(s string, n int) []string {
 
 // sliceStream is an in-memory Stream.
 type sliceStream struct {
+	ctx    context.Context
 	events []llm.Event
 	pos    int
 	cur    llm.Event
+	hold   time.Duration
+	holdAt int
+	err    error
 }
 
 func (s *sliceStream) Next() bool {
+	if s.pos == s.holdAt && s.hold > 0 {
+		wait := s.hold
+		s.hold = 0
+		select {
+		case <-time.After(wait):
+		case <-s.ctx.Done():
+			s.err = s.ctx.Err()
+			return false
+		}
+	}
 	if s.pos >= len(s.events) {
 		return false
 	}
@@ -434,5 +464,5 @@ func (s *sliceStream) Next() bool {
 }
 
 func (s *sliceStream) Event() llm.Event { return s.cur }
-func (s *sliceStream) Err() error       { return nil }
+func (s *sliceStream) Err() error       { return s.err }
 func (s *sliceStream) Close() error     { return nil }

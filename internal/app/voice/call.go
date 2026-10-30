@@ -10,6 +10,11 @@ package voice
 // streams, sentence by sentence, on a WebRTC audio track, which is what gives
 // the browser something its echo canceller can hear.
 //
+// A human who speaks comes first. The browser cuts the voice as soon as it is
+// sure of speech; a turn with words in it does so too, for whatever the
+// browser missed, and reaches the Bot at once: it replaces the reply being
+// written (run.Spoken in App.inject), and a tool already running is read after.
+//
 // The socket also carries the WebRTC handshake and the call's state, and is
 // the call's life: when it closes, the call ends.
 
@@ -20,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +52,9 @@ const (
 	handshakeTimeout = 20 * time.Second
 	// interruptedMax caps the cut-off words a turn tells the Bot about.
 	interruptedMax = 300
+	// turnTimeout bounds hearing one turn. A turn is not tied to the call:
+	// what was said before hanging up still goes to the Bot.
+	turnTimeout = 45 * time.Second
 )
 
 // The states a call is in, as the browser shows them.
@@ -120,11 +129,17 @@ type call struct {
 	track  *webrtc.TrackLocalStaticSample
 	out    *outbox
 	turns  chan turnIn
+	// listened closes once every turn that arrived is dealt with.
+	listened chan struct{}
 
-	mu       sync.Mutex
-	state    string
-	tool     string
-	replies  map[string]*speech.Stream
+	mu    sync.Mutex
+	state string
+	tool  string
+	// work and workTool are what the Bot is doing behind the voice: the state
+	// once it stops.
+	work     string
+	workTool string
+	replies  map[string]*speech.Stream // the model turns being written
 	muted    map[string]bool
 	said     []string // the last pieces heard in full, for an interruption's note
 	cutOff   string   // what the next turn tells the Bot it cut off
@@ -187,7 +202,7 @@ func (s *Service) ServeCall(w http.ResponseWriter, r *http.Request, userID strin
 	c := &call{
 		s: s, id: ids.New(), botID: b.ID, chatID: ch.ID, userID: userID, ch: ch,
 		snd: s.SoundOf(ctx, b), mode: cfg.VoiceMode(), start: time.Now(),
-		ctx: ctx, cancel: cancel, ws: ws, out: newOutbox(), turns: make(chan turnIn, 4),
+		ctx: ctx, cancel: cancel, ws: ws, out: newOutbox(), turns: make(chan turnIn, 4), listened: make(chan struct{}),
 		state: stateListening, replies: map[string]*speech.Stream{}, muted: map[string]bool{}, activity: time.Now(),
 		hear: s.hearingFor(cfg.CallTranscribeModel()),
 	}
@@ -374,12 +389,21 @@ func (c *call) read() {
 	}
 }
 
-// listen handles the spoken turns one at a time, in order.
+// listen handles the spoken turns one at a time, in order, down to the last
+// one: ending a call says nothing about what was asked on it.
 func (c *call) listen() {
+	defer close(c.listened)
 	for {
 		select {
 		case <-c.ctx.Done():
-			return
+			for {
+				select {
+				case t := <-c.turns:
+					c.turn(t)
+				default:
+					return
+				}
+			}
 		case t := <-c.turns:
 			c.turn(t)
 		}
@@ -390,20 +414,19 @@ func (c *call) listen() {
 func (c *call) turn(t turnIn) {
 	c.setState(stateThinking, "")
 	started := time.Now()
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), turnTimeout)
+	defer cancel()
 	var text string
 	var err error
 	if t.live != nil {
-		text, err = c.heardText(t.live)
+		text, err = c.heardText(ctx, t.live)
 	} else {
 		var tr llm.Transcript
-		tr, err = c.s.transcribeWith(c.ctx, c.botID, "call", c.hear.model, llm.Audio{Data: t.wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
+		tr, err = c.s.transcribeWith(ctx, c.botID, "call", c.hear.model, llm.Audio{Data: t.wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
 		text = tr.Text
 	}
 	stt := time.Since(started)
 	if err != nil {
-		if c.ctx.Err() != nil {
-			return
-		}
 		log.Printf("voice: call %s transcribe: %v", c.id, err)
 		_ = c.send(map[string]any{"t": "error", "message": err.Error()})
 		c.say(sayNotHeard.in(c.snd.Language), "")
@@ -415,16 +438,22 @@ func (c *call) turn(t turnIn) {
 		c.settle()
 		return
 	}
+	// They said something: what the Bot was about to say is out of date,
+	// whether or not the browser caught them starting.
+	if c.out.busy() {
+		c.interrupt()
+		c.setState(stateThinking, "")
+	}
+	c.saveTurn()
 	c.mu.Lock()
 	cut := c.cutOff
 	c.cutOff = ""
 	c.nTurns++
-	c.mu.Unlock()
-	c.mu.Lock()
 	c.pending = &db.VoiceTurn{CallID: c.id, BotID: c.botID, EndOfTurnMs: t.eouMs, SpeechToTextMs: int(stt / time.Millisecond), CreatedAt: time.Now()}
 	c.pendAt = t.at
 	c.mu.Unlock()
-	if c.mode == config.VoiceModeTalker {
+	// With the call over nobody would hear the talker: the Bot takes the turn.
+	if c.mode == config.VoiceModeTalker && c.ctx.Err() == nil {
 		c.talk(text, cut)
 		return
 	}
@@ -508,6 +537,7 @@ func (c *call) reply(runID, text string, end bool) {
 	}
 	if end {
 		ready = append(ready, st.Flush()...)
+		delete(c.replies, runID)
 	}
 	c.mu.Unlock()
 	for _, r := range ready {
@@ -543,27 +573,39 @@ func (c *call) forget(runID string) {
 }
 
 // interrupt is the human speaking over the Bot: the voice stops, the rest of
-// what that turn of the model writes is not said, and the next turn tells the
-// Bot where it was cut off.
+// every model turn being written is not said, and the next turn tells the Bot
+// where it was cut off.
 func (c *call) interrupt() {
-	heard, runID := c.out.flush()
+	heard, playing, runs := c.out.flush()
 	c.mu.Lock()
-	talkerCut := c.talking != nil && runID == c.talking.id
+	talkerCut := c.talking != nil && (!c.talking.done || slices.Contains(runs, c.talking.id))
 	c.mu.Unlock()
 	if talkerCut {
 		c.cutTalk(heard)
 	}
 	c.mu.Lock()
-	note := strings.TrimSpace(strings.Join(append(c.said, heard), " "))
+	said := c.said
+	// The piece that was playing is said only as far as it was heard.
+	if playing && len(said) > 0 {
+		said = said[:len(said)-1]
+	}
+	note := strings.TrimSpace(strings.Join(append(said[:len(said):len(said)], heard), " "))
 	if r := []rune(note); len(r) > interruptedMax {
 		note = "…" + strings.TrimSpace(string(r[len(r)-interruptedMax:]))
 	}
-	c.cutOff, c.said = note, nil
-	if runID != "" {
+	// Cut before a word got out: the Bot still has to know it was not heard.
+	if note == "" && len(runs) > 0 {
+		note = "…"
+	}
+	if note != "" {
+		c.cutOff = note
+	}
+	c.said = nil
+	for runID := range c.replies {
 		c.muted[runID] = true
 		delete(c.replies, runID)
 	}
-	if c.pending != nil {
+	if c.pending != nil && len(runs) > 0 {
 		c.pending.Interrupted = true
 	}
 	c.mu.Unlock()
@@ -609,10 +651,18 @@ func (c *call) pieceStarted(p *piece) {
 	c.mu.Unlock()
 	_ = c.send(map[string]any{"t": "say", "text": p.text, "id": p.id})
 	c.setState(stateSpeaking, "")
+	// Flushed on its first frame: no idle will come to move the state on.
+	if !c.out.busy() {
+		c.settle()
+	}
 }
 
-// spokeAll is the queue running dry: a talker turn has been heard in full.
+// spokeAll is the queue running dry: it was heard in full, so there is nothing
+// to be cut off, and a talker turn can be written.
 func (c *call) spokeAll() {
+	c.mu.Lock()
+	c.said = nil
+	c.mu.Unlock()
 	c.finishTalk()
 	c.settle()
 }
@@ -625,7 +675,7 @@ func (c *call) settle() {
 	}
 	if c.s.host.LiveRunID(c.botID, c.chatID) != "" {
 		c.mu.Lock()
-		st, tool := c.state, c.tool
+		st, tool := c.work, c.workTool
 		c.mu.Unlock()
 		if st != stateWorking {
 			st, tool = stateThinking, ""
@@ -636,8 +686,19 @@ func (c *call) settle() {
 	c.setState(stateListening, "")
 }
 
+// setState says what the call is doing. While the voice plays the state stays
+// speaking, because that is when the browser lets the human cut in; what goes
+// on behind it shows once it stops.
 func (c *call) setState(st, tool string) {
+	voice := c.out.busy()
 	c.mu.Lock()
+	if st != stateSpeaking {
+		c.work, c.workTool = st, tool
+		if c.state == stateSpeaking && voice {
+			c.mu.Unlock()
+			return
+		}
+	}
 	if c.state == st && c.tool == tool {
 		c.mu.Unlock()
 		return
@@ -739,10 +800,14 @@ func (c *call) end(cause error) {
 	case errors.Is(cause, errNetwork):
 		reason = "lost"
 	}
-	c.saveTurn()
-	c.closeLive()
 	_ = c.send(map[string]any{"t": "bye", "reason": reason})
 	c.ws.Close(websocket.StatusNormalClosure, reason)
+	// Only the call ends. A reply running in the chat goes on, and what was
+	// said on the way out reaches it, ahead of the call's end in the thread.
+	<-c.listened
+	c.finishTalk()
+	c.saveTurn()
+	c.closeLive()
 	secs := int(time.Since(c.start) / time.Second)
 	now := time.Now()
 	c.mu.Lock()

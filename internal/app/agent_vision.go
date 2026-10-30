@@ -12,10 +12,14 @@ import (
 )
 
 const (
-	// lookOmitted is what an earlier screenshot's turn reads as.
-	lookOmitted  = "Earlier screenshot omitted — act on the current one."
-	lookPath     = "bot/screen.jpg"
-	lookCoordLaw = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
+	// lookOmitted and presentOmitted are what an image's turn reads as once
+	// its pixels are dropped. They say it was seen: a model that reads only
+	// that an image is missing concludes it never looked, and takes back what
+	// it rightly said about it. SYSTEM.md explains them.
+	lookOmitted    = "You saw this screenshot; the image is not kept. `look` again for the screen now."
+	presentOmitted = "You saw this image; it is not kept. `present` it again to see it again."
+	lookPath       = "bot/screen.jpg"
+	lookCoordLaw   = "Image is 1600×900. Origin top-left. click(x,y) is in these pixels. The worker applies them with no scale."
 )
 
 // isLookImage reports whether a user turn carries a live desktop screenshot.

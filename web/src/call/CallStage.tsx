@@ -14,6 +14,7 @@ import { t } from "../i18n.ts";
 // rings that carry the voice, what it is saying in the reply serif, what it
 // heard from you, and a dock of controls. The thread is still written
 // underneath; Show chat folds the call back into the bar over the composer.
+// narrow is the same screen in the column beside another page of the Bot.
 
 const dk =
   "flex h-12 w-12 shrink-0 items-center justify-center rounded-card bg-surface text-ink-2 shadow-card transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] motion-reduce:active:scale-100";
@@ -26,6 +27,7 @@ export function CallStage({
   waiting,
   typing,
   onType,
+  narrow,
   onMinimize,
 }: {
   call: Call;
@@ -35,8 +37,10 @@ export function CallStage({
   where: string;
   // A run of this chat is paused on an approval: the slip is on screen.
   waiting: boolean;
-  typing: boolean;
-  onType: () => void;
+  typing?: boolean;
+  // There is no composer in the narrow column, so no typing there.
+  onType?: () => void;
+  narrow?: boolean;
   onMinimize: () => void;
 }) {
   const s = call.snap;
@@ -71,7 +75,7 @@ export function CallStage({
             {stateWords(s, botName)}
           </p>
         </div>
-        <Captions s={s} botName={botName} />
+        <Captions s={s} botName={botName} narrow={narrow} />
         <div className="mt-4 flex min-h-8 flex-wrap items-center justify-center gap-2">
           {waiting && !ended ? (
             <span className="flex h-8 items-center gap-2 rounded-sm px-3 text-[12.5px] font-medium text-vermilion shadow-[inset_0_0_0_1px_var(--color-vermilion)]">
@@ -148,7 +152,7 @@ function Face({ s, crest, botName, onInterrupt }: { s: CallSnapshot; crest: numb
 
 // Captions are the sentence the Bot is on, in the reply serif, with the one
 // before it fading above; your last turn as heard sits under them.
-function Captions({ s, botName }: { s: CallSnapshot; botName: string }) {
+function Captions({ s, botName, narrow }: { s: CallSnapshot; botName: string; narrow?: boolean }) {
   const [lines, setLines] = useState({ prev: "", cur: "" });
   useEffect(() => {
     if (s.saying) setLines((l) => (l.cur === s.saying ? l : { prev: l.cur, cur: s.saying }));
@@ -171,7 +175,7 @@ function Captions({ s, botName }: { s: CallSnapshot; botName: string }) {
         ) : (
           <>
             {lines.prev ? <p className="font-serif text-[18px] leading-[26px] text-ink-3">{lines.prev}</p> : null}
-            {lines.cur ? <p className="font-serif text-[24px] leading-[34px] tracking-[-0.005em] text-ink max-sm:text-[21px] max-sm:leading-[30px]">{lines.cur}</p> : null}
+            {lines.cur ? <p className={`font-serif tracking-[-0.005em] text-ink ${narrow ? "text-[19px] leading-[27px]" : "text-[24px] leading-[34px] max-sm:text-[21px] max-sm:leading-[30px]"}`}>{lines.cur}</p> : null}
           </>
         )}
       </div>
@@ -180,7 +184,7 @@ function Captions({ s, botName }: { s: CallSnapshot; botName: string }) {
   );
 }
 
-function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing: boolean; onType: () => void }) {
+function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing?: boolean; onType?: () => void }) {
   const session = call.session;
   if (s.state === "ended") {
     return (
@@ -238,11 +242,13 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
             {s.muted ? <MicOff size={19} /> : <Mic size={19} />}
           </button>
         </Tip>
-        <Tip content={t("Type a message")}>
-          <button type="button" className={`${dk} ${typing ? "bg-well text-ink" : ""}`} aria-pressed={typing} aria-label={t("Type a message")} onClick={onType}>
-            <Keyboard size={19} />
-          </button>
-        </Tip>
+        {onType ? (
+          <Tip content={t("Type a message")}>
+            <button type="button" className={`${dk} ${typing ? "bg-well text-ink" : ""}`} aria-pressed={typing} aria-label={t("Type a message")} onClick={onType}>
+              <Keyboard size={19} />
+            </button>
+          </Tip>
+        ) : null}
         <button
           type="button"
           onClick={call.end}

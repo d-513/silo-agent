@@ -31,11 +31,12 @@ type piece struct {
 	text   string
 	cancel context.CancelFunc
 
-	mu      sync.Mutex
-	frames  [][]byte
-	done    bool
-	started bool // synthesis started
-	sent    int  // frames sent
+	mu        sync.Mutex
+	frames    [][]byte
+	done      bool
+	started   bool // synthesis started
+	sent      int  // frames sent
+	announced bool // its first frame went out
 	// words are the voice's own timings, when it gave them: what was heard
 	// before a cut is then exact.
 	words []speech.WordTime
@@ -141,29 +142,31 @@ func (o *outbox) duck(on bool) {
 }
 
 // flush drops everything queued and reports what the human heard of the
-// piece that was playing (and which run it was from).
-func (o *outbox) flush() (heard, runID string) {
+// piece that was playing, whether one was, and the runs of what was dropped.
+func (o *outbox) flush() (heard string, playing bool, runs []string) {
 	o.mu.Lock()
-	queue := o.queue
-	o.queue, o.ducked = nil, false
+	// A duck already stepped back over what was not heard.
 	delay := o.delay
-	o.mu.Unlock()
-	for i, p := range queue {
+	if o.ducked {
+		delay = 0
+	}
+	for i, p := range o.queue {
 		if p.cancel != nil {
 			p.cancel()
 		}
+		runs = append(runs, p.runID)
 		if i == 0 {
 			p.mu.Lock()
-			played := max(0, p.sent-delay)
-			if p.sent > 0 {
-				heard = p.heardOf(played)
-				runID = p.runID
+			if p.announced {
+				heard, playing = p.heardOf(max(0, p.sent-delay)), true
 			}
 			p.mu.Unlock()
 		}
 	}
+	o.queue, o.ducked = nil, false
+	o.mu.Unlock()
 	o.poke()
-	return heard, runID
+	return heard, playing, runs
 }
 
 // setDelay records the browser's playout delay.
@@ -178,13 +181,17 @@ func (o *outbox) setDelay(ms int) {
 func (o *outbox) synthLoop(ctx context.Context) {
 	for {
 		var next *piece
+		var pctx context.Context
+		var cancel context.CancelFunc
 		o.mu.Lock()
 		for i, p := range o.queue {
 			if i > lookahead {
 				break
 			}
 			if !p.started {
-				p.started = true
+				// Under the lock, so a flush always finds what stops it.
+				pctx, cancel = context.WithCancel(ctx)
+				p.started, p.cancel = true, cancel
 				next = p
 				break
 			}
@@ -199,10 +206,6 @@ func (o *outbox) synthLoop(ctx context.Context) {
 			}
 			continue
 		}
-		pctx, cancel := context.WithCancel(ctx)
-		o.mu.Lock()
-		next.cancel = cancel
-		o.mu.Unlock()
 		o.synth(pctx, next)
 		cancel()
 		next.finish()
@@ -261,7 +264,9 @@ func (o *outbox) take() (frame []byte, start *piece, idle bool) {
 		switch {
 		case p.sent < len(p.frames):
 			frame = p.frames[p.sent]
-			if p.sent == 0 {
+			// Once: a duck can step back to its first frame.
+			if !p.announced {
+				p.announced = true
 				start = p
 			}
 			p.sent++

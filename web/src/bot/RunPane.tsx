@@ -6,9 +6,8 @@ import { t } from "../i18n.ts";
 import type { Artifact } from "../Artifact";
 import { CallBar } from "../call/CallBar";
 import { CallStage } from "../call/CallStage";
+import { callIsHere } from "../call/place";
 import type { Call } from "../call/useCall";
-import { useNavigate } from "@tanstack/react-router";
-import { chatLink } from "../links";
 import { useQuery } from "@connectrpc/connect-query";
 import { Composer, type Said } from "../composer/Composer";
 import { fail } from "../errors";
@@ -83,10 +82,9 @@ export function RunPane({
   const commands = useQuery(UI.method.listCommands, { botId: id }, { staleTime: Infinity }).data?.commands ?? none;
   // The empty chat shows what was picked for it; the first send carries it.
   const picked = !chatId && fresh ? pick : undefined;
-  const navigate = useNavigate();
-  // The call is drawn here when it is held in this chat (or is making it).
-  const callChat = call.snap?.chatId ?? "";
-  const callHere = !!call.snap && (callChat === chatId || (callChat === "new" && fresh && !chatId));
+  // The call is drawn here when it is held in this chat (or is making it);
+  // from any other page BotPage draws it.
+  const callHere = !!call.snap && callIsHere(call.snap.chatId, chatId, fresh);
   // The call screen takes the column; the composer comes up under it only
   // when asked for (Type).
   const staged = callHere && call.expanded;
@@ -213,13 +211,7 @@ export function RunPane({
         </div>
       ) : (
         <>
-        <CallBar
-          call={call}
-          botName={bot.name}
-          here={callHere}
-          onBack={callChat && callChat !== "new" ? () => void navigate(chatLink(id, callChat)) : undefined}
-          onExpand={() => call.setExpanded(true)}
-        />
+        {callHere ? <CallBar call={call} botName={bot.name} onExpand={() => call.setExpanded(true)} /> : null}
         {composer}
         </>
       )}

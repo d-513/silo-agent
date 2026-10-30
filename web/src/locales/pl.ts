@@ -1984,8 +1984,6 @@ const pl: Record<string, string> = {
   "Hold the button or Space while you talk.": "Trzymaj przycisk albo spację, gdy mówisz.",
   "Talk to {{name}}. Speak over it any time to cut in.": "Mów do: {{name}}. Możesz wejść w słowo w każdej chwili.",
   "Listening back…": "Odsłuchuję…",
-  "On a call with {{name}} in another chat": "Rozmowa z: {{name}} w innym czacie",
-  "Go back": "Wróć",
   "The call could not start. Voice may be off, or this Bot is not yours to call.": "Nie udało się rozpocząć rozmowy. Głos może być wyłączony albo nie możesz dzwonić do tego Bota.",
   "The voice detector did not load: {{error}}": "Nie udało się wczytać wykrywania głosu: {{error}}",
   "The call's audio could not connect. A firewall may be blocking its port.": "Dźwięk rozmowy nie mógł się połączyć. Zapora może blokować jego port.",

@@ -138,6 +138,11 @@ type liveRun struct {
 	// at the inbox: a message that arrives after it starts a new run instead
 	// of waiting in an inbox nobody reads.
 	closed bool
+	// stopTurn stops the model turn being written, while a spoken message may
+	// still replace it, and turnCut says one did. Under turnMu.
+	turnMu   sync.Mutex
+	stopTurn context.CancelFunc
+	turnCut  bool
 	// endTurn is set by a tool that hands the conversation to the human (a
 	// question card in this chat): the run ends after the current turn's
 	// calls instead of asking the model again. Under App.mu.

@@ -166,9 +166,6 @@ func (c *call) talk(said, cut string) {
 // talkFailed gives the turn to the Bot: a talker that cannot answer must not
 // lose what was said.
 func (c *call) talkFailed(turn *talkTurn, provider, model string, req llm.Request, err error, started time.Time) {
-	if c.ctx.Err() != nil {
-		return
-	}
 	log.Printf("voice: call %s talker %s/%s: %v", c.id, provider, model, err)
 	c.mu.Lock()
 	if c.talking == turn {
@@ -252,8 +249,7 @@ func (c *call) flushWaiting() {
 // hand gives a turn to the Bot: the human's words, marked spoken, as a
 // message in the chat.
 func (c *call) hand(said, cut string) {
-	runID, err := c.s.host.StartOrInject(c.botID, c.chatID, said, run.Extra{Spoken: &run.Spoken{CallID: c.id, Interrupted: cut}}, nil)
-	if err != nil {
+	if _, err := c.s.host.StartOrInject(c.botID, c.chatID, said, run.Extra{Spoken: &run.Spoken{CallID: c.id, Interrupted: cut}}, nil); err != nil {
 		log.Printf("voice: call %s: %v", c.id, err)
 		if errors.Is(err, run.ErrBusy) {
 			c.say(sayBusy.in(c.snd.Language), "")
@@ -263,9 +259,6 @@ func (c *call) hand(said, cut string) {
 		return
 	}
 	c.mu.Lock()
-	// What the Bot says next answers this turn: speak it even if an earlier
-	// sentence of the same run was cut off.
-	delete(c.muted, runID)
 	if c.pending != nil {
 		c.pending.Delegated = c.mode == config.VoiceModeTalker
 	}

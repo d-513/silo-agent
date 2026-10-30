@@ -97,7 +97,7 @@ func (c *call) dialTurn(t *liveTurnIn) {
 		t.fail(err)
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.ctx, liveOpenTimeout)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), liveOpenTimeout)
 	defer cancel()
 	sess, err := c.hear.live.OpenTranscription(ctx, model, llm.LiveOptions{Language: c.snd.Language})
 	if err != nil {
@@ -210,19 +210,19 @@ func (t *liveTurnIn) close() {
 
 // heardText is a live turn's transcript: the session's final words, or, if
 // it failed, the turn's audio in one request.
-func (c *call) heardText(t *liveTurnIn) (string, error) {
+func (c *call) heardText(ctx context.Context, t *liveTurnIn) (string, error) {
 	select {
 	case <-t.ready:
 	case <-time.After(liveOpenTimeout):
-	case <-c.ctx.Done():
-		return "", c.ctx.Err()
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
 	t.mu.Lock()
 	sess, failed := t.sess, t.failed
 	t.mu.Unlock()
 	if sess != nil && !failed {
-		ctx, cancel := context.WithTimeout(c.ctx, liveFinishTimeout)
-		text, err := sess.Finish(ctx)
+		fin, cancel := context.WithTimeout(ctx, liveFinishTimeout)
+		text, err := sess.Finish(fin)
 		cancel()
 		sess.Close()
 		if err == nil {
@@ -238,7 +238,7 @@ func (c *call) heardText(t *liveTurnIn) (string, error) {
 	t.mu.Lock()
 	wav := speech.WAV(t.pcm.Bytes(), llm.LiveSampleRate)
 	t.mu.Unlock()
-	tr, err := c.s.transcribeWith(c.ctx, c.botID, "call", c.hear.model, llm.Audio{Data: wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
+	tr, err := c.s.transcribeWith(ctx, c.botID, "call", c.hear.model, llm.Audio{Data: wav, MIME: "audio/wav", Filename: "turn.wav", Language: c.snd.Language})
 	return strings.TrimSpace(tr.Text), err
 }
 

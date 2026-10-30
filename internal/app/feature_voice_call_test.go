@@ -332,6 +332,178 @@ func TestVoiceCallInterrupt(t *testing.T) {
 	assertAppendOnly(t, reqs)
 }
 
+// sayings reads what the Bot says until it says last, and returns it all.
+func (c *callClient) sayings(last string) []string {
+	c.t.Helper()
+	var said []string
+	for {
+		text, _ := c.expect("say")["text"].(string)
+		said = append(said, text)
+		if text == last {
+			return said
+		}
+	}
+}
+
+// A sentence broken by a pause: the Bot starts answering the first half, and
+// the second half replaces that reply at once instead of waiting behind it.
+func TestVoiceCallSecondTurnCutsTheReplyBeingWritten(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_vc3",
+		dummy.Turn{Text: "Your message got cut off. What should I search for?", Hold: time.Minute},
+		dummy.Turn{Text: "Searching for that now."},
+		dummy.Turn{Text: "All done."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	chat := mainChatOf(t, h, id)
+
+	c.speak("Test_vc3 look for")
+	c.expect("heard")
+	waitFor(t, func() bool { return len(chatEvents(t, h, chat, "chunk")) > 0 }, "the reply to start")
+	c.speak("something to test")
+	said := c.sayings("Searching for that now.")
+	if strings.Contains(strings.Join(said, " "), "What should I search for") {
+		t.Fatalf("the Bot read on after the human spoke: %q", said)
+	}
+	reqs := dummy.Streamed()
+	if len(reqs) != 2 {
+		t.Fatalf("%d model turns", len(reqs))
+	}
+	got := userTexts(reqs[1])
+	if last := got[len(got)-1]; !strings.HasSuffix(last, "something to test") {
+		t.Fatalf("the model read %q", last)
+	}
+	waitFor(t, func() bool { return h.App.LiveRunID(id, chat) == "" }, "the reply to end")
+
+	// The cut reply is history like any other: the next run extends it.
+	c.speak("thanks")
+	c.sayings("All done.")
+	assertAppendOnly(t, dummy.Streamed())
+}
+
+// Words are enough to stop the voice: a browser that never saw the human
+// start (the detector was not sure, the state had moved on) does not keep the
+// Bot reading on over them.
+func TestVoiceCallTurnStopsTheVoice(t *testing.T) {
+	dummy.Reset()
+	long := "The meeting is at six. Bring the slides and the budget. Anna will join late. We need to decide on the venue. Then we can talk about dinner."
+	dummy.Script("Test_vc4", dummy.Turn{Text: long}, dummy.Turn{Text: "Sure, nine then."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	chat := mainChatOf(t, h, id)
+
+	c.speak("Test_vc4 when is the meeting")
+	c.expect("say")
+	waitFor(t, func() bool { return h.App.LiveRunID(id, chat) == "" }, "the reply to be written")
+	c.speak("make it nine")
+	said := c.sayings("Sure, nine then.")
+	if strings.Contains(strings.Join(said, " "), "dinner") {
+		t.Fatalf("the Bot read on after the human spoke: %q", said)
+	}
+	reqs := dummy.Streamed()
+	got := userTexts(reqs[len(reqs)-1])
+	last := got[len(got)-1]
+	if !strings.Contains(last, "[spoken; I cut you off after: “") {
+		t.Fatalf("the model read %q", last)
+	}
+	// The sentence that was cut reads once, as far as it was heard.
+	if strings.Count(last, "The meeting is at") > 1 {
+		t.Fatalf("the note repeats the cut sentence: %q", last)
+	}
+}
+
+// A duck the browser never resolves (it was already hearing a turn when the
+// voice began) must not leave the Bot mute for the rest of the call.
+func TestVoiceCallDuckDoesNotOutliveTheTurn(t *testing.T) {
+	dummy.Reset()
+	long := "The meeting is at six. Bring the slides and the budget. Anna will join late. We need to decide on the venue. Then we can talk about dinner."
+	dummy.Script("Test_vc5", dummy.Turn{Text: long}, dummy.Turn{Text: "Sure, nine then."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+
+	c.speak("Test_vc5 when is the meeting")
+	c.expect("say")
+	c.send(map[string]any{"t": "duck"})
+	c.speak("make it nine")
+	c.sayings("Sure, nine then.")
+}
+
+// While the voice plays the state stays speaking, whatever the Bot does
+// behind it: speaking is what lets the human cut in.
+func TestVoiceCallStaysSpeakingThroughATool(t *testing.T) {
+	dummy.Reset()
+	first := "Let me have a look at that for you, it may take me a little while to get through it all."
+	dummy.Script("Test_vc6",
+		dummy.Turn{
+			Text:      first + " I will tell you what I find.",
+			Hold:      300 * time.Millisecond,
+			ToolCalls: []llm.ToolCall{{Name: "sleep", Arguments: `{"seconds":1}`}},
+		},
+		dummy.Turn{Text: "Done."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+
+	c.speak("Test_vc6 have a look")
+	began := time.Time{}
+	for began.IsZero() {
+		if m := c.expect("state"); m["state"] == "speaking" {
+			began = time.Now()
+		}
+	}
+	next := c.expect("state")
+	voice := time.Duration(len([]rune(first))*dummy.SpeechMsPerRune) * time.Millisecond
+	if held := time.Since(began); held < voice/2 {
+		t.Fatalf("state went to %v after %v of a %v voice", next["state"], held, voice)
+	}
+}
+
+// Hanging up ends the call, not the work: a long job asked for on it runs to
+// its end, and the reply is there in the chat.
+func TestVoiceCallEndingLeavesTheRunGoing(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_vc7",
+		dummy.Turn{Text: "I am on it.", Hold: 300 * time.Millisecond, ToolCalls: []llm.ToolCall{{Name: "sleep", Arguments: `{"seconds":1}`}}},
+		dummy.Turn{Text: "The long job is finished."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	chat := mainChatOf(t, h, id)
+
+	c.speak("Test_vc7 run the long job")
+	waitFor(t, func() bool { return h.App.LiveRunID(id, chat) != "" }, "the run to start")
+	c.send(map[string]any{"t": "hangup"})
+	c.expect("bye")
+	waitFor(t, func() bool {
+		evs := chatEvents(t, h, chat, "assistant")
+		return len(evs) > 0 && evs[len(evs)-1].Body == "The long job is finished."
+	}, "the run to finish after the call")
+}
+
+// What was said just before hanging up still reaches the Bot, ahead of the
+// call's end in the thread.
+func TestVoiceCallTurnsOutliveTheCall(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_vc8", dummy.Turn{Text: "On it."}, dummy.Turn{Text: "Noted."}, dummy.Turn{Text: "And that."})
+	h := voiceHarness(t)
+	id := h.CreateBot("Talker").GetId()
+	c := dialCall(t, h, id, "")
+	chat := mainChatOf(t, h, id)
+
+	c.speak("Test_vc8 first")
+	c.speak("then the second thing")
+	c.speak("and the third thing")
+	c.send(map[string]any{"t": "hangup"})
+	c.expect("bye")
+	waitFor(t, func() bool { return len(chatEvents(t, h, chat, "call_end")) == 1 }, "the call's end")
+	if said := chatEvents(t, h, chat, "user"); len(said) != 3 {
+		t.Fatalf("the Bot got %d of 3 turns", len(said))
+	}
+}
+
 func mainChatOf(t *testing.T, h *apptest.H, botID string) string {
 	t.Helper()
 	chats, err := h.Client.ListChats(h.Ctx(), connect.NewRequest(&v1.ListChatsRequest{BotId: botID}))

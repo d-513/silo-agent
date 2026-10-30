@@ -57,3 +57,31 @@ func TestAutomationSectionIsTrailing(t *testing.T) {
 		t.Fatalf("want one trailing section naming the run, got %v", secs)
 	}
 }
+
+// A spoken message can stop a model turn only until its first tool call: from
+// there the call has to be written whole.
+func TestCutTurnStopsAtTheFirstToolCall(t *testing.T) {
+	var stopped int
+	stop := func() { stopped++ }
+
+	lr := &liveRun{}
+	lr.cutTurn() // no turn being written
+	if lr.closeTurn() || stopped != 0 {
+		t.Fatalf("cut with no turn: stopped %d", stopped)
+	}
+
+	lr.openTurn(stop)
+	lr.cutTurn()
+	if stopped != 1 || lr.commitTurn() || !lr.closeTurn() {
+		t.Fatalf("a cut turn: stopped %d", stopped)
+	}
+
+	lr.openTurn(stop)
+	if !lr.commitTurn() {
+		t.Fatal("a fresh turn read as cut")
+	}
+	lr.cutTurn()
+	if stopped != 1 || lr.closeTurn() {
+		t.Fatalf("a committed turn was cut: stopped %d", stopped)
+	}
+}

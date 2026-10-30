@@ -33,7 +33,7 @@ func TestPruneLookImagesKeepsLatestAndPresent(t *testing.T) {
 	if len(msgs[0].Images) != 1 {
 		t.Fatal("present image must survive pruning")
 	}
-	if len(msgs[1].Images) != 0 || msgs[1].Text != "Earlier screenshot omitted — act on the current one." {
+	if len(msgs[1].Images) != 0 || msgs[1].Text != lookOmitted {
 		t.Fatalf("old look not pruned: %+v", msgs[1])
 	}
 	if len(msgs[2].Images) != 1 {
